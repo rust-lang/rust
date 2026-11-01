@@ -4,8 +4,8 @@ error: this call to `as_ref` does nothing
 LL |         foo_rstr(rstr.as_ref());
    |                  ^^^^^^^^^^^^^ help: try: `rstr`
    |
-   = note: `-D clippy::useless-asref` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::useless_asref)]`
+   = note: `-D clippy::useless-asref` implied by `-D warnings`
 
 error: this call to `as_ref` does nothing
   --> tests/ui/useless_asref.rs:48:20

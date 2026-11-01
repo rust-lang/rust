@@ -4,15 +4,15 @@ error[E0107]: trait takes 2 generic arguments but 4 generic arguments were suppl
 LL |     i: Box<dyn T<usize, usize, usize, usize, B = usize>>,
    |                ^ expected 2 generic arguments
    |
+help: turn the generic arguments into associated item bindings
+   |
+LL |     i: Box<dyn T<usize, usize, A = usize, C = usize, B = usize>>,
+   |                                +++        +++
 note: trait defined here, with 2 generic parameters: `X`, `Y`
   --> $DIR/use-type-argument-instead-of-assoc-type.rs:1:11
    |
 LL | pub trait T<X, Y> {
    |           ^ -  -
-help: turn the generic arguments into associated item bindings
-   |
-LL |     i: Box<dyn T<usize, usize, A = usize, C = usize, B = usize>>,
-   |                                +++        +++
 
 error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/use-type-argument-instead-of-assoc-type.rs:11:17

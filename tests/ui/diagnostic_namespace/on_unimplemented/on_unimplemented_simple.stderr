@@ -7,12 +7,12 @@ LL |     takes_foo(());
    |     required by a bound introduced by this call
    |
    = help: the trait `Foo` is not implemented for `()`
-   = note: Baz
 help: this trait has no implementations, consider adding one
   --> $DIR/on_unimplemented_simple.rs:4:1
    |
 LL | trait Foo {}
    | ^^^^^^^^^
+   = note: Baz
 note: required by a bound in `takes_foo`
   --> $DIR/on_unimplemented_simple.rs:6:22
    |

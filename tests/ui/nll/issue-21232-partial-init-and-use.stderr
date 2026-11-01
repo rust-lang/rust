@@ -266,11 +266,11 @@ LL |         c2 => {
 LL |             ((c.1).1).0 = 3;
    |             ^^^^^^^^^^^^^^^ value partially assigned here after move
    |
-   = note: move occurs because `c.1` has type `(i32, (i32, String))`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
 LL |         ref c2 => {
    |         +++
+   = note: move occurs because `c.1` has type `(i32, (i32, String))`, which does not implement the `Copy` trait
 
 error: aborting due to 23 previous errors
 

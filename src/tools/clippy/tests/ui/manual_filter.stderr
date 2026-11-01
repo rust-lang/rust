@@ -10,8 +10,8 @@ LL | |         },
 LL | |     };
    | |_____^ help: try: `Some(0).filter(|&x| x <= 0)`
    |
-   = note: `-D clippy::manual-filter` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_filter)]`
+   = note: `-D clippy::manual-filter` implied by `-D warnings`
 
 error: manual implementation of `Option::filter`
   --> tests/ui/manual_filter.rs:17:5

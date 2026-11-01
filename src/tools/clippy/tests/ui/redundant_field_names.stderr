@@ -4,8 +4,8 @@ error: redundant field names in struct initialization
 LL |         gender: gender,
    |         ^^^^^^^^^^^^^^ help: replace it with: `gender`
    |
-   = note: `-D clippy::redundant-field-names` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::redundant_field_names)]`
+   = note: `-D clippy::redundant-field-names` implied by `-D warnings`
 
 error: redundant field names in struct initialization
   --> tests/ui/redundant_field_names.rs:35:9

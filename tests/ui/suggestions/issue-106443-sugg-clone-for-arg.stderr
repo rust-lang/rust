@@ -6,15 +6,15 @@ LL |     foo(s);
    |     |
    |     arguments to this function are incorrect
    |
+help: consider using clone here
+   |
+LL |     foo(s.clone());
+   |          ++++++++
 note: function defined here
   --> $DIR/issue-106443-sugg-clone-for-arg.rs:7:4
    |
 LL | fn foo(_: S) {}
    |    ^^^ ----
-help: consider using clone here
-   |
-LL |     foo(s.clone());
-   |          ++++++++
 
 error[E0308]: mismatched types
   --> $DIR/issue-106443-sugg-clone-for-arg.rs:17:9

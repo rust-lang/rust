@@ -18,6 +18,7 @@ help: consider importing this module instead
    |
 LL | use test::test as y;
    |     ++++++
+   = note: 'test::test' is unstable, add `#![feature(test)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 

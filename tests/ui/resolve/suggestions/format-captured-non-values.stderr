@@ -62,11 +62,11 @@ LL | | }
 LL |       let _ = format!("{Example:?}");
    |                         ^^^^^^^
    |
-   = note: a struct named `Example` exists in another namespace
 help: you might have meant to add a named formatting argument
    |
 LL |     let _ = format!("{Example:?}", Example = Example { value: val });
    |                                  ++++++++++++++++++++++++++++++++++
+   = note: a struct named `Example` exists in another namespace
 
 error: aborting due to 7 previous errors
 

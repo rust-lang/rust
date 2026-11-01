@@ -4,8 +4,8 @@ error: use of `flat_map` with an identity function
 LL |     let _ = iterator.flat_map(|x| x);
    |                      ^^^^^^^^^^^^^^^ help: try: `flatten()`
    |
-   = note: `-D clippy::flat-map-identity` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::flat_map_identity)]`
+   = note: `-D clippy::flat-map-identity` implied by `-D warnings`
 
 error: use of `flat_map` with an identity function
   --> tests/ui/flat_map_identity.rs:12:22

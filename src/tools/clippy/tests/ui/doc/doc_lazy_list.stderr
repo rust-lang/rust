@@ -4,13 +4,13 @@ error: doc list item without indentation
 LL | /// lazy continuation
    |     ^
    |
-   = help: if this is supposed to be its own paragraph, add a blank line
-   = note: `-D clippy::doc-lazy-continuation` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::doc_lazy_continuation)]`
 help: indent this line
    |
 LL | ///    lazy continuation
    |     +++
+   = help: if this is supposed to be its own paragraph, add a blank line
+   = help: to override `-D warnings` add `#[allow(clippy::doc_lazy_continuation)]`
+   = note: `-D clippy::doc-lazy-continuation` implied by `-D warnings`
 
 error: doc list item without indentation
   --> tests/ui/doc/doc_lazy_list.rs:10:5
@@ -18,11 +18,11 @@ error: doc list item without indentation
 LL | /// lazy list continuations don't make warnings with this lint
    |     ^
    |
-   = help: if this is supposed to be its own paragraph, add a blank line
 help: indent this line
    |
 LL | ///    lazy list continuations don't make warnings with this lint
    |     +++
+   = help: if this is supposed to be its own paragraph, add a blank line
 
 error: doc list item without indentation
   --> tests/ui/doc/doc_lazy_list.rs:12:5
@@ -30,11 +30,11 @@ error: doc list item without indentation
 LL | /// because they don't have the
    |     ^
    |
-   = help: if this is supposed to be its own paragraph, add a blank line
 help: indent this line
    |
 LL | ///    because they don't have the
    |     +++
+   = help: if this is supposed to be its own paragraph, add a blank line
 
 error: doc list item without indentation
   --> tests/ui/doc/doc_lazy_list.rs:17:5
@@ -42,11 +42,11 @@ error: doc list item without indentation
 LL | /// lazy continuation
    |     ^
    |
-   = help: if this is supposed to be its own paragraph, add a blank line
 help: indent this line
    |
 LL | ///     lazy continuation
    |     ++++
+   = help: if this is supposed to be its own paragraph, add a blank line
 
 error: doc list item without indentation
   --> tests/ui/doc/doc_lazy_list.rs:22:5
@@ -54,11 +54,11 @@ error: doc list item without indentation
 LL | /// lazy list continuations don't make warnings with this lint
    |     ^
    |
-   = help: if this is supposed to be its own paragraph, add a blank line
 help: indent this line
    |
 LL | ///     lazy list continuations don't make warnings with this lint
    |     ++++
+   = help: if this is supposed to be its own paragraph, add a blank line
 
 error: doc list item without indentation
   --> tests/ui/doc/doc_lazy_list.rs:24:5
@@ -66,11 +66,11 @@ error: doc list item without indentation
 LL | /// because they don't have the
    |     ^
    |
-   = help: if this is supposed to be its own paragraph, add a blank line
 help: indent this line
    |
 LL | ///     because they don't have the
    |     ++++
+   = help: if this is supposed to be its own paragraph, add a blank line
 
 error: doc list item without indentation
   --> tests/ui/doc/doc_lazy_list.rs:29:5
@@ -78,11 +78,11 @@ error: doc list item without indentation
 LL | /// lazy continuation
    |     ^
    |
-   = help: if this is supposed to be its own paragraph, add a blank line
 help: indent this line
    |
 LL | ///     lazy continuation
    |     ++++
+   = help: if this is supposed to be its own paragraph, add a blank line
 
 error: doc list item without indentation
   --> tests/ui/doc/doc_lazy_list.rs:34:5
@@ -90,11 +90,11 @@ error: doc list item without indentation
 LL | /// this will warn on the lazy continuation
    |     ^
    |
-   = help: if this is supposed to be its own paragraph, add a blank line
 help: indent this line
    |
 LL | ///       this will warn on the lazy continuation
    |     ++++++
+   = help: if this is supposed to be its own paragraph, add a blank line
 
 error: doc list item without indentation
   --> tests/ui/doc/doc_lazy_list.rs:36:5
@@ -102,11 +102,11 @@ error: doc list item without indentation
 LL | ///     and so should this
    |     ^^^^
    |
-   = help: if this is supposed to be its own paragraph, add a blank line
 help: indent this line
    |
 LL | ///       and so should this
    |         ++
+   = help: if this is supposed to be its own paragraph, add a blank line
 
 error: doc list item without indentation
   --> tests/ui/doc/doc_lazy_list.rs:57:5
@@ -114,11 +114,11 @@ error: doc list item without indentation
 LL | ///  'protocol_descriptors': [
    |     ^
    |
-   = help: if this is supposed to be its own paragraph, add a blank line
 help: indent this line
    |
 LL | ///   'protocol_descriptors': [
    |      +
+   = help: if this is supposed to be its own paragraph, add a blank line
 
 error: doc list item without indentation
   --> tests/ui/doc/doc_lazy_list.rs:76:5
@@ -126,11 +126,11 @@ error: doc list item without indentation
 LL | ///  ]
    |     ^
    |
-   = help: if this is supposed to be its own paragraph, add a blank line
 help: indent this line
    |
 LL | ///   ]
    |      +
+   = help: if this is supposed to be its own paragraph, add a blank line
 
 error: aborting due to 11 previous errors
 

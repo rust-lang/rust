@@ -4,13 +4,13 @@ error: using `if let` to pattern match a bool
 LL |     if let true = k > 1 {}
    |        ^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 help: consider using the condition directly
    |
 LL -     if let true = k > 1 {}
 LL +     if k > 1 {}
    |
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
+   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
 error: using `if let` to pattern match a bool
   --> tests/ui/redundant_pattern_matching_if_let_true.rs:24:8

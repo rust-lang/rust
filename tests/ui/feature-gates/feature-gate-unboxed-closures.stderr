@@ -4,8 +4,8 @@ error[E0658]: the `rustc_paren_sugar` attribute is an experimental feature
 LL | #[rustc_paren_sugar]
    |   ^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "rust-call" ABI is experimental and subject to change
@@ -14,8 +14,8 @@ error[E0658]: the extern "rust-call" ABI is experimental and subject to change
 LL |     extern "rust-call" fn call_once(self, (a, b): (u32, u32)) -> u32 {
    |            ^^^^^^^^^^^
    |
-   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
@@ -24,8 +24,8 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
 LL | impl FnOnce<(u32, u32)> for Test {
    |      ^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0183]: manual implementations of `FnOnce` are experimental

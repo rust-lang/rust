@@ -4,8 +4,8 @@ error: called `assert!` with `Result::is_ok`
 LL |     assert!(r.is_ok());
    |     ^^^^^^^^^^^^^^^^^^ help: replace with: `r.unwrap()`
    |
-   = note: `-D clippy::assertions-on-result-states` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::assertions_on_result_states)]`
+   = note: `-D clippy::assertions-on-result-states` implied by `-D warnings`
 
 error: called `assert!` with `Result::is_ok`
   --> tests/ui/assertions_on_result_states.rs:43:5

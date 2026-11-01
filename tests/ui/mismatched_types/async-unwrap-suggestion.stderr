@@ -13,12 +13,12 @@ error[E0308]: mismatched types
 LL |         return s;
    |                ^ expected `i32`, found `Result<{integer}, _>`
    |
-   = note: expected type `i32`
-              found enum `Result<{integer}, _>`
 help: consider using `Result::expect` to unwrap the `Result<{integer}, _>` value, panicking if the value is a `Result::Err`
    |
 LL |         return s.expect("REASON");
    |                 +++++++++++++++++
+   = note: expected type `i32`
+              found enum `Result<{integer}, _>`
 
 error: aborting due to 2 previous errors
 

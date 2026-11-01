@@ -25,17 +25,17 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/infer-unwrap-none-issue-120786.rs:16:9
@@ -53,17 +53,17 @@ error[E0283]: type annotations needed
 LL |     |x| String::from("x".as_ref());
    |                          ^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     |x| String::from("x".as_ref());
+LL +     |x| String::from(<str as AsRef<T>>::as_ref("x"));
+   |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     |x| String::from("x".as_ref());
-LL +     |x| String::from(<str as AsRef<T>>::as_ref("x"));
-   |
 
 error[E0283]: type annotations needed for `&_`
   --> $DIR/infer-unwrap-none-issue-120786.rs:22:9
@@ -71,16 +71,16 @@ error[E0283]: type annotations needed for `&_`
 LL |     let _ = "x".as_ref();
    |         ^       ------ type must be known at this point
    |
+help: consider giving this pattern a type, where the type for type parameter `T` is specified
+   |
+LL |     let _: &T = "x".as_ref();
+   |          ++++
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-help: consider giving this pattern a type, where the type for type parameter `T` is specified
-   |
-LL |     let _: &T = "x".as_ref();
-   |          ++++
 
 error[E0283]: type annotations needed
   --> $DIR/infer-unwrap-none-issue-120786.rs:27:5
@@ -98,17 +98,17 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/infer-unwrap-none-issue-120786.rs:35:5
@@ -126,17 +126,17 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/infer-unwrap-none-issue-120786.rs:45:5
@@ -154,17 +154,17 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/infer-unwrap-none-issue-120786.rs:55:5
@@ -182,17 +182,17 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/infer-unwrap-none-issue-120786.rs:63:5
@@ -210,17 +210,17 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/infer-unwrap-none-issue-120786.rs:73:5
@@ -238,17 +238,17 @@ error[E0283]: type annotations needed
 LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     String::from("x".as_ref());
-LL +     String::from(<str as AsRef<T>>::as_ref("x"));
-   |
 
 error: aborting due to 18 previous errors
 

@@ -4,12 +4,12 @@ error[E0425]: cannot find value `foobar2` in this scope
 LL |     bang_proc_macro2!();
    |     ^^^^^^^^^^^^^^^^^^^ not found in this scope
    |
-   = note: this error originates in the macro `bang_proc_macro2` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a local variable with a similar name exists
    |
 LL -     bang_proc_macro2!();
 LL +     foobar;
    |
+   = note: this error originates in the macro `bang_proc_macro2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

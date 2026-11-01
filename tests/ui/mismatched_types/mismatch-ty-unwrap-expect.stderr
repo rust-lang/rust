@@ -6,12 +6,12 @@ LL |     let v: i32 = b;
    |            |
    |            expected due to this
    |
-   = note: expected type `i32`
-              found enum `Result<i32, ()>`
 help: use the `?` operator to extract the `Result<i32, ()>` value, propagating a `Result::Err` value to the caller
    |
 LL |     let v: i32 = b?;
    |                   +
+   = note: expected type `i32`
+              found enum `Result<i32, ()>`
 
 error[E0308]: mismatched types
   --> $DIR/mismatch-ty-unwrap-expect.rs:16:18
@@ -21,12 +21,12 @@ LL |     let v: i32 = b;
    |            |
    |            expected due to this
    |
-   = note: expected type `i32`
-              found enum `Option<{integer}>`
 help: use the `?` operator to extract the `Option<{integer}>` value, propagating an `Option::None` value to the caller
    |
 LL |     let v: i32 = b?;
    |                   +
+   = note: expected type `i32`
+              found enum `Option<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/mismatch-ty-unwrap-expect.rs:22:18
@@ -36,12 +36,12 @@ LL |     let v: i32 = a;
    |            |
    |            expected due to this
    |
-   = note: expected type `i32`
-              found enum `Option<{integer}>`
 help: consider using `Option::expect` to unwrap the `Option<{integer}>` value, panicking if the value is an `Option::None`
    |
 LL |     let v: i32 = a.expect("REASON");
    |                   +++++++++++++++++
+   = note: expected type `i32`
+              found enum `Option<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/mismatch-ty-unwrap-expect.rs:25:18
@@ -51,12 +51,12 @@ LL |     let v: i32 = b;
    |            |
    |            expected due to this
    |
-   = note: expected type `i32`
-              found enum `Result<i32, ()>`
 help: consider using `Result::expect` to unwrap the `Result<i32, ()>` value, panicking if the value is a `Result::Err`
    |
 LL |     let v: i32 = b.expect("REASON");
    |                   +++++++++++++++++
+   = note: expected type `i32`
+              found enum `Result<i32, ()>`
 
 error[E0308]: mismatched types
   --> $DIR/mismatch-ty-unwrap-expect.rs:27:18
@@ -66,12 +66,12 @@ LL |     let v: i32 = func();
    |            |
    |            expected due to this
    |
-   = note: expected type `i32`
-              found enum `Option<i32>`
 help: consider using `Option::expect` to unwrap the `Option<i32>` value, panicking if the value is an `Option::None`
    |
 LL |     let v: i32 = func().expect("REASON");
    |                        +++++++++++++++++
+   = note: expected type `i32`
+              found enum `Option<i32>`
 
 error[E0308]: mismatched types
   --> $DIR/mismatch-ty-unwrap-expect.rs:30:18
@@ -81,12 +81,12 @@ LL |     let v: i32 = a;
    |            |
    |            expected due to this
    |
-   = note: expected type `i32`
-              found enum `Option<_>`
 help: consider using `Option::expect` to unwrap the `Option<_>` value, panicking if the value is an `Option::None`
    |
 LL |     let v: i32 = a.expect("REASON");
    |                   +++++++++++++++++
+   = note: expected type `i32`
+              found enum `Option<_>`
 
 error: aborting due to 6 previous errors
 

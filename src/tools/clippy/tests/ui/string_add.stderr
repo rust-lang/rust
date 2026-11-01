@@ -4,8 +4,8 @@ error: you added something to a string. Consider using `String::push_str()` inst
 LL |         x = x + ".";
    |             ^^^^^^^
    |
-   = note: `-D clippy::string-add` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::string_add)]`
+   = note: `-D clippy::string-add` implied by `-D warnings`
 
 error: you added something to a string. Consider using `String::push_str()` instead
   --> tests/ui/string_add.rs:18:13

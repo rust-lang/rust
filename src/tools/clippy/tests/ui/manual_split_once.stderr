@@ -4,8 +4,8 @@ error: manual implementation of `split_once`
 LL |     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".split_once('=').unwrap().1`
    |
-   = note: `-D clippy::manual-split-once` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_split_once)]`
+   = note: `-D clippy::manual-split-once` implied by `-D warnings`
 
 error: manual implementation of `split_once`
   --> tests/ui/manual_split_once.rs:12:13

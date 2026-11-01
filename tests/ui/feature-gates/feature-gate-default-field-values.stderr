@@ -20,8 +20,8 @@ error[E0658]: default values on fields are experimental
 LL |     pub bar: S = S,
    |               ^^^^
    |
-   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: default values on fields are experimental
@@ -30,8 +30,8 @@ error[E0658]: default values on fields are experimental
 LL |     pub baz: i32 = 42 + 3,
    |                 ^^^^^^^^^
    |
-   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: default values on fields are experimental
@@ -40,8 +40,8 @@ error[E0658]: default values on fields are experimental
 LL |         bar: S = S,
    |               ^^^^
    |
-   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: default values on fields are experimental
@@ -50,8 +50,8 @@ error[E0658]: default values on fields are experimental
 LL |         baz: i32 = 42 + 3,
    |                 ^^^^^^^^^
    |
-   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: default values on fields are experimental
@@ -60,8 +60,8 @@ error[E0658]: default values on fields are experimental
 LL |     bar: S = Qux::<A, C>::S,
    |           ^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: default values on fields are experimental
@@ -70,8 +70,8 @@ error[E0658]: default values on fields are experimental
 LL |     baz: i32 = foo(),
    |             ^^^^^^^^
    |
-   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: default values on fields are experimental
@@ -80,8 +80,8 @@ error[E0658]: default values on fields are experimental
 LL |     bat: i32 = <Qux<A, C> as T>::K,
    |             ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: default values on fields are experimental
@@ -90,8 +90,8 @@ error[E0658]: default values on fields are experimental
 LL |     bay: i32 = C,
    |             ^^^^
    |
-   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: default values on fields are experimental
@@ -100,8 +100,8 @@ error[E0658]: default values on fields are experimental
 LL |     bak: Vec<A> = Vec::new(),
    |                ^^^^^^^^^^^^^
    |
-   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: default values on fields are experimental
@@ -110,8 +110,8 @@ error[E0658]: default values on fields are experimental
 LL |     optional: () = (),
    |                 ^^^^^
    |
-   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: default values on fields are experimental
@@ -120,8 +120,8 @@ error[E0658]: default values on fields are experimental
 LL |         optional: () = (),
    |                     ^^^^^
    |
-   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: default values on fields are experimental
@@ -130,8 +130,8 @@ error[E0658]: default values on fields are experimental
 LL |     x: i32 = 0,
    |           ^^^^
    |
-   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: default values on fields are experimental
@@ -140,8 +140,8 @@ error[E0658]: default values on fields are experimental
 LL |     y: f32 = 0.0,
    |           ^^^^^^
    |
-   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0797]: base expression required after `..`

@@ -40,16 +40,16 @@ error[E0577]: expected module, found enum `crate::a::E`
 LL |         mut(in crate::a::E) e2: i32,
    |                ^^^^^^^^^^^ not a module
    |
-note: similarly named module `b` defined here
-  --> $DIR/restriction-resolution-errors.rs:7:5
-   |
-LL |     pub mod b {
-   |     ^^^^^^^^^
 help: a module with a similar name exists
    |
 LL -         mut(in crate::a::E) e2: i32,
 LL +         mut(in crate::a::b) e2: i32,
    |
+note: similarly named module `b` defined here
+  --> $DIR/restriction-resolution-errors.rs:7:5
+   |
+LL |     pub mod b {
+   |     ^^^^^^^^^
 
 error[E0577]: expected module, found enum `m7`
   --> $DIR/restriction-resolution-errors.rs:55:24

@@ -4,9 +4,9 @@ warning: unknown lint: `duplicate_tools`
 LL | #![allow(duplicate_tools)]
    |          ^^^^^^^^^^^^^^^
    |
+   = help: add `#![feature(register_tool)]` to the crate attributes to enable
    = note: the `duplicate_tools` lint is unstable
    = note: see issue #66079 <https://github.com/rust-lang/rust/issues/66079> for more information
-   = help: add `#![feature(register_tool)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: `#[warn(unknown_lints)]` on by default
 
@@ -16,8 +16,8 @@ error[E0658]: the `register_tool` attribute is an experimental feature
 LL | #![register_tool(tool)]
    |    ^^^^^^^^^^^^^
    |
-   = note: see issue #66079 <https://github.com/rust-lang/rust/issues/66079> for more information
    = help: add `#![feature(register_tool)]` to the crate attributes to enable
+   = note: see issue #66079 <https://github.com/rust-lang/rust/issues/66079> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `register_attribute_tool` attribute is an experimental feature
@@ -26,8 +26,8 @@ error[E0658]: the `register_attribute_tool` attribute is an experimental feature
 LL | #![register_attribute_tool(attr_tool)]
    |    ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #66079 <https://github.com/rust-lang/rust/issues/66079> for more information
    = help: add `#![feature(register_tool)]` to the crate attributes to enable
+   = note: see issue #66079 <https://github.com/rust-lang/rust/issues/66079> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `register_lint_tool` attribute is an experimental feature
@@ -36,8 +36,8 @@ error[E0658]: the `register_lint_tool` attribute is an experimental feature
 LL | #![register_lint_tool(lint_tool)]
    |    ^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #66079 <https://github.com/rust-lang/rust/issues/66079> for more information
    = help: add `#![feature(register_tool)]` to the crate attributes to enable
+   = note: see issue #66079 <https://github.com/rust-lang/rust/issues/66079> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 3 previous errors; 1 warning emitted

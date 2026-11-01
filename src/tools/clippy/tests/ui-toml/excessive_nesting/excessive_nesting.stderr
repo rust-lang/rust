@@ -5,8 +5,8 @@ LL |                 let w = { 3 };
    |                         ^^^^^
    |
    = help: try refactoring your code to minimize nesting
-   = note: `-D clippy::excessive-nesting` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::excessive_nesting)]`
+   = note: `-D clippy::excessive-nesting` implied by `-D warnings`
 
 error: this block is too nested
   --> tests/ui-toml/excessive_nesting/excessive_nesting.rs:71:17

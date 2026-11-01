@@ -6,6 +6,10 @@ LL |     take_str_maybe(option);
    |     |
    |     arguments to this function are incorrect
    |
+help: try using `.as_deref()` to convert `Option<String>` to `Option<&str>`
+   |
+LL |     take_str_maybe(option.as_deref());
+   |                          +++++++++++
    = note: expected enum `Option<&str>`
               found enum `Option<String>`
 note: function defined here
@@ -13,10 +17,6 @@ note: function defined here
    |
 LL | fn take_str_maybe(_: Option<&str>) { }
    |    ^^^^^^^^^^^^^^ ---------------
-help: try using `.as_deref()` to convert `Option<String>` to `Option<&str>`
-   |
-LL |     take_str_maybe(option.as_deref());
-   |                          +++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/issue-89856.rs:12:20
@@ -26,6 +26,10 @@ LL |     take_str_maybe(option_ref);
    |     |
    |     arguments to this function are incorrect
    |
+help: try converting the passed type into a `&str`
+   |
+LL |     take_str_maybe(option_ref.map(|x| x.as_str()));
+   |                              ++++++++++++++++++++
    = note: expected enum `Option<&str>`
               found enum `Option<&String>`
 note: function defined here
@@ -33,10 +37,6 @@ note: function defined here
    |
 LL | fn take_str_maybe(_: Option<&str>) { }
    |    ^^^^^^^^^^^^^^ ---------------
-help: try converting the passed type into a `&str`
-   |
-LL |     take_str_maybe(option_ref.map(|x| x.as_str()));
-   |                              ++++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/issue-89856.rs:16:20
@@ -46,6 +46,10 @@ LL |     take_str_maybe(option_ref_ref);
    |     |
    |     arguments to this function are incorrect
    |
+help: try converting the passed type into a `&str`
+   |
+LL |     take_str_maybe(option_ref_ref.map(|x| x.as_str()));
+   |                                  ++++++++++++++++++++
    = note: expected enum `Option<&str>`
               found enum `Option<&&String>`
 note: function defined here
@@ -53,10 +57,6 @@ note: function defined here
    |
 LL | fn take_str_maybe(_: Option<&str>) { }
    |    ^^^^^^^^^^^^^^ ---------------
-help: try converting the passed type into a `&str`
-   |
-LL |     take_str_maybe(option_ref_ref.map(|x| x.as_str()));
-   |                                  ++++++++++++++++++++
 
 error: aborting due to 3 previous errors
 

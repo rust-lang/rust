@@ -4,14 +4,14 @@ error: unnecessary use of `copied`
 LL |     for (t, path) in files.iter().copied() {
    |                      ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-to-owned` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_to_owned)]`
 help: remove any references to the binding
    |
 LL ~     for (t, path) in files {
 LL |
 LL ~         let other = match get_file_path(t) {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_to_owned)]`
+   = note: `-D clippy::unnecessary-to-owned` implied by `-D warnings`
 
 error: unnecessary use of `copied`
   --> tests/ui/unnecessary_iter_cloned.rs:46:22

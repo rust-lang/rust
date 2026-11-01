@@ -4,8 +4,8 @@ error: explicit `deref` method call
 LL |     let b: &str = a.deref();
    |                   ^^^^^^^^^ help: try: `&*a`
    |
-   = note: `-D clippy::explicit-deref-methods` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::explicit_deref_methods)]`
+   = note: `-D clippy::explicit-deref-methods` implied by `-D warnings`
 
 error: explicit `deref_mut` method call
   --> tests/ui/explicit_deref_methods.rs:56:23

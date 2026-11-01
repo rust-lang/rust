@@ -10,12 +10,12 @@ LL | |
 LL | |     }
    | |_____- expected this to be `()`
    |
-   = note: expected unit type `()`
-                   found enum `Result<(), std::fmt::Error>`
 help: you might have meant to return this value
    |
 LL |         return writeln!(w, "but not here");
    |         ++++++                            +
+   = note: expected unit type `()`
+                   found enum `Result<(), std::fmt::Error>`
 help: use the `?` operator to extract the `Result<(), std::fmt::Error>` value, propagating a `Result::Err` value to the caller
    |
 LL |         writeln!(w, "but not here")?
@@ -35,17 +35,17 @@ LL | |         baz!(w)
 LL | |     }
    | |_____- expected this to be `()`
    |
-   = note: expected unit type `()`
-                   found enum `Result<(), std::fmt::Error>`
-   = note: this error originates in the macro `writeln` which comes from the expansion of the macro `baz` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you might have meant to return this value
    |
 LL |         return baz!(w);
    |         ++++++        +
+   = note: expected unit type `()`
+                   found enum `Result<(), std::fmt::Error>`
 help: use the `?` operator to extract the `Result<(), std::fmt::Error>` value, propagating a `Result::Err` value to the caller
    |
 LL |         writeln!($w, "but not here")?
    |                                     +
+   = note: this error originates in the macro `writeln` which comes from the expansion of the macro `baz` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

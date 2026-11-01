@@ -4,8 +4,8 @@ error[E0658]: generic const items are experimental
 LL |     const ONE<T>: i32;
    |              ^^^
    |
-   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
@@ -15,8 +15,8 @@ LL | /     where
 LL | |         A: Copy;
    | |_______________^
    |
-   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
@@ -25,8 +25,8 @@ error[E0658]: generic const items are experimental
 LL | const CONST<T>: i32 = 0;
    |            ^^^
    |
-   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
@@ -35,8 +35,8 @@ error[E0658]: generic const items are experimental
 LL | const EMPTY<>: i32 = 0;
    |            ^^
    |
-   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
@@ -46,8 +46,8 @@ LL | / where
 LL | |     String: Clone;
    | |_________________^
    |
-   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
@@ -56,8 +56,8 @@ error[E0658]: generic const items are experimental
 LL | discard! { const FREE<T>: () = (); }
    |                      ^^^
    |
-   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
@@ -66,8 +66,8 @@ error[E0658]: generic const items are experimental
 LL | discard! { impl () { const ASSOC<const N: ()>: () = (); } }
    |                                 ^^^^^^^^^^^^^
    |
-   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
@@ -76,8 +76,8 @@ error[E0658]: generic const items are experimental
 LL | discard! { impl () { const ASSOC: i32 = 0 where String: Copy; } }
    |                                           ^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 8 previous errors

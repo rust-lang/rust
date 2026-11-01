@@ -248,8 +248,8 @@ error[E0658]: generic const items are experimental
 LL | const CONSTANT<T: [const] Trait>: () = ();
    |               ^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
@@ -258,8 +258,8 @@ error[E0658]: generic const items are experimental
 LL |     const CONSTANT<T: [const] Trait>: ();
    |                   ^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
@@ -268,8 +268,8 @@ error[E0658]: generic const items are experimental
 LL |     const CONSTANT<T: [const] Trait>: () = ();
    |                   ^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
@@ -278,8 +278,8 @@ error[E0658]: generic const items are experimental
 LL |     const CONSTANT<T: [const] Trait>: () = ();
    |                   ^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0392]: type parameter `T` is never used
@@ -296,11 +296,11 @@ error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` t
 LL | union Union<T: [const] Trait> { field: T }
    |                                 ^^^^^^^^
    |
-   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 help: wrap the field type in `ManuallyDrop<...>`
    |
 LL | union Union<T: [const] Trait> { field: std::mem::ManuallyDrop<T> }
    |                                        +++++++++++++++++++++++ +
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 
 error[E0275]: overflow evaluating the requirement `(): Trait`
   --> $DIR/conditionally-const-invalid-places.rs:33:35
@@ -321,8 +321,8 @@ error[E0658]: inherent associated types are unstable
 LL |     type Type<T: [const] Trait> = ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 30 previous errors

@@ -4,9 +4,9 @@ error: this `.fold` can be written more succinctly using another method
 LL |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| x > 2)`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_fold)]`
    = note: the `any` method is short circuiting and may change the program semantics if the iterator has side effects
    = note: `-D clippy::unnecessary-fold` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_fold)]`
 
 error: redundant closure
   --> tests/ui/unnecessary_fold.rs:16:32
@@ -14,8 +14,8 @@ error: redundant closure
 LL |     let _ = (0..3).fold(false, |acc, x| is_any(acc, x));
    |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `is_any`
    |
-   = note: `-D clippy::redundant-closure` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::redundant_closure)]`
+   = note: `-D clippy::redundant-closure` implied by `-D warnings`
 
 error: this `.fold` can be written more succinctly using another method
   --> tests/ui/unnecessary_fold.rs:20:20

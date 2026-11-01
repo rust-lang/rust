@@ -4,8 +4,8 @@ error: generic parameters may not be used in const operations
 LL |     let _: [u8; foo::<T>()];
    |                       ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -24,8 +24,8 @@ error: generic parameters may not be used in const operations
 LL |     let _: [u8; faz::<'a>(&())];
    |                       ^^ cannot perform const operation using `'a`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -34,8 +34,8 @@ error: generic parameters may not be used in const operations
 LL |     let _: [u8; baz::<'a>(&())];
    |                       ^^ cannot perform const operation using `'a`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -44,8 +44,8 @@ error: generic parameters may not be used in const operations
 LL |     let _: [u8; faz::<'b>(&())];
    |                       ^^ cannot perform const operation using `'b`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -54,8 +54,8 @@ error: generic parameters may not be used in const operations
 LL |     let _: [u8; baz::<'b>(&())];
    |                       ^^ cannot perform const operation using `'b`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -74,8 +74,8 @@ error: generic parameters may not be used in const operations
 LL |     let _ = [0; faz::<'a>(&())];
    |                       ^^ cannot perform const operation using `'a`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -84,8 +84,8 @@ error: generic parameters may not be used in const operations
 LL |     let _ = [0; baz::<'a>(&())];
    |                       ^^ cannot perform const operation using `'a`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -94,8 +94,8 @@ error: generic parameters may not be used in const operations
 LL |     let _ = [0; faz::<'b>(&())];
    |                       ^^ cannot perform const operation using `'b`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -104,8 +104,8 @@ error: generic parameters may not be used in const operations
 LL |     let _ = [0; baz::<'b>(&())];
    |                       ^^ cannot perform const operation using `'b`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -114,8 +114,8 @@ error: generic parameters may not be used in const operations
 LL |     let _: Foo<{ foo::<T>() }>;
    |                        ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -134,8 +134,8 @@ error: generic parameters may not be used in const operations
 LL |     let _: Foo<{ faz::<'a>(&()) }>;
    |                        ^^ cannot perform const operation using `'a`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -144,8 +144,8 @@ error: generic parameters may not be used in const operations
 LL |     let _: Foo<{ baz::<'a>(&()) }>;
    |                        ^^ cannot perform const operation using `'a`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -154,8 +154,8 @@ error: generic parameters may not be used in const operations
 LL |     let _: Foo<{ faz::<'b>(&()) }>;
    |                        ^^ cannot perform const operation using `'b`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -164,8 +164,8 @@ error: generic parameters may not be used in const operations
 LL |     let _: Foo<{ baz::<'b>(&()) }>;
    |                        ^^ cannot perform const operation using `'b`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -174,8 +174,8 @@ error: generic parameters may not be used in const operations
 LL |     let _ = Foo::<{ foo::<T>() }>;
    |                           ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -194,8 +194,8 @@ error: generic parameters may not be used in const operations
 LL |     let _ = Foo::<{ faz::<'a>(&()) }>;
    |                           ^^ cannot perform const operation using `'a`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -204,8 +204,8 @@ error: generic parameters may not be used in const operations
 LL |     let _ = Foo::<{ baz::<'a>(&()) }>;
    |                           ^^ cannot perform const operation using `'a`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -214,8 +214,8 @@ error: generic parameters may not be used in const operations
 LL |     let _ = Foo::<{ faz::<'b>(&()) }>;
    |                           ^^ cannot perform const operation using `'b`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -224,8 +224,8 @@ error: generic parameters may not be used in const operations
 LL |     let _ = Foo::<{ baz::<'b>(&()) }>;
    |                           ^^ cannot perform const operation using `'b`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present

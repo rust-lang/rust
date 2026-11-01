@@ -4,6 +4,11 @@ error[E0806]: function `other` has a type that is incompatible with the declarat
 LL | fn other(x: usize) -> u64 {
    |             ^^^^^ expected `u64`, found `usize`
    |
+help: change the parameter type to match the declaration
+   |
+LL - fn other(x: usize) -> u64 {
+LL + fn other(x: u64) -> u64 {
+   |
 note: expected this because of this attribute
   --> $DIR/wrong_ty.rs:16:1
    |
@@ -16,11 +21,6 @@ LL |     safe fn bar(x: u64) -> u64;
    |                    ^^^
    = note: expected signature `fn(u64) -> _`
               found signature `fn(usize) -> _`
-help: change the parameter type to match the declaration
-   |
-LL - fn other(x: usize) -> u64 {
-LL + fn other(x: u64) -> u64 {
-   |
 
 error: aborting due to 1 previous error
 

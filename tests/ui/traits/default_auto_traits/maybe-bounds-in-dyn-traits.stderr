@@ -22,6 +22,11 @@ error[E0038]: the trait `DynCompatCheck2` is not dyn compatible
 LL |     let _: &dyn DynCompatCheck2 = &NonLeakS;
    |                 ^^^^^^^^^^^^^^^ `DynCompatCheck2` is not dyn compatible
    |
+help: consider changing method `mut_foo`'s `self` parameter to be `&self`
+   |
+LL -         fn mut_foo(&mut self) {}
+LL +         fn mut_foo(&self) {}
+   |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/maybe-bounds-in-dyn-traits.rs:82:20
@@ -31,11 +36,6 @@ LL |     trait DynCompatCheck2: ?Leak {
 LL |         fn mut_foo(&mut self) {}
    |                    ^^^^^^^^^ ...because method `mut_foo`'s `self` parameter cannot be dispatched on
    = help: only type `NonLeakS` implements `DynCompatCheck2`; consider using it directly instead.
-help: consider changing method `mut_foo`'s `self` parameter to be `&self`
-   |
-LL -         fn mut_foo(&mut self) {}
-LL +         fn mut_foo(&self) {}
-   |
 
 error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/maybe-bounds-in-dyn-traits.rs:98:26

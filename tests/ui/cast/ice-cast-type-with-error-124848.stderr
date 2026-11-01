@@ -48,15 +48,15 @@ error[E0061]: this struct takes 2 arguments but 1 argument was supplied
 LL |     let mut unpinned = MyType(Cell::new(None));
    |                        ^^^^^^----------------- argument #2 is missing
    |
+help: provide the argument
+   |
+LL |     let mut unpinned = MyType(Cell::new(None), /* value */);
+   |                                              +++++++++++++
 note: tuple struct defined here
   --> $DIR/ice-cast-type-with-error-124848.rs:7:8
    |
 LL | struct MyType<'a>(Cell<Option<&'unpinned mut MyType<'a>>>, Pin);
    |        ^^^^^^
-help: provide the argument
-   |
-LL |     let mut unpinned = MyType(Cell::new(None), /* value */);
-   |                                              +++++++++++++
 
 error: aborting due to 5 previous errors
 

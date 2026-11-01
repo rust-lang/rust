@@ -4,15 +4,15 @@ warning: unused comparison that must be used
 LL |     val == 1;
    |     ^^^^^^^^ the comparison produces a value
    |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = val == 1;
+   |     +++++++
 note: the lint level is defined here
   --> $DIR/must-use-ops.rs:5:9
    |
 LL | #![warn(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |     let _ = val == 1;
-   |     +++++++
 
 warning: unused comparison that must be used
   --> $DIR/must-use-ops.rs:18:5

@@ -21,9 +21,9 @@ LL |     fn iter() -> Self::Iter {}
    |        |
    |        implicitly returns `()` as its body has no tail or `return` expression
    |
+   = help: consider constraining the associated type `<[T] as Iterable>::Iter` to `()` or calling a method that returns `<[T] as Iterable>::Iter`
    = note: expected associated type `<[T] as Iterable>::Iter`
                     found unit type `()`
-   = help: consider constraining the associated type `<[T] as Iterable>::Iter` to `()` or calling a method that returns `<[T] as Iterable>::Iter`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error: aborting due to 3 previous errors

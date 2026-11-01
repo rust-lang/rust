@@ -5,17 +5,17 @@ LL |     bar.c();
    |         ^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+help: there is a method `a` with a similar name
+   |
+LL -     bar.c();
+LL +     bar.a();
+   |
 note: `Baz` defines an item `c`, perhaps you need to implement it
   --> $DIR/subtrait-method.rs:25:1
    |
 LL | trait Baz: Bar {
    | ^^^^^^^^^^^^^^
 LL |     fn c(&self) -> i32 {
-   |
-help: there is a method `a` with a similar name
-   |
-LL -     bar.c();
-LL +     bar.a();
    |
 
 error[E0599]: no method named `b` found for reference `&dyn Foo` in the current scope
@@ -25,17 +25,17 @@ LL |     foo.b();
    |         ^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+help: there is a method `a` with a similar name
+   |
+LL -     foo.b();
+LL +     foo.a();
+   |
 note: `Bar` defines an item `b`, perhaps you need to implement it
   --> $DIR/subtrait-method.rs:15:1
    |
 LL | trait Bar: Foo {
    | ^^^^^^^^^^^^^^
 LL |     fn b(&self) -> i32 {
-   |
-help: there is a method `a` with a similar name
-   |
-LL -     foo.b();
-LL +     foo.a();
    |
 
 error[E0599]: no method named `c` found for reference `&dyn Foo` in the current scope
@@ -45,17 +45,17 @@ LL |     foo.c();
    |         ^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+help: there is a method `a` with a similar name
+   |
+LL -     foo.c();
+LL +     foo.a();
+   |
 note: `Baz` defines an item `c`, perhaps you need to implement it
   --> $DIR/subtrait-method.rs:25:1
    |
 LL | trait Baz: Bar {
    | ^^^^^^^^^^^^^^
 LL |     fn c(&self) -> i32 {
-   |
-help: there is a method `a` with a similar name
-   |
-LL -     foo.c();
-LL +     foo.a();
    |
 
 error[E0599]: no method named `b` found for reference `&dyn Foo` in the current scope
@@ -65,17 +65,17 @@ LL |     foo.b();
    |         ^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+help: there is a method `a` with a similar name
+   |
+LL -     foo.b();
+LL +     foo.a();
+   |
 note: `Bar` defines an item `b`, perhaps you need to implement it
   --> $DIR/subtrait-method.rs:15:1
    |
 LL | trait Bar: Foo {
    | ^^^^^^^^^^^^^^
 LL |     fn b(&self) -> i32 {
-   |
-help: there is a method `a` with a similar name
-   |
-LL -     foo.b();
-LL +     foo.a();
    |
 
 error[E0599]: no method named `c` found for reference `&dyn Foo` in the current scope
@@ -85,17 +85,17 @@ LL |     foo.c();
    |         ^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+help: there is a method `a` with a similar name
+   |
+LL -     foo.c();
+LL +     foo.a();
+   |
 note: `Baz` defines an item `c`, perhaps you need to implement it
   --> $DIR/subtrait-method.rs:25:1
    |
 LL | trait Baz: Bar {
    | ^^^^^^^^^^^^^^
 LL |     fn c(&self) -> i32 {
-   |
-help: there is a method `a` with a similar name
-   |
-LL -     foo.c();
-LL +     foo.a();
    |
 
 error: aborting due to 5 previous errors

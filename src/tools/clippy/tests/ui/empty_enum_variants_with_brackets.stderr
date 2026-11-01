@@ -4,9 +4,9 @@ error: enum variant has empty brackets
 LL |     EmptyBraces {},
    |                ^^^
    |
-   = note: `-D clippy::empty-enum-variants-with-brackets` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::empty_enum_variants_with_brackets)]`
    = help: remove the brackets
+   = help: to override `-D warnings` add `#[allow(clippy::empty_enum_variants_with_brackets)]`
+   = note: `-D clippy::empty-enum-variants-with-brackets` implied by `-D warnings`
 
 error: enum variant has empty brackets
   --> tests/ui/empty_enum_variants_with_brackets.rs:15:16

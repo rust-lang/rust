@@ -15,7 +15,6 @@ error[E0261]: use of undeclared lifetime name `'a`
 LL |     pub fn life4<'b>(x: for<'c> fn(&'a i32));
    |                                     ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the type lifetime-generic with a new `'a` lifetime
    |
 LL |     pub fn life4<'b>(x: for<'a, 'c> fn(&'a i32));
@@ -24,6 +23,7 @@ help: consider introducing lifetime `'a` here
    |
 LL |     pub fn life4<'a, 'b>(x: for<'c> fn(&'a i32));
    |                  +++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/generic-extern-lifetime.rs:11:39

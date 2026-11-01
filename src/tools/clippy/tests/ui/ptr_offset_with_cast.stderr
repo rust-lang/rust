@@ -4,13 +4,13 @@ error: use of `offset` with a `usize` cast to an `isize`
 LL |         let _ = ptr.offset(offset_usize as isize);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::ptr-offset-with-cast` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::ptr_offset_with_cast)]`
 help: use `add` instead
    |
 LL -         let _ = ptr.offset(offset_usize as isize);
 LL +         let _ = ptr.add(offset_usize);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::ptr_offset_with_cast)]`
+   = note: `-D clippy::ptr-offset-with-cast` implied by `-D warnings`
 
 error: use of `wrapping_offset` with a `usize` cast to an `isize`
   --> tests/ui/ptr_offset_with_cast.rs:18:17

@@ -4,8 +4,8 @@ error: it is more concise to loop over references to containers instead of using
 LL |     for _ in vec.iter() {}
    |              ^^^^^^^^^^ help: to write this more concisely, try: `&vec`
    |
-   = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::explicit_iter_loop)]`
+   = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
   --> tests/ui/explicit_iter_loop.rs:12:14

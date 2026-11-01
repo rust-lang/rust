@@ -4,8 +4,6 @@ error: this binding can be a slice pattern to avoid indexing
 LL |     if let Some(slice) = slice {
    |                 ^^^^^
    |
-   = note: `-D clippy::index-refutable-slice` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::index_refutable_slice)]`
 help: replace the binding and indexed access with a slice pattern
    |
 LL ~     if let Some([slice_0, ..]) = slice {
@@ -13,6 +11,8 @@ LL |
 LL |
 LL ~         println!("{}", slice_0);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::index_refutable_slice)]`
+   = note: `-D clippy::index-refutable-slice` implied by `-D warnings`
 
 error: this binding can be a slice pattern to avoid indexing
   --> tests/ui/index_refutable_slice/if_let_slice_binding.rs:22:17

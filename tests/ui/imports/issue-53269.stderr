@@ -15,6 +15,7 @@ error[E0659]: `mac` is ambiguous
 LL |     mac!();
    |     ^^^ ambiguous name
    |
+   = help: consider removing this
    = note: ambiguous because of a conflict between a `macro_rules` name and a non-`macro_rules` name from another module
 note: `mac` could refer to the macro defined here
   --> $DIR/issue-53269.rs:4:1
@@ -26,7 +27,6 @@ note: `mac` could also refer to the unresolved item imported here
    |
 LL |     use nonexistent_module::mac;
    |         ^^^^^^^^^^^^^^^^^^^^^^^
-   = help: consider removing this
 
 error: aborting due to 2 previous errors
 

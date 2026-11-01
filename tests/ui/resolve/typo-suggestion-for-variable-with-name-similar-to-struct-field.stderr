@@ -50,11 +50,6 @@ error[E0425]: cannot find value `bah` in this scope
 LL |         bah;
    |         ^^^
    |
-note: similarly named function `ba` defined here
-  --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:42:1
-   |
-LL | fn ba() {}
-   | ^^^^^^^
 help: you might have meant to refer to the associated function
    |
 LL |         Self::bah;
@@ -64,6 +59,11 @@ help: a function with a similar name exists
 LL -         bah;
 LL +         ba;
    |
+note: similarly named function `ba` defined here
+  --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:42:1
+   |
+LL | fn ba() {}
+   | ^^^^^^^
 
 error[E0425]: cannot find value `BAR` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:35:9
@@ -71,11 +71,6 @@ error[E0425]: cannot find value `BAR` in this scope
 LL |         BAR;
    |         ^^^
    |
-note: similarly named constant `BARR` defined here
-  --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:43:1
-   |
-LL | const BARR: u32 = 3;
-   | ^^^^^^^^^^^^^^^^^^^^
 help: you might have meant to use the associated `const`
    |
 LL |         Self::BAR;
@@ -84,6 +79,11 @@ help: a constant with a similar name exists
    |
 LL |         BARR;
    |            +
+note: similarly named constant `BARR` defined here
+  --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:43:1
+   |
+LL | const BARR: u32 = 3;
+   | ^^^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find type `Baz` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:37:18
@@ -91,11 +91,6 @@ error[E0425]: cannot find type `Baz` in this scope
 LL |         let foo: Baz = "".to_string();
    |                  ^^^
    |
-note: similarly named type alias `Bar` defined here
-  --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:44:1
-   |
-LL | type Bar = String;
-   | ^^^^^^^^^^^^^^^^^^
 help: you might have meant to use the associated type
    |
 LL |         let foo: Self::Baz = "".to_string();
@@ -105,6 +100,11 @@ help: a type alias with a similar name exists
 LL -         let foo: Baz = "".to_string();
 LL +         let foo: Bar = "".to_string();
    |
+note: similarly named type alias `Bar` defined here
+  --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:44:1
+   |
+LL | type Bar = String;
+   | ^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `baz` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:31:9
@@ -112,11 +112,6 @@ error[E0425]: cannot find function `baz` in this scope
 LL |         baz();
    |         ^^^
    |
-note: similarly named function `ba` defined here
-  --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:42:1
-   |
-LL | fn ba() {}
-   | ^^^^^^^
 help: you might have meant to call the method
    |
 LL |         self.baz();
@@ -126,6 +121,11 @@ help: a function with a similar name exists
 LL -         baz();
 LL +         ba();
    |
+note: similarly named function `ba` defined here
+  --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:42:1
+   |
+LL | fn ba() {}
+   | ^^^^^^^
 
 error: aborting due to 7 previous errors
 

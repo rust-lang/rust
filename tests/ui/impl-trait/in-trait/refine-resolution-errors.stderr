@@ -13,12 +13,6 @@ LL |
 LL |     type Assoc = T;
    |                  ^ doesn't have a size known at compile-time
    |
-note: required by a bound in `Mirror::Assoc`
-  --> $DIR/refine-resolution-errors.rs:7:5
-   |
-LL | pub trait Mirror {
-LL |     type Assoc;
-   |     ^^^^^^^^^^^ required by this bound in `Mirror::Assoc`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<T: ?Sized> Mirror for () {
@@ -28,6 +22,12 @@ help: consider relaxing the implicit `Sized` restriction
    |
 LL |     type Assoc: ?Sized;
    |               ++++++++
+note: required by a bound in `Mirror::Assoc`
+  --> $DIR/refine-resolution-errors.rs:7:5
+   |
+LL | pub trait Mirror {
+LL |     type Assoc;
+   |     ^^^^^^^^^^^ required by this bound in `Mirror::Assoc`
 
 error[E0282]: type annotations needed
   --> $DIR/refine-resolution-errors.rs:16:25

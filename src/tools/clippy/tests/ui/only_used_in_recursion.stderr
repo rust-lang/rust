@@ -4,13 +4,13 @@ error: parameter is only used in recursion
 LL | fn _one_unused(flag: u32, a: usize) -> usize {
    |                           ^ help: if this is intentional, prefix it with an underscore: `_a`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::only_used_in_recursion)]`
 note: parameter used here
   --> tests/ui/only_used_in_recursion.rs:14:53
    |
 LL |     if flag == 0 { 0 } else { _one_unused(flag - 1, a) }
    |                                                     ^
    = note: `-D clippy::only-used-in-recursion` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::only_used_in_recursion)]`
 
 error: parameter is only used in recursion
   --> tests/ui/only_used_in_recursion.rs:17:27
@@ -126,13 +126,13 @@ error: `self` is only used in recursion
 LL |     fn _method_self(&self, flag: usize, a: usize) -> usize {
    |                      ^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::self_only_used_in_recursion)]`
 note: `self` used here
   --> tests/ui/only_used_in_recursion.rs:80:35
    |
 LL |         if flag == 0 { 0 } else { self._method_self(flag - 1, a) }
    |                                   ^^^^
    = note: `-D clippy::self-only-used-in-recursion` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::self_only_used_in_recursion)]`
 
 error: parameter is only used in recursion
   --> tests/ui/only_used_in_recursion.rs:76:41

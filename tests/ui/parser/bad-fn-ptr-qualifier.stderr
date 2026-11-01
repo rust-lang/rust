@@ -4,12 +4,12 @@ error: an `fn` pointer type cannot be `const`
 LL | pub type T0 = const fn();
    |               ^^^^^ `const` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `const` qualifier
    |
 LL - pub type T0 = const fn();
 LL + pub type T0 = fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `const`
   --> $DIR/bad-fn-ptr-qualifier.rs:6:15
@@ -17,12 +17,12 @@ error: an `fn` pointer type cannot be `const`
 LL | pub type T1 = const extern "C" fn();
    |               ^^^^^ `const` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `const` qualifier
    |
 LL - pub type T1 = const extern "C" fn();
 LL + pub type T1 = extern "C" fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `const`
   --> $DIR/bad-fn-ptr-qualifier.rs:7:15
@@ -30,12 +30,12 @@ error: an `fn` pointer type cannot be `const`
 LL | pub type T2 = const unsafe extern "C" fn();
    |               ^^^^^ `const` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `const` qualifier
    |
 LL - pub type T2 = const unsafe extern "C" fn();
 LL + pub type T2 = unsafe extern "C" fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `async`
   --> $DIR/bad-fn-ptr-qualifier.rs:8:15
@@ -43,12 +43,12 @@ error: an `fn` pointer type cannot be `async`
 LL | pub type T3 = async fn();
    |               ^^^^^ `async` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `async` qualifier
    |
 LL - pub type T3 = async fn();
 LL + pub type T3 = fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `async`
   --> $DIR/bad-fn-ptr-qualifier.rs:9:15
@@ -56,12 +56,12 @@ error: an `fn` pointer type cannot be `async`
 LL | pub type T4 = async extern "C" fn();
    |               ^^^^^ `async` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `async` qualifier
    |
 LL - pub type T4 = async extern "C" fn();
 LL + pub type T4 = extern "C" fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `async`
   --> $DIR/bad-fn-ptr-qualifier.rs:10:15
@@ -69,12 +69,12 @@ error: an `fn` pointer type cannot be `async`
 LL | pub type T5 = async unsafe extern "C" fn();
    |               ^^^^^ `async` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `async` qualifier
    |
 LL - pub type T5 = async unsafe extern "C" fn();
 LL + pub type T5 = unsafe extern "C" fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `const`
   --> $DIR/bad-fn-ptr-qualifier.rs:11:15
@@ -82,12 +82,12 @@ error: an `fn` pointer type cannot be `const`
 LL | pub type T6 = const async unsafe extern "C" fn();
    |               ^^^^^ `const` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `const` qualifier
    |
 LL - pub type T6 = const async unsafe extern "C" fn();
 LL + pub type T6 = async unsafe extern "C" fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `async`
   --> $DIR/bad-fn-ptr-qualifier.rs:11:21
@@ -95,12 +95,12 @@ error: an `fn` pointer type cannot be `async`
 LL | pub type T6 = const async unsafe extern "C" fn();
    |                     ^^^^^ `async` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `async` qualifier
    |
 LL - pub type T6 = const async unsafe extern "C" fn();
 LL + pub type T6 = const unsafe extern "C" fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `const`
   --> $DIR/bad-fn-ptr-qualifier.rs:15:25
@@ -108,12 +108,12 @@ error: an `fn` pointer type cannot be `const`
 LL | pub type FTT0 = for<'a> const fn();
    |                         ^^^^^ `const` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `const` qualifier
    |
 LL - pub type FTT0 = for<'a> const fn();
 LL + pub type FTT0 = for<'a> fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `const`
   --> $DIR/bad-fn-ptr-qualifier.rs:16:25
@@ -121,12 +121,12 @@ error: an `fn` pointer type cannot be `const`
 LL | pub type FTT1 = for<'a> const extern "C" fn();
    |                         ^^^^^ `const` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `const` qualifier
    |
 LL - pub type FTT1 = for<'a> const extern "C" fn();
 LL + pub type FTT1 = for<'a> extern "C" fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `const`
   --> $DIR/bad-fn-ptr-qualifier.rs:17:25
@@ -134,12 +134,12 @@ error: an `fn` pointer type cannot be `const`
 LL | pub type FTT2 = for<'a> const unsafe extern "C" fn();
    |                         ^^^^^ `const` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `const` qualifier
    |
 LL - pub type FTT2 = for<'a> const unsafe extern "C" fn();
 LL + pub type FTT2 = for<'a> unsafe extern "C" fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `async`
   --> $DIR/bad-fn-ptr-qualifier.rs:18:25
@@ -147,12 +147,12 @@ error: an `fn` pointer type cannot be `async`
 LL | pub type FTT3 = for<'a> async fn();
    |                         ^^^^^ `async` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `async` qualifier
    |
 LL - pub type FTT3 = for<'a> async fn();
 LL + pub type FTT3 = for<'a> fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `async`
   --> $DIR/bad-fn-ptr-qualifier.rs:19:25
@@ -160,12 +160,12 @@ error: an `fn` pointer type cannot be `async`
 LL | pub type FTT4 = for<'a> async extern "C" fn();
    |                         ^^^^^ `async` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `async` qualifier
    |
 LL - pub type FTT4 = for<'a> async extern "C" fn();
 LL + pub type FTT4 = for<'a> extern "C" fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `async`
   --> $DIR/bad-fn-ptr-qualifier.rs:20:25
@@ -173,12 +173,12 @@ error: an `fn` pointer type cannot be `async`
 LL | pub type FTT5 = for<'a> async unsafe extern "C" fn();
    |                         ^^^^^ `async` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `async` qualifier
    |
 LL - pub type FTT5 = for<'a> async unsafe extern "C" fn();
 LL + pub type FTT5 = for<'a> unsafe extern "C" fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `const`
   --> $DIR/bad-fn-ptr-qualifier.rs:22:25
@@ -186,12 +186,12 @@ error: an `fn` pointer type cannot be `const`
 LL | pub type FTT6 = for<'a> const async unsafe extern "C" fn();
    |                         ^^^^^ `const` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `const` qualifier
    |
 LL - pub type FTT6 = for<'a> const async unsafe extern "C" fn();
 LL + pub type FTT6 = for<'a> async unsafe extern "C" fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `async`
   --> $DIR/bad-fn-ptr-qualifier.rs:22:31
@@ -199,12 +199,12 @@ error: an `fn` pointer type cannot be `async`
 LL | pub type FTT6 = for<'a> const async unsafe extern "C" fn();
    |                               ^^^^^ `async` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `async` qualifier
    |
 LL - pub type FTT6 = for<'a> const async unsafe extern "C" fn();
 LL + pub type FTT6 = for<'a> const unsafe extern "C" fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `const`
   --> $DIR/bad-fn-ptr-qualifier.rs:27:22
@@ -212,12 +212,12 @@ error: an `fn` pointer type cannot be `const`
 LL | pub type W1 = unsafe const fn();
    |                      ^^^^^ `const` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `const` qualifier
    |
 LL - pub type W1 = unsafe const fn();
 LL + pub type W1 = unsafe fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `async`
   --> $DIR/bad-fn-ptr-qualifier.rs:29:22
@@ -225,12 +225,12 @@ error: an `fn` pointer type cannot be `async`
 LL | pub type W2 = unsafe async fn();
    |                      ^^^^^ `async` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `async` qualifier
    |
 LL - pub type W2 = unsafe async fn();
 LL + pub type W2 = unsafe fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: an `fn` pointer type cannot be `const`
   --> $DIR/bad-fn-ptr-qualifier.rs:31:30
@@ -238,12 +238,12 @@ error: an `fn` pointer type cannot be `const`
 LL | pub type W3 = for<'a> unsafe const fn();
    |                              ^^^^^ `const` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `const` qualifier
    |
 LL - pub type W3 = for<'a> unsafe const fn();
 LL + pub type W3 = for<'a> unsafe fn();
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: aborting due to 19 previous errors
 

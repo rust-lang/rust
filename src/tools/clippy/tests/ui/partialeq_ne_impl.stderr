@@ -4,8 +4,8 @@ error: re-implementing `PartialEq::ne` is unnecessary
 LL |     fn ne(&self, _: &Foo) -> bool {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::partialeq-ne-impl` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::partialeq_ne_impl)]`
+   = note: `-D clippy::partialeq-ne-impl` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

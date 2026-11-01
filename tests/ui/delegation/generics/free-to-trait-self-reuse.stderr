@@ -72,15 +72,15 @@ LL |     foo3::<String, true>(&123, "".to_string());
    |     |
    |     expected 3 generic arguments
    |
+help: add missing generic argument
+   |
+LL |     foo3::<String, true, B>(&123, "".to_string());
+   |                        +++
 note: function defined here, with 3 generic parameters: `Self`, `U`, `B`
   --> $DIR/free-to-trait-self-reuse.rs:22:45
    |
 LL | reuse Trait::<'static, i32, 123>::method as foo3;
    |                                   ------    ^^^^
-help: add missing generic argument
-   |
-LL |     foo3::<String, true, B>(&123, "".to_string());
-   |                        +++
 
 error[E0107]: function takes 5 generic arguments but 4 generic arguments were supplied
   --> $DIR/free-to-trait-self-reuse.rs:46:5
@@ -90,15 +90,15 @@ LL |     bar3::<'static, i32, 123, bool, false>(&mut 123, true);
    |     |
    |     expected 5 generic arguments
    |
+help: add missing generic argument
+   |
+LL |     bar3::<'static, i32, 123, bool, false, B>(&mut 123, true);
+   |                                          +++
 note: function defined here, with 5 generic parameters: `Self`, `T`, `X`, `U`, `B`
   --> $DIR/free-to-trait-self-reuse.rs:24:25
    |
 LL | reuse Trait::method3 as bar3;
    |              -------    ^^^^
-help: add missing generic argument
-   |
-LL |     bar3::<'static, i32, 123, bool, false, B>(&mut 123, true);
-   |                                          +++
 
 error[E0107]: function takes 3 generic arguments but 2 generic arguments were supplied
   --> $DIR/free-to-trait-self-reuse.rs:48:5
@@ -108,15 +108,15 @@ LL |     bar4::<'static, usize, 321>(&mut 123, vec![123]);
    |     |
    |     expected 3 generic arguments
    |
+help: add missing generic argument
+   |
+LL |     bar4::<'static, usize, 321, X>(&mut 123, vec![123]);
+   |                               +++
 note: function defined here, with 3 generic parameters: `Self`, `T`, `X`
   --> $DIR/free-to-trait-self-reuse.rs:25:44
    |
 LL | reuse Trait::method3::<Vec<i32>, false> as bar4;
    |              -------                       ^^^^
-help: add missing generic argument
-   |
-LL |     bar4::<'static, usize, 321, X>(&mut 123, vec![123]);
-   |                               +++
 
 error: aborting due to 6 previous errors
 

@@ -16,12 +16,12 @@ error: unknown character escape: `\u{25cf}`
 LL |     '\●'
    |       ^ unknown character escape
    |
-   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
 LL -     '\●'
 LL +     r"\●"
    |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 
 error: unknown character escape: `\u{25cf}`
   --> $DIR/lex-bad-char-literals-1.rs:14:7
@@ -29,11 +29,11 @@ error: unknown character escape: `\u{25cf}`
 LL |     "\●"
    |       ^ unknown character escape
    |
-   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
 LL |     r"\●"
    |     +
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 
 error: aborting due to 4 previous errors
 

@@ -4,8 +4,8 @@ error: manual implementation of `.is_multiple_of()`
 LL |     let _ = a % b == 0;
    |             ^^^^^^^^^^ help: replace with: `a.is_multiple_of(b)`
    |
-   = note: `-D clippy::manual-is-multiple-of` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_is_multiple_of)]`
+   = note: `-D clippy::manual-is-multiple-of` implied by `-D warnings`
 
 error: manual implementation of `.is_multiple_of()`
   --> tests/ui/manual_is_multiple_of.rs:9:13

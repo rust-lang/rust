@@ -18,13 +18,13 @@ error[E0277]: `MyError` doesn't implement `Debug`
 4 | impl std::error::Error for MyError {}
   |                            ^^^^^^^ the trait `Debug` is not implemented for `MyError`
   |
-note: required by a bound in `std::error::Error`
- --> $SRC_DIR/core/src/error.rs:LL:COL
 help: consider annotating `MyError` with `#[derive(Debug)]`
   |
 3 + #[derive(Debug)]
 4 | struct MyError;
   |
+note: required by a bound in `std::error::Error`
+ --> $SRC_DIR/core/src/error.rs:LL:COL
 
 error: aborting due to 2 previous errors
 

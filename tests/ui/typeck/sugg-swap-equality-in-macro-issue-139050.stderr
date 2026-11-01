@@ -30,14 +30,14 @@ LL |                 if !(*left_val == *right_val) {
 LL |     eq_local!(assert iter.next(), Some(value));
    |     ------------------------------------------ in this macro invocation
    |
-   = note: expected enum `Option<_>`
-              found enum `Option<&_>`
-   = note: `Option<&<I as Iterator>::Item>` implements `PartialEq<Option<<I as Iterator>::Item>>`
 help: consider swapping the equality
    |
 LL -                 if !(*left_val == *right_val) {
 LL +                 if !(*right_val == *left_val) {
    |
+   = note: expected enum `Option<_>`
+              found enum `Option<&_>`
+   = note: `Option<&<I as Iterator>::Item>` implements `PartialEq<Option<<I as Iterator>::Item>>`
 
 error: aborting due to 3 previous errors
 

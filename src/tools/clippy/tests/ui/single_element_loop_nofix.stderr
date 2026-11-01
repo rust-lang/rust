@@ -9,8 +9,8 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::single-element-loop` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::single_element_loop)]`
+   = note: `-D clippy::single-element-loop` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

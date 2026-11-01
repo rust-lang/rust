@@ -4,6 +4,7 @@ error[E0038]: the trait `Foo` is not dyn compatible
 LL |     let i = Box::new(42_u32) as Box<dyn Foo>;
    |                                         ^^^ `Foo` is not dyn compatible
    |
+   = help: consider moving `baz` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/dyn-compatibility.rs:4:22
@@ -12,7 +13,6 @@ LL | trait Foo {
    |       --- this trait is not dyn compatible...
 LL |     fn baz(&self) -> impl Debug;
    |                      ^^^^^^^^^^ ...because method `baz` references an `impl Trait` type in its return type
-   = help: consider moving `baz` to another trait
    = help: only type `u32` implements `Foo`; consider using it directly instead.
 
 error: aborting due to 1 previous error

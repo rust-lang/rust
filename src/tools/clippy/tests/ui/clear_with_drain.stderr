@@ -4,8 +4,8 @@ error: `drain` used to clear a `Vec`
 LL |     v.drain(0..v.len());
    |       ^^^^^^^^^^^^^^^^^ help: try: `clear()`
    |
-   = note: `-D clippy::clear-with-drain` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::clear_with_drain)]`
+   = note: `-D clippy::clear-with-drain` implied by `-D warnings`
 
 error: `drain` used to clear a `Vec`
   --> tests/ui/clear_with_drain.rs:41:7

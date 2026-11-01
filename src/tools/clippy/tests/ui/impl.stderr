@@ -8,6 +8,7 @@ LL | |     fn second() {}
 LL | | }
    | |_^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::multiple_inherent_impl)]`
 note: first implementation here
   --> tests/ui/impl.rs:6:1
    |
@@ -16,7 +17,6 @@ LL | |     fn first() {}
 LL | | }
    | |_^
    = note: `-D clippy::multiple-inherent-impl` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::multiple_inherent_impl)]`
 
 error: multiple implementations of this structure
   --> tests/ui/impl.rs:16:1

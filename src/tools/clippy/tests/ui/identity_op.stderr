@@ -4,8 +4,8 @@ error: this operation has no effect
 LL |     x + 0;
    |     ^^^^^ help: consider reducing it to: `x`
    |
-   = note: `-D clippy::identity-op` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::identity_op)]`
+   = note: `-D clippy::identity-op` implied by `-D warnings`
 
 error: this operation has no effect
   --> tests/ui/identity_op.rs:44:5

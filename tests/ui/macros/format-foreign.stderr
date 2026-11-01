@@ -8,12 +8,12 @@ LL |     println!("%.*3$s %s!\n", "Hello,", "World", 4);
    |              |               argument never used
    |              multiple missing formatting specifiers
    |
-   = note: printf formatting is not supported; see the documentation for `std::fmt`
 help: format specifiers use curly braces
    |
 LL -     println!("%.*3$s %s!\n", "Hello,", "World", 4);
 LL +     println!("{:.2$} {}!\n", "Hello,", "World", 4);
    |
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
 
 error: argument never used
   --> $DIR/format-foreign.rs:3:29
@@ -21,12 +21,12 @@ error: argument never used
 LL |     println!("%1$*2$.*3$f", 123.456);
    |                             ^^^^^^^ argument never used
    |
-   = note: printf formatting is not supported; see the documentation for `std::fmt`
 help: format specifiers use curly braces
    |
 LL -     println!("%1$*2$.*3$f", 123.456);
 LL +     println!("{0:1$.2$}", 123.456);
    |
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
 
 error: multiple unused formatting arguments
   --> $DIR/format-foreign.rs:6:7
@@ -41,12 +41,12 @@ LL | | "###, "Hello,", "World", 4);
    | |____|  argument never used
    |      multiple missing formatting specifiers
    |
-   = note: printf formatting is not supported; see the documentation for `std::fmt`
 help: format specifiers use curly braces
    |
 LL ~     println!(r###"{:.2$}
 LL ~         {}!\n
    |
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
 
 error: argument never used
   --> $DIR/format-foreign.rs:12:30
@@ -62,12 +62,12 @@ error: named argument never used
 LL |     println!("Hi there, $NAME.", NAME="Tim");
    |                                       ^^^^^ named argument never used
    |
-   = note: shell formatting is not supported; see the documentation for `std::fmt`
 help: format specifiers use curly braces
    |
 LL -     println!("Hi there, $NAME.", NAME="Tim");
 LL +     println!("Hi there, {NAME}.", NAME="Tim");
    |
+   = note: shell formatting is not supported; see the documentation for `std::fmt`
 
 error: multiple unused formatting arguments
   --> $DIR/format-foreign.rs:15:32
@@ -79,12 +79,12 @@ LL |     println!("$1 $0 $$ $NAME", 1, 2, NAME=3);
    |              |                 argument never used
    |              multiple missing formatting specifiers
    |
-   = note: shell formatting is not supported; see the documentation for `std::fmt`
 help: format specifiers use curly braces
    |
 LL -     println!("$1 $0 $$ $NAME", 1, 2, NAME=3);
 LL +     println!("{1} {0} $$ {NAME}", 1, 2, NAME=3);
    |
+   = note: shell formatting is not supported; see the documentation for `std::fmt`
 
 error: aborting due to 6 previous errors
 

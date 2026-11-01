@@ -4,13 +4,13 @@ error: unnecessary closure used to substitute value for `Result::Err`
 LL |     let _ = Ok(1).unwrap_or_else(|()| 2);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-lazy-evaluations` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_lazy_evaluations)]`
 help: use `unwrap_or` instead
    |
 LL -     let _ = Ok(1).unwrap_or_else(|()| 2);
 LL +     let _ = Ok(1).unwrap_or(2);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_lazy_evaluations)]`
+   = note: `-D clippy::unnecessary-lazy-evaluations` implied by `-D warnings`
 
 error: unnecessary closure used to substitute value for `Result::Err`
   --> tests/ui/unnecessary_lazy_eval_unfixable.rs:15:13

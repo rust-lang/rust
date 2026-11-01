@@ -4,13 +4,13 @@ warning: use of a double negation
 LL |     let x: i8 = --128;
    |                 ^^^^^
    |
-   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
-   = note: use `-= 1` if you meant to decrement the value
-   = note: `#[warn(double_negations)]` on by default
 help: add parentheses for clarity
    |
 LL |     let x: i8 = -(-128);
    |                  +    +
+   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+   = note: use `-= 1` if you meant to decrement the value
+   = note: `#[warn(double_negations)]` on by default
 
 warning: use of a double negation
   --> $DIR/lint-type-overflow3.rs:13:18
@@ -18,12 +18,12 @@ warning: use of a double negation
 LL |     let x: i8 = ---128;
    |                  ^^^^^
    |
-   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
-   = note: use `-= 1` if you meant to decrement the value
 help: add parentheses for clarity
    |
 LL |     let x: i8 = --(-128);
    |                   +    +
+   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+   = note: use `-= 1` if you meant to decrement the value
 
 warning: use of a double negation
   --> $DIR/lint-type-overflow3.rs:15:19
@@ -31,12 +31,12 @@ warning: use of a double negation
 LL |     let x: i8 = ----128;
    |                   ^^^^^
    |
-   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
-   = note: use `-= 1` if you meant to decrement the value
 help: add parentheses for clarity
    |
 LL |     let x: i8 = ---(-128);
    |                    +    +
+   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+   = note: use `-= 1` if you meant to decrement the value
 
 warning: use of a double negation
   --> $DIR/lint-type-overflow3.rs:17:20
@@ -44,12 +44,12 @@ warning: use of a double negation
 LL |     let x: i8 = -----128;
    |                    ^^^^^
    |
-   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
-   = note: use `-= 1` if you meant to decrement the value
 help: add parentheses for clarity
    |
 LL |     let x: i8 = ----(-128);
    |                     +    +
+   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+   = note: use `-= 1` if you meant to decrement the value
 
 warning: use of a double negation
   --> $DIR/lint-type-overflow3.rs:19:21
@@ -57,12 +57,12 @@ warning: use of a double negation
 LL |     let x: i8 = ------128;
    |                     ^^^^^
    |
-   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
-   = note: use `-= 1` if you meant to decrement the value
 help: add parentheses for clarity
    |
 LL |     let x: i8 = -----(-128);
    |                      +    +
+   = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+   = note: use `-= 1` if you meant to decrement the value
 
 error: this arithmetic operation will overflow
   --> $DIR/lint-type-overflow3.rs:11:17
@@ -106,8 +106,8 @@ error: literal out of range for `i8`
 LL |     let x: i8 = 128;
    |                 ^^^
    |
-   = note: the literal `128` does not fit into the type `i8` whose range is `-128..=127`
    = help: consider using the type `u8` instead
+   = note: the literal `128` does not fit into the type `i8` whose range is `-128..=127`
 note: the lint level is defined here
   --> $DIR/lint-type-overflow3.rs:5:9
    |

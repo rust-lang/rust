@@ -7,13 +7,13 @@ LL |     // suggest a where-clause, if needed
 LL |     mem::size_of::<U>();
    |                    ^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `std::mem::size_of`
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn check<T: Iterator, U: ?Sized>() {
 LL + fn check<T: Iterator, U>() {
    |
+note: required by an implicit `Sized` bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error[E0277]: the size for values of type `U` cannot be known at compilation time
   --> $DIR/suggest-where-clause.rs:10:20
@@ -24,6 +24,11 @@ LL | fn check<T: Iterator, U: ?Sized>() {
 LL |     mem::size_of::<Misc<U>>();
    |                    ^^^^^^^ doesn't have a size known at compile-time
    |
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn check<T: Iterator, U: ?Sized>() {
+LL + fn check<T: Iterator, U>() {
+   |
 note: required because it appears within the type `Misc<U>`
   --> $DIR/suggest-where-clause.rs:3:23
    |
@@ -31,11 +36,6 @@ LL | struct Misc<T:?Sized>(T);
    |                       ^ required by this field
 note: required by an implicit `Sized` bound in `std::mem::size_of`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
-help: consider removing the `?Sized` bound to make the type parameter `Sized`
-   |
-LL - fn check<T: Iterator, U: ?Sized>() {
-LL + fn check<T: Iterator, U>() {
-   |
 
 error[E0277]: the trait bound `u64: From<T>` is not satisfied
   --> $DIR/suggest-where-clause.rs:15:6

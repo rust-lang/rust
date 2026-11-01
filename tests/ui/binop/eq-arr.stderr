@@ -6,16 +6,16 @@ LL |     let eq = xs == [X, X, X];
    |              |
    |              [X; 3]
    |
-note: an implementation of `PartialEq` might be missing for `X`
-  --> $DIR/eq-arr.rs:2:5
-   |
-LL |     struct X;
-   |     ^^^^^^^^ must implement `PartialEq`
 help: consider annotating `X` with `#[derive(PartialEq)]`
    |
 LL +     #[derive(PartialEq)]
 LL |     struct X;
    |
+note: an implementation of `PartialEq` might be missing for `X`
+  --> $DIR/eq-arr.rs:2:5
+   |
+LL |     struct X;
+   |     ^^^^^^^^ must implement `PartialEq`
 
 error: aborting due to 1 previous error
 

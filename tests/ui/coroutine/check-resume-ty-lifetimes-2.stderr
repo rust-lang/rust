@@ -9,11 +9,11 @@ LL |     #[coroutine] |_: Covariant<'short>| {
 LL |         let a: Covariant<'long> = yield ();
    |                ^^^^^^^^^^^^^^^^ type annotation requires that `'short` must outlive `'long`
    |
-   = help: consider adding the following bound: `'short: 'long`
 help: consider adding 'move' keyword before the nested closure
    |
 LL |     #[coroutine] move |_: Covariant<'short>| {
    |                  ++++
+   = help: consider adding the following bound: `'short: 'long`
 
 error: lifetime may not live long enough
   --> $DIR/check-resume-ty-lifetimes-2.rs:18:40
@@ -26,11 +26,11 @@ LL |     #[coroutine] |_: Contravariant<'long>| {
 LL |         let a: Contravariant<'short> = yield ();
    |                                        ^^^^^^^^ yielding this value requires that `'short` must outlive `'long`
    |
-   = help: consider adding the following bound: `'short: 'long`
 help: consider adding 'move' keyword before the nested closure
    |
 LL |     #[coroutine] move |_: Contravariant<'long>| {
    |                  ++++
+   = help: consider adding the following bound: `'short: 'long`
 
 error: aborting due to 2 previous errors
 

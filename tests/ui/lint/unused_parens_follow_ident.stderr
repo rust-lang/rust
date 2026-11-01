@@ -4,16 +4,16 @@ error: unnecessary parentheses around function argument
 LL |     wrap!(unary(routine()));
    |                ^         ^
    |
-note: the lint level is defined here
-  --> $DIR/unused_parens_follow_ident.rs:3:9
-   |
-LL | #![deny(unused_parens)]
-   |         ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     wrap!(unary(routine()));
 LL +     wrap!(unary routine());
    |
+note: the lint level is defined here
+  --> $DIR/unused_parens_follow_ident.rs:3:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
 
 error: unnecessary parentheses around function argument
   --> $DIR/unused_parens_follow_ident.rs:13:17

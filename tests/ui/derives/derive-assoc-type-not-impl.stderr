@@ -10,6 +10,11 @@ LL | struct NotClone;
 LL |     Bar::<NotClone> { x: 1 }.clone();
    |                              ^^^^^ method cannot be called on `Bar<NotClone>` due to unsatisfied trait bounds
    |
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClone;
+   |
 note: trait bound `NotClone: Clone` was not satisfied
   --> $DIR/derive-assoc-type-not-impl.rs:7:12
    |
@@ -18,11 +23,6 @@ LL | #[derive(Clone)]
 LL | struct Bar<T: Foo> {
    |            ^ type parameter would need to implement `Clone`
    = help: consider manually implementing the trait to avoid undesired bounds
-help: consider annotating `NotClone` with `#[derive(Clone)]`
-   |
-LL + #[derive(Clone)]
-LL | struct NotClone;
-   |
 
 error: aborting due to 1 previous error
 

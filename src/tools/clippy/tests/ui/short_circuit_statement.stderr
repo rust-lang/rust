@@ -4,8 +4,8 @@ error: boolean short circuit operator in statement may be clearer using an expli
 LL |     f() && g();
    |     ^^^^^^^^^^^ help: replace it with: `if f() { g(); }`
    |
-   = note: `-D clippy::short-circuit-statement` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::short_circuit_statement)]`
+   = note: `-D clippy::short-circuit-statement` implied by `-D warnings`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
   --> tests/ui/short_circuit_statement.rs:7:5

@@ -19,12 +19,12 @@ LL |
 LL |     let _ = !value;
    |             ------ type must be known at this point
    |
-   = note: cannot satisfy `<_ as Not>::Output == _`
-   = note: the type must also implement `Not`
 help: consider giving `value` an explicit type
    |
 LL |     let value: /* Type */ = make();
    |              ++++++++++++
+   = note: cannot satisfy `<_ as Not>::Output == _`
+   = note: the type must also implement `Not`
 
 error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
   --> $DIR/unary-op-associated-output-mismatch-issue-106138.rs:39:13

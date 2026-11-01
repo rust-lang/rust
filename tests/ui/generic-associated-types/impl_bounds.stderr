@@ -28,6 +28,10 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     type C = String where Self: Copy;
    |                                 ^^^^ the trait `Copy` is not implemented for `T`
    |
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
+   |       +++++++++++++++++++
 note: required for `Fooy<T>` to implement `Copy`
   --> $DIR/impl_bounds.rs:11:8
    |
@@ -43,10 +47,6 @@ LL | trait Foo {
 ...
 LL |     type C where Self: Clone;
    |          ^ this trait's associated type doesn't have the requirement `Fooy<T>: Copy`
-help: consider restricting type parameter `T` with trait `Copy`
-   |
-LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
-   |       +++++++++++++++++++
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/impl_bounds.rs:20:24
@@ -54,6 +54,10 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     fn d() where Self: Copy {}
    |                        ^^^^ the trait `Copy` is not implemented for `T`
    |
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
+   |       +++++++++++++++++++
 note: required for `Fooy<T>` to implement `Copy`
   --> $DIR/impl_bounds.rs:11:8
    |
@@ -69,10 +73,6 @@ LL | trait Foo {
 ...
 LL |     fn d() where Self: Clone;
    |        ^ this trait's associated function doesn't have the requirement `Fooy<T>: Copy`
-help: consider restricting type parameter `T` with trait `Copy`
-   |
-LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
-   |       +++++++++++++++++++
 
 error: aborting due to 4 previous errors
 

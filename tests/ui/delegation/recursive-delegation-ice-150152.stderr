@@ -58,15 +58,15 @@ error[E0107]: missing generics for struct `S`
 LL |     impl Item for S<S> {
    |                     ^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL |     impl Item for S<S<S>> {
+   |                      +++
 note: struct defined here, with 1 generic parameter: `S`
   --> $DIR/recursive-delegation-ice-150152.rs:5:12
    |
 LL |     struct S< S >;
    |            ^  -
-help: add missing generic argument
-   |
-LL |     impl Item for S<S<S>> {
-   |                      +++
 
 error: aborting due to 6 previous errors
 

@@ -4,8 +4,8 @@ error: variant name ends with the enum's name
 LL |     cFoo,
    |     ^^^^
    |
-   = note: `-D clippy::enum-variant-names` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::enum_variant_names)]`
+   = note: `-D clippy::enum-variant-names` implied by `-D warnings`
 
 error: all variants have the same prefix: `c`
   --> tests/ui/enum_variants.rs:14:1

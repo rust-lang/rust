@@ -4,6 +4,10 @@ error[E0063]: missing field `defaulted` in initializer of `Outer`
 LL |     Outer {
    |     ^^^^^ missing `defaulted`
    |
+help: to set the remaining fields from `Default::default()`, separate the last named field with a comma
+   |
+LL |         }, 
+   |          +
 note: this expression may have been misinterpreted as a `..` range expression
   --> $DIR/multi-line-fru-suggestion.rs:16:16
    |
@@ -15,10 +19,6 @@ LL | |         }
    | |_________^ this expression does not end in a comma...
 LL |           ..Default::default()
    |           ^^^^^^^^^^^^^^^^^^^^ ... so this is interpreted as a `..` range expression, instead of functional record update syntax
-help: to set the remaining fields from `Default::default()`, separate the last named field with a comma
-   |
-LL |         }, 
-   |          +
 
 error: aborting due to 1 previous error
 

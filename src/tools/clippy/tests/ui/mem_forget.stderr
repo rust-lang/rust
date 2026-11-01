@@ -4,9 +4,9 @@ error: usage of `mem::forget` on `Drop` type
 LL |     memstuff::forget(six);
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::mem_forget)]`
    = note: argument has type `std::sync::Arc<i32>`
    = note: `-D clippy::mem-forget` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::mem_forget)]`
 
 error: usage of `mem::forget` on `Drop` type
   --> tests/ui/mem_forget.rs:18:5

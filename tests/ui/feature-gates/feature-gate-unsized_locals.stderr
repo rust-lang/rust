@@ -5,7 +5,6 @@ LL | fn f(f: dyn FnOnce()) {}
    |         ^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn FnOnce() + 'static)`
-   = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |
 LL - fn f(f: dyn FnOnce()) {}
@@ -15,6 +14,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL | fn f(f: &dyn FnOnce()) {}
    |         +
+   = help: unsized fn params are gated as an unstable feature
 
 error: aborting due to 1 previous error
 

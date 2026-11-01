@@ -4,8 +4,8 @@ error: length comparison to zero
 LL |     if x.len() == 0 {
    |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `x.is_empty()`
    |
-   = note: `-D clippy::len-zero` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::len_zero)]`
+   = note: `-D clippy::len-zero` implied by `-D warnings`
 
 error: length comparison to zero
   --> tests/ui/len_zero.rs:88:8
@@ -19,8 +19,8 @@ error: comparison to empty slice
 LL |     println!("{}", *s1 == "");
    |                    ^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s1.is_empty()`
    |
-   = note: `-D clippy::comparison-to-empty` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::comparison_to_empty)]`
+   = note: `-D clippy::comparison-to-empty` implied by `-D warnings`
 
 error: comparison to empty slice
   --> tests/ui/len_zero.rs:100:20

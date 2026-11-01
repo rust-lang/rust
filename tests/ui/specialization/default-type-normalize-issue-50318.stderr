@@ -6,9 +6,9 @@ LL |     let x: AssocType = 0;
    |            |
    |            expected due to this
    |
+   = help: consider constraining the associated type `<Struct as Trait>::AssocType` to `{integer}` or calling a method that returns `<Struct as Trait>::AssocType`
    = note: expected associated type `<Struct as Trait>::AssocType`
                          found type `{integer}`
-   = help: consider constraining the associated type `<Struct as Trait>::AssocType` to `{integer}` or calling a method that returns `<Struct as Trait>::AssocType`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
    = note: the associated type `<Struct as Trait>::AssocType` is defined as `{integer}` in the implementation, but the where-bound `Struct` shadows this definition
            see issue #152409 <https://github.com/rust-lang/rust/issues/152409> for more information

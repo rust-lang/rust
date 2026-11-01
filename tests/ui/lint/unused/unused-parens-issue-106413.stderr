@@ -4,16 +4,16 @@ warning: unnecessary parentheses around type
 LL |     let _ = 1 as ((i32)) < 2;
    |                   ^   ^
    |
-note: the lint level is defined here
-  --> $DIR/unused-parens-issue-106413.rs:2:9
-   |
-LL | #![warn(unused_parens)]
-   |         ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     let _ = 1 as ((i32)) < 2;
 LL +     let _ = 1 as (i32) < 2;
    |
+note: the lint level is defined here
+  --> $DIR/unused-parens-issue-106413.rs:2:9
+   |
+LL | #![warn(unused_parens)]
+   |         ^^^^^^^^^^^^^
 
 warning: unnecessary parentheses around type
   --> $DIR/unused-parens-issue-106413.rs:14:18

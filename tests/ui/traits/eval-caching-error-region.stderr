@@ -4,7 +4,6 @@ error[E0261]: use of undeclared lifetime name `'missing`
 LL |     &'missing Self: Add<Self>,
    |      ^^^^^^^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'missing` lifetime
    |
 LL |     for<'missing> &'missing Self: Add<Self>,
@@ -13,6 +12,7 @@ help: consider introducing lifetime `'missing` here
    |
 LL | pub trait Numoid<'missing>: Sized
    |                 ++++++++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 
 error[E0369]: cannot add `N` to `&N`
   --> $DIR/eval-caching-error-region.rs:19:16

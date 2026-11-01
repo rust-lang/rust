@@ -9,12 +9,12 @@ LL | |     [(); N * 1]:,
 LL |       new
    |       ^^^ expected `()`, found fn item
    |
-   = note: expected unit type `()`
-                found fn item `fn() {new::<core::num::<impl usize>::MAX>}`
 help: try adding a return type
    |
 LL | fn test<const N: usize>() -> fn()
    |                           +++++++
+   = note: expected unit type `()`
+                found fn item `fn() {new::<core::num::<impl usize>::MAX>}`
 help: use parentheses to call this function
    |
 LL |     new()

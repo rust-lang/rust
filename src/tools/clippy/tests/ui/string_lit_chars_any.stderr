@@ -4,13 +4,13 @@ error: usage of `.chars().any(...)` to check if a char matches any from a string
 LL |     "\\.+*?()|[]{}^$#&-~".chars().any(|x| x == c);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::string-lit-chars-any` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::string_lit_chars_any)]`
 help: use `matches!(...)` instead
    |
 LL -     "\\.+*?()|[]{}^$#&-~".chars().any(|x| x == c);
 LL +     matches!(c, '\\' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' | '&' | '-' | '~');
    |
+   = help: to override `-D warnings` add `#[allow(clippy::string_lit_chars_any)]`
+   = note: `-D clippy::string-lit-chars-any` implied by `-D warnings`
 
 error: usage of `.chars().any(...)` to check if a char matches any from a string literal
   --> tests/ui/string_lit_chars_any.rs:20:5

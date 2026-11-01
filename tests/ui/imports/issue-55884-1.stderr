@@ -4,6 +4,7 @@ error[E0659]: `S` is ambiguous
 LL |     use m::S;
    |            ^ ambiguous name
    |
+   = help: consider adding an explicit import of `S` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `S` could refer to the struct imported here
   --> $DIR/issue-55884-1.rs:14:13
@@ -16,7 +17,6 @@ note: `S` could also refer to the struct imported here
    |
 LL |     pub use self::m2::*;
    |             ^^^^^^^^^^^
-   = help: consider adding an explicit import of `S` to disambiguate
 
 error[E0659]: `S` is ambiguous
   --> $DIR/issue-55884-1.rs:20:13
@@ -24,6 +24,7 @@ error[E0659]: `S` is ambiguous
 LL |     let s = S {};
    |             ^ ambiguous name
    |
+   = help: consider adding an explicit import of `S` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `S` could refer to the struct imported here
   --> $DIR/issue-55884-1.rs:14:13
@@ -36,7 +37,6 @@ note: `S` could also refer to the struct imported here
    |
 LL |     pub use self::m2::*;
    |             ^^^^^^^^^^^
-   = help: consider adding an explicit import of `S` to disambiguate
 
 error: aborting due to 2 previous errors
 

@@ -4,8 +4,8 @@ error: called `map_or(None, ..)` on an `Option` value
 LL |     let _: Option<i32> = opt.map_or(None, |x| Some(x + 1));
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `map`: `opt.map(|x| x + 1)`
    |
-   = note: `-D clippy::option-map-or-none` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::option_map_or_none)]`
+   = note: `-D clippy::option-map-or-none` implied by `-D warnings`
 
 error: called `map_or(None, ..)` on an `Option` value
   --> tests/ui/option_map_or_none.rs:14:26
@@ -51,8 +51,8 @@ error: called `map_or(None, Some)` on a `Result` value
 LL |     let _: Option<i32> = r.map_or(None, Some);
    |                          ^^^^^^^^^^^^^^^^^^^^ help: consider using `ok`: `r.ok()`
    |
-   = note: `-D clippy::result-map-or-into-option` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::result_map_or_into_option)]`
+   = note: `-D clippy::result-map-or-into-option` implied by `-D warnings`
 
 error: aborting due to 5 previous errors
 

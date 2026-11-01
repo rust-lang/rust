@@ -4,13 +4,13 @@ error: usage of `Arc<T>` when `T` is a buffer type
 LL |     bad1: Arc<String>,
    |           ^^^^^^^^^^^
    |
-   = note: `-D clippy::rc-buffer` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::rc_buffer)]`
 help: try
    |
 LL -     bad1: Arc<String>,
 LL +     bad1: Arc<str>,
    |
+   = help: to override `-D warnings` add `#[allow(clippy::rc_buffer)]`
+   = note: `-D clippy::rc-buffer` implied by `-D warnings`
 
 error: usage of `Arc<T>` when `T` is a buffer type
   --> tests/ui/rc_buffer_arc.rs:11:11

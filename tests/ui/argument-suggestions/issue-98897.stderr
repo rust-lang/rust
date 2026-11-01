@@ -4,15 +4,15 @@ error[E0057]: this function takes 2 arguments but 1 argument was supplied
 LL |     (|_, ()| ())([return, ()]);
    |     ^^^^^^^^^^^^-------------- argument #2 of type `()` is missing
    |
+help: provide the argument
+   |
+LL |     (|_, ()| ())([return, ()], ());
+   |                              ++++
 note: closure defined here
   --> $DIR/issue-98897.rs:2:6
    |
 LL |     (|_, ()| ())([return, ()]);
    |      ^^^^^^^
-help: provide the argument
-   |
-LL |     (|_, ()| ())([return, ()], ());
-   |                              ++++
 
 error: aborting due to 1 previous error
 

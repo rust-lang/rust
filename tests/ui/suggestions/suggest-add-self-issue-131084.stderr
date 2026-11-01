@@ -58,11 +58,11 @@ LL |
 LL |         self
    |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
    |
-   = note: a module named `self` exists in another namespace
 help: add a `self` receiver parameter to make the associated `fn` a method
    |
 LL |     fn some_fn(&self, &some_name) {
    |                ++++++
+   = note: a module named `self` exists in another namespace
 
 error[E0424]: cannot find value `self` in this scope
   --> $DIR/suggest-add-self-issue-131084.rs:17:9
@@ -73,11 +73,11 @@ LL |
 LL |         self
    |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
    |
-   = note: a module named `self` exists in another namespace
 help: add a `self` receiver parameter to make the associated `fn` a method
    |
 LL |     fn mut_param(&self, mut some_name) {
    |                  ++++++
+   = note: a module named `self` exists in another namespace
 
 error[E0424]: cannot find value `self` in this scope
   --> $DIR/suggest-add-self-issue-131084.rs:23:9
@@ -88,11 +88,11 @@ LL |
 LL |         self
    |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
    |
-   = note: a module named `self` exists in another namespace
 help: add a `self` receiver parameter to make the associated `fn` a method
    |
 LL |     fn type_before_name(&self, String s) {
    |                         ++++++
+   = note: a module named `self` exists in another namespace
 
 error: aborting due to 6 previous errors
 

@@ -23,12 +23,12 @@ error: cannot use a comma after the base struct
 LL |     let f = Foo { a: make_a(), ..todo!(), };
    |                                ^^^^^^^^^
    |
-   = note: the base struct must always be the last field
 help: remove this comma
    |
 LL -     let f = Foo { a: make_a(), ..todo!(), };
 LL +     let f = Foo { a: make_a(), ..todo!() };
    |
+   = note: the base struct must always be the last field
 
 error: expected one of `,`, `:`, or `}`, found `(`
   --> $DIR/syntax-error-not-missing-field.rs:28:25

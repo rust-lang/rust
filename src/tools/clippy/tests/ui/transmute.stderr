@@ -4,8 +4,8 @@ error: transmute from a reference to a pointer
 LL |         let _: *const T = core::mem::transmute(t);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T`
    |
-   = note: `-D clippy::useless-transmute` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::useless_transmute)]`
+   = note: `-D clippy::useless-transmute` implied by `-D warnings`
 
 error: transmute from a reference to a pointer
   --> tests/ui/transmute.rs:35:25
@@ -55,8 +55,8 @@ error: transmute from a type (`*const Usize`) to the type that it points to (`Us
 LL |         let _: Usize = core::mem::transmute(int_const_ptr);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::crosspointer-transmute` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::crosspointer_transmute)]`
+   = note: `-D clippy::crosspointer-transmute` implied by `-D warnings`
 
 error: transmute from a type (`*mut Usize`) to the type that it points to (`Usize`)
   --> tests/ui/transmute.rs:97:24
@@ -82,8 +82,8 @@ error: transmute from a `u8` to a `bool`
 LL |     let _: bool = unsafe { std::mem::transmute(0_u8) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `0_u8 != 0`
    |
-   = note: `-D clippy::transmute-int-to-bool` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::transmute_int_to_bool)]`
+   = note: `-D clippy::transmute-int-to-bool` implied by `-D warnings`
 
 error: transmute from a `&[u8]` to a `&str`
   --> tests/ui/transmute.rs:116:28
@@ -91,8 +91,8 @@ error: transmute from a `&[u8]` to a `&str`
 LL |     let _: &str = unsafe { std::mem::transmute(B) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8(B).unwrap()`
    |
-   = note: `-D clippy::transmute-bytes-to-str` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::transmute_bytes_to_str)]`
+   = note: `-D clippy::transmute-bytes-to-str` implied by `-D warnings`
 
 error: transmute from a `&mut [u8]` to a `&mut str`
   --> tests/ui/transmute.rs:119:32

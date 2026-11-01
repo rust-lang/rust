@@ -4,8 +4,8 @@ error: checked cast can be simplified
 LL |     let _ = value <= (u32::max_value() as i64) && value >= 0;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `u32::try_from(value).is_ok()`
    |
-   = note: `-D clippy::checked-conversions` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::checked_conversions)]`
+   = note: `-D clippy::checked-conversions` implied by `-D warnings`
 
 error: checked cast can be simplified
   --> tests/ui/checked_conversions.rs:16:13

@@ -4,8 +4,8 @@ error: `drain(..)` used on a `Vec`
 LL |     let mut a: BinaryHeap<_> = a.drain(..).collect();
    |                                  ^^^^^^^^^ help: try: `into_iter()`
    |
-   = note: `-D clippy::iter-with-drain` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_with_drain)]`
+   = note: `-D clippy::iter-with-drain` implied by `-D warnings`
 
 error: `drain(..)` used on a `VecDeque`
   --> tests/ui/iter_with_drain.rs:12:27

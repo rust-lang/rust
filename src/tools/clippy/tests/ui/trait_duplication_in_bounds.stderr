@@ -4,8 +4,8 @@ error: these bounds contain repeated elements
 LL | fn bad_foo<T: Clone + Clone + Clone + Copy, U: Clone + Copy>(arg0: T, argo1: U) {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + Copy`
    |
-   = note: `-D clippy::trait-duplication-in-bounds` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::trait_duplication_in_bounds)]`
+   = note: `-D clippy::trait-duplication-in-bounds` implied by `-D warnings`
 
 error: these where clauses contain repeated elements
   --> tests/ui/trait_duplication_in_bounds.rs:13:8

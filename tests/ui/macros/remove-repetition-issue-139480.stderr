@@ -4,12 +4,12 @@ error: repetition matches empty token tree
 LL |     ($($v: vis)? $name: ident) => {
    |       ^^^^^^^^^
    |
-   = note: a `vis` fragment can already be empty
 help: remove the `$(` and `)?`
    |
 LL -     ($($v: vis)? $name: ident) => {
 LL +     ($v: vis $name: ident) => {
    |
+   = note: a `vis` fragment can already be empty
 
 error: repetition matches empty token tree
   --> $DIR/remove-repetition-issue-139480.rs:8:20
@@ -17,12 +17,12 @@ error: repetition matches empty token tree
 LL |     ($name: ident $($v: vis)?) => {
    |                    ^^^^^^^^^
    |
-   = note: a `vis` fragment can already be empty
 help: remove the `$(` and `)?`
    |
 LL -     ($name: ident $($v: vis)?) => {
 LL +     ($name: ident $v: vis) => {
    |
+   = note: a `vis` fragment can already be empty
 
 error: repetition matches empty token tree
   --> $DIR/remove-repetition-issue-139480.rs:17:9
@@ -30,7 +30,6 @@ error: repetition matches empty token tree
 LL |         ($v: vis)?) => {
    |         ^^^^^^^^^
    |
-   = note: a `vis` fragment can already be empty
 help: remove the `$(` and `)?`
    |
 LL -     ($name: ident $/*
@@ -39,6 +38,7 @@ LL -         */
 LL -         ($v: vis)?) => {
 LL +     ($name: ident $v: vis) => {
    |
+   = note: a `vis` fragment can already be empty
 
 error: aborting due to 3 previous errors
 

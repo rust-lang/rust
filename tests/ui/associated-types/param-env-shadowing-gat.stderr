@@ -6,12 +6,12 @@ LL | fn foo<T: Trait>(x: T::Assoc<T>) -> u32 {
 LL |     x
    |     ^ expected `u32`, found associated type
    |
-   = note:         expected type `u32`
-           found associated type `<T as Trait>::Assoc<T>`
 help: consider constraining the associated type `<T as Trait>::Assoc<T>` to `u32`
    |
 LL | fn foo<T: Trait<Assoc<T> = u32>>(x: T::Assoc<T>) -> u32 {
    |                ++++++++++++++++
+   = note:         expected type `u32`
+           found associated type `<T as Trait>::Assoc<T>`
 
 error: aborting due to 1 previous error
 

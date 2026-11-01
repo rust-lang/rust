@@ -7,11 +7,11 @@ LL |     type Assoc: Duh;
 LL | type Traitable = impl Trait<Assoc = impl Send>;
    |                             ^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(opaque_hidden_inferred_bound)]` on by default
 help: add this bound
    |
 LL | type Traitable = impl Trait<Assoc = impl Send + Duh>;
    |                                               +++++
+   = note: `#[warn(opaque_hidden_inferred_bound)]` on by default
 
 warning: 1 warning emitted
 

@@ -4,13 +4,13 @@ error[E0573]: expected type, found module `result`
 LL | impl result {
    |      ^^^^^^ not a type
    |
-note: similarly named enum `Result` defined here
-  --> $SRC_DIR/core/src/result.rs:LL:COL
 help: an enum with a similar name exists
    |
 LL - impl result {
 LL + impl Result {
    |
+note: similarly named enum `Result` defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
 
 error[E0573]: expected type, found variant `Err`
   --> $DIR/do-not-attempt-to-add-suggestions-with-no-changes.rs:4:25

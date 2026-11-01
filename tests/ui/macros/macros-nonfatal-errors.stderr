@@ -112,12 +112,12 @@ LL |     #[default]
 LL |     Foo,
    |     ^^^
    |
-   = note: only one `#[default]` attribute is needed
 help: try removing this
   --> $DIR/macros-nonfatal-errors.rs:73:5
    |
 LL |     #[default]
    |     ^^^^^^^^^^
+   = note: only one `#[default]` attribute is needed
 
 error: multiple `#[default]` attributes
   --> $DIR/macros-nonfatal-errors.rs:84:5
@@ -130,7 +130,6 @@ LL |     #[default]
 LL |     Foo,
    |     ^^^
    |
-   = note: only one `#[default]` attribute is needed
 help: try removing these
   --> $DIR/macros-nonfatal-errors.rs:81:5
    |
@@ -140,6 +139,7 @@ LL |     #[default]
    |     ^^^^^^^^^^
 LL |     #[default]
    |     ^^^^^^^^^^
+   = note: only one `#[default]` attribute is needed
 
 error: the `#[default]` attribute may only be used on unit enum variants
   --> $DIR/macros-nonfatal-errors.rs:91:5

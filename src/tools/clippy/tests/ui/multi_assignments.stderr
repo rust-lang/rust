@@ -4,8 +4,8 @@ error: assignments don't nest intuitively
 LL |     a = b = c;
    |     ^^^^^^^^^
    |
-   = note: `-D clippy::multi-assignments` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::multi_assignments)]`
+   = note: `-D clippy::multi-assignments` implied by `-D warnings`
 
 error: assignments don't nest intuitively
   --> tests/ui/multi_assignments.rs:7:5

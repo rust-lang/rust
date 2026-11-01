@@ -6,13 +6,13 @@ LL | pub fn test(a: Option<u32>) -> Option<u32> {
    |        |
    |        implicitly returns `()` as its body has no tail or `return` expression
    |
-   = note:   expected enum `Option<u32>`
-           found unit type `()`
 help: consider returning the local binding `a`
    |
 LL ~     println!("Foo");
 LL +     a
    |
+   = note:   expected enum `Option<u32>`
+           found unit type `()`
 
 error: aborting due to 1 previous error
 

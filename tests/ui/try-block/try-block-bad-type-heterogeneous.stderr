@@ -6,10 +6,10 @@ LL |         Err("")?;
    |         |
    |         this can't be annotated with `?` because it has type `Result<_, &str>`
    |
-   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
 help: the trait `From<&str>` is not implemented for `TryFromSliceError`
       but trait `From<!>` is implemented for it
   --> $SRC_DIR/core/src/array/mod.rs:LL:COL
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: for that trait implementation, expected `!`, found `&str`
 
 error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Output == &str`

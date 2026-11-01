@@ -6,16 +6,16 @@ LL |     drop(s1);
    |          |
    |          argument has type `SomeStruct`
    |
-note: the lint level is defined here
-  --> $DIR/dropping_copy_types.rs:3:9
-   |
-LL | #![warn(dropping_copy_types)]
-   |         ^^^^^^^^^^^^^^^^^^^
 help: use `let _ = ...` to ignore the expression or result
    |
 LL -     drop(s1);
 LL +     let _ = s1;
    |
+note: the lint level is defined here
+  --> $DIR/dropping_copy_types.rs:3:9
+   |
+LL | #![warn(dropping_copy_types)]
+   |         ^^^^^^^^^^^^^^^^^^^
 
 warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
   --> $DIR/dropping_copy_types.rs:35:5
@@ -39,12 +39,12 @@ LL |     drop(s3);
    |          |
    |          argument has type `&SomeStruct`
    |
-   = note: `#[warn(dropping_references)]` on by default
 help: use `let _ = ...` to ignore the expression or result
    |
 LL -     drop(s3);
 LL +     let _ = s3;
    |
+   = note: `#[warn(dropping_references)]` on by default
 
 warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
   --> $DIR/dropping_copy_types.rs:37:5

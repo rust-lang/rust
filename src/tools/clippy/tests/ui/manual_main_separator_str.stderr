@@ -4,8 +4,8 @@ error: taking a reference on `std::path::MAIN_SEPARATOR` conversion to `String`
 LL |     let _: &str = &MAIN_SEPARATOR.to_string();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `std::path::MAIN_SEPARATOR_STR`
    |
-   = note: `-D clippy::manual-main-separator-str` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_main_separator_str)]`
+   = note: `-D clippy::manual-main-separator-str` implied by `-D warnings`
 
 error: taking a reference on `std::path::MAIN_SEPARATOR` conversion to `String`
   --> tests/ui/manual_main_separator_str.rs:22:17

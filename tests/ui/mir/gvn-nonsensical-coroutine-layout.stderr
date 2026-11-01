@@ -19,6 +19,7 @@ help: consider importing this struct instead
    |
 LL + use std::error::Request;
    |
+   = note: 'std::error::Request' is unstable, add `#![feature(error_generic_member_access)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 

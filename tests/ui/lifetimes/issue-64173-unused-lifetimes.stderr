@@ -4,8 +4,8 @@ error: generic parameters may not be used in const operations
 LL |     beta: [(); foo::<&'a ()>()],
    |                       ^^ cannot perform const operation using `'a`
    |
-   = note: lifetime parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: lifetime parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error[E0392]: lifetime parameter `'s` is never used

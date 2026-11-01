@@ -158,6 +158,10 @@ LL | reuse to_reuse::{value, mut_ref, r#ref} { F }
    |                         |
    |                         arguments to this function are incorrect
    |
+help: consider mutably borrowing here
+   |
+LL | reuse to_reuse::{value, mut_ref, r#ref} { &mut F }
+   |                                           ++++
    = note: expected mutable reference `&mut _`
                          found struct `F`
 note: function defined here
@@ -165,10 +169,6 @@ note: function defined here
    |
 LL |     pub fn mut_ref(_: &mut impl Trait) -> i32 { 2 }
    |            ^^^^^^^ ------------------
-help: consider mutably borrowing here
-   |
-LL | reuse to_reuse::{value, mut_ref, r#ref} { &mut F }
-   |                                           ++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-static-free.rs:52:43
@@ -178,6 +178,10 @@ LL | reuse to_reuse::{value, mut_ref, r#ref} { F }
    |                                  |
    |                                  arguments to this function are incorrect
    |
+help: consider borrowing here
+   |
+LL | reuse to_reuse::{value, mut_ref, r#ref} { &F }
+   |                                           +
    = note: expected reference `&_`
                  found struct `F`
 note: function defined here
@@ -185,10 +189,6 @@ note: function defined here
    |
 LL |     pub fn r#ref(_: &impl Trait) -> i32 { 3 }
    |            ^^^^^ --------------
-help: consider borrowing here
-   |
-LL | reuse to_reuse::{value, mut_ref, r#ref} { &F }
-   |                                           +
 
 error: aborting due to 10 previous errors
 

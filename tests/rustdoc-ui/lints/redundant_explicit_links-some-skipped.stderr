@@ -6,6 +6,11 @@ LL | /// [Option][Option]
    |      |
    |      because label contains path that resolves to same destination
    |
+help: remove explicit link target
+   |
+LL - /// [Option][Option]
+LL + /// [Option]
+   |
    = note: when a link's destination is not specified,
            the label is used to resolve intra-doc links
 note: the lint level is defined here
@@ -13,11 +18,6 @@ note: the lint level is defined here
    |
 LL | #![deny(rustdoc::redundant_explicit_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: remove explicit link target
-   |
-LL - /// [Option][Option]
-LL + /// [Option]
-   |
 
 error: redundant explicit link target
   --> $DIR/redundant_explicit_links-some-skipped.rs:15:14
@@ -27,13 +27,13 @@ LL | /// [Result][Result]
    |      |
    |      because label contains path that resolves to same destination
    |
-   = note: when a link's destination is not specified,
-           the label is used to resolve intra-doc links
 help: remove explicit link target
    |
 LL - /// [Result][Result]
 LL + /// [Result]
    |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
 
 error: aborting due to 2 previous errors
 

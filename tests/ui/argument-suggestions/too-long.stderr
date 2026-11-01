@@ -6,6 +6,10 @@ LL |     qux.foo(a, b, c, d, e, f, g, h, i, j, k, l);
    |         |
    |         arguments to this method are incorrect
    |
+help: consider dereferencing the borrow
+   |
+LL |     qux.foo(a, b, c, d, e, *f, g, h, i, j, k, l);
+   |                            +
 note: method defined here
   --> $DIR/too-long.rs:4:8
    |
@@ -15,10 +19,6 @@ LL |     fn foo(
 ...
 LL |         f: i32,
    |         ------
-help: consider dereferencing the borrow
-   |
-LL |     qux.foo(a, b, c, d, e, *f, g, h, i, j, k, l);
-   |                            +
 
 error: aborting due to 1 previous error
 

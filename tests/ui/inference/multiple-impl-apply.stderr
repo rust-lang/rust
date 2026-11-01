@@ -4,6 +4,10 @@ error[E0283]: type annotations needed
 LL |     let y = x.into();
    |         ^     ---- type must be known at this point
    |
+help: consider giving `y` an explicit type
+   |
+LL |     let y: /* Type */ = x.into();
+   |          ++++++++++++
 note: multiple `impl`s satisfying `_: From<Baz>` found
   --> $DIR/multiple-impl-apply.rs:14:1
    |
@@ -13,10 +17,6 @@ LL | impl From<Baz> for Bar {
 LL | impl From<Baz> for Foo {
    | ^^^^^^^^^^^^^^^^^^^^^^
    = note: required for `Baz` to implement `Into<_>`
-help: consider giving `y` an explicit type
-   |
-LL |     let y: /* Type */ = x.into();
-   |          ++++++++++++
 
 error[E0283]: type annotations needed
   --> $DIR/multiple-impl-apply.rs:67:29

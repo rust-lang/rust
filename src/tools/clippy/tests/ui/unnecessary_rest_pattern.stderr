@@ -4,13 +4,13 @@ error: unnecessary rest pattern (`..`)
 LL |     let S { a, b, c, .. } = s;
    |         ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-rest-pattern` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_rest_pattern)]`
 help: consider removing the unnecessary rest pattern (`..`)
    |
 LL -     let S { a, b, c, .. } = s;
 LL +     let S { a, b, c,  } = s;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_rest_pattern)]`
+   = note: `-D clippy::unnecessary-rest-pattern` implied by `-D warnings`
 
 error: unnecessary rest pattern (`..`)
   --> tests/ui/unnecessary_rest_pattern.rs:49:9

@@ -4,13 +4,13 @@ error: incorrect ordering of items (must be alphabetically ordered)
 LL |     fn b() {}
    |        ^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::arbitrary_source_item_ordering)]`
 note: should be placed before `c`
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:103:8
    |
 LL |     fn c() {}
    |        ^
    = note: `-D clippy::arbitrary-source-item-ordering` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::arbitrary_source_item_ordering)]`
 
 error: incorrect ordering of items (must be alphabetically ordered)
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed_var_1.rs:111:11

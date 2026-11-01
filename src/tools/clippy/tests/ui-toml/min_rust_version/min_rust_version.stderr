@@ -4,8 +4,8 @@ error: you are using an explicit closure for cloning elements
 LL |     let _: Option<u64> = Some(&16).map(|b| *b);
    |                          ^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `Some(&16).cloned()`
    |
-   = note: `-D clippy::map-clone` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::map_clone)]`
+   = note: `-D clippy::map-clone` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

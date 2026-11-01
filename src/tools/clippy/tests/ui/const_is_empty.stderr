@@ -4,8 +4,8 @@ error: this expression always evaluates to true
 LL |     if "".is_empty() {
    |        ^^^^^^^^^^^^^
    |
-   = note: `-D clippy::const-is-empty` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::const_is_empty)]`
+   = note: `-D clippy::const-is-empty` implied by `-D warnings`
 
 error: this expression always evaluates to false
   --> tests/ui/const_is_empty.rs:8:8

@@ -14,13 +14,13 @@ LL | #[derive(Copy, Clone)]
 LL | struct Bar(Foo);
    |            ^^^ the trait `Clone` is not implemented for `Foo`
    |
-note: required by a bound in `std::clone::AssertParamIsClone`
-  --> $SRC_DIR/core/src/clone.rs:LL:COL
 help: consider annotating `Foo` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
 LL | struct Foo;
    |
+note: required by a bound in `std::clone::AssertParamIsClone`
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
 
 error: aborting due to 2 previous errors
 

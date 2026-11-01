@@ -23,12 +23,12 @@ LL |     let _: NoValue<i32> = 43;
    |            |
    |            expected due to this
    |
-   = note: expected struct `NoValue<i32>`
-                found type `{integer}`
 help: try wrapping the expression in `NoValue`
    |
 LL |     let _: NoValue<i32> = NoValue(43);
    |                           ++++++++  +
+   = note: expected struct `NoValue<i32>`
+                found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/report_warning_on_invalid_meta_item_syntax.rs:20:30
@@ -38,12 +38,12 @@ LL |     let _: EmptyValue<i32> = 44;
    |            |
    |            expected due to this
    |
-   = note: expected struct `EmptyValue<i32>`
-                found type `{integer}`
 help: try wrapping the expression in `EmptyValue`
    |
 LL |     let _: EmptyValue<i32> = EmptyValue(44);
    |                              +++++++++++  +
+   = note: expected struct `EmptyValue<i32>`
+                found type `{integer}`
 
 error: aborting due to 2 previous errors; 2 warnings emitted
 

@@ -4,8 +4,8 @@ error: this creates an owned instance just for comparison
 LL |         if borrowed.to_owned() == owned {}
    |            ^^^^^^^^^^^^^^^^^^^ help: try: `borrowed`
    |
-   = note: `-D clippy::cmp-owned` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
+   = note: `-D clippy::cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
   --> tests/ui/cmp_owned/asymmetric_partial_eq.rs:43:21

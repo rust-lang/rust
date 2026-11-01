@@ -10,16 +10,16 @@ LL |     const C: S = S;
 LL |             Some(C) => {}
    |                  ^ constant of non-structural type
    |
-note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
-  --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:5:5
-   |
-LL |     impl PartialEq<S> for S {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 help: add a condition to the match arm checking for equality
    |
 LL -             Some(C) => {}
 LL +             Some(binding) if binding == C => {}
    |
+note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+  --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:5:5
+   |
+LL |     impl PartialEq<S> for S {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: constant of non-structural type `partial_eq::S` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:17:18
@@ -33,16 +33,16 @@ LL |     const C: S = S;
 LL |             Some(C) if true => {}
    |                  ^ constant of non-structural type
    |
-note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
-  --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:5:5
-   |
-LL |     impl PartialEq<S> for S {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 help: add a check for equality to the condition of the match arm
    |
 LL -             Some(C) if true => {}
 LL +             Some(binding) if true && binding == C => {}
    |
+note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+  --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:5:5
+   |
+LL |     impl PartialEq<S> for S {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: constant of non-structural type `partial_eq::S` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:20:21
@@ -56,16 +56,16 @@ LL |     const C: S = S;
 LL |         if let Some(C) = Some(S) {}
    |                     ^ constant of non-structural type
    |
-note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
-  --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:5:5
-   |
-LL |     impl PartialEq<S> for S {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 help: check for equality instead of pattern matching
    |
 LL -         if let Some(C) = Some(S) {}
 LL +         if let Some(binding) = Some(S) && binding == C {}
    |
+note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+  --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:5:5
+   |
+LL |     impl PartialEq<S> for S {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: constant of non-structural type `partial_eq::S` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:21:21
@@ -79,16 +79,16 @@ LL |     const C: S = S;
 LL |         if let Some(C) = Some(S) && let Some(1) = Some(2) {}
    |                     ^ constant of non-structural type
    |
-note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
-  --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:5:5
-   |
-LL |     impl PartialEq<S> for S {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 help: check for equality instead of pattern matching
    |
 LL -         if let Some(C) = Some(S) && let Some(1) = Some(2) {}
 LL +         if let Some(binding) = Some(S) && binding == C && let Some(1) = Some(2) {}
    |
+note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+  --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:5:5
+   |
+LL |     impl PartialEq<S> for S {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: constant of non-structural type `partial_eq::S` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:22:18
@@ -102,16 +102,16 @@ LL |     const C: S = S;
 LL |         let Some(C) = Some(S) else { return; };
    |                  ^ constant of non-structural type
    |
-note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
-  --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:5:5
-   |
-LL |     impl PartialEq<S> for S {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 help: check for equality instead of pattern matching
    |
 LL -         let Some(C) = Some(S) else { return; };
 LL +         if Some(C) == Some(S) { return; };
    |
+note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+  --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:5:5
+   |
+LL |     impl PartialEq<S> for S {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: constant of non-structural type `Vec<()>` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:24:13
@@ -126,12 +126,12 @@ LL |             V => {}
    |
    = note: `Vec<()>` is not usable in patterns
    |
-   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 help: add a condition to the match arm checking for equality
    |
 LL -             V => {}
 LL +             binding if binding == V => {}
    |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
 error: constant of non-structural type `Vec<()>` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:27:16
@@ -176,12 +176,12 @@ LL |         let V = Vec::new() else { return; };
    |
    = note: `Vec<()>` is not usable in patterns
    |
-   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 help: check for equality instead of pattern matching
    |
 LL -         let V = Vec::new() else { return; };
 LL +         if V == Vec::new() { return; };
    |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
 error: constant of non-structural type `not_partial_eq::S` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:40:18
@@ -195,12 +195,12 @@ LL |     const C: S = S;
 LL |             Some(C) => {}
    |                  ^ constant of non-structural type
    |
-   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 help: add a condition to the match arm checking for equality
    |
 LL -             Some(C) => {}
 LL +             Some(binding) if binding == C => {}
    |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
 error: constant of non-structural type `not_partial_eq::S` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:41:18
@@ -214,12 +214,12 @@ LL |     const C: S = S;
 LL |             Some(C) if true => {}
    |                  ^ constant of non-structural type
    |
-   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 help: add a check for equality to the condition of the match arm
    |
 LL -             Some(C) if true => {}
 LL +             Some(binding) if true && binding == C => {}
    |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
 error: constant of non-structural type `not_partial_eq::S` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:44:21
@@ -233,12 +233,12 @@ LL |     const C: S = S;
 LL |         if let Some(C) = Some(S) {}
    |                     ^ constant of non-structural type
    |
-   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 help: check for equality instead of pattern matching
    |
 LL -         if let Some(C) = Some(S) {}
 LL +         if let Some(binding) = Some(S) && binding == C {}
    |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
 error: constant of non-structural type `not_partial_eq::S` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:45:21
@@ -252,12 +252,12 @@ LL |     const C: S = S;
 LL |         if let Some(C) = Some(S) && let Some(1) = Some(2) {}
    |                     ^ constant of non-structural type
    |
-   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 help: check for equality instead of pattern matching
    |
 LL -         if let Some(C) = Some(S) && let Some(1) = Some(2) {}
 LL +         if let Some(binding) = Some(S) && binding == C && let Some(1) = Some(2) {}
    |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
 error: constant of non-structural type `not_partial_eq::S` in a pattern
   --> $DIR/suggest_equality_comparison_instead_of_pattern_matching.rs:46:18
@@ -271,12 +271,12 @@ LL |     const C: S = S;
 LL |         let Some(C) = Some(S) else { return; };
    |                  ^ constant of non-structural type
    |
-   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 help: check for equality instead of pattern matching
    |
 LL -         let Some(C) = Some(S) else { return; };
 LL +         if Some(C) == Some(S) { return; };
    |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
 error: aborting due to 14 previous errors
 

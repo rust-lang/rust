@@ -4,13 +4,13 @@ error: this pattern creates a reference to a reference
 LL |         Some(ref x) => x,
    |              ^^^^^
    |
-   = note: `-D clippy::needless-borrow` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
 help: try
    |
 LL -         Some(ref x) => x,
 LL +         Some(x) => x,
    |
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
+   = note: `-D clippy::needless-borrow` implied by `-D warnings`
 
 error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:64:14

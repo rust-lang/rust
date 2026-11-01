@@ -4,13 +4,13 @@ error: this pattern takes a reference on something that is being dereferenced
 LL |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
    |                                  ^^^^^^
    |
-   = note: `-D clippy::needless-borrowed-reference` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_borrowed_reference)]`
 help: try removing the `&ref` part
    |
 LL -     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
 LL +     let _ = v.iter_mut().filter(|a| a.is_empty());
    |
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrowed_reference)]`
+   = note: `-D clippy::needless-borrowed-reference` implied by `-D warnings`
 
 error: this pattern takes a reference on something that is being dereferenced
   --> tests/ui/needless_borrowed_ref.rs:34:17

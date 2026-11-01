@@ -6,10 +6,10 @@ LL |     let _ = result.map_or(false, |_| true);
    |                    |
    |                    help: use `is_ok` instead: `is_ok()`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
    = note: this will change drop order of the result, as well as all temporaries
    = note: add `#[allow(clippy::unnecessary_map_or)]` if this is important
    = note: `-D clippy::unnecessary-map-or` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
 
 error: this `map_or_else` can be simplified
   --> tests/ui/unnecessary_map_or_result_bool_unfixable.rs:13:20

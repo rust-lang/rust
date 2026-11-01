@@ -20,6 +20,11 @@ error[E0283]: type annotations needed
 LL |     let bar = foo_impl.into() * 1u32;
    |                        ^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     let bar = foo_impl.into() * 1u32;
+LL +     let bar = <Impl as Into<T>>::into(foo_impl) * 1u32;
+   |
 note: multiple `impl`s satisfying `Impl: Into<_>` found
   --> $DIR/E0283.rs:17:1
    |
@@ -28,11 +33,6 @@ LL | impl Into<u32> for Impl {
    = note: and another `impl` found in the `core` crate:
            - impl<T, U> Into<U> for T
              where U: From<T>;
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     let bar = foo_impl.into() * 1u32;
-LL +     let bar = <Impl as Into<T>>::into(foo_impl) * 1u32;
-   |
 
 error: aborting due to 2 previous errors
 

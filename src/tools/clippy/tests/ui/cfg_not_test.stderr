@@ -5,9 +5,9 @@ LL |     #[cfg(not(test))]
    |     ^^^^^^^^^^^^^^^^^
    |
    = help: consider not excluding any code from test builds
+   = help: to override `-D warnings` add `#[allow(clippy::cfg_not_test)]`
    = note: this could increase code coverage despite not actually being tested
    = note: `-D clippy::cfg-not-test` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::cfg_not_test)]`
 
 error: code is excluded from test builds
   --> tests/ui/cfg_not_test.rs:12:5

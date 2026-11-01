@@ -17,13 +17,13 @@ LL | pub struct AtLeastByte<T: ?Sized> {
 LL |     value: T,
    |            ^ doesn't have a size known at compile-time
    |
-   = note: only the last field of a struct may have a dynamically sized type
-   = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - pub struct AtLeastByte<T: ?Sized> {
 LL + pub struct AtLeastByte<T> {
    |
+   = help: change the field's type to have a statically known size
+   = note: only the last field of a struct may have a dynamically sized type
 help: borrowed types always have a statically known size
    |
 LL |     value: &T,
@@ -41,13 +41,13 @@ LL | pub const fn is_zst<T: ?Sized>() -> usize {
 LL |     if std::mem::size_of::<T>() == 0 {
    |                            ^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `std::mem::size_of`
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - pub const fn is_zst<T: ?Sized>() -> usize {
 LL + pub const fn is_zst<T>() -> usize {
    |
+note: required by an implicit `Sized` bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error: aborting due to 3 previous errors
 

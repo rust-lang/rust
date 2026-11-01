@@ -4,8 +4,8 @@ error: you are using an explicit closure for copying elements
 LL |     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `vec![5_i8; 6].iter().copied()`
    |
-   = note: `-D clippy::map-clone` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::map_clone)]`
+   = note: `-D clippy::map-clone` implied by `-D warnings`
 
 error: you are using an explicit closure for cloning elements
   --> tests/ui/map_clone.rs:14:26

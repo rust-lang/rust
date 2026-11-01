@@ -4,8 +4,8 @@ error[E0658]: use of unstable library feature `type_alias_impl_trait`: `type_ali
 LL | #[define_opaque(Foo)]
    |   ^^^^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `type_alias_impl_trait`: `type_alias_impl_trait` has open design concerns
@@ -14,8 +14,8 @@ error[E0658]: use of unstable library feature `type_alias_impl_trait`: `type_ali
 LL | #[define_opaque(Foo2)]
    |   ^^^^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `type_alias_impl_trait`: `type_alias_impl_trait` has open design concerns
@@ -24,8 +24,8 @@ error[E0658]: use of unstable library feature `type_alias_impl_trait`: `type_ali
 LL | #[define_opaque(Foo3)]
    |   ^^^^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `type_alias_impl_trait`: `type_alias_impl_trait` has open design concerns
@@ -34,8 +34,8 @@ error[E0658]: use of unstable library feature `type_alias_impl_trait`: `type_ali
 LL | #[define_opaque(Foo3)]
    |   ^^^^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `type_alias_impl_trait`: `type_alias_impl_trait` has open design concerns
@@ -44,8 +44,8 @@ error[E0658]: use of unstable library feature `type_alias_impl_trait`: `type_ali
 LL | #[define_opaque(Foo4)]
    |   ^^^^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -54,8 +54,8 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL | type Foo = impl Debug;
    |            ^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -64,8 +64,8 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL | type Foo2 = impl Debug;
    |             ^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -74,8 +74,8 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL | type Foo3 = impl Debug;
    |             ^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -84,8 +84,8 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL | type Foo4 = impl Debug;
    |             ^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -94,8 +94,8 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL |     type Foo = impl Debug;
    |                ^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: unconstrained opaque type

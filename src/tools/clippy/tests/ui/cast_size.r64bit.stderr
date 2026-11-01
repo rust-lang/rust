@@ -5,13 +5,13 @@ LL |     1isize as i8;
    |     ^^^^^^^^^^^^
    |
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
-   = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::cast_possible_truncation)]`
 help: ... or use `try_from` and handle the error accordingly
    |
 LL -     1isize as i8;
 LL +     i8::try_from(1isize);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::cast_possible_truncation)]`
+   = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
 
 error: casting `isize` to `f32` may cause a loss of precision (`isize` can be up to 64 bits wide depending on the target architecture, but `f32`'s mantissa is only 23 bits wide)
   --> tests/ui/cast_size.rs:24:5
@@ -19,8 +19,8 @@ error: casting `isize` to `f32` may cause a loss of precision (`isize` can be up
 LL |     x0 as f32;
    |     ^^^^^^^^^
    |
-   = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cast_precision_loss)]`
+   = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
 
 error: casting `usize` to `f32` may cause a loss of precision (`usize` can be up to 64 bits wide depending on the target architecture, but `f32`'s mantissa is only 23 bits wide)
   --> tests/ui/cast_size.rs:26:5
@@ -98,8 +98,8 @@ error: casting `usize` to `i32` may wrap around the value on targets with 32-bit
 LL |     1usize as i32;
    |     ^^^^^^^^^^^^^
    |
-   = note: `-D clippy::cast-possible-wrap` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cast_possible_wrap)]`
+   = note: `-D clippy::cast-possible-wrap` implied by `-D warnings`
 
 error: casting `i64` to `isize` may truncate the value on targets with 32-bit wide pointers
   --> tests/ui/cast_size.rs:44:5

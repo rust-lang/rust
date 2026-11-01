@@ -4,8 +4,8 @@ error: unit tests in doctest are not executed
 LL | /// #[test]
    |     ^^^^^^^
    |
-   = note: `-D clippy::test-attr-in-doctest` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::test_attr_in_doctest)]`
+   = note: `-D clippy::test-attr-in-doctest` implied by `-D warnings`
 
 error: unit tests in doctest are not executed
   --> tests/ui/test_attr_in_doctest.rs:16:5

@@ -4,8 +4,8 @@ error: manual implementation of `Option::zip`
 LL |     let _ = a.and_then(|a| b.map(|b| (a, b)));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `a.zip(b)`
    |
-   = note: `-D clippy::manual-option-zip` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_option_zip)]`
+   = note: `-D clippy::manual-option-zip` implied by `-D warnings`
 
 error: manual implementation of `Option::zip`
   --> tests/ui/manual_option_zip.rs:17:13

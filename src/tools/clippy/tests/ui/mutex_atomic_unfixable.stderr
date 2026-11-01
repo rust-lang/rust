@@ -4,14 +4,14 @@ error: using a `Mutex` where an atomic would do
 LL |     static MTX: Mutex<u32> = Mutex::new(0);
    |                              ^^^^^^^^^^^^^
    |
-   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
-   = note: `-D clippy::mutex-integer` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::mutex_integer)]`
 help: try
    |
 LL -     static MTX: Mutex<u32> = Mutex::new(0);
 LL +     static MTX: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
    |
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+   = help: to override `-D warnings` add `#[allow(clippy::mutex_integer)]`
+   = note: `-D clippy::mutex-integer` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

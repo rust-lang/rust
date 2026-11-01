@@ -4,11 +4,11 @@ error[E0277]: the trait bound `fn() {main}: Foo` is not satisfied
 LL |     let _x: &dyn Foo = &main;
    |                        ^^^^^ the trait `Foo` is not implemented for fn item `fn() {main}`
    |
-   = note: required for the cast from `&fn() {main}` to `&dyn Foo`
 help: the trait `Foo` is implemented for fn pointer `fn()`, try casting using `as`
    |
 LL |     let _x: &dyn Foo = &(main as fn());
    |                         +     ++++++++
+   = note: required for the cast from `&fn() {main}` to `&dyn Foo`
 
 error: aborting due to 1 previous error
 

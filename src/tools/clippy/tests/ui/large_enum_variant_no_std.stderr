@@ -15,8 +15,8 @@ help: consider boxing the large fields or introducing indirection in some other 
    |
 LL |     Large([u8; 1024]),
    |     ^^^^^^^^^^^^^^^^^
-   = note: `-D clippy::large-enum-variant` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
+   = note: `-D clippy::large-enum-variant` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

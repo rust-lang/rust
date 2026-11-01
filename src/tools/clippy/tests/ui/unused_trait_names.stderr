@@ -4,8 +4,8 @@ error: unused import: `std::any::Any`
 LL |     use std::any::Any;
    |         ^^^^^^^^^^^^^
    |
-   = note: `-D unused-imports` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(unused_imports)]`
+   = note: `-D unused-imports` implied by `-D warnings`
 
 error: importing trait that is only used anonymously
   --> tests/ui/unused_trait_names.rs:11:19
@@ -13,12 +13,12 @@ error: importing trait that is only used anonymously
 LL |     use std::any::Any;
    |                   ^^^
    |
-   = note: `-D clippy::unused-trait-names` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unused_trait_names)]`
 help: import the trait anonymously
    |
 LL |     use std::any::Any as _;
    |                       ++++
+   = help: to override `-D warnings` add `#[allow(clippy::unused_trait_names)]`
+   = note: `-D clippy::unused-trait-names` implied by `-D warnings`
 
 error: importing trait that is only used anonymously
   --> tests/ui/unused_trait_names.rs:31:26

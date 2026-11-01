@@ -4,8 +4,8 @@ error[E0658]: inner macro attributes are unstable
 LL |     #![empty_attr]
    |        ^^^^^^^^^^
    |
-   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: inner macro attributes are unstable
@@ -14,8 +14,8 @@ error[E0658]: inner macro attributes are unstable
 LL |     #![empty_attr]
    |        ^^^^^^^^^^
    |
-   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: key-value macro attributes are not supported
@@ -30,8 +30,8 @@ error[E0658]: macro attributes on statements are unstable
 LL |     #[empty_attr]
    |     ^^^^^^^^^^^^^
    |
-   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: macro attributes on statements are unstable
@@ -40,8 +40,8 @@ error[E0658]: macro attributes on statements are unstable
 LL |     #[empty_attr]
    |     ^^^^^^^^^^^^^
    |
-   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: macro attributes on statements are unstable
@@ -50,8 +50,8 @@ error[E0658]: macro attributes on statements are unstable
 LL |     #[empty_attr]
    |     ^^^^^^^^^^^^^
    |
-   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: macro attributes on expressions are unstable
@@ -60,8 +60,8 @@ error[E0658]: macro attributes on expressions are unstable
 LL |     let _x = #[identity_attr] 2;
    |              ^^^^^^^^^^^^^^^^
    |
-   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: macro attributes on expressions are unstable
@@ -70,8 +70,8 @@ error[E0658]: macro attributes on expressions are unstable
 LL |     let _x = [#[identity_attr] 2];
    |               ^^^^^^^^^^^^^^^^
    |
-   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: macro attributes on expressions are unstable
@@ -80,8 +80,8 @@ error[E0658]: macro attributes on expressions are unstable
 LL |     let _x = #[identity_attr] println!();
    |              ^^^^^^^^^^^^^^^^
    |
-   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: inner macro attributes are unstable
@@ -90,8 +90,8 @@ error[E0658]: inner macro attributes are unstable
 LL |     #![test]
    |        ^^^^
    |
-   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 10 previous errors

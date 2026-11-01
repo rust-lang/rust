@@ -4,12 +4,12 @@ error[E0308]: mismatched types
 LL |     let s = Demo { option };
    |                    ^^^^^^ expected `Option<&str>`, found `Option<String>`
    |
-   = note: expected enum `Option<&str>`
-              found enum `Option<String>`
 help: try using `: option.as_deref()` to convert `Option<String>` to `Option<&str>`
    |
 LL |     let s = Demo { option: option.as_deref() };
    |                          +++++++++++++++++++
+   = note: expected enum `Option<&str>`
+              found enum `Option<String>`
 
 error[E0308]: mismatched types
   --> $DIR/mismatch-sugg-for-shorthand-field.rs:27:20
@@ -17,12 +17,12 @@ error[E0308]: mismatched types
 LL |     let s = Demo { option_ref };
    |                    ^^^^^^^^^^ expected `Option<&str>`, found `Option<&String>`
    |
-   = note: expected enum `Option<&str>`
-              found enum `Option<&String>`
 help: try converting the passed type into a `&str`
    |
 LL |     let s = Demo { option_ref: option_ref.map(|x| x.as_str()) };
    |                              ++++++++++++++++++++++++++++++++
+   = note: expected enum `Option<&str>`
+              found enum `Option<&String>`
 
 error[E0308]: mismatched types
   --> $DIR/mismatch-sugg-for-shorthand-field.rs:40:20
@@ -30,12 +30,12 @@ error[E0308]: mismatched types
 LL |     let s = Demo { option_ref_ref };
    |                    ^^^^^^^^^^^^^^ expected `Option<&str>`, found `Option<&&String>`
    |
-   = note: expected enum `Option<&str>`
-              found enum `Option<&&String>`
 help: try converting the passed type into a `&str`
    |
 LL |     let s = Demo { option_ref_ref: option_ref_ref.map(|x| x.as_str()) };
    |                                  ++++++++++++++++++++++++++++++++++++
+   = note: expected enum `Option<&str>`
+              found enum `Option<&&String>`
 
 error[E0308]: mismatched types
   --> $DIR/mismatch-sugg-for-shorthand-field.rs:48:20
@@ -57,12 +57,12 @@ LL |     let a = async { 42 };
 LL |     let s = Demo { a };
    |                    ^ expected `Pin<Box<_>>`, found `async` block
    |
-   = note:     expected struct `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>`
-           found `async` block `{async block@$DIR/mismatch-sugg-for-shorthand-field.rs:53:13: 53:18}`
 help: you need to pin and box this expression
    |
 LL |     let s = Demo { a: Box::pin(a) };
    |                    ++++++++++++ +
+   = note:     expected struct `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>`
+           found `async` block `{async block@$DIR/mismatch-sugg-for-shorthand-field.rs:53:13: 53:18}`
 
 error[E0308]: mismatched types
   --> $DIR/mismatch-sugg-for-shorthand-field.rs:74:20

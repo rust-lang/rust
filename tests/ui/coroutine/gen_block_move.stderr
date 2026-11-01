@@ -7,6 +7,10 @@ LL |     gen {
 LL |         x.clear();
    |         - `x` is borrowed here
    |
+help: to force the gen block to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |     gen move {
+   |         ++++
 note: gen block is returned here
   --> $DIR/gen_block_move.rs:7:5
    |
@@ -17,10 +21,6 @@ LL | |         x.clear();
 LL | |         for x in 3..6 { yield x }
 LL | |     }
    | |_____^
-help: to force the gen block to take ownership of `x` (and any other referenced variables), use the `move` keyword
-   |
-LL |     gen move {
-   |         ++++
 
 error: aborting due to 1 previous error
 

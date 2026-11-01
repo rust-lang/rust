@@ -7,15 +7,15 @@ LL |     type Fut<'a>
 LL |     type Fut<'a> = impl Future<Output = ()>;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+help: copy the `where` clause predicates from the trait
+   |
+LL |     type Fut<'a> = impl Future<Output = ()> where Self: 'a;
+   |                                             ++++++++++++++
 note: type must outlive the lifetime `'a` as defined here
   --> $DIR/issue-90014.rs:15:14
    |
 LL |     type Fut<'a> = impl Future<Output = ()>;
    |              ^^
-help: copy the `where` clause predicates from the trait
-   |
-LL |     type Fut<'a> = impl Future<Output = ()> where Self: 'a;
-   |                                             ++++++++++++++
 
 error: aborting due to 1 previous error
 

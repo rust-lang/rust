@@ -4,8 +4,8 @@ error: called `skip(..).next()` on an iterator
 LL |     let _ = some_vec.iter().skip(42).next();
    |                            ^^^^^^^^^^^^^^^^ help: use `nth` instead: `.nth(42)`
    |
-   = note: `-D clippy::iter-skip-next` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_skip_next)]`
+   = note: `-D clippy::iter-skip-next` implied by `-D warnings`
 
 error: called `skip(..).next()` on an iterator
   --> tests/ui/iter_skip_next.rs:16:36

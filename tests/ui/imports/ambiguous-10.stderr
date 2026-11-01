@@ -4,6 +4,7 @@ error[E0659]: `Token` is ambiguous
 LL | fn c(_: Token) {}
    |         ^^^^^ ambiguous name
    |
+   = help: consider adding an explicit import of `Token` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `Token` could refer to the enum imported here
   --> $DIR/ambiguous-10.rs:13:5
@@ -16,7 +17,6 @@ note: `Token` could also refer to the enum imported here
    |
 LL | use crate::b::*;
    |     ^^^^^^^^^^^
-   = help: consider adding an explicit import of `Token` to disambiguate
 
 error: aborting due to 1 previous error
 

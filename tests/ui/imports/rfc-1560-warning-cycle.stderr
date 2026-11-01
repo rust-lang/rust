@@ -4,6 +4,7 @@ error[E0659]: `Foo` is ambiguous
 LL |         fn f(_: Foo) {}
    |                 ^^^ ambiguous name
    |
+   = help: consider adding an explicit import of `Foo` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `Foo` could refer to the struct imported here
   --> $DIR/rfc-1560-warning-cycle.rs:8:13
@@ -16,7 +17,6 @@ note: `Foo` could also refer to the struct imported here
    |
 LL |         use bar::*;
    |             ^^^^^^
-   = help: consider adding an explicit import of `Foo` to disambiguate
 
 error: aborting due to 1 previous error
 

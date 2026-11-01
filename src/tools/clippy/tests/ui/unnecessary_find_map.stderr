@@ -4,8 +4,8 @@ error: this `.find_map(..)` can be written more simply using `.find(..)`
 LL |     let _ = (0..4).find_map(|x| if x > 1 { Some(x) } else { None });
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-find-map` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_find_map)]`
+   = note: `-D clippy::unnecessary-find-map` implied by `-D warnings`
 
 error: this `.find_map(..)` can be written more simply using `.find(..)`
   --> tests/ui/unnecessary_find_map.rs:5:20

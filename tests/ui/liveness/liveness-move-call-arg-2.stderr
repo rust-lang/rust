@@ -9,6 +9,10 @@ LL |         loop {
 LL |             take(x);
    |                  ^ value moved here, in previous iteration of loop
    |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |             take(x.clone());
+   |                   ++++++++
 note: consider changing this parameter type in function `take` to borrow instead if owning the value isn't necessary
   --> $DIR/liveness-move-call-arg-2.rs:1:13
    |
@@ -16,10 +20,6 @@ LL | fn take(_x: Box<isize>) {}
    |    ----     ^^^^^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |             take(x.clone());
-   |                   ++++++++
 
 error: aborting due to 1 previous error
 

@@ -9,13 +9,13 @@ LL |     fn copy(&self) -> Self::Gat<'_> where T: Copy {
 LL |         *self.test()
    |         ^^^^^^^^^^^^ expected `&T`, found type parameter `T`
    |
-   = note:   expected reference `&_`
-           found type parameter `_`
 help: consider removing deref here
    |
 LL -         *self.test()
 LL +         self.test()
    |
+   = note:   expected reference `&_`
+           found type parameter `_`
 
 error: aborting due to 1 previous error
 

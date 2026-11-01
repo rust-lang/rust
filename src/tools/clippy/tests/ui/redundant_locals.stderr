@@ -9,8 +9,8 @@ help: `x` is initially defined here
    |
 LL |     let x = 1;
    |         ^
-   = note: `-D clippy::redundant-locals` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::redundant_locals)]`
+   = note: `-D clippy::redundant-locals` implied by `-D warnings`
 
 error: redundant redefinition of a binding `x`
   --> tests/ui/redundant_locals.rs:19:5

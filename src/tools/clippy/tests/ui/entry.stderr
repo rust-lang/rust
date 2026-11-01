@@ -7,8 +7,8 @@ LL | |         m.insert(k, v);
 LL | |     }
    | |_____^ help: try: `m.entry(k).or_insert(v);`
    |
-   = note: `-D clippy::map-entry` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
+   = note: `-D clippy::map-entry` implied by `-D warnings`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> tests/ui/entry.rs:29:5

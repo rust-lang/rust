@@ -23,16 +23,16 @@ error: module `Impl` should have a snake case name
 LL | mod Impl {}
    |     ^^^^
    |
-note: the lint level is defined here
-  --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:3:9
-   |
-LL | #![deny(non_snake_case)]
-   |         ^^^^^^^^^^^^^^
 help: rename the identifier or convert it to a snake case raw identifier
    |
 LL - mod Impl {}
 LL + mod r#impl {}
    |
+note: the lint level is defined here
+  --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:3:9
+   |
+LL | #![deny(non_snake_case)]
+   |         ^^^^^^^^^^^^^^
 
 error: function `While` should have a snake case name
   --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:8:4

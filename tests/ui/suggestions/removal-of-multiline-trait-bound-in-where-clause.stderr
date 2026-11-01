@@ -6,18 +6,6 @@ LL | fn foo<T>(foo: Wrapper<T>)
    |        |
    |        this type parameter needs to be `Sized`
    |
-note: required by an implicit `Sized` bound in `Wrapper`
-  --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
-   |
-LL | struct Wrapper<T>(T);
-   |                ^ required by the implicit `Sized` requirement on this type parameter in `Wrapper`
-help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
-  --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
-   |
-LL | struct Wrapper<T>(T);
-   |                ^  - ...if indirection were used here: `Box<T>`
-   |                |
-   |                this could be changed to `T: ?Sized`...
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - where
@@ -26,6 +14,18 @@ LL -     :
 LL -     ?
 LL -     Sized
    |
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
+   |
+LL | struct Wrapper<T>(T);
+   |                ^  - ...if indirection were used here: `Box<T>`
+   |                |
+   |                this could be changed to `T: ?Sized`...
+note: required by an implicit `Sized` bound in `Wrapper`
+  --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
+   |
+LL | struct Wrapper<T>(T);
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Wrapper`
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:14:16
@@ -35,11 +35,10 @@ LL | fn bar<T>(foo: Wrapper<T>)
    |        |
    |        this type parameter needs to be `Sized`
    |
-note: required by an implicit `Sized` bound in `Wrapper`
-  --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | struct Wrapper<T>(T);
-   |                ^ required by the implicit `Sized` requirement on this type parameter in `Wrapper`
+LL - where T: ?Sized
+   |
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
    |
@@ -47,10 +46,11 @@ LL | struct Wrapper<T>(T);
    |                ^  - ...if indirection were used here: `Box<T>`
    |                |
    |                this could be changed to `T: ?Sized`...
-help: consider removing the `?Sized` bound to make the type parameter `Sized`
+note: required by an implicit `Sized` bound in `Wrapper`
+  --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
    |
-LL - where T: ?Sized
-   |
+LL | struct Wrapper<T>(T);
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Wrapper`
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:21:16
@@ -60,11 +60,11 @@ LL | fn qux<T>(foo: Wrapper<T>)
    |        |
    |        this type parameter needs to be `Sized`
    |
-note: required by an implicit `Sized` bound in `Wrapper`
-  --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | struct Wrapper<T>(T);
-   |                ^ required by the implicit `Sized` requirement on this type parameter in `Wrapper`
+LL - where
+LL -     T: ?Sized
+   |
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
    |
@@ -72,11 +72,11 @@ LL | struct Wrapper<T>(T);
    |                ^  - ...if indirection were used here: `Box<T>`
    |                |
    |                this could be changed to `T: ?Sized`...
-help: consider removing the `?Sized` bound to make the type parameter `Sized`
+note: required by an implicit `Sized` bound in `Wrapper`
+  --> $DIR/removal-of-multiline-trait-bound-in-where-clause.rs:1:16
    |
-LL - where
-LL -     T: ?Sized
-   |
+LL | struct Wrapper<T>(T);
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Wrapper`
 
 error: aborting due to 3 previous errors
 

@@ -4,13 +4,13 @@ error: wrapping already buffered `Stdin` into a `BufReader`
 LL |     let reader = BufReader::new(a);
    |                  ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::bufreader-stdin` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::bufreader_stdin)]`
 help: instead of wrapping `Stdin` in `BufReader`, use the `lock` method directly
    |
 LL -     let reader = BufReader::new(a);
 LL +     let reader = a.lock();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::bufreader_stdin)]`
+   = note: `-D clippy::bufreader-stdin` implied by `-D warnings`
 
 error: wrapping already buffered `StdinLock` into a `BufReader`
   --> tests/ui/bufreader_stdin.rs:11:18

@@ -6,7 +6,6 @@ LL | #![warn(absolute_paths_not_starting_with_crate, reason = 0)]
    |                                                          |
    |                                                          expected a string literal here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #![warn(absolute_paths_not_starting_with_crate, reason = 0)]
@@ -18,6 +17,7 @@ LL + #![warn(lint1, lint2, ...)]
 LL - #![warn(absolute_paths_not_starting_with_crate, reason = 0)]
 LL + #![warn(lint1, lint2, lint3, reason = "...")]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 
 error[E0539]: malformed `warn` attribute input
   --> $DIR/reasons-erroneous.rs:7:4

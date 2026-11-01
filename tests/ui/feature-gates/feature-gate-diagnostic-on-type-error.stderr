@@ -4,8 +4,8 @@ warning: unknown diagnostic attribute
 LL | #[diagnostic::on_type_error(note = "custom on_type_error note: expected {expected}, found {found}")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this is an experimental diagnostic attribute
    = help: add `#![feature(diagnostic_on_type_error)]` to the crate attributes to enable
+   = note: this is an experimental diagnostic attribute
    = note: `#[warn(unknown_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 error[E0308]: mismatched types

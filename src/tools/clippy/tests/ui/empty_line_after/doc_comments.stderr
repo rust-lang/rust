@@ -7,8 +7,6 @@ LL | |
 LL |   fn first_in_crate() {}
    |   ----------------- the comment documents this function
    |
-   = note: `-D clippy::empty-line-after-doc-comments` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_doc_comments)]`
    = help: if the empty line is unintentional, remove it
 help: if the comment should document the crate use an inner doc comment
    |
@@ -16,6 +14,8 @@ LL ~ //! Meant to be an
 LL ~ //! inner doc comment
 LL ~ //! for the crate
    |
+   = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_doc_comments)]`
+   = note: `-D clippy::empty-line-after-doc-comments` implied by `-D warnings`
 
 error: empty line after doc comment
   --> tests/ui/empty_line_after/doc_comments.rs:15:5

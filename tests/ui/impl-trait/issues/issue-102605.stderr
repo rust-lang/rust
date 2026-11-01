@@ -14,15 +14,15 @@ LL |     convert_result(foo())
    |     |
    |     arguments to this function are incorrect
    |
+help: try wrapping the expression in `Err`
+   |
+LL |     convert_result(Err(foo()))
+   |                    ++++     +
 note: function defined here
   --> $DIR/issue-102605.rs:7:4
    |
 LL | fn convert_result<T, E>(r: Result<T, E>) -> Option<T> {
    |    ^^^^^^^^^^^^^^       ---------------
-help: try wrapping the expression in `Err`
-   |
-LL |     convert_result(Err(foo()))
-   |                    ++++     +
 
 error: aborting due to 2 previous errors
 

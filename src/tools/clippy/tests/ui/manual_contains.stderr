@@ -4,8 +4,8 @@ error: using `contains()` instead of `iter().any()` is more efficient
 LL |     let _ = values.iter().any(|&v| v == 4);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `values.contains(&4)`
    |
-   = note: `-D clippy::manual-contains` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_contains)]`
+   = note: `-D clippy::manual-contains` implied by `-D warnings`
 
 error: using `contains()` instead of `iter().any()` is more efficient
   --> tests/ui/manual_contains.rs:12:13

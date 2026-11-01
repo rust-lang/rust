@@ -4,8 +4,8 @@ error: redundant reference in `println!` argument
 LL |     println!("{}", &s);
    |                    ^^ help: remove the redundant `&`: `s`
    |
-   = note: `-D clippy::useless-borrows-in-formatting` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::useless_borrows_in_formatting)]`
+   = note: `-D clippy::useless-borrows-in-formatting` implied by `-D warnings`
 
 error: redundant reference in `println!` argument
   --> tests/ui/useless_borrows_in_formatting.rs:9:22

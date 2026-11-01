@@ -9,11 +9,11 @@ LL |         enum Foo<B> {
 LL |             Variance(A)
    |                      ^ use of generic parameter from outer item
    |
-   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |         enum Foo<A, B> {
    |                  ++
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/resolve-type-param-in-item-in-trait.rs:16:23
@@ -26,11 +26,11 @@ LL |         struct Foo<B>(A);
    |                |
    |                generic parameter used in this inner struct
    |
-   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |         struct Foo<A, B>(A);
    |                    ++
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/resolve-type-param-in-item-in-trait.rs:23:28
@@ -43,11 +43,11 @@ LL |         struct Foo<B> { a: A }
    |                |
    |                generic parameter used in this inner struct
    |
-   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |         struct Foo<A, B> { a: A }
    |                    ++
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/resolve-type-param-in-item-in-trait.rs:30:22
@@ -60,11 +60,11 @@ LL |         fn foo<B>(a: A) { }
    |            |
    |            generic parameter used in this inner function
    |
-   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |         fn foo<A, B>(a: A) { }
    |                ++
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 
 error: aborting due to 4 previous errors
 

@@ -4,9 +4,9 @@ error[E0462]: found staticlib `found_staticlib` instead of rlib or dylib
 LL | extern crate found_staticlib;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: please recompile that crate using --crate-type lib
    = note: the following crate versions were found:
            crate `found_staticlib`: $TEST_BUILD_DIR/auxiliary/libfound_staticlib.somelib
-   = help: please recompile that crate using --crate-type lib
 
 error: aborting due to 1 previous error
 

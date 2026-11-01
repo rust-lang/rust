@@ -8,10 +8,10 @@ LL |     fun(async {}, async {});
    |     |   expected all arguments to be this `async` block type because they need to match the type of this parameter
    |     arguments to this function are incorrect
    |
+   = help: consider pinning your async block and casting it to a trait object
    = note: expected `async` block `{async block@$DIR/coroutine-desc.rs:9:9: 9:14}`
               found `async` block `{async block@$DIR/coroutine-desc.rs:9:19: 9:24}`
    = note: no two async blocks, even if identical, have the same type
-   = help: consider pinning your async block and casting it to a trait object
 note: function defined here
   --> $DIR/coroutine-desc.rs:7:4
    |
@@ -50,10 +50,10 @@ LL |     fun((async || {})(), (async || {})());
    |     |   expected all arguments to be this `async` closure body type because they need to match the type of this parameter
    |     arguments to this function are incorrect
    |
+   = help: consider pinning your async block and casting it to a trait object
    = note: expected `async` closure body `{async closure body@$DIR/coroutine-desc.rs:13:19: 13:21}`
               found `async` closure body `{async closure body@$DIR/coroutine-desc.rs:13:36: 13:38}`
    = note: no two async blocks, even if identical, have the same type
-   = help: consider pinning your async block and casting it to a trait object
 note: function defined here
   --> $DIR/coroutine-desc.rs:7:4
    |

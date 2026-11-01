@@ -4,8 +4,8 @@ warning: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsig
 LL |     A = i64::MIN as isize,
    |     ^
    |
-   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
    = note: `#[warn(repr_c_enums_larger_than_int)]` (part of `#[warn(future_incompatible)]`) on by default
@@ -16,8 +16,8 @@ warning: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsig
 LL |     B = i64::MIN as isize + 1,
    |     ^
    |
-   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
 
@@ -27,8 +27,8 @@ warning: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsig
 LL |     A = i64::MAX as isize - 1,
    |     ^
    |
-   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
 
@@ -38,8 +38,8 @@ warning: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsig
 LL |     B = i64::MAX as isize,
    |     ^
    |
-   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
 

@@ -4,8 +4,8 @@ error: hypotenuse can be computed more accurately
 LL |     let _ = (x * x + y * y).sqrt();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.hypot(y)`
    |
-   = note: `-D clippy::imprecise-flops` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::imprecise_flops)]`
+   = note: `-D clippy::imprecise-flops` implied by `-D warnings`
 
 error: hypotenuse can be computed more accurately
   --> tests/ui/floating_point_hypot.rs:24:13

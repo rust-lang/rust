@@ -20,8 +20,8 @@ error[E0658]: `!` patterns are experimental
 LL |     let (Ok(_x) | Err(&!)) = res.as_ref();
    |                        ^
    |
-   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `!` patterns are experimental
@@ -30,8 +30,8 @@ error[E0658]: `!` patterns are experimental
 LL |             !
    |             ^
    |
-   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `!` patterns are experimental
@@ -40,8 +40,8 @@ error[E0658]: `!` patterns are experimental
 LL |             !
    |             ^
    |
-   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `!` patterns are experimental
@@ -50,8 +50,8 @@ error[E0658]: `!` patterns are experimental
 LL |             ! => {}
    |             ^
    |
-   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `match` arm with no body
@@ -93,8 +93,8 @@ error[E0658]: `!` patterns are experimental
 LL |         Err(!),
    |             ^
    |
-   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `!` patterns are experimental
@@ -103,8 +103,8 @@ error[E0658]: `!` patterns are experimental
 LL |         Err(!) if false,
    |             ^
    |
-   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `match` arm with no body

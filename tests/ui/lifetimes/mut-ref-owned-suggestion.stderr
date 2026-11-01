@@ -39,7 +39,6 @@ LL | fn with_fn_has_return(_f: impl Fn() -> &mut ()) -> i32 {
    |                                        ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
    |
 LL | fn with_fn_has_return(_f: impl Fn() -> &'static mut ()) -> i32 {
@@ -54,6 +53,7 @@ help: consider introducing a named lifetime parameter
 LL - fn with_fn_has_return(_f: impl Fn() -> &mut ()) -> i32 {
 LL + fn with_fn_has_return<'a>(_f: impl Fn() -> &'a ()) -> i32 {
    |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: alternatively, you might want to return an owned value
    |
 LL - fn with_fn_has_return(_f: impl Fn() -> &mut ()) -> i32 {

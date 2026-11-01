@@ -4,8 +4,8 @@ error: this pattern matching can be expressed using equality
 LL |     if let 2 = a {}
    |        ^^^^^^^^^ help: try: `a == 2`
    |
-   = note: `-D clippy::equatable-if-let` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::equatable_if_let)]`
+   = note: `-D clippy::equatable-if-let` implied by `-D warnings`
 
 error: this pattern matching can be expressed using equality
   --> tests/ui/equatable_if_let.rs:57:8

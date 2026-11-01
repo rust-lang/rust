@@ -6,12 +6,12 @@ LL | fn bar(x: usize) -> Option<usize> {
 LL |     return x;
    |            ^ expected `Option<usize>`, found `usize`
    |
-   = note: expected enum `Option<usize>`
-              found type `usize`
 help: try wrapping the expression in `Some`
    |
 LL |     return Some(x);
    |            +++++ +
+   = note: expected enum `Option<usize>`
+              found type `usize`
 
 error: aborting due to 1 previous error
 

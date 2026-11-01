@@ -4,8 +4,8 @@ warning: unexpected `cfg` condition value: `serde`
 LL | #[cfg(feature = "serde")]
    |       ^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `feature` are: `bitcode`
    = help: consider adding `serde` as a feature in `Cargo.toml`
+   = note: expected values for `feature` are: `bitcode`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
 
@@ -15,8 +15,8 @@ warning: unexpected `cfg` condition value: (none)
 LL | #[cfg(feature)]
    |       ^^^^^^^- help: specify a config value: `= "bitcode"`
    |
-   = note: expected values for `feature` are: `bitcode`
    = help: consider defining some features in `Cargo.toml`
+   = note: expected values for `feature` are: `bitcode`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `tokio_unstable`
@@ -41,8 +41,8 @@ LL | #[cfg(CONFIG_NVME = "m")]
    |                     |
    |                     help: there is a expected value with a similar name: `"y"`
    |
-   = note: expected values for `CONFIG_NVME` are: `y`
    = help: consider using a Cargo feature instead
+   = note: expected values for `CONFIG_NVME` are: `y`
    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
             [lints.rust]
             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(CONFIG_NVME, values("m"))'] }

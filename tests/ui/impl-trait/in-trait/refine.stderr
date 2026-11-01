@@ -7,6 +7,11 @@ LL |     fn bar() -> impl Sized;
 LL |     fn bar() -> impl Copy {}
    |                      ^^^^ this bound is stronger than that defined on the trait
    |
+help: replace the return type so that it matches the trait
+   |
+LL -     fn bar() -> impl Copy {}
+LL +     fn bar() -> impl Sized {}
+   |
    = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
    = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 note: the lint level is defined here
@@ -15,11 +20,6 @@ note: the lint level is defined here
 LL | #![deny(refining_impl_trait)]
    |         ^^^^^^^^^^^^^^^^^^^
    = note: `#[deny(refining_impl_trait_reachable)]` implied by `#[deny(refining_impl_trait)]`
-help: replace the return type so that it matches the trait
-   |
-LL -     fn bar() -> impl Copy {}
-LL +     fn bar() -> impl Sized {}
-   |
 
 error: impl trait in impl method signature does not match trait method signature
   --> $DIR/refine.rs:15:5
@@ -30,12 +30,12 @@ LL |     fn bar() -> impl Sized;
 LL |     fn bar() {}
    |     ^^^^^^^^
    |
-   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
-   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 help: replace the return type so that it matches the trait
    |
 LL |     fn bar()-> impl Sized  {}
    |             +++++++++++++
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 
 error: impl trait in impl method signature does not match trait method signature
   --> $DIR/refine.rs:21:17
@@ -46,13 +46,13 @@ LL |     fn bar() -> impl Sized;
 LL |     fn bar() -> () {}
    |                 ^^
    |
-   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
-   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 help: replace the return type so that it matches the trait
    |
 LL -     fn bar() -> () {}
 LL +     fn bar() -> impl Sized {}
    |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 
 error: impl trait in impl method signature does not match trait method signature
   --> $DIR/refine.rs:27:17
@@ -63,14 +63,14 @@ LL |     fn bar() -> impl Sized;
 LL |     fn bar() -> () {}
    |                 ^^
    |
-   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
-   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
-   = note: `#[deny(refining_impl_trait_internal)]` implied by `#[deny(refining_impl_trait)]`
 help: replace the return type so that it matches the trait
    |
 LL -     fn bar() -> () {}
 LL +     fn bar() -> impl Sized {}
    |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+   = note: `#[deny(refining_impl_trait_internal)]` implied by `#[deny(refining_impl_trait)]`
 
 error: impl trait in impl method signature does not match trait method signature
   --> $DIR/refine.rs:35:17
@@ -81,13 +81,13 @@ LL |     fn bar() -> impl Sized;
 LL |     fn bar() -> () {}
    |                 ^^
    |
-   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
-   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 help: replace the return type so that it matches the trait
    |
 LL -     fn bar() -> () {}
 LL +     fn bar() -> impl Sized {}
    |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 
 error: impl trait in impl method signature does not match trait method signature
   --> $DIR/refine.rs:45:27
@@ -98,13 +98,13 @@ LL |     fn bar<'a>(&'a self) -> impl Sized + 'a;
 LL |     fn bar(&self) -> impl Copy + '_ {}
    |                           ^^^^ this bound is stronger than that defined on the trait
    |
-   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
-   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 help: replace the return type so that it matches the trait
    |
 LL -     fn bar(&self) -> impl Copy + '_ {}
 LL +     fn bar(&self) -> impl Sized + '_ {}
    |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 
 error: impl trait in impl method signature does not match trait method signature
   --> $DIR/refine.rs:56:9
@@ -115,12 +115,12 @@ LL |         fn bar() -> impl Sized;
 LL |         fn bar() {}
    |         ^^^^^^^^
    |
-   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
-   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 help: replace the return type so that it matches the trait
    |
 LL |         fn bar()-> impl Sized  {}
    |                 +++++++++++++
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 
 error: aborting due to 7 previous errors
 

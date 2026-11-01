@@ -4,8 +4,8 @@ error: you are iterating over `Iterator::next()` which is an Option; this will c
 LL |     for _ in x.iter().next() {}
    |              ^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::iter-next-loop` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_next_loop)]`
+   = note: `-D clippy::iter-next-loop` implied by `-D warnings`
 
 error: you are iterating over `Iterator::next()` which is an Option; this will compile but is probably not what you want
   --> tests/ui/iter_next_loop.rs:26:14

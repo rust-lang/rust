@@ -4,6 +4,10 @@ error[E0005]: refutable pattern in local binding
 LL |     let Thing::Foo(y) = Thing::Foo(1);
    |         ^^^^^^^^^^^^^ patterns `Thing::Bar` and `Thing::Baz` not covered
    |
+help: you might want to use `let...else` to handle the variants that aren't matched
+   |
+LL |     let Thing::Foo(y) = Thing::Foo(1) else { todo!() };
+   |                                       ++++++++++++++++
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `Thing` defined here
@@ -17,10 +21,6 @@ LL |     Bar,
 LL |     Baz
    |     --- not covered
    = note: the matched value is of type `Thing`
-help: you might want to use `let...else` to handle the variants that aren't matched
-   |
-LL |     let Thing::Foo(y) = Thing::Foo(1) else { todo!() };
-   |                                       ++++++++++++++++
 
 error: aborting due to 1 previous error
 

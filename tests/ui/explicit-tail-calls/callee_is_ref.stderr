@@ -4,11 +4,11 @@ error: tail calls can only be performed with function definitions or pointers
 LL |     become (&f)()
    |            ^^^^^^
    |
-   = note: callee has type `&fn() {f}`
 help: consider dereferencing the expression to get a function definition
    |
 LL |     become (*(&f))()
    |            ++    +
+   = note: callee has type `&fn() {f}`
 
 error: tail calls can only be performed with function definitions or pointers
   --> $DIR/callee_is_ref.rs:14:16
@@ -16,11 +16,11 @@ error: tail calls can only be performed with function definitions or pointers
 LL |         become fun();
    |                ^^^^^
    |
-   = note: callee has type `&fn()`
 help: consider dereferencing the expression to get a function pointer
    |
 LL |         become (*fun)();
    |                ++   +
+   = note: callee has type `&fn()`
 
 error: tail calls can only be performed with function definitions or pointers
   --> $DIR/callee_is_ref.rs:19:12
@@ -28,11 +28,11 @@ error: tail calls can only be performed with function definitions or pointers
 LL |     become Box::new(&mut &f)();
    |            ^^^^^^^^^^^^^^^^^^^
    |
-   = note: callee has type `Box<&mut &fn() {f}>`
 help: consider dereferencing the expression to get a function definition
    |
 LL |     become (***Box::new(&mut &f))();
    |            ++++                 +
+   = note: callee has type `Box<&mut &fn() {f}>`
 
 error: aborting due to 3 previous errors
 

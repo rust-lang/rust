@@ -6,13 +6,13 @@ LL | fn main() {
 LL |     &panic!()
    |     ^^^^^^^^^ expected `()`, found `&_`
    |
-   = note: expected unit type `()`
-              found reference `&_`
 help: consider removing the borrow
    |
 LL -     &panic!()
 LL +     panic!()
    |
+   = note: expected unit type `()`
+              found reference `&_`
 
 error: aborting due to 1 previous error
 

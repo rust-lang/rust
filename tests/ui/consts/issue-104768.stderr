@@ -6,12 +6,12 @@ LL | const A: &_ = 0_u32;
    |          |
    |          expected because of the type of the constant
    |
-   = note: expected reference `&'static _`
-                   found type `u32`
 help: consider borrowing here
    |
 LL | const A: &_ = &0_u32;
    |               +
+   = note: expected reference `&'static _`
+                   found type `u32`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/issue-104768.rs:1:11

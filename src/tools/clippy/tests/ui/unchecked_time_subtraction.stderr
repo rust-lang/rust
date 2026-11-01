@@ -4,8 +4,8 @@ error: unchecked subtraction of a `Duration`
 LL |     let _ = _first - second;
    |             ^^^^^^^^^^^^^^^ help: try: `_first.checked_sub(second).unwrap()`
    |
-   = note: `-D clippy::unchecked-time-subtraction` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unchecked_time_subtraction)]`
+   = note: `-D clippy::unchecked-time-subtraction` implied by `-D warnings`
 
 error: unchecked subtraction of a `Duration`
   --> tests/ui/unchecked_time_subtraction.rs:12:13

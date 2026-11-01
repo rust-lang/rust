@@ -4,8 +4,8 @@ error: doc paragraphs should end with a terminal punctuation mark
 LL |     /// But it may still be missing punctuation 😢
    |                                                   ^ help: end the paragraph with some punctuation: `.`
    |
-   = note: `-D clippy::doc-paragraphs-missing-punctuation` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::doc_paragraphs_missing_punctuation)]`
+   = note: `-D clippy::doc-paragraphs-missing-punctuation` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

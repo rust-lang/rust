@@ -7,13 +7,13 @@ LL | |         do_something();
 LL | |     }
    | |_____^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
-   = note: `-D clippy::infinite-loop` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::infinite_loop)]`
 help: if this is intentional, consider specifying `!` as function return
    |
 LL | fn no_break() -> ! {
    |               ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
+   = help: to override `-D warnings` add `#[allow(clippy::infinite_loop)]`
+   = note: `-D clippy::infinite-loop` implied by `-D warnings`
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:21:5
@@ -26,11 +26,11 @@ LL | |         do_something();
 LL | |     }
    | |_____^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL | fn all_inf() -> ! {
    |              ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:23:9
@@ -42,11 +42,11 @@ LL | |             loop {
 LL | |         }
    | |_________^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL | fn all_inf() -> ! {
    |              ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:25:13
@@ -57,11 +57,11 @@ LL | |                 do_something();
 LL | |             }
    | |_____________^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL | fn all_inf() -> ! {
    |              ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:39:5
@@ -86,11 +86,11 @@ LL | |         do_something();
 LL | |     }
    | |_____^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL | fn no_break_never_ret_noise() -> ! {
    |                               ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:96:5
@@ -103,11 +103,11 @@ LL | |             if cond {
 LL | |     }
    | |_____^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL | fn break_inner_but_not_outer_1(cond: bool) -> ! {
    |                                            ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:107:5
@@ -120,11 +120,11 @@ LL | |             loop {
 LL | |     }
    | |_____^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL | fn break_inner_but_not_outer_2(cond: bool) -> ! {
    |                                            ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:121:9
@@ -197,11 +197,11 @@ LL | |             do_something();
 LL | |         }
    | |_________^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL |     fn problematic_trait_method() -> ! {
    |                                   ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:345:9
@@ -212,11 +212,11 @@ LL | |             do_something();
 LL | |         }
    | |_________^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL |     fn could_be_problematic() -> ! {
    |                               ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:354:9
@@ -227,11 +227,11 @@ LL | |             do_something();
 LL | |         }
    | |_________^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL |     let _loop_forever = || -> ! {
    |                            ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:368:8
@@ -256,11 +256,11 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL | fn continue_outer() -> ! {
    |                     ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:418:5
@@ -272,11 +272,11 @@ LL | |         'inner: loop {
 LL | |     }
    | |_____^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL | fn continue_outer() -> ! {
    |                     ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:420:9
@@ -289,11 +289,11 @@ LL | |             }
 LL | |         }
    | |_________^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL | fn continue_outer() -> ! {
    |                     ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:429:5
@@ -304,11 +304,11 @@ LL | |         continue;
 LL | |     }
    | |_____^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL | fn continue_outer() -> ! {
    |                     ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:460:13
@@ -380,11 +380,11 @@ error: infinite loop detected
 LL |             loop {}
    |             ^^^^^^^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL |     fn all_branches_diverge_if(cond: bool) -> ! {
    |                                            ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:580:13
@@ -392,11 +392,11 @@ error: infinite loop detected
 LL |             loop {}
    |             ^^^^^^^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL |     fn all_branches_diverge_if(cond: bool) -> ! {
    |                                            ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:587:24
@@ -404,11 +404,11 @@ error: infinite loop detected
 LL |             Some(_) => loop {},
    |                        ^^^^^^^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL |     fn all_branches_diverge_match(x: Option<i32>) -> ! {
    |                                                   ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: infinite loop detected
   --> tests/ui/infinite_loops.rs:588:21
@@ -416,11 +416,11 @@ error: infinite loop detected
 LL |             None => loop {},
    |                     ^^^^^^^
    |
-   = help: if this is not intended, try adding a `break` or `return` to the loop
 help: if this is intentional, consider specifying `!` as function return
    |
 LL |     fn all_branches_diverge_match(x: Option<i32>) -> ! {
    |                                                   ++++
+   = help: if this is not intended, try adding a `break` or `return` to the loop
 
 error: aborting due to 32 previous errors
 

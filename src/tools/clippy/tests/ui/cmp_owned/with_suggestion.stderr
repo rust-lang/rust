@@ -4,8 +4,8 @@ error: this creates an owned instance just for comparison
 LL |         x != "foo".to_string();
    |              ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
    |
-   = note: `-D clippy::cmp-owned` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
+   = note: `-D clippy::cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
   --> tests/ui/cmp_owned/with_suggestion.rs:8:9

@@ -4,8 +4,8 @@ error: arithmetic operation that can potentially result in unexpected side-effec
 LL |     let _ = Baz + Baz;
    |             ^^^^^^^^^
    |
-   = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::arithmetic_side_effects)]`
+   = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
 
 error: arithmetic operation that can potentially result in unexpected side-effects
   --> tests/ui-toml/arithmetic_side_effects_allowed/arithmetic_side_effects_allowed.rs:81:13

@@ -4,8 +4,8 @@ error: unnecessary struct building
 LL |         Self { ..*self }
    |         ^^^^^^^^^^^^^^^^ help: replace with: `*self`
    |
-   = note: `-D clippy::unnecessary-struct-initialization` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_struct_initialization)]`
+   = note: `-D clippy::unnecessary-struct-initialization` implied by `-D warnings`
 
 error: unnecessary struct building
   --> tests/ui/unnecessary_struct_initialization.rs:45:17

@@ -4,8 +4,8 @@ error: identifier `カウンタ` has a Unicode script that is not allowed by con
 LL |     let カウンタ = 10;
    |         ^^^^^^^^
    |
-   = note: `-D clippy::disallowed-script-idents` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::disallowed_script_idents)]`
+   = note: `-D clippy::disallowed-script-idents` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

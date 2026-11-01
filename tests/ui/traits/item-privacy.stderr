@@ -75,16 +75,16 @@ LL |     S::b(&S);
    |        ^ associated function or constant not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
+help: trait `B` which provides `b` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use crate::method::B;
+   |
 help: there is an associated constant `B` with a similar name
   --> $DIR/item-privacy.rs:30:9
    |
 LL |     pub trait B {
 LL |         const B: u8 = 0;
    |         ^^^^^^^^^^^
-help: trait `B` which provides `b` is implemented but not in scope; perhaps you want to import it
-   |
-LL + use crate::method::B;
-   |
 
 error[E0624]: method `a` is private
   --> $DIR/item-privacy.rs:85:14
@@ -122,16 +122,16 @@ LL |     S::B;
    |        ^ associated function or constant not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
+help: trait `B` which provides `B` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use crate::assoc_const::B;
+   |
 help: there is a method `b` with a similar name
   --> $DIR/item-privacy.rs:12:9
    |
 LL |     pub trait B {
 LL |         fn b(&self) { }
    |         ^^^^^^^^^^^
-help: trait `B` which provides `B` is implemented but not in scope; perhaps you want to import it
-   |
-LL + use crate::assoc_const::B;
-   |
 
 error[E0038]: the trait `assoc_const::C` is not dyn compatible
   --> $DIR/item-privacy.rs:102:10
@@ -139,6 +139,7 @@ error[E0038]: the trait `assoc_const::C` is not dyn compatible
 LL |     <dyn C>::A;
    |          ^ `assoc_const::C` is not dyn compatible
    |
+   = help: consider moving `A` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/item-privacy.rs:26:15
@@ -153,7 +154,6 @@ LL |     pub trait C: A + B {
    |               - this trait is not dyn compatible...
 LL |         const C: u8 = 0;
    |               ^ ...because it contains associated const `C`
-   = help: consider moving `A` to another trait
    = help: consider moving `B` to another trait
    = help: consider moving `C` to another trait
    = help: only type `S` implements `assoc_const::C`; consider using it directly instead.
@@ -164,6 +164,7 @@ error[E0038]: the trait `assoc_const::C` is not dyn compatible
 LL |     <dyn C>::B;
    |          ^ `assoc_const::C` is not dyn compatible
    |
+   = help: consider moving `A` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/item-privacy.rs:26:15
@@ -178,7 +179,6 @@ LL |     pub trait C: A + B {
    |               - this trait is not dyn compatible...
 LL |         const C: u8 = 0;
    |               ^ ...because it contains associated const `C`
-   = help: consider moving `A` to another trait
    = help: consider moving `B` to another trait
    = help: consider moving `C` to another trait
    = help: only type `S` implements `assoc_const::C`; consider using it directly instead.

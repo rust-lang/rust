@@ -6,8 +6,8 @@ LL |       #[inline]
 LL | |
    | |____- help: remove
    |
-   = note: `-D clippy::inline-fn-without-body` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::inline_fn_without_body)]`
+   = note: `-D clippy::inline-fn-without-body` implied by `-D warnings`
 
 error: use of `#[inline]` on trait method `always_inline` which has no body
   --> tests/ui/inline_fn_without_body.rs:8:5

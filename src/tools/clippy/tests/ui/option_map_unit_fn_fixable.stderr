@@ -4,13 +4,13 @@ error: called `map(f)` on an `Option` value where `f` is a function that returns
 LL |     x.field.map(do_nothing);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::option-map-unit-fn` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::option_map_unit_fn)]`
 help: use `if let` instead
    |
 LL -     x.field.map(do_nothing);
 LL +     if let Some(x_field) = x.field { do_nothing(x_field) }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::option_map_unit_fn)]`
+   = note: `-D clippy::option-map-unit-fn` implied by `-D warnings`
 
 error: called `map(f)` on an `Option` value where `f` is a function that returns the unit type `()`
   --> tests/ui/option_map_unit_fn_fixable.rs:39:5

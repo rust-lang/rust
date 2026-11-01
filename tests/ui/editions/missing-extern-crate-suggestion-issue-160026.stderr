@@ -4,11 +4,11 @@ error[E0432]: unresolved import `dep`
 LL | pub use dep::item;
    |         ^^^ use of unresolved module or unlinked crate `dep`
    |
-   = help: if you're trying to use a dependency named `dep`, upgrade your edition to be able to reference it with a `use` declaration
 help: on Rust 2015, `extern crate` is required to specify a dependency on an external crate
    |
 LL + extern crate dep;
    |
+   = help: if you're trying to use a dependency named `dep`, upgrade your edition to be able to reference it with a `use` declaration
 
 error: aborting due to 1 previous error
 

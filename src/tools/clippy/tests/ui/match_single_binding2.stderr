@@ -8,8 +8,6 @@ LL | |                 (min, max) => (min.saturating_add(1), max.and_then(|max| 
 LL | |             },
    | |_____________^
    |
-   = note: `-D clippy::match-single-binding` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::match_single_binding)]`
 help: consider using a `let` statement
    |
 LL ~             Some((iter, _item)) => {
@@ -17,6 +15,8 @@ LL +                 let (min, max) = iter.size_hint();
 LL +                 (min.saturating_add(1), max.and_then(|max| max.checked_add(1)))
 LL ~             },
    |
+   = help: to override `-D warnings` add `#[allow(clippy::match_single_binding)]`
+   = note: `-D clippy::match-single-binding` implied by `-D warnings`
 
 error: this match could be written as a `let` statement
   --> tests/ui/match_single_binding2.rs:28:13

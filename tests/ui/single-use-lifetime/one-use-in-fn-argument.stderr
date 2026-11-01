@@ -6,16 +6,16 @@ LL | fn a<'a>(x: &'a u32) {
    |      |
    |      this lifetime...
    |
-note: the lint level is defined here
-  --> $DIR/one-use-in-fn-argument.rs:1:9
-   |
-LL | #![deny(single_use_lifetimes)]
-   |         ^^^^^^^^^^^^^^^^^^^^
 help: elide the single-use lifetime
    |
 LL - fn a<'a>(x: &'a u32) {
 LL + fn a(x: &u32) {
    |
+note: the lint level is defined here
+  --> $DIR/one-use-in-fn-argument.rs:1:9
+   |
+LL | #![deny(single_use_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^^^^^
 
 error: lifetime parameter `'m` only used once
   --> $DIR/one-use-in-fn-argument.rs:15:11

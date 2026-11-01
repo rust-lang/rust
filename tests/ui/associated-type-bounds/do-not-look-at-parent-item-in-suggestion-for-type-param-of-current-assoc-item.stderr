@@ -6,9 +6,9 @@ LL |         let _low = self.lows.remove(low.identify()).unwrap();
    |                              |
    |                              arguments to this method are incorrect
    |
+   = help: consider constraining the associated type `<impl LowT as Identify>::Id` to `&I`
    = note:    expected reference `&I`
            found associated type `<impl LowT as Identify>::Id`
-   = help: consider constraining the associated type `<impl LowT as Identify>::Id` to `&I`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: method defined here
   --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL

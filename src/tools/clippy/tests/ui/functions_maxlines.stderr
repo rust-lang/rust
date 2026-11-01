@@ -4,8 +4,8 @@ error: this function has too many lines (104/100)
 LL | pub async unsafe extern "Rust" fn bad_lines() -> () {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::too-many-lines` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::too_many_lines)]`
+   = note: `-D clippy::too-many-lines` implied by `-D warnings`
 
 error: this function has too many lines (104/100)
   --> tests/ui/functions_maxlines.rs:170:5

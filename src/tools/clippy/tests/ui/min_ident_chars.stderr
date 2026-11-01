@@ -4,8 +4,8 @@ error: this identifier consists of only a single character
 LL | struct A {
    |        ^
    |
-   = note: `-D clippy::min-ident-chars` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::min_ident_chars)]`
+   = note: `-D clippy::min-ident-chars` implied by `-D warnings`
 
 error: this identifier consists of only a single character
   --> tests/ui/min_ident_chars.rs:11:5

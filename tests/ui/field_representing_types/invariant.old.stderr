@@ -10,9 +10,9 @@ LL |     consume(x, y);
    |     ^^^^^^^^^^^^^ argument requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the type `field_of!(Struct<'_>, field)`, which makes the generic argument `Struct<'_>` invariant
    = note: the struct `FieldRepresentingType<T, VARIANT, FIELD>` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/invariant.rs:17:5
@@ -26,9 +26,9 @@ LL |     consume(x, y);
    |     ^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the type `field_of!(Struct<'_>, field)`, which makes the generic argument `Struct<'_>` invariant
    = note: the struct `FieldRepresentingType<T, VARIANT, FIELD>` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: one or more lifetime errors were found in this item
   --> $DIR/invariant.rs:15:4

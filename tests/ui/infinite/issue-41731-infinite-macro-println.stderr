@@ -34,11 +34,11 @@ LL |             println!(stack!($overflow))
 LL |     stack!("overflow");
    |     ------------------ in this macro invocation
    |
-   = note: this error originates in the macro `println` which comes from the expansion of the macro `stack` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you might be missing a string literal to format with
    |
 LL |             println!("{}", stack!($overflow))
    |                      +++++
+   = note: this error originates in the macro `println` which comes from the expansion of the macro `stack` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

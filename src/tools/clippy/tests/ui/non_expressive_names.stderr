@@ -4,8 +4,8 @@ error: consider choosing a more descriptive name
 LL |     let _1 = 1;
    |         ^^
    |
-   = note: `-D clippy::just-underscores-and-digits` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::just_underscores_and_digits)]`
+   = note: `-D clippy::just-underscores-and-digits` implied by `-D warnings`
 
 error: consider choosing a more descriptive name
   --> tests/ui/non_expressive_names.rs:30:9

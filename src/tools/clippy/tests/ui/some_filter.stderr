@@ -4,14 +4,14 @@ error: use of `Some(x).filter(|_| predicate)`
 LL |     let _ = Some(0).filter(|_| false);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this change will alter the order in which the condition and the value are evaluated
-   = note: `-D clippy::some-filter` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::some_filter)]`
 help: consider using `bool::then_some` instead
    |
 LL -     let _ = Some(0).filter(|_| false);
 LL +     let _ = false.then_some(0);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::some_filter)]`
+   = note: this change will alter the order in which the condition and the value are evaluated
+   = note: `-D clippy::some-filter` implied by `-D warnings`
 
 error: use of `Some(x).filter(|_| predicate)`
   --> tests/ui/some_filter.rs:28:13
@@ -19,12 +19,12 @@ error: use of `Some(x).filter(|_| predicate)`
 LL |     let _ = Some(0).filter(|_| false);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this change will alter the order in which the condition and the value are evaluated
 help: consider using `bool::then_some` instead
    |
 LL -     let _ = Some(0).filter(|_| false);
 LL +     let _ = false.then_some(0);
    |
+   = note: this change will alter the order in which the condition and the value are evaluated
 
 error: use of `Some(x).filter(|_| predicate)`
   --> tests/ui/some_filter.rs:32:13
@@ -32,12 +32,12 @@ error: use of `Some(x).filter(|_| predicate)`
 LL |     let _ = Some(0).filter(|_| 1 == 0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this change will alter the order in which the condition and the value are evaluated
 help: consider using `bool::then_some` instead
    |
 LL -     let _ = Some(0).filter(|_| 1 == 0);
 LL +     let _ = (1 == 0).then_some(0);
    |
+   = note: this change will alter the order in which the condition and the value are evaluated
 
 error: use of `Some(x).filter(|_| predicate)`
   --> tests/ui/some_filter.rs:35:13
@@ -51,7 +51,6 @@ LL | |         _ => true,
 LL | |     });
    | |______^
    |
-   = note: this change will alter the order in which the condition and the value are evaluated
 help: consider using `bool::then_some` instead
    |
 LL ~     let _ = match 0 {
@@ -61,6 +60,7 @@ LL +         1 => true,
 LL +         _ => true,
 LL ~     }.then_some(0);
    |
+   = note: this change will alter the order in which the condition and the value are evaluated
 
 error: use of `Some(x).filter(|_| predicate)`
   --> tests/ui/some_filter.rs:48:24
@@ -68,12 +68,12 @@ error: use of `Some(x).filter(|_| predicate)`
 LL |     let _ = unchanged!(Some(0).filter(|_| false));
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this change will alter the order in which the condition and the value are evaluated
 help: consider using `bool::then_some` instead
    |
 LL -     let _ = unchanged!(Some(0).filter(|_| false));
 LL +     let _ = unchanged!(false.then_some(0));
    |
+   = note: this change will alter the order in which the condition and the value are evaluated
 
 error: use of `Some(x).filter(|_| predicate)`
   --> tests/ui/some_filter.rs:50:13
@@ -81,12 +81,12 @@ error: use of `Some(x).filter(|_| predicate)`
 LL |     let _ = Some(0).filter(|_| vec![false].is_empty());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this change will alter the order in which the condition and the value are evaluated
 help: consider using `bool::then_some` instead
    |
 LL -     let _ = Some(0).filter(|_| vec![false].is_empty());
 LL +     let _ = vec![false].is_empty().then_some(0);
    |
+   = note: this change will alter the order in which the condition and the value are evaluated
 
 error: use of `Some(x).filter(|_| predicate)`
   --> tests/ui/some_filter.rs:55:13
@@ -94,12 +94,12 @@ error: use of `Some(x).filter(|_| predicate)`
 LL |     let _ = Some(0).filter(|_| condition!(false));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this change will alter the order in which the condition and the value are evaluated
 help: consider using `bool::then_some` instead
    |
 LL -     let _ = Some(0).filter(|_| condition!(false));
 LL +     let _ = condition!(false).then_some(0);
    |
+   = note: this change will alter the order in which the condition and the value are evaluated
 
 error: use of `Some(x).filter(|_| predicate)`
   --> tests/ui/some_filter.rs:58:5
@@ -111,7 +111,6 @@ LL | |     ))
 LL | |     .filter(|_| 1 == 0);
    | |_______________________^
    |
-   = note: this change will alter the order in which the condition and the value are evaluated
 help: consider using `bool::then_some` instead
    |
 LL ~     (1 == 0).then_some(String::from(
@@ -119,6 +118,7 @@ LL +
 LL +         "looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong",
 LL ~     ));
    |
+   = note: this change will alter the order in which the condition and the value are evaluated
 
 error: use of `Some(x).filter(|_| predicate)`
   --> tests/ui/some_filter.rs:63:5
@@ -129,7 +129,6 @@ LL | |         "looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 LL | |     });
    | |______^
    |
-   = note: this change will alter the order in which the condition and the value are evaluated
 help: consider using `bool::then_some` instead
    |
 LL ~     {
@@ -137,6 +136,7 @@ LL +
 LL +         "looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong".is_empty()
 LL ~     }.then_some(5);
    |
+   = note: this change will alter the order in which the condition and the value are evaluated
 
 error: use of `Some(x).filter(|_| predicate)`
   --> tests/ui/some_filter.rs:67:5
@@ -150,7 +150,6 @@ LL | |         "looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 LL | |     });
    | |______^
    |
-   = note: this change will alter the order in which the condition and the value are evaluated
 help: consider using `bool::then_some` instead
    |
 LL ~     "looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong".is_empty().then_some(String::from(
@@ -158,6 +157,7 @@ LL +
 LL +         "looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong",
 LL ~     ));
    |
+   = note: this change will alter the order in which the condition and the value are evaluated
 
 error: aborting due to 10 previous errors
 

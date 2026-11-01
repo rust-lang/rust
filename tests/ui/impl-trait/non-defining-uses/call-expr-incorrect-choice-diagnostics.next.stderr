@@ -8,15 +8,15 @@ LL |         var();
 LL |         var();
    |         ^^^ value used here after move
    |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         var.clone()();
+   |            ++++++++
 note: this value implements `FnOnce`, which causes it to be moved when called
   --> $DIR/call-expr-incorrect-choice-diagnostics.rs:13:9
    |
 LL |         var();
    |         ^^^
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |         var.clone()();
-   |            ++++++++
 
 error[E0618]: expected function, found `_`
   --> $DIR/call-expr-incorrect-choice-diagnostics.rs:24:9

@@ -4,8 +4,8 @@ error: `macro_use` attributes are no longer needed in the Rust 2018 edition
 LL |     #[macro_use]
    |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::{pub_macro, inner_mod_macro, function_macro, ty_macro, pub_in_private_macro};`
    |
-   = note: `-D clippy::macro-use-imports` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::macro_use_imports)]`
+   = note: `-D clippy::macro-use-imports` implied by `-D warnings`
 
 error: `macro_use` attributes are no longer needed in the Rust 2018 edition
   --> tests/ui/macro_use_imports.rs:23:5

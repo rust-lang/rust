@@ -6,16 +6,16 @@ LL |     f(&x, "");
    |       |
    |       argument #1 of type `usize` is missing
    |
-note: function defined here
-  --> $DIR/issue-96638.rs:1:4
-   |
-LL | fn f(_: usize, _: &usize, _: usize) {}
-   |    ^ --------             --------
 help: provide the argument
    |
 LL -     f(&x, "");
 LL +     f(/* usize */, &x, /* usize */);
    |
+note: function defined here
+  --> $DIR/issue-96638.rs:1:4
+   |
+LL | fn f(_: usize, _: &usize, _: usize) {}
+   |    ^ --------             --------
 
 error: aborting due to 1 previous error
 

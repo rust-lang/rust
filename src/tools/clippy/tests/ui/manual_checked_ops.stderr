@@ -10,8 +10,8 @@ LL |         let _another = (a + 1) / b;
    |                        ----------- ... and here
    |
    = help: consider using `checked_div`
-   = note: `-D clippy::manual-checked-ops` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_checked_ops)]`
+   = note: `-D clippy::manual-checked-ops` implied by `-D warnings`
 
 error: manual checked division
   --> tests/ui/manual_checked_ops.rs:15:8

@@ -15,11 +15,11 @@ error: lifetimes must be followed by `+` to form a trait object type
 LL |     m!('static);
    |        ^^^^^^^
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding a trait bound after the potential lifetime bound
    |
 LL |     m!('static + /* Trait */);
    |                +++++++++++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0224]: at least one trait is required for an object type
   --> $DIR/trait-object-macro-matcher.rs:17:8

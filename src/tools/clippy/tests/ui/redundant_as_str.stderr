@@ -4,8 +4,8 @@ error: this `as_str` is redundant and can be removed as the method immediately f
 LL |     let _redundant = string.as_str().as_bytes();
    |                             ^^^^^^^^^^^^^^^^^ help: try: `as_bytes`
    |
-   = note: `-D clippy::redundant-as-str` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::redundant_as_str)]`
+   = note: `-D clippy::redundant-as-str` implied by `-D warnings`
 
 error: this `as_str` is redundant and can be removed as the method immediately following exists on `String` too
   --> tests/ui/redundant_as_str.rs:10:29

@@ -10,7 +10,6 @@ error[E0261]: use of undeclared lifetime name `'a`
 LL | fn foo<T>() where T: for<'a> 'a {}
    |                              ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL | fn foo<T>() where for<'a> T: for<'a> 'a {}
@@ -19,6 +18,7 @@ help: consider introducing lifetime `'a` here
    |
 LL | fn foo<'a, T>() where T: for<'a> 'a {}
    |        +++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 
 error: aborting due to 2 previous errors
 

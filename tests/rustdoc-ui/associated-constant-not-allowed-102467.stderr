@@ -16,12 +16,12 @@ error[E0229]: associated item constraints are not allowed here
 LL |     type A: S<C<X = 0i32> = 34>;
    |                 ^^^^^^^^ associated item constraint not allowed here
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider removing this associated item binding
    |
 LL -     type A: S<C<X = 0i32> = 34>;
 LL +     type A: S<C = 34>;
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

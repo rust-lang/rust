@@ -4,8 +4,8 @@ error: log base can be expressed more clearly
 LL |     let _ = x.ln() / y.ln();
    |             ^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
    |
-   = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
+   = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
 
 error: log base can be expressed more clearly
   --> tests/ui/floating_point_logbase.rs:9:13

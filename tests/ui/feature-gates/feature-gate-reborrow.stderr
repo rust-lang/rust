@@ -4,8 +4,8 @@ error[E0658]: use of unstable library feature `reborrow`
 LL | #[derive(std::marker::Reborrow)]
    |          ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #145612 <https://github.com/rust-lang/rust/issues/145612> for more information
    = help: add `#![feature(reborrow)]` to the crate attributes to enable
+   = note: see issue #145612 <https://github.com/rust-lang/rust/issues/145612> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `reborrow`
@@ -14,8 +14,8 @@ error[E0658]: use of unstable library feature `reborrow`
 LL | use std::marker::Reborrow;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #145612 <https://github.com/rust-lang/rust/issues/145612> for more information
    = help: add `#![feature(reborrow)]` to the crate attributes to enable
+   = note: see issue #145612 <https://github.com/rust-lang/rust/issues/145612> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `reborrow`
@@ -24,8 +24,8 @@ error[E0658]: use of unstable library feature `reborrow`
 LL | use std::marker::Reborrow;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #145612 <https://github.com/rust-lang/rust/issues/145612> for more information
    = help: add `#![feature(reborrow)]` to the crate attributes to enable
+   = note: see issue #145612 <https://github.com/rust-lang/rust/issues/145612> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

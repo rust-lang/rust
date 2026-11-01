@@ -9,6 +9,7 @@ help: the trait `Clone` is implemented for `u8`
   ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
    = note: in this macro invocation
+   = help: consider manually implementing `for<'a> Clone` to avoid undesired bounds caused by "imperfect derives"
 note: required for `S<'a, &'static mut u8>` to implement `for<'a> Clone`
   --> $DIR/imperfect-derive-higher-ranked.rs:4:8
    |
@@ -16,7 +17,6 @@ LL | #[derive(Clone)]
    |          ----- in this derive macro expansion
 LL | struct S<'a, T>(&'a T);
    |        ^     - type parameter would need to implement `for<'a> Clone`
-   = help: consider manually implementing `for<'a> Clone` to avoid undesired bounds caused by "imperfect derives"
    = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
 note: required by a bound in `require`
   --> $DIR/imperfect-derive-higher-ranked.rs:6:41

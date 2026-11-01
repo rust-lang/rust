@@ -2363,7 +2363,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // first, and making this logic run earlier will get tricky. For now, we
                         // instead keep the logic the same and modify the already constructed error
                         // to avoid the wording duplication.
-                        err.children.remove(0);
+                        let mut i = 0;
+                        err.retain_children(|_| {
+                            i += 1;
+                            i > 1
+                        });
                     }
 
                     let traits = self.cmp_traits(

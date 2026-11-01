@@ -4,8 +4,8 @@ error: unnecessary use of `splitn`
 LL |     let _ = str.splitn(2, '=').next();
    |             ^^^^^^^^^^^^^^^^^^ help: try: `str.split('=')`
    |
-   = note: `-D clippy::needless-splitn` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_splitn)]`
+   = note: `-D clippy::needless-splitn` implied by `-D warnings`
 
 error: unnecessary use of `splitn`
   --> tests/ui/needless_splitn.rs:14:13

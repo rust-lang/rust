@@ -14,12 +14,12 @@ LL |     String::from("Girls Band Cry") == T(String::from("Girls Band Cry"));
              PartialEq<PathBuf>
              PartialEq<str>
              PartialEq
-   = note: `T` implements `PartialEq<String>`
 help: consider swapping the equality
    |
 LL -     String::from("Girls Band Cry") == T(String::from("Girls Band Cry"));
 LL +     T(String::from("Girls Band Cry")) == String::from("Girls Band Cry");
    |
+   = note: `T` implements `PartialEq<String>`
 
 error: aborting due to 1 previous error
 

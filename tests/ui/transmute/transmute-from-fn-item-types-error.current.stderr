@@ -13,9 +13,9 @@ error[E0591]: can't transmute zero-sized type
 LL |     let p = mem::transmute(foo);
    |             ^^^^^^^^^^^^^^
    |
+   = help: cast with `as` to a pointer instead
    = note: source type: unsafe fn() -> (i8, *const (), Option<fn()>) {foo}
    = note: target type: *const ()
-   = help: cast with `as` to a pointer instead
 
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:15:14
@@ -23,9 +23,9 @@ error[E0591]: can't transmute zero-sized type
 LL |     let of = mem::transmute(main);
    |              ^^^^^^^^^^^^^^
    |
+   = help: cast with `as` to a pointer instead
    = note: source type: fn() {main}
    = note: target type: Option<fn()>
-   = help: cast with `as` to a pointer instead
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/transmute-from-fn-item-types-error.rs:24:5
@@ -42,9 +42,9 @@ error[E0591]: can't transmute zero-sized type
 LL |     mem::transmute::<_, *mut ()>(foo);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: cast with `as` to a pointer instead
    = note: source type: unsafe fn() -> (i8, *const (), Option<fn()>) {foo}
    = note: target type: *mut ()
-   = help: cast with `as` to a pointer instead
 
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:32:5
@@ -52,9 +52,9 @@ error[E0591]: can't transmute zero-sized type
 LL |     mem::transmute::<_, fn()>(bar);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: cast with `as` to a pointer instead
    = note: source type: unsafe fn() {bar}
    = note: target type: fn()
-   = help: cast with `as` to a pointer instead
 
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:41:5
@@ -62,9 +62,9 @@ error[E0591]: can't transmute zero-sized type
 LL |     mem::transmute::<_, *mut ()>(Some(foo));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: cast with `as` to a pointer instead
    = note: source type: unsafe fn() -> (i8, *const (), Option<fn()>) {foo}
    = note: target type: *mut ()
-   = help: cast with `as` to a pointer instead
 
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:45:5
@@ -72,9 +72,9 @@ error[E0591]: can't transmute zero-sized type
 LL |     mem::transmute::<_, fn()>(Some(bar));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: cast with `as` to a pointer instead
    = note: source type: unsafe fn() {bar}
    = note: target type: fn()
-   = help: cast with `as` to a pointer instead
 
 error[E0591]: can't transmute zero-sized type
   --> $DIR/transmute-from-fn-item-types-error.rs:49:5
@@ -82,9 +82,9 @@ error[E0591]: can't transmute zero-sized type
 LL |     mem::transmute::<_, Option<fn()>>(Some(baz));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: cast with `as` to a pointer instead
    = note: source type: unsafe fn() {baz}
    = note: target type: Option<fn()>
-   = help: cast with `as` to a pointer instead
 
 error: aborting due to 9 previous errors
 

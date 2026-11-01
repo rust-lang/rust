@@ -27,21 +27,21 @@ LL |     pub struct S {}
 LL |         let s = S;
    |                 ^
    |
-   = note: a struct named `S` exists in another namespace
-note: constant `m::S` exists but is inaccessible
-  --> $DIR/private-from-decl-macro.rs:10:5
-   |
-LL |     const S: u8 = 0;
-   |     ^^^^^^^^^^^^^^^^ not accessible
 help: use struct literal syntax instead
    |
 LL |         let s = S {};
    |                   ++
+   = note: a struct named `S` exists in another namespace
 help: a local variable with a similar name exists (notice the capitalization)
    |
 LL -         let s = S;
 LL +         let s = s;
    |
+note: constant `m::S` exists but is inaccessible
+  --> $DIR/private-from-decl-macro.rs:10:5
+   |
+LL |     const S: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^ not accessible
 
 error: aborting due to 2 previous errors
 

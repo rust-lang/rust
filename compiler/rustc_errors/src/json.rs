@@ -32,7 +32,10 @@ use crate::emitter::{
 };
 use crate::formatting::{format_diag_message, format_diag_messages};
 use crate::timings::{TimingRecord, TimingSection};
-use crate::{CodeSuggestion, MultiSpan, SpanLabel, Subdiag, Suggestions, TerminalUrl};
+use crate::{
+    CodeSuggestion, MultiSpan, SpanLabel, Subdiag, Suggestions, TerminalUrl,
+    place_notes_after_next_help,
+};
 
 #[cfg(test)]
 mod tests;
@@ -297,10 +300,10 @@ impl Diagnostic {
                 rendered: None,
             }
         };
-        let sugg = match &diag.suggestions {
-            Suggestions::Enabled(suggestions) => suggestions.iter().map(sugg_to_diag),
-            Suggestions::Sealed(suggestions) => suggestions.iter().map(sugg_to_diag),
-            Suggestions::Disabled => [].iter().map(sugg_to_diag),
+        let suggestions: &[CodeSuggestion] = match &diag.suggestions {
+            Suggestions::Enabled(suggestions) => suggestions,
+            Suggestions::Sealed(suggestions) => suggestions,
+            Suggestions::Disabled => &[],
         };
 
         // generate regular command line output and store it in the json
@@ -332,18 +335,23 @@ impl Diagnostic {
         };
         let level = diag.level.to_str();
         let spans = DiagnosticSpan::from_multispan(&diag.span, &diag.args, je);
-        let mut children: Vec<Diagnostic> = diag
-            .children
-            .iter()
-            .map(|c| Diagnostic::from_sub_diagnostic(c, &diag.args, je))
-            .chain(sugg)
-            .collect();
+        let mut sugg = suggestions.iter().peekable();
+        let mut children: Vec<Diagnostic> = Vec::new();
+        for (i, c) in diag.children.iter().enumerate() {
+            while let Some(s) = sugg.next_if(|s| s.children_before <= i) {
+                children.push(sugg_to_diag(s));
+            }
+            children.push(Diagnostic::from_sub_diagnostic(c, &diag.args, je));
+        }
+        children.extend(sugg.map(sugg_to_diag));
         if je.track_diagnostics && diag.span.has_primary_spans() && !diag.span.is_dummy() {
             children.insert(
                 0,
                 Diagnostic::from_sub_diagnostic(&diag.emitted_at_sub_diag(), &diag.args, je),
             );
         }
+        let children =
+            place_notes_after_next_help(children, |c| c.level == "note", |c| c.level == "help");
         let buf = BufWriter(Arc::new(Mutex::new(Vec::new())));
         let dst: Destination = AutoStream::new(
             Box::new(buf.clone()),

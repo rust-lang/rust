@@ -4,6 +4,11 @@ error[E0277]: the trait bound `&'static u32: Defaulted` is not satisfied
 LL |     is_defaulted::<&'static u32>();
    |                    ^^^^^^^^^^^^ the trait `Signed` is not implemented for `u32`
    |
+help: consider removing the leading `&`-reference
+   |
+LL -     is_defaulted::<&'static u32>();
+LL +     is_defaulted::<u32>();
+   |
 note: required for `&'static u32` to implement `Defaulted`
   --> $DIR/typeck-default-trait-impl-precedence.rs:10:19
    |
@@ -16,11 +21,6 @@ note: required by a bound in `is_defaulted`
    |
 LL | fn is_defaulted<T:Defaulted>() { }
    |                   ^^^^^^^^^ required by this bound in `is_defaulted`
-help: consider removing the leading `&`-reference
-   |
-LL -     is_defaulted::<&'static u32>();
-LL +     is_defaulted::<u32>();
-   |
 
 error: aborting due to 1 previous error
 

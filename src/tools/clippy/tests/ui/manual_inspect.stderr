@@ -4,14 +4,14 @@ error: using `map` over `inspect`
 LL |     let _ = Some(0).map(|x| {
    |                     ^^^
    |
-   = note: `-D clippy::manual-inspect` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_inspect)]`
 help: try
    |
 LL ~     let _ = Some(0).inspect(|&x| {
 LL |
 LL ~         println!("{}", x);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_inspect)]`
+   = note: `-D clippy::manual-inspect` implied by `-D warnings`
 
 error: using `map` over `inspect`
   --> tests/ui/manual_inspect.rs:11:21

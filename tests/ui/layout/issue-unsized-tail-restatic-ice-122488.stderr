@@ -6,13 +6,13 @@ LL | struct ArenaSet<U: Deref, V: ?Sized = <U as Deref>::Target>(V, U);
    |                           |
    |                           this type parameter needs to be `Sized`
    |
-   = note: only the last field of a struct may have a dynamically sized type
-   = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - struct ArenaSet<U: Deref, V: ?Sized = <U as Deref>::Target>(V, U);
 LL + struct ArenaSet<U: Deref, V = <U as Deref>::Target>(V, U);
    |
+   = help: change the field's type to have a statically known size
+   = note: only the last field of a struct may have a dynamically sized type
 help: borrowed types always have a statically known size
    |
 LL | struct ArenaSet<U: Deref, V: ?Sized = <U as Deref>::Target>(&V, U);

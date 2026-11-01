@@ -6,13 +6,13 @@ LL |     let _: String = Box::new(String::new());
    |            |
    |            expected due to this
    |
-   = note: expected struct `String`
-              found struct `Box<String>`
 help: consider removing the Box
    |
 LL -     let _: String = Box::new(String::new());
 LL +     let _: String = String::new();
    |
+   = note: expected struct `String`
+              found struct `Box<String>`
 
 error: aborting due to 1 previous error
 

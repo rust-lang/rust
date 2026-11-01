@@ -4,13 +4,13 @@ error: incorrect ordering of items (must be alphabetically ordered)
 LL |     const A: bool;
    |           ^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::arbitrary_source_item_ordering)]`
 note: should be placed before `B`
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:30:11
    |
 LL |     const B: bool;
    |           ^
    = note: `-D clippy::arbitrary-source-item-ordering` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::arbitrary_source_item_ordering)]`
 
 error: incorrect ordering of items (must be alphabetically ordered)
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_trait.rs:37:8

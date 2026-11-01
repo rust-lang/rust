@@ -4,12 +4,12 @@ error[E0423]: cannot find value `Into` in this scope
 LL |     let addr = Into::<std::net::IpAddr>.into([127, 0, 0, 1]);
    |                ^^^^
    |
-   = note: a trait named `Into` exists in another namespace
 help: use the path separator to refer to an item
    |
 LL -     let addr = Into::<std::net::IpAddr>.into([127, 0, 0, 1]);
 LL +     let addr = Into::<std::net::IpAddr>::into([127, 0, 0, 1]);
    |
+   = note: a trait named `Into` exists in another namespace
 
 error[E0423]: cannot find value `Into` in this scope
   --> $DIR/issue-100365.rs:6:13
@@ -17,12 +17,12 @@ error[E0423]: cannot find value `Into` in this scope
 LL |     let _ = Into.into(());
    |             ^^^^
    |
-   = note: a trait named `Into` exists in another namespace
 help: use the path separator to refer to an item
    |
 LL -     let _ = Into.into(());
 LL +     let _ = Into::into(());
    |
+   = note: a trait named `Into` exists in another namespace
 
 error[E0423]: cannot find value `Into` in this scope
   --> $DIR/issue-100365.rs:10:13
@@ -30,12 +30,12 @@ error[E0423]: cannot find value `Into` in this scope
 LL |     let _ = Into::<()>.into;
    |             ^^^^
    |
-   = note: a trait named `Into` exists in another namespace
 help: use the path separator to refer to an item
    |
 LL -     let _ = Into::<()>.into;
 LL +     let _ = Into::<()>::into;
    |
+   = note: a trait named `Into` exists in another namespace
 
 error[E0423]: cannot find value `Iterator` in module `::std::iter`
   --> $DIR/issue-100365.rs:17:22
@@ -74,12 +74,12 @@ LL |         Into::<String>.into("")
 LL |     let _ = create!();
    |             --------- in this macro invocation
    |
-   = note: a trait named `Into` exists in another namespace
 help: use the path separator to refer to an item
    |
 LL -         Into::<String>.into("")
 LL +         Into::<String>::into("")
    |
+   = note: a trait named `Into` exists in another namespace
 
 error: aborting due to 6 previous errors
 

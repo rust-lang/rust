@@ -24,7 +24,6 @@ LL |     #[inline(XYZ)]
    |              |
    |              valid arguments are `always` or `never`
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[inline(XYZ)]
@@ -36,6 +35,7 @@ LL +     #[inline(always)]
 LL -     #[inline(XYZ)]
 LL +     #[inline(never)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
 
 error[E0539]: malformed `repr` attribute input
   --> $DIR/attribute-on-wrong-item-inline-repr.rs:17:7
@@ -82,7 +82,6 @@ LL |     #[inline(ABC)]
    |              |
    |              valid arguments are `always` or `never`
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[inline(ABC)]
@@ -94,6 +93,7 @@ LL +     #[inline(always)]
 LL -     #[inline(ABC)]
 LL +     #[inline(never)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
 
 error[E0539]: malformed `repr` attribute input
   --> $DIR/attribute-on-wrong-item-inline-repr.rs:38:16

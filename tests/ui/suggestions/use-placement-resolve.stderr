@@ -4,11 +4,11 @@ error[E0404]: cannot find trait `Debug` in this scope
 LL | fn foobar<T: Debug>(x: T) {}
    |              ^^^^^ not found in this scope
    |
-   = note: a derive macro named `Debug` exists in another namespace
 help: consider importing this trait instead
    |
 LL + use std::fmt::Debug;
    |
+   = note: a derive macro named `Debug` exists in another namespace
 
 error: aborting due to 1 previous error
 

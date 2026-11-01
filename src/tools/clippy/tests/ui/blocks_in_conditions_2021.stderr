@@ -8,8 +8,6 @@ LL | |         opt
 LL | |     } {
    | |_____^
    |
-   = note: `-D clippy::blocks-in-conditions` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::blocks_in_conditions)]`
 help: use a binding instead
    |
 LL ~     let res = {
@@ -18,6 +16,8 @@ LL +         let opt = Some(2);
 LL +         opt
 LL ~     }; match res {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::blocks_in_conditions)]`
+   = note: `-D clippy::blocks-in-conditions` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

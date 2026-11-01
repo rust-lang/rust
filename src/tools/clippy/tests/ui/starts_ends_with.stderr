@@ -4,8 +4,8 @@ error: you should use the `starts_with` method
 LL |     "".chars().next() == Some(' ');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with(' ')`
    |
-   = note: `-D clippy::chars-next-cmp` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::chars_next_cmp)]`
+   = note: `-D clippy::chars-next-cmp` implied by `-D warnings`
 
 error: you should use the `starts_with` method
   --> tests/ui/starts_ends_with.rs:9:5
@@ -37,8 +37,8 @@ error: you should use the `ends_with` method
 LL |     if s.chars().next_back().unwrap() == 'o' {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
    |
-   = note: `-D clippy::chars-last-cmp` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::chars_last_cmp)]`
+   = note: `-D clippy::chars-last-cmp` implied by `-D warnings`
 
 error: you should use the `ends_with` method
   --> tests/ui/starts_ends_with.rs:31:8

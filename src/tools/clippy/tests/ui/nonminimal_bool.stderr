@@ -4,13 +4,13 @@ error: this boolean expression can be simplified
 LL |     let _ = !true;
    |             ^^^^^
    |
-   = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::nonminimal_bool)]`
 help: try
    |
 LL -     let _ = !true;
 LL +     let _ = false;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::nonminimal_bool)]`
+   = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:19:13
@@ -168,8 +168,8 @@ LL | |     }
 LL | |     true
    | |________^ help: you can reduce it to: `!(a < THRESHOLD && b >= THRESHOLD || a >= THRESHOLD && b < THRESHOLD)`
    |
-   = note: `-D clippy::needless-bool` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_bool)]`
+   = note: `-D clippy::needless-bool` implied by `-D warnings`
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:90:8
@@ -219,8 +219,8 @@ error: equality checks against true are unnecessary
 LL |     if !b == true {}
    |        ^^^^^^^^^^ help: try: `!b`
    |
-   = note: `-D clippy::bool-comparison` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::bool_comparison)]`
+   = note: `-D clippy::bool-comparison` implied by `-D warnings`
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:185:8

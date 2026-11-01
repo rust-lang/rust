@@ -15,11 +15,11 @@ error[E0220]: associated type `Assoc` not found for `V`
 LL | type Foo<V> = impl Trait<V::Assoc>;
    |                             ^^^^^ there is an associated type `Assoc` in the trait `TraitWithAssoc`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider restricting type parameter `V` with trait `TraitWithAssoc`
    |
 LL | type Foo<V: TraitWithAssoc> = impl Trait<V::Assoc>;
    |           ++++++++++++++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

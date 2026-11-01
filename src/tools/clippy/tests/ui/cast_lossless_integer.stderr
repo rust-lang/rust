@@ -5,13 +5,13 @@ LL |     0u8 as u16;
    |     ^^^^^^^^^^
    |
    = help: an `as` cast can become silently lossy if the types change in the future
-   = note: `-D clippy::cast-lossless` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
 help: use `u16::from` instead
    |
 LL -     0u8 as u16;
 LL +     u16::from(0u8);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
+   = note: `-D clippy::cast-lossless` implied by `-D warnings`
 
 error: casts from `u8` to `i16` can be expressed infallibly using `From`
   --> tests/ui/cast_lossless_integer.rs:11:5

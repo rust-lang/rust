@@ -9,12 +9,12 @@ LL |     fn intu(&self) -> &Self::Id {
 LL |         self
    |         ^^^^ expected `&<T as Default>::Id`, found `&T`
    |
-   = note: expected reference `&<T as Default>::Id`
-              found reference `&T`
 help: consider restricting type parameter `T` with  `<Id = T>`
    |
 LL | impl<T: <Id = T>> Default for T {
    |       ++++++++++
+   = note: expected reference `&<T as Default>::Id`
+              found reference `&T`
 
 error[E0271]: type mismatch resolving `<u8 as Default>::Id == Option<NonZero<u8>>`
   --> $DIR/specialization-transmute.rs:24:50
@@ -24,9 +24,9 @@ LL |     let s = transmute::<u8, Option<NonZero<u8>>>(0);
    |             |
    |             required by a bound introduced by this call
    |
+   = help: consider constraining the associated type `<u8 as Default>::Id` to `Option<NonZero<u8>>`
    = note:         expected enum `Option<NonZero<u8>>`
            found associated type `<u8 as Default>::Id`
-   = help: consider constraining the associated type `<u8 as Default>::Id` to `Option<NonZero<u8>>`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `transmute`
   --> $DIR/specialization-transmute.rs:17:25

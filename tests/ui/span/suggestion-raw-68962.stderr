@@ -16,16 +16,16 @@ error[E0425]: cannot find function `f` in this scope
 LL |     f();
    |     ^ not found in this scope
    |
-note: similarly named function `r#fn` defined here
-  --> $DIR/suggestion-raw-68962.rs:1:1
-   |
-LL | fn r#fn() {}
-   | ^^^^^^^^^
 help: a function with a similar name exists
    |
 LL -     f();
 LL +     r#fn();
    |
+note: similarly named function `r#fn` defined here
+  --> $DIR/suggestion-raw-68962.rs:1:1
+   |
+LL | fn r#fn() {}
+   | ^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

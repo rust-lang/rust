@@ -6,6 +6,10 @@ LL |         Ty::List(elem) => foo(elem),
    |                           |
    |                           arguments to this function are incorrect
    |
+help: consider unboxing the value
+   |
+LL |         Ty::List(elem) => foo(*elem),
+   |                               +
    = note: expected enum `Ty`
             found struct `Box<Ty>`
 note: function defined here
@@ -13,10 +17,6 @@ note: function defined here
    |
 LL | fn foo(x: Ty) -> Ty {
    |    ^^^ -----
-help: consider unboxing the value
-   |
-LL |         Ty::List(elem) => foo(*elem),
-   |                               +
 
 error: aborting due to 1 previous error
 

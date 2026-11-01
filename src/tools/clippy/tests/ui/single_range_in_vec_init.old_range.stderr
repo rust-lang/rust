@@ -4,8 +4,6 @@ error: an array of `Range` that is only one element
 LL |     [0..200];
    |     ^^^^^^^^
    |
-   = note: `-D clippy::single-range-in-vec-init` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::single_range_in_vec_init)]`
 help: if you wanted a `Vec` that contains the entire range, try
    |
 LL -     [0..200];
@@ -16,6 +14,8 @@ help: if you wanted an array of len 200, try
 LL -     [0..200];
 LL +     [0; 200];
    |
+   = help: to override `-D warnings` add `#[allow(clippy::single_range_in_vec_init)]`
+   = note: `-D clippy::single-range-in-vec-init` implied by `-D warnings`
 
 error: a `Vec` of `Range` that is only one element
   --> tests/ui/single_range_in_vec_init.rs:32:5

@@ -4,8 +4,8 @@ error: this lint expectation is unfulfilled
 LL |     #[expect(dead_code)]
    |              ^^^^^^^^^
    |
-   = note: `-D unfulfilled-lint-expectations` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(unfulfilled_lint_expectations)]`
+   = note: `-D unfulfilled-lint-expectations` implied by `-D warnings`
 
 error: this lint expectation is unfulfilled
   --> tests/ui/expect_tool_lint_rfc_2383.rs:36:18

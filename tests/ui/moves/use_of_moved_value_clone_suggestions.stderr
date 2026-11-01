@@ -8,11 +8,11 @@ LL |     (t, t)
    |      |
    |      value moved here
    |
-   = note: consider using `Rc::clone`
 help: clone the value to increment its reference count
    |
 LL |     (t.clone(), t)
    |       ++++++++
+   = note: consider using `Rc::clone`
 
 error: aborting due to 1 previous error
 

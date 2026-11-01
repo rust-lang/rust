@@ -16,16 +16,16 @@ error[E0425]: cannot find type `Baz` in this scope
 LL | type A = Baz; // Misspelled type name.
    |          ^^^ not found in this scope
    |
-note: similarly named enum `Bar` defined here
-  --> $DIR/levenshtein.rs:8:1
-   |
-LL | enum Bar { }
-   | ^^^^^^^^
 help: an enum with a similar name exists
    |
 LL - type A = Baz; // Misspelled type name.
 LL + type A = Bar; // Misspelled type name.
    |
+note: similarly named enum `Bar` defined here
+  --> $DIR/levenshtein.rs:8:1
+   |
+LL | enum Bar { }
+   | ^^^^^^^^
 
 error[E0425]: cannot find type `Opiton` in this scope
   --> $DIR/levenshtein.rs:12:10
@@ -33,13 +33,13 @@ error[E0425]: cannot find type `Opiton` in this scope
 LL | type B = Opiton<u8>; // Misspelled type name from the prelude.
    |          ^^^^^^ not found in this scope
    |
-note: similarly named enum `Option` defined here
-  --> $SRC_DIR/core/src/option.rs:LL:COL
 help: an enum with a similar name exists
    |
 LL - type B = Opiton<u8>; // Misspelled type name from the prelude.
 LL + type B = Option<u8>; // Misspelled type name from the prelude.
    |
+note: similarly named enum `Option` defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0425]: cannot find type `Baz` in this scope
   --> $DIR/levenshtein.rs:16:14
@@ -53,15 +53,15 @@ error[E0425]: cannot find value `MAXITEM` in this scope
 LL |     let v = [0u32; MAXITEM]; // Misspelled constant name.
    |                    ^^^^^^^ not found in this scope
    |
+help: a constant with a similar name exists
+   |
+LL |     let v = [0u32; MAX_ITEM]; // Misspelled constant name.
+   |                       +
 note: similarly named constant `MAX_ITEM` defined here
   --> $DIR/levenshtein.rs:1:1
    |
 LL | const MAX_ITEM: usize = 10;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: a constant with a similar name exists
-   |
-LL |     let v = [0u32; MAX_ITEM]; // Misspelled constant name.
-   |                       +
 
 error[E0425]: cannot find type `first` in module `m`
   --> $DIR/levenshtein.rs:28:15
@@ -69,16 +69,16 @@ error[E0425]: cannot find type `first` in module `m`
 LL |     let b: m::first = m::second; // Misspelled item in module.
    |               ^^^^^ not found in `m`
    |
-note: similarly named struct `First` defined here
-  --> $DIR/levenshtein.rs:19:5
-   |
-LL |     pub struct First;
-   |     ^^^^^^^^^^^^^^^^^
 help: a struct with a similar name exists (notice the capitalization)
    |
 LL -     let b: m::first = m::second; // Misspelled item in module.
 LL +     let b: m::First = m::second; // Misspelled item in module.
    |
+note: similarly named struct `First` defined here
+  --> $DIR/levenshtein.rs:19:5
+   |
+LL |     pub struct First;
+   |     ^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find value `second` in module `m`
   --> $DIR/levenshtein.rs:28:26
@@ -86,16 +86,16 @@ error[E0425]: cannot find value `second` in module `m`
 LL |     let b: m::first = m::second; // Misspelled item in module.
    |                          ^^^^^^ not found in `m`
    |
-note: similarly named unit struct `Second` defined here
-  --> $DIR/levenshtein.rs:20:5
-   |
-LL |     pub struct Second;
-   |     ^^^^^^^^^^^^^^^^^^
 help: a unit struct with a similar name exists (notice the capitalization)
    |
 LL -     let b: m::first = m::second; // Misspelled item in module.
 LL +     let b: m::first = m::Second; // Misspelled item in module.
    |
+note: similarly named unit struct `Second` defined here
+  --> $DIR/levenshtein.rs:20:5
+   |
+LL |     pub struct Second;
+   |     ^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `foobar` in this scope
   --> $DIR/levenshtein.rs:26:5
@@ -103,15 +103,15 @@ error[E0425]: cannot find function `foobar` in this scope
 LL |     foobar(); // Misspelled function name.
    |     ^^^^^^ not found in this scope
    |
+help: a function with a similar name exists
+   |
+LL |     foo_bar(); // Misspelled function name.
+   |        +
 note: similarly named function `foo_bar` defined here
   --> $DIR/levenshtein.rs:3:1
    |
 LL | fn foo_bar() {}
    | ^^^^^^^^^^^^
-help: a function with a similar name exists
-   |
-LL |     foo_bar(); // Misspelled function name.
-   |        +
 
 error: aborting due to 8 previous errors
 

@@ -4,8 +4,8 @@ error[E0658]: the extern "tail" ABI is experimental and subject to change
 LL | extern "tail" fn apple() {}
    |        ^^^^^^
    |
-   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = help: add `#![feature(rust_tail_cc)]` to the crate attributes to enable
+   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "tail" ABI is experimental and subject to change
@@ -14,8 +14,8 @@ error[E0658]: the extern "tail" ABI is experimental and subject to change
 LL |     extern "tail" fn banana();
    |            ^^^^^^
    |
-   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = help: add `#![feature(rust_tail_cc)]` to the crate attributes to enable
+   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "tail" ABI is experimental and subject to change
@@ -24,8 +24,8 @@ error[E0658]: the extern "tail" ABI is experimental and subject to change
 LL |     extern "tail" fn citrus() {}
    |            ^^^^^^
    |
-   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = help: add `#![feature(rust_tail_cc)]` to the crate attributes to enable
+   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "tail" ABI is experimental and subject to change
@@ -34,8 +34,8 @@ error[E0658]: the extern "tail" ABI is experimental and subject to change
 LL |     extern "tail" fn banana() {}
    |            ^^^^^^
    |
-   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = help: add `#![feature(rust_tail_cc)]` to the crate attributes to enable
+   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "tail" ABI is experimental and subject to change
@@ -44,8 +44,8 @@ error[E0658]: the extern "tail" ABI is experimental and subject to change
 LL |     extern "tail" fn durian() {}
    |            ^^^^^^
    |
-   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = help: add `#![feature(rust_tail_cc)]` to the crate attributes to enable
+   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "tail" ABI is experimental and subject to change
@@ -54,8 +54,8 @@ error[E0658]: the extern "tail" ABI is experimental and subject to change
 LL | type Fig = extern "tail" fn();
    |                   ^^^^^^
    |
-   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = help: add `#![feature(rust_tail_cc)]` to the crate attributes to enable
+   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "tail" ABI is experimental and subject to change
@@ -64,8 +64,8 @@ error[E0658]: the extern "tail" ABI is experimental and subject to change
 LL | extern "tail" {}
    |        ^^^^^^
    |
-   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = help: add `#![feature(rust_tail_cc)]` to the crate attributes to enable
+   = note: see issue #157427 <https://github.com/rust-lang/rust/issues/157427> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 7 previous errors

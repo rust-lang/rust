@@ -4,8 +4,6 @@ error: `#[no_mangle]` set on a function with the default (`Rust`) ABI
 LL | fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::no-mangle-with-rust-abi` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::no_mangle_with_rust_abi)]`
 help: set an ABI
    |
 LL | extern "C" fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
@@ -14,6 +12,8 @@ help: or explicitly set the default
    |
 LL | extern "Rust" fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
    | +++++++++++++
+   = help: to override `-D warnings` add `#[allow(clippy::no_mangle_with_rust_abi)]`
+   = note: `-D clippy::no-mangle-with-rust-abi` implied by `-D warnings`
 
 error: `#[no_mangle]` set on a function with the default (`Rust`) ABI
   --> tests/ui/no_mangle_with_rust_abi_2021.rs:13:1

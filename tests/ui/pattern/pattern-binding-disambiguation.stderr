@@ -64,6 +64,10 @@ error[E0004]: non-exhaustive patterns: `E::TupleVariant` and `E::BracedVariant {
 LL |     match UnitVariant {
    |           ^^^^^^^^^^^ patterns `E::TupleVariant` and `E::BracedVariant {  }` not covered
    |
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL |         UnitVariant => {}, E::TupleVariant | E::BracedVariant {  } => todo!() // OK, `UnitVariant` is a unit variant pattern
+   |                          ++++++++++++++++++++++++++++++++++++++++++++++++++++
 note: `E` defined here
   --> $DIR/pattern-binding-disambiguation.rs:5:6
    |
@@ -75,10 +79,6 @@ LL |     TupleVariant(),
 LL |     BracedVariant{},
    |     ------------- not covered
    = note: the matched value is of type `E`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
-   |
-LL |         UnitVariant => {}, E::TupleVariant | E::BracedVariant {  } => todo!() // OK, `UnitVariant` is a unit variant pattern
-   |                          ++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/pattern-binding-disambiguation.rs:51:9
@@ -86,6 +86,10 @@ error[E0005]: refutable pattern in local binding
 LL |     let UnitVariant = UnitVariant;
    |         ^^^^^^^^^^^ patterns `E::TupleVariant` and `E::BracedVariant {  }` not covered
    |
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |     if let UnitVariant = UnitVariant { todo!() };
+   |     ++                               +++++++++++
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `E` defined here
@@ -99,10 +103,6 @@ LL |     TupleVariant(),
 LL |     BracedVariant{},
    |     ------------- not covered
    = note: the matched value is of type `E`
-help: you might want to use `if let` to ignore the variants that aren't matched
-   |
-LL |     if let UnitVariant = UnitVariant { todo!() };
-   |     ++                               +++++++++++
 
 error: aborting due to 8 previous errors
 

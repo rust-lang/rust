@@ -4,8 +4,8 @@ error: unnecessary structure name repetition
 LL |     flag: Option<Box<Basic>>,
    |                      ^^^^^ help: use the applicable keyword: `Self`
    |
-   = note: `-D clippy::use-self` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::use_self)]`
+   = note: `-D clippy::use-self` implied by `-D warnings`
 
 error: unnecessary structure name repetition
   --> tests/ui/use_self_structs.rs:17:22

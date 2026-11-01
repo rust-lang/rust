@@ -50,11 +50,11 @@ LL |         Some(ref _y @ _z) => {}
    |              |
    |              value borrowed here after move
    |
-   = note: move occurs because value has type `X`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
 LL |         Some(ref _y @ ref _z) => {}
    |                       +++
+   = note: move occurs because value has type `X`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value
   --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:26:14
@@ -64,11 +64,11 @@ LL |         Some(ref mut _y @ _z) => {}
    |              |
    |              value borrowed here after move
    |
-   = note: move occurs because value has type `X`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
 LL |         Some(ref mut _y @ ref _z) => {}
    |                           +++
+   = note: move occurs because value has type `X`, which does not implement the `Copy` trait
 
 error: aborting due to 6 previous errors
 

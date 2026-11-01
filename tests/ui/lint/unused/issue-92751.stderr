@@ -4,17 +4,17 @@ error: unnecessary parentheses around match arm expression
 LL |         Some(()) => (1),
    |                     ^ ^
    |
+help: remove these parentheses
+   |
+LL -         Some(()) => (1),
+LL +         Some(()) => 1,
+   |
 note: the lint level is defined here
   --> $DIR/issue-92751.rs:1:8
    |
 LL | #[deny(unused)]
    |        ^^^^^^
    = note: `#[deny(unused_parens)]` implied by `#[deny(unused)]`
-help: remove these parentheses
-   |
-LL -         Some(()) => (1),
-LL +         Some(()) => 1,
-   |
 
 error: unnecessary parentheses around match arm expression
   --> $DIR/issue-92751.rs:5:17

@@ -4,8 +4,8 @@ error: unneeded `return` statement with `?` operator
 LL |     return Err(())?;
    |     ^^^^^^^ help: remove it
    |
-   = note: `-D clippy::needless-return-with-question-mark` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_return_with_question_mark)]`
+   = note: `-D clippy::needless-return-with-question-mark` implied by `-D warnings`
 
 error: unneeded `return` statement with `?` operator
   --> tests/ui/needless_return_with_question_mark.rs:69:9

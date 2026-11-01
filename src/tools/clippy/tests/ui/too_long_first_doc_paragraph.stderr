@@ -9,8 +9,6 @@ LL | |     //! and probably spanning a many rows. Blablabla, it needs to be over
 LL | |     //! 200 characters so I needed to write something longeeeeeeer.
    | |____^
    |
-   = note: `-D clippy::too-long-first-doc-paragraph` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::too_long_first_doc_paragraph)]`
 help: add an empty line
    |
 LL |     //! A very short summary.
@@ -19,6 +17,8 @@ LL ~     //!
 LL +
 LL ~     //! A much longer explanation that goes into a lot more detail about
    |
+   = help: to override `-D warnings` add `#[allow(clippy::too_long_first_doc_paragraph)]`
+   = note: `-D clippy::too-long-first-doc-paragraph` implied by `-D warnings`
 
 error: first doc comment paragraph is too long
   --> tests/ui/too_long_first_doc_paragraph.rs:16:1

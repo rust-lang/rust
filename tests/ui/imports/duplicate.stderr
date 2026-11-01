@@ -14,6 +14,7 @@ error[E0659]: `foo` is ambiguous
 LL |     use self::foo::bar;
    |               ^^^ ambiguous name
    |
+   = help: consider adding an explicit import of `foo` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `foo` could refer to the module imported here
   --> $DIR/duplicate.rs:44:9
@@ -26,7 +27,6 @@ note: `foo` could also refer to the module imported here
    |
 LL |     use self::m2::*;
    |         ^^^^^^^^^^^
-   = help: consider adding an explicit import of `foo` to disambiguate
 
 error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:35:8
@@ -34,6 +34,7 @@ error[E0659]: `foo` is ambiguous
 LL |     f::foo();
    |        ^^^ ambiguous name
    |
+   = help: consider adding an explicit import of `foo` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `foo` could refer to the function imported here
   --> $DIR/duplicate.rs:24:13
@@ -46,7 +47,6 @@ note: `foo` could also refer to the function imported here
    |
 LL |     pub use crate::b::*;
    |             ^^^^^^^^^^^
-   = help: consider adding an explicit import of `foo` to disambiguate
 
 error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:36:8
@@ -54,6 +54,7 @@ error[E0659]: `foo` is ambiguous
 LL |     g::foo();
    |        ^^^ ambiguous name
    |
+   = help: consider adding an explicit import of `foo` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `foo` could refer to the function imported here
   --> $DIR/duplicate.rs:24:13
@@ -66,7 +67,6 @@ note: `foo` could also refer to the function imported here
    |
 LL |     pub use crate::b::*;
    |             ^^^^^^^^^^^
-   = help: consider adding an explicit import of `foo` to disambiguate
 
 error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:50:9
@@ -74,6 +74,7 @@ error[E0659]: `foo` is ambiguous
 LL |         foo::bar();
    |         ^^^ ambiguous name
    |
+   = help: consider adding an explicit import of `foo` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `foo` could refer to the module imported here
   --> $DIR/duplicate.rs:44:9
@@ -86,7 +87,6 @@ note: `foo` could also refer to the module imported here
    |
 LL |     use self::m2::*;
    |         ^^^^^^^^^^^
-   = help: consider adding an explicit import of `foo` to disambiguate
 
 error: aborting due to 5 previous errors
 

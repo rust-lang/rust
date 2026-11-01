@@ -6,12 +6,12 @@ LL |     const _: Enum<()> = gca!(Enum::<()>::Unit::<()>);
    |                                          |
    |                                          not allowed on unit variant `Unit`
    |
-   = note: generic arguments are not allowed on both an enum and its variant's path segments simultaneously; they are only valid in one place or the other
 help: remove the generics arguments from one of the path segments
    |
 LL -     const _: Enum<()> = gca!(Enum::<()>::Unit::<()>);
 LL +     const _: Enum<()> = gca!(Enum::<()>::Unit);
    |
+   = note: generic arguments are not allowed on both an enum and its variant's path segments simultaneously; they are only valid in one place or the other
 
 error[E0109]: type arguments are not allowed on tuple variant `Tuple`
   --> $DIR/generic-args-on-enum-variant-segments-fail.rs:19:50
@@ -21,12 +21,12 @@ LL |     const _: Enum<()> = gca!(Enum::<()>::Tuple::<()>());
    |                                          |
    |                                          not allowed on tuple variant `Tuple`
    |
-   = note: generic arguments are not allowed on both an enum and its variant's path segments simultaneously; they are only valid in one place or the other
 help: remove the generics arguments from one of the path segments
    |
 LL -     const _: Enum<()> = gca!(Enum::<()>::Tuple::<()>());
 LL +     const _: Enum<()> = gca!(Enum::<()>::Tuple());
    |
+   = note: generic arguments are not allowed on both an enum and its variant's path segments simultaneously; they are only valid in one place or the other
 
 error[E0109]: type arguments are not allowed on module `generic_args_on_enum_variant_segments_fail`
   --> $DIR/generic-args-on-enum-variant-segments-fail.rs:21:37

@@ -13,16 +13,16 @@ LL | |         false => U::create(),
 LL | |     }
    | |_____- `match` arms have incompatible types
    |
-   = note: expected associated type `impl Form` (type parameter `T`)
-              found associated type `impl Form` (type parameter `U`)
-   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
-   = note: an associated type was expected, but a different one was found
 help: you could change the return type to be a boxed trait object
    |
 LL - fn forms_at_phase<T: Parameter, U: Parameter>() -> impl Form {
 LL + fn forms_at_phase<T: Parameter, U: Parameter>() -> Box<dyn Form> {
    |
+   = note: expected associated type `impl Form` (type parameter `T`)
+              found associated type `impl Form` (type parameter `U`)
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+   = note: an associated type was expected, but a different one was found
 help: if you change the return type to expect trait objects, box the returned expressions
    |
 LL ~         true => Box::new(T::create()),

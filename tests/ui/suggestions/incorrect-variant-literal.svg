@@ -89,23 +89,23 @@
 </tspan>
     <tspan x="10px" y="622px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="640px"><tspan class="fg-bright-green bold">note</tspan><tspan>: tuple variant defined here</tspan>
+    <tspan x="10px" y="640px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: provide the argument</tspan>
 </tspan>
-    <tspan x="10px" y="658px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/incorrect-variant-literal.rs:6:5</tspan>
+    <tspan x="10px" y="658px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="676px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+    <tspan x="10px" y="676px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">| </tspan><tspan>    Enum::Tuple(</tspan><tspan class="fg-bright-green">/* i32 */</tspan><tspan>);</tspan>
 </tspan>
-    <tspan x="10px" y="694px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>     Tuple(i32),</tspan>
+    <tspan x="10px" y="694px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                 </tspan><tspan class="fg-bright-green">+++++++++</tspan>
 </tspan>
-    <tspan x="10px" y="712px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>     </tspan><tspan class="fg-bright-green bold">^^^^^</tspan>
+    <tspan x="10px" y="712px"><tspan class="fg-bright-green bold">note</tspan><tspan>: tuple variant defined here</tspan>
 </tspan>
-    <tspan x="10px" y="730px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: provide the argument</tspan>
+    <tspan x="10px" y="730px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/incorrect-variant-literal.rs:6:5</tspan>
 </tspan>
     <tspan x="10px" y="748px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="766px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">| </tspan><tspan>    Enum::Tuple(</tspan><tspan class="fg-bright-green">/* i32 */</tspan><tspan>);</tspan>
+    <tspan x="10px" y="766px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>     Tuple(i32),</tspan>
 </tspan>
-    <tspan x="10px" y="784px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>                 </tspan><tspan class="fg-bright-green">+++++++++</tspan>
+    <tspan x="10px" y="784px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>     </tspan><tspan class="fg-bright-green bold">^^^^^</tspan>
 </tspan>
     <tspan x="10px" y="802px">
 </tspan>
@@ -283,25 +283,25 @@
 </tspan>
     <tspan x="10px" y="2368px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="2386px"><tspan class="fg-bright-green bold">note</tspan><tspan>: tuple variant defined here</tspan>
+    <tspan x="10px" y="2386px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: remove the extra argument</tspan>
 </tspan>
-    <tspan x="10px" y="2404px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/incorrect-variant-literal.rs:6:5</tspan>
+    <tspan x="10px" y="2404px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="2422px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+    <tspan x="10px" y="2422px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>    Enum::Tuple(0</tspan><tspan class="fg-bright-red">, 0</tspan><tspan>);</tspan>
 </tspan>
-    <tspan x="10px" y="2440px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>     Tuple(i32),</tspan>
+    <tspan x="10px" y="2440px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>    Enum::Tuple(0);</tspan>
 </tspan>
-    <tspan x="10px" y="2458px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>     </tspan><tspan class="fg-bright-green bold">^^^^^</tspan>
+    <tspan x="10px" y="2458px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="2476px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: remove the extra argument</tspan>
+    <tspan x="10px" y="2476px"><tspan class="fg-bright-green bold">note</tspan><tspan>: tuple variant defined here</tspan>
 </tspan>
-    <tspan x="10px" y="2494px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+    <tspan x="10px" y="2494px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$DIR/incorrect-variant-literal.rs:6:5</tspan>
 </tspan>
-    <tspan x="10px" y="2512px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>    Enum::Tuple(0</tspan><tspan class="fg-bright-red">, 0</tspan><tspan>);</tspan>
+    <tspan x="10px" y="2512px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="2530px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>    Enum::Tuple(0);</tspan>
+    <tspan x="10px" y="2530px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>     Tuple(i32),</tspan>
 </tspan>
-    <tspan x="10px" y="2548px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+    <tspan x="10px" y="2548px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan><tspan>     </tspan><tspan class="fg-bright-green bold">^^^^^</tspan>
 </tspan>
     <tspan x="10px" y="2566px">
 </tspan>

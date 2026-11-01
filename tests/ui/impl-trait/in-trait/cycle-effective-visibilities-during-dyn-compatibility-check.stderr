@@ -18,6 +18,7 @@ error[E0038]: the trait `MyTrait` is not dyn compatible
 LL |         MyTrait::foo(&self)
    |         ^^^^^^^^^^^^ `MyTrait` is not dyn compatible
    |
+   = help: consider moving `foo` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:5:22
@@ -26,7 +27,6 @@ LL | trait MyTrait {
    |       ------- this trait is not dyn compatible...
 LL |     fn foo(&self) -> impl Marker;
    |                      ^^^^^^^^^^^ ...because method `foo` references an `impl Trait` type in its return type
-   = help: consider moving `foo` to another trait
    = help: only type `Outer` implements `MyTrait`; consider using it directly instead.
 
 error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
@@ -47,6 +47,7 @@ error[E0038]: the trait `MyTrait` is not dyn compatible
 LL | impl dyn MyTrait {
    |      ^^^^^^^^^^^ `MyTrait` is not dyn compatible
    |
+   = help: consider moving `foo` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:5:22
@@ -55,7 +56,6 @@ LL | trait MyTrait {
    |       ------- this trait is not dyn compatible...
 LL |     fn foo(&self) -> impl Marker;
    |                      ^^^^^^^^^^^ ...because method `foo` references an `impl Trait` type in its return type
-   = help: consider moving `foo` to another trait
    = help: only type `Outer` implements `MyTrait`; consider using it directly instead.
 
 error[E0038]: the trait `MyTrait` is not dyn compatible
@@ -64,6 +64,7 @@ error[E0038]: the trait `MyTrait` is not dyn compatible
 LL |     fn other(&self) -> impl Marker {
    |               ^^^^ `MyTrait` is not dyn compatible
    |
+   = help: consider moving `foo` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:5:22
@@ -72,7 +73,6 @@ LL | trait MyTrait {
    |       ------- this trait is not dyn compatible...
 LL |     fn foo(&self) -> impl Marker;
    |                      ^^^^^^^^^^^ ...because method `foo` references an `impl Trait` type in its return type
-   = help: consider moving `foo` to another trait
    = help: only type `Outer` implements `MyTrait`; consider using it directly instead.
 
 error: aborting due to 5 previous errors

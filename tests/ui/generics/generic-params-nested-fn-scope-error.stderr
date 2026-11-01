@@ -8,11 +8,11 @@ LL |     fn bar(w: [U]) -> U {
    |        |
    |        generic parameter used in this inner function
    |
-   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |     fn bar<U>(w: [U]) -> U {
    |           +++
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/generic-params-nested-fn-scope-error.rs:5:23
@@ -24,11 +24,11 @@ LL |     fn bar(w: [U]) -> U {
    |        |
    |        generic parameter used in this inner function
    |
-   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |     fn bar<U>(w: [U]) -> U {
    |           +++
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 
 error: aborting due to 2 previous errors
 

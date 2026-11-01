@@ -4,8 +4,8 @@ error: replacing a value of type `T` with `T::default()`
 LL |     let _ = std::mem::replace(&mut s, String::default());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `std::mem::take` instead: `std::mem::take(&mut s)`
    |
-   = note: `-D clippy::mem-replace-with-default` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mem_replace_with_default)]`
+   = note: `-D clippy::mem-replace-with-default` implied by `-D warnings`
 
 error: replacing a value of type `T` with `T::default()`
   --> tests/ui/mem_replace_with_default.rs:14:13

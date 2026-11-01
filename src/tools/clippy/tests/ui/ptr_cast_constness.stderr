@@ -4,8 +4,8 @@ error: `as` casting between raw pointers while changing only its constness
 LL |         let _: &mut T = std::mem::transmute(p as *mut T);
    |                                             ^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `p.cast_mut()`
    |
-   = note: `-D clippy::ptr-cast-constness` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::ptr_cast_constness)]`
+   = note: `-D clippy::ptr-cast-constness` implied by `-D warnings`
 
 error: `as` casting between raw pointers while changing only its constness
   --> tests/ui/ptr_cast_constness.rs:13:23

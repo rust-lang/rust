@@ -4,13 +4,13 @@ error: unsequenced read of `x`
 LL |     } + x;
    |         ^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::mixed_read_write_in_expression)]`
 note: whether read occurs before this write depends on evaluation order
   --> tests/ui/mixed_read_write_in_expression.rs:12:9
    |
 LL |         x = 1;
    |         ^^^^^
    = note: `-D clippy::mixed-read-write-in-expression` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::mixed_read_write_in_expression)]`
 
 error: unsequenced read of `x`
   --> tests/ui/mixed_read_write_in_expression.rs:18:5

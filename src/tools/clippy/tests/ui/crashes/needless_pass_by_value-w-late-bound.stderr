@@ -9,12 +9,12 @@ help: or consider marking this type as `Copy`
    |
 LL | struct Foo<'a>(&'a [(); 100]);
    | ^^^^^^^^^^^^^^
-   = note: `-D clippy::needless-pass-by-value` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_value)]`
 help: consider taking a reference instead
    |
 LL | fn test(x: &Foo<'_>) {}
    |            +
+   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_value)]`
+   = note: `-D clippy::needless-pass-by-value` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

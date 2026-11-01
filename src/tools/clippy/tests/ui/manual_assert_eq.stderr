@@ -4,13 +4,13 @@ error: used `assert!` with an equality comparison
 LL |     assert!(a == "a".to_ascii_lowercase());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::manual-assert-eq` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_assert_eq)]`
 help: replace it with `assert_eq!(..)`
    |
 LL -     assert!(a == "a".to_ascii_lowercase());
 LL +     assert_eq!(a, "a".to_ascii_lowercase());
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_assert_eq)]`
+   = note: `-D clippy::manual-assert-eq` implied by `-D warnings`
 
 error: used `assert!` with an equality comparison
   --> tests/ui/manual_assert_eq.rs:9:5

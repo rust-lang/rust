@@ -74,15 +74,15 @@ LL | struct 👀;
 LL |     👀::full_of✨()
    |         ^^^^^^^^^ associated function or constant not found in `👀`
    |
+help: there is an associated function `full_of_✨` with a similar name
+   |
+LL |     👀::full_of_✨()
+   |                +
 note: if you're trying to build a new `👀`, consider using `👀::full_of_✨` which returns `👀`
   --> $DIR/emoji-identifiers.rs:4:5
    |
 LL |     fn full_of_✨() -> 👀 {
    |     ^^^^^^^^^^^^^^^^^^^^^
-help: there is an associated function `full_of_✨` with a similar name
-   |
-LL |     👀::full_of_✨()
-   |                +
 
 error[E0425]: cannot find function `i_like_to_😄_a_lot` in this scope
   --> $DIR/emoji-identifiers.rs:13:13
@@ -90,16 +90,16 @@ error[E0425]: cannot find function `i_like_to_😄_a_lot` in this scope
 LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
    |             ^^^^^^^^^^^^^^^^^^ not found in this scope
    |
-note: similarly named function `i_like_to_😅_a_lot` defined here
-  --> $DIR/emoji-identifiers.rs:8:1
-   |
-LL | fn i_like_to_😅_a_lot() -> 👀 {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a function with a similar name exists
    |
 LL -     let _ = i_like_to_😄_a_lot() ➖ 4;
 LL +     let _ = i_like_to_😅_a_lot() ➖ 4;
    |
+note: similarly named function `i_like_to_😅_a_lot` defined here
+  --> $DIR/emoji-identifiers.rs:8:1
+   |
+LL | fn i_like_to_😅_a_lot() -> 👀 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 10 previous errors
 

@@ -4,13 +4,13 @@ error: needlessly taken reference of both operands
 LL |     let foo = &5 - &6;
    |               ^^^^^^^
    |
-   = note: `-D clippy::op-ref` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::op_ref)]`
 help: use the values directly
    |
 LL -     let foo = &5 - &6;
 LL +     let foo = 5 - 6;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::op_ref)]`
+   = note: `-D clippy::op-ref` implied by `-D warnings`
 
 error: taken reference of right operand
   --> tests/ui/op_ref.rs:57:13

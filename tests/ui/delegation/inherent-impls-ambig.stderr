@@ -86,6 +86,10 @@ error[E0061]: this function takes 1 argument but 0 arguments were supplied
 LL |     reuse X::<usize>::foo_self as foo_self1;
    |                       ^^^^^^^^ argument #1 of type `test_1::X<usize>` is missing
    |
+help: provide the argument
+   |
+LL |     reuse X::<usize>::foo_self(/* X<usize> */) as foo_self1;
+   |                               ++++++++++++++++
 note: method defined here
   --> $DIR/inherent-impls-ambig.rs:13:12
    |
@@ -93,10 +97,6 @@ LL |     impl X<usize> {
 LL |         fn foo() {}
 LL |         fn foo_self(self) {}
    |            ^^^^^^^^ ----
-help: provide the argument
-   |
-LL |     reuse X::<usize>::foo_self(/* X<usize> */) as foo_self1;
-   |                               ++++++++++++++++
 
 error[E0034]: multiple applicable items in scope
   --> $DIR/inherent-impls-ambig.rs:52:14

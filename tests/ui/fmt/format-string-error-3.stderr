@@ -6,12 +6,12 @@ LL |     println!("{=}", x);
    |               |
    |               because of this opening brace
    |
-   = note: to print `{`, you can escape it using `{{`
 help: use rust debug printing macro
    |
 LL -     println!("{=}", x);
 LL +     dbg!(x);
    |
+   = note: to print `{`, you can escape it using `{{`
 
 error: aborting due to 1 previous error
 

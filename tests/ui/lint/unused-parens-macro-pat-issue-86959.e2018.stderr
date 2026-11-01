@@ -4,16 +4,16 @@ error: unnecessary parentheses around pattern
 LL |     match_pat!(('a'));
    |                ^   ^
    |
-note: the lint level is defined here
-  --> $DIR/unused-parens-macro-pat-issue-86959.rs:9:9
-   |
-LL | #![deny(unused_parens)]
-   |         ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     match_pat!(('a'));
 LL +     match_pat!('a');
    |
+note: the lint level is defined here
+  --> $DIR/unused-parens-macro-pat-issue-86959.rs:9:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
 
 error: unnecessary parentheses around pattern
   --> $DIR/unused-parens-macro-pat-issue-86959.rs:55:13

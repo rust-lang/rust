@@ -4,8 +4,8 @@ error[E0658]: register class `preg` can only be used as a clobber in stable
 LL |     asm!("/* {0} */", in(preg) p);
    |                       ^^^^^^^^^^
    |
-   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
    = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: invalid asm template modifier `z` for this register class
@@ -14,10 +14,10 @@ error[E0658]: invalid asm template modifier `z` for this register class
 LL |     unsafe { asm!("mov {1:z}.d, {0:z}.d", in(vreg) x, out(vreg) y) };
    |                        ^^^^^ template modifier        ----------- argument
    |
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
    = note: the `vreg` register class only supports the following template modifiers on stable: `b`, `h`, `s`, `d`, `q`, and `v`
    = note: enabling the `asm_experimental_reg` feature will allow using: `b`, `h`, `s`, `d`, `q`, `v`, and `z`
    = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
-   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: invalid asm template modifier `z` for this register class
@@ -28,10 +28,10 @@ LL |     unsafe { asm!("mov {1:z}.d, {0:z}.d", in(vreg) x, out(vreg) y) };
    |                                 |
    |                                 template modifier
    |
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
    = note: the `vreg` register class only supports the following template modifiers on stable: `b`, `h`, `s`, `d`, `q`, and `v`
    = note: enabling the `asm_experimental_reg` feature will allow using: `b`, `h`, `s`, `d`, `q`, `v`, and `z`
    = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
-   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: type `svint32_t` cannot be used with this register class in stable
@@ -40,8 +40,8 @@ error[E0658]: type `svint32_t` cannot be used with this register class in stable
 LL |     asm!("/* {0} */", in(vreg) x);
    |                                ^
    |
-   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
    = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: type `svint32_t` cannot be used with this register class in stable
@@ -50,8 +50,8 @@ error[E0658]: type `svint32_t` cannot be used with this register class in stable
 LL |     asm!("/* {0} */", in(vreg_low16) x);
    |                                      ^
    |
-   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
    = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: type `svint32_t` cannot be used with this register class in stable
@@ -60,8 +60,8 @@ error[E0658]: type `svint32_t` cannot be used with this register class in stable
 LL |     asm!("", in("z0") x);
    |                       ^
    |
-   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
    = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: type `svbool_t` cannot be used with this register class in stable
@@ -70,8 +70,8 @@ error[E0658]: type `svbool_t` cannot be used with this register class in stable
 LL |     asm!("/* {0} */", in(preg) p);
    |                                ^
    |
-   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
    = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 7 previous errors

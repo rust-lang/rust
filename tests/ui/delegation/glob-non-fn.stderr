@@ -62,13 +62,13 @@ warning: trait objects without an explicit `dyn` are deprecated
 LL |     reuse Trait::* { &self.0 }
    |           ^^^^^
    |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
 help: if this is a dyn-compatible trait, use `dyn`
    |
 LL |     reuse <dyn Trait>::* { &self.0 }
    |           ++++      +
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
 
 error[E0038]: the trait `Trait` is not dyn compatible
   --> $DIR/glob-non-fn.rs:29:11
@@ -76,6 +76,7 @@ error[E0038]: the trait `Trait` is not dyn compatible
 LL |     reuse Trait::* { &self.0 }
    |           ^^^^^ `Trait` is not dyn compatible
    |
+   = help: consider moving `CONST` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/glob-non-fn.rs:5:11
@@ -85,7 +86,6 @@ LL | trait Trait {
 LL |     fn method(&self);
 LL |     const CONST: u8;
    |           ^^^^^ ...because it contains associated const `CONST`
-   = help: consider moving `CONST` to another trait
    = help: the following types implement `Trait`:
              u8
              Good

@@ -7,13 +7,13 @@ LL |     type Foo = impl PartialEq<(Foo, i32)>;
 LL |         fn eq(&self, _other: &(Foo, i32)) -> bool {
    |                              ^^^^^^^^^^^ expected `a::Bar`, found opaque type
    |
-   = note: expected signature `fn(&Bar, &(a::Bar, _)) -> _`
-              found signature `fn(&Bar, &(a::Foo, _)) -> _`
 help: change the parameter type to match the trait
    |
 LL -         fn eq(&self, _other: &(Foo, i32)) -> bool {
 LL +         fn eq(&self, _other: &(crate::a::Bar, i32)) -> bool {
    |
+   = note: expected signature `fn(&Bar, &(a::Bar, _)) -> _`
+              found signature `fn(&Bar, &(a::Foo, _)) -> _`
 
 error[E0053]: method `eq` has an incompatible type for trait
   --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:25:30
@@ -24,6 +24,11 @@ LL |     type Foo = impl PartialEq<(Foo, i32)>;
 LL |         fn eq(&self, _other: &(Bar, i32)) -> bool {
    |                              ^^^^^^^^^^^ expected opaque type, found `b::Bar`
    |
+help: change the parameter type to match the trait
+   |
+LL -         fn eq(&self, _other: &(Bar, i32)) -> bool {
+LL +         fn eq(&self, _other: &(crate::b::Foo, i32)) -> bool {
+   |
    = note: expected signature `fn(&Bar, &(b::Foo, _)) -> _`
               found signature `fn(&Bar, &(b::Bar, _)) -> _`
 note: this item must have a `#[define_opaque(b::Foo)]` attribute to be able to define hidden types
@@ -31,11 +36,6 @@ note: this item must have a `#[define_opaque(b::Foo)]` attribute to be able to d
    |
 LL |         fn eq(&self, _other: &(Bar, i32)) -> bool {
    |            ^^
-help: change the parameter type to match the trait
-   |
-LL -         fn eq(&self, _other: &(Bar, i32)) -> bool {
-LL +         fn eq(&self, _other: &(crate::b::Foo, i32)) -> bool {
-   |
 
 error: item does not constrain `a::Foo::{opaque#0}`
   --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:10:12

@@ -6,11 +6,11 @@ LL | use sub1::foo;
 LL | use sub2::foo;
    |     ^^^^^^^^^ `foo` reimported here
    |
-   = note: `foo` must be defined only once in the value namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | use sub2::foo as other_foo;
    |               ++++++++++++
+   = note: `foo` must be defined only once in the value namespace of this module
 
 error: aborting due to 1 previous error
 

@@ -10,15 +10,15 @@ error[E0107]: missing generics for associated type `Foo::Bar`
 LL |     T1: for<T> Foo<usize, Bar = Bar<T>>,
    |                           ^^^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL |     T1: for<T> Foo<usize, Bar<K> = Bar<T>>,
+   |                              +++
 note: associated type defined here, with 1 generic parameter: `K`
   --> $DIR/normalized-param-env-unconstrained-type-120033.rs:11:10
    |
 LL |     type Bar<K>;
    |          ^^^ -
-help: add missing generic argument
-   |
-LL |     T1: for<T> Foo<usize, Bar<K> = Bar<T>>,
-   |                              +++
 
 error[E0107]: missing generics for associated type `Foo::Bar`
   --> $DIR/normalized-param-env-unconstrained-type-120033.rs:18:27
@@ -26,16 +26,16 @@ error[E0107]: missing generics for associated type `Foo::Bar`
 LL |     T1: for<T> Foo<usize, Bar = Bar<T>>,
    |                           ^^^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL |     T1: for<T> Foo<usize, Bar<K> = Bar<T>>,
+   |                              +++
 note: associated type defined here, with 1 generic parameter: `K`
   --> $DIR/normalized-param-env-unconstrained-type-120033.rs:11:10
    |
 LL |     type Bar<K>;
    |          ^^^ -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: add missing generic argument
-   |
-LL |     T1: for<T> Foo<usize, Bar<K> = Bar<T>>,
-   |                              +++
 
 error: aborting due to 3 previous errors
 

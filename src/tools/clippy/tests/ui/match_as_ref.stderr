@@ -9,8 +9,6 @@ LL | |         Some(ref v) => Some(v),
 LL | |     };
    | |_____^
    |
-   = note: `-D clippy::match-as-ref` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::match_as_ref)]`
 help: use `Option::as_ref()` directly
    |
 LL -     let borrowed: Option<&()> = match owned {
@@ -20,6 +18,8 @@ LL -         Some(ref v) => Some(v),
 LL -     };
 LL +     let borrowed: Option<&()> = owned.as_ref();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::match_as_ref)]`
+   = note: `-D clippy::match-as-ref` implied by `-D warnings`
 
 error: manual implementation of `Option::as_mut`
   --> tests/ui/match_as_ref.rs:12:39
@@ -94,7 +94,6 @@ LL | |         Some(ref mut v) => Some(v),
 LL | |     };
    | |_____^
    |
-   = note: but the type is coerced to a non-mutable reference, and so `as_ref` can used instead
 help: use `Option::as_ref()`
    |
 LL -     let _: Option<&u32> = match Some(0) {
@@ -104,6 +103,7 @@ LL -         Some(ref mut v) => Some(v),
 LL -     };
 LL +     let _: Option<&u32> = Some(0).as_ref();
    |
+   = note: but the type is coerced to a non-mutable reference, and so `as_ref` can used instead
 
 error: manual implementation of `Option::as_mut`
   --> tests/ui/match_as_ref.rs:110:43
@@ -116,7 +116,6 @@ LL | |         Some(ref mut v) => Some(v),
 LL | |     };
    | |_____^
    |
-   = note: but the type is coerced to a non-mutable reference, and so `as_ref` can used instead
 help: use `Option::as_ref()`
    |
 LL -     let _: Option<&dyn std::fmt::Debug> = match Some(0) {
@@ -126,6 +125,7 @@ LL -         Some(ref mut v) => Some(v),
 LL -     };
 LL +     let _: Option<&dyn std::fmt::Debug> = Some(0).as_ref().map(|x| x as _);
    |
+   = note: but the type is coerced to a non-mutable reference, and so `as_ref` can used instead
 
 error: manual implementation of `Option::as_ref`
   --> tests/ui/match_as_ref.rs:124:27

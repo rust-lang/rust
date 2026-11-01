@@ -15,12 +15,12 @@ LL |     let _: MissingOptions<i32> = 32;
    |            |
    |            expected due to this
    |
-   = note: expected struct `MissingOptions<i32>`
-                found type `{integer}`
 help: try wrapping the expression in `MissingOptions`
    |
 LL |     let _: MissingOptions<i32> = MissingOptions(32);
    |                                  +++++++++++++++  +
+   = note: expected struct `MissingOptions<i32>`
+                found type `{integer}`
 
 error: aborting due to 1 previous error; 1 warning emitted
 

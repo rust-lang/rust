@@ -7,14 +7,14 @@ LL |     let x = Some(());
 LL |     (x?)
    |      ^^ expected `Option<()>`, found `()`
    |
-   = note: `?` operator cannot convert from `()` to `Option<()>`
-   = note:   expected enum `Option<()>`
-           found unit type `()`
 help: try removing this `?`
    |
 LL -     (x?)
 LL +     (x)
    |
+   = note: `?` operator cannot convert from `()` to `Option<()>`
+   = note:   expected enum `Option<()>`
+           found unit type `()`
 help: try wrapping the expression in `Some`
    |
 LL |     (Some(x?))

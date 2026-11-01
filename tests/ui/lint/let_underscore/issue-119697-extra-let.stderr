@@ -4,11 +4,6 @@ error: non-binding let on a type that has a destructor
 LL |     _ = field;
    |     ^^^^^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/issue-119697-extra-let.rs:1:9
-   |
-LL | #![deny(let_underscore_drop)]
-   |         ^^^^^^^^^^^^^^^^^^^
 help: consider binding to an unused variable to avoid immediately dropping the value
    |
 LL -     _ = field;
@@ -19,6 +14,11 @@ help: consider immediately dropping the value
 LL -     _ = field;
 LL +     drop(field);
    |
+note: the lint level is defined here
+  --> $DIR/issue-119697-extra-let.rs:1:9
+   |
+LL | #![deny(let_underscore_drop)]
+   |         ^^^^^^^^^^^^^^^^^^^
 
 error: non-binding let on a type that has a destructor
   --> $DIR/issue-119697-extra-let.rs:18:5

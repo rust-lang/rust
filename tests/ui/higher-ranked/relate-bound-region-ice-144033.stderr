@@ -6,9 +6,9 @@ LL |         self.bar(collection)
    |              |
    |              required by a bound introduced by this call
    |
+   = help: consider constraining the associated type `<&I as Iterator>::Item` to `&()`
    = note:    expected reference `&()`
            found associated type `<&I as Iterator>::Item`
-   = help: consider constraining the associated type `<&I as Iterator>::Item` to `&()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: the method call chain might not have had the expected associated types
   --> $DIR/relate-bound-region-ice-144033.rs:16:51

@@ -4,8 +4,8 @@ error: using `clone` on type `i32` which implements the `Copy` trait
 LL |     42.clone();
    |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
    |
-   = note: `-D clippy::clone-on-copy` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::clone_on_copy)]`
+   = note: `-D clippy::clone-on-copy` implied by `-D warnings`
 
 error: using `clone` on type `i32` which implements the `Copy` trait
   --> tests/ui/clone_on_copy.rs:18:5

@@ -33,11 +33,6 @@ LL |         fn drop(&mut self) {}
    |         ^^^^^^^^^^^^^^^^^^
    |
    = help: structurally pinned types must keep `Pin`'s safety contract
-note: `Bar` is marked `#[pin_v2]` here
-  --> $DIR/pinned-drop-check.rs:10:5
-   |
-LL |     #[pin_v2]
-   |     ^^^^^^^^^
 help: implement `pin_drop` instead
    |
 LL -         fn drop(&mut self) {}
@@ -47,6 +42,11 @@ help: remove the `#[pin_v2]` attribute if it is not intended for structurally pi
    |
 LL -     #[pin_v2]
    |
+note: `Bar` is marked `#[pin_v2]` here
+  --> $DIR/pinned-drop-check.rs:10:5
+   |
+LL |     #[pin_v2]
+   |     ^^^^^^^^^
 
 error: conflicting implementations of `Drop::drop` and `Drop::pin_drop`
   --> $DIR/pinned-drop-check.rs:41:5
@@ -95,11 +95,6 @@ LL |         fn drop(&pin const self) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: structurally pinned types must keep `Pin`'s safety contract
-note: `Bar` is marked `#[pin_v2]` here
-  --> $DIR/pinned-drop-check.rs:79:5
-   |
-LL |     #[pin_v2]
-   |     ^^^^^^^^^
 help: implement `pin_drop` instead
    |
 LL -         fn drop(&pin const self) {}
@@ -109,6 +104,11 @@ help: remove the `#[pin_v2]` attribute if it is not intended for structurally pi
    |
 LL -     #[pin_v2]
    |
+note: `Bar` is marked `#[pin_v2]` here
+  --> $DIR/pinned-drop-check.rs:79:5
+   |
+LL |     #[pin_v2]
+   |     ^^^^^^^^^
 
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:83:17
@@ -116,13 +116,13 @@ error[E0053]: method `drop` has an incompatible type for trait
 LL |         fn drop(&pin const self) {}
    |                 ^^^^^^^^^^^^^^^ expected `&mut drop_pin_const_wrong_type::Foo`, found `Pin<&drop_pin_const_wrong_type::Foo>`
    |
-   = note: expected signature `fn(&mut drop_pin_const_wrong_type::Foo)`
-              found signature `fn(Pin<&drop_pin_const_wrong_type::Foo>)`
 help: change the self-receiver type to match the trait
    |
 LL -         fn drop(&pin const self) {}
 LL +         fn drop(&mut self) {}
    |
+   = note: expected signature `fn(&mut drop_pin_const_wrong_type::Foo)`
+              found signature `fn(Pin<&drop_pin_const_wrong_type::Foo>)`
 
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:87:17
@@ -130,13 +130,13 @@ error[E0053]: method `drop` has an incompatible type for trait
 LL |         fn drop(&pin const self) {}
    |                 ^^^^^^^^^^^^^^^ expected `&mut drop_pin_const_wrong_type::Bar`, found `Pin<&drop_pin_const_wrong_type::Bar>`
    |
-   = note: expected signature `fn(&mut drop_pin_const_wrong_type::Bar)`
-              found signature `fn(Pin<&drop_pin_const_wrong_type::Bar>)`
 help: change the self-receiver type to match the trait
    |
 LL -         fn drop(&pin const self) {}
 LL +         fn drop(&mut self) {}
    |
+   = note: expected signature `fn(&mut drop_pin_const_wrong_type::Bar)`
+              found signature `fn(Pin<&drop_pin_const_wrong_type::Bar>)`
 
 error: `Bar` must implement `pin_drop`
   --> $DIR/pinned-drop-check.rs:104:9
@@ -145,11 +145,6 @@ LL |         fn drop<'a>(&'a pin mut self) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: structurally pinned types must keep `Pin`'s safety contract
-note: `Bar` is marked `#[pin_v2]` here
-  --> $DIR/pinned-drop-check.rs:95:5
-   |
-LL |     #[pin_v2]
-   |     ^^^^^^^^^
 help: implement `pin_drop` instead
    |
 LL -         fn drop<'a>(&'a pin mut self) {}
@@ -159,6 +154,11 @@ help: remove the `#[pin_v2]` attribute if it is not intended for structurally pi
    |
 LL -     #[pin_v2]
    |
+note: `Bar` is marked `#[pin_v2]` here
+  --> $DIR/pinned-drop-check.rs:95:5
+   |
+LL |     #[pin_v2]
+   |     ^^^^^^^^^
 
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:99:21
@@ -166,13 +166,13 @@ error[E0053]: method `drop` has an incompatible type for trait
 LL |         fn drop<'a>(&'a pin mut self) {}
    |                     ^^^^^^^^^^^^^^^^ expected `&mut drop_with_lifetime_wrong_type::Foo`, found `Pin<&mut Foo>`
    |
-   = note: expected signature `fn(&mut drop_with_lifetime_wrong_type::Foo)`
-              found signature `fn(Pin<&mut drop_with_lifetime_wrong_type::Foo>)`
 help: change the self-receiver type to match the trait
    |
 LL -         fn drop<'a>(&'a pin mut self) {}
 LL +         fn drop<'a>(&mut self) {}
    |
+   = note: expected signature `fn(&mut drop_with_lifetime_wrong_type::Foo)`
+              found signature `fn(Pin<&mut drop_with_lifetime_wrong_type::Foo>)`
 
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:104:21
@@ -180,13 +180,13 @@ error[E0053]: method `drop` has an incompatible type for trait
 LL |         fn drop<'a>(&'a pin mut self) {}
    |                     ^^^^^^^^^^^^^^^^ expected `&mut drop_with_lifetime_wrong_type::Bar`, found `Pin<&mut Bar>`
    |
-   = note: expected signature `fn(&mut drop_with_lifetime_wrong_type::Bar)`
-              found signature `fn(Pin<&mut drop_with_lifetime_wrong_type::Bar>)`
 help: change the self-receiver type to match the trait
    |
 LL -         fn drop<'a>(&'a pin mut self) {}
 LL +         fn drop<'a>(&mut self) {}
    |
+   = note: expected signature `fn(&mut drop_with_lifetime_wrong_type::Bar)`
+              found signature `fn(Pin<&mut drop_with_lifetime_wrong_type::Bar>)`
 
 error: `Bar` must implement `pin_drop`
   --> $DIR/pinned-drop-check.rs:123:9
@@ -195,11 +195,6 @@ LL |         fn drop(self: Pin<&mut Self>) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: structurally pinned types must keep `Pin`'s safety contract
-note: `Bar` is marked `#[pin_v2]` here
-  --> $DIR/pinned-drop-check.rs:114:5
-   |
-LL |     #[pin_v2]
-   |     ^^^^^^^^^
 help: implement `pin_drop` instead
    |
 LL -         fn drop(self: Pin<&mut Self>) {}
@@ -209,6 +204,11 @@ help: remove the `#[pin_v2]` attribute if it is not intended for structurally pi
    |
 LL -     #[pin_v2]
    |
+note: `Bar` is marked `#[pin_v2]` here
+  --> $DIR/pinned-drop-check.rs:114:5
+   |
+LL |     #[pin_v2]
+   |     ^^^^^^^^^
 
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:118:23
@@ -216,13 +216,13 @@ error[E0053]: method `drop` has an incompatible type for trait
 LL |         fn drop(self: Pin<&mut Self>) {}
    |                       ^^^^^^^^^^^^^^ expected `&mut drop_explicit_pin_wrong_type::Foo`, found `Pin<&mut Foo>`
    |
-   = note: expected signature `fn(&mut drop_explicit_pin_wrong_type::Foo)`
-              found signature `fn(Pin<&mut drop_explicit_pin_wrong_type::Foo>)`
 help: change the self-receiver type to match the trait
    |
 LL -         fn drop(self: Pin<&mut Self>) {}
 LL +         fn drop(&mut self) {}
    |
+   = note: expected signature `fn(&mut drop_explicit_pin_wrong_type::Foo)`
+              found signature `fn(Pin<&mut drop_explicit_pin_wrong_type::Foo>)`
 
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:123:23
@@ -230,13 +230,13 @@ error[E0053]: method `drop` has an incompatible type for trait
 LL |         fn drop(self: Pin<&mut Self>) {}
    |                       ^^^^^^^^^^^^^^ expected `&mut drop_explicit_pin_wrong_type::Bar`, found `Pin<&mut Bar>`
    |
-   = note: expected signature `fn(&mut drop_explicit_pin_wrong_type::Bar)`
-              found signature `fn(Pin<&mut drop_explicit_pin_wrong_type::Bar>)`
 help: change the self-receiver type to match the trait
    |
 LL -         fn drop(self: Pin<&mut Self>) {}
 LL +         fn drop(&mut self) {}
    |
+   = note: expected signature `fn(&mut drop_explicit_pin_wrong_type::Bar)`
+              found signature `fn(Pin<&mut drop_explicit_pin_wrong_type::Bar>)`
 
 error[E0053]: method `pin_drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:135:21
@@ -244,13 +244,13 @@ error[E0053]: method `pin_drop` has an incompatible type for trait
 LL |         fn pin_drop(&mut self) {}
    |                     ^^^^^^^^^ expected `Pin<&mut pin_drop_wrong_type::Foo>`, found `&mut pin_drop_wrong_type::Foo`
    |
-   = note: expected signature `fn(Pin<&mut pin_drop_wrong_type::Foo>)`
-              found signature `fn(&mut pin_drop_wrong_type::Foo)`
 help: change the self-receiver type to match the trait
    |
 LL -         fn pin_drop(&mut self) {}
 LL +         fn pin_drop(self: Pin<&mut pin_drop_wrong_type::Foo>) {}
    |
+   = note: expected signature `fn(Pin<&mut pin_drop_wrong_type::Foo>)`
+              found signature `fn(&mut pin_drop_wrong_type::Foo)`
 
 error[E0053]: method `pin_drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:139:21
@@ -258,13 +258,13 @@ error[E0053]: method `pin_drop` has an incompatible type for trait
 LL |         fn pin_drop(&mut self) {}
    |                     ^^^^^^^^^ expected `Pin<&mut pin_drop_wrong_type::Bar>`, found `&mut pin_drop_wrong_type::Bar`
    |
-   = note: expected signature `fn(Pin<&mut pin_drop_wrong_type::Bar>)`
-              found signature `fn(&mut pin_drop_wrong_type::Bar)`
 help: change the self-receiver type to match the trait
    |
 LL -         fn pin_drop(&mut self) {}
 LL +         fn pin_drop(self: Pin<&mut pin_drop_wrong_type::Bar>) {}
    |
+   = note: expected signature `fn(Pin<&mut pin_drop_wrong_type::Bar>)`
+              found signature `fn(&mut pin_drop_wrong_type::Bar)`
 
 error: `Bar` must implement `pin_drop`
   --> $DIR/pinned-drop-check.rs:154:9
@@ -273,11 +273,6 @@ LL |         fn drop(&mut self) {
    |         ^^^^^^^^^^^^^^^^^^
    |
    = help: structurally pinned types must keep `Pin`'s safety contract
-note: `Bar` is marked `#[pin_v2]` here
-  --> $DIR/pinned-drop-check.rs:145:5
-   |
-LL |     #[pin_v2]
-   |     ^^^^^^^^^
 help: implement `pin_drop` instead
    |
 LL -         fn drop(&mut self) {
@@ -287,6 +282,11 @@ help: remove the `#[pin_v2]` attribute if it is not intended for structurally pi
    |
 LL -     #[pin_v2]
    |
+note: `Bar` is marked `#[pin_v2]` here
+  --> $DIR/pinned-drop-check.rs:145:5
+   |
+LL |     #[pin_v2]
+   |     ^^^^^^^^^
 
 error[E0040]: explicit use of destructor method
   --> $DIR/pinned-drop-check.rs:150:13

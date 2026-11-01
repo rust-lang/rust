@@ -6,9 +6,9 @@ LL | | fn main() {}
    | |_^
    |
    = help: make this a doc comment by removing one `/`
+   = help: to override `-D warnings` add `#[allow(clippy::four_forward_slashes)]`
    = note: bare CR characters are not allowed in doc comments
    = note: `-D clippy::four-forward-slashes` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::four_forward_slashes)]`
 
 error: aborting due to 1 previous error
 

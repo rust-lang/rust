@@ -4,8 +4,8 @@ error: unnecessary semicolon
 LL |     };
    |      ^ help: remove
    |
-   = note: `-D clippy::unnecessary-semicolon` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_semicolon)]`
+   = note: `-D clippy::unnecessary-semicolon` implied by `-D warnings`
 
 error: unnecessary semicolon
   --> tests/ui/unnecessary_semicolon.rs:35:6

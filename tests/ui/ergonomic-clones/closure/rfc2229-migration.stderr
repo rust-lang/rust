@@ -10,6 +10,11 @@ LL |         let x = a.0;
 LL | }
    | - in Rust 2018, `a` is dropped here, but in Rust 2021, only `a.0` will be dropped here as part of the closure
    |
+help: add a dummy let to cause `a` to be fully captured
+   |
+LL ~     let f = use || {
+LL +         let _ = &a;
+   |
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 note: the lint level is defined here
   --> $DIR/rfc2229-migration.rs:5:9
@@ -17,11 +22,6 @@ note: the lint level is defined here
 LL | #![warn(rust_2021_compatibility)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    = note: `#[warn(rust_2021_incompatible_closure_captures)]` implied by `#[warn(rust_2021_compatibility)]`
-help: add a dummy let to cause `a` to be fully captured
-   |
-LL ~     let f = use || {
-LL +         let _ = &a;
-   |
 
 warning: 1 warning emitted
 

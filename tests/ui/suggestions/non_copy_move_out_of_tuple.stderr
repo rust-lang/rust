@@ -6,6 +6,11 @@ LL |     (b,) = *tuple;
    |      |
    |      data moved here because the place has type `NonCopy`, which does not implement the `Copy` trait
    |
+help: consider removing the dereference here
+   |
+LL -     (b,) = *tuple;
+LL +     (b,) = tuple;
+   |
 note: if `NonCopy` implemented `Clone`, you could clone the value
   --> $DIR/non_copy_move_out_of_tuple.rs:3:1
    |
@@ -14,11 +19,6 @@ LL | struct NonCopy;
 ...
 LL |     (b,) = *tuple;
    |      - you could clone this value
-help: consider removing the dereference here
-   |
-LL -     (b,) = *tuple;
-LL +     (b,) = tuple;
-   |
 
 error: aborting due to 1 previous error
 

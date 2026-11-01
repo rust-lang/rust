@@ -10,12 +10,12 @@ LL |     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true }
 LL |     recursive_tt!();
    |     --------------- in this macro invocation
    |
-   = note: enum variants can't have type parameters
 help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
 LL +     ($variant:tt) => (if let EnumUnit::<i32, u32>::$variant {} = 5 { true } else { false });
    |
+   = note: enum variants can't have type parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:15:30
@@ -45,12 +45,12 @@ LL |     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { tru
 LL |     recursive_ident!();
    |     ------------------ in this macro invocation
    |
-   = note: enum variants can't have type parameters
 help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
 LL +     ($variant:ident) => (if let EnumUnit::<i32, u32>::$variant {} = 5 { true } else { false });
    |
+   = note: enum variants can't have type parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:25:33
@@ -84,12 +84,12 @@ LL | | }
 LL |       nested1_tt!();
    |       ------------- in this macro invocation
    |
-   = note: enum variants can't have type parameters
 help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
 LL +     ($variant:tt) => (if let EnumUnit::<i32, u32>::$variant {} = 5 { true } else { false });
    |
+   = note: enum variants can't have type parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:38:30
@@ -125,12 +125,12 @@ LL | | }
 LL |       nested1_ident!();
    |       ---------------- in this macro invocation
    |
-   = note: enum variants can't have type parameters
 help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true } else { false });
 LL +     ($variant:ident) => (if let EnumUnit::<i32, u32>::$variant {} = 5 { true } else { false });
    |
+   = note: enum variants can't have type parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:51:33
@@ -163,12 +163,12 @@ LL |     ($arg1:tt, $arg2:tt) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
 LL |     nested1_tt_args_in_first_macro!();
    |     --------------------------------- in this macro invocation
    |
-   = note: enum variants can't have type parameters
 help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -     ($arg1:tt, $arg2:tt) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
 LL +     ($arg1:tt, $arg2:tt) => (if let EnumUnit::<$arg1, $arg2>::VariantB {}
    |
+   = note: enum variants can't have type parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:65:37
@@ -203,12 +203,12 @@ LL | | }
 LL |       nested1_ident_args_in_first_macro!();
    |       ------------------------------------ in this macro invocation
    |
-   = note: enum variants can't have type parameters
 help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -     ($arg1:ident, $arg2:ident) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
 LL +     ($arg1:ident, $arg2:ident) => (if let EnumUnit::<$arg1, $arg2>::VariantB {}
    |
+   = note: enum variants can't have type parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:77:43
@@ -236,12 +236,12 @@ LL |     if let EnumUnit::VariantB::<i32, u32> {} = 5 { true } else { false };
    |                      |
    |                      not allowed on this type
    |
-   = note: enum variants can't have type parameters
 help: you might have meant to specify type parameters on enum `Enum`
    |
 LL -     if let EnumUnit::VariantB::<i32, u32> {} = 5 { true } else { false };
 LL +     if let EnumUnit::<i32, u32>::VariantB {} = 5 { true } else { false };
    |
+   = note: enum variants can't have type parameters
 
 error[E0308]: mismatched types
   --> $DIR/issue-116473-ice-wrong-span-variant-args.rs:93:12

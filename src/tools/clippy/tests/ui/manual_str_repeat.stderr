@@ -4,8 +4,8 @@ error: manual implementation of `str::repeat` using iterators
 LL |     let _: String = std::iter::repeat("test").take(10).collect();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"test".repeat(10)`
    |
-   = note: `-D clippy::manual-str-repeat` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_str_repeat)]`
+   = note: `-D clippy::manual-str-repeat` implied by `-D warnings`
 
 error: manual implementation of `str::repeat` using iterators
   --> tests/ui/manual_str_repeat.rs:10:21

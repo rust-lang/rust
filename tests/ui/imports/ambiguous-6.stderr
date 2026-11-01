@@ -4,6 +4,7 @@ error[E0659]: `C` is ambiguous
 LL |     C
    |     ^ ambiguous name
    |
+   = help: consider adding an explicit import of `C` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `C` could refer to the constant imported here
   --> $DIR/ambiguous-6.rs:14:13
@@ -16,7 +17,6 @@ note: `C` could also refer to the constant imported here
    |
 LL |     pub use mod2::*;
    |             ^^^^^^^
-   = help: consider adding an explicit import of `C` to disambiguate
 
 error: aborting due to 1 previous error
 

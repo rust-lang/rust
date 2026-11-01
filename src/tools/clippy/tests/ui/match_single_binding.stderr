@@ -9,8 +9,6 @@ LL | |         },
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::match-single-binding` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::match_single_binding)]`
 help: consider using a `let` statement
    |
 LL ~     let (x, y, z) = (a, b, c);
@@ -18,6 +16,8 @@ LL +     {
 LL +         println!("{x} {y} {z}");
 LL +     }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::match_single_binding)]`
+   = note: `-D clippy::match-single-binding` implied by `-D warnings`
 
 error: this match could be written as a `let` statement
   --> tests/ui/match_single_binding.rs:34:5

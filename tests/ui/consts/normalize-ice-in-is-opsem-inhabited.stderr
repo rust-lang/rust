@@ -21,15 +21,15 @@ error[E0277]: the trait bound `T: Tr` is not satisfied
 LL | struct A2<T>(&'static S2<T>);
    |                       ^^^^^ the trait `Tr` is not implemented for `T`
    |
+help: consider restricting type parameter `T` with trait `Tr`
+   |
+LL | struct A2<T: Tr>(&'static S2<T>);
+   |            ++++
 note: required by a bound in `S2`
   --> $DIR/normalize-ice-in-is-opsem-inhabited.rs:14:14
    |
 LL | struct S2<T: Tr>(&'static (), std::marker::PhantomData<<T as Tr>::Out>);
    |              ^^ required by this bound in `S2`
-help: consider restricting type parameter `T` with trait `Tr`
-   |
-LL | struct A2<T: Tr>(&'static S2<T>);
-   |            ++++
 
 error: aborting due to 2 previous errors
 

@@ -4,6 +4,7 @@ error: swapping temporary values has no effect
 LL |     swap(&mut func(), &mut func());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::swap_with_temporary)]`
 note: this expression returns a temporary value
   --> tests/ui/swap_with_temporary_unfixable.rs:20:15
    |
@@ -15,7 +16,6 @@ note: this expression returns a temporary value
 LL |     swap(&mut func(), &mut func());
    |                            ^^^^^^
    = note: `-D clippy::swap-with-temporary` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::swap_with_temporary)]`
 
 error: swapping temporary values has no effect
   --> tests/ui/swap_with_temporary_unfixable.rs:23:17

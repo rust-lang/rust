@@ -6,15 +6,15 @@ LL | impl<'a, T> Trait<'a> for T {
    |      |
    |      the parameter type `T` must be valid for the lifetime `'a` as defined here...
    |
+help: consider adding an explicit lifetime bound
+   |
+LL | impl<'a, T: 'a> Trait<'a> for T {
+   |           ++++
 note: ...that is required by this bound
   --> $DIR/implied-bounds-unnorm-associated-type-5.rs:1:18
    |
 LL | trait Trait<'a>: 'a {
    |                  ^^
-help: consider adding an explicit lifetime bound
-   |
-LL | impl<'a, T: 'a> Trait<'a> for T {
-   |           ++++
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/implied-bounds-unnorm-associated-type-5.rs:6:27

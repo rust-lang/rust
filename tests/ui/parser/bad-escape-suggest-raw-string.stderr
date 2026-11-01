@@ -4,11 +4,11 @@ error: unknown character escape: `[`
 LL |     let bad = "ab\[c";
    |                   ^ unknown character escape
    |
-   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
 LL |     let bad = r"ab\[c";
    |               +
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 
 error: aborting due to 1 previous error
 

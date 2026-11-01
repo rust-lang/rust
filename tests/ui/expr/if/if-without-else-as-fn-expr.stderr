@@ -8,8 +8,8 @@ LL | |         return 3;
 LL | |     }
    | |_____^ expected `usize`, found `()`
    |
-   = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
+   = note: `if` expressions without `else` evaluate to `()`
 
 error[E0317]: `if` may be missing an `else` clause
   --> $DIR/if-without-else-as-fn-expr.rs:9:20
@@ -22,8 +22,8 @@ LL | |         return 3;
 LL | |     };
    | |_____^ expected `usize`, found `()`
    |
-   = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
+   = note: `if` expressions without `else` evaluate to `()`
 
 error[E0317]: `if` may be missing an `else` clause
   --> $DIR/if-without-else-as-fn-expr.rs:17:5
@@ -35,8 +35,8 @@ LL | |         3
 LL | |     }
    | |_____^ expected `usize`, found `()`
    |
-   = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
+   = note: `if` expressions without `else` evaluate to `()`
 
 error[E0317]: `if` may be missing an `else` clause
   --> $DIR/if-without-else-as-fn-expr.rs:24:5
@@ -48,8 +48,8 @@ LL | |         return 3;
 LL | |     }
    | |_____^ expected `usize`, found `()`
    |
-   = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
+   = note: `if` expressions without `else` evaluate to `()`
 
 error[E0317]: `if` may be missing an `else` clause
   --> $DIR/if-without-else-as-fn-expr.rs:31:20
@@ -62,8 +62,8 @@ LL | |         return 3;
 LL | |     };
    | |_____^ expected `usize`, found `()`
    |
-   = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
+   = note: `if` expressions without `else` evaluate to `()`
 
 error[E0317]: `if` may be missing an `else` clause
   --> $DIR/if-without-else-as-fn-expr.rs:39:5
@@ -75,8 +75,8 @@ LL | |         3
 LL | |     }
    | |_____^ expected `usize`, found `()`
    |
-   = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
+   = note: `if` expressions without `else` evaluate to `()`
 
 error: aborting due to 6 previous errors
 

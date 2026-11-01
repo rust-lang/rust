@@ -4,8 +4,8 @@ error: this looks like a formatting argument but it is not part of a formatting 
 LL |     let s = "{ш}";
    |              ^^^
    |
-   = note: `-D clippy::literal-string-with-formatting-args` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::literal_string_with_formatting_args)]`
+   = note: `-D clippy::literal-string-with-formatting-args` implied by `-D warnings`
 
 error: this looks like a formatting argument but it is not part of a formatting macro
   --> tests/ui/literal_string_with_formatting_arg.rs:32:15

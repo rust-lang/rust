@@ -19,15 +19,15 @@ LL | impl<'a, T> Trait<'a, T> for u32 {
 LL |     type Out = RefOk<'a, T>;
    |     ^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds...
    |
+help: consider adding an explicit lifetime bound
+   |
+LL | impl<'a, T: 'a> Trait<'a, T> for u32 {
+   |           ++++
 note: ...that is required by this bound
   --> $DIR/regions-struct-not-wf.rs:16:20
    |
 LL | struct RefOk<'a, T:'a> {
    |                    ^^
-help: consider adding an explicit lifetime bound
-   |
-LL | impl<'a, T: 'a> Trait<'a, T> for u32 {
-   |           ++++
 
 error[E0491]: in type `&'a &'b T`, reference has a longer lifetime than the data it references
   --> $DIR/regions-struct-not-wf.rs:25:5

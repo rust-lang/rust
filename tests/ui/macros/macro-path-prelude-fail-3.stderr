@@ -4,14 +4,14 @@ error: cannot find macro `inline` in this scope
 LL |     inline!();
    |     ^^^^^^
    |
-note: similarly named macro `line` defined here
-  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
-   = note: `inline` is in scope, but it is an attribute: `#[inline]`
 help: a macro with a similar name exists
    |
 LL -     inline!();
 LL +     line!();
    |
+note: similarly named macro `line` defined here
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
+   = note: `inline` is in scope, but it is an attribute: `#[inline]`
 
 error: aborting due to 1 previous error
 

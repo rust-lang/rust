@@ -4,8 +4,8 @@ error: manual implementation of an assign operation
 LL |     a = a + 1;
    |     ^^^^^^^^^ help: replace it with: `a += 1`
    |
-   = note: `-D clippy::assign-op-pattern` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::assign_op_pattern)]`
+   = note: `-D clippy::assign-op-pattern` implied by `-D warnings`
 
 error: manual implementation of an assign operation
   --> tests/ui/assign_ops.rs:13:5

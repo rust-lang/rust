@@ -4,8 +4,8 @@ error: this `if` branch is empty
 LL |     if (true) {}
    |     ^^^^^^^^^^^^ help: you can remove it
    |
-   = note: `-D clippy::needless-ifs` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_ifs)]`
+   = note: `-D clippy::needless-ifs` implied by `-D warnings`
 
 error: this `if` branch is empty
   --> tests/ui/needless_ifs.rs:27:5

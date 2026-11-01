@@ -18,8 +18,8 @@ LL | |         if let Some(_x) = y {
 LL | |     }
    | |_____^ help: try: `while let Some(_x) = y { .. }`
    |
-   = note: `-D clippy::while-let-loop` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::while_let_loop)]`
+   = note: `-D clippy::while-let-loop` implied by `-D warnings`
 
 error: this loop could be written as a `while let` loop
   --> tests/ui/while_let_loop.rs:25:5

@@ -4,8 +4,8 @@ error: this `.filter_map(..)` can be written more simply using `.filter(..)`
 LL |     let _ = (0..4).filter_map(|x| if x > 1 { Some(x) } else { None });
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-filter-map` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_filter_map)]`
+   = note: `-D clippy::unnecessary-filter-map` implied by `-D warnings`
 
 error: this `.filter_map(..)` can be written more simply using `.filter(..)`
   --> tests/ui/unnecessary_filter_map.rs:8:20

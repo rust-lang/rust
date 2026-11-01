@@ -4,16 +4,16 @@ error: incompatible link kind for `Clone`
 LL | /// [`struct@Clone`]
    |       ^^^^^^^^^^^^ this link resolved to a trait, which is not a struct
    |
-note: the lint level is defined here
-  --> $DIR/weird-syntax.rs:3:9
-   |
-LL | #![deny(rustdoc::broken_intra_doc_links)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to link to the trait, prefix with `trait@`
    |
 LL - /// [`struct@Clone`]
 LL + /// [`trait@Clone`]
    |
+note: the lint level is defined here
+  --> $DIR/weird-syntax.rs:3:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: incompatible link kind for `Clone`
   --> $DIR/weird-syntax.rs:21:9

@@ -184,12 +184,12 @@ LL |     takes_foo(());
    |     required by a bound introduced by this call
    |
    = help: the trait `Foo<i32>` is not implemented for `()`
-   = note: trait has `()` and `i32` as params
 help: this trait has no implementations, consider adding one
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:16:1
    |
 LL | trait Foo<T> {}
    | ^^^^^^^^^^^^
+   = note: trait has `()` and `i32` as params
 note: required by a bound in `takes_foo`
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:51:22
    |

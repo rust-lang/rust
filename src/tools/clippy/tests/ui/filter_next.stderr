@@ -4,13 +4,13 @@ error: called `filter(..).next()` on an `Iterator`
 LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::filter-next` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::filter_next)]`
 help: use `.find(..)` instead
    |
 LL -     let _ = v.iter().filter(|&x| *x < 0).next();
 LL +     let _ = v.iter().find(|&x| *x < 0);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::filter_next)]`
+   = note: `-D clippy::filter-next` implied by `-D warnings`
 
 error: called `filter(..).next_back()` on an `DoubleEndedIterator`
   --> tests/ui/filter_next.rs:19:13

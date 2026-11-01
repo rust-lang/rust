@@ -4,8 +4,8 @@ error: this binary expression can be simplified
 LL |     if x == y || x < y {
    |        ^^^^^^^^^^^^^^^ help: try: `x <= y`
    |
-   = note: `-D clippy::double-comparisons` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::double_comparisons)]`
+   = note: `-D clippy::double-comparisons` implied by `-D warnings`
 
 error: this binary expression can be simplified
   --> tests/ui/double_comparison.rs:8:8

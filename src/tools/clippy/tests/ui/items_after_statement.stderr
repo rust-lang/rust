@@ -8,8 +8,8 @@ LL | |         println!("foo");
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::items-after-statements` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::items_after_statements)]`
+   = note: `-D clippy::items-after-statements` implied by `-D warnings`
 
 error: adding items after statements is confusing, since items exist from the start of the scope
   --> tests/ui/items_after_statement.rs:22:5

@@ -4,8 +4,8 @@ error: binding to `_` prefixed variable with no side-effect
 LL |             let _c = 0;
    |                 ^^
    |
-   = note: `-D clippy::no-effect-underscore-binding` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::no_effect_underscore_binding)]`
+   = note: `-D clippy::no-effect-underscore-binding` implied by `-D warnings`
 
 error: binding to `_` prefixed variable with no side-effect
   --> tests/ui/no_effect_async_fn.rs:13:13

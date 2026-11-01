@@ -4,8 +4,8 @@ error: called `is_some()` after searching an `Iterator` with `find`
 LL |     let _ = v.iter().find(|x: &&u32| arg_no_deref_impl(x)).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|x: &u32| arg_no_deref_impl(&x))`
    |
-   = note: `-D clippy::search-is-some` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::search_is_some)]`
+   = note: `-D clippy::search-is-some` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

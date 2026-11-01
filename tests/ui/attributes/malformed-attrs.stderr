@@ -4,11 +4,11 @@ error[E0539]: malformed `cfg` attribute input
 LL | #[cfg]
    |   ^^^ expected this to be a list
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
    |
 LL | #[cfg(predicate)]
    |      +++++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0539]: malformed `cfg_attr` attribute input
   --> $DIR/malformed-attrs.rs:110:3
@@ -16,11 +16,11 @@ error[E0539]: malformed `cfg_attr` attribute input
 LL | #[cfg_attr]
    |   ^^^^^^^^ expected this to be a list
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: must be of the form
    |
 LL | #[cfg_attr(predicate, attr1, attr2, ...)]
    |           ++++++++++++++++++++++++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error[E0463]: can't find crate for `wloop`
   --> $DIR/malformed-attrs.rs:214:1
@@ -52,13 +52,13 @@ error[E0539]: malformed `windows_subsystem` attribute input
 LL | #![windows_subsystem]
    |    ^^^^^^^^^^^^^^^^^ expected this to be of the form `windows_subsystem = "..."`
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #![windows_subsystem = "console"]
    |                      +++++++++++
 LL | #![windows_subsystem = "windows"]
    |                      +++++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute>
 
 error[E0539]: malformed `export_name` attribute input
   --> $DIR/malformed-attrs.rs:28:3
@@ -247,7 +247,6 @@ LL | #[must_use()]
    |           |
    |           didn't expect a list here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[must_use()]
@@ -256,6 +255,7 @@ LL + #[must_use]
 LL - #[must_use()]
 LL + #[must_use = "reason"]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute>
 
 error[E0565]: malformed `no_mangle` attribute input
   --> $DIR/malformed-attrs.rs:66:3
@@ -389,11 +389,11 @@ error[E0539]: malformed `link_name` attribute input
 LL | #[link_name]
    |   ^^^^^^^^^
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute>
 help: must be of the form
    |
 LL | #[link_name = "name"]
    |             ++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute>
 
 error[E0539]: malformed `link_section` attribute input
   --> $DIR/malformed-attrs.rs:92:3
@@ -401,11 +401,11 @@ error[E0539]: malformed `link_section` attribute input
 LL | #[link_section]
    |   ^^^^^^^^^^^^
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute>
 help: must be of the form
    |
 LL | #[link_section = "name"]
    |                ++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute>
 
 error[E0539]: malformed `coverage` attribute input
   --> $DIR/malformed-attrs.rs:94:3
@@ -460,11 +460,11 @@ error[E0539]: malformed `instruction_set` attribute input
 LL | #[instruction_set]
    |   ^^^^^^^^^^^^^^^ expected this to be a list
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
 help: must be of the form
    |
 LL | #[instruction_set(set)]
    |                  +++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
 
 error[E0539]: malformed `patchable_function_entry` attribute input
   --> $DIR/malformed-attrs.rs:114:3
@@ -525,7 +525,6 @@ LL | #[must_use = 1]
    |              |
    |              expected a string literal here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[must_use = 1]
@@ -534,6 +533,7 @@ LL + #[must_use]
 LL - #[must_use = 1]
 LL + #[must_use = "reason"]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute>
 
 error[E0539]: malformed `proc_macro_derive` attribute input
   --> $DIR/malformed-attrs.rs:129:3
@@ -541,13 +541,13 @@ error[E0539]: malformed `proc_macro_derive` attribute input
 LL | #[proc_macro_derive]
    |   ^^^^^^^^^^^^^^^^^ expected this to be a list
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[proc_macro_derive(TraitName)]
    |                    +++++++++++
 LL | #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
    |                    ++++++++++++++++++++++++++++++++++++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
 
 error[E0539]: malformed `must_not_suspend` attribute input
   --> $DIR/malformed-attrs.rs:134:3
@@ -626,11 +626,11 @@ error[E0539]: malformed `link_ordinal` attribute input
 LL |     #[link_ordinal]
    |       ^^^^^^^^^^^^ expected this to be a list
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute>
 help: must be of the form
    |
 LL |     #[link_ordinal(ordinal)]
    |                   +++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute>
 
 error[E0565]: malformed `ffi_const` attribute input
   --> $DIR/malformed-attrs.rs:171:7
@@ -658,7 +658,6 @@ error[E0539]: malformed `allow` attribute input
 LL | #[allow]
    |   ^^^^^ expected this to be a list
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[allow(lint1)]
@@ -667,6 +666,7 @@ LL | #[allow(lint1, lint2, ...)]
    |        +++++++++++++++++++
 LL | #[allow(lint1, lint2, lint3, reason = "...")]
    |        +++++++++++++++++++++++++++++++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 
 error[E0539]: malformed `expect` attribute input
   --> $DIR/malformed-attrs.rs:180:3
@@ -674,7 +674,6 @@ error[E0539]: malformed `expect` attribute input
 LL | #[expect]
    |   ^^^^^^ expected this to be a list
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[expect(lint1)]
@@ -683,6 +682,7 @@ LL | #[expect(lint1, lint2, ...)]
    |         +++++++++++++++++++
 LL | #[expect(lint1, lint2, lint3, reason = "...")]
    |         +++++++++++++++++++++++++++++++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 
 error[E0539]: malformed `warn` attribute input
   --> $DIR/malformed-attrs.rs:182:3
@@ -690,7 +690,6 @@ error[E0539]: malformed `warn` attribute input
 LL | #[warn]
    |   ^^^^ expected this to be a list
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[warn(lint1)]
@@ -699,6 +698,7 @@ LL | #[warn(lint1, lint2, ...)]
    |       +++++++++++++++++++
 LL | #[warn(lint1, lint2, lint3, reason = "...")]
    |       +++++++++++++++++++++++++++++++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 
 error[E0539]: malformed `deny` attribute input
   --> $DIR/malformed-attrs.rs:184:3
@@ -706,7 +706,6 @@ error[E0539]: malformed `deny` attribute input
 LL | #[deny]
    |   ^^^^ expected this to be a list
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[deny(lint1)]
@@ -715,6 +714,7 @@ LL | #[deny(lint1, lint2, ...)]
    |       +++++++++++++++++++
 LL | #[deny(lint1, lint2, lint3, reason = "...")]
    |       +++++++++++++++++++++++++++++++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 
 error[E0539]: malformed `forbid` attribute input
   --> $DIR/malformed-attrs.rs:186:3
@@ -722,7 +722,6 @@ error[E0539]: malformed `forbid` attribute input
 LL | #[forbid]
    |   ^^^^^^ expected this to be a list
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[forbid(lint1)]
@@ -731,6 +730,7 @@ LL | #[forbid(lint1, lint2, ...)]
    |         +++++++++++++++++++
 LL | #[forbid(lint1, lint2, lint3, reason = "...")]
    |         +++++++++++++++++++++++++++++++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 
 error[E0539]: malformed `debugger_visualizer` attribute input
   --> $DIR/malformed-attrs.rs:188:3
@@ -738,11 +738,11 @@ error[E0539]: malformed `debugger_visualizer` attribute input
 LL | #[debugger_visualizer]
    |   ^^^^^^^^^^^^^^^^^^^ expected this to be a list
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/debugger.html#the-debugger_visualizer-attribute>
 help: must be of the form
    |
 LL | #[debugger_visualizer(natvis_file = "...", gdb_script_file = "...")]
    |                      ++++++++++++++++++++++++++++++++++++++++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/debugger.html#the-debugger_visualizer-attribute>
 
 error[E0565]: malformed `automatically_derived` attribute input
   --> $DIR/malformed-attrs.rs:190:3
@@ -808,7 +808,6 @@ LL | #[macro_use = 1]
    |             |
    |             expected a list or no arguments here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use = 1]
@@ -817,6 +816,7 @@ LL + #[macro_use]
 LL - #[macro_use = 1]
 LL + #[macro_use(name1, name2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 
 error[E0539]: malformed `macro_export` attribute input
   --> $DIR/malformed-attrs.rs:217:3

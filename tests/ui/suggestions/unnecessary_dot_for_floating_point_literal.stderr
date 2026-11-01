@@ -6,13 +6,13 @@ LL |     let _: f64 = 0..10;
    |            |
    |            expected due to this
    |
-   = note: expected type `f64`
-            found struct `std::ops::Range<{integer}>`
 help: remove the unnecessary `.` operator for a floating point literal
    |
 LL -     let _: f64 = 0..10;
 LL +     let _: f64 = 0.10;
    |
+   = note: expected type `f64`
+            found struct `std::ops::Range<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/unnecessary_dot_for_floating_point_literal.rs:3:18
@@ -22,13 +22,13 @@ LL |     let _: f64 = 1..;
    |            |
    |            expected due to this
    |
-   = note: expected type `f64`
-            found struct `std::ops::RangeFrom<{integer}>`
 help: remove the unnecessary `.` operator for a floating point literal
    |
 LL -     let _: f64 = 1..;
 LL +     let _: f64 = 1.;
    |
+   = note: expected type `f64`
+            found struct `std::ops::RangeFrom<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/unnecessary_dot_for_floating_point_literal.rs:4:18
@@ -38,13 +38,13 @@ LL |     let _: f64 = ..10;
    |            |
    |            expected due to this
    |
-   = note: expected type `f64`
-            found struct `RangeTo<{integer}>`
 help: remove the unnecessary `.` operator and add an integer part for a floating point literal
    |
 LL -     let _: f64 = ..10;
 LL +     let _: f64 = 0.10;
    |
+   = note: expected type `f64`
+            found struct `RangeTo<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/unnecessary_dot_for_floating_point_literal.rs:5:18

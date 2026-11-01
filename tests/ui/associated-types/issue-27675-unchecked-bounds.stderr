@@ -4,15 +4,15 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     copy::<dyn Setup<From=T>>(t)
    |            ^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
    |
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | pub fn copy_any<T: std::marker::Copy>(t: &T) -> T {
+   |                  +++++++++++++++++++
 note: required by a bound in `copy`
   --> $DIR/issue-27675-unchecked-bounds.rs:10:12
    |
 LL | fn copy<U: Setup + ?Sized>(from: &U::From) -> U::From {
    |            ^^^^^ required by this bound in `copy`
-help: consider restricting type parameter `T` with trait `Copy`
-   |
-LL | pub fn copy_any<T: std::marker::Copy>(t: &T) -> T {
-   |                  +++++++++++++++++++
 
 error: aborting due to 1 previous error
 

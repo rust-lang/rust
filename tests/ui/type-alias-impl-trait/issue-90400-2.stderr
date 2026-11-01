@@ -4,6 +4,10 @@ error[E0277]: the trait bound `B: Bar` is not satisfied
 LL |         MyBaz(bar)
    |         ^^^^^^^^^^ the trait `Bar` is not implemented for `B`
    |
+help: consider restricting type parameter `B` with trait `Bar`
+   |
+LL |     type FooFn<B: Bar> = impl Baz;
+   |                 +++++
 note: required for `MyBaz<B>` to implement `Baz`
   --> $DIR/issue-90400-2.rs:30:14
    |
@@ -21,10 +25,6 @@ note: this definition site has more where clauses than the opaque type
    |
 LL |     fn foo<B: Bar>(&self, bar: B) -> Self::FooFn<B> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider restricting type parameter `B` with trait `Bar`
-   |
-LL |     type FooFn<B: Bar> = impl Baz;
-   |                 +++++
 
 error: aborting due to 1 previous error
 

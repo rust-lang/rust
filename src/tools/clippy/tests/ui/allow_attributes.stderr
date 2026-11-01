@@ -4,8 +4,8 @@ error: #[allow] attribute found
 LL | #[allow(dead_code)]
    |   ^^^^^ help: replace it with: `expect`
    |
-   = note: `-D clippy::allow-attributes` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::allow_attributes)]`
+   = note: `-D clippy::allow-attributes` implied by `-D warnings`
 
 error: #[allow] attribute found
   --> tests/ui/allow_attributes.rs:22:30

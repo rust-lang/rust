@@ -78,13 +78,13 @@ LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!
    |                                                                  expected `pattern_type!(i32 is 1..)`, found integer
    |                                                                  arguments to this function are incorrect
    |
-   = note: expected pattern type `pattern_type!(i32 is 1..)`
-                      found type `{integer}`
 help: the return type of this call is `{integer}` due to the type of the argument passed
   --> $DIR/nested.rs:19:66
    |
 LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!();
    |                                                                  ^ this argument influences the return type of `RangeSub`
+   = note: expected pattern type `pattern_type!(i32 is 1..)`
+                      found type `{integer}`
 note: method defined here
   --> $SRC_DIR/core/src/pat.rs:LL:COL
 

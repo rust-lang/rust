@@ -16,8 +16,8 @@ error[E0658]: parameters in parenthesized generic argument lists with names, att
 LL | fn f2(_: impl Fn(u8, vvvv: u8)) {}
    |                      ^^^^
    |
-   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental
@@ -26,8 +26,8 @@ error[E0658]: parameters in parenthesized generic argument lists with names, att
 LL | fn f3(_: impl Fn(aaaa: u8, u8)) {}
    |                  ^^^^
    |
-   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental
@@ -36,8 +36,8 @@ error[E0658]: parameters in parenthesized generic argument lists with names, att
 LL | fn f4(_: impl Fn(aaaa: u8, vvvv: u8)) {}
    |                  ^^^^
    |
-   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental
@@ -46,8 +46,8 @@ error[E0658]: parameters in parenthesized generic argument lists with names, att
 LL | fn f4(_: impl Fn(aaaa: u8, vvvv: u8)) {}
    |                            ^^^^
    |
-   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental
@@ -56,8 +56,8 @@ error[E0658]: parameters in parenthesized generic argument lists with names, att
 LL | fn f5(_: impl Fn(u8, ...)) {}
    |                      ^^^
    |
-   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental
@@ -66,8 +66,8 @@ error[E0658]: parameters in parenthesized generic argument lists with names, att
 LL | fn f6(f: impl Fn(#[cfg(false)] u8)) { f() }
    |                  ^^^^^^^^^^^^^
    |
-   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental
@@ -76,8 +76,8 @@ error[E0658]: parameters in parenthesized generic argument lists with names, att
 LL | fn f7(_: impl Fn(#[inline] u8)) {}
    |                  ^^^^^^^^^
    |
-   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental
@@ -86,8 +86,8 @@ error[E0658]: parameters in parenthesized generic argument lists with names, att
 LL | fn f8(_: impl Fn(u8, #[allow(unused_attributes)] u8)) {}
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: the `inline` attribute cannot be used on function params

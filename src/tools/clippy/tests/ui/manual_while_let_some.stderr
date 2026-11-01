@@ -4,13 +4,13 @@ error: you seem to be trying to pop elements from a `Vec` in a loop
 LL |         let number = numbers.pop().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::manual-while-let-some` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_while_let_some)]`
 help: consider using a `while..let` loop
    |
 LL ~     while let Some(number) = numbers.pop() {
 LL ~         
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_while_let_some)]`
+   = note: `-D clippy::manual-while-let-some` implied by `-D warnings`
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
   --> tests/ui/manual_while_let_some.rs:29:9

@@ -4,8 +4,8 @@ error[E0658]: the extern "Swift" ABI is experimental and subject to change
 LL | extern "Swift" fn f() {}
    |        ^^^^^^^
    |
-   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = help: add `#![feature(abi_swift)]` to the crate attributes to enable
+   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "Swift" ABI is experimental and subject to change
@@ -14,8 +14,8 @@ error[E0658]: the extern "Swift" ABI is experimental and subject to change
 LL |     extern "Swift" fn m();
    |            ^^^^^^^
    |
-   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = help: add `#![feature(abi_swift)]` to the crate attributes to enable
+   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "Swift" ABI is experimental and subject to change
@@ -24,8 +24,8 @@ error[E0658]: the extern "Swift" ABI is experimental and subject to change
 LL |     extern "Swift" fn dm() {}
    |            ^^^^^^^
    |
-   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = help: add `#![feature(abi_swift)]` to the crate attributes to enable
+   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "Swift" ABI is experimental and subject to change
@@ -34,8 +34,8 @@ error[E0658]: the extern "Swift" ABI is experimental and subject to change
 LL |     extern "Swift" fn m() {}
    |            ^^^^^^^
    |
-   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = help: add `#![feature(abi_swift)]` to the crate attributes to enable
+   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "Swift" ABI is experimental and subject to change
@@ -44,8 +44,8 @@ error[E0658]: the extern "Swift" ABI is experimental and subject to change
 LL |     extern "Swift" fn im() {}
    |            ^^^^^^^
    |
-   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = help: add `#![feature(abi_swift)]` to the crate attributes to enable
+   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "Swift" ABI is experimental and subject to change
@@ -54,8 +54,8 @@ error[E0658]: the extern "Swift" ABI is experimental and subject to change
 LL | type TA = extern "Swift" fn();
    |                  ^^^^^^^
    |
-   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = help: add `#![feature(abi_swift)]` to the crate attributes to enable
+   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "Swift" ABI is experimental and subject to change
@@ -64,8 +64,8 @@ error[E0658]: the extern "Swift" ABI is experimental and subject to change
 LL | extern "Swift" {}
    |        ^^^^^^^
    |
-   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = help: add `#![feature(abi_swift)]` to the crate attributes to enable
+   = note: see issue #156481 <https://github.com/rust-lang/rust/issues/156481> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 7 previous errors

@@ -5,8 +5,8 @@ LL |     yy = unsafe { std::mem::transmute(std::ptr::read(&x())) };
    |                             ^^^^^^^^^
    |
    = help: consider giving the source and destination types a name, and adding missing type annotations
-   = note: `-D clippy::missing-transmute-annotations` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::missing_transmute_annotations)]`
+   = note: `-D clippy::missing-transmute-annotations` implied by `-D warnings`
 
 error: transmute used without annotations
   --> tests/ui/missing_transmute_annotations_unfixable.rs:16:29

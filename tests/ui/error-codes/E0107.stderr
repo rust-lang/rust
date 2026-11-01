@@ -6,15 +6,15 @@ LL |     buzz: Buzz<'a>,
    |           |
    |           expected 2 lifetime arguments
    |
+help: add missing lifetime argument
+   |
+LL |     buzz: Buzz<'a, 'a>,
+   |                  ++++
 note: struct defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/E0107.rs:2:8
    |
 LL | struct Buzz<'a, 'b>(&'a str, &'b str);
    |        ^^^^ --  --
-help: add missing lifetime argument
-   |
-LL |     buzz: Buzz<'a, 'a>,
-   |                  ++++
 
 error[E0107]: enum takes 0 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/E0107.rs:17:10
@@ -134,15 +134,15 @@ error[E0107]: trait takes 0 generic arguments but 2 generic arguments were suppl
 LL | fn trait_bound_generic<I: T<u8, u16>>(_i: I) {
    |                           ^ expected 0 generic arguments
    |
+help: turn the generic arguments into associated item bindings
+   |
+LL | fn trait_bound_generic<I: T<A = u8, B = u16>>(_i: I) {
+   |                             +++     +++
 note: trait defined here, with 0 generic parameters
   --> $DIR/E0107.rs:50:11
    |
 LL | pub trait T {
    |           ^
-help: turn the generic arguments into associated item bindings
-   |
-LL | fn trait_bound_generic<I: T<A = u8, B = u16>>(_i: I) {
-   |                             +++     +++
 
 error: aborting due to 10 previous errors
 

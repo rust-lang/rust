@@ -4,13 +4,13 @@ error: inline trait bounds used
 LL | fn inline_simple<T: Clone>() {}
    |                 ^^^^^^^^^^
    |
-   = note: `-D clippy::inline-trait-bounds` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::inline_trait_bounds)]`
 help: move bounds to a `where` clause
    |
 LL - fn inline_simple<T: Clone>() {}
 LL + fn inline_simple<T>() where T: Clone {}
    |
+   = help: to override `-D warnings` add `#[allow(clippy::inline_trait_bounds)]`
+   = note: `-D clippy::inline-trait-bounds` implied by `-D warnings`
 
 error: inline trait bounds used
   --> tests/ui/inline_trait_bounds.rs:8:19

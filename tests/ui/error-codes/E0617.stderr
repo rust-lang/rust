@@ -60,11 +60,11 @@ LL |         printf(::std::ptr::null(), printf);
    |                                    ^^^^^^
    |
    = help: a function item is zero-sized and needs to be cast into a function pointer to be used in FFI
-   = note: for more information on function items, visit https://doc.rust-lang.org/reference/types/function-item.html
 help: use a function pointer instead
    |
 LL |         printf(::std::ptr::null(), printf as unsafe extern "C" fn(*const i8, ...));
    |                                           +++++++++++++++++++++++++++++++++++++++
+   = note: for more information on function items, visit https://doc.rust-lang.org/reference/types/function-item.html
 
 error: aborting due to 6 previous errors
 

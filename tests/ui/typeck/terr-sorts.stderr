@@ -6,6 +6,10 @@ LL |     want_foo(b);
    |     |
    |     arguments to this function are incorrect
    |
+help: consider unboxing the value
+   |
+LL |     want_foo(*b);
+   |              +
    = note: expected struct `Foo`
               found struct `Box<Foo>`
 note: function defined here
@@ -13,10 +17,6 @@ note: function defined here
    |
 LL | fn want_foo(f: Foo) {}
    |    ^^^^^^^^ ------
-help: consider unboxing the value
-   |
-LL |     want_foo(*b);
-   |              +
 
 error: aborting due to 1 previous error
 

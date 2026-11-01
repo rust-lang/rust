@@ -135,13 +135,13 @@ LL | /** [Clone](std::clone::Clone) */ #[inline]
    |      |
    |      because label contains path that resolves to same destination
    |
-   = note: when a link's destination is not specified,
-           the label is used to resolve intra-doc links
 help: remove explicit link target
    |
 LL - /** [Clone](std::clone::Clone) */ #[inline]
 LL + /** [Clone] */ #[inline]
    |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
 
 error: redundant explicit link target
   --> $DIR/redundant_explicit_links_split.rs:84:13
@@ -151,13 +151,13 @@ LL | /** [Clone](std::clone::Clone) */ #[inline] pub fn split_blockcomment_singl
    |      |
    |      because label contains path that resolves to same destination
    |
-   = note: when a link's destination is not specified,
-           the label is used to resolve intra-doc links
 help: remove explicit link target
    |
 LL - /** [Clone](std::clone::Clone) */ #[inline] pub fn split_blockcomment_singleline_attr_b() { }
 LL + /** [Clone] */ #[inline] pub fn split_blockcomment_singleline_attr_b() { }
    |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
 
 error: redundant explicit link target
   --> $DIR/redundant_explicit_links_split.rs:88:13
@@ -169,14 +169,14 @@ LL |   /// [Clone](
 LL | | /// std::clone::Clone)
    | |_____________________^ explicit target is redundant
    |
-   = note: when a link's destination is not specified,
-           the label is used to resolve intra-doc links
 help: remove explicit link target
    |
 LL - /// [Clone](
 LL - /// std::clone::Clone)
 LL + /// [Clone]
    |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
 
 error: redundant explicit link target
   --> $DIR/redundant_explicit_links_split.rs:95:13
@@ -188,14 +188,14 @@ LL |   /// [Clone](std::clone::Clone
 LL | | /// )
    | |____^ explicit target is redundant
    |
-   = note: when a link's destination is not specified,
-           the label is used to resolve intra-doc links
 help: remove explicit link target
    |
 LL - /// [Clone](std::clone::Clone
 LL - /// )
 LL + /// [Clone]
    |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
 
 error: aborting due to 16 previous errors
 

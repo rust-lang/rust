@@ -7,11 +7,11 @@ LL | macro_rules! empty { () => () }
 LL |         _ => { empty!() }
    |                ^^^^^^^^ expected expression
    |
-   = note: the macro call doesn't expand to an expression, but it can expand to a statement
 help: add `;` to interpret the expansion as a statement
    |
 LL |         _ => { empty!(); }
    |                        +
+   = note: the macro call doesn't expand to an expression, but it can expand to a statement
 
 error: aborting due to 1 previous error
 

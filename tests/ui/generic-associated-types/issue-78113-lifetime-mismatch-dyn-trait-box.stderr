@@ -4,6 +4,10 @@ error: incompatible lifetime on type
 LL |     type T<'a> = Box<dyn A + 'a>;
    |                  ^^^^^^^^^^^^^^^
    |
+help: consider relaxing the implicit `'static` requirement
+   |
+LL | impl A for Box<dyn A + '_> {}
+   |                      ++++
 note: because this has an unmet lifetime requirement
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:10:17
    |
@@ -20,10 +24,6 @@ note: this has an implicit `'static` lifetime requirement
    |
 LL | impl A for Box<dyn A> {}
    |                    ^
-help: consider relaxing the implicit `'static` requirement
-   |
-LL | impl A for Box<dyn A + '_> {}
-   |                      ++++
 
 error: incompatible lifetime on type
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:25:18
@@ -53,6 +53,10 @@ error: incompatible lifetime on type
 LL |     type T<'a> = (Box<dyn A + 'a>, Box<dyn A + 'a>);
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+help: consider relaxing the implicit `'static` requirement
+   |
+LL | impl E for (Box<dyn A + '_>, Box<dyn A>) {}
+   |                       ++++
 note: because this has an unmet lifetime requirement
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:31:17
    |
@@ -69,19 +73,15 @@ note: this has an implicit `'static` lifetime requirement
    |
 LL | impl E for (Box<dyn A>, Box<dyn A>) {}
    |                     ^
+help: consider relaxing the implicit `'static` requirement
+   |
+LL | impl E for (Box<dyn A>, Box<dyn A + '_>) {}
+   |                                   ++++
 note: this has an implicit `'static` lifetime requirement
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:29:33
    |
 LL | impl E for (Box<dyn A>, Box<dyn A>) {}
    |                                 ^
-help: consider relaxing the implicit `'static` requirement
-   |
-LL | impl E for (Box<dyn A + '_>, Box<dyn A>) {}
-   |                       ++++
-help: consider relaxing the implicit `'static` requirement
-   |
-LL | impl E for (Box<dyn A>, Box<dyn A + '_>) {}
-   |                                   ++++
 
 error: aborting due to 3 previous errors
 

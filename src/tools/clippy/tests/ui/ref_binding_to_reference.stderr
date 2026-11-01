@@ -4,13 +4,13 @@ error: this pattern creates a reference to a reference
 LL |         Some(ref x) => m2!(x),
    |              ^^^^^
    |
-   = note: `-D clippy::ref-binding-to-reference` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::ref_binding_to_reference)]`
 help: try
    |
 LL -         Some(ref x) => m2!(x),
 LL +         Some(x) => m2!(&x),
    |
+   = help: to override `-D warnings` add `#[allow(clippy::ref_binding_to_reference)]`
+   = note: `-D clippy::ref-binding-to-reference` implied by `-D warnings`
 
 error: this pattern creates a reference to a reference
   --> tests/ui/ref_binding_to_reference.rs:58:15

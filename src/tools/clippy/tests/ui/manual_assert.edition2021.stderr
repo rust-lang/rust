@@ -7,13 +7,13 @@ LL | |         panic!("qaqaq{:?}", a);
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::manual-assert` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_assert)]`
 help: replace `if`-then-`panic!` with `assert!`
    |
 LL ~
 LL +     assert!(a.is_empty(), "qaqaq{:?}", a);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_assert)]`
+   = note: `-D clippy::manual-assert` implied by `-D warnings`
 
 error: only a `panic!` in `if`-then statement
   --> tests/ui/manual_assert.rs:33:5

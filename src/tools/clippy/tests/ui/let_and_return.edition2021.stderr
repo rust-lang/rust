@@ -6,13 +6,13 @@ LL |     let x = 5;
 LL |     x
    |     ^
    |
-   = note: `-D clippy::let-and-return` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::let_and_return)]`
 help: return the expression directly
    |
 LL ~     
 LL ~     5
    |
+   = help: to override `-D warnings` add `#[allow(clippy::let_and_return)]`
+   = note: `-D clippy::let-and-return` implied by `-D warnings`
 
 error: returning the result of a `let` binding from a block
   --> tests/ui/let_and_return.rs:19:9

@@ -6,15 +6,15 @@ LL |     foo(x.clone());
    |     |
    |     arguments to this function are incorrect
    |
+help: consider borrowing here
+   |
+LL |     foo(&x.clone());
+   |         +
 note: function defined here
   --> $DIR/string-clone-mismatch-61106.rs:7:4
    |
 LL | fn foo(_: &str) {}
    |    ^^^ -------
-help: consider borrowing here
-   |
-LL |     foo(&x.clone());
-   |         +
 
 error: aborting due to 1 previous error
 

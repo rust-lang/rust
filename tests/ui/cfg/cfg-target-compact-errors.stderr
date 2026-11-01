@@ -6,12 +6,12 @@ LL | #[cfg(target(o::o))]
    |              |
    |              expected a valid identifier here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
    |
 LL - #[cfg(target(o::o))]
 LL + #[cfg(predicate)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-target-compact-errors.rs:5:3
@@ -21,12 +21,12 @@ LL | #[cfg(target(o::o))]
    |              |
    |              expected this to be of the form `... = "..."`
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
    |
 LL - #[cfg(target(o::o))]
 LL + #[cfg(predicate)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-target-compact-errors.rs:14:3
@@ -36,12 +36,12 @@ LL | #[cfg(target(os = 8))]
    |                   |
    |                   expected a string literal here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
    |
 LL - #[cfg(target(os = 8))]
 LL + #[cfg(predicate)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-target-compact-errors.rs:20:3
@@ -51,12 +51,12 @@ LL | #[cfg(target(os = "linux", pointer(width = "64")))]
    |                            |
    |                            expected this to be of the form `... = "..."`
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
    |
 LL - #[cfg(target(os = "linux", pointer(width = "64")))]
 LL + #[cfg(predicate)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-target-compact-errors.rs:26:3
@@ -66,12 +66,12 @@ LL | #[cfg(target(true))]
    |              |
    |              expected this to be of the form `... = "..."`
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
    |
 LL - #[cfg(target(true))]
 LL + #[cfg(predicate)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0565]: malformed `cfg` attribute input
   --> $DIR/cfg-target-compact-errors.rs:32:3
@@ -81,12 +81,12 @@ LL | #[cfg(target(clippy::os = "linux"))]
    |              |
    |              expected a valid identifier here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
    |
 LL - #[cfg(target(clippy::os = "linux"))]
 LL + #[cfg(predicate)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error: aborting due to 6 previous errors
 

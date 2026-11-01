@@ -4,13 +4,13 @@ error: mutable borrow from immutable input(s)
 LL |     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
    |                                       ^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::mut_from_ref)]`
 note: immutable borrow here
   --> tests/ui/mut_from_ref.rs:12:29
    |
 LL |     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
    |                             ^^^^^
    = note: `-D clippy::mut-from-ref` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::mut_from_ref)]`
 
 error: mutable borrow from immutable input(s)
   --> tests/ui/mut_from_ref.rs:20:25

@@ -4,13 +4,13 @@ error: using `str.trim().split()` with hard-coded newlines
 LL |     let _ = s1.trim().split('\n');
    |             ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::str-split-at-newline` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::str_split_at_newline)]`
 help: use `str.lines()` instead
    |
 LL -     let _ = s1.trim().split('\n');
 LL +     let _ = s1.lines();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::str_split_at_newline)]`
+   = note: `-D clippy::str-split-at-newline` implied by `-D warnings`
 
 error: using `str.trim().split()` with hard-coded newlines
   --> tests/ui/str_split.rs:61:13

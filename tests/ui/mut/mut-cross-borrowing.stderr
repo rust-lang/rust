@@ -6,6 +6,10 @@ LL |     f(x)
    |     |
    |     arguments to this function are incorrect
    |
+help: consider mutably borrowing here
+   |
+LL |     f(&mut x)
+   |       ++++
    = note: expected mutable reference `&mut isize`
                          found struct `Box<{integer}>`
 note: function defined here
@@ -13,10 +17,6 @@ note: function defined here
    |
 LL | fn f(_: &mut isize) {}
    |    ^ -------------
-help: consider mutably borrowing here
-   |
-LL |     f(&mut x)
-   |       ++++
 
 error: aborting due to 1 previous error
 

@@ -4,8 +4,8 @@ error: `to_string()` called on a `&str`
 LL |     let hello: String = "hello world".to_string();
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"hello world".to_owned()`
    |
-   = note: `-D clippy::str-to-string` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::str_to_string)]`
+   = note: `-D clippy::str-to-string` implied by `-D warnings`
 
 error: `to_string()` called on a `&str`
   --> tests/ui/str_to_string.rs:8:5

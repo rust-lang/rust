@@ -9,8 +9,8 @@ LL |         assert_eq!(a, a);
 LL |     assert_in_macro_def!();
    |     ---------------------- in this macro invocation
    |
-   = note: `-D clippy::eq-op` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::eq_op)]`
+   = note: `-D clippy::eq-op` implied by `-D warnings`
 
 error: identical args used in this `assert_ne!` macro call
   --> tests/ui/eq_op_macros.rs:10:20

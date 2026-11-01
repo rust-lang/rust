@@ -4,7 +4,6 @@ error[E0782]: expected a type, found a trait
 LL | trait A { fn g(b: B) -> B; }
    |                   ^
    |
-   = note: `B` is dyn-incompatible, otherwise a trait object could be used
 help: use a new generic type parameter, constrained by `B`
    |
 LL - trait A { fn g(b: B) -> B; }
@@ -14,6 +13,7 @@ help: you can also use an opaque type, but users won't be able to specify the ty
    |
 LL | trait A { fn g(b: impl B) -> B; }
    |                   ++++
+   = note: `B` is dyn-incompatible, otherwise a trait object could be used
 
 error[E0782]: expected a type, found a trait
   --> $DIR/avoid-ice-on-warning-3.rs:14:25
@@ -32,7 +32,6 @@ error[E0782]: expected a type, found a trait
 LL | trait B { fn f(a: A) -> A; }
    |                   ^
    |
-   = note: `A` is dyn-incompatible, otherwise a trait object could be used
 help: use a new generic type parameter, constrained by `A`
    |
 LL - trait B { fn f(a: A) -> A; }
@@ -42,6 +41,7 @@ help: you can also use an opaque type, but users won't be able to specify the ty
    |
 LL | trait B { fn f(a: impl A) -> A; }
    |                   ++++
+   = note: `A` is dyn-incompatible, otherwise a trait object could be used
 
 error[E0782]: expected a type, found a trait
   --> $DIR/avoid-ice-on-warning-3.rs:4:25

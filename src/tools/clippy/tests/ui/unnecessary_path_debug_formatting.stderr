@@ -5,9 +5,9 @@ LL |     println!("{:?}", os_str);
    |                      ^^^^^^
    |
    = help: use `Display` formatting and change this to `os_str.display()`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_debug_formatting)]`
    = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
    = note: `-D clippy::unnecessary-debug-formatting` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_debug_formatting)]`
 
 error: unnecessary `Debug` formatting in `println!` args
   --> tests/ui/unnecessary_path_debug_formatting.rs:31:22

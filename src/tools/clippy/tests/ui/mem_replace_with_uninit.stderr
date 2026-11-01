@@ -4,8 +4,8 @@ error: replacing with `mem::uninitialized()`
 LL |         let taken_v = mem::replace(&mut v, mem::uninitialized());
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `std::ptr::read` instead: `std::ptr::read(&mut v)`
    |
-   = note: `-D clippy::mem-replace-with-uninit` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mem_replace_with_uninit)]`
+   = note: `-D clippy::mem-replace-with-uninit` implied by `-D warnings`
 
 error: replacing with `mem::MaybeUninit::uninit().assume_init()`
   --> tests/ui/mem_replace_with_uninit.rs:32:23

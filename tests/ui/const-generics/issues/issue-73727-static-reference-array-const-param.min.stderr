@@ -4,11 +4,11 @@ error: `&'static [u32]` is forbidden as the type of a const generic parameter
 LL | fn a<const X: &'static [u32]>() {}
    |               ^^^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
    |
 LL + #![feature(unsized_const_params)]

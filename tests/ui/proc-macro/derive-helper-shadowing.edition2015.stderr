@@ -4,12 +4,12 @@ error: cannot find attribute `empty_helper` in this scope
 LL |             #[derive(GenHelperUse)]
    |                      ^^^^^^^^^^^^
    |
-   = note: `empty_helper` is an attribute that can be used by the derive macro `Empty`, you might be missing a `derive` attribute
-   = note: this error originates in the derive macro `GenHelperUse` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this attribute macro through its public re-export
    |
 LL +             use empty_helper;
    |
+   = note: `empty_helper` is an attribute that can be used by the derive macro `Empty`, you might be missing a `derive` attribute
+   = note: this error originates in the derive macro `GenHelperUse` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: cannot find attribute `empty_helper` in this scope
   --> $DIR/derive-helper-shadowing.rs:17:11
@@ -22,11 +22,11 @@ LL |         #[empty_helper]
 LL |             gen_helper_use!();
    |             ----------------- in this macro invocation
    |
-   = note: `empty_helper` is an attribute that can be used by the derive macro `Empty`, you might be missing a `derive` attribute
 help: consider importing this attribute macro through its public re-export
    |
 LL +             use empty_helper;
    |
+   = note: `empty_helper` is an attribute that can be used by the derive macro `Empty`, you might be missing a `derive` attribute
 
 error[E0659]: `empty_helper` is ambiguous
   --> $DIR/derive-helper-shadowing.rs:22:3
@@ -34,6 +34,7 @@ error[E0659]: `empty_helper` is ambiguous
 LL | #[empty_helper]
    |   ^^^^^^^^^^^^ ambiguous name
    |
+   = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
    = note: ambiguous because of a name conflict with a derive helper attribute
 note: `empty_helper` could refer to the derive helper attribute defined here
   --> $DIR/derive-helper-shadowing.rs:25:10
@@ -45,7 +46,6 @@ note: `empty_helper` could also refer to the attribute macro imported here
    |
 LL | use test_macros::empty_attr as empty_helper;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
 
 error: derive helper attribute is used before it is introduced
   --> $DIR/derive-helper-shadowing.rs:22:3

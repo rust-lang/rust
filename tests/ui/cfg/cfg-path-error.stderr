@@ -6,12 +6,12 @@ LL | #[cfg(any(foo, foo::bar))]
    |                |
    |                expected a valid identifier here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
    |
 LL - #[cfg(any(foo, foo::bar))]
 LL + #[cfg(predicate)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0565]: malformed `cfg` attribute input
   --> $DIR/cfg-path-error.rs:12:3
@@ -21,12 +21,12 @@ LL | #[cfg(any(foo::bar, foo))]
    |           |
    |           expected a valid identifier here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
    |
 LL - #[cfg(any(foo::bar, foo))]
 LL + #[cfg(predicate)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0565]: malformed `cfg` attribute input
   --> $DIR/cfg-path-error.rs:18:3
@@ -36,12 +36,12 @@ LL | #[cfg(all(foo, foo::bar))]
    |                |
    |                expected a valid identifier here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
    |
 LL - #[cfg(all(foo, foo::bar))]
 LL + #[cfg(predicate)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error[E0565]: malformed `cfg` attribute input
   --> $DIR/cfg-path-error.rs:24:3
@@ -51,12 +51,12 @@ LL | #[cfg(all(foo::bar, foo))]
    |           |
    |           expected a valid identifier here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
    |
 LL - #[cfg(all(foo::bar, foo))]
 LL + #[cfg(predicate)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error: aborting due to 4 previous errors
 

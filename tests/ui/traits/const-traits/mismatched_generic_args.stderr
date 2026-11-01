@@ -4,16 +4,16 @@ error[E0425]: cannot find value `y` in this scope
 LL |     x + y
    |         ^ not found in this scope
    |
-note: similarly named const parameter `U` defined here
-  --> $DIR/mismatched_generic_args.rs:17:18
-   |
-LL | pub fn add<const U: Dimension>(x: Quantity<f32, U>) -> Quantity<f32, U> {
-   |                  ^
 help: a const parameter with a similar name exists
    |
 LL -     x + y
 LL +     x + U
    |
+note: similarly named const parameter `U` defined here
+  --> $DIR/mismatched_generic_args.rs:17:18
+   |
+LL | pub fn add<const U: Dimension>(x: Quantity<f32, U>) -> Quantity<f32, U> {
+   |                  ^
 
 error: `Dimension` is forbidden as the type of a const generic parameter
   --> $DIR/mismatched_generic_args.rs:10:33
@@ -21,11 +21,11 @@ error: `Dimension` is forbidden as the type of a const generic parameter
 LL | pub struct Quantity<S, const D: Dimension>(S);
    |                                 ^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error[E0107]: trait takes at most 1 generic argument but 2 generic arguments were supplied
   --> $DIR/mismatched_generic_args.rs:13:36
@@ -39,11 +39,11 @@ error: `Dimension` is forbidden as the type of a const generic parameter
 LL | impl<const D: Dimension, LHS, RHS> Add<LHS, D> for Quantity<LHS, { Dimension }> {}
    |               ^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `Dimension` is forbidden as the type of a const generic parameter
   --> $DIR/mismatched_generic_args.rs:17:21
@@ -51,11 +51,11 @@ error: `Dimension` is forbidden as the type of a const generic parameter
 LL | pub fn add<const U: Dimension>(x: Quantity<f32, U>) -> Quantity<f32, U> {
    |                     ^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: aborting due to 5 previous errors
 

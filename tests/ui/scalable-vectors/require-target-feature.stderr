@@ -19,8 +19,8 @@ error: this function definition requires the `sve` target feature, which is not 
 LL | pub fn non_annotated_callee(x: svint32_t) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
    |
-   = note: the function has type `svint32_t` in its signature, which is passed in scalable vector registers under the "Rust" ABI
    = help: consider enabling the missing target feature globally (`-C target-feature=+sve`) or locally (`#[target_feature(enable="sve")]`)
+   = note: the function has type `svint32_t` in its signature, which is passed in scalable vector registers under the "Rust" ABI
 
 error: aborting due to 1 previous error; 1 warning emitted
 

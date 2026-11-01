@@ -8,7 +8,6 @@ LL |     Ok(Err(123_i32)?)
    |        |
    |        this can't be annotated with `?` because it has type `Result<_, i32>`
    |
-   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
 help: `u8` implements trait `From<T>`
   --> $SRC_DIR/core/src/convert/num.rs:LL:COL
    |
@@ -22,6 +21,7 @@ help: `u8` implements trait `From<T>`
   ::: $SRC_DIR/core/src/ascii/ascii_char.rs:LL:COL
    |
    = note: in this macro invocation
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = note: this error originates in the macro `impl_from_bool` which comes from the expansion of the macro `into_int_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`
@@ -90,10 +90,10 @@ LL | fn control_flow_to_control_flow() -> ControlFlow<i64> {
 LL |     ControlFlow::Break(4_u8)?;
    |                             ^ this `?` produces `ControlFlow<u8, !>`, which is incompatible with `ControlFlow<i64>`
    |
-   = note: unlike `Result`, there's no `From`-conversion performed for `ControlFlow`
 help: the trait `FromResidual<ControlFlow<u8, _>>` is not implemented for `ControlFlow<i64>`
       but trait `FromResidual<ControlFlow<i64, _>>` is implemented for it
   --> $SRC_DIR/core/src/ops/control_flow.rs:LL:COL
+   = note: unlike `Result`, there's no `From`-conversion performed for `ControlFlow`
    = help: for that trait implementation, expected `i64`, found `u8`
 
 error: aborting due to 8 previous errors

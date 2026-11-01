@@ -4,8 +4,8 @@ error: manually reimplementing `div_ceil`
 LL |     let _ = (x + (y - 1)) / y;
    |             ^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(y)`
    |
-   = note: `-D clippy::manual-div-ceil` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_div_ceil)]`
+   = note: `-D clippy::manual-div-ceil` implied by `-D warnings`
 
 error: manually reimplementing `div_ceil`
   --> tests/ui/manual_div_ceil.rs:33:13

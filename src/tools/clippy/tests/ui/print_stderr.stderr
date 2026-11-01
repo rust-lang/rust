@@ -4,8 +4,8 @@ error: use of `eprintln!`
 LL |     eprintln!("Hello");
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::print-stderr` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::print_stderr)]`
+   = note: `-D clippy::print-stderr` implied by `-D warnings`
 
 error: use of `eprint!`
   --> tests/ui/print_stderr.rs:8:5

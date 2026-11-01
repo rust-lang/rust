@@ -156,11 +156,11 @@ LL |     fn f(_: impl Iterator<Item = &()>) {}
    |                                   ^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn f<'a>(_: impl Iterator<Item = &'a ()>) {}
    |         ++++                          ++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:9:39
@@ -169,11 +169,11 @@ LL |     fn g(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
    |                                       ^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&()> { x.next() }
    |         ++++                              ++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:24:35
@@ -182,12 +182,12 @@ LL |     fn f(_: impl Iterator<Item = &'_ ()>) {}
    |                                   ^^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL -     fn f(_: impl Iterator<Item = &'_ ()>) {}
 LL +     fn f<'a>(_: impl Iterator<Item = &'a ()>) {}
    |
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:27:39
@@ -196,12 +196,12 @@ LL |     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() 
    |                                       ^^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL -     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
 LL +     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'_ ()> { x.next() }
    |
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:44:18
@@ -210,11 +210,11 @@ LL |     fn f(_: impl Foo) {}
    |                  ^^^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn f<'a>(_: impl Foo<'a>) {}
    |         ++++            ++++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:47:22
@@ -223,11 +223,11 @@ LL |     fn g(mut x: impl Foo) -> Option<&()> { x.next() }
    |                      ^^^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn g<'a>(mut x: impl Foo<'a>) -> Option<&()> { x.next() }
    |         ++++                ++++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:55:22
@@ -236,11 +236,11 @@ LL |     fn f(_: impl Foo<>) {}
    |                      ^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn f<'a>(_: impl Foo<'a>) {}
    |         ++++             ++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:58:26
@@ -249,11 +249,11 @@ LL |     fn g(mut x: impl Foo<>) -> Option<&()> { x.next() }
    |                          ^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn g<'a>(mut x: impl Foo<'a>) -> Option<&()> { x.next() }
    |         ++++                 ++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:66:22
@@ -262,11 +262,11 @@ LL |     fn f(_: impl Foo<()>) {}
    |                      ^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn f<'a>(_: impl Foo<'a, ()>) {}
    |         ++++             +++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:69:26
@@ -275,11 +275,11 @@ LL |     fn g(mut x: impl Foo<()>) -> Option<&()> { x.next() }
    |                          ^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn g<'a>(mut x: impl Foo<'a, ()>) -> Option<&()> { x.next() }
    |         ++++                 +++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 17 previous errors
 

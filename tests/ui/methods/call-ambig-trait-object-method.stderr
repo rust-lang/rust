@@ -4,6 +4,11 @@ error[E0034]: multiple applicable items in scope
 LL |     x.foo();
    |       ^^^ multiple `foo` found
    |
+help: disambiguate the method for candidate #1
+   |
+LL -     x.foo();
+LL +     T::foo(&x);
+   |
 note: candidate #1 is defined in the trait `T`
   --> $DIR/call-ambig-trait-object-method.rs:6:5
    |
@@ -14,11 +19,6 @@ note: candidate #2 is defined in an impl for the type `(dyn T + 'a)`
    |
 LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^
-help: disambiguate the method for candidate #1
-   |
-LL -     x.foo();
-LL +     T::foo(&x);
-   |
 
 error: aborting due to 1 previous error
 

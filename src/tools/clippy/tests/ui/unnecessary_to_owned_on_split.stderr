@@ -4,8 +4,8 @@ error: unnecessary use of `to_string`
 LL |     let _ = "a".to_string().split('a').next().unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `"a".split('a')`
    |
-   = note: `-D clippy::unnecessary-to-owned` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_to_owned)]`
+   = note: `-D clippy::unnecessary-to-owned` implied by `-D warnings`
 
 error: unnecessary use of `to_string`
   --> tests/ui/unnecessary_to_owned_on_split.rs:23:13

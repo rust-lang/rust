@@ -4,15 +4,15 @@ error[E0061]: function takes 1 argument but 2 arguments were supplied
 LL |     test(x.qux(), x.qux());
    |     ^^^^
    |
+help: wrap these arguments in parentheses to construct a tuple
+   |
+LL |     test((x.qux(), x.qux()));
+   |          +                +
 note: function defined here
   --> $DIR/wrong_argument_ice-2.rs:1:4
    |
 LL | fn test(t: (i32, i32)) {}
    |    ^^^^ -------------
-help: wrap these arguments in parentheses to construct a tuple
-   |
-LL |     test((x.qux(), x.qux()));
-   |          +                +
 
 error: aborting due to 1 previous error
 

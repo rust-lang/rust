@@ -4,8 +4,8 @@ error: usage of `size_of::<T>()` to obtain the size of `T` in bits
 LL |     size_of::<i8>() * 8;
    |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `i8::BITS as usize`
    |
-   = note: `-D clippy::manual-bits` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_bits)]`
+   = note: `-D clippy::manual-bits` implied by `-D warnings`
 
 error: usage of `size_of::<T>()` to obtain the size of `T` in bits
   --> tests/ui/manual_bits.rs:10:5

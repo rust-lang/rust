@@ -8,8 +8,6 @@ LL | |         x == 3
 LL | |     } {
    | |_____^
    |
-   = note: `-D clippy::blocks-in-conditions` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::blocks_in_conditions)]`
 help: use a binding instead
    |
 LL ~     let res = {
@@ -18,6 +16,8 @@ LL +         let x = 3;
 LL +         x == 3
 LL ~     }; if res {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::blocks_in_conditions)]`
+   = note: `-D clippy::blocks-in-conditions` implied by `-D warnings`
 
 error: omit braces around single expression condition
   --> tests/ui/blocks_in_conditions.rs:36:8

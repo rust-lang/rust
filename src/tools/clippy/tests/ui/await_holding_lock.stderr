@@ -5,13 +5,13 @@ LL |         let guard = x.lock().unwrap();
    |             ^^^^^
    |
    = help: consider using an async-aware `Mutex` type or ensuring the `MutexGuard` is dropped before calling `await`
+   = help: to override `-D warnings` add `#[allow(clippy::await_holding_lock)]`
 note: these are all the await points this lock is held through
   --> tests/ui/await_holding_lock.rs:12:15
    |
 LL |         baz().await
    |               ^^^^^
    = note: `-D clippy::await-holding-lock` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::await_holding_lock)]`
 
 error: this `MutexGuard` is held across an await point
   --> tests/ui/await_holding_lock.rs:26:13

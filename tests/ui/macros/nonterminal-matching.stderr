@@ -11,6 +11,7 @@ LL |     n!(a $nt_item b);
 LL | complex_nonterminal!(enum E {});
    | ------------------------------- in this macro invocation
    |
+   = help: try using `:tt` instead in the macro definition
 note: while trying to match `item` metavariable
   --> $DIR/nonterminal-matching.rs:15:15
    |
@@ -21,7 +22,6 @@ LL | complex_nonterminal!(enum E {});
    | ------------------------------- in this macro invocation
    = note: captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens
    = note: see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information
-   = help: try using `:tt` instead in the macro definition
 
 error: no rules expected `expr` metavariable
   --> $DIR/nonterminal-matching.rs:32:35
@@ -37,6 +37,7 @@ LL | macro_rules! bar {
 LL | foo!(expr 3);
    | ------------ in this macro invocation
    |
+   = help: try using `:tt` instead in the macro definition
 note: while trying to match `3`
   --> $DIR/nonterminal-matching.rs:42:11
    |
@@ -44,7 +45,6 @@ LL |     (expr 3) => {};
    |           ^
    = note: captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens
    = note: see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information
-   = help: try using `:tt` instead in the macro definition
 
 error: no rules expected `literal` metavariable
   --> $DIR/nonterminal-matching.rs:33:44
@@ -60,6 +60,7 @@ LL | macro_rules! bar {
 LL | foo!(literal 4);
    | --------------- in this macro invocation
    |
+   = help: try using `:tt` instead in the macro definition
 note: while trying to match `4`
   --> $DIR/nonterminal-matching.rs:43:14
    |
@@ -67,7 +68,6 @@ LL |     (literal 4) => {};
    |              ^
    = note: captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens
    = note: see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information
-   = help: try using `:tt` instead in the macro definition
 
 error: no rules expected `path` metavariable
   --> $DIR/nonterminal-matching.rs:34:35
@@ -83,6 +83,7 @@ LL | macro_rules! bar {
 LL | foo!(path a::b::c);
    | ------------------ in this macro invocation
    |
+   = help: try using `:tt` instead in the macro definition
 note: while trying to match `a`
   --> $DIR/nonterminal-matching.rs:44:11
    |
@@ -90,7 +91,6 @@ LL |     (path a::b::c) => {};
    |           ^
    = note: captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens
    = note: see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information
-   = help: try using `:tt` instead in the macro definition
 
 error: no rules expected `stmt` metavariable
   --> $DIR/nonterminal-matching.rs:35:35
@@ -106,6 +106,7 @@ LL | macro_rules! bar {
 LL | foo!(stmt let abc = 0);
    | ---------------------- in this macro invocation
    |
+   = help: try using `:tt` instead in the macro definition
 note: while trying to match keyword `let`
   --> $DIR/nonterminal-matching.rs:45:11
    |
@@ -113,7 +114,6 @@ LL |     (stmt let abc = 0) => {};
    |           ^^^
    = note: captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens
    = note: see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information
-   = help: try using `:tt` instead in the macro definition
 
 error: aborting due to 5 previous errors
 

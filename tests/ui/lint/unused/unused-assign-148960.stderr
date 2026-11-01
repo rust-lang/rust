@@ -43,13 +43,13 @@ error: variable `foo` is assigned to, but never used
 LL |     let mut foo = Foo;
    |         ^^^^^^^
    |
-   = note: consider using `_foo` instead
-   = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
 help: you might have meant to pattern match on the similarly named struct `Foo`
    |
 LL -     let mut foo = Foo;
 LL +     let Foo = Foo;
    |
+   = note: consider using `_foo` instead
+   = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
 
 error: value assigned to `foo` is never read
   --> $DIR/unused-assign-148960.rs:40:5

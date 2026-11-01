@@ -61,7 +61,6 @@ LL | struct SUnsizedField<T: ?Sized> {
 LL |     last: T,
    |           ^ doesn't have a size known at compile-time
    |
-   = help: unsized fn params are gated as an unstable feature
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - struct SUnsizedField<T: ?Sized> {
@@ -71,6 +70,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL |     last: &T,
    |           +
+   = help: unsized fn params are gated as an unstable feature
 
 error: aborting due to 6 previous errors
 

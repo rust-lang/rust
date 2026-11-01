@@ -6,6 +6,11 @@ LL |     testing_debug((1, Foo));
    |     |
    |     required by a bound introduced by this call
    |
+help: consider annotating `Foo` with `#[derive(Debug)]`
+   |
+LL + #[derive(Debug)]
+LL | struct Foo;
+   |
    = help: the following other types implement trait `Debug`:
              (T₁, T₂, …, Tₙ) up to tuples of arity 12
            and 5 others
@@ -15,11 +20,6 @@ note: required by a bound in `testing_debug`
    |
 LL | fn testing_debug<T: Debug>(t: T) {}
    |                     ^^^^^ required by this bound in `testing_debug`
-help: consider annotating `Foo` with `#[derive(Debug)]`
-   |
-LL + #[derive(Debug)]
-LL | struct Foo;
-   |
 
 error[E0277]: the trait bound `({integer}, Foo): MyTrait` is not satisfied
   --> $DIR/multiple_tuples_implement_same_trait_continuous_arities.rs:19:21

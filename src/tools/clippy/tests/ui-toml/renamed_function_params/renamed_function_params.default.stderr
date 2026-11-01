@@ -4,13 +4,13 @@ error: renamed function parameter of trait impl
 LL |     fn eq(&self, rhs: &Self) -> bool {
    |                  ^^^
    |
-   = note: `-D clippy::renamed-function-params` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::renamed_function_params)]`
 help: consider using the default name
    |
 LL -     fn eq(&self, rhs: &Self) -> bool {
 LL +     fn eq(&self, other: &Self) -> bool {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::renamed_function_params)]`
+   = note: `-D clippy::renamed-function-params` implied by `-D warnings`
 
 error: renamed function parameter of trait impl
   --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:33:18

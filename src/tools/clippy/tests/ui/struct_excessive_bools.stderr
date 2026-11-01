@@ -11,8 +11,8 @@ LL | | }
    | |_^
    |
    = help: consider using a state machine or refactoring bools into two-variant enums
-   = note: `-D clippy::struct-excessive-bools` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::struct_excessive_bools)]`
+   = note: `-D clippy::struct-excessive-bools` implied by `-D warnings`
 
 error: more than 3 bools in a struct
   --> tests/ui/struct_excessive_bools.rs:39:5

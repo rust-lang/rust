@@ -9,8 +9,6 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::derivable-impls` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::derivable_impls)]`
 help: replace the manual implementation with a derive attribute
    |
 LL ~     #[derive_const(Default)]
@@ -18,6 +16,8 @@ LL ~     struct Foo(u64);
 LL |
 LL ~     
    |
+   = help: to override `-D warnings` add `#[allow(clippy::derivable_impls)]`
+   = note: `-D clippy::derivable-impls` implied by `-D warnings`
 
 error: this `impl` can be derived
   --> tests/ui/derivable_impls_derive_const.rs:23:5

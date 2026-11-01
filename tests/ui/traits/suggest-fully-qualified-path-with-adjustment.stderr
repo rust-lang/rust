@@ -4,6 +4,11 @@ error[E0283]: type annotations needed
 LL |     thing.method();
    |           ^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     thing.method();
+LL +     <Thing as Method<T>>::method(&thing);
+   |
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:10:1
    |
@@ -12,11 +17,6 @@ LL | impl Method<i32> for Thing {
 ...
 LL | impl Method<u32> for Thing {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     thing.method();
-LL +     <Thing as Method<T>>::method(&thing);
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:46:11
@@ -24,6 +24,11 @@ error[E0283]: type annotations needed
 LL |     thing.mut_method();
    |           ^^^^^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     thing.mut_method();
+LL +     <Thing as Method<T>>::mut_method(&mut thing);
+   |
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:10:1
    |
@@ -32,11 +37,6 @@ LL | impl Method<i32> for Thing {
 ...
 LL | impl Method<u32> for Thing {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     thing.mut_method();
-LL +     <Thing as Method<T>>::mut_method(&mut thing);
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:47:11
@@ -44,6 +44,11 @@ error[E0283]: type annotations needed
 LL |     thing.by_self();
    |           ^^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     thing.by_self();
+LL +     <&Thing as MethodRef<T>>::by_self(&thing);
+   |
 note: multiple `impl`s satisfying `&Thing: MethodRef<_>` found
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:22:1
    |
@@ -52,11 +57,6 @@ LL | impl MethodRef<i32> for &Thing {
 ...
 LL | impl MethodRef<u32> for &Thing {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     thing.by_self();
-LL +     <&Thing as MethodRef<T>>::by_self(&thing);
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:50:14
@@ -64,6 +64,11 @@ error[E0283]: type annotations needed
 LL |     deref_to.method();
    |              ^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     deref_to.method();
+LL +     <Thing as Method<T>>::method(&deref_to);
+   |
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:10:1
    |
@@ -72,11 +77,6 @@ LL | impl Method<i32> for Thing {
 ...
 LL | impl Method<u32> for Thing {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     deref_to.method();
-LL +     <Thing as Method<T>>::method(&deref_to);
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:51:14
@@ -84,6 +84,11 @@ error[E0283]: type annotations needed
 LL |     deref_to.mut_method();
    |              ^^^^^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     deref_to.mut_method();
+LL +     <Thing as Method<T>>::mut_method(&mut deref_to);
+   |
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:10:1
    |
@@ -92,11 +97,6 @@ LL | impl Method<i32> for Thing {
 ...
 LL | impl Method<u32> for Thing {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     deref_to.mut_method();
-LL +     <Thing as Method<T>>::mut_method(&mut deref_to);
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:52:14
@@ -104,6 +104,11 @@ error[E0283]: type annotations needed
 LL |     deref_to.by_self();
    |              ^^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     deref_to.by_self();
+LL +     <&Thing as MethodRef<T>>::by_self(&deref_to);
+   |
 note: multiple `impl`s satisfying `&Thing: MethodRef<_>` found
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:22:1
    |
@@ -112,11 +117,6 @@ LL | impl MethodRef<i32> for &Thing {
 ...
 LL | impl MethodRef<u32> for &Thing {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     deref_to.by_self();
-LL +     <&Thing as MethodRef<T>>::by_self(&deref_to);
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:55:20
@@ -124,6 +124,11 @@ error[E0283]: type annotations needed
 LL |     deref_deref_to.method();
    |                    ^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     deref_deref_to.method();
+LL +     <Thing as Method<T>>::method(&deref_deref_to);
+   |
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:10:1
    |
@@ -132,11 +137,6 @@ LL | impl Method<i32> for Thing {
 ...
 LL | impl Method<u32> for Thing {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     deref_deref_to.method();
-LL +     <Thing as Method<T>>::method(&deref_deref_to);
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:56:20
@@ -144,6 +144,11 @@ error[E0283]: type annotations needed
 LL |     deref_deref_to.mut_method();
    |                    ^^^^^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     deref_deref_to.mut_method();
+LL +     <Thing as Method<T>>::mut_method(&mut deref_deref_to);
+   |
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:10:1
    |
@@ -152,17 +157,17 @@ LL | impl Method<i32> for Thing {
 ...
 LL | impl Method<u32> for Thing {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     deref_deref_to.mut_method();
-LL +     <Thing as Method<T>>::mut_method(&mut deref_deref_to);
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:57:20
    |
 LL |     deref_deref_to.by_self();
    |                    ^^^^^^^
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     deref_deref_to.by_self();
+LL +     <&Thing as MethodRef<T>>::by_self(&deref_deref_to);
    |
 note: multiple `impl`s satisfying `&Thing: MethodRef<_>` found
   --> $DIR/suggest-fully-qualified-path-with-adjustment.rs:22:1
@@ -172,11 +177,6 @@ LL | impl MethodRef<i32> for &Thing {
 ...
 LL | impl MethodRef<u32> for &Thing {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     deref_deref_to.by_self();
-LL +     <&Thing as MethodRef<T>>::by_self(&deref_deref_to);
-   |
 
 error: aborting due to 9 previous errors
 

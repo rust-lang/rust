@@ -38,15 +38,15 @@ LL | |
 LL | |         }
    | |_________^ expected `Foo<U>`, found `Foo<T>`
    |
-   = note: expected struct `Foo<U>`
-              found struct `Foo<T>`
-   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 help: use the type name directly
    |
 LL -         Self {
 LL +         Foo::<U> {
    |
+   = note: expected struct `Foo<U>`
+              found struct `Foo<T>`
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error: aborting due to 3 previous errors
 

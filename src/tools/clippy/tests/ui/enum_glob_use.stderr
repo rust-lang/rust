@@ -4,8 +4,8 @@ error: usage of wildcard import for enum variants
 LL | use std::cmp::Ordering::*;
    |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::cmp::Ordering::Less`
    |
-   = note: `-D clippy::enum-glob-use` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::enum_glob_use)]`
+   = note: `-D clippy::enum-glob-use` implied by `-D warnings`
 
 error: usage of wildcard import for enum variants
   --> tests/ui/enum_glob_use.rs:11:5

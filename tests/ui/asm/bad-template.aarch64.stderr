@@ -75,13 +75,13 @@ LL |         asm!("{}", in("x0") foo);
    |               |
    |               from here
    |
-   = note: no positional arguments were given
-note: explicit register arguments cannot be used in the asm template
+help: use the register name directly in the assembly code
   --> $DIR/bad-template.rs:39:20
    |
 LL |         asm!("{}", in("x0") foo);
    |                    ^^^^^^^^^^^^
-help: use the register name directly in the assembly code
+   = note: no positional arguments were given
+note: explicit register arguments cannot be used in the asm template
   --> $DIR/bad-template.rs:39:20
    |
 LL |         asm!("{}", in("x0") foo);

@@ -8,13 +8,13 @@ LL | |     v[0] = v[index];
 LL | |     v[index] = index;
    | |_____________________^
    |
-   = note: `-D clippy::manual-swap` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_swap)]`
 help: try
    |
 LL ~     let index = v[0];
 LL +     v.swap(0, index);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_swap)]`
+   = note: `-D clippy::manual-swap` implied by `-D warnings`
 
 error: this looks like you are swapping elements of `v` manually
   --> tests/ui/manual_swap_auto_fix.rs:15:5

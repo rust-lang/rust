@@ -7,6 +7,10 @@ LL |     test(&mut 7, &7);
    |     |    expected all arguments to be this `&mut {integer}` type because they need to match the type of this parameter
    |     arguments to this function are incorrect
    |
+help: consider using `&mut` instead
+   |
+LL |     test(&mut 7, &mut 7);
+   |                   +++
    = note: expected mutable reference `&mut _`
                       found reference `&_`
 note: function defined here
@@ -17,10 +21,6 @@ LL | fn test<T>(_a: T, _b: T) {}
    |         |  |
    |         |  `_b` needs to match the `&mut {integer}` type of this parameter
    |         `_a` and `_b` both reference this parameter `T`
-help: consider using `&mut` instead
-   |
-LL |     test(&mut 7, &mut 7);
-   |                   +++
 
 error: aborting due to 1 previous error
 

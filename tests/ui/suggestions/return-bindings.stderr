@@ -35,13 +35,13 @@ LL | fn c() -> Option<i32> {
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
    |
-   = note:   expected enum `Option<i32>`
-           found unit type `()`
 help: consider returning the local binding `x`
    |
 LL ~     let x = Some(1);
 LL +     x
    |
+   = note:   expected enum `Option<i32>`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/return-bindings.rs:20:46

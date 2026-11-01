@@ -21,16 +21,16 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 LL | reuse a as b { #![rustc_dummy] self }
    |       ^      ------------------------ unexpected argument
    |
-note: function defined here
-  --> $DIR/inner-attr.rs:3:4
-   |
-LL | fn a() {}
-   |    ^
 help: remove the extra argument
    |
 LL - reuse a as b { #![rustc_dummy] self }
 LL + reuse { #![rustc_dummy] self }
    |
+note: function defined here
+  --> $DIR/inner-attr.rs:3:4
+   |
+LL | fn a() {}
+   |    ^
 
 error: aborting due to 3 previous errors
 

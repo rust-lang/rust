@@ -4,8 +4,8 @@ error: this loop could be written as a `for` loop
 LL |     while let Option::Some(x) = iter.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in iter`
    |
-   = note: `-D clippy::while-let-on-iterator` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::while_let_on_iterator)]`
+   = note: `-D clippy::while-let-on-iterator` implied by `-D warnings`
 
 error: this loop could be written as a `for` loop
   --> tests/ui/while_let_on_iterator.rs:16:5

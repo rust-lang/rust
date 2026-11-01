@@ -6,9 +6,9 @@ LL | #[must_use]
 LL | fn returns_must_use_struct() -> MustUseStruct {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::double_must_use)]`
    = note: alternatively, you may add an explicit reason to the `must_use` attribute
    = note: `-D clippy::double-must-use` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::double_must_use)]`
 
 error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
   --> tests/ui/double_must_use_proc_macro.rs:62:1

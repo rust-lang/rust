@@ -7,14 +7,14 @@ LL |
 LL |     a = "zero";
    |     ^^^^^^^^^^ initialised here
    |
-   = note: `-D clippy::needless-late-init` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_late_init)]`
 help: move the declaration `a` here
    |
 LL ~     
 LL |
 LL ~     let a = "zero";
    |
+   = help: to override `-D warnings` add `#[allow(clippy::needless_late_init)]`
+   = note: `-D clippy::needless-late-init` implied by `-D warnings`
 
 error: unneeded late initialization
   --> tests/ui/needless_late_init.rs:23:5

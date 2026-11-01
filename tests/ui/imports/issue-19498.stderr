@@ -7,11 +7,11 @@ LL | use self::B;
 LL | mod A {}
    | ^^^^^ `A` redefined here
    |
-   = note: `A` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | use self::A as OtherA;
    |             +++++++++
+   = note: `A` must be defined only once in the type namespace of this module
 
 error[E0255]: the name `B` is defined multiple times
   --> $DIR/issue-19498.rs:7:1
@@ -22,11 +22,11 @@ LL | use self::B;
 LL | pub mod B {}
    | ^^^^^^^^^ `B` redefined here
    |
-   = note: `B` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | use self::B as OtherB;
    |             +++++++++
+   = note: `B` must be defined only once in the type namespace of this module
 
 error[E0255]: the name `D` is defined multiple times
   --> $DIR/issue-19498.rs:11:5
@@ -36,11 +36,11 @@ LL |     use crate::C::D;
 LL |     mod D {}
    |     ^^^^^ `D` redefined here
    |
-   = note: `D` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL |     use crate::C::D as OtherD;
    |                     +++++++++
+   = note: `D` must be defined only once in the type namespace of this module
 
 error: aborting due to 3 previous errors
 

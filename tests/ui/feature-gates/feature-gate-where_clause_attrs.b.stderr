@@ -4,8 +4,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(a)] T: TraitA,
    |     ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -14,8 +14,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(b)] T: TraitB,
    |     ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -24,8 +24,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(true)] T: TraitAll,
    |     ^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -34,8 +34,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(false)] T: TraitAny,
    |     ^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -44,8 +44,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(a, cfg(a))] T: TraitAA,
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -54,8 +54,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(b, cfg(b))] T: TraitBB,
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -64,8 +64,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(true, cfg(true))] T: TraitAllAll,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -74,8 +74,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -84,8 +84,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(a)] U: TraitA,
    |         ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -94,8 +94,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(b)] U: TraitB,
    |         ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -104,8 +104,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(true)] U: TraitAll,
    |         ^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -114,8 +114,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(false)] U: TraitAny,
    |         ^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -124,8 +124,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(a, cfg(a))] U: TraitAA,
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -134,8 +134,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(b, cfg(b))] U: TraitBB,
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -144,8 +144,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(true, cfg(true))] U: TraitAllAll,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -154,8 +154,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(false, cfg(false))] U: TraitAnyAny;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -164,8 +164,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(a)] U: TraitA,
    |         ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -174,8 +174,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(b)] U: TraitB,
    |         ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -184,8 +184,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(true)] U: TraitAll,
    |         ^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -194,8 +194,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(false)] U: TraitAny,
    |         ^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -204,8 +204,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(a, cfg(a))] U: TraitAA,
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -214,8 +214,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(b, cfg(b))] U: TraitBB,
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -224,8 +224,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(true, cfg(true))] U: TraitAllAll,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -234,8 +234,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(false, cfg(false))] U: TraitAnyAny;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -244,8 +244,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(a)] T: TraitA,
    |     ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -254,8 +254,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(b)] T: TraitB,
    |     ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -264,8 +264,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(true)] T: TraitAll,
    |     ^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -274,8 +274,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(false)] T: TraitAny,
    |     ^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -284,8 +284,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(a, cfg(a))] T: TraitAA,
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -294,8 +294,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(b, cfg(b))] T: TraitBB,
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -304,8 +304,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(true, cfg(true))] T: TraitAllAll,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -314,8 +314,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -324,8 +324,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(a)] U: TraitA,
    |         ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -334,8 +334,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(b)] U: TraitB,
    |         ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -344,8 +344,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(true)] U: TraitAll,
    |         ^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -354,8 +354,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(false)] U: TraitAny,
    |         ^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -364,8 +364,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(a, cfg(a))] U: TraitAA,
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -374,8 +374,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(b, cfg(b))] U: TraitBB,
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -384,8 +384,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(true, cfg(true))] U: TraitAllAll,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -394,8 +394,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(false, cfg(false))] U: TraitAnyAny;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -404,8 +404,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(a)] U: TraitA,
    |         ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -414,8 +414,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(b)] U: TraitB,
    |         ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -424,8 +424,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(true)] T: TraitAll,
    |         ^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -434,8 +434,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(false)] T: TraitAny,
    |         ^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -444,8 +444,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(a, cfg(a))] U: TraitAA,
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -454,8 +454,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(b, cfg(b))] U: TraitBB,
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -464,8 +464,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(true, cfg(true))] T: TraitAllAll,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -474,8 +474,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -484,8 +484,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(a)] T: TraitA,
    |     ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -494,8 +494,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(b)] T: TraitB,
    |     ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -504,8 +504,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(true)] T: TraitAll,
    |     ^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -514,8 +514,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(false)] T: TraitAny,
    |     ^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -524,8 +524,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(a, cfg(a))] T: TraitAA,
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -534,8 +534,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(b, cfg(b))] T: TraitBB,
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -544,8 +544,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(true, cfg(true))] T: TraitAllAll,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -554,8 +554,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -564,8 +564,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(a)] T: TraitA,
    |     ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -574,8 +574,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(b)] T: TraitB,
    |     ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -584,8 +584,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(true)] T: TraitAll,
    |     ^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -594,8 +594,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(false)] T: TraitAny,
    |     ^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -604,8 +604,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(a, cfg(a))] T: TraitAA,
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -614,8 +614,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(b, cfg(b))] T: TraitBB,
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -624,8 +624,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(true, cfg(true))] T: TraitAllAll,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -634,8 +634,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -644,8 +644,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(a)] T: TraitA,
    |     ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -654,8 +654,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(b)] T: TraitB,
    |     ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -664,8 +664,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(true)] T: TraitAll,
    |     ^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -674,8 +674,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(false)] T: TraitAny,
    |     ^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -684,8 +684,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(a, cfg(a))] T: TraitAA,
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -694,8 +694,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(b, cfg(b))] T: TraitBB,
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -704,8 +704,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(true, cfg(true))] T: TraitAllAll,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -714,8 +714,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -724,8 +724,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(a)] T: TraitA,
    |     ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -734,8 +734,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(b)] T: TraitB,
    |     ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -744,8 +744,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(true)] T: TraitAll,
    |     ^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -754,8 +754,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg(false)] T: TraitAny,
    |     ^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -764,8 +764,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(a, cfg(a))] T: TraitAA,
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -774,8 +774,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(b, cfg(b))] T: TraitBB,
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -784,8 +784,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(true, cfg(true))] T: TraitAllAll,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -794,8 +794,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |     #[cfg_attr(false, cfg(false))] T: TraitAnyAny,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -804,8 +804,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(a)] U: TraitA,
    |         ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -814,8 +814,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(b)] U: TraitB,
    |         ^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -824,8 +824,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(true)] U: TraitAll,
    |         ^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -834,8 +834,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg(false)] U: TraitAny,
    |         ^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -844,8 +844,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(a, cfg(a))] U: TraitAA,
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -854,8 +854,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(b, cfg(b))] U: TraitBB,
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -864,8 +864,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(true, cfg(true))] U: TraitAllAll,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes in `where` clause are unstable
@@ -874,8 +874,8 @@ error[E0658]: attributes in `where` clause are unstable
 LL |         #[cfg_attr(false, cfg(false))] U: TraitAnyAny,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = help: add `#![feature(where_clause_attrs)]` to the crate attributes to enable
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 88 previous errors

@@ -5,16 +5,16 @@ LL |     not_clone.clone();
    |               ^^^^^ unsatisfied trait bound
    |
    = help: within `{async closure@$DIR/not-clone-closure.rs:27:21: 27:34}`, the trait `Clone` is not implemented for `NotClonableUpvar`
-note: required because `z` is used within this closure
-  --> $DIR/not-clone-closure.rs:28:20
-   |
-LL |         println!("{z:?}");
-   |                    ^
 help: consider annotating `NotClonableUpvar` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
 LL | struct NotClonableUpvar;
    |
+note: required because `z` is used within this closure
+  --> $DIR/not-clone-closure.rs:28:20
+   |
+LL |         println!("{z:?}");
+   |                    ^
 
 error: aborting due to 1 previous error
 

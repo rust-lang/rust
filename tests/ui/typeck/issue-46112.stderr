@@ -6,6 +6,10 @@ LL | fn main() { test(Ok(())); }
    |                  |
    |                  arguments to this enum variant are incorrect
    |
+help: try wrapping the expression in `Some`
+   |
+LL | fn main() { test(Ok(Some(()))); }
+   |                     +++++  +
    = note:   expected enum `Option<()>`
            found unit type `()`
 help: the type constructed contains `()` due to the type of the argument passed
@@ -17,10 +21,6 @@ LL | fn main() { test(Ok(())); }
    |                     this argument influences the type of `Ok`
 note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
-help: try wrapping the expression in `Some`
-   |
-LL | fn main() { test(Ok(Some(()))); }
-   |                     +++++  +
 
 error: aborting due to 1 previous error
 

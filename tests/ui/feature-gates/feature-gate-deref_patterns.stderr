@@ -6,12 +6,12 @@ LL |     match x {
 LL |         'c' => (),
    |         ^^^ expected `Box<char>`, found `char`
    |
-   = note: expected struct `Box<char>`
-                found type `char`
 help: consider dereferencing the boxed value
    |
 LL |     match *x {
    |           +
+   = note: expected struct `Box<char>`
+                found type `char`
 
 error: aborting due to 1 previous error
 

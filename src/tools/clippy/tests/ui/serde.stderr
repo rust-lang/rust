@@ -7,8 +7,8 @@ LL | |     where
 LL | |         E: serde::de::Error,
    | |____________________________^
    |
-   = note: `-D clippy::serde-api-misuse` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::serde_api_misuse)]`
+   = note: `-D clippy::serde-api-misuse` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

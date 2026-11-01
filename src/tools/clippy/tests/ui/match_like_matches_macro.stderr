@@ -8,8 +8,6 @@ LL | |         _ => false,
 LL | |     };
    | |_____^
    |
-   = note: `-D clippy::match-like-matches-macro` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::match_like_matches_macro)]`
 help: use `matches!` directly
    |
 LL -     let _y = match x {
@@ -18,6 +16,8 @@ LL -         _ => false,
 LL -     };
 LL +     let _y = matches!(x, Some(0));
    |
+   = help: to override `-D warnings` add `#[allow(clippy::match_like_matches_macro)]`
+   = note: `-D clippy::match-like-matches-macro` implied by `-D warnings`
 
 error: redundant pattern matching
   --> tests/ui/match_like_matches_macro.rs:16:14
@@ -29,8 +29,6 @@ LL | |         _ => false,
 LL | |     };
    | |_____^
    |
-   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 help: consider using `is_some()`
    |
 LL -     let _w = match x {
@@ -39,6 +37,8 @@ LL -         _ => false,
 LL -     };
 LL +     let _w = x.is_some();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
+   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
 error: redundant pattern matching
   --> tests/ui/match_like_matches_macro.rs:23:14

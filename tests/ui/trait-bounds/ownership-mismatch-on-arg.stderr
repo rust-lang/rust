@@ -43,6 +43,10 @@ LL |             foo(hi, hi, hi);
    |             |   `needs_borrow::Hello` doesn't satisfy the trait bound
    |             unsatisfied trait bound
    |
+help: consider borrowing these argument
+   |
+LL |             foo(&hi, &hi, hi);
+   |                 +    +
 help: the trait `needs_borrow::Tr` is not implemented for `needs_borrow::Hello`
   --> $DIR/ownership-mismatch-on-arg.rs:27:5
    |
@@ -58,10 +62,6 @@ note: required by a bound in `needs_borrow::foo`
    |
 LL |     fn foo<T: Tr, K: std::fmt::Debug>(_v: T, _w: T, _k: K) {}
    |               ^^ required by this bound in `foo`
-help: consider borrowing these argument
-   |
-LL |             foo(&hi, &hi, hi);
-   |                 +    +
 
 error[E0277]: the trait bound `needs_borrow::Hello: needs_borrow::Tr` is not satisfied
   --> $DIR/ownership-mismatch-on-arg.rs:43:15
@@ -72,6 +72,10 @@ LL |             S.foo(hi, hi, hi);
    |               |   `needs_borrow::Hello` doesn't satisfy the trait bound
    |               unsatisfied trait bound
    |
+help: consider borrowing these argument
+   |
+LL |             S.foo(&hi, &hi, hi);
+   |                   +    +
 help: the trait `needs_borrow::Tr` is not implemented for `needs_borrow::Hello`
   --> $DIR/ownership-mismatch-on-arg.rs:27:5
    |
@@ -88,10 +92,6 @@ note: required by a bound in `needs_borrow::S::foo`
 LL |     impl S {
 LL |         fn foo<T: Tr, K: std::fmt::Debug>(&self, _v: T, _w: T, _k: K) {}
    |                   ^^ required by this bound in `S::foo`
-help: consider borrowing these argument
-   |
-LL |             S.foo(&hi, &hi, hi);
-   |                   +    +
 
 error: aborting due to 4 previous errors
 

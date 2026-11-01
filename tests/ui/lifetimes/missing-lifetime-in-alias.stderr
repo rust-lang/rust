@@ -15,15 +15,15 @@ error[E0106]: missing lifetime specifier
 LL | type C<'a, 'b> = <A<'a> as Trait>::Bar;
    |                            ^^^^^ expected named lifetime parameter
    |
+help: consider using one of the available lifetimes here
+   |
+LL | type C<'a, 'b> = <A<'a> as Trait<'lifetime>>::Bar;
+   |                                 +++++++++++
 note: these named lifetimes are available to use
   --> $DIR/missing-lifetime-in-alias.rs:27:8
    |
 LL | type C<'a, 'b> = <A<'a> as Trait>::Bar;
    |        ^^  ^^
-help: consider using one of the available lifetimes here
-   |
-LL | type C<'a, 'b> = <A<'a> as Trait<'lifetime>>::Bar;
-   |                                 +++++++++++
 
 error[E0477]: the type `Impl<'a>` does not fulfill the required lifetime
   --> $DIR/missing-lifetime-in-alias.rs:16:20
@@ -34,15 +34,15 @@ LL |     type Bar<'b>
 LL |     type Bar<'b> = &'b ();
    |                    ^^^^^^
    |
+help: copy the `where` clause predicates from the trait
+   |
+LL |     type Bar<'b> = &'b () where Self: 'b;
+   |                           ++++++++++++++
 note: type must outlive the lifetime `'b` as defined here
   --> $DIR/missing-lifetime-in-alias.rs:16:14
    |
 LL |     type Bar<'b> = &'b ();
    |              ^^
-help: copy the `where` clause predicates from the trait
-   |
-LL |     type Bar<'b> = &'b () where Self: 'b;
-   |                           ++++++++++++++
 
 error[E0107]: missing generics for associated type `Trait::Bar`
   --> $DIR/missing-lifetime-in-alias.rs:27:36
@@ -50,15 +50,15 @@ error[E0107]: missing generics for associated type `Trait::Bar`
 LL | type C<'a, 'b> = <A<'a> as Trait>::Bar;
    |                                    ^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL | type C<'a, 'b> = <A<'a> as Trait>::Bar<'a>;
+   |                                       ++++
 note: associated type defined here, with 1 lifetime parameter: `'b`
   --> $DIR/missing-lifetime-in-alias.rs:4:10
    |
 LL |     type Bar<'b>
    |          ^^^ --
-help: add missing lifetime argument
-   |
-LL | type C<'a, 'b> = <A<'a> as Trait>::Bar<'a>;
-   |                                       ++++
 
 error: aborting due to 4 previous errors
 

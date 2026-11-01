@@ -7,12 +7,12 @@ LL | struct FooHolster {
 LL |     the_foos: Vec<Foo>,
    |     ^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `Foo`
    |
-   = note: required for `Vec<Foo>` to implement `Clone`
 help: consider annotating `Foo` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
 LL | struct Foo(u8);
    |
+   = note: required for `Vec<Foo>` to implement `Clone`
 
 error: aborting due to 1 previous error
 

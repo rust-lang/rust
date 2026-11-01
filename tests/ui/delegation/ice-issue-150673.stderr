@@ -4,15 +4,15 @@ error[E0107]: missing generics for struct `S`
 LL | impl Trait for S {
    |                ^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL | impl Trait for S<T> {
+   |                 +++
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/ice-issue-150673.rs:9:8
    |
 LL | struct S<T>(T);
    |        ^ -
-help: add missing generic argument
-   |
-LL | impl Trait for S<T> {
-   |                 +++
 
 error: aborting due to 1 previous error
 

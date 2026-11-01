@@ -7,12 +7,12 @@ LL | |         do_something(i);
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::for-unbounded-range` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::for_unbounded_range)]`
 help: for loops over unbounded ranges will wrap around and may panic, consider adding an inclusive high bound
    |
 LL |     for i in 0_u8..=u8::MAX {
    |                    ++++++++
+   = help: to override `-D warnings` add `#[allow(clippy::for_unbounded_range)]`
+   = note: `-D clippy::for-unbounded-range` implied by `-D warnings`
 
 error: for loop on unbounded range
   --> tests/ui/for_unbounded_range.rs:31:5

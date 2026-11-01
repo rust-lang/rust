@@ -4,8 +4,8 @@ error: dereferencing a reference to an uninhabited type would be undefined behav
 LL | fn ret_uninh_ref() -> &'static std::convert::Infallible {
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::uninhabited-references` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::uninhabited_references)]`
+   = note: `-D clippy::uninhabited-references` implied by `-D warnings`
 
 error: dereferencing a reference to an uninhabited type would be undefined behavior
   --> tests/ui/uninhabited_references.rs:10:30

@@ -4,13 +4,13 @@ error: called `.iter().cloned().collect()` on a slice to create a `Vec`
 LL |     let v2: Vec<isize> = v.iter().cloned().collect();
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::iter-cloned-collect` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::iter_cloned_collect)]`
 help: calling `.to_vec()` is both faster and more readable
    |
 LL -     let v2: Vec<isize> = v.iter().cloned().collect();
 LL +     let v2: Vec<isize> = v.to_vec();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::iter_cloned_collect)]`
+   = note: `-D clippy::iter-cloned-collect` implied by `-D warnings`
 
 error: called `.iter().cloned().collect()` on a slice to create a `Vec`
   --> tests/ui/iter_cloned_collect.rs:13:38

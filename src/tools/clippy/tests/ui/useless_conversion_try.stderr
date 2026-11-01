@@ -5,8 +5,8 @@ LL |     let _ = T::try_from(val).unwrap();
    |             ^^^^^^^^^^^^^^^^
    |
    = help: consider removing `T::try_from()`
-   = note: `-D clippy::useless-conversion` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::useless_conversion)]`
+   = note: `-D clippy::useless-conversion` implied by `-D warnings`
 
 error: useless conversion to the same type: `T`
   --> tests/ui/useless_conversion_try.rs:8:5

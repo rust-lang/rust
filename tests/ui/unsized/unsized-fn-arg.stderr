@@ -6,7 +6,6 @@ LL | fn f<T: ?Sized>(t: T) {}
    |      |
    |      this type parameter needs to be `Sized`
    |
-   = help: unsized fn params are gated as an unstable feature
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f<T: ?Sized>(t: T) {}
@@ -16,6 +15,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL | fn f<T: ?Sized>(t: &T) {}
    |                    +
+   = help: unsized fn params are gated as an unstable feature
 
 error: aborting due to 1 previous error
 

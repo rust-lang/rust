@@ -7,8 +7,6 @@ LL | |         [].iter()
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::iter-without-into-iter` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::iter_without_into_iter)]`
 help: consider implementing `IntoIterator` for `&S1`
    |
 LL + 
@@ -20,6 +18,8 @@ LL +         self.iter()
 LL +     }
 LL + }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::iter_without_into_iter)]`
+   = note: `-D clippy::iter-without-into-iter` implied by `-D warnings`
 
 error: `iter_mut` method without an `IntoIterator` impl for `&mut S1`
   --> tests/ui/iter_without_into_iter.rs:12:5

@@ -11,6 +11,12 @@ LL |   {
 LL |       type A = ();
    |       ------ associated type `<(T,) as Grault>::A` is specified here
    |
+help: associated type for the current `impl` cannot be restricted in `where` clauses, remove this bound
+   |
+LL -     T: Grault,
+LL -     Self::A: Baz,
+LL +     T: Grault,
+   |
 note: required for `(T,)` to implement `Grault`
   --> $DIR/impl-wf-cycle-5.rs:22:9
    |
@@ -19,12 +25,6 @@ LL | impl<T> Grault for (T,)
 ...
 LL |     Self::A: Baz,
    |              --- unsatisfied trait bound introduced here
-help: associated type for the current `impl` cannot be restricted in `where` clauses, remove this bound
-   |
-LL -     T: Grault,
-LL -     Self::A: Baz,
-LL +     T: Grault,
-   |
 
 error: aborting due to 1 previous error
 

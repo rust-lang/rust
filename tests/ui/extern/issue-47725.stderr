@@ -4,11 +4,11 @@ error[E0539]: malformed `link_name` attribute input
 LL | #[link_name]
    |   ^^^^^^^^^
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute>
 help: must be of the form
    |
 LL | #[link_name = "name"]
    |             ++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute>
 
 warning: the `link_name` attribute cannot be used on structs
   --> $DIR/issue-47725.rs:4:3

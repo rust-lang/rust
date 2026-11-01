@@ -18,13 +18,13 @@ LL |         RANGE => {}
    |         expected `i32`, found `RangeInclusive<i32>`
    |         `RANGE` is interpreted as a constant, not a new binding
    |
-   = note: expected type `i32`
-            found struct `std::ops::RangeInclusive<i32>`
 help: you may want to move the range into the match block
    |
 LL -         RANGE => {}
 LL +         0..=255 => {}
    |
+   = note: expected type `i32`
+            found struct `std::ops::RangeInclusive<i32>`
 
 error[E0308]: mismatched types
   --> $DIR/const-range-matching-76191.rs:17:9

@@ -16,12 +16,12 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL | fn returns_closure() -> _ {
    |                         ^ not allowed in type signatures
    |
-   = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
 help: replace with an appropriate return type
    |
 LL - fn returns_closure() -> _ {
 LL + fn returns_closure() -> impl Fn() -> i32 {
    |
+   = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
 
 error: aborting due to 2 previous errors
 

@@ -14,13 +14,13 @@ LL |         Foo::Foo3(num) => (),
 LL |         Foo::Foo4(num) => (),
    |                   --- ...and here
    |
-   = note: ...and 4 other places
-   = note: move occurs because these variables have types that don't implement the `Copy` trait
 help: consider removing the dereference here
    |
 LL -     match *f {
 LL +     match f {
    |
+   = note: ...and 4 other places
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
 
 error: aborting due to 1 previous error
 

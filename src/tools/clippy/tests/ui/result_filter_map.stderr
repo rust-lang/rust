@@ -7,8 +7,8 @@ LL | |
 LL | |         .map(Result::unwrap);
    | |____________________________^ help: consider using `flatten` instead: `flatten()`
    |
-   = note: `-D clippy::result-filter-map` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::result_filter_map)]`
+   = note: `-D clippy::result-filter-map` implied by `-D warnings`
 
 error: `filter` for `Ok` followed by `unwrap`
   --> tests/ui/result_filter_map.rs:19:10

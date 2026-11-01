@@ -23,10 +23,10 @@ LL | trait Bar {}
 LL |     x.as_ref();
    |       ^^^^^^ method cannot be called on `&dyn Bar` due to unsatisfied trait bounds
    |
+   = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait bounds were not satisfied:
            `dyn Bar: AsRef<_>`
            which is required by `&dyn Bar: AsRef<_>`
-   = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `as_ref`, perhaps you need to implement it:
            candidate #1: `AsRef`
 

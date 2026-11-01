@@ -4,19 +4,19 @@ error[E0659]: `panic` is ambiguous
 LL |     panic!();
    |     ^^^^^ ambiguous name
    |
+   = help: consider adding an explicit import of `panic` to disambiguate
    = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
 note: `panic` could refer to the macro imported here
   --> $DIR/ambiguous-panic-glob-vs-multiouter.rs:13:9
    |
 LL |     use m1::*;
    |         ^^^^^
-   = help: consider adding an explicit import of `panic` to disambiguate
+   = help: use `crate::panic` to refer to this macro unambiguously
 note: `panic` could also refer to the macro imported here
   --> $DIR/ambiguous-panic-glob-vs-multiouter.rs:11:5
    |
 LL | use m2::*;
    |     ^^^^^
-   = help: use `crate::panic` to refer to this macro unambiguously
 
 error: aborting due to 1 previous error
 

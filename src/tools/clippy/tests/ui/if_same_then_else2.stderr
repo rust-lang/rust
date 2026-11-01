@@ -10,6 +10,7 @@ LL | |             if foo.is_some() {
 LL | |     } else {
    | |_____^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::if_same_then_else)]`
 note: same as this
   --> tests/ui/if_same_then_else2.rs:14:12
    |
@@ -22,7 +23,6 @@ LL | |             if bar.is_some() {
 LL | |     }
    | |_____^
    = note: `-D clippy::if-same-then-else` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::if_same_then_else)]`
 
 error: this `if` has identical blocks
   --> tests/ui/if_same_then_else2.rs:26:13

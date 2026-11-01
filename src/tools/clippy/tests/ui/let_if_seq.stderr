@@ -9,9 +9,9 @@ LL | |         foo = 42;
 LL | |     }
    | |_____^ help: it is more idiomatic to write: `let <mut> foo = if f() { 42 } else { 0 };`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::useless_let_if_seq)]`
    = note: you might not need `mut` at all
    = note: `-D clippy::useless-let-if-seq` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::useless_let_if_seq)]`
 
 error: `if _ { .. } else { .. }` is an expression
   --> tests/ui/let_if_seq.rs:72:5

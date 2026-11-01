@@ -4,8 +4,8 @@ error: this loop could be written as a `for` loop
 LL |         while let Some(e) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for e in it`
    |
-   = note: `-D clippy::while-let-on-iterator` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::while_let_on_iterator)]`
+   = note: `-D clippy::while-let-on-iterator` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

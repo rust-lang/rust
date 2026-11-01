@@ -4,13 +4,13 @@ error: expected a pattern range bound, found an expression
 LL |             0..5+1 => errors_only.push(x),
    |                ^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +         const VAL: /* Type */ = 5+1;
 LL |         match x as i32 {
 LL ~             0..VAL => errors_only.push(x),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error[E0408]: variable `n` is not bound in all patterns
   --> $DIR/range_pat_interactions1.rs:10:25

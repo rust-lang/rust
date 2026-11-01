@@ -4,8 +4,8 @@ error: use of irregular braces for `vec!` macro
 LL |         vec!{0, 0, 0}
    |         ^^^^^^^^^^^^^ help: consider writing: `vec![0, 0, 0]`
    |
-   = note: `-D clippy::nonstandard-macro-braces` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::nonstandard_macro_braces)]`
+   = note: `-D clippy::nonstandard-macro-braces` implied by `-D warnings`
 
 error: use of irregular braces for `vec!` macro
   --> tests/ui-toml/nonstandard_macro_braces/conf_nonstandard_macro_braces.rs:46:13

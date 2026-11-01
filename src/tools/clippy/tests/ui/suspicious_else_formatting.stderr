@@ -4,9 +4,9 @@ error: this looks like an `else {..}` but the `else` is missing
 LL |     } {
    |      ^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::possible_missing_else)]`
    = note: to remove this lint, add the missing `else` or add a new line before the next block
    = note: `-D clippy::possible-missing-else` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::possible_missing_else)]`
 
 error: this looks like an `else if` but the `else` is missing
   --> tests/ui/suspicious_else_formatting.rs:27:6
@@ -40,9 +40,9 @@ LL |       } else
 LL | |     {
    | |____^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_else_formatting)]`
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
    = note: `-D clippy::suspicious-else-formatting` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::suspicious_else_formatting)]`
 
 error: this is an `else if` but the formatting might hide it
   --> tests/ui/suspicious_else_formatting.rs:67:6

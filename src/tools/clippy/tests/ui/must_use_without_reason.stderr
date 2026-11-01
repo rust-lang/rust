@@ -4,8 +4,8 @@ error: `#[must_use]` attribute without a reason
 LL | #[must_use]
    | ^^^^^^^^^^^ help: add a reason why the value must be used: `#[must_use = "<REASON>"]`
    |
-   = note: `-D clippy::must-use-without-reason` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::must_use_without_reason)]`
+   = note: `-D clippy::must-use-without-reason` implied by `-D warnings`
 
 error: `#[must_use]` attribute without a reason
   --> tests/ui/must_use_without_reason.rs:26:5

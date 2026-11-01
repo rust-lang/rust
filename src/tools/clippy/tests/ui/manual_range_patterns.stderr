@@ -4,8 +4,8 @@ error: this OR pattern can be rewritten using a range
 LL |     let _ = matches!(f, 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1..=10`
    |
-   = note: `-D clippy::manual-range-patterns` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_range_patterns)]`
+   = note: `-D clippy::manual-range-patterns` implied by `-D warnings`
 
 error: this OR pattern can be rewritten using a range
   --> tests/ui/manual_range_patterns.rs:8:25

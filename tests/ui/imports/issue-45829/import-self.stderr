@@ -13,11 +13,11 @@ LL | mod foo {
 LL | use foo::{self};
    |           ^^^^ `foo` reimported here
    |
-   = note: `foo` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | use foo::{self as other_foo};
    |                ++++++++++++
+   = note: `foo` must be defined only once in the type namespace of this module
 
 error[E0255]: the name `foo` is defined multiple times
   --> $DIR/import-self.rs:12:5
@@ -28,11 +28,11 @@ LL | mod foo {
 LL | use foo::self;
    |     ^^^^^^^^^ `foo` reimported here
    |
-   = note: `foo` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | use foo::self as other_foo;
    |               ++++++++++++
+   = note: `foo` must be defined only once in the type namespace of this module
 
 error[E0252]: the name `A` is defined multiple times
   --> $DIR/import-self.rs:15:11
@@ -42,11 +42,11 @@ LL | use foo::A;
 LL | use foo::{self as A};
    |           ^^^^^^^^^ `A` reimported here
    |
-   = note: `A` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | use foo::{self as OtherA};
    |                   +++++
+   = note: `A` must be defined only once in the type namespace of this module
 
 error: aborting due to 4 previous errors
 

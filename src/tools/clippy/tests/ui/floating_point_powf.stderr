@@ -4,8 +4,8 @@ error: exponent for bases 2 and e can be computed more accurately
 LL |     let _ = 2f32.powf(x);
    |             ^^^^^^^^^^^^ help: consider using: `x.exp2()`
    |
-   = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
+   = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
 
 error: exponent for bases 2 and e can be computed more accurately
   --> tests/ui/floating_point_powf.rs:10:13
@@ -49,8 +49,8 @@ error: cube-root of a number can be computed more accurately
 LL |     let _ = x.powf(1.0 / 3.0);
    |             ^^^^^^^^^^^^^^^^^ help: consider using: `x.cbrt()`
    |
-   = note: `-D clippy::imprecise-flops` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::imprecise_flops)]`
+   = note: `-D clippy::imprecise-flops` implied by `-D warnings`
 
 error: cube-root of a number can be computed more accurately
   --> tests/ui/floating_point_powf.rs:24:13

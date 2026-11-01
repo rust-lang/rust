@@ -9,6 +9,11 @@ LL |     while let Some(item) = iter(vec).next() {
    |     |                           value moved here, in previous iteration of loop
    |     inside of this loop
    |
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~     let mut value = iter(vec);
+LL ~     while let Some(item) = value.next() {
+   |
 note: consider changing this parameter type in function `iter` to borrow instead if owning the value isn't necessary
   --> $DIR/recreating-value-in-loop-condition.rs:1:17
    |
@@ -16,11 +21,6 @@ LL | fn iter<T>(vec: Vec<T>) -> impl Iterator<Item = T> {
    |    ----         ^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
-help: consider moving the expression out of the loop so it is only moved once
-   |
-LL ~     let mut value = iter(vec);
-LL ~     while let Some(item) = value.next() {
-   |
 
 error[E0382]: use of moved value: `vec`
   --> $DIR/recreating-value-in-loop-condition.rs:15:31
@@ -33,13 +33,6 @@ LL |
 LL |         let Some(item) = iter(vec).next() else {
    |                               ^^^ value moved here, in previous iteration of loop
    |
-note: consider changing this parameter type in function `iter` to borrow instead if owning the value isn't necessary
-  --> $DIR/recreating-value-in-loop-condition.rs:1:17
-   |
-LL | fn iter<T>(vec: Vec<T>) -> impl Iterator<Item = T> {
-   |    ----         ^^^^^^ this parameter takes ownership of the value
-   |    |
-   |    in this function
 help: consider moving the expression out of the loop so it is only moved once
    |
 LL ~     let mut value = iter(vec);
@@ -47,6 +40,13 @@ LL ~     loop {
 LL |
 LL ~         let Some(item) = value.next() else {
    |
+note: consider changing this parameter type in function `iter` to borrow instead if owning the value isn't necessary
+  --> $DIR/recreating-value-in-loop-condition.rs:1:17
+   |
+LL | fn iter<T>(vec: Vec<T>) -> impl Iterator<Item = T> {
+   |    ----         ^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
 
 error[E0382]: use of moved value: `vec`
   --> $DIR/recreating-value-in-loop-condition.rs:25:25
@@ -59,13 +59,6 @@ LL |
 LL |         let item = iter(vec).next();
    |                         ^^^ value moved here, in previous iteration of loop
    |
-note: consider changing this parameter type in function `iter` to borrow instead if owning the value isn't necessary
-  --> $DIR/recreating-value-in-loop-condition.rs:1:17
-   |
-LL | fn iter<T>(vec: Vec<T>) -> impl Iterator<Item = T> {
-   |    ----         ^^^^^^ this parameter takes ownership of the value
-   |    |
-   |    in this function
 help: consider moving the expression out of the loop so it is only moved once
    |
 LL ~     let mut value = iter(vec);
@@ -73,6 +66,13 @@ LL ~     loop {
 LL |
 LL ~         let item = value.next();
    |
+note: consider changing this parameter type in function `iter` to borrow instead if owning the value isn't necessary
+  --> $DIR/recreating-value-in-loop-condition.rs:1:17
+   |
+LL | fn iter<T>(vec: Vec<T>) -> impl Iterator<Item = T> {
+   |    ----         ^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
 help: consider cloning the value if the performance cost is acceptable
    |
 LL |         let item = iter(vec.clone()).next();
@@ -89,13 +89,6 @@ LL |
 LL |         if let Some(item) = iter(vec).next() {
    |                                  ^^^ value moved here, in previous iteration of loop
    |
-note: consider changing this parameter type in function `iter` to borrow instead if owning the value isn't necessary
-  --> $DIR/recreating-value-in-loop-condition.rs:1:17
-   |
-LL | fn iter<T>(vec: Vec<T>) -> impl Iterator<Item = T> {
-   |    ----         ^^^^^^ this parameter takes ownership of the value
-   |    |
-   |    in this function
 help: consider moving the expression out of the loop so it is only moved once
    |
 LL ~     let mut value = iter(vec);
@@ -103,6 +96,13 @@ LL ~     loop {
 LL |
 LL ~         if let Some(item) = value.next() {
    |
+note: consider changing this parameter type in function `iter` to borrow instead if owning the value isn't necessary
+  --> $DIR/recreating-value-in-loop-condition.rs:1:17
+   |
+LL | fn iter<T>(vec: Vec<T>) -> impl Iterator<Item = T> {
+   |    ----         ^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
 
 error[E0382]: use of moved value: `vec`
   --> $DIR/recreating-value-in-loop-condition.rs:50:46
@@ -118,6 +118,15 @@ LL |                 loop {
    |                 ---- inside of this loop
 LL |                     if let Some(item) = iter(vec).next() {
    |                                              ^^^ value moved here, in previous iteration of loop
+   |
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~         let mut value = iter(vec);
+LL ~         loop {
+LL |
+LL |             loop {
+LL |                 loop {
+LL ~                     if let Some(item) = value.next() {
    |
 note: consider changing this parameter type in function `iter` to borrow instead if owning the value isn't necessary
   --> $DIR/recreating-value-in-loop-condition.rs:1:17
@@ -138,15 +147,6 @@ LL |                 loop {
 ...
 LL |                         break;
    |                         ^^^^^ this `break` exits the loop at line 49
-help: consider moving the expression out of the loop so it is only moved once
-   |
-LL ~         let mut value = iter(vec);
-LL ~         loop {
-LL |
-LL |             loop {
-LL |                 loop {
-LL ~                     if let Some(item) = value.next() {
-   |
 
 error: aborting due to 5 previous errors
 

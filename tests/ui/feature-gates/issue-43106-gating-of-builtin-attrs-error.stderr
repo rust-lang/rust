@@ -306,16 +306,16 @@ warning: `#[no_mangle]` attribute may not be used in combination with `#[export_
 LL | #![no_mangle]
    | ^^^^^^^^^^^^^ `#[no_mangle]` is ignored
    |
+help: remove the `#[no_mangle]` attribute
+   |
+LL - #![no_mangle]
+   |
 note: `#[export_name]` takes precedence
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:36:1
    |
 LL | #![export_name = "2200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    = note: requested on the command line with `-W unused-attributes`
-help: remove the `#[no_mangle]` attribute
-   |
-LL - #![no_mangle]
-   |
 
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:16:1

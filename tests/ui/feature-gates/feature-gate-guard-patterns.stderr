@@ -16,10 +16,10 @@ error[E0658]: guard patterns are experimental
 LL |         (0 if guard(0)) | 1 => {},
    |               ^^^^^^^^
    |
-   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: consider using match arm guards
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: guard patterns are experimental
   --> $DIR/feature-gate-guard-patterns.rs:23:16
@@ -27,10 +27,10 @@ error[E0658]: guard patterns are experimental
 LL |     let ((x if guard(x)) | x) = 0;
    |                ^^^^^^^^
    |
-   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: consider using match arm guards
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: guard patterns are experimental
   --> $DIR/feature-gate-guard-patterns.rs:26:18
@@ -38,10 +38,10 @@ error[E0658]: guard patterns are experimental
 LL |     if let (x if guard(x)) = 0 {}
    |                  ^^^^^^^^
    |
-   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: consider using match arm guards
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: guard patterns are experimental
   --> $DIR/feature-gate-guard-patterns.rs:29:21
@@ -49,10 +49,10 @@ error[E0658]: guard patterns are experimental
 LL |     while let (x if guard(x)) = 0 {}
    |                     ^^^^^^^^
    |
-   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: consider using match arm guards
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: guard patterns are experimental
   --> $DIR/feature-gate-guard-patterns.rs:33:21
@@ -60,10 +60,10 @@ error[E0658]: guard patterns are experimental
 LL |     while let (x if guard(x)) = 0 {}
    |                     ^^^^^^^^
    |
-   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: consider using match arm guards
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: guard patterns are experimental
   --> $DIR/feature-gate-guard-patterns.rs:37:39
@@ -71,10 +71,10 @@ error[E0658]: guard patterns are experimental
 LL | fn even_as_function_parameters(((x if guard(x), _) | (_, x)): (i32, i32)) {}
    |                                       ^^^^^^^^
    |
-   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: consider using match arm guards
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 7 previous errors
 

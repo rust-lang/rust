@@ -4,8 +4,8 @@ error: struct update has no effect, all the fields in the struct have already be
 LL |     S { a: 1, b: 1, ..base };
    |                       ^^^^
    |
-   = note: `-D clippy::needless-update` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_update)]`
+   = note: `-D clippy::needless-update` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

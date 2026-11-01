@@ -4,8 +4,8 @@ error: possible broken doc link: broken across multiple lines
 LL | /// [doc invalid link broken url scheme part](https://
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::doc-broken-link` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::doc_broken_link)]`
+   = note: `-D clippy::doc-broken-link` implied by `-D warnings`
 
 error: possible broken doc link: broken across multiple lines
   --> tests/ui/doc_broken_link.rs:59:5

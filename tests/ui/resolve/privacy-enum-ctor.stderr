@@ -4,7 +4,17 @@ error[E0423]: cannot find value `Z` in module `n`
 LL |         n::Z;
    |            ^
    |
+help: you might have meant to use the following enum variant
+   |
+LL -         n::Z;
+LL +         m::Z::Unit;
+   |
    = note: an enum named `n::Z` exists in another namespace
+help: alternatively, the following enum variant is available
+   |
+LL -         n::Z;
+LL +         (m::Z::Fn(/* fields */));
+   |
 note: the enum is defined here
   --> $DIR/privacy-enum-ctor.rs:12:9
    |
@@ -16,16 +26,6 @@ LL | |             },
 LL | |             Unit,
 LL | |         }
    | |_________^
-help: you might have meant to use the following enum variant
-   |
-LL -         n::Z;
-LL +         m::Z::Unit;
-   |
-help: alternatively, the following enum variant is available
-   |
-LL -         n::Z;
-LL +         (m::Z::Fn(/* fields */));
-   |
 
 error[E0423]: cannot find value `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:26:9
@@ -33,7 +33,17 @@ error[E0423]: cannot find value `Z` in this scope
 LL |         Z;
    |         ^
    |
+help: you might have meant to use the following enum variant
+   |
+LL -         Z;
+LL +         m::Z::Unit;
+   |
    = note: an enum named `Z` exists in another namespace
+help: alternatively, the following enum variant is available
+   |
+LL -         Z;
+LL +         (m::Z::Fn(/* fields */));
+   |
 note: the enum is defined here
   --> $DIR/privacy-enum-ctor.rs:12:9
    |
@@ -45,16 +55,6 @@ LL | |             },
 LL | |             Unit,
 LL | |         }
    | |_________^
-help: you might have meant to use the following enum variant
-   |
-LL -         Z;
-LL +         m::Z::Unit;
-   |
-help: alternatively, the following enum variant is available
-   |
-LL -         Z;
-LL +         (m::Z::Fn(/* fields */));
-   |
 
 error[E0423]: cannot find value `E` in module `m`
   --> $DIR/privacy-enum-ctor.rs:42:19
@@ -62,7 +62,22 @@ error[E0423]: cannot find value `E` in module `m`
 LL |     let _: E = m::E;
    |                   ^
    |
+help: you might have meant to use the following enum variant
+   |
+LL -     let _: E = m::E;
+LL +     let _: E = E::Unit;
+   |
    = note: an enum named `m::E` exists in another namespace
+help: alternatively, the following enum variant is available
+   |
+LL -     let _: E = m::E;
+LL +     let _: E = (E::Fn(/* fields */));
+   |
+help: a function with a similar name exists
+   |
+LL -     let _: E = m::E;
+LL +     let _: E = m::f;
+   |
 note: the enum is defined here
   --> $DIR/privacy-enum-ctor.rs:3:5
    |
@@ -79,21 +94,6 @@ note: similarly named function `f` defined here
    |
 LL |     fn f() {
    |     ^^^^^^
-help: you might have meant to use the following enum variant
-   |
-LL -     let _: E = m::E;
-LL +     let _: E = E::Unit;
-   |
-help: alternatively, the following enum variant is available
-   |
-LL -     let _: E = m::E;
-LL +     let _: E = (E::Fn(/* fields */));
-   |
-help: a function with a similar name exists
-   |
-LL -     let _: E = m::E;
-LL +     let _: E = m::f;
-   |
 help: consider importing one of these constants instead
    |
 LL + use std::f128::consts::E;
@@ -116,22 +116,11 @@ error[E0423]: cannot find value `E` in this scope
 LL |     let _: E = E;
    |                ^
    |
-   = note: an enum named `E` exists in another namespace
-note: the enum is defined here
-  --> $DIR/privacy-enum-ctor.rs:3:5
-   |
-LL | /     pub enum E {
-LL | |         Fn(u8),
-LL | |         Struct {
-LL | |             s: u8,
-LL | |         },
-LL | |         Unit,
-LL | |     }
-   | |_____^
 help: you might have meant to use the following enum variant
    |
 LL |     let _: E = E::Unit;
    |                 ++++++
+   = note: an enum named `E` exists in another namespace
 help: alternatively, the following enum variant is available
    |
 LL -     let _: E = E;
@@ -147,12 +136,28 @@ LL + use std::f32::consts::E;
    |
 LL + use std::f64::consts::E;
    |
+note: the enum is defined here
+  --> $DIR/privacy-enum-ctor.rs:3:5
+   |
+LL | /     pub enum E {
+LL | |         Fn(u8),
+LL | |         Struct {
+LL | |             s: u8,
+LL | |         },
+LL | |         Unit,
+LL | |     }
+   | |_____^
 
 error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:58:12
    |
 LL |     let _: Z = m::n::Z;
    |            ^ not found in this scope
+   |
+help: an enum with a similar name exists
+   |
+LL -     let _: Z = m::n::Z;
+LL +     let _: E = m::n::Z;
    |
 note: similarly named enum `E` defined here
   --> $DIR/privacy-enum-ctor.rs:3:5
@@ -164,11 +169,6 @@ note: enum `m::Z` exists but is inaccessible
    |
 LL |         pub(in crate::m) enum Z {
    |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
-help: an enum with a similar name exists
-   |
-LL -     let _: Z = m::n::Z;
-LL +     let _: E = m::n::Z;
-   |
 
 error[E0423]: cannot find value `Z` in module `m::n`
   --> $DIR/privacy-enum-ctor.rs:58:22
@@ -176,7 +176,17 @@ error[E0423]: cannot find value `Z` in module `m::n`
 LL |     let _: Z = m::n::Z;
    |                      ^
    |
+help: you might have meant to use the following enum variant
+   |
+LL -     let _: Z = m::n::Z;
+LL +     let _: Z = m::Z::Unit;
+   |
    = note: an enum named `m::n::Z` exists in another namespace
+help: alternatively, the following enum variant is available
+   |
+LL -     let _: Z = m::n::Z;
+LL +     let _: Z = (m::Z::Fn(/* fields */));
+   |
 note: the enum is defined here
   --> $DIR/privacy-enum-ctor.rs:12:9
    |
@@ -188,16 +198,6 @@ LL | |             },
 LL | |             Unit,
 LL | |         }
    | |_________^
-help: you might have meant to use the following enum variant
-   |
-LL -     let _: Z = m::n::Z;
-LL +     let _: Z = m::Z::Unit;
-   |
-help: alternatively, the following enum variant is available
-   |
-LL -     let _: Z = m::n::Z;
-LL +     let _: Z = (m::Z::Fn(/* fields */));
-   |
 
 error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:62:12
@@ -205,6 +205,11 @@ error[E0425]: cannot find type `Z` in this scope
 LL |     let _: Z = m::n::Z::Fn;
    |            ^ not found in this scope
    |
+help: an enum with a similar name exists
+   |
+LL -     let _: Z = m::n::Z::Fn;
+LL +     let _: E = m::n::Z::Fn;
+   |
 note: similarly named enum `E` defined here
   --> $DIR/privacy-enum-ctor.rs:3:5
    |
@@ -215,11 +220,6 @@ note: enum `m::Z` exists but is inaccessible
    |
 LL |         pub(in crate::m) enum Z {
    |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
-help: an enum with a similar name exists
-   |
-LL -     let _: Z = m::n::Z::Fn;
-LL +     let _: E = m::n::Z::Fn;
-   |
 
 error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:65:12
@@ -227,6 +227,11 @@ error[E0425]: cannot find type `Z` in this scope
 LL |     let _: Z = m::n::Z::Struct;
    |            ^ not found in this scope
    |
+help: an enum with a similar name exists
+   |
+LL -     let _: Z = m::n::Z::Struct;
+LL +     let _: E = m::n::Z::Struct;
+   |
 note: similarly named enum `E` defined here
   --> $DIR/privacy-enum-ctor.rs:3:5
    |
@@ -237,11 +242,6 @@ note: enum `m::Z` exists but is inaccessible
    |
 LL |         pub(in crate::m) enum Z {
    |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
-help: an enum with a similar name exists
-   |
-LL -     let _: Z = m::n::Z::Struct;
-LL +     let _: E = m::n::Z::Struct;
-   |
 
 error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:69:12
@@ -249,6 +249,11 @@ error[E0425]: cannot find type `Z` in this scope
 LL |     let _: Z = m::n::Z::Unit {};
    |            ^ not found in this scope
    |
+help: an enum with a similar name exists
+   |
+LL -     let _: Z = m::n::Z::Unit {};
+LL +     let _: E = m::n::Z::Unit {};
+   |
 note: similarly named enum `E` defined here
   --> $DIR/privacy-enum-ctor.rs:3:5
    |
@@ -259,11 +264,6 @@ note: enum `m::Z` exists but is inaccessible
    |
 LL |         pub(in crate::m) enum Z {
    |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
-help: an enum with a similar name exists
-   |
-LL -     let _: Z = m::n::Z::Unit {};
-LL +     let _: E = m::n::Z::Unit {};
-   |
 
 error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:58:22
@@ -328,12 +328,12 @@ LL |         let _: Z = Z::Fn;
    |                |
    |                expected due to this
    |
-   = note:          expected enum `Z`
-           found enum constructor `fn(u8) -> Z {Z::Fn}`
 help: use parentheses to construct this tuple variant
    |
 LL |         let _: Z = Z::Fn(/* u8 */);
    |                         ++++++++++
+   = note:          expected enum `Z`
+           found enum constructor `fn(u8) -> Z {Z::Fn}`
 
 error[E0533]: expected value, found struct variant `Z::Struct`
   --> $DIR/privacy-enum-ctor.rs:30:20
@@ -374,12 +374,12 @@ LL |     let _: E = m::E::Fn;
    |            |
    |            expected due to this
    |
-   = note:          expected enum `E`
-           found enum constructor `fn(u8) -> E {E::Fn}`
 help: use parentheses to construct this tuple variant
    |
 LL |     let _: E = m::E::Fn(/* u8 */);
    |                        ++++++++++
+   = note:          expected enum `E`
+           found enum constructor `fn(u8) -> E {E::Fn}`
 
 error[E0533]: expected value, found struct variant `m::E::Struct`
   --> $DIR/privacy-enum-ctor.rs:46:16
@@ -420,12 +420,12 @@ LL |     let _: E = E::Fn;
    |            |
    |            expected due to this
    |
-   = note:          expected enum `E`
-           found enum constructor `fn(u8) -> E {E::Fn}`
 help: use parentheses to construct this tuple variant
    |
 LL |     let _: E = E::Fn(/* u8 */);
    |                     ++++++++++
+   = note:          expected enum `E`
+           found enum constructor `fn(u8) -> E {E::Fn}`
 
 error[E0533]: expected value, found struct variant `E::Struct`
   --> $DIR/privacy-enum-ctor.rs:54:16

@@ -16,12 +16,12 @@ error[E0575]: cannot find associated type `method` in trait `Trait`
 LL | fn foo_qualified<T: Trait>() where <T as Trait>::method(i32): Send {}
    |                                                  ^^^^^^ not found in `Trait`
    |
-   = note: an associated function named `Trait::method` exists in another namespace
 help: you might have meant to use the return type notation syntax
    |
 LL - fn foo_qualified<T: Trait>() where <T as Trait>::method(i32): Send {}
 LL + fn foo_qualified<T: Trait>() where T::method(..): Send {}
    |
+   = note: an associated function named `Trait::method` exists in another namespace
 
 error[E0575]: cannot find associated type `method` in trait `Trait`
   --> $DIR/bad-inputs-and-output.rs:34:50
@@ -29,12 +29,12 @@ error[E0575]: cannot find associated type `method` in trait `Trait`
 LL | fn bar_qualified<T: Trait>() where <T as Trait>::method() -> (): Send {}
    |                                                  ^^^^^^ not found in `Trait`
    |
-   = note: an associated function named `Trait::method` exists in another namespace
 help: you might have meant to use the return type notation syntax
    |
 LL - fn bar_qualified<T: Trait>() where <T as Trait>::method() -> (): Send {}
 LL + fn bar_qualified<T: Trait>() where T::method(..): Send {}
    |
+   = note: an associated function named `Trait::method` exists in another namespace
 
 error[E0575]: cannot find associated type `method` in trait `Trait`
   --> $DIR/bad-inputs-and-output.rs:37:50
@@ -42,12 +42,12 @@ error[E0575]: cannot find associated type `method` in trait `Trait`
 LL | fn baz_qualified<T: Trait>() where <T as Trait>::method(): Send {}
    |                                                  ^^^^^^ not found in `Trait`
    |
-   = note: an associated function named `Trait::method` exists in another namespace
 help: you might have meant to use the return type notation syntax
    |
 LL - fn baz_qualified<T: Trait>() where <T as Trait>::method(): Send {}
 LL + fn baz_qualified<T: Trait>() where T::method(..): Send {}
    |
+   = note: an associated function named `Trait::method` exists in another namespace
 
 error: argument types not allowed with return type notation
   --> $DIR/bad-inputs-and-output.rs:10:23

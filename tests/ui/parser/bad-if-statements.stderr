@@ -24,15 +24,15 @@ error: expected `{`, found `x`
 LL |     if true x
    |             ^ expected `{`
    |
+help: you might have meant to write this as part of a block
+   |
+LL |     if true { x }
+   |             +   +
 note: the `if` expression is missing a block after this condition
   --> $DIR/bad-if-statements.rs:13:8
    |
 LL |     if true x
    |        ^^^^
-help: you might have meant to write this as part of a block
-   |
-LL |     if true { x }
-   |             +   +
 
 error: missing condition for `if` expression
   --> $DIR/bad-if-statements.rs:18:7
@@ -60,15 +60,15 @@ error: expected `{`, found `x`
 LL |     if true x else {}
    |             ^ expected `{`
    |
+help: you might have meant to write this as part of a block
+   |
+LL |     if true { x } else {}
+   |             +   +
 note: the `if` expression is missing a block after this condition
   --> $DIR/bad-if-statements.rs:29:8
    |
 LL |     if true x else {}
    |        ^^^^
-help: you might have meant to write this as part of a block
-   |
-LL |     if true { x } else {}
-   |             +   +
 
 error: this `if` expression is missing a block after the condition
   --> $DIR/bad-if-statements.rs:34:5

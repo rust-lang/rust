@@ -4,13 +4,13 @@ error: ignoring a result with `.ok()` is misleading
 LL |     x.parse::<u32>().ok();
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unused-result-ok` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unused_result_ok)]`
 help: consider using `let _ =` and removing the call to `.ok()` instead
    |
 LL -     x.parse::<u32>().ok();
 LL +     let _ = x.parse::<u32>();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unused_result_ok)]`
+   = note: `-D clippy::unused-result-ok` implied by `-D warnings`
 
 error: ignoring a result with `.ok()` is misleading
   --> tests/ui/unused_result_ok.rs:18:5

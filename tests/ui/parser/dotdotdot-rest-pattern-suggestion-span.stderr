@@ -4,12 +4,12 @@ error: unknown start of token: \u{b7}
 LL | impl S { fn f(···>) }
    |               ^^^
    |
-   = note: character appears 2 more times
 help: Unicode character '·' (Middle Dot) looks like '.' (Period), but it is not
    |
 LL - impl S { fn f(···>) }
 LL + impl S { fn f(...>) }
    |
+   = note: character appears 2 more times
 
 error: unknown start of token: \u{b7}
   --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:16
@@ -17,12 +17,12 @@ error: unknown start of token: \u{b7}
 LL | impl S { fn f(···>) }
    |                ^^
    |
-   = note: character appears once more
 help: Unicode character '·' (Middle Dot) looks like '.' (Period), but it is not
    |
 LL - impl S { fn f(···>) }
 LL + impl S { fn f(·..>) }
    |
+   = note: character appears once more
 
 error: unknown start of token: \u{b7}
   --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:17
@@ -80,14 +80,14 @@ error: missing pattern for `...` argument
 LL | impl S { fn f(···>) }
    |               ^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #145544 <https://github.com/rust-lang/rust/issues/145544>
-   = note: `#[deny(varargs_without_pattern)]` (part of `#[deny(future_incompatible)]`) on by default
 help: name the argument, or use `_` to continue ignoring it
    |
 LL - impl S { fn f(···>) }
 LL + impl S { fn f(_: ...>) }
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #145544 <https://github.com/rust-lang/rust/issues/145544>
+   = note: `#[deny(varargs_without_pattern)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: aborting due to 9 previous errors
 
@@ -99,12 +99,12 @@ error: missing pattern for `...` argument
 LL | impl S { fn f(···>) }
    |               ^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #145544 <https://github.com/rust-lang/rust/issues/145544>
-   = note: `#[deny(varargs_without_pattern)]` (part of `#[deny(future_incompatible)]`) on by default
 help: name the argument, or use `_` to continue ignoring it
    |
 LL - impl S { fn f(···>) }
 LL + impl S { fn f(_: ...>) }
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #145544 <https://github.com/rust-lang/rust/issues/145544>
+   = note: `#[deny(varargs_without_pattern)]` (part of `#[deny(future_incompatible)]`) on by default
 

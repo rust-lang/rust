@@ -4,8 +4,8 @@ error: using `.iter.next()` on an array
 LL |     let _ = s.iter().next();
    |             ^^^^^^^^^^^^^^^ help: try calling: `s.first()`
    |
-   = note: `-D clippy::iter-next-slice` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_next_slice)]`
+   = note: `-D clippy::iter-next-slice` implied by `-D warnings`
 
 error: using `.iter.next()` on a Slice without end index
   --> tests/ui/iter_next_slice.rs:13:13

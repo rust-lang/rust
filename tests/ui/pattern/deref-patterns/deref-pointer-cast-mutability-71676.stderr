@@ -6,12 +6,12 @@ LL |     let _: *const u8 = &a;
    |            |
    |            expected due to this
    |
-   = note: expected raw pointer `*const u8`
-                found reference `&Emm`
 help: consider dereferencing
    |
 LL |     let _: *const u8 = &***a;
    |                         +++
+   = note: expected raw pointer `*const u8`
+                found reference `&Emm`
 
 error[E0308]: mismatched types
   --> $DIR/deref-pointer-cast-mutability-71676.rs:46:22
@@ -21,12 +21,12 @@ LL |     let _: *mut u8 = &a;
    |            |
    |            expected due to this
    |
-   = note: expected raw pointer `*mut u8`
-                found reference `&Emm`
 help: consider dereferencing
    |
 LL |     let _: *mut u8 = &mut ***a;
    |                       +++++++
+   = note: expected raw pointer `*mut u8`
+                found reference `&Emm`
 
 error[E0308]: mismatched types
   --> $DIR/deref-pointer-cast-mutability-71676.rs:49:24
@@ -36,13 +36,13 @@ LL |     let _: *const u8 = &mut a;
    |            |
    |            expected due to this
    |
-   = note:    expected raw pointer `*const u8`
-           found mutable reference `&mut Emm`
 help: consider dereferencing
    |
 LL -     let _: *const u8 = &mut a;
 LL +     let _: *const u8 = &***a;
    |
+   = note:    expected raw pointer `*const u8`
+           found mutable reference `&mut Emm`
 
 error[E0308]: mismatched types
   --> $DIR/deref-pointer-cast-mutability-71676.rs:52:22
@@ -52,12 +52,12 @@ LL |     let _: *mut u8 = &mut a;
    |            |
    |            expected due to this
    |
-   = note:    expected raw pointer `*mut u8`
-           found mutable reference `&mut Emm`
 help: consider dereferencing
    |
 LL |     let _: *mut u8 = &mut ***a;
    |                           +++
+   = note:    expected raw pointer `*mut u8`
+           found mutable reference `&mut Emm`
 
 error: aborting due to 4 previous errors
 

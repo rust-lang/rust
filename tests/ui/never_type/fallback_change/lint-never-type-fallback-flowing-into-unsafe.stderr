@@ -5,11 +5,11 @@ LL |         unsafe { mem::zeroed() }
    |                  ^^^^^^^^^^^^^
    |
    = help: specify the type explicitly
-   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |         unsafe { mem::zeroed::<()>() }
    |                             ++++++
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` on by default
 
 error: never type fallback affects this call to an `unsafe` function
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:24:13

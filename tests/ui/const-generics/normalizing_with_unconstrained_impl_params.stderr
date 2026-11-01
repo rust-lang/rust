@@ -51,8 +51,6 @@ error[E0207]: the const parameter `N` is not constrained by the impl trait, self
 LL | impl<'a, T: std::fmt::Debug, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
    |                              ^^^^^^^^^^^^^^ unconstrained const parameter
    |
-   = note: expressions using a const parameter must map each value to a distinct output value
-   = note: proving the result of expressions other than the parameter are unique is not supported
 help: use the type parameter `N` in the `ConstChunksExact` type and use it in the type definition
    |
 LL ~ struct ConstChunksExact<'a, T: '_, const assert: usize, N> {}
@@ -61,6 +59,8 @@ LL |
 LL |
 LL ~ impl<'a, T: std::fmt::Debug, const N: usize> Iterator for ConstChunksExact<'a, T, {}, N> {
    |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
 
 error[E0308]: mismatched types
   --> $DIR/normalizing_with_unconstrained_impl_params.rs:6:27

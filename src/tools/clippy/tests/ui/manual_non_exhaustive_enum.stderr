@@ -10,18 +10,18 @@ LL | |     _C,
 LL | | }
    | |_^
    |
-help: remove this variant
-  --> tests/ui/manual_non_exhaustive_enum.rs:10:5
-   |
-LL |     _C,
-   |     ^^
-   = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_non_exhaustive)]`
 help: use the `#[non_exhaustive]` attribute instead
    |
 LL + #[non_exhaustive]
 LL | pub enum E {
    |
+help: remove this variant
+  --> tests/ui/manual_non_exhaustive_enum.rs:10:5
+   |
+LL |     _C,
+   |     ^^
+   = help: to override `-D warnings` add `#[allow(clippy::manual_non_exhaustive)]`
+   = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
 
 error: this seems like a manual implementation of the non-exhaustive pattern
   --> tests/ui/manual_non_exhaustive_enum.rs:30:1
@@ -35,16 +35,16 @@ LL | |     C,
 LL | | }
    | |_^
    |
-help: remove this variant
-  --> tests/ui/manual_non_exhaustive_enum.rs:35:5
-   |
-LL |     C,
-   |     ^
 help: use the `#[non_exhaustive]` attribute instead
    |
 LL + #[non_exhaustive]
 LL | pub enum NoUnderscore {
    |
+help: remove this variant
+  --> tests/ui/manual_non_exhaustive_enum.rs:35:5
+   |
+LL |     C,
+   |     ^
 
 error: aborting due to 2 previous errors
 

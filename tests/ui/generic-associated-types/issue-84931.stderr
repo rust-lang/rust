@@ -7,15 +7,15 @@ LL |     type Item<'a> where Self: 'a;
 LL |     type Item<'a> = &'a mut T;
    |                     ^^^^^^^^^
    |
+help: copy the `where` clause predicates from the trait
+   |
+LL |     type Item<'a> = &'a mut T where Self: 'a;
+   |                               ++++++++++++++
 note: type must outlive the lifetime `'a` as defined here
   --> $DIR/issue-84931.rs:14:15
    |
 LL |     type Item<'a> = &'a mut T;
    |               ^^
-help: copy the `where` clause predicates from the trait
-   |
-LL |     type Item<'a> = &'a mut T where Self: 'a;
-   |                               ++++++++++++++
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/issue-84931.rs:14:5

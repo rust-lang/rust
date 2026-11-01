@@ -4,14 +4,14 @@ error[E0658]: cannot call conditionally-const operator in constant functions
 LL |     a == b
    |     ^^^^^^
    |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
-   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider dereferencing here
    |
 LL |     *a == *b
    |     +     +
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `PartialEq` is not yet stable as a const trait
   --> $DIR/issue-90870.rs:9:5
@@ -30,14 +30,14 @@ error[E0658]: cannot call conditionally-const operator in constant functions
 LL |     a == b
    |     ^^^^^^
    |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
-   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider dereferencing here
    |
 LL |     ****a == ****b
    |     ++++     ++++
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `PartialEq` is not yet stable as a const trait
   --> $DIR/issue-90870.rs:17:5
@@ -56,14 +56,14 @@ error[E0658]: cannot call conditionally-const operator in constant functions
 LL |         if l == r {
    |            ^^^^^^
    |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
-   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider dereferencing here
    |
 LL |         if *l == *r {
    |            +     +
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `PartialEq` is not yet stable as a const trait
   --> $DIR/issue-90870.rs:26:12

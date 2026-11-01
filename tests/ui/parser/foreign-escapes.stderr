@@ -4,12 +4,12 @@ error: unknown character escape: `?`
 LL | pub const QUESTION_MARK: char = '\?';
    |                                   ^ unknown character escape
    |
-   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
 LL - pub const QUESTION_MARK: char = '\?';
 LL + pub const QUESTION_MARK: char = r"\?";
    |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal question mark, don't escape the character
    |
 LL - pub const QUESTION_MARK: char = '\?';
@@ -22,12 +22,12 @@ error: unknown character escape: `a`
 LL | pub const AUDIBLE_BELL: char = '\a';
    |                                  ^ unknown character escape
    |
-   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
 LL - pub const AUDIBLE_BELL: char = '\a';
 LL + pub const AUDIBLE_BELL: char = r"\a";
    |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write an audible bell, use a hex escape
    |
 LL - pub const AUDIBLE_BELL: char = '\a';
@@ -40,12 +40,12 @@ error: unknown character escape: `b`
 LL | pub const BACKSPACE: char = '\b';
    |                               ^ unknown character escape
    |
-   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
 LL - pub const BACKSPACE: char = '\b';
 LL + pub const BACKSPACE: char = r"\b";
    |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a backspace, use a hex escape
    |
 LL - pub const BACKSPACE: char = '\b';
@@ -58,12 +58,12 @@ error: unknown character escape: `f`
 LL | pub const FORM_FEED: char = '\f';
    |                               ^ unknown character escape
    |
-   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
 LL - pub const FORM_FEED: char = '\f';
 LL + pub const FORM_FEED: char = r"\f";
    |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a form feed, use a hex escape
    |
 LL - pub const FORM_FEED: char = '\f';
@@ -76,12 +76,12 @@ error: unknown character escape: `v`
 LL | pub const VERTICAL_TAB: char = '\v';
    |                                  ^ unknown character escape
    |
-   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
 LL - pub const VERTICAL_TAB: char = '\v';
 LL + pub const VERTICAL_TAB: char = r"\v";
    |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a vertical tab, use a hex escape
    |
 LL - pub const VERTICAL_TAB: char = '\v';
@@ -94,13 +94,13 @@ error: unknown character escape: `1`
 LL | pub const OCTAL: char = '\1';
    |                           ^ unknown character escape
    |
-   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
-   = help: if you meant to write an ASCII control code, use a `\xNN` hex escape
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
 LL - pub const OCTAL: char = '\1';
 LL + pub const OCTAL: char = r"\1";
    |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
+   = help: if you meant to write an ASCII control code, use a `\xNN` hex escape
 
 error: unknown character escape: `1`
   --> $DIR/foreign-escapes.rs:17:37
@@ -108,13 +108,13 @@ error: unknown character escape: `1`
 LL | pub const OCTAL_TWO_DIGIT: char = '\12';
    |                                     ^ unknown character escape
    |
-   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
-   = help: if you meant to write an ASCII control code, use a `\xNN` hex escape
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
 LL - pub const OCTAL_TWO_DIGIT: char = '\12';
 LL + pub const OCTAL_TWO_DIGIT: char = r"\12";
    |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
+   = help: if you meant to write an ASCII control code, use a `\xNN` hex escape
 
 error: unknown character escape: `1`
   --> $DIR/foreign-escapes.rs:18:39
@@ -122,13 +122,13 @@ error: unknown character escape: `1`
 LL | pub const OCTAL_THREE_DIGIT: char = '\12';
    |                                       ^ unknown character escape
    |
-   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
-   = help: if you meant to write an ASCII control code, use a `\xNN` hex escape
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
 LL - pub const OCTAL_THREE_DIGIT: char = '\12';
 LL + pub const OCTAL_THREE_DIGIT: char = r"\12";
    |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
+   = help: if you meant to write an ASCII control code, use a `\xNN` hex escape
 
 error: unknown character escape: `9`
   --> $DIR/foreign-escapes.rs:19:40
@@ -136,12 +136,12 @@ error: unknown character escape: `9`
 LL | pub const OCTAL_OUT_OF_RANGE: char = '\9';
    |                                        ^ unknown character escape
    |
-   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
 LL - pub const OCTAL_OUT_OF_RANGE: char = '\9';
 LL + pub const OCTAL_OUT_OF_RANGE: char = r"\9";
    |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 
 error: unknown character escape: `e`
   --> $DIR/foreign-escapes.rs:23:28
@@ -149,12 +149,12 @@ error: unknown character escape: `e`
 LL | pub const ESCAPE: char = '\e';
    |                            ^ unknown character escape
    |
-   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
 LL - pub const ESCAPE: char = '\e';
 LL + pub const ESCAPE: char = r"\e";
    |
+   = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write an ANSI escape sequence, use a hex escape
    |
 LL - pub const ESCAPE: char = '\e';

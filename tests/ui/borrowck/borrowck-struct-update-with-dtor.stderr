@@ -7,15 +7,15 @@ LL |         let _s2 = S { a: 2, ..s0 };
    |                   cannot move out of here
    |                   move occurs because `s0.b` has type `B`, which does not implement the `Copy` trait
    |
+help: if `B` implemented `Clone`, you could clone the value from the field instead of using the functional record update syntax
+   |
+LL |         let _s2 = S { a: 2, b: s0.b.clone(), ..s0 };
+   |                           +++++++++++++++++
 note: `B` doesn't implement `Copy` or `Clone`
   --> $DIR/borrowck-struct-update-with-dtor.rs:4:1
    |
 LL | struct B;
    | ^^^^^^^^
-help: if `B` implemented `Clone`, you could clone the value from the field instead of using the functional record update syntax
-   |
-LL |         let _s2 = S { a: 2, b: s0.b.clone(), ..s0 };
-   |                           +++++++++++++++++
 
 error[E0509]: cannot move out of type `S<B>`, which implements the `Drop` trait
   --> $DIR/borrowck-struct-update-with-dtor.rs:24:19
@@ -26,16 +26,16 @@ LL |         let _s2 = S { a: 2, ..s0 };
    |                   cannot move out of here
    |                   move occurs because `s0.b` has type `B`, which does not implement the `Copy` trait
    |
-note: `B` doesn't implement `Copy` or `Clone`
-  --> $DIR/borrowck-struct-update-with-dtor.rs:4:1
-   |
-LL | struct B;
-   | ^^^^^^^^
 help: if `B` implemented `Clone`, you could clone the value from the field instead of using the functional record update syntax
    |
 LL -         let _s2 = S { a: 2, ..s0 };
 LL +         let _s2 = S { a: 2, b: s0.b.clone(), c: s0.c.clone() };
    |
+note: `B` doesn't implement `Copy` or `Clone`
+  --> $DIR/borrowck-struct-update-with-dtor.rs:4:1
+   |
+LL | struct B;
+   | ^^^^^^^^
 
 error[E0509]: cannot move out of type `S<B>`, which implements the `Drop` trait
   --> $DIR/borrowck-struct-update-with-dtor.rs:24:19
@@ -46,16 +46,16 @@ LL |         let _s2 = S { a: 2, ..s0 };
    |                   cannot move out of here
    |                   move occurs because `s0.c` has type `B`, which does not implement the `Copy` trait
    |
-note: `B` doesn't implement `Copy` or `Clone`
-  --> $DIR/borrowck-struct-update-with-dtor.rs:4:1
-   |
-LL | struct B;
-   | ^^^^^^^^
 help: if `B` implemented `Clone`, you could clone the value from the field instead of using the functional record update syntax
    |
 LL -         let _s2 = S { a: 2, ..s0 };
 LL +         let _s2 = S { a: 2, b: s0.b.clone(), c: s0.c.clone() };
    |
+note: `B` doesn't implement `Copy` or `Clone`
+  --> $DIR/borrowck-struct-update-with-dtor.rs:4:1
+   |
+LL | struct B;
+   | ^^^^^^^^
 
 error[E0509]: cannot move out of type `S<K>`, which implements the `Drop` trait
   --> $DIR/borrowck-struct-update-with-dtor.rs:29:19
@@ -66,15 +66,15 @@ LL |         let _s2 = S { a: 2, ..s0 };
    |                   cannot move out of here
    |                   move occurs because `s0.b` has type `B`, which does not implement the `Copy` trait
    |
+help: if `B` implemented `Clone`, you could clone the value from the field instead of using the functional record update syntax
+   |
+LL |         let _s2 = S { a: 2, b: s0.b.clone(), ..s0 };
+   |                           +++++++++++++++++
 note: `B` doesn't implement `Copy` or `Clone`
   --> $DIR/borrowck-struct-update-with-dtor.rs:4:1
    |
 LL | struct B;
    | ^^^^^^^^
-help: if `B` implemented `Clone`, you could clone the value from the field instead of using the functional record update syntax
-   |
-LL |         let _s2 = S { a: 2, b: s0.b.clone(), ..s0 };
-   |                           +++++++++++++++++
 
 error[E0509]: cannot move out of type `S<K>`, which implements the `Drop` trait
   --> $DIR/borrowck-struct-update-with-dtor.rs:29:19

@@ -9,8 +9,8 @@ LL | | }
    | |_^
    |
    = help: move the `.map` to the caller or to an `_opt` function
-   = note: `-D clippy::single-option-map` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::single_option_map)]`
+   = note: `-D clippy::single-option-map` implied by `-D warnings`
 
 error: `fn` that only maps over argument
   --> tests/ui/single_option_map.rs:14:1

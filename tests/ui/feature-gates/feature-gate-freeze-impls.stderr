@@ -4,8 +4,8 @@ error[E0658]: explicit impls for the `Freeze` trait are not permitted
 LL | unsafe impl Freeze for Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `Freeze` not allowed
    |
-   = note: see issue #121675 <https://github.com/rust-lang/rust/issues/121675> for more information
    = help: add `#![feature(freeze_impls)]` to the crate attributes to enable
+   = note: see issue #121675 <https://github.com/rust-lang/rust/issues/121675> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: explicit impls for the `Freeze` trait are not permitted
@@ -14,8 +14,8 @@ error[E0658]: explicit impls for the `Freeze` trait are not permitted
 LL | impl !Freeze for Bar {}
    | ^^^^^^^^^^^^^^^^^^^^ impl of `Freeze` not allowed
    |
-   = note: see issue #121675 <https://github.com/rust-lang/rust/issues/121675> for more information
    = help: add `#![feature(freeze_impls)]` to the crate attributes to enable
+   = note: see issue #121675 <https://github.com/rust-lang/rust/issues/121675> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 2 previous errors

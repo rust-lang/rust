@@ -7,11 +7,11 @@ LL |     if let Some(x) = s {
 LL |     foo(s);
    |         ^ value used here after partial move
    |
-   = note: partial move occurs because value has type `S`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
 LL |     if let Some(ref x) = s {
    |                 +++
+   = note: partial move occurs because value has type `S`, which does not implement the `Copy` trait
 
 error[E0382]: use of partially moved value: `e`
   --> $DIR/move-in-pattern.rs:23:9
@@ -22,11 +22,11 @@ LL |     let _ = x;
 LL |     bar(e);
    |         ^ value used here after partial move
    |
-   = note: partial move occurs because value has type `S`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
 LL |     let E::V { s: ref x } = e;
    |                   +++
+   = note: partial move occurs because value has type `S`, which does not implement the `Copy` trait
 
 error: aborting due to 2 previous errors
 

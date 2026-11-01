@@ -9,8 +9,8 @@ help: this expression can be optimized out by applying boolean operations to the
    |
 LL |     let _ = a && b || a;
    |                  ^
-   = note: `-D clippy::overly-complex-bool-expr` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::overly_complex_bool_expr)]`
+   = note: `-D clippy::overly-complex-bool-expr` implied by `-D warnings`
 
 error: this boolean expression contains a logic bug
   --> tests/ui/overly_complex_bool_expr.rs:14:13

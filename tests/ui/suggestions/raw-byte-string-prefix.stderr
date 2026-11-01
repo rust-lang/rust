@@ -4,12 +4,12 @@ error: prefix `rb` is unknown
 LL |     rb"abc";
    |     ^^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: use `br` for a raw byte string
    |
 LL -     rb"abc";
 LL +     br"abc";
    |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"abc"`
   --> $DIR/raw-byte-string-prefix.rs:6:7

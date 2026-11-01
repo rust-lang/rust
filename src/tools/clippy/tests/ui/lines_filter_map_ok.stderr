@@ -4,13 +4,13 @@ error: `filter_map()` will run forever if the iterator repeatedly produces an `E
 LL |     BufReader::new(f).lines().filter_map(Result::ok).for_each(|_| ());
    |                               ^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `map_while(Result::ok)`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::lines_filter_map_ok)]`
 note: this expression returning a `std::io::Lines` may produce an infinite number of `Err` in case of a read error
   --> tests/ui/lines_filter_map_ok.rs:10:5
    |
 LL |     BufReader::new(f).lines().filter_map(Result::ok).for_each(|_| ());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::lines-filter-map-ok` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::lines_filter_map_ok)]`
 
 error: `flat_map()` will run forever if the iterator repeatedly produces an `Err`
   --> tests/ui/lines_filter_map_ok.rs:13:31

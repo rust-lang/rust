@@ -24,15 +24,15 @@ error[E0107]: struct takes 1 generic argument but 0 generic arguments were suppl
 LL |     let _: S<'static, 'static>;
    |            ^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL |     let _: S<'static, 'static, T>;
+   |                              +++
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/vs-lifetime.rs:4:8
    |
 LL | struct S<'a, T>(&'a u8, T);
    |        ^     -
-help: add missing generic argument
-   |
-LL |     let _: S<'static, 'static, T>;
-   |                              +++
 
 error[E0224]: at least one trait is required for an object type
   --> $DIR/vs-lifetime.rs:14:14

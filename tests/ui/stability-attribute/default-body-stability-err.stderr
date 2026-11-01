@@ -4,9 +4,9 @@ error[E0046]: not all trait items implemented, missing: `CONSTANT`
 LL | impl JustTrait for Type {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: add `#![feature(constant_default_body)]` to the crate attributes to enable
    = note: default implementation of `CONSTANT` is unstable
    = note: use of unstable library feature `constant_default_body`
-   = help: add `#![feature(constant_default_body)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0046]: not all trait items implemented, missing: `fun`
@@ -15,9 +15,9 @@ error[E0046]: not all trait items implemented, missing: `fun`
 LL | impl JustTrait for Type {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: add `#![feature(fun_default_body)]` to the crate attributes to enable
    = note: default implementation of `fun` is unstable
    = note: use of unstable library feature `fun_default_body`
-   = help: add `#![feature(fun_default_body)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0046]: not all trait items implemented, missing: `fun2`
@@ -26,9 +26,9 @@ error[E0046]: not all trait items implemented, missing: `fun2`
 LL | impl JustTrait for Type {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: add `#![feature(fun_default_body)]` to the crate attributes to enable
    = note: default implementation of `fun2` is unstable
    = note: use of unstable library feature `fun_default_body`: reason
-   = help: add `#![feature(fun_default_body)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0046]: not all trait items implemented, missing: `eq`
@@ -42,9 +42,9 @@ LL | |     }
 LL | | }
    | |_^
    |
+   = help: add `#![feature(eq_default_body)]` to the crate attributes to enable
    = note: default implementation of `eq` is unstable
    = note: use of unstable library feature `eq_default_body`
-   = help: add `#![feature(eq_default_body)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 4 previous errors

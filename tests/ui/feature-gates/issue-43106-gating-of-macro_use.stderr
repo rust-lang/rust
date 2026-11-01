@@ -24,7 +24,6 @@ LL |     #[macro_use = "2700"] struct S;
    |                 |
    |                 expected a list or no arguments here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[macro_use = "2700"] struct S;
@@ -33,6 +32,7 @@ LL +     #[macro_use] struct S;
 LL -     #[macro_use = "2700"] struct S;
 LL +     #[macro_use(name1, name2, ...)] struct S;
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 
 warning: the `macro_use` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-macro_use.rs:6:4

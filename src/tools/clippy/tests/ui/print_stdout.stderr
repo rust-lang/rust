@@ -4,8 +4,8 @@ error: use of `println!`
 LL |     println!("Hello");
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::print-stdout` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::print_stdout)]`
+   = note: `-D clippy::print-stdout` implied by `-D warnings`
 
 error: use of `print!`
   --> tests/ui/print_stdout.rs:8:5

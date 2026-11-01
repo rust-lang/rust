@@ -106,9 +106,9 @@ error[E0562]: `impl Trait` is not allowed in the type of variable bindings
 LL |         let _: impl Send;
    |                ^^^^^^^^^
    |
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
-   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
@@ -117,9 +117,9 @@ error[E0562]: `impl Trait` is not allowed in the type of variable bindings
 LL |         let _: impl Send + 'static;
    |                ^^^^^^^^^^^^^^^^^^^
    |
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
-   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
@@ -128,9 +128,9 @@ error[E0562]: `impl Trait` is not allowed in the type of variable bindings
 LL |         let _: impl 'static + Send;
    |                ^^^^^^^^^^^^^^^^^^^
    |
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
-   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
@@ -139,9 +139,9 @@ error[E0562]: `impl Trait` is not allowed in the type of variable bindings
 LL |         let _: impl ?Sized;
    |                ^^^^^^^^^^^
    |
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
-   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
@@ -150,9 +150,9 @@ error[E0562]: `impl Trait` is not allowed in the type of variable bindings
 LL |         let _: impl [const] Clone;
    |                ^^^^^^^^^^^^^^^^^^
    |
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
-   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
@@ -161,9 +161,9 @@ error[E0562]: `impl Trait` is not allowed in the type of variable bindings
 LL |         let _: impl for<'a> Send;
    |                ^^^^^^^^^^^^^^^^^
    |
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
-   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 20 previous errors

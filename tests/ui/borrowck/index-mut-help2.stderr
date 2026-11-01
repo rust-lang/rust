@@ -17,12 +17,12 @@ LL |     map.insert(*index, 23);
    |         |
    |         arguments to this method are incorrect
    |
-note: method defined here
-  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
 help: consider dereferencing the borrow
    |
 LL |     map.insert(*****index, 23);
    |                ++++
+note: method defined here
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
 
 error[E0277]: the trait bound `&B: Borrow<&&&&B>` is not satisfied
   --> $DIR/index-mut-help2.rs:95:5

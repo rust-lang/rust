@@ -36,10 +36,10 @@ LL |     }
 LL |     async {}
    |     ^^^^^^^^ expected `async` block, found a different `async` block
    |
+   = help: consider pinning your async block and casting it to a trait object
    = note: expected `async` block `{async block@$DIR/return-type-mismatch-diagnostics-issue-162271.rs:17:16: 17:21}`
               found `async` block `{async block@$DIR/return-type-mismatch-diagnostics-issue-162271.rs:19:5: 19:10}`
    = note: no two async blocks, even if identical, have the same type
-   = help: consider pinning your async block and casting it to a trait object
 help: you could change the return type to be a boxed trait object
    |
 LL - fn multiple_returns_same_future_output() -> impl Future<Output = ()> {

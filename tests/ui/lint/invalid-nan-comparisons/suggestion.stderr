@@ -4,12 +4,12 @@ warning: incorrect NaN comparison, NaN cannot be directly compared to itself
 LL |     let _ = x == f16::NAN;
    |             ^^^^^^^^^^^^^
    |
-   = note: `#[warn(invalid_nan_comparisons)]` on by default
 help: use the `is_nan` method instead
    |
 LL -     let _ = x == f16::NAN;
 LL +     let _ = <f16>::is_nan(x);
    |
+   = note: `#[warn(invalid_nan_comparisons)]` on by default
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
   --> $DIR/suggestion.rs:12:13

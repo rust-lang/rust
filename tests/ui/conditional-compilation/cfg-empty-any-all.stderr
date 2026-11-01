@@ -4,6 +4,10 @@ error[E0425]: cannot find value `Disabled` in this scope
 LL |     let _ = Disabled;
    |             ^^^^^^^^ not found in this scope
    |
+help: consider importing this unit variant
+   |
+LL + use std::backtrace::BacktraceStatus::Disabled;
+   |
 note: found an item that was configured out
   --> $DIR/cfg-empty-any-all.rs:4:8
    |
@@ -11,10 +15,6 @@ LL | #[cfg(any())]  // Equivalent to cfg(false)
    |          -- the item is gated here
 LL | struct Disabled;
    |        ^^^^^^^^
-help: consider importing this unit variant
-   |
-LL + use std::backtrace::BacktraceStatus::Disabled;
-   |
 
 error: aborting due to 1 previous error
 

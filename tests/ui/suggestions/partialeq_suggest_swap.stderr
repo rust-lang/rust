@@ -6,12 +6,12 @@ LL |     4i32 == T(4);
    |     |
    |     expected because this is `i32`
    |
-   = note: `T` implements `PartialEq<i32>`
 help: consider swapping the equality
    |
 LL -     4i32 == T(4);
 LL +     T(4) == 4i32;
    |
+   = note: `T` implements `PartialEq<i32>`
 
 error: aborting due to 1 previous error
 

@@ -4,16 +4,16 @@ error: outlives requirements can be inferred
 LL |     struct TeeOutlivesAyIsDebugBee<'a, 'b, T: 'a + Debug + 'b> {
    |                                               ^^^^^     ^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:2:9
-   |
-LL | #![deny(explicit_outlives_requirements)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: remove these bounds
    |
 LL -     struct TeeOutlivesAyIsDebugBee<'a, 'b, T: 'a + Debug + 'b> {
 LL +     struct TeeOutlivesAyIsDebugBee<'a, 'b, T: Debug> {
    |
+note: the lint level is defined here
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:2:9
+   |
+LL | #![deny(explicit_outlives_requirements)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives-multispan.rs:18:61

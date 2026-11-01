@@ -7,16 +7,16 @@ LL |     type Y<'a: 'static>;
 LL |     type Y<'a> = &'a ();
    |                  ^^^^^^
    |
+help: copy the `where` clause predicates from the trait
+   |
+LL |     type Y<'a> = &'a () where 'a: 'static;
+   |                         +++++++++++++++++
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/unsatisfied-item-lifetime-bound.rs:8:12
    |
 LL |     type Y<'a> = &'a ();
    |            ^^
    = note: but lifetime parameter must outlive the static lifetime
-help: copy the `where` clause predicates from the trait
-   |
-LL |     type Y<'a> = &'a () where 'a: 'static;
-   |                         +++++++++++++++++
 
 error[E0478]: lifetime bound not satisfied
   --> $DIR/unsatisfied-item-lifetime-bound.rs:13:8

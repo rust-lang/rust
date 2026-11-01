@@ -10,8 +10,8 @@ LL | | }
    | |_^
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
-   = note: `-D clippy::enum-variant-names` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::enum_variant_names)]`
+   = note: `-D clippy::enum-variant-names` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

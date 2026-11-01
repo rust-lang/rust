@@ -9,14 +9,14 @@ LL | |         _ => (),
 LL | |     };
    | |_____^
    |
-   = note: `-D clippy::single-match` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::single_match)]`
 help: try
    |
 LL ~     if let Some(y) = x {
 LL +         println!("{:?}", y);
 LL ~     };
    |
+   = help: to override `-D warnings` add `#[allow(clippy::single_match)]`
+   = note: `-D clippy::single-match` implied by `-D warnings`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> tests/ui/single_match.rs:18:5
@@ -312,7 +312,6 @@ LL | |         None => {},
 LL | |     }
    | |_____^
    |
-   = note: you might want to preserve the comments from inside the `match`
 help: try
    |
 LL ~     if let Some(u) = x.pop() {
@@ -320,6 +319,7 @@ LL +         // bla
 LL +         println!("{u}");
 LL +     }
    |
+   = note: you might want to preserve the comments from inside the `match`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> tests/ui/single_match.rs:472:5

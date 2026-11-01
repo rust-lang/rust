@@ -54,12 +54,6 @@ LL | |     }
    | |_____argument #2 of type `()` is missing
    |       this implicit `()` return type influences the call expression's return type
    |
-note: method defined here
-  --> $DIR/self-mapping-arguments-errors.rs:5:12
-   |
-LL |     trait MyAdd {
-LL |         fn add(self, other: Self) -> Self;
-   |            ^^^       -----
 help: provide the argument
    |
 LL ~     }({
@@ -79,6 +73,12 @@ LL +
 LL +         self.0
 LL +     }, ())
    |
+note: method defined here
+  --> $DIR/self-mapping-arguments-errors.rs:5:12
+   |
+LL |     trait MyAdd {
+LL |         fn add(self, other: Self) -> Self;
+   |            ^^^       -----
 
 error[E0308]: mismatched types
   --> $DIR/self-mapping-arguments-errors.rs:43:30
@@ -90,6 +90,10 @@ LL |     reuse impl MyAdd for W { self.0 }
    |     arguments to this function are incorrect
    |     this return type influences the call expression's return type
    |
+help: store this in the heap by calling `Box::new`
+   |
+LL |     reuse impl MyAdd for W { Box::new(self.0) }
+   |                              +++++++++      +
 note: there is a field `0` on `Box<complex_Self_doesnt_map::W>` with type `boxed::BoxRaw<complex_Self_doesnt_map::W>` but it is private; `0` from `complex_Self_doesnt_map::W` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
@@ -118,10 +122,6 @@ note: method provided through this `impl`
    |
 LL |     impl MyAdd for usize {
    |     ^^^^^^^^^^^^^^^^^^^^
-help: store this in the heap by calling `Box::new`
-   |
-LL |     reuse impl MyAdd for W { Box::new(self.0) }
-   |                              +++++++++      +
 
 error[E0308]: mismatched types
   --> $DIR/self-mapping-arguments-errors.rs:60:5
@@ -133,9 +133,6 @@ LL | |         let _x = 213;
 LL | |     }
    | |_____^ expected `Box<usize>`, found `usize`
    |
-   = note: expected struct `Box<usize>`
-                found type `usize`
-   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
 LL ~     Box::new(reuse impl MyAdd for W {
@@ -144,6 +141,9 @@ LL |         println!("{self:?}");
 LL |         self.0
 LL ~     })
    |
+   = note: expected struct `Box<usize>`
+                found type `usize`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
 error: aborting due to 6 previous errors
 

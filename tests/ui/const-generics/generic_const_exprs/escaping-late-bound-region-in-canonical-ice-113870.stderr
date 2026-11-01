@@ -21,7 +21,6 @@ error[E0261]: use of undeclared lifetime name `'a`
 LL |     for<'b> [u8; foo::<'a, 'b>()]: Sized,
    |                        ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL |     for<'a, 'b> [u8; foo::<'a, 'b>()]: Sized,
@@ -30,6 +29,7 @@ help: consider introducing lifetime `'a` here
    |
 LL | const fn allow<'a, 'b, 'b>() -> usize
    |                +++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 
 error[E0601]: `main` function not found in crate `escaping_late_bound_region_in_canonical_ice_113870`
   --> $DIR/escaping-late-bound-region-in-canonical-ice-113870.rs:23:2

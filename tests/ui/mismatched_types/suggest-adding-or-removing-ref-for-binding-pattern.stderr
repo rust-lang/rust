@@ -20,11 +20,11 @@ LL |         Blah::A(_, x, ref y) | Blah::B(x, y) => {}
    |                       |
    |                       first introduced with type `&usize` here
    |
-   = note: in the same arm, a binding must have the same type in all alternatives
 help: consider adding `ref`
    |
 LL |         Blah::A(_, x, ref y) | Blah::B(x, ref y) => {}
    |                                           +++
+   = note: in the same arm, a binding must have the same type in all alternatives
 
 error[E0308]: mismatched types
   --> $DIR/suggest-adding-or-removing-ref-for-binding-pattern.rs:17:39
@@ -36,12 +36,12 @@ LL |         Blah::A(_, x, y) | Blah::B(x, ref y) => {}
    |                       |
    |                       first introduced with type `usize` here
    |
-   = note: in the same arm, a binding must have the same type in all alternatives
 help: consider removing `ref`
    |
 LL -         Blah::A(_, x, y) | Blah::B(x, ref y) => {}
 LL +         Blah::A(_, x, y) | Blah::B(x, y) => {}
    |
+   = note: in the same arm, a binding must have the same type in all alternatives
 
 error: aborting due to 4 previous errors
 

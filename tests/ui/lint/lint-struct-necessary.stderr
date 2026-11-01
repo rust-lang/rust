@@ -4,16 +4,16 @@ error: unnecessary parentheses around `match` scrutinee expression
 LL |     match (e) {
    |           ^ ^
    |
-note: the lint level is defined here
-  --> $DIR/lint-struct-necessary.rs:2:9
-   |
-LL | #![deny(unused_parens)]
-   |         ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     match (e) {
 LL +     match e {
    |
+note: the lint level is defined here
+  --> $DIR/lint-struct-necessary.rs:2:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

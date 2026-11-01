@@ -11,8 +11,8 @@ LL | |         println!("irrefutable pattern");
 LL | |     });
    | |______- in this macro invocation
    |
-   = note: this pattern will always match, so the loop will never exit
    = help: consider instead using a `loop { ... }` with a `let` inside it
+   = note: this pattern will always match, so the loop will never exit
    = note: `#[warn(irrefutable_let_patterns)]` on by default
 
 warning: irrefutable `while let` pattern
@@ -32,8 +32,8 @@ LL | |         println!("irrefutable pattern");
 LL | |     });
    | |______- in this macro invocation
    |
-   = note: this pattern will always match, so the loop will never exit
    = help: consider instead using a `loop { ... }` with a `let` inside it
+   = note: this pattern will always match, so the loop will never exit
 
 warning: irrefutable `while let` pattern
   --> $DIR/while-let-2.rs:27:11
@@ -41,8 +41,8 @@ warning: irrefutable `while let` pattern
 LL |     while let _a = 1 {
    |           ^^^^^^^^^^
    |
-   = note: this pattern will always match, so the loop will never exit
    = help: consider instead using a `loop { ... }` with a `let` inside it
+   = note: this pattern will always match, so the loop will never exit
 
 warning: 3 warnings emitted
 

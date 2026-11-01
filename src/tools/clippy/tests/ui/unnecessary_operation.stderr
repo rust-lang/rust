@@ -4,8 +4,8 @@ error: unnecessary operation
 LL |     Tuple(get_number());
    |     ^^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `get_number();`
    |
-   = note: `-D clippy::unnecessary-operation` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_operation)]`
+   = note: `-D clippy::unnecessary-operation` implied by `-D warnings`
 
 error: unnecessary operation
   --> tests/ui/unnecessary_operation.rs:66:5

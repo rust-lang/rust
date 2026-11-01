@@ -4,8 +4,8 @@ error: `NonZeroUsize::new()` and `Option::unwrap()` can be safely used in a `con
 LL |     const { unsafe { NonZeroUsize::new_unchecked(3) } }
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use instead: `NonZeroUsize::new(3).unwrap()`
    |
-   = note: `-D clippy::useless-nonzero-new-unchecked` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::useless_nonzero_new_unchecked)]`
+   = note: `-D clippy::useless-nonzero-new-unchecked` implied by `-D warnings`
 
 error: `NonZeroUsize::new()` and `Option::unwrap()` can be safely used in a `const` context
   --> tests/ui/useless_nonzero_new_unchecked.rs:37:30

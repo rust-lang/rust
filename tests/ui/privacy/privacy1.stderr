@@ -40,16 +40,16 @@ error[E0603]: module `i` is private
 LL |     use self::foo::i::A;
    |                    ^ private module
    |
-note: the module `i` is defined here
-  --> $DIR/privacy1.rs:177:9
-   |
-LL |         mod i {
-   |         ^^^^^
 help: consider importing this struct through its public re-export instead
    |
 LL -     use self::foo::i::A;
 LL +     use mytest::foo::Z;
    |
+note: the module `i` is defined here
+  --> $DIR/privacy1.rs:177:9
+   |
+LL |         mod i {
+   |         ^^^^^
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:148:18
@@ -151,16 +151,16 @@ error[E0603]: module `baz` is private
 LL |         crate::bar::baz::foo();
    |                     ^^^ private module
    |
-note: the module `baz` is defined here
-  --> $DIR/privacy1.rs:57:5
-   |
-LL |     mod baz {
-   |     ^^^^^^^
 help: consider importing this function through its public re-export instead
    |
 LL -         crate::bar::baz::foo();
 LL +         bar::foo();
    |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:57:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:135:21
@@ -168,16 +168,16 @@ error[E0603]: module `baz` is private
 LL |         crate::bar::baz::bar();
    |                     ^^^ private module
    |
-note: the module `baz` is defined here
-  --> $DIR/privacy1.rs:57:5
-   |
-LL |     mod baz {
-   |     ^^^^^^^
 help: consider importing this function through its public re-export instead
    |
 LL -         crate::bar::baz::bar();
 LL +         bar::bar();
    |
+note: the module `baz` is defined here
+  --> $DIR/privacy1.rs:57:5
+   |
+LL |     mod baz {
+   |     ^^^^^^^
 
 error[E0603]: trait `B` is private
   --> $DIR/privacy1.rs:164:22

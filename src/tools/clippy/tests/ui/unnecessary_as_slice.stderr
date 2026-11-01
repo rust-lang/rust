@@ -4,8 +4,8 @@ error: this `as_slice` is unnecessary because the following method (`len`) can b
 LL |     let _ = vals.as_slice().len();
    |                 ^^^^^^^^^^^ help: remove `as_slice`
    |
-   = note: `-D clippy::unnecessary-as-slice` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_as_slice)]`
+   = note: `-D clippy::unnecessary-as-slice` implied by `-D warnings`
 
 error: this `as_slice` is unnecessary because the following method (`is_empty`) can be called on `Vec` directly
   --> tests/ui/unnecessary_as_slice.rs:18:17

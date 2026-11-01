@@ -4,13 +4,13 @@ warning: trait objects without an explicit `dyn` are deprecated
 LL | fn id<F>(f: Copy) -> usize {
    |             ^^^^
    |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
 help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | fn id<F>(f: dyn Copy) -> usize {
    |             +++
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/avoid-ice-on-warning-2.rs:4:13
@@ -18,13 +18,13 @@ warning: trait objects without an explicit `dyn` are deprecated
 LL | fn id<F>(f: Copy) -> usize {
    |             ^^^^
    |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | fn id<F>(f: dyn Copy) -> usize {
    |             +++
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0038]: the trait `Copy` is not dyn compatible
   --> $DIR/avoid-ice-on-warning-2.rs:4:13
@@ -54,7 +54,6 @@ LL | fn id<F>(f: Copy) -> usize {
    |             ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
-   = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |
 LL | fn id<F>(f: impl Copy) -> usize {
@@ -63,6 +62,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL | fn id<F>(f: &dyn Copy) -> usize {
    |             ++++
+   = help: unsized fn params are gated as an unstable feature
 
 error: aborting due to 3 previous errors; 2 warnings emitted
 

@@ -15,13 +15,13 @@ error[E0004]: non-exhaustive patterns: type `i32` is non-empty
 LL |     1 as i32.match {};
    |     ^^^^^^^^
    |
-   = note: the matched value is of type `i32`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     1 as i32.match {
 LL +         _ => todo!(),
 LL ~     };
    |
+   = note: the matched value is of type `i32`
 
 error: aborting due to 2 previous errors
 

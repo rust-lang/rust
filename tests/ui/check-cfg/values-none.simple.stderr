@@ -4,8 +4,8 @@ warning: unexpected `cfg` condition value: `bar`
 LL | #[cfg(foo = "bar")]
    |       ^^^^^^^^^^^
    |
-   = note: expected values for `foo` are: (none), `too`
    = help: to expect this configuration use `--check-cfg=cfg(foo, values("bar"))`
+   = note: expected values for `foo` are: (none), `too`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
 

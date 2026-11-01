@@ -4,13 +4,13 @@ error: expression with side effects as the initial value in a zero-sized array i
 LL |     let a = [f(); 0];
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::zero-repeat-side-effects` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::zero_repeat_side_effects)]`
 help: consider performing the side effect separately
    |
 LL ~     f();
 LL +     let a: [i32; 0] = [];
    |
+   = help: to override `-D warnings` add `#[allow(clippy::zero_repeat_side_effects)]`
+   = note: `-D clippy::zero-repeat-side-effects` implied by `-D warnings`
 
 error: expression with side effects as the initial value in a zero-sized array initializer
   --> tests/ui/zero_repeat_side_effects.rs:27:5

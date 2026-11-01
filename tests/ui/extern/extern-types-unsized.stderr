@@ -5,15 +5,15 @@ LL |     assert_sized::<A>();
    |                    ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `A`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn assert_sized<T: ?Sized>() {}
+   |                  ++++++++
 note: required by an implicit `Sized` bound in `assert_sized`
   --> $DIR/extern-types-unsized.rs:19:17
    |
 LL | fn assert_sized<T>() {}
    |                 ^ required by the implicit `Sized` requirement on this type parameter in `assert_sized`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | fn assert_sized<T: ?Sized>() {}
-   |                  ++++++++
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
   --> $DIR/extern-types-unsized.rs:25:20
@@ -22,6 +22,10 @@ LL |     assert_sized::<Foo>();
    |                    ^^^ doesn't have a size known at compile-time
    |
    = help: within `Foo`, the trait `Sized` is not implemented for `A`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn assert_sized<T: ?Sized>() {}
+   |                  ++++++++
 note: required because it appears within the type `Foo`
   --> $DIR/extern-types-unsized.rs:11:5
    |
@@ -34,10 +38,6 @@ note: required by an implicit `Sized` bound in `assert_sized`
    |
 LL | fn assert_sized<T>() {}
    |                 ^ required by the implicit `Sized` requirement on this type parameter in `assert_sized`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | fn assert_sized<T: ?Sized>() {}
-   |                  ++++++++
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
   --> $DIR/extern-types-unsized.rs:28:20
@@ -46,6 +46,10 @@ LL |     assert_sized::<Bar<A>>();
    |                    ^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Bar<A>`, the trait `Sized` is not implemented for `A`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn assert_sized<T: ?Sized>() {}
+   |                  ++++++++
 note: required because it appears within the type `Bar<A>`
   --> $DIR/extern-types-unsized.rs:16:5
    |
@@ -58,10 +62,6 @@ note: required by an implicit `Sized` bound in `assert_sized`
    |
 LL | fn assert_sized<T>() {}
    |                 ^ required by the implicit `Sized` requirement on this type parameter in `assert_sized`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | fn assert_sized<T: ?Sized>() {}
-   |                  ++++++++
 
 error[E0277]: the size for values of type `A` cannot be known
   --> $DIR/extern-types-unsized.rs:28:20
@@ -83,6 +83,10 @@ LL |     assert_sized::<Bar<Bar<A>>>();
    |                    ^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Bar<Bar<A>>`, the trait `Sized` is not implemented for `A`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn assert_sized<T: ?Sized>() {}
+   |                  ++++++++
 note: required because it appears within the type `Bar<A>`
   --> $DIR/extern-types-unsized.rs:16:5
    |
@@ -95,10 +99,6 @@ note: required by an implicit `Sized` bound in `assert_sized`
    |
 LL | fn assert_sized<T>() {}
    |                 ^ required by the implicit `Sized` requirement on this type parameter in `assert_sized`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | fn assert_sized<T: ?Sized>() {}
-   |                  ++++++++
 
 error[E0277]: the size for values of type `A` cannot be known
   --> $DIR/extern-types-unsized.rs:32:20

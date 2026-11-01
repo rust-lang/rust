@@ -4,8 +4,8 @@ error: found `.or(Some(…)).unwrap()`
 LL |     let _ = option.or(Some("fallback")).unwrap(); // should trigger lint
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or("fallback")`
    |
-   = note: `-D clippy::or-then-unwrap` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::or_then_unwrap)]`
+   = note: `-D clippy::or-then-unwrap` implied by `-D warnings`
 
 error: found `.or(Ok(…)).unwrap()`
   --> tests/ui/or_then_unwrap.rs:28:20

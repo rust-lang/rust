@@ -4,8 +4,8 @@ error[E0658]: parameters in parenthesized generic argument lists with names, att
 LL |     log: impl Fn(msg: String),
    |                  ^^^
    |
-   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental
@@ -14,8 +14,8 @@ error[E0658]: parameters in parenthesized generic argument lists with names, att
 LL |     attrs: impl Fn(#[cfg(false)] String),
    |                    ^^^^^^^^^^^^^
    |
-   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 2 previous errors

@@ -4,8 +4,8 @@ error: `filter` for `Some` followed by `unwrap`
 LL |     let _ = Some(Some(1)).filter(Option::is_some).map(Option::unwrap);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
    |
-   = note: `-D clippy::option-filter-map` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::option_filter_map)]`
+   = note: `-D clippy::option-filter-map` implied by `-D warnings`
 
 error: `filter` for `Some` followed by `unwrap`
   --> tests/ui/option_filter_map.rs:9:27

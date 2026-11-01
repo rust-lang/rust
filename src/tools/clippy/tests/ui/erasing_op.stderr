@@ -4,8 +4,8 @@ error: this operation will always return zero. This is likely not the intended o
 LL |     x * 0;
    |     ^^^^^
    |
-   = note: `-D clippy::erasing-op` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::erasing_op)]`
+   = note: `-D clippy::erasing-op` implied by `-D warnings`
 
 error: this operation will always return zero. This is likely not the intended outcome
   --> tests/ui/erasing_op.rs:38:5

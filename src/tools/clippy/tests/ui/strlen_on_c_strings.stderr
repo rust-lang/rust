@@ -4,8 +4,8 @@ error: using `libc::strlen` on a `CString` value
 LL |     let _ = unsafe { libc::strlen(cstring.as_ptr()) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `cstring.count_bytes()`
    |
-   = note: `-D clippy::strlen-on-c-strings` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::strlen_on_c_strings)]`
+   = note: `-D clippy::strlen-on-c-strings` implied by `-D warnings`
 
 error: using `libc::strlen` on a `CStr` value
   --> tests/ui/strlen_on_c_strings.rs:15:13

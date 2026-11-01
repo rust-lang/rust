@@ -4,9 +4,9 @@ error: use of a disallowed macro `serde::Serialize`
 LL |     #[derive(Serialize)]
    |              ^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_macros)]`
    = note: no serializing
    = note: `-D clippy::disallowed-macros` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::disallowed_macros)]`
 
 error: use of a disallowed macro `macros::attr`
   --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:40:1

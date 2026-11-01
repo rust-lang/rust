@@ -4,9 +4,9 @@ error: this looks like you are trying to use `.. -= ..`, but you really are doin
 LL |     a =- 35;
    |      ^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_assignment_formatting)]`
    = note: to remove this lint, use either `-=` or `= -`
    = note: `-D clippy::suspicious-assignment-formatting` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::suspicious_assignment_formatting)]`
 
 error: this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
   --> tests/ui/formatting.rs:15:6

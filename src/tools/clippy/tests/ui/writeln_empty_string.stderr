@@ -6,8 +6,8 @@ LL |     writeln!(v, "");
    |               |
    |               help: remove the empty string
    |
-   = note: `-D clippy::writeln-empty-string` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::writeln_empty_string)]`
+   = note: `-D clippy::writeln-empty-string` implied by `-D warnings`
 
 error: empty string literal in `writeln!`
   --> tests/ui/writeln_empty_string.rs:12:5

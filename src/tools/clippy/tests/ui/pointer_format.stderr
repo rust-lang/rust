@@ -4,8 +4,8 @@ error: pointer formatting detected
 LL |     let o = &format!("{m:p}");
    |                       ^^^^^
    |
-   = note: `-D clippy::pointer-format` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::pointer_format)]`
+   = note: `-D clippy::pointer-format` implied by `-D warnings`
 
 error: pointer formatting detected
   --> tests/ui/pointer_format.rs:44:22

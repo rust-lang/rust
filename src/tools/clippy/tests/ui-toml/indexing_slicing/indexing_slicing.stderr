@@ -5,8 +5,8 @@ LL |     &x[index..];
    |      ^^^^^^^^^^
    |
    = help: consider using `.get(n..)` or .get_mut(n..)` instead
-   = note: `-D clippy::indexing-slicing` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::indexing_slicing)]`
+   = note: `-D clippy::indexing-slicing` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

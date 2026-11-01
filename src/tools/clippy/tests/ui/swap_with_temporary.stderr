@@ -4,13 +4,13 @@ error: swapping with a temporary value is inefficient
 LL |     swap(&mut func(), &mut y);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use assignment instead: `y = func()`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::swap_with_temporary)]`
 note: this expression returns a temporary value
   --> tests/ui/swap_with_temporary.rs:23:15
    |
 LL |     swap(&mut func(), &mut y);
    |               ^^^^^^
    = note: `-D clippy::swap-with-temporary` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::swap_with_temporary)]`
 
 error: swapping with a temporary value is inefficient
   --> tests/ui/swap_with_temporary.rs:26:5

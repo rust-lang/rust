@@ -8,12 +8,12 @@ LL |         _ => 0,
    |         ^^^^^^ the wildcard arm
    |
    = help: if this is unintentional make the arms return different values
-   = note: `-D clippy::match-same-arms` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
 help: otherwise remove the non-wildcard arm
    |
 LL -         Abc::A => 0,
    |
+   = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
+   = note: `-D clippy::match-same-arms` implied by `-D warnings`
 
 error: these match arms have identical bodies
   --> tests/ui/match_same_arms.rs:20:9

@@ -5,13 +5,13 @@ LL |     let _ = true as u8;
    |             ^^^^^^^^^^
    |
    = help: an `as` cast can become silently lossy if the types change in the future
-   = note: `-D clippy::cast-lossless` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
 help: use `u8::from` instead
    |
 LL -     let _ = true as u8;
 LL +     let _ = u8::from(true);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
+   = note: `-D clippy::cast-lossless` implied by `-D warnings`
 
 error: casts from `bool` to `u16` can be expressed infallibly using `From`
   --> tests/ui/cast_lossless_bool.rs:9:13

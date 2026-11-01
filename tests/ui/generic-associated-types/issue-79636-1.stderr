@@ -4,15 +4,15 @@ error[E0107]: missing generics for associated type `Monad::Wrapped`
 LL |     MInner: Monad<Unwrapped = A, Wrapped = MOuter::Wrapped<A>>,
    |                                  ^^^^^^^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL |     MInner: Monad<Unwrapped = A, Wrapped<B> = MOuter::Wrapped<A>>,
+   |                                         +++
 note: associated type defined here, with 1 generic parameter: `B`
   --> $DIR/issue-79636-1.rs:3:10
    |
 LL |     type Wrapped<B>;
    |          ^^^^^^^ -
-help: add missing generic argument
-   |
-LL |     MInner: Monad<Unwrapped = A, Wrapped<B> = MOuter::Wrapped<A>>,
-   |                                         +++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/issue-79636-1.rs:5:19
@@ -20,7 +20,6 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn bind<B, F>(self, f: F) -> Self::Wrapped<B> {
    |                   ^^^^ doesn't have a size known at compile-time
    |
-   = help: unsized fn params are gated as an unstable feature
 help: consider further restricting `Self`
    |
 LL |     fn bind<B, F>(self, f: F) -> Self::Wrapped<B> where Self: Sized {
@@ -29,6 +28,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL |     fn bind<B, F>(&self, f: F) -> Self::Wrapped<B> {
    |                   +
+   = help: unsized fn params are gated as an unstable feature
 
 error[E0277]: the trait bound `Option<Option<bool>>: Monad` is not satisfied
   --> $DIR/issue-79636-1.rs:21:21

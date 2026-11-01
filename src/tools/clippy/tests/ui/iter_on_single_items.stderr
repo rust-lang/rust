@@ -4,8 +4,8 @@ error: `into_iter` call on a collection with only one item
 LL |     assert_eq!([123].into_iter().next(), Some(123));
    |                ^^^^^^^^^^^^^^^^^ help: try: `std::iter::once(123)`
    |
-   = note: `-D clippy::iter-on-single-items` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_on_single_items)]`
+   = note: `-D clippy::iter-on-single-items` implied by `-D warnings`
 
 error: `iter_mut` call on a collection with only one item
   --> tests/ui/iter_on_single_items.rs:7:16

@@ -7,6 +7,11 @@ LL | enum MyEnum {
 LL |     x.bar();
    |       ^^^ method cannot be called on `MyEnum` due to unsatisfied trait bounds
    |
+help: consider annotating `MyEnum` with `#[derive(Default)]`
+   |
+LL + #[derive(Default)]
+LL | enum MyEnum {
+   |
 note: trait bound `MyEnum: Default` was not satisfied
   --> $DIR/suggest-derive-default-for-enums.rs:9:9
    |
@@ -14,11 +19,6 @@ LL | impl<T: Default> Foo for T {}
    |         ^^^^^^^  ---     -
    |         |
    |         unsatisfied trait bound introduced here
-help: consider annotating `MyEnum` with `#[derive(Default)]`
-   |
-LL + #[derive(Default)]
-LL | enum MyEnum {
-   |
 
 error: aborting due to 1 previous error
 

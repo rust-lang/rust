@@ -230,16 +230,16 @@ error[E0425]: cannot find type `NoThing` in this scope
 LL |     pat4: impl Fn(NoThing { a, b }: NoThing),
    |                                     ^^^^^^^ not found in this scope
    |
-note: similarly named struct `Thing` defined here
-  --> $DIR/named-fn-trait-parameters.rs:93:1
-   |
-LL | struct Thing { a: bool, b: bool }
-   | ^^^^^^^^^^^^
 help: a struct with a similar name exists
    |
 LL -     pat4: impl Fn(NoThing { a, b }: NoThing),
 LL +     pat4: impl Fn(NoThing { a, b }: Thing),
    |
+note: similarly named struct `Thing` defined here
+  --> $DIR/named-fn-trait-parameters.rs:93:1
+   |
+LL | struct Thing { a: bool, b: bool }
+   | ^^^^^^^^^^^^
 
 error: aborting due to 27 previous errors
 

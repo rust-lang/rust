@@ -5,8 +5,8 @@ LL |     let Struct { .. } = ref_value;
    |         ^^^^^^^^^^^^^
    |
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
-   = note: `-D clippy::pattern-type-mismatch` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::pattern_type_mismatch)]`
+   = note: `-D clippy::pattern-type-mismatch` implied by `-D warnings`
 
 error: type of pattern does not match the expression type
   --> tests/ui/pattern_type_mismatch/pattern_structs.rs:15:33

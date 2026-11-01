@@ -11,8 +11,6 @@ LL | |         None
 LL | |     };
    | |_____^
    |
-   = note: `-D clippy::if-then-some-else-none` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::if_then_some_else_none)]`
 help: try
    |
 LL ~     let _ = foo().then(|| {
@@ -22,6 +20,8 @@ LL +         println!("true!");
 LL +         "foo"
 LL ~     });
    |
+   = help: to override `-D warnings` add `#[allow(clippy::if_then_some_else_none)]`
+   = note: `-D clippy::if-then-some-else-none` implied by `-D warnings`
 
 error: this could be simplified with `bool::then`
   --> tests/ui/if_then_some_else_none.rs:17:13

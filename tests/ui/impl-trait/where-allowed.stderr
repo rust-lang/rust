@@ -22,8 +22,8 @@ error[E0658]: `impl Trait` in associated types is unstable
 LL |     type Out = impl Debug;
    |                ^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(impl_trait_in_assoc_type)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -32,8 +32,8 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL | type InTypeAlias<R> = impl Debug;
    |                       ^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -42,8 +42,8 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL | type InReturnInTypeAlias<R> = fn() -> impl Debug;
    |                                       ^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in `fn` pointer parameters
@@ -332,9 +332,9 @@ error[E0562]: `impl Trait` is not allowed in the type of variable bindings
 LL |     let _in_local_variable: impl Fn() = || {};
    |                             ^^^^^^^^^
    |
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
-   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in closure return types
@@ -354,6 +354,11 @@ LL |     type Out = impl Debug;
 LL |     fn in_trait_impl_return() -> impl Debug { () }
    |                                  ^^^^^^^^^^ expected opaque type, found a different opaque type
    |
+help: change the output type to match the trait
+   |
+LL -     fn in_trait_impl_return() -> impl Debug { () }
+LL +     fn in_trait_impl_return() -> <() as DummyTrait>::Out { () }
+   |
 note: type in trait
   --> $DIR/where-allowed.rs:119:34
    |
@@ -362,11 +367,6 @@ LL |     fn in_trait_impl_return() -> Self::Out;
    = note: expected signature `fn() -> <() as DummyTrait>::Out`
               found signature `fn() -> impl Debug`
    = note: distinct uses of `impl Trait` result in different opaque types
-help: change the output type to match the trait
-   |
-LL -     fn in_trait_impl_return() -> impl Debug { () }
-LL +     fn in_trait_impl_return() -> <() as DummyTrait>::Out { () }
-   |
 
 error[E0283]: type annotations needed
   --> $DIR/where-allowed.rs:47:57

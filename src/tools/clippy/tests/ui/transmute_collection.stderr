@@ -4,8 +4,8 @@ error: transmute from `std::vec::Vec<u8>` to `std::vec::Vec<u32>` with mismatche
 LL |         let _ = transmute::<_, Vec<u32>>(vec![0u8]);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unsound-collection-transmute` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unsound_collection_transmute)]`
+   = note: `-D clippy::unsound-collection-transmute` implied by `-D warnings`
 
 error: transmute from `std::vec::Vec<u32>` to `std::vec::Vec<[u8; 4]>` with mismatched layout is unsound
   --> tests/ui/transmute_collection.rs:14:17

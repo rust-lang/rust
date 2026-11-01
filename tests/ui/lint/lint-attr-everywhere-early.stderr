@@ -16,16 +16,16 @@ error: unnecessary parentheses around type
 LL | type BareFnPtr = fn(#[deny(unused_parens)](i32));
    |                                           ^   ^
    |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-early.rs:25:28
-   |
-LL | type BareFnPtr = fn(#[deny(unused_parens)](i32));
-   |                            ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL - type BareFnPtr = fn(#[deny(unused_parens)](i32));
 LL + type BareFnPtr = fn(#[deny(unused_parens)]i32);
    |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:25:28
+   |
+LL | type BareFnPtr = fn(#[deny(unused_parens)](i32));
+   |                            ^^^^^^^^^^^^^
 
 error: type `ITEM_OUTER` should have an upper camel case name
   --> $DIR/lint-attr-everywhere-early.rs:31:8
@@ -189,16 +189,16 @@ error: unnecessary parentheses around type
 LL |     type assoc_type = (i32);
    |                       ^   ^
    |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-early.rs:83:12
-   |
-LL |     #[deny(unused_parens)]
-   |            ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     type assoc_type = (i32);
 LL +     type assoc_type = i32;
    |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:83:12
+   |
+LL |     #[deny(unused_parens)]
+   |            ^^^^^^^^^^^^^
 
 error: unnecessary parentheses around type
   --> $DIR/lint-attr-everywhere-early.rs:88:31
@@ -206,16 +206,16 @@ error: unnecessary parentheses around type
 LL |     #[deny(unused_parens)]f1: (i32),
    |                               ^   ^
    |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-early.rs:88:12
-   |
-LL |     #[deny(unused_parens)]f1: (i32),
-   |            ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     #[deny(unused_parens)]f1: (i32),
 LL +     #[deny(unused_parens)]f1: i32,
    |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:88:12
+   |
+LL |     #[deny(unused_parens)]f1: (i32),
+   |            ^^^^^^^^^^^^^
 
 error: unnecessary parentheses around type
   --> $DIR/lint-attr-everywhere-early.rs:90:42
@@ -223,16 +223,16 @@ error: unnecessary parentheses around type
 LL | struct StructTuple(#[deny(unused_parens)](i32));
    |                                          ^   ^
    |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-early.rs:90:27
-   |
-LL | struct StructTuple(#[deny(unused_parens)](i32));
-   |                           ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL - struct StructTuple(#[deny(unused_parens)](i32));
 LL + struct StructTuple(#[deny(unused_parens)]i32);
    |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:90:27
+   |
+LL | struct StructTuple(#[deny(unused_parens)](i32));
+   |                           ^^^^^^^^^^^^^
 
 error: variant `VARIANT_CAMEL` should have an upper camel case name
   --> $DIR/lint-attr-everywhere-early.rs:94:5
@@ -252,16 +252,16 @@ error: unnecessary parentheses around type
 LL |     fn foreign_denied_from_inner(x: (i32));
    |                                     ^   ^
    |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-early.rs:98:13
-   |
-LL |     #![deny(unused_parens)]
-   |             ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     fn foreign_denied_from_inner(x: (i32));
 LL +     fn foreign_denied_from_inner(x: i32);
    |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:98:13
+   |
+LL |     #![deny(unused_parens)]
+   |             ^^^^^^^^^^^^^
 
 error: unnecessary parentheses around type
   --> $DIR/lint-attr-everywhere-early.rs:105:37
@@ -269,16 +269,16 @@ error: unnecessary parentheses around type
 LL |     fn foreign_denied_from_outer(x: (i32));
    |                                     ^   ^
    |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-early.rs:104:12
-   |
-LL |     #[deny(unused_parens)]
-   |            ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     fn foreign_denied_from_outer(x: (i32));
 LL +     fn foreign_denied_from_outer(x: i32);
    |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:104:12
+   |
+LL |     #[deny(unused_parens)]
+   |            ^^^^^^^^^^^^^
 
 error: unnecessary parentheses around type
   --> $DIR/lint-attr-everywhere-early.rs:108:43
@@ -286,16 +286,16 @@ error: unnecessary parentheses around type
 LL | fn function(#[deny(unused_parens)] param: (i32)) {}
    |                                           ^   ^
    |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-early.rs:108:20
-   |
-LL | fn function(#[deny(unused_parens)] param: (i32)) {}
-   |                    ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL - fn function(#[deny(unused_parens)] param: (i32)) {}
 LL + fn function(#[deny(unused_parens)] param: i32) {}
    |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:108:20
+   |
+LL | fn function(#[deny(unused_parens)] param: (i32)) {}
+   |                    ^^^^^^^^^^^^^
 
 error: type parameter `foo` should have an upper camel case name
   --> $DIR/lint-attr-everywhere-early.rs:110:42
@@ -315,16 +315,16 @@ error: unnecessary parentheses around assigned value
 LL |     let x = (1);
    |             ^ ^
    |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-early.rs:115:12
-   |
-LL |     #[deny(unused_parens)]
-   |            ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     let x = (1);
 LL +     let x = 1;
    |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:115:12
+   |
+LL |     #[deny(unused_parens)]
+   |            ^^^^^^^^^^^^^
 
 error: unnecessary parentheses around type
   --> $DIR/lint-attr-everywhere-early.rs:122:50
@@ -332,16 +332,16 @@ error: unnecessary parentheses around type
 LL |     let closure = |#[deny(unused_parens)] param: (i32)| {};
    |                                                  ^   ^
    |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-early.rs:122:27
-   |
-LL |     let closure = |#[deny(unused_parens)] param: (i32)| {};
-   |                           ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     let closure = |#[deny(unused_parens)] param: (i32)| {};
 LL +     let closure = |#[deny(unused_parens)] param: i32| {};
    |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:122:27
+   |
+LL |     let closure = |#[deny(unused_parens)] param: (i32)| {};
+   |                           ^^^^^^^^^^^^^
 
 error: unnecessary parentheses around block return value
   --> $DIR/lint-attr-everywhere-early.rs:126:46
@@ -349,16 +349,16 @@ error: unnecessary parentheses around block return value
 LL |     let f = Match{#[deny(unused_parens)]f1: {(123)}};
    |                                              ^   ^
    |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-early.rs:126:26
-   |
-LL |     let f = Match{#[deny(unused_parens)]f1: {(123)}};
-   |                          ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     let f = Match{#[deny(unused_parens)]f1: {(123)}};
 LL +     let f = Match{#[deny(unused_parens)]f1: {123}};
    |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-early.rs:126:26
+   |
+LL |     let f = Match{#[deny(unused_parens)]f1: {(123)}};
+   |                          ^^^^^^^^^^^^^
 
 error: usage of an `unsafe` block
   --> $DIR/lint-attr-everywhere-early.rs:133:13

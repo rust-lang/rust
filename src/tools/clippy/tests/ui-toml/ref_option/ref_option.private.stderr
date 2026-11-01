@@ -4,13 +4,13 @@ error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
 LL | fn opt_u8(a: &Option<u8>) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::ref-option` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::ref_option)]`
 help: change this to
    |
 LL - fn opt_u8(a: &Option<u8>) {}
 LL + fn opt_u8(a: Option<&u8>) {}
    |
+   = help: to override `-D warnings` add `#[allow(clippy::ref_option)]`
+   = note: `-D clippy::ref-option` implied by `-D warnings`
 
 error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
   --> tests/ui-toml/ref_option/ref_option.rs:11:1

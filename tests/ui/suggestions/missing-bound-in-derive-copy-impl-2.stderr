@@ -4,15 +4,15 @@ error[E0277]: the trait bound `K: Copy` is not satisfied
 LL |     pub loc: Vector2<K>,
    |              ^^^^^^^^^^ the trait `Copy` is not implemented for `K`
    |
+help: consider further restricting type parameter `K` with trait `Copy`
+   |
+LL | pub struct AABB<K: Debug + std::marker::Copy> {
+   |                          +++++++++++++++++++
 note: required by a bound in `Vector2`
   --> $DIR/missing-bound-in-derive-copy-impl-2.rs:5:31
    |
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
    |                               ^^^^ required by this bound in `Vector2`
-help: consider further restricting type parameter `K` with trait `Copy`
-   |
-LL | pub struct AABB<K: Debug + std::marker::Copy> {
-   |                          +++++++++++++++++++
 
 error[E0277]: the trait bound `K: Copy` is not satisfied
   --> $DIR/missing-bound-in-derive-copy-impl-2.rs:12:5
@@ -23,6 +23,10 @@ LL | pub struct AABB<K: Debug> {
 LL |     pub loc: Vector2<K>,
    |     ^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `K`
    |
+help: consider further restricting type parameter `K` with trait `Copy`
+   |
+LL | pub struct AABB<K: Debug + std::marker::Copy> {
+   |                          +++++++++++++++++++
 note: required for `Vector2<K>` to implement `Debug`
   --> $DIR/missing-bound-in-derive-copy-impl-2.rs:5:12
    |
@@ -31,10 +35,6 @@ LL | #[derive(Debug, Copy, Clone)]
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
    |            ^^^^^^^            ---- unsatisfied trait bound
    = note: required for the cast from `&Vector2<K>` to `&dyn Debug`
-help: consider further restricting type parameter `K` with trait `Copy`
-   |
-LL | pub struct AABB<K: Debug + std::marker::Copy> {
-   |                          +++++++++++++++++++
 
 error[E0277]: the trait bound `K: Copy` is not satisfied
   --> $DIR/missing-bound-in-derive-copy-impl-2.rs:12:5
@@ -45,15 +45,15 @@ LL | pub struct AABB<K: Debug> {
 LL |     pub loc: Vector2<K>,
    |     ^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `K`
    |
+help: consider further restricting type parameter `K` with trait `Copy`
+   |
+LL | pub struct AABB<K: Debug + std::marker::Copy> {
+   |                          +++++++++++++++++++
 note: required by a bound in `Vector2`
   --> $DIR/missing-bound-in-derive-copy-impl-2.rs:5:31
    |
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
    |                               ^^^^ required by this bound in `Vector2`
-help: consider further restricting type parameter `K` with trait `Copy`
-   |
-LL | pub struct AABB<K: Debug + std::marker::Copy> {
-   |                          +++++++++++++++++++
 
 error[E0277]: the trait bound `K: Copy` is not satisfied
   --> $DIR/missing-bound-in-derive-copy-impl-2.rs:15:5
@@ -64,6 +64,10 @@ LL | #[derive(Debug, Copy, Clone)]
 LL |     pub size: Vector2<K>,
    |     ^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `K`
    |
+help: consider further restricting type parameter `K` with trait `Copy`
+   |
+LL | pub struct AABB<K: Debug + std::marker::Copy> {
+   |                          +++++++++++++++++++
 note: required for `Vector2<K>` to implement `Clone`
   --> $DIR/missing-bound-in-derive-copy-impl-2.rs:5:12
    |
@@ -71,10 +75,6 @@ LL | #[derive(Debug, Copy, Clone)]
    |                       ----- in this derive macro expansion
 LL | pub struct Vector2<T: Debug + Copy + Clone> {
    |            ^^^^^^^            ---- unsatisfied trait bound
-help: consider further restricting type parameter `K` with trait `Copy`
-   |
-LL | pub struct AABB<K: Debug + std::marker::Copy> {
-   |                          +++++++++++++++++++
 
 error: aborting due to 4 previous errors
 

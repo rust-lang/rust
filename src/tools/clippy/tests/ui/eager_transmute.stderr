@@ -4,13 +4,13 @@ error: this transmute is always evaluated eagerly, even if the condition is fals
 LL |     (op < 4).then_some(unsafe { std::mem::transmute(op) })
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::eager-transmute` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::eager_transmute)]`
 help: consider using `bool::then` to only transmute if the condition holds
    |
 LL -     (op < 4).then_some(unsafe { std::mem::transmute(op) })
 LL +     (op < 4).then(|| unsafe { std::mem::transmute(op) })
    |
+   = help: to override `-D warnings` add `#[allow(clippy::eager_transmute)]`
+   = note: `-D clippy::eager-transmute` implied by `-D warnings`
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:29:33

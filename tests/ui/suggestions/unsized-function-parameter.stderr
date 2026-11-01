@@ -5,11 +5,11 @@ LL | fn foo1(bar: str) {}
    |              ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn foo1(bar: &str) {}
    |              +
+   = help: unsized fn params are gated as an unstable feature
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/unsized-function-parameter.rs:11:15
@@ -18,11 +18,11 @@ LL | fn foo2(_bar: str) {}
    |               ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn foo2(_bar: &str) {}
    |               +
+   = help: unsized fn params are gated as an unstable feature
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/unsized-function-parameter.rs:17:12
@@ -31,11 +31,11 @@ LL | fn foo3(_: str) {}
    |            ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn foo3(_: &str) {}
    |            +
+   = help: unsized fn params are gated as an unstable feature
 
 error: aborting due to 3 previous errors
 

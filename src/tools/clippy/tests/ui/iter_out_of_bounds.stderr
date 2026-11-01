@@ -4,9 +4,9 @@ error: this `.skip()` call skips more items than the iterator will produce
 LL |     for _ in [1, 2, 3].iter().skip(4) {
    |              ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::iter_out_of_bounds)]`
    = note: this operation is useless and will create an empty iterator
    = note: `-D clippy::iter-out-of-bounds` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::iter_out_of_bounds)]`
 
 error: this `.take()` call takes more items than the iterator will produce
   --> tests/ui/iter_out_of_bounds.rs:15:19

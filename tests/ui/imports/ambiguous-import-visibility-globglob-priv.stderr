@@ -4,6 +4,11 @@ error[E0603]: struct import `S` is private
 LL | use crate::both::private::S;
    |                           ^ private struct import
    |
+help: import `S` directly
+   |
+LL - use crate::both::private::S;
+LL + use crate::m::S;
+   |
 note: the struct import `S` is defined here...
   --> $DIR/ambiguous-import-visibility-globglob-priv.rs:7:13
    |
@@ -14,11 +19,6 @@ note: ...and refers to the struct `S` which is defined here
    |
 LL |     pub struct S {}
    |     ^^^^^^^^^^^^ you could import this directly
-help: import `S` directly
-   |
-LL - use crate::both::private::S;
-LL + use crate::m::S;
-   |
 
 error[E0603]: struct import `S` is private
   --> $DIR/ambiguous-import-visibility-globglob-priv.rs:17:31
@@ -26,6 +26,11 @@ error[E0603]: struct import `S` is private
 LL |     use crate::both::private::S;
    |                               ^ private struct import
    |
+help: import `S` directly
+   |
+LL -     use crate::both::private::S;
+LL +     use crate::m::S;
+   |
 note: the struct import `S` is defined here...
   --> $DIR/ambiguous-import-visibility-globglob-priv.rs:7:13
    |
@@ -36,11 +41,6 @@ note: ...and refers to the struct `S` which is defined here
    |
 LL |     pub struct S {}
    |     ^^^^^^^^^^^^ you could import this directly
-help: import `S` directly
-   |
-LL -     use crate::both::private::S;
-LL +     use crate::m::S;
-   |
 
 error: aborting due to 2 previous errors
 

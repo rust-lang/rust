@@ -4,12 +4,12 @@ error: prefix `rc` is unknown
 LL |     rc"abc";
    |     ^^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: use `cr` for a raw C-string
    |
 LL -     rc"abc";
 LL +     cr"abc";
    |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"abc"`
   --> $DIR/raw-c-string-prefix.rs:6:7

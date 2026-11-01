@@ -4,8 +4,8 @@ error: returning a `str` unnecessarily tied to the lifetime of arguments
 LL |     fn returns_lit(&self) -> &str {
    |                              ^^^^ help: try: `&'static str`
    |
-   = note: `-D clippy::unnecessary-literal-bound` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_literal_bound)]`
+   = note: `-D clippy::unnecessary-literal-bound` implied by `-D warnings`
 
 error: returning a `str` unnecessarily tied to the lifetime of arguments
   --> tests/ui/unnecessary_literal_bound.rs:30:68

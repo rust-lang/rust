@@ -17,12 +17,12 @@ LL |     if let "..." = &Box::new(x) {}
    |            |
    |            expected `&Box<_>`, found `&str`
    |
-   = note: expected reference `&Box<_>`
-              found reference `&'static str`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     if let "..." = &*Box::new(x) {}
    |                     +
+   = note: expected reference `&Box<_>`
+              found reference `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/const-pats-do-not-mislead-inference.rs:44:12
@@ -32,12 +32,12 @@ LL |     if let b"..." = Box::new(&x) {}
    |            |
    |            expected `Box<&_>`, found `&[u8; 3]`
    |
-   = note: expected struct `Box<&_>`
-           found reference `&'static [u8; 3]`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     if let b"..." = *Box::new(&x) {}
    |                     +
+   = note: expected struct `Box<&_>`
+           found reference `&'static [u8; 3]`
 
 error[E0308]: mismatched types
   --> $DIR/const-pats-do-not-mislead-inference.rs:50:12

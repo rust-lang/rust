@@ -4,6 +4,11 @@ error[E0507]: cannot move out of a mutable reference
 LL |     let a = unsafe { *mut_ref() };
    |                      ^^^^^^^^^^ move occurs because value has type `T`, which does not implement the `Copy` trait
    |
+help: consider removing the dereference here
+   |
+LL -     let a = unsafe { *mut_ref() };
+LL +     let a = unsafe { mut_ref() };
+   |
 note: if `T` implemented `Clone`, you could clone the value
   --> $DIR/issue-20801.rs:3:1
    |
@@ -12,17 +17,17 @@ LL | struct T(u8);
 ...
 LL |     let a = unsafe { *mut_ref() };
    |                      ---------- you could clone this value
-help: consider removing the dereference here
-   |
-LL -     let a = unsafe { *mut_ref() };
-LL +     let a = unsafe { mut_ref() };
-   |
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/issue-20801.rs:29:22
    |
 LL |     let b = unsafe { *imm_ref() };
    |                      ^^^^^^^^^^ move occurs because value has type `T`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let b = unsafe { *imm_ref() };
+LL +     let b = unsafe { imm_ref() };
    |
 note: if `T` implemented `Clone`, you could clone the value
   --> $DIR/issue-20801.rs:3:1
@@ -32,11 +37,6 @@ LL | struct T(u8);
 ...
 LL |     let b = unsafe { *imm_ref() };
    |                      ---------- you could clone this value
-help: consider removing the dereference here
-   |
-LL -     let b = unsafe { *imm_ref() };
-LL +     let b = unsafe { imm_ref() };
-   |
 
 error[E0507]: cannot move out of a raw pointer
   --> $DIR/issue-20801.rs:32:22

@@ -4,13 +4,13 @@ warning: trait objects without an explicit `dyn` are deprecated
 LL | fn iso<A>(a: Fn) -> Option<_>
    |              ^^
    |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
 help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | fn iso<A>(a: dyn Fn) -> Option<_>
    |              +++
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
 
 error[E0107]: missing generics for trait `Fn`
   --> $DIR/dyn-trait-ice-153366.rs:5:14
@@ -53,12 +53,12 @@ LL | fn iso<A>(a: Fn) -> Option<_>
 LL |     Box::new(iso_un_option)
    |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<_>`, found `Box<fn() -> _ {iso_un_option::<_>}>`
    |
-   = note: expected enum `Option<_>`
-            found struct `Box<fn() -> {type error} {iso_un_option::<_>}>`
 help: use parentheses to call this function
    |
 LL |     Box::new(iso_un_option)()
    |                            ++
+   = note: expected enum `Option<_>`
+            found struct `Box<fn() -> {type error} {iso_un_option::<_>}>`
 help: try wrapping the expression in `Some`
    |
 LL |     Some(Box::new(iso_un_option))

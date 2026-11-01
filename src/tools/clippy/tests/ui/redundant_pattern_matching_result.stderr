@@ -4,13 +4,13 @@ error: redundant pattern matching
 LL |     if let Ok(_) = &result {}
    |            ^^^^^
    |
-   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 help: consider using `is_ok()`
    |
 LL -     if let Ok(_) = &result {}
 LL +     if result.is_ok() {}
    |
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
+   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_result.rs:17:12

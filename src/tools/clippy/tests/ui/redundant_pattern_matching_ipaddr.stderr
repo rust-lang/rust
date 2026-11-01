@@ -4,13 +4,13 @@ error: redundant pattern matching
 LL |     if let V4(_) = &ipaddr {}
    |            ^^^^^
    |
-   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 help: consider using `is_ipv4()`
    |
 LL -     if let V4(_) = &ipaddr {}
 LL +     if ipaddr.is_ipv4() {}
    |
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
+   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_ipaddr.rs:12:12

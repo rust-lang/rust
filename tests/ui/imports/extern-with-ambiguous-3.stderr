@@ -4,6 +4,7 @@ error[E0659]: `error` is ambiguous
 LL | use error::*;
    |     ^^^^^ ambiguous name
    |
+   = help: consider adding an explicit import of `error` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `error` could refer to the module imported here
   --> $DIR/extern-with-ambiguous-3.rs:12:5
@@ -16,7 +17,6 @@ note: `error` could also refer to the module imported here
    |
 LL | use extern_with_ambiguous_3_extern::*;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: consider adding an explicit import of `error` to disambiguate
 
 error: aborting due to 1 previous error
 

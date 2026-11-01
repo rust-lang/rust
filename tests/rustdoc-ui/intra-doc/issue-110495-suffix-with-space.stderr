@@ -4,16 +4,16 @@ error: unresolved link to `Clone`
 LL | //! [Clone ()].
    |      ^^^^^^^^ this link resolves to the trait `Clone`, which is not a function
    |
-note: the lint level is defined here
-  --> $DIR/issue-110495-suffix-with-space.rs:2:9
-   |
-LL | #![deny(rustdoc::broken_intra_doc_links)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to link to the trait, prefix with `trait@`
    |
 LL - //! [Clone ()].
 LL + //! [trait@Clone ].
    |
+note: the lint level is defined here
+  --> $DIR/issue-110495-suffix-with-space.rs:2:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: incompatible link kind for `Clone`
   --> $DIR/issue-110495-suffix-with-space.rs:4:6

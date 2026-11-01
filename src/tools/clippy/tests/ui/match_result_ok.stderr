@@ -4,13 +4,13 @@ error: matching on `Some` with `ok()` is redundant
 LL |     if let Some(y) = x.parse().ok() { y } else { 0 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::match-result-ok` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::match_result_ok)]`
 help: consider matching on `Ok(y)` and removing the call to `ok` instead
    |
 LL -     if let Some(y) = x.parse().ok() { y } else { 0 }
 LL +     if let Ok(y) = x.parse() { y } else { 0 }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::match_result_ok)]`
+   = note: `-D clippy::match-result-ok` implied by `-D warnings`
 
 error: matching on `Some` with `ok()` is redundant
   --> tests/ui/match_result_ok.rs:18:9

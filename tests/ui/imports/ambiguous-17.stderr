@@ -4,6 +4,7 @@ error[E0659]: `id` is ambiguous
 LL |     id();
    |     ^^ ambiguous name
    |
+   = help: consider adding an explicit import of `id` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `id` could refer to the function imported here
   --> $DIR/ambiguous-17.rs:4:9
@@ -16,7 +17,6 @@ note: `id` could also refer to the function imported here
    |
 LL | pub use handwritten::*;
    |         ^^^^^^^^^^^^^^
-   = help: consider adding an explicit import of `id` to disambiguate
 
 warning: ambiguous glob re-exports
   --> $DIR/ambiguous-17.rs:4:9

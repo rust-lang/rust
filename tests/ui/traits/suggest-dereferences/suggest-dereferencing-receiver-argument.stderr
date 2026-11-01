@@ -9,11 +9,11 @@ help: the trait `From<&{integer}>` is not implemented for `TargetStruct`
    |
 LL | struct TargetStruct;
    | ^^^^^^^^^^^^^^^^^^^
-   = note: required for `&{integer}` to implement `Into<TargetStruct>`
 help: consider dereferencing here
    |
 LL |     let _b: TargetStruct = (*a).into();
    |                            ++ +
+   = note: required for `&{integer}` to implement `Into<TargetStruct>`
 
 error: aborting due to 1 previous error
 

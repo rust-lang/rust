@@ -36,8 +36,8 @@ LL |         _y.push(&mut z);
 LL |     }
    |     - `z` dropped here while still borrowed
    |
-   = note: `_y` is a collection that stores borrowed references, but `z` does not live long enough to be stored in it
    = help: buffer reuse with borrowed references requires unsafe code or restructuring
+   = note: `_y` is a collection that stores borrowed references, but `z` does not live long enough to be stored in it
 
 error[E0503]: cannot use `x` because it was mutably borrowed
   --> $DIR/regions-escape-loop-via-vec.rs:9:9

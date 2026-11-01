@@ -9,13 +9,13 @@ LL | |         Self {
 LL | | }
    | |_^
    |
-   = note: `-D clippy::derivable-impls` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::derivable_impls)]`
 help: replace the manual implementation with a derive attribute
    |
 LL + #[derive(Default)]
 LL | struct FooDefault<'a> {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::derivable_impls)]`
+   = note: `-D clippy::derivable-impls` implied by `-D warnings`
 
 error: this `impl` can be derived
   --> tests/ui/derivable_impls.rs:43:1

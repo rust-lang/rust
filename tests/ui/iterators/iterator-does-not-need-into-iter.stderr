@@ -4,6 +4,7 @@ error[E0599]: the method `foo` exists for opaque type `impl Iterator`, but its t
 LL |     get_iter().foo();
    |                ^^^ method cannot be called on `impl Iterator` due to unsatisfied trait bounds
    |
+   = help: items from traits can only be used if the trait is implemented and in scope
 note: the following trait bounds were not satisfied:
       `&impl Iterator: Iterator`
       `&impl Iterator: Missing`
@@ -16,7 +17,6 @@ LL | impl<T: Iterator + Missing> HasMethod for T {
    |         |          |
    |         |          unsatisfied trait bound introduced here
    |         unsatisfied trait bound introduced here
-   = help: items from traits can only be used if the trait is implemented and in scope
 note: `HasMethod` defines an item `foo`, perhaps you need to implement it
   --> $DIR/iterator-does-not-need-into-iter.rs:4:1
    |

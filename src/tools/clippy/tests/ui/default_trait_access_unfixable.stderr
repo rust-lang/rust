@@ -4,8 +4,8 @@ error: calling `Duration::default()` is more clear than this expression
 LL |     let _: std::time::Duration = Default::default();
    |                                  ^^^^^^^^^^^^^^^^^^ help: try: `Duration::default()`
    |
-   = note: `-D clippy::default-trait-access` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::default_trait_access)]`
+   = note: `-D clippy::default-trait-access` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

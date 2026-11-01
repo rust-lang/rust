@@ -115,8 +115,8 @@ error: sub-expression diverges
 LL |                 break 'a;
    |                 ^^^^^^^^
    |
-   = note: `-D clippy::diverging-sub-expression` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::diverging_sub_expression)]`
+   = note: `-D clippy::diverging-sub-expression` implied by `-D warnings`
 
 error: this loop never actually loops
   --> tests/ui/never_loop.rs:300:13
@@ -193,6 +193,11 @@ LL | |         return;
 LL | |     }
    | |_____^
    |
+help: if you need the first element of the iterator, try writing
+   |
+LL -     'outer: for v in 0..10 {
+LL +     if let Some(v) = (0..10).next() {
+   |
 help: this code is unreachable. Consider moving the reachable parts out
   --> tests/ui/never_loop.rs:433:9
    |
@@ -206,11 +211,6 @@ help: this code is unreachable. Consider moving the reachable parts out
    |
 LL |         return;
    |         ^^^^^^^
-help: if you need the first element of the iterator, try writing
-   |
-LL -     'outer: for v in 0..10 {
-LL +     if let Some(v) = (0..10).next() {
-   |
 
 error: this loop never actually loops
   --> tests/ui/never_loop.rs:433:9
@@ -320,6 +320,11 @@ LL | |         loop {
 LL | |     }
    | |_____^
    |
+help: if you need the first element of the iterator, try writing
+   |
+LL -     'bar: for _ in 0..100 {
+LL +     if let Some(_) = (0..100).next() {
+   |
 help: this code is unreachable. Consider moving the reachable parts out
   --> tests/ui/never_loop.rs:487:9
    |
@@ -329,11 +334,6 @@ LL | |             println!("This will still run");
 LL | |             break 'bar;
 LL | |         }
    | |_________^
-help: if you need the first element of the iterator, try writing
-   |
-LL -     'bar: for _ in 0..100 {
-LL +     if let Some(_) = (0..100).next() {
-   |
 
 error: this loop never actually loops
   --> tests/ui/never_loop.rs:487:9
@@ -355,6 +355,11 @@ LL | |         loop {
 LL | |     }
    | |_____^
    |
+help: if you need the first element of the iterator, try writing
+   |
+LL -     'foo: for _ in 0..100 {
+LL +     if let Some(_) = (0..100).next() {
+   |
 help: this code is unreachable. Consider moving the reachable parts out
   --> tests/ui/never_loop.rs:496:9
    |
@@ -365,11 +370,6 @@ LL | |             loop {
 ...  |
 LL | |         }
    | |_________^
-help: if you need the first element of the iterator, try writing
-   |
-LL -     'foo: for _ in 0..100 {
-LL +     if let Some(_) = (0..100).next() {
-   |
 
 error: this loop never actually loops
   --> tests/ui/never_loop.rs:496:9

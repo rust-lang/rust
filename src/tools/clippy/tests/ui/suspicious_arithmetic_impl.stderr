@@ -4,8 +4,8 @@ error: suspicious use of `-` in `Add` impl
 LL |         Foo(self.0 - other.0)
    |                    ^
    |
-   = note: `-D clippy::suspicious-arithmetic-impl` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::suspicious_arithmetic_impl)]`
+   = note: `-D clippy::suspicious-arithmetic-impl` implied by `-D warnings`
 
 error: suspicious use of `-` in `AddAssign` impl
   --> tests/ui/suspicious_arithmetic_impl.rs:21:23
@@ -13,8 +13,8 @@ error: suspicious use of `-` in `AddAssign` impl
 LL |         *self = *self - other;
    |                       ^
    |
-   = note: `-D clippy::suspicious-op-assign-impl` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::suspicious_op_assign_impl)]`
+   = note: `-D clippy::suspicious-op-assign-impl` implied by `-D warnings`
 
 error: suspicious use of `/` in `MulAssign` impl
   --> tests/ui/suspicious_arithmetic_impl.rs:35:16

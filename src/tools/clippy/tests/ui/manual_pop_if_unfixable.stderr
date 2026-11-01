@@ -7,8 +7,8 @@ LL |         vec.pop().unwrap();
    |         ^^^^^^^^^^^^^^^^^^
    |
    = help: try refactoring the code using `vec.pop_if(|x| *x > 2);`
-   = note: `-D clippy::manual-pop-if` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_pop_if)]`
+   = note: `-D clippy::manual-pop-if` implied by `-D warnings`
 
 error: manual implementation of `Vec::pop_if`
   --> tests/ui/manual_pop_if_unfixable.rs:16:5

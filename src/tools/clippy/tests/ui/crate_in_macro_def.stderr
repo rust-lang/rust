@@ -4,8 +4,8 @@ error: `crate` references the macro call's crate
 LL |             println!("{}", crate::unhygienic::MESSAGE);
    |                            ^^^^^ help: to reference the macro definition's crate, use: `$crate`
    |
-   = note: `-D clippy::crate-in-macro-def` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::crate_in_macro_def)]`
+   = note: `-D clippy::crate-in-macro-def` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

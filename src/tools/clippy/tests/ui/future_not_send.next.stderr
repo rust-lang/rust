@@ -4,9 +4,9 @@ error: future cannot be sent between threads safely
 LL | async fn private_future(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
    |                                                              ^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::future_not_send)]`
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Send`
    = note: `-D clippy::future-not-send` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::future_not_send)]`
 
 error: future cannot be sent between threads safely
   --> tests/ui/future_not_send.rs:17:41

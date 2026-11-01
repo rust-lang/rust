@@ -4,12 +4,12 @@ error: imports need to be explicitly named
 LL |     m!();
    |     ^^^^
    |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: try renaming it with a name
   --> $DIR/auxiliary/import_crate_var.rs:5:15
    |
 LL |     use $crate as name;
    |                +++++++
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

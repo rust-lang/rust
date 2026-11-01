@@ -4,16 +4,16 @@ error: use of deprecated method `core::str::<impl str>::trim_left`: superseded b
 LL |     let _foo = str::trim_left("   aoeu");
    |                     ^^^^^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/issue-84637-deprecated-associated-function.rs:3:9
-   |
-LL | #![deny(deprecated)]
-   |         ^^^^^^^^^^
 help: replace the use of the deprecated method
    |
 LL -     let _foo = str::trim_left("   aoeu");
 LL +     let _foo = str::trim_start("   aoeu");
    |
+note: the lint level is defined here
+  --> $DIR/issue-84637-deprecated-associated-function.rs:3:9
+   |
+LL | #![deny(deprecated)]
+   |         ^^^^^^^^^^
 
 error: use of deprecated method `core::str::<impl str>::trim_left`: superseded by `trim_start`
   --> $DIR/issue-84637-deprecated-associated-function.rs:8:26

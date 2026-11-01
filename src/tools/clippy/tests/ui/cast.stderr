@@ -4,8 +4,8 @@ error: casting `i32` to `f32` may cause a loss of precision (`i32` is 32 bits wi
 LL |     x0 as f32;
    |     ^^^^^^^^^
    |
-   = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cast_precision_loss)]`
+   = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
 
 error: casting `i64` to `f32` may cause a loss of precision (`i64` is 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> tests/ui/cast.rs:27:5
@@ -44,8 +44,8 @@ LL |     1f32 as i32;
    |     ^^^^^^^^^^^
    |
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
-   = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cast_possible_truncation)]`
+   = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
 
 error: casting `f32` to `u32` may truncate the value
   --> tests/ui/cast.rs:48:5
@@ -61,8 +61,8 @@ error: casting `f32` to `u32` may lose the sign of the value
 LL |     1f32 as u32;
    |     ^^^^^^^^^^^
    |
-   = note: `-D clippy::cast-sign-loss` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cast_sign_loss)]`
+   = note: `-D clippy::cast-sign-loss` implied by `-D warnings`
 
 error: casting `f64` to `f32` may truncate the value
   --> tests/ui/cast.rs:52:5
@@ -196,8 +196,8 @@ error: casting `u8` to `i8` may wrap around the value
 LL |     1u8 as i8;
    |     ^^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `1u8.cast_signed()`
    |
-   = note: `-D clippy::cast-possible-wrap` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cast_possible_wrap)]`
+   = note: `-D clippy::cast-possible-wrap` implied by `-D warnings`
 
 error: casting `u16` to `i16` may wrap around the value
   --> tests/ui/cast.rs:91:5
@@ -404,8 +404,8 @@ error: casting `main::E2::B` to `u8` will truncate the value
 LL |             let _ = Self::B as u8;
    |                     ^^^^^^^^^^^^^
    |
-   = note: `-D clippy::cast-enum-truncation` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cast_enum_truncation)]`
+   = note: `-D clippy::cast-enum-truncation` implied by `-D warnings`
 
 error: casting `main::E5` to `i8` may truncate the value
   --> tests/ui/cast.rs:319:21

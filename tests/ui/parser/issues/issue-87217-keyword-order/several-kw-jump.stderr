@@ -4,12 +4,12 @@ error: expected one of `extern` or `fn`, found keyword `const`
 LL | async unsafe const fn test() {}
    |              ^^^^^ expected one of `extern` or `fn`
    |
-   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
 help: `const` must come before `async unsafe`
    |
 LL - async unsafe const fn test() {}
 LL + const async unsafe fn test() {}
    |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
 
 error: functions cannot be both `const` and `async`
   --> $DIR/several-kw-jump.rs:9:1

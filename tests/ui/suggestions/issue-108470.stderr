@@ -15,12 +15,12 @@ error[E0308]: mismatched types
 LL |         t
    |         ^ expected `bool`, found `Option<i32>`
    |
-   = note: expected type `bool`
-              found enum `Option<i32>`
 help: use `Option::is_some` to test if the `Option` has a value
    |
 LL |         t: t.is_some()
    |          +++++++++++++
+   = note: expected type `bool`
+              found enum `Option<i32>`
 
 error: aborting due to 2 previous errors
 

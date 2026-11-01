@@ -4,13 +4,13 @@ error: `^` is not the exponentiation operator
 LL |     let _ = 2 ^ 5;
    |             ^^^^^
    |
-   = note: `-D clippy::suspicious-xor-used-as-pow` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::suspicious_xor_used_as_pow)]`
 help: did you mean to write
    |
 LL -     let _ = 2 ^ 5;
 LL +     let _ = 2.pow(5);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_xor_used_as_pow)]`
+   = note: `-D clippy::suspicious-xor-used-as-pow` implied by `-D warnings`
 
 error: `^` is not the exponentiation operator
   --> tests/ui/suspicious_xor_used_as_pow.rs:23:13

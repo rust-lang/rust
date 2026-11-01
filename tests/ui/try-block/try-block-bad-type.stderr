@@ -4,12 +4,12 @@ error[E0308]: mismatched types
 LL |         Err("")?;
    |         ^^^^^^^^ expected `Result<u32, TryFromSliceError>`, found `Result<_, &str>`
    |
-   = note: expected enum `Result<u32, TryFromSliceError>`
-              found enum `Result<_, &str>`
 help: consider using `Result::expect` to unwrap the `Result<_, &str>` value, panicking if the value is a `Result::Err`
    |
 LL |         Err("")?.expect("REASON");
    |                 +++++++++++++++++
+   = note: expected enum `Result<u32, TryFromSliceError>`
+              found enum `Result<_, &str>`
 
 error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Output == &str`
   --> $DIR/try-block-bad-type.rs:12:9

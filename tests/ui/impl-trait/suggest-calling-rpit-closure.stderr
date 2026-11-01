@@ -9,12 +9,12 @@ LL |     opaque()
 LL | fn opaque() -> impl Fn() -> i32 {
    |                ---------------- the found opaque type
    |
-   = note:     expected type `i32`
-           found opaque type `impl Fn() -> i32`
 help: use parentheses to call this opaque type
    |
 LL |     opaque()()
    |             ++
+   = note:     expected type `i32`
+           found opaque type `impl Fn() -> i32`
 
 error: aborting due to 1 previous error
 

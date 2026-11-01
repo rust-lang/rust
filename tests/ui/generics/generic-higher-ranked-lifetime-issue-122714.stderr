@@ -4,7 +4,6 @@ error[E0261]: use of undeclared lifetime name `'b`
 LL |   where T: for<'a> Trait1<T> + 'b { }
    |                                ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'b` lifetime
    |
 LL -   where T: for<'a> Trait1<T> + 'b { }
@@ -14,6 +13,7 @@ help: consider introducing lifetime `'b` here
    |
 LL | trait Trait1<'b, T>
    |              +++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/generic-higher-ranked-lifetime-issue-122714.rs:8:10

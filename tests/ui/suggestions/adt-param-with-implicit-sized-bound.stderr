@@ -6,11 +6,11 @@ LL | struct Struct5<T: ?Sized>{
 LL |     _t: X<T>,
    |         ^^^^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `X`
-  --> $DIR/adt-param-with-implicit-sized-bound.rs:18:10
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | struct X<T>(T);
-   |          ^ required by the implicit `Sized` requirement on this type parameter in `X`
+LL - struct Struct5<T: ?Sized>{
+LL + struct Struct5<T>{
+   |
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/adt-param-with-implicit-sized-bound.rs:18:10
    |
@@ -18,11 +18,11 @@ LL | struct X<T>(T);
    |          ^  - ...if indirection were used here: `Box<T>`
    |          |
    |          this could be changed to `T: ?Sized`...
-help: consider removing the `?Sized` bound to make the type parameter `Sized`
+note: required by an implicit `Sized` bound in `X`
+  --> $DIR/adt-param-with-implicit-sized-bound.rs:18:10
    |
-LL - struct Struct5<T: ?Sized>{
-LL + struct Struct5<T>{
-   |
+LL | struct X<T>(T);
+   |          ^ required by the implicit `Sized` requirement on this type parameter in `X`
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/adt-param-with-implicit-sized-bound.rs:2:19
@@ -30,11 +30,6 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn func1() -> Struct1<Self>;
    |                   ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `Struct1`
-  --> $DIR/adt-param-with-implicit-sized-bound.rs:8:16
-   |
-LL | struct Struct1<T>{
-   |                ^ required by the implicit `Sized` requirement on this type parameter in `Struct1`
 help: consider further restricting `Self`
    |
 LL |     fn func1() -> Struct1<Self> where Self: Sized;
@@ -43,6 +38,11 @@ help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Struct1<T: ?Sized>{
    |                 ++++++++
+note: required by an implicit `Sized` bound in `Struct1`
+  --> $DIR/adt-param-with-implicit-sized-bound.rs:8:16
+   |
+LL | struct Struct1<T>{
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Struct1`
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/adt-param-with-implicit-sized-bound.rs:3:23
@@ -50,11 +50,6 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn func2<'a>() -> Struct2<'a, Self>;
    |                       ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `Struct2`
-  --> $DIR/adt-param-with-implicit-sized-bound.rs:11:20
-   |
-LL | struct Struct2<'a, T>{
-   |                    ^ required by the implicit `Sized` requirement on this type parameter in `Struct2`
 help: consider further restricting `Self`
    |
 LL |     fn func2<'a>() -> Struct2<'a, Self> where Self: Sized;
@@ -63,6 +58,11 @@ help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Struct2<'a, T: ?Sized>{
    |                     ++++++++
+note: required by an implicit `Sized` bound in `Struct2`
+  --> $DIR/adt-param-with-implicit-sized-bound.rs:11:20
+   |
+LL | struct Struct2<'a, T>{
+   |                    ^ required by the implicit `Sized` requirement on this type parameter in `Struct2`
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/adt-param-with-implicit-sized-bound.rs:4:19
@@ -70,11 +70,10 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn func3() -> Struct3<Self>;
    |                   ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `Struct3`
-  --> $DIR/adt-param-with-implicit-sized-bound.rs:14:16
+help: consider further restricting `Self`
    |
-LL | struct Struct3<T>{
-   |                ^ required by the implicit `Sized` requirement on this type parameter in `Struct3`
+LL |     fn func3() -> Struct3<Self> where Self: Sized;
+   |                                 +++++++++++++++++
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/adt-param-with-implicit-sized-bound.rs:14:16
    |
@@ -82,10 +81,11 @@ LL | struct Struct3<T>{
    |                ^ this could be changed to `T: ?Sized`...
 LL |     _t: T,
    |         - ...if indirection were used here: `Box<T>`
-help: consider further restricting `Self`
+note: required by an implicit `Sized` bound in `Struct3`
+  --> $DIR/adt-param-with-implicit-sized-bound.rs:14:16
    |
-LL |     fn func3() -> Struct3<Self> where Self: Sized;
-   |                                 +++++++++++++++++
+LL | struct Struct3<T>{
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Struct3`
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/adt-param-with-implicit-sized-bound.rs:5:19
@@ -93,11 +93,6 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn func4() -> Struct4<Self>;
    |                   ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `Struct4`
-  --> $DIR/adt-param-with-implicit-sized-bound.rs:20:16
-   |
-LL | struct Struct4<T>{
-   |                ^ required by the implicit `Sized` requirement on this type parameter in `Struct4`
 help: consider further restricting `Self`
    |
 LL |     fn func4() -> Struct4<Self> where Self: Sized;
@@ -106,6 +101,11 @@ help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Struct4<T: ?Sized>{
    |                 ++++++++
+note: required by an implicit `Sized` bound in `Struct4`
+  --> $DIR/adt-param-with-implicit-sized-bound.rs:20:16
+   |
+LL | struct Struct4<T>{
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Struct4`
 
 error: aborting due to 5 previous errors
 

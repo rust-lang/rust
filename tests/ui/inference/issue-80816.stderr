@@ -4,6 +4,11 @@ error[E0283]: type annotations needed
 LL |     let guard: Guard<Arc<usize>> = s.load();
    |                                      ^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     let guard: Guard<Arc<usize>> = s.load();
+LL +     let guard: Guard<Arc<usize>> = <Arc<ArcSwapAny<Arc<usize>>> as Access<T>>::load(&s);
+   |
 note: multiple `impl`s satisfying `ArcSwapAny<Arc<usize>>: Access<_>` found
   --> $DIR/issue-80816.rs:36:1
    |
@@ -20,11 +25,6 @@ LL | impl<T, A: Access<T>, P: Deref<Target = A>> Access<T> for P {
    |            ---------                        ^^^^^^^^^     ^
    |            |
    |            unsatisfied trait bound introduced here
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     let guard: Guard<Arc<usize>> = s.load();
-LL +     let guard: Guard<Arc<usize>> = <Arc<ArcSwapAny<Arc<usize>>> as Access<T>>::load(&s);
-   |
 
 error: aborting due to 1 previous error
 

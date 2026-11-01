@@ -4,8 +4,8 @@ error[E0658]: contract internal machinery is for internal use only
 LL |     fn identity_1() -> i32 contract_requires { true } { 10 }
    |                            ^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = help: add `#![feature(contracts_internals)]` to the crate attributes to enable
+   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: contract internal machinery is for internal use only
@@ -14,8 +14,8 @@ error[E0658]: contract internal machinery is for internal use only
 LL |     fn identity_2() -> i32 contract_ensures { |_| true } { 10 }
    |                            ^^^^^^^^^^^^^^^^
    |
-   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = help: add `#![feature(contracts_internals)]` to the crate attributes to enable
+   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `contracts_internals`
@@ -24,8 +24,8 @@ error[E0658]: use of unstable library feature `contracts_internals`
 LL |     core::intrinsics::contract_check_requires(|| true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = help: add `#![feature(contracts_internals)]` to the crate attributes to enable
+   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `contracts_internals`
@@ -34,8 +34,8 @@ error[E0658]: use of unstable library feature `contracts_internals`
 LL |     core::intrinsics::contract_check_ensures(Some(|_: &&u32| true), &1);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = help: add `#![feature(contracts_internals)]` to the crate attributes to enable
+   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `contracts_internals`
@@ -44,8 +44,8 @@ error[E0658]: use of unstable library feature `contracts_internals`
 LL |     core::contracts::build_check_ensures(|_: &()| true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = help: add `#![feature(contracts_internals)]` to the crate attributes to enable
+   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 5 previous errors

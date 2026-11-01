@@ -6,7 +6,6 @@ LL | #[inline(please,no)]
    |         |
    |         expected a single argument here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[inline(please,no)]
@@ -18,6 +17,7 @@ LL + #[inline(always)]
 LL - #[inline(please,no)]
 LL + #[inline(never)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
 
 error[E0805]: malformed `inline` attribute input
   --> $DIR/invalid-inline.rs:7:3
@@ -27,7 +27,6 @@ LL | #[inline()]
    |         |
    |         expected an argument here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[inline()]
@@ -37,6 +36,7 @@ LL | #[inline(always)]
    |          ++++++
 LL | #[inline(never)]
    |          +++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
 
 error: aborting due to 2 previous errors
 

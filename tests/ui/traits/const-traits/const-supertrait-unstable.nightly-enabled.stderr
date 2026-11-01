@@ -27,11 +27,11 @@ error: `[const]` can only be applied to `const` traits
 LL | trait Bar: [const] Foo {}
    |            ^^^^^^^ can't be applied to `Foo`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: mark `Foo` as `const` to allow it to have `const` implementations
    |
 LL | const trait Foo {
    | +++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `const` traits
   --> $DIR/const-supertrait-unstable.rs:26:12
@@ -39,34 +39,34 @@ error: `[const]` can only be applied to `const` traits
 LL | trait Bar: [const] Foo {}
    |            ^^^^^^^ can't be applied to `Foo`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: mark `Foo` as `const` to allow it to have `const` implementations
    |
 LL | const trait Foo {
    | +++++
-
-error: `[const]` can only be applied to `const` traits
-  --> $DIR/const-supertrait-unstable.rs:33:17
-   |
-LL | const fn foo<T: [const] Bar>(x: &T) {
-   |                 ^^^^^^^ can't be applied to `Bar`
-   |
-help: mark `Bar` as `const` to allow it to have `const` implementations
-   |
-LL | const trait Bar: [const] Foo {}
-   | +++++
-
-error: `[const]` can only be applied to `const` traits
-  --> $DIR/const-supertrait-unstable.rs:33:17
-   |
-LL | const fn foo<T: [const] Bar>(x: &T) {
-   |                 ^^^^^^^ can't be applied to `Bar`
-   |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const-supertrait-unstable.rs:33:17
+   |
+LL | const fn foo<T: [const] Bar>(x: &T) {
+   |                 ^^^^^^^ can't be applied to `Bar`
+   |
 help: mark `Bar` as `const` to allow it to have `const` implementations
    |
 LL | const trait Bar: [const] Foo {}
    | +++++
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const-supertrait-unstable.rs:33:17
+   |
+LL | const fn foo<T: [const] Bar>(x: &T) {
+   |                 ^^^^^^^ can't be applied to `Bar`
+   |
+help: mark `Bar` as `const` to allow it to have `const` implementations
+   |
+LL | const trait Bar: [const] Foo {}
+   | +++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions
   --> $DIR/const-supertrait-unstable.rs:37:7
@@ -74,6 +74,10 @@ error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions
 LL |     x.a();
    |       ^^^
    |
+help: consider making trait `Foo` const
+   |
+LL | const trait Foo {
+   | +++++
 note: method `a` is not const because trait `Foo` is not const
   --> $DIR/const-supertrait-unstable.rs:22:1
    |
@@ -82,10 +86,6 @@ LL | trait Foo {
 LL |     fn a(&self);
    |     ------------ this method is not const
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider making trait `Foo` const
-   |
-LL | const trait Foo {
-   | +++++
 
 error: aborting due to 7 previous errors
 

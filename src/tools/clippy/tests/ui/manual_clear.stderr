@@ -4,13 +4,13 @@ error: truncating to zero length
 LL |     v.truncate(0);
    |     ^^^^^^^^^^^^^
    |
-   = note: `-D clippy::manual-clear` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_clear)]`
 help: use `clear()` instead
    |
 LL -     v.truncate(0);
 LL +     v.clear();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_clear)]`
+   = note: `-D clippy::manual-clear` implied by `-D warnings`
 
 error: truncating to zero length
   --> tests/ui/manual_clear.rs:24:5

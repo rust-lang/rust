@@ -96,16 +96,16 @@ error[E0405]: cannot find trait `r#struct` in this scope
 LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
    |          ^^^^^^ not found in this scope
    |
-note: similarly named trait `Struct` defined here
-  --> $DIR/kw-in-trait-bounds.rs:37:1
-   |
-LL | trait Struct {}
-   | ^^^^^^^^^^^^
 help: a trait with a similar name exists (notice the capitalization)
    |
 LL - fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
 LL + fn _g<A: Struct, B>(_: impl struct, _: &dyn struct)
    |
+note: similarly named trait `Struct` defined here
+  --> $DIR/kw-in-trait-bounds.rs:37:1
+   |
+LL | trait Struct {}
+   | ^^^^^^^^^^^^
 
 error[E0405]: cannot find trait `r#struct` in this scope
   --> $DIR/kw-in-trait-bounds.rs:30:8
@@ -113,16 +113,16 @@ error[E0405]: cannot find trait `r#struct` in this scope
 LL |     B: struct,
    |        ^^^^^^ not found in this scope
    |
-note: similarly named trait `Struct` defined here
-  --> $DIR/kw-in-trait-bounds.rs:37:1
-   |
-LL | trait Struct {}
-   | ^^^^^^^^^^^^
 help: a trait with a similar name exists (notice the capitalization)
    |
 LL -     B: struct,
 LL +     B: Struct,
    |
+note: similarly named trait `Struct` defined here
+  --> $DIR/kw-in-trait-bounds.rs:37:1
+   |
+LL | trait Struct {}
+   | ^^^^^^^^^^^^
 
 error[E0405]: cannot find trait `r#struct` in this scope
   --> $DIR/kw-in-trait-bounds.rs:16:29
@@ -130,16 +130,16 @@ error[E0405]: cannot find trait `r#struct` in this scope
 LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
    |                             ^^^^^^ not found in this scope
    |
-note: similarly named trait `Struct` defined here
-  --> $DIR/kw-in-trait-bounds.rs:37:1
-   |
-LL | trait Struct {}
-   | ^^^^^^^^^^^^
 help: a trait with a similar name exists (notice the capitalization)
    |
 LL - fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
 LL + fn _g<A: struct, B>(_: impl Struct, _: &dyn struct)
    |
+note: similarly named trait `Struct` defined here
+  --> $DIR/kw-in-trait-bounds.rs:37:1
+   |
+LL | trait Struct {}
+   | ^^^^^^^^^^^^
 
 error[E0405]: cannot find trait `r#struct` in this scope
   --> $DIR/kw-in-trait-bounds.rs:16:45
@@ -147,16 +147,16 @@ error[E0405]: cannot find trait `r#struct` in this scope
 LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
    |                                             ^^^^^^ not found in this scope
    |
-note: similarly named trait `Struct` defined here
-  --> $DIR/kw-in-trait-bounds.rs:37:1
-   |
-LL | trait Struct {}
-   | ^^^^^^^^^^^^
 help: a trait with a similar name exists (notice the capitalization)
    |
 LL - fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
 LL + fn _g<A: struct, B>(_: impl struct, _: &dyn Struct)
    |
+note: similarly named trait `Struct` defined here
+  --> $DIR/kw-in-trait-bounds.rs:37:1
+   |
+LL | trait Struct {}
+   | ^^^^^^^^^^^^
 
 error: aborting due to 12 previous errors
 

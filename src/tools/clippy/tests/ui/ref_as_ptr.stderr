@@ -4,8 +4,8 @@ error: reference as raw pointer
 LL |     f(&1u8 as *const _);
    |       ^^^^^^^^^^^^^^^^ help: try: `std::ptr::from_ref(&1u8)`
    |
-   = note: `-D clippy::ref-as-ptr` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::ref_as_ptr)]`
+   = note: `-D clippy::ref-as-ptr` implied by `-D warnings`
 
 error: reference as raw pointer
   --> tests/ui/ref_as_ptr.rs:9:7

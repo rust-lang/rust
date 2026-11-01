@@ -4,9 +4,9 @@ error: attempted to include a large file
 LL | #[doc = include_str!("too_big.txt")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::large_include_file)]`
    = note: the configuration allows a maximum size of 600 bytes
    = note: `-D clippy::large-include-file` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::large_include_file)]`
 
 error: attempted to include a large file
   --> tests/ui-toml/large_include_file/large_include_file.rs:14:43

@@ -4,8 +4,8 @@ error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigne
 LL |     A = 9223372036854775807, // i64::MAX
    |     ^
    |
-   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
 note: the lint level is defined here
@@ -20,8 +20,8 @@ error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigne
 LL |     A = -2147483649, // i32::MIN-1
    |     ^
    |
-   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
 
@@ -31,8 +31,8 @@ error: `repr(C)` enum discriminant does not fit into C `unsigned int`, and a pre
 LL |     B = -1,
    |     ^
    |
-   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
 
@@ -42,8 +42,8 @@ error: `repr(C)` enum discriminant does not fit into C `int`, and a previous dis
 LL |     A = 2147483648, // i32::MAX+1
    |     ^
    |
-   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
 
@@ -53,8 +53,8 @@ error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigne
 LL |     A = I64_MAX as isize,
    |     ^
    |
-   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
 

@@ -35,33 +35,33 @@
 </tspan>
     <tspan x="10px" y="136px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Iterator` is not implemented for `(bool, HashSet&lt;u8&gt;)`</tspan>
 </tspan>
-    <tspan x="10px" y="154px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
+    <tspan x="10px" y="154px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider removing this method call, as the receiver has type `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;` and `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;: Iterator` trivially holds</tspan>
 </tspan>
-    <tspan x="10px" y="172px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `flatten`</tspan>
+    <tspan x="10px" y="172px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="190px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL</tspan>
+    <tspan x="10px" y="190px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>            ts.into_iter()</tspan>
 </tspan>
-    <tspan x="10px" y="208px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider removing this method call, as the receiver has type `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;` and `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;: Iterator` trivially holds</tspan>
+    <tspan x="10px" y="208px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 .map(|t| {</tspan>
 </tspan>
-    <tspan x="10px" y="226px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+    <tspan x="10px" y="226px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                     (</tspan>
 </tspan>
-    <tspan x="10px" y="244px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>            ts.into_iter()</tspan>
+    <tspan x="10px" y="244px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                         is_true,</tspan>
 </tspan>
-    <tspan x="10px" y="262px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 .map(|t| {</tspan>
+    <tspan x="10px" y="262px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                         t,</tspan>
 </tspan>
-    <tspan x="10px" y="280px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                     (</tspan>
+    <tspan x="10px" y="280px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                     )</tspan>
 </tspan>
-    <tspan x="10px" y="298px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                         is_true,</tspan>
+    <tspan x="10px" y="298px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 })</tspan><tspan>.flatten()</tspan>
 </tspan>
-    <tspan x="10px" y="316px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                         t,</tspan>
+    <tspan x="10px" y="316px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>            ts.into_iter().flatten()</tspan>
 </tspan>
-    <tspan x="10px" y="334px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                     )</tspan>
+    <tspan x="10px" y="334px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="352px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 })</tspan><tspan>.flatten()</tspan>
+    <tspan x="10px" y="352px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
 </tspan>
-    <tspan x="10px" y="370px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>            ts.into_iter().flatten()</tspan>
+    <tspan x="10px" y="370px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `flatten`</tspan>
 </tspan>
-    <tspan x="10px" y="388px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+    <tspan x="10px" y="388px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL</tspan>
 </tspan>
     <tspan x="10px" y="406px">
 </tspan>
@@ -167,23 +167,23 @@
 </tspan>
     <tspan x="10px" y="1324px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Iterator` is not implemented for `(bool, HashSet&lt;u8&gt;)`</tspan>
 </tspan>
-    <tspan x="10px" y="1342px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
+    <tspan x="10px" y="1342px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider removing this method call, as the receiver has type `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;` and `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;: Iterator` trivially holds</tspan>
 </tspan>
-    <tspan x="10px" y="1360px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `flatten`</tspan>
+    <tspan x="10px" y="1360px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="1378px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL</tspan>
+    <tspan x="10px" y="1378px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>            ts.into_iter()</tspan>
 </tspan>
-    <tspan x="10px" y="1396px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider removing this method call, as the receiver has type `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;` and `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;: Iterator` trivially holds</tspan>
+    <tspan x="10px" y="1396px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 .map(|t| (is_true, t))</tspan>
 </tspan>
-    <tspan x="10px" y="1414px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+    <tspan x="10px" y="1414px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>            ts.into_iter()</tspan>
 </tspan>
-    <tspan x="10px" y="1432px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>            ts.into_iter()</tspan>
+    <tspan x="10px" y="1432px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="1450px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 .map(|t| (is_true, t))</tspan>
+    <tspan x="10px" y="1450px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
 </tspan>
-    <tspan x="10px" y="1468px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>            ts.into_iter()</tspan>
+    <tspan x="10px" y="1468px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `flatten`</tspan>
 </tspan>
-    <tspan x="10px" y="1486px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+    <tspan x="10px" y="1486px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL</tspan>
 </tspan>
     <tspan x="10px" y="1504px">
 </tspan>
@@ -279,25 +279,25 @@
 </tspan>
     <tspan x="10px" y="2332px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Iterator` is not implemented for `(bool, HashSet&lt;u8&gt;)`</tspan>
 </tspan>
-    <tspan x="10px" y="2350px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
+    <tspan x="10px" y="2350px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider removing this method call, as the receiver has type `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;` and `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;: Iterator` trivially holds</tspan>
 </tspan>
-    <tspan x="10px" y="2368px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `flatten`</tspan>
+    <tspan x="10px" y="2368px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="2386px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL</tspan>
+    <tspan x="10px" y="2386px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>            ts.into_iter()</tspan><tspan class="fg-bright-red">.map(|t| {</tspan>
 </tspan>
-    <tspan x="10px" y="2404px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider removing this method call, as the receiver has type `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;` and `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;: Iterator` trivially holds</tspan>
+    <tspan x="10px" y="2404px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 (is_true, t)</tspan>
 </tspan>
-    <tspan x="10px" y="2422px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+    <tspan x="10px" y="2422px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-             })</tspan><tspan>.flatten()</tspan>
 </tspan>
-    <tspan x="10px" y="2440px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>            ts.into_iter()</tspan><tspan class="fg-bright-red">.map(|t| {</tspan>
+    <tspan x="10px" y="2440px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>            ts.into_iter().flatten()</tspan>
 </tspan>
-    <tspan x="10px" y="2458px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 (is_true, t)</tspan>
+    <tspan x="10px" y="2458px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="2476px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-             })</tspan><tspan>.flatten()</tspan>
+    <tspan x="10px" y="2476px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
 </tspan>
-    <tspan x="10px" y="2494px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>            ts.into_iter().flatten()</tspan>
+    <tspan x="10px" y="2494px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `flatten`</tspan>
 </tspan>
-    <tspan x="10px" y="2512px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+    <tspan x="10px" y="2512px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL</tspan>
 </tspan>
     <tspan x="10px" y="2530px">
 </tspan>
@@ -393,23 +393,23 @@
 </tspan>
     <tspan x="10px" y="3358px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">help</tspan><tspan>: the trait `Iterator` is not implemented for `(bool, HashSet&lt;u8&gt;)`</tspan>
 </tspan>
-    <tspan x="10px" y="3376px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
+    <tspan x="10px" y="3376px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider removing this method call, as the receiver has type `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;` and `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;: Iterator` trivially holds</tspan>
 </tspan>
-    <tspan x="10px" y="3394px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `flatten`</tspan>
+    <tspan x="10px" y="3394px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="3412px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL</tspan>
+    <tspan x="10px" y="3412px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>            ts.into_iter()</tspan>
 </tspan>
-    <tspan x="10px" y="3430px"><tspan class="fg-bright-cyan bold">help</tspan><tspan>: consider removing this method call, as the receiver has type `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;` and `std::vec::IntoIter&lt;HashSet&lt;u8&gt;&gt;: Iterator` trivially holds</tspan>
+    <tspan x="10px" y="3430px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 .map(|t| (is_true, t))</tspan><tspan>.flatten()</tspan>
 </tspan>
-    <tspan x="10px" y="3448px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+    <tspan x="10px" y="3448px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>            ts.into_iter().flatten()</tspan>
 </tspan>
-    <tspan x="10px" y="3466px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">- </tspan><tspan>            ts.into_iter()</tspan>
+    <tspan x="10px" y="3466px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="3484px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-red">-                 .map(|t| (is_true, t))</tspan><tspan>.flatten()</tspan>
+    <tspan x="10px" y="3484px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: required for `(bool, HashSet&lt;u8&gt;)` to implement `IntoIterator`</tspan>
 </tspan>
-    <tspan x="10px" y="3502px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-green">+ </tspan><tspan>            ts.into_iter().flatten()</tspan>
+    <tspan x="10px" y="3502px"><tspan class="fg-bright-green bold">note</tspan><tspan>: required by a bound in `flatten`</tspan>
 </tspan>
-    <tspan x="10px" y="3520px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
+    <tspan x="10px" y="3520px"><tspan>  </tspan><tspan class="fg-bright-blue bold">--&gt; </tspan><tspan>$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL</tspan>
 </tspan>
     <tspan x="10px" y="3538px">
 </tspan>

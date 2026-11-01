@@ -4,8 +4,8 @@ error: manual creation of a dangling pointer
 LL |     let _: *const u8 = 1 as *const _;
    |                        ^^^^^^^^^^^^^ help: use: `std::ptr::dangling()`
    |
-   = note: `-D clippy::manual-dangling-ptr` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_dangling_ptr)]`
+   = note: `-D clippy::manual-dangling-ptr` implied by `-D warnings`
 
 error: manual creation of a dangling pointer
   --> tests/ui/manual_dangling_ptr.rs:10:13

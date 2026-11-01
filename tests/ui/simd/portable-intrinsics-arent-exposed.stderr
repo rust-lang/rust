@@ -23,6 +23,7 @@ help: consider importing this module instead
 LL - use std::simd::intrinsics;
 LL + use std::intrinsics;
    |
+   = note: 'std::intrinsics' is unstable, add `#![feature(core_intrinsics)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 

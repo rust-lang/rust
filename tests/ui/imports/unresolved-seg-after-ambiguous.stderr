@@ -4,6 +4,7 @@ error[E0659]: `E` is ambiguous
 LL | use self::a::E::in_exist;
    |              ^ ambiguous name
    |
+   = help: consider adding an explicit import of `E` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `E` could refer to the struct imported here
   --> $DIR/unresolved-seg-after-ambiguous.rs:13:17
@@ -16,7 +17,6 @@ note: `E` could also refer to the struct imported here
    |
 LL |         pub use self::d::*;
    |                 ^^^^^^^^^^
-   = help: consider adding an explicit import of `E` to disambiguate
 
 error: aborting due to 1 previous error
 

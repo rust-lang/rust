@@ -4,6 +4,11 @@ error[E0603]: struct import `Hi` is private
 LL | use testing::Hi;
    |              ^^ private struct import
    |
+help: import `Hi` directly
+   |
+LL - use testing::Hi;
+LL + use public::Hi;
+   |
 note: the struct import `Hi` is defined here...
   --> $DIR/private-import-suggestion-relative.rs:11:9
    |
@@ -14,11 +19,6 @@ note: ...and refers to the struct `Hi` which is defined here
    |
 LL |     pub struct Hi;
    |     ^^^^^^^^^^^^^^ you could import this directly
-help: import `Hi` directly
-   |
-LL - use testing::Hi;
-LL + use public::Hi;
-   |
 
 error: aborting due to 1 previous error
 

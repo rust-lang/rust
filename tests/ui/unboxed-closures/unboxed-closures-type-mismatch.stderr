@@ -6,16 +6,16 @@ LL |     let z = f(1_usize, 2);
    |             |
    |             arguments to this function are incorrect
    |
-note: closure parameter defined here
-  --> $DIR/unboxed-closures-type-mismatch.rs:4:18
-   |
-LL |     let mut f = |x: isize, y: isize| -> isize { x + y };
-   |                  ^^^^^^^^
 help: change the type of the numeric literal from `usize` to `isize`
    |
 LL -     let z = f(1_usize, 2);
 LL +     let z = f(1_isize, 2);
    |
+note: closure parameter defined here
+  --> $DIR/unboxed-closures-type-mismatch.rs:4:18
+   |
+LL |     let mut f = |x: isize, y: isize| -> isize { x + y };
+   |                  ^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/unboxed-closures-type-mismatch.rs:9:15
@@ -24,6 +24,11 @@ LL |     let z = g(1_usize, 2);
    |             - ^^^^^^^ expected `i32`, found `usize`
    |             |
    |             arguments to this function are incorrect
+   |
+help: change the type of the numeric literal from `usize` to `i32`
+   |
+LL -     let z = g(1_usize, 2);
+LL +     let z = g(1_i32, 2);
    |
 note: expected because the closure was earlier called with an argument of type `i32`
   --> $DIR/unboxed-closures-type-mismatch.rs:8:15
@@ -37,11 +42,6 @@ note: closure parameter defined here
    |
 LL |     let mut g = |x, y| { x + y };
    |                  ^
-help: change the type of the numeric literal from `usize` to `i32`
-   |
-LL -     let z = g(1_usize, 2);
-LL +     let z = g(1_i32, 2);
-   |
 
 error[E0308]: mismatched types
   --> $DIR/unboxed-closures-type-mismatch.rs:17:18
@@ -50,6 +50,11 @@ LL |         identity(1u16);
    |         -------- ^^^^ expected `u8`, found `u16`
    |         |
    |         arguments to this function are incorrect
+   |
+help: change the type of the numeric literal from `u16` to `u8`
+   |
+LL -         identity(1u16);
+LL +         identity(1u8);
    |
 note: expected because the closure was earlier called with an argument of type `u8`
   --> $DIR/unboxed-closures-type-mismatch.rs:16:18
@@ -63,11 +68,6 @@ note: closure parameter defined here
    |
 LL |         let identity = |x| x;
    |                         ^
-help: change the type of the numeric literal from `u16` to `u8`
-   |
-LL -         identity(1u16);
-LL +         identity(1u8);
-   |
 
 error[E0308]: mismatched types
   --> $DIR/unboxed-closures-type-mismatch.rs:20:18
@@ -100,6 +100,11 @@ LL |         identity(1u16);
    |         |
    |         arguments to this function are incorrect
    |
+help: change the type of the numeric literal from `u16` to `u8`
+   |
+LL -         identity(1u16);
+LL +         identity(1u8);
+   |
 note: expected because the closure was earlier called with an argument of type `u8`
   --> $DIR/unboxed-closures-type-mismatch.rs:29:18
    |
@@ -112,11 +117,6 @@ note: closure parameter defined here
    |
 LL |         let identity = |x| x;
    |                         ^
-help: change the type of the numeric literal from `u16` to `u8`
-   |
-LL -         identity(1u16);
-LL +         identity(1u8);
-   |
 
 error[E0308]: mismatched types
   --> $DIR/unboxed-closures-type-mismatch.rs:33:18

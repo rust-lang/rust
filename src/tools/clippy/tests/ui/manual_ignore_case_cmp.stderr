@@ -4,13 +4,13 @@ error: manual case-insensitive ASCII comparison
 LL |     if a.to_ascii_lowercase() == b.to_ascii_lowercase() {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::manual-ignore-case-cmp` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_ignore_case_cmp)]`
 help: consider using `.eq_ignore_ascii_case()` instead
    |
 LL -     if a.to_ascii_lowercase() == b.to_ascii_lowercase() {
 LL +     if a.eq_ignore_ascii_case(b) {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_ignore_case_cmp)]`
+   = note: `-D clippy::manual-ignore-case-cmp` implied by `-D warnings`
 
 error: manual case-insensitive ASCII comparison
   --> tests/ui/manual_ignore_case_cmp.rs:19:8

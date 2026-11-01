@@ -6,12 +6,12 @@ LL |     let _x = Rc::new(vec![1, 2]).into_iter();
    |              |
    |              move occurs because value has type `Vec<i32>`, which does not implement the `Copy` trait
    |
-note: `std::iter::IntoIterator::into_iter` takes ownership of the receiver `self`, which moves value
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     let _x = <Vec<i32> as Clone>::clone(&Rc::new(vec![1, 2])).into_iter();
    |              ++++++++++++++++++++++++++++                   +
+note: `std::iter::IntoIterator::into_iter` takes ownership of the receiver `self`, which moves value
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 
 error: aborting due to 1 previous error
 

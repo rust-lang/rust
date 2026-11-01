@@ -8,8 +8,6 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::collapsible-if` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
 help: collapse nested if block
    |
 LL ~     if x == "hello"
@@ -17,6 +15,8 @@ LL ~         && y == "world" {
 LL |             println!("Hello world!");
 LL ~         }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+   = note: `-D clippy::collapsible-if` implied by `-D warnings`
 
 error: this `if` statement can be collapsed
   --> tests/ui/collapsible_if.rs:16:5

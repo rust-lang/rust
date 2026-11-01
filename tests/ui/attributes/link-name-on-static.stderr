@@ -15,13 +15,13 @@ LL | #[link_name = "VALUE"]
 LL | static VALUE_DEFINITION: u8 = 0;
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: requested on the command line with `-W unused-attributes`
 help: did you mean to use `#[export_name]`?
    |
 LL - #[link_name = "VALUE"]
 LL + #[unsafe(export_name = "VALUE")]
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: requested on the command line with `-W unused-attributes`
 
 warning: the `link_name` attribute cannot be used on statics
   --> $DIR/link-name-on-static.rs:6:10
@@ -32,12 +32,12 @@ LL | #[unsafe(link_name = "UNSAFE_VALUE")]
 LL | static UNSAFE_VALUE_DEFINITION: u8 = 0;
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 help: did you mean to use `#[export_name]`?
    |
 LL - #[unsafe(link_name = "UNSAFE_VALUE")]
 LL + #[unsafe(export_name = "UNSAFE_VALUE")]
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 1 previous error; 2 warnings emitted
 

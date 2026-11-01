@@ -4,13 +4,13 @@ error: the following explicit lifetimes could be elided: 'a, 'b
 LL | fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
    |                       ^^  ^^       ^^          ^^
    |
-   = note: `-D clippy::needless-lifetimes` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_lifetimes)]`
 help: elide the lifetimes
    |
 LL - fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
 LL + fn distinct_lifetimes(_x: &u8, _y: &u8, _z: u8) {}
    |
+   = help: to override `-D warnings` add `#[allow(clippy::needless_lifetimes)]`
+   = note: `-D clippy::needless-lifetimes` implied by `-D warnings`
 
 error: the following explicit lifetimes could be elided: 'a, 'b
   --> tests/ui/needless_lifetimes.rs:19:24
@@ -498,12 +498,12 @@ error: the following explicit lifetimes could be elided: 'a
 LL |         fn one_input<'a>(x: &'a u8) -> &'a u8 {
    |                      ^^      ^^         ^^
    |
-   = note: this error originates in the macro `__inline_mac_mod_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: elide the lifetimes
    |
 LL -         fn one_input<'a>(x: &'a u8) -> &'a u8 {
 LL +         fn one_input(x: &u8) -> &u8 {
    |
+   = note: this error originates in the macro `__inline_mac_mod_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 42 previous errors
 

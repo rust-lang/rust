@@ -61,16 +61,16 @@ error[E0576]: cannot find method or associated constant `baz` in trait `Trait`
 LL |     reuse <F as Trait>::baz;
    |                         ^^^ not found in `Trait`
    |
-note: similarly named associated function `bar` defined here
-  --> $DIR/bad-resolve.rs:6:5
-   |
-LL |     fn bar() {}
-   |     ^^^^^^^^
 help: an associated function with a similar name exists
    |
 LL -     reuse <F as Trait>::baz;
 LL +     reuse <F as Trait>::bar;
    |
+note: similarly named associated function `bar` defined here
+  --> $DIR/bad-resolve.rs:6:5
+   |
+LL |     fn bar() {}
+   |     ^^^^^^^^
 
 error[E0425]: cannot find function `foo` in this scope
   --> $DIR/bad-resolve.rs:34:11
@@ -146,13 +146,13 @@ warning: trait objects without an explicit `dyn` are deprecated
 LL |     reuse Trait::foo2 { self.0 }
    |           ^^^^^
    |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
 help: if this is a dyn-compatible trait, use `dyn`
    |
 LL |     reuse <dyn Trait>::foo2 { self.0 }
    |           ++++      +
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
 
 error[E0038]: the trait `Trait` is not dyn compatible
   --> $DIR/bad-resolve.rs:37:11
@@ -160,6 +160,10 @@ error[E0038]: the trait `Trait` is not dyn compatible
 LL |     reuse Trait::foo2 { self.0 }
    |           ^^^^^ `Trait` is not dyn compatible
    |
+help: consider turning `bar` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
+   |
+LL |     fn bar(&self) {}
+   |            +++++
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/bad-resolve.rs:4:11
@@ -171,20 +175,16 @@ LL |     const C: u32 = 0;
 LL |     type Type;
 LL |     fn bar() {}
    |        ^^^ ...because associated function `bar` has no `self` parameter
+help: alternatively, consider constraining `bar` so it is explicitly marked as not applying to trait objects
+   |
+LL |     fn bar() where Self: Sized {}
+   |              +++++++++++++++++
    = help: consider moving `C` to another trait
    = help: the following types implement `Trait`:
              F
              S
            consider defining an enum where each variant holds one of these types,
            implementing `Trait` for this new enum and using it instead
-help: consider turning `bar` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
-   |
-LL |     fn bar(&self) {}
-   |            +++++
-help: alternatively, consider constraining `bar` so it is explicitly marked as not applying to trait objects
-   |
-LL |     fn bar() where Self: Sized {}
-   |              +++++++++++++++++
 
 error[E0433]: cannot find module or crate `unresolved_prefix` in this scope
   --> $DIR/bad-resolve.rs:45:7

@@ -9,8 +9,6 @@ LL | |         None => &[],
 LL | |     };
    | |_____^
    |
-   = note: `-D clippy::manual-option-as-slice` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_option_as_slice)]`
 help: use `Option::as_slice` directly
    |
 LL -     _ = match x.as_ref() {
@@ -20,6 +18,8 @@ LL -         None => &[],
 LL -     };
 LL +     _ = x.as_slice();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_option_as_slice)]`
+   = note: `-D clippy::manual-option-as-slice` implied by `-D warnings`
 
 error: manual implementation of `Option::as_slice`
   --> tests/ui/manual_option_as_slice.rs:11:9

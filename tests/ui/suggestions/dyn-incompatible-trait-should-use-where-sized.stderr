@@ -4,6 +4,10 @@ error[E0038]: the trait `Trait` is not dyn compatible
 LL | fn bar(x: &dyn Trait) {}
    |            ^^^^^^^^^ `Trait` is not dyn compatible
    |
+help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
+   |
+LL |     fn foo(&self) where Self: Other, { }
+   |            +++++
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/dyn-incompatible-trait-should-use-where-sized.rs:5:8
@@ -14,10 +18,6 @@ LL |     fn foo() where Self: Other, { }
    |        ^^^ ...because associated function `foo` has no `self` parameter
 LL |     fn bar(self: ()) {}
    |            ^^^^^^^^ ...because method `bar`'s `self` parameter cannot be dispatched on
-help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
-   |
-LL |     fn foo(&self) where Self: Other, { }
-   |            +++++
 help: alternatively, consider constraining `foo` so it is explicitly marked as not applying to trait objects
    |
 LL |     fn foo() where Self: Other, Self: Sized { }
@@ -34,8 +34,8 @@ error[E0307]: invalid `self` parameter type: `()`
 LL |     fn bar(self: ()) {}
    |                  ^^
    |
-   = note: type of `self` must be `Self` or a type that dereferences to it
    = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+   = note: type of `self` must be `Self` or a type that dereferences to it
 
 error: aborting due to 2 previous errors
 

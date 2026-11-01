@@ -79,11 +79,11 @@ error: expected identifier, found keyword `unsafe`
 LL | #[unsafe(allow(unsafe(dead_code)))]
    |                ^^^^^^ expected identifier, found keyword
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: escape `unsafe` to use it as an identifier
    |
 LL | #[unsafe(allow(r#unsafe(dead_code)))]
    |                ++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0452]: malformed lint attribute input
   --> $DIR/proc-unsafe-attributes.rs:29:16
@@ -128,7 +128,6 @@ LL | #[proc_macro_derive(unsafe(Foo))]
    |                           |
    |                           didn't expect any arguments here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[proc_macro_derive(unsafe(Foo))]
@@ -137,6 +136,7 @@ LL + #[proc_macro_derive(TraitName)]
 LL - #[proc_macro_derive(unsafe(Foo))]
 LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
 
 error: `proc_macro_attribute` is not an unsafe attribute
   --> $DIR/proc-unsafe-attributes.rs:18:3
@@ -170,11 +170,11 @@ error: expected identifier, found keyword `unsafe`
 LL | #[unsafe(allow(unsafe(dead_code)))]
    |                ^^^^^^ expected identifier, found keyword
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: escape `unsafe` to use it as an identifier
    |
 LL | #[unsafe(allow(r#unsafe(dead_code)))]
    |                ++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0452]: malformed lint attribute input
   --> $DIR/proc-unsafe-attributes.rs:29:16

@@ -6,8 +6,8 @@ LL | |         static ref LAZY_FOO: String = "foo".to_uppercase();
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::non-std-lazy-statics` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::non_std_lazy_statics)]`
+   = note: `-D clippy::non-std-lazy-statics` implied by `-D warnings`
 
 error: this macro has been superseded by `std::sync::LazyLock`
   --> tests/ui/non_std_lazy_static/non_std_lazy_static_unfixable.rs:35:5

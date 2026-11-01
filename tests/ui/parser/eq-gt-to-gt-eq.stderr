@@ -4,16 +4,16 @@ error: expected `{`, found `=>`
 LL |     if a => b {}
    |          ^^ expected `{`
    |
-note: the `if` expression is missing a block after this condition
-  --> $DIR/eq-gt-to-gt-eq.rs:8:8
-   |
-LL |     if a => b {}
-   |        ^
 help: you might have meant to write a "greater than or equal to" comparison
    |
 LL -     if a => b {}
 LL +     if a >= b {}
    |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/eq-gt-to-gt-eq.rs:8:8
+   |
+LL |     if a => b {}
+   |        ^
 
 error: expected `{`, found `=>`
   --> $DIR/eq-gt-to-gt-eq.rs:13:10
@@ -21,16 +21,16 @@ error: expected `{`, found `=>`
 LL |     if a => 1 {}
    |          ^^ expected `{`
    |
-note: the `if` expression is missing a block after this condition
-  --> $DIR/eq-gt-to-gt-eq.rs:13:8
-   |
-LL |     if a => 1 {}
-   |        ^
 help: you might have meant to write a "greater than or equal to" comparison
    |
 LL -     if a => 1 {}
 LL +     if a >= 1 {}
    |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/eq-gt-to-gt-eq.rs:13:8
+   |
+LL |     if a => 1 {}
+   |        ^
 
 error: expected `{`, found `=>`
   --> $DIR/eq-gt-to-gt-eq.rs:18:10
@@ -38,16 +38,16 @@ error: expected `{`, found `=>`
 LL |     if 1 => a {}
    |          ^^ expected `{`
    |
-note: the `if` expression is missing a block after this condition
-  --> $DIR/eq-gt-to-gt-eq.rs:18:8
-   |
-LL |     if 1 => a {}
-   |        ^
 help: you might have meant to write a "greater than or equal to" comparison
    |
 LL -     if 1 => a {}
 LL +     if 1 >= a {}
    |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/eq-gt-to-gt-eq.rs:18:8
+   |
+LL |     if 1 => a {}
+   |        ^
 
 error: expected `{`, found `=>`
   --> $DIR/eq-gt-to-gt-eq.rs:24:10
@@ -55,16 +55,16 @@ error: expected `{`, found `=>`
 LL |     if a => b && a != b {}
    |          ^^ expected `{`
    |
-note: the `if` expression is missing a block after this condition
-  --> $DIR/eq-gt-to-gt-eq.rs:24:8
-   |
-LL |     if a => b && a != b {}
-   |        ^
 help: you might have meant to write a "greater than or equal to" comparison
    |
 LL -     if a => b && a != b {}
 LL +     if a >= b && a != b {}
    |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/eq-gt-to-gt-eq.rs:24:8
+   |
+LL |     if a => b && a != b {}
+   |        ^
 
 error: expected `{`, found `=>`
   --> $DIR/eq-gt-to-gt-eq.rs:30:20
@@ -72,16 +72,16 @@ error: expected `{`, found `=>`
 LL |     if a != b && a => b {}
    |                    ^^ expected `{`
    |
-note: the `if` expression is missing a block after this condition
-  --> $DIR/eq-gt-to-gt-eq.rs:30:8
-   |
-LL |     if a != b && a => b {}
-   |        ^^^^^^^^^^^
 help: you might have meant to write a "greater than or equal to" comparison
    |
 LL -     if a != b && a => b {}
 LL +     if a != b && a >= b {}
    |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/eq-gt-to-gt-eq.rs:30:8
+   |
+LL |     if a != b && a => b {}
+   |        ^^^^^^^^^^^
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, found `=>`
   --> $DIR/eq-gt-to-gt-eq.rs:36:15

@@ -4,13 +4,13 @@ error: this can be `std::io::Error::other(_)`
 LL |     let _err = std::io::Error::new(std::io::ErrorKind::Other, E);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::io-other-error` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::io_other_error)]`
 help: use `std::io::Error::other`
    |
 LL -     let _err = std::io::Error::new(std::io::ErrorKind::Other, E);
 LL +     let _err = std::io::Error::other(E);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::io_other_error)]`
+   = note: `-D clippy::io-other-error` implied by `-D warnings`
 
 error: this can be `std::io::Error::other(_)`
   --> tests/ui/io_other_error.rs:26:16

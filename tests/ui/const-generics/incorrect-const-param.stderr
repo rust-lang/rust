@@ -42,11 +42,11 @@ error[E0423]: cannot find value `N` in this scope
 LL | impl<T, N> From<[T; N]> for VecWrapper<T>
    |                     ^ not found in this scope
    |
-   = note: a type parameter named `N` exists in another namespace
 help: you might have meant to write a const parameter here
    |
 LL | impl<T, const N: /* Type */> From<[T; N]> for VecWrapper<T>
    |         +++++  ++++++++++++
+   = note: a type parameter named `N` exists in another namespace
 
 error[E0423]: cannot find value `N` in this scope
   --> $DIR/incorrect-const-param.rs:40:24
@@ -54,11 +54,11 @@ error[E0423]: cannot find value `N` in this scope
 LL |     fn from(slice: [T; N]) -> Self {
    |                        ^ not found in this scope
    |
-   = note: a type parameter named `N` exists in another namespace
 help: you might have meant to write a const parameter here
    |
 LL | impl<T, const N: /* Type */> From<[T; N]> for VecWrapper<T>
    |         +++++  ++++++++++++
+   = note: a type parameter named `N` exists in another namespace
 
 error: aborting due to 6 previous errors
 

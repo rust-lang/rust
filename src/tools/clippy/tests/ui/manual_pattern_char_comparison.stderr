@@ -4,8 +4,8 @@ error: this manual char comparison can be written more succinctly
 LL |     sentence.trim_end_matches(|c: char| c == '.' || c == ',' || c == '!' || c == '?');
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using an array of `char`: `['.', ',', '!', '?']`
    |
-   = note: `-D clippy::manual-pattern-char-comparison` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_pattern_char_comparison)]`
+   = note: `-D clippy::manual-pattern-char-comparison` implied by `-D warnings`
 
 error: this manual char comparison can be written more succinctly
   --> tests/ui/manual_pattern_char_comparison.rs:13:20

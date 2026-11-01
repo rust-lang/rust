@@ -4,13 +4,13 @@ error: this let-binding has unit value
 LL |     let _x = println!("x");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::let-unit-value` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::let_unit_value)]`
 help: omit the `let` binding
    |
 LL -     let _x = println!("x");
 LL +     println!("x");
    |
+   = help: to override `-D warnings` add `#[allow(clippy::let_unit_value)]`
+   = note: `-D clippy::let-unit-value` implied by `-D warnings`
 
 error: this let-binding has unit value
   --> tests/ui/let_unit.rs:60:5

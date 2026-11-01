@@ -6,15 +6,15 @@ LL |     identity_u16(x);
    |     |
    |     arguments to this function are incorrect
    |
+help: you can convert a `u8` to a `u16`
+   |
+LL |     identity_u16(x.into());
+   |                   +++++++
 note: function defined here
   --> $DIR/tutorial-suffix-inference-test.rs:8:8
    |
 LL |     fn identity_u16(n: u16) -> u16 { n }
    |        ^^^^^^^^^^^^ ------
-help: you can convert a `u8` to a `u16`
-   |
-LL |     identity_u16(x.into());
-   |                   +++++++
 
 error[E0308]: mismatched types
   --> $DIR/tutorial-suffix-inference-test.rs:14:18
@@ -24,15 +24,15 @@ LL |     identity_u16(y);
    |     |
    |     arguments to this function are incorrect
    |
+help: you can convert an `i32` to a `u16` and panic if the converted value doesn't fit
+   |
+LL |     identity_u16(y.try_into().unwrap());
+   |                   ++++++++++++++++++++
 note: function defined here
   --> $DIR/tutorial-suffix-inference-test.rs:8:8
    |
 LL |     fn identity_u16(n: u16) -> u16 { n }
    |        ^^^^^^^^^^^^ ------
-help: you can convert an `i32` to a `u16` and panic if the converted value doesn't fit
-   |
-LL |     identity_u16(y.try_into().unwrap());
-   |                   ++++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/tutorial-suffix-inference-test.rs:23:18
@@ -42,15 +42,15 @@ LL |     identity_u16(a);
    |     |
    |     arguments to this function are incorrect
    |
+help: you can convert an `isize` to a `u16` and panic if the converted value doesn't fit
+   |
+LL |     identity_u16(a.try_into().unwrap());
+   |                   ++++++++++++++++++++
 note: function defined here
   --> $DIR/tutorial-suffix-inference-test.rs:8:8
    |
 LL |     fn identity_u16(n: u16) -> u16 { n }
    |        ^^^^^^^^^^^^ ------
-help: you can convert an `isize` to a `u16` and panic if the converted value doesn't fit
-   |
-LL |     identity_u16(a.try_into().unwrap());
-   |                   ++++++++++++++++++++
 
 error: aborting due to 3 previous errors
 

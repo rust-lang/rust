@@ -4,12 +4,12 @@ error[E0308]: mismatched types
 LL |     let Some(ref a): Option<&[u8]> = some else { return };
    |                                      ^^^^ expected `Option<&[u8]>`, found `Option<Vec<u8>>`
    |
-   = note: expected enum `Option<&[u8]>`
-              found enum `Option<Vec<u8>>`
 help: try using `.as_deref()` to convert `Option<Vec<u8>>` to `Option<&[u8]>`
    |
 LL |     let Some(ref a): Option<&[u8]> = some.as_deref() else { return };
    |                                          +++++++++++
+   = note: expected enum `Option<&[u8]>`
+              found enum `Option<Vec<u8>>`
 
 error[E0308]: mismatched types
   --> $DIR/let-else-ref-bindings.rs:20:38
@@ -17,13 +17,13 @@ error[E0308]: mismatched types
 LL |     let Some(ref a): Option<&[u8]> = &some else { return };
    |                                      ^^^^^ expected `Option<&[u8]>`, found `&Option<Vec<u8>>`
    |
-   = note:   expected enum `Option<&[u8]>`
-           found reference `&Option<Vec<u8>>`
 help: try using `.as_deref()` to convert `&Option<Vec<u8>>` to `Option<&[u8]>`
    |
 LL -     let Some(ref a): Option<&[u8]> = &some else { return };
 LL +     let Some(ref a): Option<&[u8]> = some.as_deref() else { return };
    |
+   = note:   expected enum `Option<&[u8]>`
+           found reference `&Option<Vec<u8>>`
 
 error[E0308]: mismatched types
   --> $DIR/let-else-ref-bindings.rs:24:34
@@ -33,12 +33,12 @@ LL |     let Some(a): Option<&[u8]> = some else { return };
    |                  |
    |                  expected due to this
    |
-   = note: expected enum `Option<&[u8]>`
-              found enum `Option<Vec<u8>>`
 help: try using `.as_deref()` to convert `Option<Vec<u8>>` to `Option<&[u8]>`
    |
 LL |     let Some(a): Option<&[u8]> = some.as_deref() else { return };
    |                                      +++++++++++
+   = note: expected enum `Option<&[u8]>`
+              found enum `Option<Vec<u8>>`
 
 error[E0308]: mismatched types
   --> $DIR/let-else-ref-bindings.rs:27:34
@@ -48,13 +48,13 @@ LL |     let Some(a): Option<&[u8]> = &some else { return };
    |                  |
    |                  expected due to this
    |
-   = note:   expected enum `Option<&[u8]>`
-           found reference `&Option<Vec<u8>>`
 help: try using `.as_deref()` to convert `&Option<Vec<u8>>` to `Option<&[u8]>`
    |
 LL -     let Some(a): Option<&[u8]> = &some else { return };
 LL +     let Some(a): Option<&[u8]> = some.as_deref() else { return };
    |
+   = note:   expected enum `Option<&[u8]>`
+           found reference `&Option<Vec<u8>>`
 
 error[E0308]: mismatched types
   --> $DIR/let-else-ref-bindings.rs:44:46

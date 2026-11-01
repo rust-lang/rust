@@ -4,8 +4,8 @@ error: `(-6_i32)` is never greater than `9` and has therefore no effect
 LL |     let _ = (-6_i32).min(9);
    |             ^^^^^^^^^^^^^^^ help: try: `(-6_i32)`
    |
-   = note: `-D clippy::unnecessary-min-or-max` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_min_or_max)]`
+   = note: `-D clippy::unnecessary-min-or-max` implied by `-D warnings`
 
 error: `(-6_i32)` is never greater than `9` and has therefore no effect
   --> tests/ui/unnecessary_min_or_max.rs:14:13

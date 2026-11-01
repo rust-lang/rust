@@ -4,8 +4,8 @@ error[E0658]: attributes on expressions are experimental
 LL |         #[instrument_fn = "off"]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: attributes on expressions are experimental
@@ -14,8 +14,8 @@ error[E0658]: attributes on expressions are experimental
 LL |     let _x = #[instrument_fn = "on"]
    |              ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: the `instrument_fn` attribute cannot be used on crates

@@ -6,12 +6,12 @@ LL |     #[link_ordinal("JustMonika")]
    |                    |
    |                    expected an integer literal here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute>
 help: must be of the form
    |
 LL -     #[link_ordinal("JustMonika")]
 LL +     #[link_ordinal(ordinal)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute>
 
 error[E0539]: malformed `link_ordinal` attribute input
   --> $DIR/link-ordinal-invalid-format.rs:6:7
@@ -21,12 +21,12 @@ LL |     #[link_ordinal("JustMonika")]
    |                    |
    |                    expected an integer literal here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute>
 help: must be of the form
    |
 LL -     #[link_ordinal("JustMonika")]
 LL +     #[link_ordinal(ordinal)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute>
 
 error: aborting due to 2 previous errors
 

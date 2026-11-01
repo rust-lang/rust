@@ -6,6 +6,11 @@ LL | /// [`Vfs`][crate::Vfs]
    |      |
    |      because label contains path that resolves to same destination
    |
+help: remove explicit link target
+   |
+LL - /// [`Vfs`][crate::Vfs]
+LL + /// [`Vfs`]
+   |
    = note: when a link's destination is not specified,
            the label is used to resolve intra-doc links
 note: the lint level is defined here
@@ -13,11 +18,6 @@ note: the lint level is defined here
    |
 LL | #![deny(rustdoc::redundant_explicit_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: remove explicit link target
-   |
-LL - /// [`Vfs`][crate::Vfs]
-LL + /// [`Vfs`]
-   |
 
 error: aborting due to 1 previous error
 

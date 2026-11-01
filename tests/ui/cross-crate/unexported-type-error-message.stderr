@@ -6,12 +6,12 @@ LL |     let x: isize = unexported_type_error_message::foo();
    |            |
    |            expected due to this
    |
-   = note: expected type `isize`
-              found enum `Option<isize>`
 help: consider using `Option::expect` to unwrap the `Option<isize>` value, panicking if the value is an `Option::None`
    |
 LL |     let x: isize = unexported_type_error_message::foo().expect("REASON");
    |                                                        +++++++++++++++++
+   = note: expected type `isize`
+              found enum `Option<isize>`
 
 error: aborting due to 1 previous error
 

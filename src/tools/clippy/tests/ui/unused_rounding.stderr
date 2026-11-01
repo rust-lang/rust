@@ -4,8 +4,8 @@ error: used the `ceil` method with a whole number float
 LL |     let _ = 1f32.ceil();
    |             ^^^^^^^^^^^ help: remove the `ceil` method call: `1f32`
    |
-   = note: `-D clippy::unused-rounding` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unused_rounding)]`
+   = note: `-D clippy::unused-rounding` implied by `-D warnings`
 
 error: used the `floor` method with a whole number float
   --> tests/ui/unused_rounding.rs:8:13

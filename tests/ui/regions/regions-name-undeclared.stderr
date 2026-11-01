@@ -116,7 +116,6 @@ error[E0261]: use of undeclared lifetime name `'b`
 LL | ...                   &'b isize,
    |                        ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'b` lifetime
    |
 LL |             b: Box<dyn for<'b, 'a> FnOnce(&'a isize,
@@ -125,6 +124,7 @@ help: consider introducing lifetime `'b` here
    |
 LL | fn fn_types<'b>(a: &'a isize,
    |            ++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:46:36

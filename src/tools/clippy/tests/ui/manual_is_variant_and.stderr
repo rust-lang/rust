@@ -7,8 +7,8 @@ LL |       let _ = opt.map(|x| x > 1)
 LL | |         .unwrap_or_default();
    | |____________________________^ help: use: `is_some_and(|x| x > 1)`
    |
-   = note: `-D clippy::manual-is-variant-and` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_is_variant_and)]`
+   = note: `-D clippy::manual-is-variant-and` implied by `-D warnings`
 
 error: called `map(<f>).unwrap_or_default()` on an `Option` value
   --> tests/ui/manual_is_variant_and.rs:57:17

@@ -6,8 +6,8 @@ LL |     println!("");
    |              |
    |              help: remove the empty string
    |
-   = note: `-D clippy::println-empty-string` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::println_empty_string)]`
+   = note: `-D clippy::println-empty-string` implied by `-D warnings`
 
 error: empty string literal in `println!`
   --> tests/ui/println_empty_string.rs:10:14

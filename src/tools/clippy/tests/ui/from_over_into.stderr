@@ -4,8 +4,6 @@ error: an implementation of `From` is preferred since it gives you `Into<_>` for
 LL | impl Into<StringWrapper> for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::from-over-into` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::from_over_into)]`
 help: replace the `Into` implementation with `From<std::string::String>`
    |
 LL ~ impl From<String> for StringWrapper {
@@ -13,6 +11,8 @@ LL |
 LL ~     fn from(val: String) -> Self {
 LL ~         StringWrapper(val)
    |
+   = help: to override `-D warnings` add `#[allow(clippy::from_over_into)]`
+   = note: `-D clippy::from-over-into` implied by `-D warnings`
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
   --> tests/ui/from_over_into.rs:16:1

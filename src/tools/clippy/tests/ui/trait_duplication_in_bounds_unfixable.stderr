@@ -5,8 +5,8 @@ LL | fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
    |               ^^^^^
    |
    = help: consider removing this trait bound
-   = note: `-D clippy::trait-duplication-in-bounds` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::trait_duplication_in_bounds)]`
+   = note: `-D clippy::trait-duplication-in-bounds` implied by `-D warnings`
 
 error: this trait bound is already specified in the where clause
   --> tests/ui/trait_duplication_in_bounds_unfixable.rs:7:23

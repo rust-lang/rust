@@ -17,6 +17,10 @@ LL | |     &C
 LL |   }
    |   - unexpected token
    |
+help: you may have meant to write a `;` to terminate the const earlier
+   |
+LL |     const C: u8 = u8::const_default();
+   |                                      +
 note: the const was parsed as having a bit-and binary expression
   --> $DIR/const-recover-semi-issue-151149.rs:22:19
    |
@@ -26,10 +30,6 @@ LL |     &C
    |     -- parsed as the right-hand expression
    |     |
    |     this was parsed as a bit-and
-help: you may have meant to write a `;` to terminate the const earlier
-   |
-LL |     const C: u8 = u8::const_default();
-   |                                      +
 
 error: expected `;`, found `}`
   --> $DIR/const-recover-semi-issue-151149.rs:28:9

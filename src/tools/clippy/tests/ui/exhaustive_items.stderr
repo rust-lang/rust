@@ -10,13 +10,13 @@ LL | |         Quux(String),
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::exhaustive-enums` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::exhaustive_enums)]`
 help: try adding #[non_exhaustive]
    |
 LL ~     #[non_exhaustive]
 LL ~     pub enum Exhaustive {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::exhaustive_enums)]`
+   = note: `-D clippy::exhaustive-enums` implied by `-D warnings`
 
 error: exported enums should not be exhaustive
   --> tests/ui/exhaustive_items.rs:19:5
@@ -46,13 +46,13 @@ LL | |         pub bar: String,
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::exhaustive-structs` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::exhaustive_structs)]`
 help: try adding #[non_exhaustive]
    |
 LL ~     #[non_exhaustive]
 LL ~     pub struct Exhaustive {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::exhaustive_structs)]`
+   = note: `-D clippy::exhaustive-structs` implied by `-D warnings`
 
 error: aborting due to 3 previous errors
 

@@ -9,8 +9,8 @@ LL | |     }
    | |_____^
    |
    = help: consider implementing the trait `std::cmp::PartialEq` or choosing a less ambiguous method name
-   = note: `-D clippy::should-implement-trait` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::should_implement_trait)]`
+   = note: `-D clippy::should-implement-trait` implied by `-D warnings`
 
 error: method `from_str` can be confused for the standard trait method `std::str::FromStr::from_str`
   --> tests/ui/should_impl_trait/method_list_2.rs:30:5

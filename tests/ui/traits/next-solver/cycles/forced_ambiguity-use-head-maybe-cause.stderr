@@ -4,7 +4,6 @@ error[E0283]: type annotations needed
 LL |     impls_trait::<Root<_>>()
    |                   ^^^^^^^ cannot infer type for struct `Head<_>`
    |
-   = note: cannot satisfy `Head<_>: Trait`
 help: `Head<T>` implements trait `Trait`
   --> $DIR/forced_ambiguity-use-head-maybe-cause.rs:23:1
    |
@@ -19,6 +18,7 @@ LL | | where
 LL | |     Error<T>: Trait,
 LL | |     NotImplemented<T>: Trait,
    | |_____________________________^ `Head<T>`
+   = note: cannot satisfy `Head<_>: Trait`
 note: required for `Root<_>` to implement `Trait`
   --> $DIR/forced_ambiguity-use-head-maybe-cause.rs:18:9
    |

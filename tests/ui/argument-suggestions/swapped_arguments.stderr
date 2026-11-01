@@ -6,16 +6,16 @@ LL |   two_args(1.0, 1);
    |            |
    |            expected `i32`, found `{float}`
    |
-note: function defined here
-  --> $DIR/swapped_arguments.rs:3:4
-   |
-LL | fn two_args(_a: i32, _b: f32) {}
-   |    ^^^^^^^^
 help: swap these arguments
    |
 LL -   two_args(1.0, 1);
 LL +   two_args(1, 1.0);
    |
+note: function defined here
+  --> $DIR/swapped_arguments.rs:3:4
+   |
+LL | fn two_args(_a: i32, _b: f32) {}
+   |    ^^^^^^^^
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/swapped_arguments.rs:9:3
@@ -25,16 +25,16 @@ LL |   three_args(1.0,   1,  "");
    |              |
    |              expected `i32`, found `{float}`
    |
-note: function defined here
-  --> $DIR/swapped_arguments.rs:4:4
-   |
-LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^
 help: swap these arguments
    |
 LL -   three_args(1.0,   1,  "");
 LL +   three_args(1, 1.0, "");
    |
+note: function defined here
+  --> $DIR/swapped_arguments.rs:4:4
+   |
+LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/swapped_arguments.rs:10:3
@@ -44,16 +44,16 @@ LL |   three_args(  1,  "", 1.0);
    |                    |
    |                    expected `f32`, found `&'static str`
    |
-note: function defined here
-  --> $DIR/swapped_arguments.rs:4:4
-   |
-LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^
 help: swap these arguments
    |
 LL -   three_args(  1,  "", 1.0);
 LL +   three_args(1, 1.0, "");
    |
+note: function defined here
+  --> $DIR/swapped_arguments.rs:4:4
+   |
+LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/swapped_arguments.rs:11:3
@@ -63,16 +63,16 @@ LL |   three_args( "", 1.0,   1);
    |               |
    |               expected `i32`, found `&'static str`
    |
-note: function defined here
-  --> $DIR/swapped_arguments.rs:4:4
-   |
-LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^
 help: swap these arguments
    |
 LL -   three_args( "", 1.0,   1);
 LL +   three_args(1, 1.0, "");
    |
+note: function defined here
+  --> $DIR/swapped_arguments.rs:4:4
+   |
+LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
+   |    ^^^^^^^^^^
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/swapped_arguments.rs:13:3
@@ -84,16 +84,16 @@ LL |   four_args(1.0, 1, X {}, "");
    |             |    expected `f32`, found `{integer}`
    |             expected `i32`, found `{float}`
    |
-note: function defined here
-  --> $DIR/swapped_arguments.rs:5:4
-   |
-LL | fn four_args(_a: i32, _b: f32, _c: &str, _d: X) {}
-   |    ^^^^^^^^^
 help: did you mean
    |
 LL -   four_args(1.0, 1, X {}, "");
 LL +   four_args(1, 1.0, "", X {});
    |
+note: function defined here
+  --> $DIR/swapped_arguments.rs:5:4
+   |
+LL | fn four_args(_a: i32, _b: f32, _c: &str, _d: X) {}
+   |    ^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

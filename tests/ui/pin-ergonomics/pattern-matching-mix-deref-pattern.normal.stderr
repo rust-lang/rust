@@ -6,12 +6,12 @@ LL |     let Foo { x, y } = foo.as_mut();
    |         |
    |         expected `Pin<&mut Foo<T, U>>`, found `Foo<_, _>`
    |
-   = note: expected struct `Pin<&mut Foo<T, U>>`
-              found struct `Foo<_, _>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let Foo { x, y } = *foo.as_mut();
    |                        +
+   = note: expected struct `Pin<&mut Foo<T, U>>`
+              found struct `Foo<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:37:9
@@ -21,12 +21,12 @@ LL |     match foo.as_mut() {
 LL |         Foo { x, y } => {}
    |         ^^^^^^^^^^^^ expected `Pin<&mut Foo<T, U>>`, found `Foo<_, _>`
    |
-   = note: expected struct `Pin<&mut Foo<T, U>>`
-              found struct `Foo<_, _>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *foo.as_mut() {
    |           +
+   = note: expected struct `Pin<&mut Foo<T, U>>`
+              found struct `Foo<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:45:9
@@ -36,12 +36,12 @@ LL |     let _ = || match foo.as_mut() {
 LL |         Foo { x, y } => {}
    |         ^^^^^^^^^^^^ expected `Pin<&mut Foo<T, U>>`, found `Foo<_, _>`
    |
-   = note: expected struct `Pin<&mut Foo<T, U>>`
-              found struct `Foo<_, _>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let _ = || match *foo.as_mut() {
    |                      +
+   = note: expected struct `Pin<&mut Foo<T, U>>`
+              found struct `Foo<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:55:9
@@ -51,12 +51,12 @@ LL |     let Foo { x, y } = foo;
    |         |
    |         expected `Pin<&Foo<T, U>>`, found `Foo<_, _>`
    |
-   = note: expected struct `Pin<&Foo<T, U>>`
-              found struct `Foo<_, _>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let Foo { x, y } = *foo;
    |                        +
+   = note: expected struct `Pin<&Foo<T, U>>`
+              found struct `Foo<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:59:9
@@ -66,12 +66,12 @@ LL |     match foo {
 LL |         Foo { x, y } => {}
    |         ^^^^^^^^^^^^ expected `Pin<&Foo<T, U>>`, found `Foo<_, _>`
    |
-   = note: expected struct `Pin<&Foo<T, U>>`
-              found struct `Foo<_, _>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *foo {
    |           +
+   = note: expected struct `Pin<&Foo<T, U>>`
+              found struct `Foo<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:67:9
@@ -81,12 +81,12 @@ LL |     let _ = || match foo {
 LL |         Foo { x, y } => {}
    |         ^^^^^^^^^^^^ expected `Pin<&Foo<T, U>>`, found `Foo<_, _>`
    |
-   = note: expected struct `Pin<&Foo<T, U>>`
-              found struct `Foo<_, _>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let _ = || match *foo {
    |                      +
+   = note: expected struct `Pin<&Foo<T, U>>`
+              found struct `Foo<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:77:9
@@ -96,12 +96,12 @@ LL |     let Bar(x, y) = bar.as_mut();
    |         |
    |         expected `Pin<&mut Bar<T, U>>`, found `Bar<_, _>`
    |
-   = note: expected struct `Pin<&mut Bar<T, U>>`
-              found struct `Bar<_, _>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let Bar(x, y) = *bar.as_mut();
    |                     +
+   = note: expected struct `Pin<&mut Bar<T, U>>`
+              found struct `Bar<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:81:9
@@ -111,12 +111,12 @@ LL |     match bar.as_mut() {
 LL |         Bar(x, y) => {}
    |         ^^^^^^^^^ expected `Pin<&mut Bar<T, U>>`, found `Bar<_, _>`
    |
-   = note: expected struct `Pin<&mut Bar<T, U>>`
-              found struct `Bar<_, _>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *bar.as_mut() {
    |           +
+   = note: expected struct `Pin<&mut Bar<T, U>>`
+              found struct `Bar<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:89:9
@@ -126,12 +126,12 @@ LL |     let _ = || match bar.as_mut() {
 LL |         Bar(x, y) => {}
    |         ^^^^^^^^^ expected `Pin<&mut Bar<T, U>>`, found `Bar<_, _>`
    |
-   = note: expected struct `Pin<&mut Bar<T, U>>`
-              found struct `Bar<_, _>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let _ = || match *bar.as_mut() {
    |                      +
+   = note: expected struct `Pin<&mut Bar<T, U>>`
+              found struct `Bar<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:99:9
@@ -141,12 +141,12 @@ LL |     let Bar(x, y) = bar;
    |         |
    |         expected `Pin<&Bar<T, U>>`, found `Bar<_, _>`
    |
-   = note: expected struct `Pin<&Bar<T, U>>`
-              found struct `Bar<_, _>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let Bar(x, y) = *bar;
    |                     +
+   = note: expected struct `Pin<&Bar<T, U>>`
+              found struct `Bar<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:103:9
@@ -156,12 +156,12 @@ LL |     match bar {
 LL |         Bar(x, y) => {}
    |         ^^^^^^^^^ expected `Pin<&Bar<T, U>>`, found `Bar<_, _>`
    |
-   = note: expected struct `Pin<&Bar<T, U>>`
-              found struct `Bar<_, _>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *bar {
    |           +
+   = note: expected struct `Pin<&Bar<T, U>>`
+              found struct `Bar<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:111:9
@@ -171,12 +171,12 @@ LL |     let _ = || match bar {
 LL |         Bar(x, y) => {}
    |         ^^^^^^^^^ expected `Pin<&Bar<T, U>>`, found `Bar<_, _>`
    |
-   = note: expected struct `Pin<&Bar<T, U>>`
-              found struct `Bar<_, _>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let _ = || match *bar {
    |                      +
+   = note: expected struct `Pin<&Bar<T, U>>`
+              found struct `Bar<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:121:9
@@ -186,12 +186,12 @@ LL |     let NonPinProject { x } = foo;
    |         |
    |         expected `Pin<&mut NonPinProject<T>>`, found `NonPinProject<_>`
    |
-   = note: expected struct `Pin<&mut NonPinProject<T>>`
-              found struct `NonPinProject<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let NonPinProject { x } = *foo;
    |                               +
+   = note: expected struct `Pin<&mut NonPinProject<T>>`
+              found struct `NonPinProject<_>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:125:9
@@ -201,12 +201,12 @@ LL |     let NonPinProject { x } = bar;
    |         |
    |         expected `Pin<&NonPinProject<U>>`, found `NonPinProject<_>`
    |
-   = note: expected struct `Pin<&NonPinProject<U>>`
-              found struct `NonPinProject<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     let NonPinProject { x } = *bar;
    |                               +
+   = note: expected struct `Pin<&NonPinProject<U>>`
+              found struct `NonPinProject<_>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:131:9
@@ -216,12 +216,12 @@ LL |     match foo {
 LL |         NonPinProject { x } => {}
    |         ^^^^^^^^^^^^^^^^^^^ expected `Pin<&mut NonPinProject<T>>`, found `NonPinProject<_>`
    |
-   = note: expected struct `Pin<&mut NonPinProject<T>>`
-              found struct `NonPinProject<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *foo {
    |           +
+   = note: expected struct `Pin<&mut NonPinProject<T>>`
+              found struct `NonPinProject<_>`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching-mix-deref-pattern.rs:139:9
@@ -231,12 +231,12 @@ LL |     match bar {
 LL |         NonPinProject { x } => {}
    |         ^^^^^^^^^^^^^^^^^^^ expected `Pin<&NonPinProject<U>>`, found `NonPinProject<_>`
    |
-   = note: expected struct `Pin<&NonPinProject<U>>`
-              found struct `NonPinProject<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *bar {
    |           +
+   = note: expected struct `Pin<&NonPinProject<U>>`
+              found struct `NonPinProject<_>`
 
 error: aborting due to 16 previous errors
 

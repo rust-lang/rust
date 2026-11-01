@@ -8,6 +8,7 @@ help: consider importing this struct
    |
 LL + use std::mem::type_info::Type;
    |
+   = note: 'std::mem::type_info::Type' is unstable, add `#![feature(type_info)]` to the crate attributes to enable
 
 error: aborting due to 1 previous error
 

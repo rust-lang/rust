@@ -225,12 +225,12 @@ LL | fn attack_from_mars() -> bool {
 LL |     { true } || { true }
    |              ^^^^^^^^^^^ expected `bool`, found closure
    |
-   = note: expected type `bool`
-           found closure `{closure@$DIR/expr-as-stmt.rs:51:14: 51:16}`
 help: parentheses are required to parse this as an expression
    |
 LL |     ({ true }) || { true }
    |     +        +
+   = note: expected type `bool`
+           found closure `{closure@$DIR/expr-as-stmt.rs:51:14: 51:16}`
 
 error[E0308]: mismatched types
   --> $DIR/expr-as-stmt.rs:69:5

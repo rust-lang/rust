@@ -4,16 +4,16 @@ error: unresolved link to `Foo::X`
 LL | /// [value@Foo::X]
    |      ^^^^^^^^^^^^ this link resolves to the variant `X`, which is not in the value namespace
    |
-note: the lint level is defined here
-  --> $DIR/value-ctor.rs:2:9
-   |
-LL | #![deny(rustdoc::broken_intra_doc_links)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to link to the variant, prefix with `variant@`
    |
 LL - /// [value@Foo::X]
 LL + /// [variant@Foo::X]
    |
+note: the lint level is defined here
+  --> $DIR/value-ctor.rs:2:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unresolved link to `MyStruct`
   --> $DIR/value-ctor.rs:10:11

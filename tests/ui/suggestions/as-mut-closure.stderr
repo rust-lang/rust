@@ -6,15 +6,15 @@ LL |     let _ = option.map(|arg| append(arg));
    |                              |
    |                              arguments to this function are incorrect
    |
+help: consider using `as_mut` instead
+   |
+LL |     let _ = option.as_mut().map(|arg| append(arg));
+   |                    +++++++++
 note: function defined here
   --> $DIR/as-mut-closure.rs:6:4
    |
 LL | fn append(value: &mut String) {
    |    ^^^^^^ ------------------
-help: consider using `as_mut` instead
-   |
-LL |     let _ = option.as_mut().map(|arg| append(arg));
-   |                    +++++++++
 
 error[E0308]: mismatched types
   --> $DIR/as-mut-closure.rs:18:54
@@ -24,15 +24,15 @@ LL |     let _ = (&mut option).and_then(|arg| Some(append(arg)));
    |                                               |
    |                                               arguments to this function are incorrect
    |
+help: consider using `as_mut` instead
+   |
+LL |     let _ = (&mut option).as_mut().and_then(|arg| Some(append(arg)));
+   |                           +++++++++
 note: function defined here
   --> $DIR/as-mut-closure.rs:6:4
    |
 LL | fn append(value: &mut String) {
    |    ^^^^^^ ------------------
-help: consider using `as_mut` instead
-   |
-LL |     let _ = (&mut option).as_mut().and_then(|arg| Some(append(arg)));
-   |                           +++++++++
 
 error[E0308]: mismatched types
   --> $DIR/as-mut-closure.rs:22:37
@@ -42,15 +42,15 @@ LL |     let _ = result.map(|arg| append(arg));
    |                              |
    |                              arguments to this function are incorrect
    |
+help: consider using `as_mut` instead
+   |
+LL |     let _ = result.as_mut().map(|arg| append(arg));
+   |                    +++++++++
 note: function defined here
   --> $DIR/as-mut-closure.rs:6:4
    |
 LL | fn append(value: &mut String) {
    |    ^^^^^^ ------------------
-help: consider using `as_mut` instead
-   |
-LL |     let _ = result.as_mut().map(|arg| append(arg));
-   |                    +++++++++
 
 error[E0308]: mismatched types
   --> $DIR/as-mut-closure.rs:24:52
@@ -60,15 +60,15 @@ LL |     let _ = (&mut result).and_then(|arg| Ok(append(arg)));
    |                                             |
    |                                             arguments to this function are incorrect
    |
+help: consider using `as_mut` instead
+   |
+LL |     let _ = (&mut result).as_mut().and_then(|arg| Ok(append(arg)));
+   |                           +++++++++
 note: function defined here
   --> $DIR/as-mut-closure.rs:6:4
    |
 LL | fn append(value: &mut String) {
    |    ^^^^^^ ------------------
-help: consider using `as_mut` instead
-   |
-LL |     let _ = (&mut result).as_mut().and_then(|arg| Ok(append(arg)));
-   |                           +++++++++
 
 error[E0308]: mismatched types
   --> $DIR/as-mut-closure.rs:29:44
@@ -78,15 +78,15 @@ LL |     let _ = shared.map(|mut arg| increment(arg));
    |                                  |
    |                                  arguments to this function are incorrect
    |
+help: consider mutably borrowing here
+   |
+LL |     let _ = shared.map(|mut arg| increment(&mut arg));
+   |                                            ++++
 note: function defined here
   --> $DIR/as-mut-closure.rs:10:4
    |
 LL | fn increment(value: &mut i32) {
    |    ^^^^^^^^^ ---------------
-help: consider mutably borrowing here
-   |
-LL |     let _ = shared.map(|mut arg| increment(&mut arg));
-   |                                            ++++
 
 error[E0308]: mismatched types
   --> $DIR/as-mut-closure.rs:32:44
@@ -96,15 +96,15 @@ LL |     let _ = nested.map(|mut arg| increment(arg));
    |                                  |
    |                                  arguments to this function are incorrect
    |
+help: consider mutably borrowing here
+   |
+LL |     let _ = nested.map(|mut arg| increment(&mut arg));
+   |                                            ++++
 note: function defined here
   --> $DIR/as-mut-closure.rs:10:4
    |
 LL | fn increment(value: &mut i32) {
    |    ^^^^^^^^^ ---------------
-help: consider mutably borrowing here
-   |
-LL |     let _ = nested.map(|mut arg| increment(&mut arg));
-   |                                            ++++
 
 error: aborting due to 6 previous errors
 

@@ -7,8 +7,6 @@ LL |       let _ = opt.map(|x| x + 1)
 LL | |         .unwrap_or(0);
    | |_____________________^
    |
-   = note: `-D clippy::map-unwrap-or` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::map_unwrap_or)]`
 help: use `map_or(<a>, <f>)` instead
    |
 LL -     let _ = opt.map(|x| x + 1)
@@ -17,6 +15,8 @@ LL -         // Should lint even though this call is on a separate line.
 LL -         .unwrap_or(0);
 LL +     let _ = opt.map_or(0, |x| x + 1);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::map_unwrap_or)]`
+   = note: `-D clippy::map-unwrap-or` implied by `-D warnings`
 
 error: called `map(<f>).unwrap_or(<a>)` on an `Option` value
   --> tests/ui/map_unwrap_or.rs:22:13

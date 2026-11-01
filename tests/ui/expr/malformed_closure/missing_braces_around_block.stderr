@@ -7,6 +7,14 @@ LL |     (1..num).reduce(|a, b|
 LL |     ).unwrap();
    |     ^
    |
+help: try adding braces
+   |
+LL ~     (1..num).reduce(|a, b| {
+LL |
+LL |         println!("{}", a);
+LL |         a * b
+LL ~     }).unwrap();
+   |
 note: statement found outside of a block
   --> $DIR/missing_braces_around_block.rs:18:26
    |
@@ -25,14 +33,6 @@ LL | |         println!("{}", a);
 LL |           a * b
 LL |       ).unwrap();
    |       - ...but likely you meant the closure to end here
-help: try adding braces
-   |
-LL ~     (1..num).reduce(|a, b| {
-LL |
-LL |         println!("{}", a);
-LL |         a * b
-LL ~     }).unwrap();
-   |
 
 error: closure bodies that contain statements must be surrounded by braces
   --> $DIR/missing_braces_around_block.rs:24:29
@@ -40,6 +40,10 @@ error: closure bodies that contain statements must be surrounded by braces
 LL |     v.iter_mut().for_each(|x|*x = *x+1;);
    |                             ^          ^
    |
+help: try adding braces
+   |
+LL |     v.iter_mut().for_each(|x| {*x = *x+1;});
+   |                               +          +
 note: statement found outside of a block
   --> $DIR/missing_braces_around_block.rs:24:39
    |
@@ -54,10 +58,6 @@ LL |     v.iter_mut().for_each(|x|*x = *x+1;);
    |                           ^^^^^^^^^^^^ - ...but likely you meant the closure to end here
    |                           |
    |                           this is the parsed closure...
-help: try adding braces
-   |
-LL |     v.iter_mut().for_each(|x| {*x = *x+1;});
-   |                               +          +
 
 error: aborting due to 2 previous errors
 

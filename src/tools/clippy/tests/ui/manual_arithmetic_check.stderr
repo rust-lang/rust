@@ -4,8 +4,8 @@ error: manual arithmetic check found
 LL |     let result = if a > b { a - b } else { 0 };
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `a.saturating_sub(b)`
    |
-   = note: `-D clippy::implicit-saturating-sub` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::implicit_saturating_sub)]`
+   = note: `-D clippy::implicit-saturating-sub` implied by `-D warnings`
 
 error: manual arithmetic check found
   --> tests/ui/manual_arithmetic_check.rs:12:18

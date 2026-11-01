@@ -5,8 +5,8 @@ LL |     fn from_i32(self) {}
    |                 ^^^^
    |
    = help: consider choosing a less ambiguous name
-   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::wrong_self_convention)]`
+   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
 
 error: methods called `from_*` usually take no `self`
   --> tests/ui/wrong_self_convention.rs:22:21

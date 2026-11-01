@@ -4,8 +4,8 @@ error: called `.as_ref().map(Deref::deref)` on an `Option` value
 LL |     let _ = opt.clone().as_ref().map(Deref::deref).map(str::len);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using as_deref: `opt.clone().as_deref()`
    |
-   = note: `-D clippy::option-as-ref-deref` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::option_as_ref_deref)]`
+   = note: `-D clippy::option-as-ref-deref` implied by `-D warnings`
 
 error: called `.as_ref().map(Deref::deref)` on an `Option` value
   --> tests/ui/option_as_ref_deref.rs:15:13

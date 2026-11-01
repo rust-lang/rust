@@ -20,11 +20,6 @@ LL | fn with_sized<T: Fn() -> &'static (dyn std::fmt::Debug) + ?Sized>() {
 LL |     without_sized::<T>();
    |                     ^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `without_sized`
-  --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:25:18
-   |
-LL | fn without_sized<T: Fn() -> &'static dyn std::fmt::Debug>() {}
-   |                  ^ required by the implicit `Sized` requirement on this type parameter in `without_sized`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn with_sized<T: Fn() -> &'static (dyn std::fmt::Debug) + ?Sized>() {
@@ -34,6 +29,11 @@ help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn without_sized<T: Fn() -> &'static (dyn std::fmt::Debug) + ?Sized>() {}
    |                                      +                   ++++++++++
+note: required by an implicit `Sized` bound in `without_sized`
+  --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:25:18
+   |
+LL | fn without_sized<T: Fn() -> &'static dyn std::fmt::Debug>() {}
+   |                  ^ required by the implicit `Sized` requirement on this type parameter in `without_sized`
 
 error[E0310]: the parameter type `impl FnOnce(T) -> dyn Future<Output = ()>` may not live long enough
   --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:6:5

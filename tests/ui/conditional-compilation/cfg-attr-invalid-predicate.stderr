@@ -6,12 +6,12 @@ LL | #[cfg(foo(bar))]
    |       |
    |       valid arguments are `any`, `all`, `not` or `target`
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
    |
 LL - #[cfg(foo(bar))]
 LL + #[cfg(predicate)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error: aborting due to 1 previous error
 

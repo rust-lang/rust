@@ -22,6 +22,11 @@ LL |
 LL |         fn method() -> () {}
    |                        ^^ expected opaque type, found `()`
    |
+help: change the output type to match the trait
+   |
+LL -         fn method() -> () {}
+LL +         fn method() -> <() as compare_method::Trait>::Ty {}
+   |
 note: type in trait
   --> $DIR/in-assoc-type-unconstrained.rs:17:24
    |
@@ -29,11 +34,6 @@ LL |         fn method() -> Self::Ty;
    |                        ^^^^^^^^
    = note: expected signature `fn() -> <() as compare_method::Trait>::Ty`
               found signature `fn() -> ()`
-help: change the output type to match the trait
-   |
-LL -         fn method() -> () {}
-LL +         fn method() -> <() as compare_method::Trait>::Ty {}
-   |
 
 error: unconstrained opaque type
   --> $DIR/in-assoc-type-unconstrained.rs:8:26

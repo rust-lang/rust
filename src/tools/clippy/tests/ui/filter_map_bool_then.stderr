@@ -4,8 +4,8 @@ error: usage of `bool::then` in `filter_map`
 LL |     v.clone().iter().filter_map(|i| (i % 2 == 0).then(|| i + 1));
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `filter` then `map` instead: `filter(|&i| (i % 2 == 0)).map(|i| i + 1)`
    |
-   = note: `-D clippy::filter-map-bool-then` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::filter_map_bool_then)]`
+   = note: `-D clippy::filter-map-bool-then` implied by `-D warnings`
 
 error: usage of `bool::then` in `filter_map`
   --> tests/ui/filter_map_bool_then.rs:20:27

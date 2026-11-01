@@ -88,16 +88,16 @@ LL |     req_fn(&mut pure_closure);
    |     required by a bound introduced by this call
    |
    = help: the trait `Fn(&'static str)` is not implemented for `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:45:28: 45:45}`
-note: required by a bound in `req_fn`
-  --> $DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:1:19
-   |
-LL | fn req_fn(_: impl Fn(&'static str) -> String) {}
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `req_fn`
 help: consider removing the leading `&`-reference
    |
 LL -     req_fn(&mut pure_closure);
 LL +     req_fn(pure_closure);
    |
+note: required by a bound in `req_fn`
+  --> $DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:1:19
+   |
+LL | fn req_fn(_: impl Fn(&'static str) -> String) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `req_fn`
 
 error[E0277]: expected `Fn(&'static str)` signature, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:53:21: 53:25}`
   --> $DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:59:12
@@ -108,16 +108,16 @@ LL |     req_fn(&mut outer);
    |     required by a bound introduced by this call
    |
    = help: the trait `Fn(&'static str)` is not implemented for `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:53:21: 53:25}`
-note: required by a bound in `req_fn`
-  --> $DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:1:19
-   |
-LL | fn req_fn(_: impl Fn(&'static str) -> String) {}
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `req_fn`
 help: consider removing the leading `&`-reference
    |
 LL -     req_fn(&mut outer);
 LL +     req_fn(outer);
    |
+note: required by a bound in `req_fn`
+  --> $DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:1:19
+   |
+LL | fn req_fn(_: impl Fn(&'static str) -> String) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `req_fn`
 
 error[E0277]: expected `Fn(&'static str)` signature, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:65:17: 65:21}`
   --> $DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:69:12
@@ -128,16 +128,16 @@ LL |     req_fn(&mut c);
    |     required by a bound introduced by this call
    |
    = help: the trait `Fn(&'static str)` is not implemented for `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:65:17: 65:21}`
-note: required by a bound in `req_fn`
-  --> $DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:1:19
-   |
-LL | fn req_fn(_: impl Fn(&'static str) -> String) {}
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `req_fn`
 help: consider removing the leading `&`-reference
    |
 LL -     req_fn(&mut c);
 LL +     req_fn(c);
    |
+note: required by a bound in `req_fn`
+  --> $DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:1:19
+   |
+LL | fn req_fn(_: impl Fn(&'static str) -> String) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `req_fn`
 
 error: aborting due to 7 previous errors
 

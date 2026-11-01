@@ -4,8 +4,8 @@ error: this lint expectation is unfulfilled
 LL |         #[expect(clippy::collapsible_if)]
    |                  ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D unfulfilled-lint-expectations` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(unfulfilled_lint_expectations)]`
+   = note: `-D unfulfilled-lint-expectations` implied by `-D warnings`
 
 error: this lint expectation is unfulfilled
   --> tests/ui/collapsible_if_unfixable.rs:15:18

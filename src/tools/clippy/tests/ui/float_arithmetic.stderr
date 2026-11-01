@@ -4,8 +4,8 @@ error: floating-point arithmetic detected
 LL |     f * 2.0;
    |     ^^^^^^^
    |
-   = note: `-D clippy::float-arithmetic` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::float_arithmetic)]`
+   = note: `-D clippy::float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
   --> tests/ui/float_arithmetic.rs:14:5

@@ -4,8 +4,8 @@ error: struct pattern is not needed for a unit variant
 LL |         None {} => 0,
    |             ^^^ help: remove the struct pattern
    |
-   = note: `-D clippy::unneeded-struct-pattern` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unneeded_struct_pattern)]`
+   = note: `-D clippy::unneeded-struct-pattern` implied by `-D warnings`
 
 error: struct pattern is not needed for a unit variant
   --> tests/ui/unneeded_struct_pattern.rs:20:13

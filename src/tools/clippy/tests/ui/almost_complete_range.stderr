@@ -6,8 +6,8 @@ LL |         let _ = ('a') ..'z';
    |                       |
    |                       help: use an inclusive range: `..=`
    |
-   = note: `-D clippy::almost-complete-range` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::almost_complete_range)]`
+   = note: `-D clippy::almost-complete-range` implied by `-D warnings`
 
 error: almost complete ascii range
   --> tests/ui/almost_complete_range.rs:18:17

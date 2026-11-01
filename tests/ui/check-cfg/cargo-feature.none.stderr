@@ -4,8 +4,8 @@ warning: unexpected `cfg` condition value: `serde`
 LL | #[cfg(feature = "serde")]
    |       ^^^^^^^^^^^^^^^^^ help: remove the condition
    |
-   = note: no expected values for `feature`
    = help: consider adding `serde` as a feature in `Cargo.toml`
+   = note: no expected values for `feature`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
 
@@ -15,8 +15,8 @@ warning: unexpected `cfg` condition value: (none)
 LL | #[cfg(feature)]
    |       ^^^^^^^ help: remove the condition
    |
-   = note: no expected values for `feature`
    = help: consider defining some features in `Cargo.toml`
+   = note: no expected values for `feature`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `tokio_unstable`

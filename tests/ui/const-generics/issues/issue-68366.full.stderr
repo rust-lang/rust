@@ -4,11 +4,11 @@ error: `Option<usize>` is forbidden as the type of a const generic parameter
 LL | struct Collatz<const N: Option<usize>>;
    |                         ^^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
   --> $DIR/issue-68366.rs:12:7

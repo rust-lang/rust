@@ -16,16 +16,16 @@ error: unnecessary parentheses around pattern
 LL |     if let(Some(_))= Some(1) {}
    |           ^       ^
    |
-note: the lint level is defined here
-  --> $DIR/issue-103435-extra-parentheses.rs:2:9
-   |
-LL | #![deny(unused_parens)]
-   |         ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     if let(Some(_))= Some(1) {}
 LL +     if let Some(_) = Some(1) {}
    |
+note: the lint level is defined here
+  --> $DIR/issue-103435-extra-parentheses.rs:2:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
 
 error: unnecessary parentheses around pattern
   --> $DIR/issue-103435-extra-parentheses.rs:8:8

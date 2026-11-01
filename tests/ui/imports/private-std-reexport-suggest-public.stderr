@@ -4,6 +4,11 @@ error[E0603]: module import `mem` is private
 LL |     use foo::mem;
    |              ^^^ private module import
    |
+help: import `mem` directly
+   |
+LL -     use foo::mem;
+LL +     use std::mem;
+   |
 note: the module import `mem` is defined here...
   --> $DIR/private-std-reexport-suggest-public.rs:9:9
    |
@@ -13,11 +18,6 @@ note: ...and refers to the module `mem` which is defined here
   --> $SRC_DIR/std/src/lib.rs:LL:COL
    |
    = note: you could import this directly
-help: import `mem` directly
-   |
-LL -     use foo::mem;
-LL +     use std::mem;
-   |
 
 error: aborting due to 1 previous error
 

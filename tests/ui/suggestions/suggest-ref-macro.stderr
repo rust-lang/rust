@@ -27,15 +27,15 @@ LL |         x(123);
 LL |     bla!();
    |     ------ in this macro invocation
    |
+help: consider mutably borrowing here
+   |
+LL |         x(&mut 123);
+   |           ++++
 note: function defined here
   --> $DIR/suggest-ref-macro.rs:12:4
    |
 LL | fn x(_: &mut i32) {}
    |    ^ -----------
-help: consider mutably borrowing here
-   |
-LL |         x(&mut 123);
-   |           ++++
 
 error[E0308]: mismatched types
   --> $DIR/suggest-ref-macro.rs:27:10
@@ -46,15 +46,15 @@ LL |         x($v)
 LL |     bla!(456);
    |          ^^^ expected `&mut i32`, found integer
    |
+help: consider mutably borrowing here
+   |
+LL |     bla!(&mut 456);
+   |          ++++
 note: function defined here
   --> $DIR/suggest-ref-macro.rs:12:4
    |
 LL | fn x(_: &mut i32) {}
    |    ^ -----------
-help: consider mutably borrowing here
-   |
-LL |     bla!(&mut 456);
-   |          ++++
 
 error: aborting due to 3 previous errors
 

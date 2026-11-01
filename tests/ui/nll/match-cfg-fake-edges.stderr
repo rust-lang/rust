@@ -4,8 +4,8 @@ warning: irrefutable `if let` pattern
 LL |     if let _ = true {
    |        ^^^^^^^^^^^^
    |
-   = note: this pattern will always match, so the `if let` is useless
    = help: consider replacing the `if let` with a `let`
+   = note: this pattern will always match, so the `if let` is useless
    = note: `#[warn(irrefutable_let_patterns)]` on by default
 
 error[E0382]: use of moved value: `x`
@@ -51,11 +51,11 @@ LL |     }
 LL |     &x.0;
    |     ^^^^ value borrowed here after move
    |
-   = note: move occurs because `x.0` has type `String`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
 LL |         (ref y, _) | (_, y) => (),
    |          +++
+   = note: move occurs because `x.0` has type `String`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x.1`
   --> $DIR/match-cfg-fake-edges.rs:30:5
@@ -66,11 +66,11 @@ LL |         (y, _) | (_, y) => (),
 LL |     &x.1;
    |     ^^^^ value borrowed here after move
    |
-   = note: move occurs because `x.1` has type `String`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
 LL |         (y, _) | (_, ref y) => (),
    |                      +++
+   = note: move occurs because `x.1` has type `String`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x.0`
   --> $DIR/match-cfg-fake-edges.rs:34:5
@@ -80,11 +80,11 @@ LL |     let ((y, _) | (_, y)) = x;
 LL |     &x.0;
    |     ^^^^ value borrowed here after move
    |
-   = note: move occurs because `x.0` has type `String`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
 LL |     let ((ref y, _) | (_, y)) = x;
    |           +++
+   = note: move occurs because `x.0` has type `String`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `x.1`
   --> $DIR/match-cfg-fake-edges.rs:36:5
@@ -95,11 +95,11 @@ LL |     let ((y, _) | (_, y)) = x;
 LL |     &x.1;
    |     ^^^^ value borrowed here after move
    |
-   = note: move occurs because `x.1` has type `String`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
 LL |     let ((y, _) | (_, ref y)) = x;
    |                       +++
+   = note: move occurs because `x.1` has type `String`, which does not implement the `Copy` trait
 
 error[E0381]: used binding `x` is possibly-uninitialized
   --> $DIR/match-cfg-fake-edges.rs:70:19

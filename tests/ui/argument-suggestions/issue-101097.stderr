@@ -8,16 +8,16 @@ LL |     f(C, A, A, A, B, B, C);
    |       |     expected `B`, found `A`
    |       expected `A`, found `C`
    |
-note: function defined here
-  --> $DIR/issue-101097.rs:6:4
-   |
-LL | fn f(
-   |    ^
 help: did you mean
    |
 LL -     f(C, A, A, A, B, B, C);
 LL +     f(A, A, B, B, C, C);
    |
+note: function defined here
+  --> $DIR/issue-101097.rs:6:4
+   |
+LL | fn f(
+   |    ^
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/issue-101097.rs:17:5
@@ -25,16 +25,16 @@ error[E0308]: arguments to this function are incorrect
 LL |     f(C, C, A, A, B, B);
    |     ^
    |
-note: function defined here
-  --> $DIR/issue-101097.rs:6:4
-   |
-LL | fn f(
-   |    ^
 help: did you mean
    |
 LL -     f(C, C, A, A, B, B);
 LL +     f(A, A, B, B, C, C);
    |
+note: function defined here
+  --> $DIR/issue-101097.rs:6:4
+   |
+LL | fn f(
+   |    ^
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/issue-101097.rs:18:5
@@ -44,6 +44,11 @@ LL |     f(A, A, D, D, B, B);
    |             |  |
    |             |  unexpected argument #4 of type `D`
    |             unexpected argument #3 of type `D`
+   |
+help: did you mean
+   |
+LL -     f(A, A, D, D, B, B);
+LL +     f(A, A, B, B, /* C */, /* C */);
    |
 note: function defined here
   --> $DIR/issue-101097.rs:6:4
@@ -55,11 +60,6 @@ LL |     c1: C,
    |     -----
 LL |     c2: C,
    |     -----
-help: did you mean
-   |
-LL -     f(A, A, D, D, B, B);
-LL +     f(A, A, B, B, /* C */, /* C */);
-   |
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/issue-101097.rs:19:5
@@ -71,16 +71,16 @@ LL |     f(C, C, B, B, A, A);
    |       |  expected `A`, found `C`
    |       expected `A`, found `C`
    |
-note: function defined here
-  --> $DIR/issue-101097.rs:6:4
-   |
-LL | fn f(
-   |    ^
 help: did you mean
    |
 LL -     f(C, C, B, B, A, A);
 LL +     f(A, A, B, B, C, C);
    |
+note: function defined here
+  --> $DIR/issue-101097.rs:6:4
+   |
+LL | fn f(
+   |    ^
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/issue-101097.rs:20:5
@@ -93,6 +93,11 @@ LL |     f(C, C, A, B, A, A);
    |       |  expected `A`, found `C`
    |       expected `A`, found `C`
    |
+help: did you mean
+   |
+LL -     f(C, C, A, B, A, A);
+LL +     f(A, A, /* B */, B, C, C);
+   |
 note: function defined here
   --> $DIR/issue-101097.rs:6:4
    |
@@ -101,11 +106,6 @@ LL | fn f(
 ...
 LL |     b1: B,
    |     -----
-help: did you mean
-   |
-LL -     f(C, C, A, B, A, A);
-LL +     f(A, A, /* B */, B, C, C);
-   |
 
 error: aborting due to 5 previous errors
 

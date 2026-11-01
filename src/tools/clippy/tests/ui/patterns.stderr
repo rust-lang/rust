@@ -4,8 +4,8 @@ error: the `y @ _` pattern can be written as just `y`
 LL |         y @ _ => (),
    |         ^^^^^ help: try: `y`
    |
-   = note: `-D clippy::redundant-pattern` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern)]`
+   = note: `-D clippy::redundant-pattern` implied by `-D warnings`
 
 error: the `x @ _` pattern can be written as just `x`
   --> tests/ui/patterns.rs:29:9

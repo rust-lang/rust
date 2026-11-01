@@ -4,16 +4,16 @@ error[E0603]: module `inner` is private
 LL | use outer::inner::MyStruct;
    |            ^^^^^ private module
    |
-note: the module `inner` is defined here
-  --> $DIR/suggest-public-reexport-for-use.rs:16:5
-   |
-LL |     mod inner {
-   |     ^^^^^^^^^
 help: consider importing this struct through its public re-export instead
    |
 LL - use outer::inner::MyStruct;
 LL + use outer::MyStruct;
    |
+note: the module `inner` is defined here
+  --> $DIR/suggest-public-reexport-for-use.rs:16:5
+   |
+LL |     mod inner {
+   |     ^^^^^^^^^
 
 error[E0603]: module `inner` is private
   --> $DIR/suggest-public-reexport-for-use.rs:28:12
@@ -21,16 +21,16 @@ error[E0603]: module `inner` is private
 LL | use outer::inner::my_function;
    |            ^^^^^ private module
    |
-note: the module `inner` is defined here
-  --> $DIR/suggest-public-reexport-for-use.rs:16:5
-   |
-LL |     mod inner {
-   |     ^^^^^^^^^
 help: consider importing this function through its public re-export instead
    |
 LL - use outer::inner::my_function;
 LL + use outer::my_function;
    |
+note: the module `inner` is defined here
+  --> $DIR/suggest-public-reexport-for-use.rs:16:5
+   |
+LL |     mod inner {
+   |     ^^^^^^^^^
 
 error[E0603]: module `inner` is private
   --> $DIR/suggest-public-reexport-for-use.rs:29:12
@@ -38,16 +38,16 @@ error[E0603]: module `inner` is private
 LL | use outer::inner::MyTrait;
    |            ^^^^^ private module
    |
-note: the module `inner` is defined here
-  --> $DIR/suggest-public-reexport-for-use.rs:16:5
-   |
-LL |     mod inner {
-   |     ^^^^^^^^^
 help: consider importing this trait through its public re-export instead
    |
 LL - use outer::inner::MyTrait;
 LL + use outer::MyTrait;
    |
+note: the module `inner` is defined here
+  --> $DIR/suggest-public-reexport-for-use.rs:16:5
+   |
+LL |     mod inner {
+   |     ^^^^^^^^^
 
 error[E0603]: module `inner` is private
   --> $DIR/suggest-public-reexport-for-use.rs:30:12
@@ -55,16 +55,16 @@ error[E0603]: module `inner` is private
 LL | use outer::inner::MyEnum;
    |            ^^^^^ private module
    |
-note: the module `inner` is defined here
-  --> $DIR/suggest-public-reexport-for-use.rs:16:5
-   |
-LL |     mod inner {
-   |     ^^^^^^^^^
 help: consider importing this enum through its public re-export instead
    |
 LL - use outer::inner::MyEnum;
 LL + use outer::MyEnum;
    |
+note: the module `inner` is defined here
+  --> $DIR/suggest-public-reexport-for-use.rs:16:5
+   |
+LL |     mod inner {
+   |     ^^^^^^^^^
 
 error[E0603]: module `inner` is private
   --> $DIR/suggest-public-reexport-for-use.rs:36:16
@@ -72,16 +72,16 @@ error[E0603]: module `inner` is private
 LL |     use outer::inner::MyStruct;
    |                ^^^^^ private module
    |
-note: the module `inner` is defined here
-  --> $DIR/suggest-public-reexport-for-use.rs:16:5
-   |
-LL |     mod inner {
-   |     ^^^^^^^^^
 help: consider importing this struct through its public re-export instead
    |
 LL -     use outer::inner::MyStruct;
 LL +     use outer::MyStruct;
    |
+note: the module `inner` is defined here
+  --> $DIR/suggest-public-reexport-for-use.rs:16:5
+   |
+LL |     mod inner {
+   |     ^^^^^^^^^
 
 error[E0603]: module `inner` is private
   --> $DIR/suggest-public-reexport-for-use.rs:46:20
@@ -89,16 +89,16 @@ error[E0603]: module `inner` is private
 LL |         use outer::inner::MyStruct;
    |                    ^^^^^ private module
    |
-note: the module `inner` is defined here
-  --> $DIR/suggest-public-reexport-for-use.rs:16:5
-   |
-LL |     mod inner {
-   |     ^^^^^^^^^
 help: consider importing this struct through its public re-export instead
    |
 LL -         use outer::inner::MyStruct;
 LL +         use outer::MyStruct;
    |
+note: the module `inner` is defined here
+  --> $DIR/suggest-public-reexport-for-use.rs:16:5
+   |
+LL |     mod inner {
+   |     ^^^^^^^^^
 
 error[E0603]: module `hidden` is private
   --> $DIR/suggest-public-reexport-for-use.rs:60:18

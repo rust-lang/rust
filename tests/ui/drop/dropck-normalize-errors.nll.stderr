@@ -42,6 +42,10 @@ help: this trait has no implementations, consider adding one
    |
 LL | trait NonImplementedTrait {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Decoder: ?Sized;
+   |                 ++++++++
 note: required because it appears within the type `BDecoder`
   --> $DIR/dropck-normalize-errors.rs:31:12
    |
@@ -53,10 +57,6 @@ note: required by a bound in `Decode::Decoder`
 LL | trait Decode<'a> {
 LL |     type Decoder;
    |     ^^^^^^^^^^^^^ required by this bound in `Decode::Decoder`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL |     type Decoder: ?Sized;
-   |                 ++++++++
 
 error[E0277]: the trait bound `NonImplementedStruct: NonImplementedTrait` is not satisfied
   --> $DIR/dropck-normalize-errors.rs:32:22

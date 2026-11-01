@@ -4,15 +4,15 @@ error[E0107]: missing generics for struct `Test`
 LL |     fn build(self) -> Test {
    |                       ^^^^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL |     fn build(self) -> Test<T> {
+   |                           +++
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/private-tuple-struct-field-self-arg-issue-81447.rs:5:16
    |
 LL |     pub struct Test<T: ?Sized>(T);
    |                ^^^^ -
-help: add missing generic argument
-   |
-LL |     fn build(self) -> Test<T> {
-   |                           +++
 
 error[E0423]: cannot initialize a tuple struct which contains private fields
   --> $DIR/private-tuple-struct-field-self-arg-issue-81447.rs:15:9

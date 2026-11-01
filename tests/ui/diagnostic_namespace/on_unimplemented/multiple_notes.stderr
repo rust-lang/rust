@@ -7,13 +7,13 @@ LL |     takes_foo(());
    |     required by a bound introduced by this call
    |
    = help: the trait `Foo` is not implemented for `()`
-   = note: Baz
-   = note: Boom
 help: this trait has no implementations, consider adding one
   --> $DIR/multiple_notes.rs:3:1
    |
 LL | trait Foo {}
    | ^^^^^^^^^
+   = note: Baz
+   = note: Boom
 note: required by a bound in `takes_foo`
   --> $DIR/multiple_notes.rs:9:22
    |
@@ -29,13 +29,13 @@ LL |     takes_bar(());
    |     required by a bound introduced by this call
    |
    = help: the trait `Bar` is not implemented for `()`
-   = note: Baz
-   = note: Baz2
 help: this trait has no implementations, consider adding one
   --> $DIR/multiple_notes.rs:7:1
    |
 LL | trait Bar {}
    | ^^^^^^^^^
+   = note: Baz
+   = note: Baz2
 note: required by a bound in `takes_bar`
   --> $DIR/multiple_notes.rs:10:22
    |

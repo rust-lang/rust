@@ -18,13 +18,13 @@ LL |         super::with_positive(|&n| ());
    |                               expected opaque type, found `&_`
    |                               expected due to this
    |
-   = note: expected opaque type `foo::Alias<'_>`
-                found reference `&_`
 help: consider removing `&` from the pattern
    |
 LL -         super::with_positive(|&n| ());
 LL +         super::with_positive(|n| ());
    |
+   = note: expected opaque type `foo::Alias<'_>`
+                found reference `&_`
 
 error: aborting due to 2 previous errors
 

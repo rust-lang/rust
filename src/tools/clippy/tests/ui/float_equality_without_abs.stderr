@@ -6,8 +6,8 @@ LL |     (a - b) < f32::EPSILON
    |     |
    |     help: add `.abs()`: `(a - b).abs()`
    |
-   = note: `-D clippy::float-equality-without-abs` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::float_equality_without_abs)]`
+   = note: `-D clippy::float-equality-without-abs` implied by `-D warnings`
 
 error: float equality check without `.abs()`
   --> tests/ui/float_equality_without_abs.rs:17:13

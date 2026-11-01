@@ -4,15 +4,15 @@ error[E0596]: cannot borrow `outer` as mutable, as it is not declared as mutable
 LL |     match (&mut outer, 23) {
    |            ^^^^^^^^^^ cannot borrow as mutable
    |
+help: consider making the binding mutable if you need to reborrow multiple times
+   |
+LL | fn test(mut outer: &mut Option<i32>) {
+   |         +++
 note: the binding is already a mutable borrow
   --> $DIR/reborrow-in-match-suggest-deref.rs:7:16
    |
 LL | fn test(outer: &mut Option<i32>) {
    |                ^^^^^^^^^^^^^^^^
-help: consider making the binding mutable if you need to reborrow multiple times
-   |
-LL | fn test(mut outer: &mut Option<i32>) {
-   |         +++
 help: to reborrow the mutable reference, add `*`
    |
 LL |     match (&mut *outer, 23) {

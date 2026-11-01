@@ -4,8 +4,8 @@ error: name `HTTPResponse` contains a capitalized acronym
 LL | struct HTTPResponse; // not linted by default, but with cfg option
    |        ^^^^^^^^^^^^ help: consider making the acronym lowercase, except the initial letter: `HttpResponse`
    |
-   = note: `-D clippy::upper-case-acronyms` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::upper_case_acronyms)]`
+   = note: `-D clippy::upper-case-acronyms` implied by `-D warnings`
 
 error: name `NS` contains a capitalized acronym
   --> tests/ui-toml/upper_case_acronyms_aggressive/upper_case_acronyms.rs:9:5

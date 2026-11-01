@@ -40,9 +40,9 @@ error[E0308]: mismatched types
 LL |     let _ = type_ascribe!(Box::new( if true { false } else { true }), Box<dyn Debug>);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<dyn Debug>`, found `Box<bool>`
    |
+   = help: `bool` implements `Debug` so you could box the found value and coerce it to the trait object `Box<dyn Debug>`, you will have to change the expected type as well
    = note: expected struct `Box<dyn Debug>`
               found struct `Box<bool>`
-   = help: `bool` implements `Debug` so you could box the found value and coerce it to the trait object `Box<dyn Debug>`, you will have to change the expected type as well
 
 error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:16:27
@@ -50,9 +50,9 @@ error[E0308]: mismatched types
 LL |     let _ = type_ascribe!(Box::new( match true { true => 'a', false => 'b' }), Box<dyn Debug>);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Box<dyn Debug>`, found `Box<char>`
    |
+   = help: `char` implements `Debug` so you could box the found value and coerce it to the trait object `Box<dyn Debug>`, you will have to change the expected type as well
    = note: expected struct `Box<dyn Debug>`
               found struct `Box<char>`
-   = help: `char` implements `Debug` so you could box the found value and coerce it to the trait object `Box<dyn Debug>`, you will have to change the expected type as well
 
 error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:18:27
@@ -96,9 +96,9 @@ error[E0308]: mismatched types
 LL |     let _ = type_ascribe!(&if true { false } else { true }, &dyn Debug);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&dyn Debug`, found `&bool`
    |
+   = help: `bool` implements `Debug` so you could box the found value and coerce it to the trait object `Box<dyn Debug>`, you will have to change the expected type as well
    = note: expected reference `&dyn Debug`
               found reference `&bool`
-   = help: `bool` implements `Debug` so you could box the found value and coerce it to the trait object `Box<dyn Debug>`, you will have to change the expected type as well
 
 error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:24:27
@@ -106,9 +106,9 @@ error[E0308]: mismatched types
 LL |     let _ = type_ascribe!(&match true { true => 'a', false => 'b' }, &dyn Debug);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&dyn Debug`, found `&char`
    |
+   = help: `char` implements `Debug` so you could box the found value and coerce it to the trait object `Box<dyn Debug>`, you will have to change the expected type as well
    = note: expected reference `&dyn Debug`
               found reference `&char`
-   = help: `char` implements `Debug` so you could box the found value and coerce it to the trait object `Box<dyn Debug>`, you will have to change the expected type as well
 
 error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:26:27

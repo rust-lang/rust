@@ -4,10 +4,10 @@ error: you are using modulo operator on constants with different signs: `-1 % 2`
 LL |     -1 % 2;
    |     ^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::modulo_arithmetic)]`
    = note: double check for expected result especially when interoperating with different languages
    = note: or consider using `rem_euclid` or similar function
    = note: `-D clippy::modulo-arithmetic` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::modulo_arithmetic)]`
 
 error: you are using modulo operator on constants with different signs: `1 % -2`
   --> tests/ui/modulo_arithmetic_integral_const.rs:9:5

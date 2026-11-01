@@ -4,8 +4,8 @@ error: `panic` should not be present in production code
 LL |         _ => panic!(""),
    |              ^^^^^^^^^^
    |
-   = note: `-D clippy::panic` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::panic)]`
+   = note: `-D clippy::panic` implied by `-D warnings`
 
 error: `panic_any` should not be present in production code
   --> tests/ui-toml/panic/panic.rs:18:5

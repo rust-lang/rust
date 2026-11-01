@@ -4,6 +4,10 @@ error: `impl Sized` will capture more lifetimes than possibly intended in editio
 LL | fn named<'a>(x: &'a i32) -> impl Sized { *x }
    |                             ^^^^^^^^^^
    |
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn named<'a>(x: &'a i32) -> impl Sized + use<> { *x }
+   |                                        +++++++
 note: specifically, this lifetime is in scope but not mentioned in the type's bounds
   --> $DIR/overcaptures-2024-machine-applicable.rs:9:10
    |
@@ -17,10 +21,6 @@ note: the lint level is defined here
    |
 LL | #![deny(impl_trait_overcaptures)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
-help: use the precise capturing `use<...>` syntax to make the captures explicit
-   |
-LL | fn named<'a>(x: &'a i32) -> impl Sized + use<> { *x }
-   |                                        +++++++
 
 error: aborting due to 1 previous error
 

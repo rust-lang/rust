@@ -4,8 +4,8 @@ error: found call to `str::trim` before `str::split_whitespace`
 LL |     let _ = " A B C ".trim().split_whitespace(); // should trigger lint
    |                       ^^^^^^^ help: remove `trim()`
    |
-   = note: `-D clippy::trim-split-whitespace` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::trim_split_whitespace)]`
+   = note: `-D clippy::trim-split-whitespace` implied by `-D warnings`
 
 error: found call to `str::trim_start` before `str::split_whitespace`
   --> tests/ui/trim_split_whitespace.rs:63:23

@@ -4,8 +4,8 @@ error: comparison to empty slice
 LL |     let _ = s == "";
    |             ^^^^^^^ help: using `is_empty` is clearer and more explicit: `s.is_empty()`
    |
-   = note: `-D clippy::comparison-to-empty` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::comparison_to_empty)]`
+   = note: `-D clippy::comparison-to-empty` implied by `-D warnings`
 
 error: comparison to empty slice
   --> tests/ui/comparison_to_empty.rs:10:13

@@ -42,7 +42,6 @@ LL | fn foo1<T: ?Sized>(a: T) {}
    |         |
    |         this type parameter needs to be `Sized`
    |
-   = help: unsized fn params are gated as an unstable feature
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn foo1<T: ?Sized>(a: T) {}
@@ -52,6 +51,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL | fn foo1<T: ?Sized>(a: &T) {}
    |                       +
+   = help: unsized fn params are gated as an unstable feature
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/fix-dyn-sized-fn-param-sugg.rs:11:32
@@ -61,7 +61,6 @@ LL | fn foo2<T: ?Sized + ?Sized>(a: T) {}
    |         |
    |         this type parameter needs to be `Sized`
    |
-   = help: unsized fn params are gated as an unstable feature
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn foo2<T: ?Sized + ?Sized>(a: T) {}
@@ -71,6 +70,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL | fn foo2<T: ?Sized + ?Sized>(a: &T) {}
    |                                +
+   = help: unsized fn params are gated as an unstable feature
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/fix-dyn-sized-fn-param-sugg.rs:15:40
@@ -80,7 +80,6 @@ LL | fn foo3<T: ?Sized + ?Sized + Debug>(a: T) {}
    |         |
    |         this type parameter needs to be `Sized`
    |
-   = help: unsized fn params are gated as an unstable feature
 help: consider restricting type parameters
    |
 LL - fn foo3<T: ?Sized + ?Sized + Debug>(a: T) {}
@@ -90,6 +89,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL | fn foo3<T: ?Sized + ?Sized + Debug>(a: &T) {}
    |                                        +
+   = help: unsized fn params are gated as an unstable feature
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/fix-dyn-sized-fn-param-sugg.rs:19:41
@@ -99,7 +99,6 @@ LL | fn foo4<T: ?Sized + Debug + ?Sized >(a: T) {}
    |         |
    |         this type parameter needs to be `Sized`
    |
-   = help: unsized fn params are gated as an unstable feature
 help: consider restricting type parameters
    |
 LL - fn foo4<T: ?Sized + Debug + ?Sized >(a: T) {}
@@ -109,6 +108,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL | fn foo4<T: ?Sized + Debug + ?Sized >(a: &T) {}
    |                                         +
+   = help: unsized fn params are gated as an unstable feature
 
 error[E0277]: the size for values of type `impl ?Sized` cannot be known at compilation time
   --> $DIR/fix-dyn-sized-fn-param-sugg.rs:23:12
@@ -119,7 +119,6 @@ LL | fn foo5(_: impl ?Sized) {}
    |            doesn't have a size known at compile-time
    |            this type parameter needs to be `Sized`
    |
-   = help: unsized fn params are gated as an unstable feature
 help: consider replacing `?Sized` with `Sized`
    |
 LL - fn foo5(_: impl ?Sized) {}
@@ -129,6 +128,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL | fn foo5(_: &impl ?Sized) {}
    |            +
+   = help: unsized fn params are gated as an unstable feature
 
 error[E0277]: the size for values of type `impl ?Sized + ?Sized` cannot be known at compilation time
   --> $DIR/fix-dyn-sized-fn-param-sugg.rs:26:12
@@ -139,7 +139,6 @@ LL | fn foo6(_: impl ?Sized + ?Sized) {}
    |            doesn't have a size known at compile-time
    |            this type parameter needs to be `Sized`
    |
-   = help: unsized fn params are gated as an unstable feature
 help: consider restricting type parameters
    |
 LL - fn foo6(_: impl ?Sized + ?Sized) {}
@@ -149,6 +148,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL | fn foo6(_: &impl ?Sized + ?Sized) {}
    |            +
+   = help: unsized fn params are gated as an unstable feature
 
 error[E0277]: the size for values of type `impl ?Sized + ?Sized + Debug` cannot be known at compilation time
   --> $DIR/fix-dyn-sized-fn-param-sugg.rs:30:12
@@ -159,7 +159,6 @@ LL | fn foo7(_: impl ?Sized + ?Sized + Debug) {}
    |            doesn't have a size known at compile-time
    |            this type parameter needs to be `Sized`
    |
-   = help: unsized fn params are gated as an unstable feature
 help: consider restricting type parameters
    |
 LL - fn foo7(_: impl ?Sized + ?Sized + Debug) {}
@@ -169,6 +168,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL | fn foo7(_: &impl ?Sized + ?Sized + Debug) {}
    |            +
+   = help: unsized fn params are gated as an unstable feature
 
 error[E0277]: the size for values of type `impl ?Sized + Debug + ?Sized` cannot be known at compilation time
   --> $DIR/fix-dyn-sized-fn-param-sugg.rs:34:12
@@ -179,7 +179,6 @@ LL | fn foo8(_: impl ?Sized + Debug + ?Sized ) {}
    |            doesn't have a size known at compile-time
    |            this type parameter needs to be `Sized`
    |
-   = help: unsized fn params are gated as an unstable feature
 help: consider restricting type parameters
    |
 LL - fn foo8(_: impl ?Sized + Debug + ?Sized ) {}
@@ -189,6 +188,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL | fn foo8(_: &impl ?Sized + Debug + ?Sized ) {}
    |            +
+   = help: unsized fn params are gated as an unstable feature
 
 error: aborting due to 14 previous errors
 

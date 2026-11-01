@@ -4,7 +4,6 @@ error[E0261]: use of undeclared lifetime name `'a`
 LL | fn f(x: Box<dyn X<Y<'a> = &'a ()>>) {}
    |                     ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL | fn f(x: Box<dyn for<'a> X<Y<'a> = &'a ()>>) {}
@@ -13,6 +12,7 @@ help: consider introducing lifetime `'a` here
    |
 LL | fn f<'a>(x: Box<dyn X<Y<'a> = &'a ()>>) {}
    |     ++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/issue-67510.rs:5:28

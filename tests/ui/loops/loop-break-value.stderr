@@ -211,12 +211,12 @@ LL |     let _: Option<String> = loop {
 LL |         break;
    |         ^^^^^ expected `Option<String>`, found `()`
    |
-   = note:   expected enum `Option<String>`
-           found unit type `()`
 help: give the `break` a value of the expected type
    |
 LL |         break None;
    |               ++++
+   = note:   expected enum `Option<String>`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:75:26

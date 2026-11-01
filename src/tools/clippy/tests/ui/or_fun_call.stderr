@@ -4,8 +4,8 @@ error: function call inside of `unwrap_or`
 LL |     with_constructor.unwrap_or(make());
    |                      ^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(make)`
    |
-   = note: `-D clippy::or-fun-call` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::or_fun_call)]`
+   = note: `-D clippy::or-fun-call` implied by `-D warnings`
 
 error: use of `unwrap_or` to construct default value
   --> tests/ui/or_fun_call.rs:54:14
@@ -13,8 +13,8 @@ error: use of `unwrap_or` to construct default value
 LL |     with_new.unwrap_or(Vec::new());
    |              ^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
    |
-   = note: `-D clippy::unwrap-or-default` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unwrap_or_default)]`
+   = note: `-D clippy::unwrap-or-default` implied by `-D warnings`
 
 error: function call inside of `unwrap_or`
   --> tests/ui/or_fun_call.rs:58:21

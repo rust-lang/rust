@@ -4,13 +4,13 @@ error: called `.iter().nth()` on a `Vec`
 LL |         let bad_vec = some_vec.iter().nth(3);
    |                       ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::iter-nth` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::iter_nth)]`
 help: `get` is equivalent but more concise
    |
 LL -         let bad_vec = some_vec.iter().nth(3);
 LL +         let bad_vec = some_vec.get(3);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::iter_nth)]`
+   = note: `-D clippy::iter-nth` implied by `-D warnings`
 
 error: called `.iter().nth()` on a slice
   --> tests/ui/iter_nth.rs:36:26

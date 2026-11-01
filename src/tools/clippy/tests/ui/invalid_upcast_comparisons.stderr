@@ -4,8 +4,8 @@ error: because of the numeric bounds on `u8` prior to casting, this expression i
 LL |     (u8 as u32) > 300;
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::invalid-upcast-comparisons` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::invalid_upcast_comparisons)]`
+   = note: `-D clippy::invalid-upcast-comparisons` implied by `-D warnings`
 
 error: because of the numeric bounds on `u8` prior to casting, this expression is always false
   --> tests/ui/invalid_upcast_comparisons.rs:18:5

@@ -4,11 +4,11 @@ error: prefix `r` is unknown
 LL | r'r'
    | ^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL | r 'r'
    |  +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: prefix `c` is unknown
   --> <proc-macro source code>:1:1
@@ -16,11 +16,11 @@ error: prefix `c` is unknown
 LL | c'r'
    | ^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL | c 'r'
    |  +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: unknown start of token: \u{2000}
   --> <proc-macro source code>:1:1
@@ -57,12 +57,12 @@ error: unknown start of token: \u{2000}
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: Unicode character ' ' (En Quad) looks like ' ' (Space), but it is not
   --> <proc-macro source code>:1:1
    |
 LL |  
    |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: found invalid character; only `#` is allowed in raw string delimitation: \u{0}
   --> $DIR/nonfatal-parsing.rs:15:5
@@ -102,12 +102,12 @@ error: character constant must be escaped: `'`
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: escape the character
    |
 LL -     nonfatal_parsing::run!();
 LL +     nonfatal_parsing::run!(\';
    |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: character constant must be escaped: `\n`
   --> $DIR/nonfatal-parsing.rs:15:5
@@ -115,12 +115,12 @@ error: character constant must be escaped: `\n`
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: escape the character
    |
 LL -     nonfatal_parsing::run!();
 LL +     nonfatal_parsing::run!(\n;
    |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: too many `#` symbols: raw strings may be delimited by up to 255 `#` symbols, but found 256
   --> $DIR/nonfatal-parsing.rs:15:5

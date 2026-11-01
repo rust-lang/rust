@@ -7,8 +7,6 @@ LL |         let _x: Simd<u8, 2> = simd_masked_load::<_, _, _, { SimdAlign::Elem
 LL |             Simd::<u8, 4>([9; 4]),
    |             ^^^^^^^^^^^^^^^^^^^^^ expected `2`, found `4`
    |
-   = note: expected struct `Simd<_, 2>`
-              found struct `Simd<_, 4>`
 help: the return type of this call is `Simd<u8, 4>` due to the type of the argument passed
   --> $DIR/masked-load-store-check-fail.rs:15:31
    |
@@ -20,6 +18,8 @@ LL | |             Simd::<u8, 4>([9; 4]),
    | |             --------------------- this argument influences the return type of `simd_masked_load`
 LL | |         );
    | |_________^
+   = note: expected struct `Simd<_, 2>`
+              found struct `Simd<_, 4>`
 note: function defined here
   --> $SRC_DIR/core/src/intrinsics/simd/mod.rs:LL:COL
 
@@ -32,8 +32,6 @@ LL |         let _x: Simd<u32, 4> = simd_masked_load::<_, _, _, { SimdAlign::Ele
 LL |             default,
    |             ^^^^^^^ expected `Simd<u32, 4>`, found `Simd<u8, 4>`
    |
-   = note: expected struct `Simd<u32, _>`
-              found struct `Simd<u8, _>`
 help: the return type of this call is `Simd<u8, 4>` due to the type of the argument passed
   --> $DIR/masked-load-store-check-fail.rs:22:32
    |
@@ -45,6 +43,8 @@ LL | |             default,
    | |             ------- this argument influences the return type of `simd_masked_load`
 LL | |         );
    | |_________^
+   = note: expected struct `Simd<u32, _>`
+              found struct `Simd<u8, _>`
 note: function defined here
   --> $SRC_DIR/core/src/intrinsics/simd/mod.rs:LL:COL
 

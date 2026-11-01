@@ -4,6 +4,10 @@ error[E0277]: the trait bound `T: Trait` is not satisfied
 LL |     ()
    |     ^^ the trait `Trait` is not implemented for `T`
    |
+help: consider restricting type parameter `T` with trait `Trait`
+   |
+LL | type Converter<T: Trait> = impl ProofForConversion<T>;
+   |                 +++++++
 note: required for `()` to implement `ProofForConversion<T>`
   --> $DIR/underconstrained_generic.rs:13:16
    |
@@ -21,10 +25,6 @@ note: this definition site has more where clauses than the opaque type
    |
 LL | fn _defining_use<T: Trait>() -> Converter<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider restricting type parameter `T` with trait `Trait`
-   |
-LL | type Converter<T: Trait> = impl ProofForConversion<T>;
-   |                 +++++++
 
 error: aborting due to 1 previous error
 

@@ -4,11 +4,11 @@ error[E0200]: the trait `UnsafeTrait` requires an `unsafe impl` declaration
 LL | impl UnsafeTrait for u16 { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the trait `UnsafeTrait` enforces invariants that the compiler can't check. Review the trait documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
 help: add `unsafe` to this trait implementation
    |
 LL | unsafe impl UnsafeTrait for u16 { }
    | ++++++
+   = note: the trait `UnsafeTrait` enforces invariants that the compiler can't check. Review the trait documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
 
 error[E0199]: implementing the trait `SafeTrait` is not unsafe
   --> $DIR/safety-trait-impl.rs:16:1

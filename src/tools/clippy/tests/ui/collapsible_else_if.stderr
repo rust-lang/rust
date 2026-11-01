@@ -9,14 +9,14 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::collapsible-else-if` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::collapsible_else_if)]`
 help: collapse nested if block
    |
 LL ~     } else if y == "world" {
 LL +         println!("world!")
 LL +     }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_else_if)]`
+   = note: `-D clippy::collapsible-else-if` implied by `-D warnings`
 
 error: this `else { if .. }` block can be collapsed
   --> tests/ui/collapsible_else_if.rs:19:12

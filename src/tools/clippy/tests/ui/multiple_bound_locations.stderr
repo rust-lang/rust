@@ -7,8 +7,8 @@ LL | fn ty<F: std::fmt::Debug>(a: F)
 LL |     F: Sized,
    |     ^
    |
-   = note: `-D clippy::multiple-bound-locations` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::multiple_bound_locations)]`
+   = note: `-D clippy::multiple-bound-locations` implied by `-D warnings`
 
 error: bound is defined in more than one place
   --> tests/ui/multiple_bound_locations.rs:10:17

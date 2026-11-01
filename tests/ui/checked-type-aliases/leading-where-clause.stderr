@@ -5,12 +5,12 @@ LL | / where
 LL | |     String: From<T>,
    | |____________________^
    |
-   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
 help: move it to the end of the type declaration
    |
 LL + 
 LL ~ = T where String: From<T>;
    |
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
 
 error: where clauses are not allowed before the type for type aliases
   --> $DIR/leading-where-clause.rs:15:1
@@ -19,7 +19,6 @@ LL | / where
 LL | |     String: From<T>,
    | |____________________^
    |
-   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
 help: move it to the end of the type declaration
    |
 LL + 
@@ -27,6 +26,7 @@ LL | = (T, U)
 LL | where
 LL ~     U: Copy, String: From<T>;
    |
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
 
 error: where clauses are not allowed before the type for type aliases
   --> $DIR/leading-where-clause.rs:21:24
@@ -34,12 +34,12 @@ error: where clauses are not allowed before the type for type aliases
 LL | pub type EmptyLeading0 where = ();
    |                        ^^^^^
    |
-   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
 help: move it to the end of the type declaration
    |
 LL - pub type EmptyLeading0 where = ();
 LL + pub type EmptyLeading0  = () where;
    |
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
 
 error: where clauses are not allowed before the type for type aliases
   --> $DIR/leading-where-clause.rs:24:27

@@ -4,8 +4,8 @@ error: this looks like a failed attempt at checking for the file extension
 LL |     path.ends_with(".md");
    |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `path.extension().is_some_and(|ext| ext == "md")`
    |
-   = note: `-D clippy::path-ends-with-ext` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::path_ends_with_ext)]`
+   = note: `-D clippy::path-ends-with-ext` implied by `-D warnings`
 
 error: this looks like a failed attempt at checking for the file extension
   --> tests/ui/path_ends_with_ext.rs:32:5

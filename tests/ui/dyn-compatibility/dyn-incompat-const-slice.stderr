@@ -4,6 +4,10 @@ error[E0038]: the trait `Qiz` is not dyn compatible
 LL |   foos: &'static [&'static (dyn Qiz + 'static)]
    |                             ^^^^^^^^^^^^^^^^^ `Qiz` is not dyn compatible
    |
+help: consider turning `qiz` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
+   |
+LL |   fn qiz(&self);
+   |          +++++
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/dyn-incompat-const-slice.rs:4:6
@@ -12,15 +16,11 @@ LL | trait Qiz {
    |       --- this trait is not dyn compatible...
 LL |   fn qiz();
    |      ^^^ ...because associated function `qiz` has no `self` parameter
-   = help: only type `Foo` implements `Qiz`; consider using it directly instead.
-help: consider turning `qiz` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
-   |
-LL |   fn qiz(&self);
-   |          +++++
 help: alternatively, consider constraining `qiz` so it is explicitly marked as not applying to trait objects
    |
 LL |   fn qiz() where Self: Sized;
    |            +++++++++++++++++
+   = help: only type `Foo` implements `Qiz`; consider using it directly instead.
 
 error[E0038]: the trait `Qiz` is not dyn compatible
   --> $DIR/dyn-incompat-const-slice.rs:18:31
@@ -28,6 +28,10 @@ error[E0038]: the trait `Qiz` is not dyn compatible
 LL | const BAR : Bar = Bar { foos: &[&FOO]};
    |                               ^^^^^^^ `Qiz` is not dyn compatible
    |
+help: consider turning `qiz` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
+   |
+LL |   fn qiz(&self);
+   |          +++++
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/dyn-incompat-const-slice.rs:4:6
@@ -36,15 +40,11 @@ LL | trait Qiz {
    |       --- this trait is not dyn compatible...
 LL |   fn qiz();
    |      ^^^ ...because associated function `qiz` has no `self` parameter
-   = help: only type `Foo` implements `Qiz`; consider using it directly instead.
-help: consider turning `qiz` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
-   |
-LL |   fn qiz(&self);
-   |          +++++
 help: alternatively, consider constraining `qiz` so it is explicitly marked as not applying to trait objects
    |
 LL |   fn qiz() where Self: Sized;
    |            +++++++++++++++++
+   = help: only type `Foo` implements `Qiz`; consider using it directly instead.
 
 error: aborting due to 2 previous errors
 

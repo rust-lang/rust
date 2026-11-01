@@ -6,10 +6,10 @@ LL |     let mut x = |c| c + 1;
 LL |     x = |c| c + 1;
    |         ^^^^^^^^^ expected closure, found a different closure
    |
+   = help: consider boxing your closure and/or using it as a trait object
    = note: expected closure `{closure@$DIR/unique-closure-type-mismatch.rs:4:17: 4:20}`
               found closure `{closure@$DIR/unique-closure-type-mismatch.rs:5:9: 5:12}`
    = note: no two closures, even if identical, have the same type
-   = help: consider boxing your closure and/or using it as a trait object
 
 error[E0284]: type annotations needed
   --> $DIR/unique-closure-type-mismatch.rs:11:15
@@ -17,12 +17,12 @@ error[E0284]: type annotations needed
 LL |         1 => |c| c + 1,
    |               ^    - type must be known at this point
    |
-   = note: cannot satisfy `<_ as Add<i32>>::Output == _`
-   = note: the type must also implement `Add<i32>`
 help: consider giving this closure parameter an explicit type
    |
 LL |         1 => |c: /* Type */| c + 1,
    |                ++++++++++++
+   = note: cannot satisfy `<_ as Add<i32>>::Output == _`
+   = note: the type must also implement `Add<i32>`
 
 error: aborting due to 2 previous errors
 

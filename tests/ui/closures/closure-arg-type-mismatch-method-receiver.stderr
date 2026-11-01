@@ -6,15 +6,15 @@ LL |     (|a: A| foo(a)).bar();
    |             |
    |             arguments to this function are incorrect
    |
+help: consider borrowing here
+   |
+LL |     (|a: A| foo(&a)).bar();
+   |                 +
 note: function defined here
   --> $DIR/closure-arg-type-mismatch-method-receiver.rs:5:4
    |
 LL | fn foo(_: &A) {}
    |    ^^^ -----
-help: consider borrowing here
-   |
-LL |     (|a: A| foo(&a)).bar();
-   |                 +
 
 error[E0599]: no method named `bar` found for closure `{closure@$DIR/closure-arg-type-mismatch-method-receiver.rs:8:6: 8:12}` in the current scope
   --> $DIR/closure-arg-type-mismatch-method-receiver.rs:8:21

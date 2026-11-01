@@ -4,8 +4,8 @@ error: field name ends with the struct's name
 LL |     field_data1: u8,
    |     ^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::struct-field-names` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::struct_field_names)]`
+   = note: `-D clippy::struct-field-names` implied by `-D warnings`
 
 error: field name starts with the struct's name
   --> tests/ui/struct_fields.rs:19:5

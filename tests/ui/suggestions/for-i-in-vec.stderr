@@ -7,12 +7,12 @@ LL |         for _ in self.v {
    |                  `self.v` moved due to this implicit call to `.into_iter()`
    |                  move occurs because `self.v` has type `Vec<u32>`, which does not implement the `Copy` trait
    |
-note: the `for` loop is desugared into a call to `std::iter::IntoIterator::into_iter`, which takes ownership of the receiver `self`, which moves `self.v`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: consider iterating over a slice of the `Vec<u32>`'s content to avoid moving into the `for` loop
    |
 LL |         for _ in &self.v {
    |                  +
+note: the `for` loop is desugared into a call to `std::iter::IntoIterator::into_iter`, which takes ownership of the receiver `self`, which moves `self.v`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: consider cloning the value if the performance cost is acceptable
    |
 LL |         for _ in self.v.clone() {
@@ -45,12 +45,12 @@ LL |     for loader in *LOADERS {
    |                   value moved due to this implicit call to `.into_iter()`
    |                   move occurs because value has type `Vec<&u8>`, which does not implement the `Copy` trait
    |
-note: the `for` loop is desugared into a call to `std::iter::IntoIterator::into_iter`, which takes ownership of the receiver `self`, which moves value
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: consider iterating over a slice of the `Vec<&u8>`'s content to avoid moving into the `for` loop
    |
 LL |     for loader in &*LOADERS {
    |                   +
+note: the `for` loop is desugared into a call to `std::iter::IntoIterator::into_iter`, which takes ownership of the receiver `self`, which moves value
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: consider cloning the value if the performance cost is acceptable
    |
 LL -     for loader in *LOADERS {

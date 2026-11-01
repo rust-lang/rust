@@ -4,6 +4,7 @@ error[E0038]: the trait `Trait` is not dyn compatible
 LL |     dyn for<'hr> Trait<Assoc<'hr> = &'s str>: Trait<Assoc<'static> = &'s str>,
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Trait` is not dyn compatible
    |
+   = help: consider moving `Assoc` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/gat-static-in-trait-object.rs:9:10
@@ -12,7 +13,6 @@ LL | trait Trait {
    |       ----- this trait is not dyn compatible...
 LL |     type Assoc<'a>: 'a;
    |          ^^^^^ ...because it contains generic associated type `Assoc`
-   = help: consider moving `Assoc` to another trait
 
 error[E0038]: the trait `Trait` is not dyn compatible
   --> $DIR/gat-static-in-trait-object.rs:16:53
@@ -20,6 +20,7 @@ error[E0038]: the trait `Trait` is not dyn compatible
 LL |     dyn for<'hr> Trait<Assoc<'hr> = &'s str>: Trait<Assoc<'static> = &'s str>,
    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^ `Trait` is not dyn compatible
    |
+   = help: consider moving `Assoc` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/gat-static-in-trait-object.rs:9:10
@@ -28,7 +29,6 @@ LL | trait Trait {
    |       ----- this trait is not dyn compatible...
 LL |     type Assoc<'a>: 'a;
    |          ^^^^^ ...because it contains generic associated type `Assoc`
-   = help: consider moving `Assoc` to another trait
 
 error[E0038]: the trait `Trait` is not dyn compatible
   --> $DIR/gat-static-in-trait-object.rs:20:14
@@ -36,6 +36,7 @@ error[E0038]: the trait `Trait` is not dyn compatible
 LL |     tr::<dyn for<'hr> Trait<Assoc<'hr> = &'s str>>(x)
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Trait` is not dyn compatible
    |
+   = help: consider moving `Assoc` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/gat-static-in-trait-object.rs:9:10
@@ -44,7 +45,6 @@ LL | trait Trait {
    |       ----- this trait is not dyn compatible...
 LL |     type Assoc<'a>: 'a;
    |          ^^^^^ ...because it contains generic associated type `Assoc`
-   = help: consider moving `Assoc` to another trait
 
 error: aborting due to 3 previous errors
 

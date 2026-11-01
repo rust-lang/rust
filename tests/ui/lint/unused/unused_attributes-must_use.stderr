@@ -246,15 +246,15 @@ error: unused `X` that must be used
 LL |     X;
    |     ^
    |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = X;
+   |     +++++++
 note: the lint level is defined here
   --> $DIR/unused_attributes-must_use.rs:4:28
    |
 LL | #![deny(unused_attributes, unused_must_use)]
    |                            ^^^^^^^^^^^^^^^
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |     let _ = X;
-   |     +++++++
 
 error: unused `Y` that must be used
   --> $DIR/unused_attributes-must_use.rs:131:5

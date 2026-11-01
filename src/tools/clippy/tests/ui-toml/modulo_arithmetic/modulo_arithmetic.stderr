@@ -4,10 +4,10 @@ error: you are using modulo operator on types that might have different signs
 LL |     let c = a % b == 0;
    |             ^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::modulo_arithmetic)]`
    = note: double check for expected result especially when interoperating with different languages
    = note: or consider using `rem_euclid` or similar function
    = note: `-D clippy::modulo-arithmetic` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::modulo_arithmetic)]`
 
 error: you are using modulo operator on types that might have different signs
   --> tests/ui-toml/modulo_arithmetic/modulo_arithmetic.rs:8:13

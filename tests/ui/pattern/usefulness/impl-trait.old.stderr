@@ -129,13 +129,13 @@ error[E0004]: non-exhaustive patterns: type `impl Copy` is non-empty
 LL |     match return_never_rpit(x) {}
    |           ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the matched value is of type `impl Copy`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     match return_never_rpit(x) {
 LL +         _ => todo!(),
 LL ~     }
    |
+   = note: the matched value is of type `impl Copy`
 
 error[E0004]: non-exhaustive patterns: type `T` is non-empty
   --> $DIR/impl-trait.rs:40:11
@@ -143,13 +143,13 @@ error[E0004]: non-exhaustive patterns: type `T` is non-empty
 LL |     match return_never_tait(x) {}
    |           ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the matched value is of type `T`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     match return_never_tait(x) {
 LL +         _ => todo!(),
 LL ~     }
    |
+   = note: the matched value is of type `T`
 
 error: aborting due to 14 previous errors
 

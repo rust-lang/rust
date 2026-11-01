@@ -7,8 +7,6 @@ LL | |         dbg!(item);
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::single-element-loop` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::single_element_loop)]`
 help: try
    |
 LL ~     {
@@ -17,6 +15,8 @@ LL +
 LL +         dbg!(item);
 LL +     }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::single_element_loop)]`
+   = note: `-D clippy::single-element-loop` implied by `-D warnings`
 
 error: for loop over a single element
   --> tests/ui/single_element_loop.rs:13:5

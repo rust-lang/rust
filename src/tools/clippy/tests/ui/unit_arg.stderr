@@ -7,8 +7,6 @@ LL | |         1;
 LL | |     });
    | |______^
    |
-   = note: `-D clippy::unit-arg` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unit_arg)]`
 help: remove the semicolon from the last statement in the block
    |
 LL -         1;
@@ -22,6 +20,8 @@ LL +         1;
 LL +     };
 LL ~     foo(());
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unit_arg)]`
+   = note: `-D clippy::unit-arg` implied by `-D warnings`
 
 error: passing a unit value to a function
   --> tests/ui/unit_arg.rs:61:5

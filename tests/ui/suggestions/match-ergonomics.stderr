@@ -6,13 +6,13 @@ LL |     match &x[..] {
 LL |         [&v] => {},
    |          ^^ expected `i32`, found `&_`
    |
-   = note:   expected type `i32`
-           found reference `&_`
 help: consider removing `&` from the pattern
    |
 LL -         [&v] => {},
 LL +         [v] => {},
    |
+   = note:   expected type `i32`
+           found reference `&_`
 
 error[E0529]: expected an array or slice, found `Vec<i32>`
   --> $DIR/match-ergonomics.rs:8:9
@@ -44,13 +44,13 @@ LL |     match y {
 LL |         &v => {},
    |         ^^ expected `i32`, found `&_`
    |
-   = note:   expected type `i32`
-           found reference `&_`
 help: consider removing `&` from the pattern
    |
 LL -         &v => {},
 LL +         v => {},
    |
+   = note:   expected type `i32`
+           found reference `&_`
 
 error[E0308]: mismatched types
   --> $DIR/match-ergonomics.rs:40:13
@@ -60,13 +60,13 @@ LL |     if let [&v] = &x[..] {}
    |             |
    |             expected `i32`, found `&_`
    |
-   = note:   expected type `i32`
-           found reference `&_`
 help: consider removing `&` from the pattern
    |
 LL -     if let [&v] = &x[..] {}
 LL +     if let [v] = &x[..] {}
    |
+   = note:   expected type `i32`
+           found reference `&_`
 
 error: aborting due to 5 previous errors
 

@@ -4,13 +4,13 @@ error: passing a unit value to a function
 LL |     foo({});
    |     ^^^^^^^
    |
-   = note: `-D clippy::unit-arg` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unit_arg)]`
 help: use a unit literal instead
    |
 LL -     foo({});
 LL +     foo(());
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unit_arg)]`
+   = note: `-D clippy::unit-arg` implied by `-D warnings`
 
 error: passing a unit value to a function
   --> tests/ui/unit_arg_fixable.rs:16:5

@@ -4,13 +4,13 @@ error: used underscore-prefixed item
 LL |         _f;
    |         ^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::used_underscore_items)]`
 note: item is defined here
   --> tests/ui/used_underscore_items.rs:15:9
    |
 LL |         fn _f() {}
    |         ^^^^^^^
    = note: `-D clippy::used-underscore-items` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::used_underscore_items)]`
 
 error: used underscore-prefixed item
   --> tests/ui/used_underscore_items.rs:29:9

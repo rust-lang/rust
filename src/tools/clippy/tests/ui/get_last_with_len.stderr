@@ -4,8 +4,8 @@ error: accessing last element with `x.get(x.len() - 1)`
 LL |     let _ = x.get(x.len() - 1);
    |             ^^^^^^^^^^^^^^^^^^ help: try: `x.last()`
    |
-   = note: `-D clippy::get-last-with-len` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::get_last_with_len)]`
+   = note: `-D clippy::get-last-with-len` implied by `-D warnings`
 
 error: accessing last element with `s.field.get(s.field.len() - 1)`
   --> tests/ui/get_last_with_len.rs:33:13

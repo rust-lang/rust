@@ -4,11 +4,11 @@ error: prefix `'foo` is unknown
 LL | w!('foo#lifetime);
    |    ^^^^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL | w!('foo #lifetime);
    |        +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: aborting due to 1 previous error
 

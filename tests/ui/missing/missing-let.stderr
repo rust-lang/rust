@@ -4,11 +4,11 @@ error: expected expression, found `let` statement
 LL |     if let Some(_) = x
    |        ^^^^^^^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if` and `while` expressions
 help: you might have meant to continue the let-chain
    |
 LL |         && let Some(x) = x
    |            +++
+   = note: only supported directly in conditions of `if` and `while` expressions
 help: you might have meant to compare for equality
    |
 LL |         && Some(x) == x

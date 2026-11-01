@@ -6,12 +6,12 @@ LL |     let a: core::range::RangeFrom<u8> = 1..;
    |            |
    |            expected due to this
    |
-   = note: expected struct `std::range::RangeFrom<u8>`
-              found struct `std::ops::RangeFrom<{integer}>`
 help: call `Into::into` on this expression to convert `std::ops::RangeFrom<{integer}>` into `std::range::RangeFrom<u8>`
    |
 LL |     let a: core::range::RangeFrom<u8> = (1..).into();
    |                                         +   ++++++++
+   = note: expected struct `std::range::RangeFrom<u8>`
+              found struct `std::ops::RangeFrom<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/feature-gate-new_range.rs:4:37
@@ -21,12 +21,12 @@ LL |     let b: core::range::Range<u8> = 2..3;
    |            |
    |            expected due to this
    |
-   = note: expected struct `std::range::Range<u8>`
-              found struct `std::ops::Range<{integer}>`
 help: call `Into::into` on this expression to convert `std::ops::Range<{integer}>` into `std::range::Range<u8>`
    |
 LL |     let b: core::range::Range<u8> = (2..3).into();
    |                                     +    ++++++++
+   = note: expected struct `std::range::Range<u8>`
+              found struct `std::ops::Range<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/feature-gate-new_range.rs:6:46
@@ -36,12 +36,12 @@ LL |     let c: core::range::RangeInclusive<u8> = 4..=5;
    |            |
    |            expected due to this
    |
-   = note: expected struct `std::range::RangeInclusive<u8>`
-              found struct `std::ops::RangeInclusive<{integer}>`
 help: call `Into::into` on this expression to convert `std::ops::RangeInclusive<{integer}>` into `std::range::RangeInclusive<u8>`
    |
 LL |     let c: core::range::RangeInclusive<u8> = (4..=5).into();
    |                                              +     ++++++++
+   = note: expected struct `std::range::RangeInclusive<u8>`
+              found struct `std::ops::RangeInclusive<{integer}>`
 
 error: aborting due to 3 previous errors
 

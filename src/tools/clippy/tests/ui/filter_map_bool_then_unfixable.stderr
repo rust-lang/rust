@@ -12,8 +12,8 @@ LL | |     });
    | |______^
    |
    = help: consider using `filter` then `map` instead
-   = note: `-D clippy::filter-map-bool-then` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::filter_map_bool_then)]`
+   = note: `-D clippy::filter-map-bool-then` implied by `-D warnings`
 
 error: usage of `bool::then` in `filter_map`
   --> tests/ui/filter_map_bool_then_unfixable.rs:22:26

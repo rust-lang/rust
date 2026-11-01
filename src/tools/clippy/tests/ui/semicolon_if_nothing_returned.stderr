@@ -4,8 +4,8 @@ error: consider adding a `;` to the last statement for consistent formatting
 LL |     println!("Hello")
    |     ^^^^^^^^^^^^^^^^^ help: add a `;` here: `println!("Hello");`
    |
-   = note: `-D clippy::semicolon-if-nothing-returned` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::semicolon_if_nothing_returned)]`
+   = note: `-D clippy::semicolon-if-nothing-returned` implied by `-D warnings`
 
 error: consider adding a `;` to the last statement for consistent formatting
   --> tests/ui/semicolon_if_nothing_returned.rs:19:5

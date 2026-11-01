@@ -6,8 +6,8 @@ LL | | fn foo1() {
 LL | |     #![allow(unused)]
    | |_____________________^
    |
-   = note: `-D clippy::mixed-attributes-style` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mixed_attributes_style)]`
+   = note: `-D clippy::mixed-attributes-style` implied by `-D warnings`
 
 error: item has both inner and outer attributes
   --> tests/ui/mixed_attributes_style.rs:24:1

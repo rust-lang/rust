@@ -6,8 +6,8 @@ LL | |
 LL | |     path_buf.push("foo");
    | |_________________________^ help: consider using the `.join()`: `let mut path_buf = PathBuf::from("foo");`
    |
-   = note: `-D clippy::pathbuf-init-then-push` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::pathbuf_init_then_push)]`
+   = note: `-D clippy::pathbuf-init-then-push` implied by `-D warnings`
 
 error: calls to `push` immediately after creation
   --> tests/ui/pathbuf_init_then_push.rs:10:5

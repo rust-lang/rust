@@ -4,7 +4,6 @@ error[E0261]: use of undeclared lifetime name `'a`
 LL |     id::<extern "cmse-nonsecure-call" fn(&'a ())>(PhantomData);
    |                                           ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the type lifetime-generic with a new `'a` lifetime
    |
 LL |     id::<for<'a> extern "cmse-nonsecure-call" fn(&'a ())>(PhantomData);
@@ -13,6 +12,7 @@ help: consider introducing lifetime `'a` here
    |
 LL | fn foo<'a>() {
    |       ++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 
 error: aborting due to 1 previous error
 

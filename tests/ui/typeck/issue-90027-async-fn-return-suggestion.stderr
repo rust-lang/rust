@@ -20,11 +20,6 @@ error[E0308]: mismatched types
 LL |     hello()
    |     ^^^^^^^ expected `()`, found future
    |
-note: calling an async function returns a future
-  --> $DIR/issue-90027-async-fn-return-suggestion.rs:15:5
-   |
-LL |     hello()
-   |     ^^^^^^^
 help: consider `await`ing on the `Future`
    |
 LL |     hello().await
@@ -33,6 +28,11 @@ help: consider using a semicolon here
    |
 LL |     hello();
    |            +
+note: calling an async function returns a future
+  --> $DIR/issue-90027-async-fn-return-suggestion.rs:15:5
+   |
+LL |     hello()
+   |     ^^^^^^^
 
 error: aborting due to 3 previous errors
 

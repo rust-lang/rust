@@ -4,13 +4,13 @@ error: struct destructuring with rest (`..`)
 LL |     let S { a, b, .. } = s;
    |         ^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::rest-pattern-accessible-field` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::rest_pattern_accessible_field)]`
 help: consider explicitly ignoring remaining fields with wildcard patterns (`x: _`)
    |
 LL -     let S { a, b, .. } = s;
 LL +     let S { a, b, c: _ } = s;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::rest_pattern_accessible_field)]`
+   = note: `-D clippy::rest-pattern-accessible-field` implied by `-D warnings`
 
 error: struct destructuring with rest (`..`)
   --> tests/ui/rest_pattern_accessible_field.rs:41:9

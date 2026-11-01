@@ -7,6 +7,7 @@ LL | struct S;
 LL |     a.f();
    |       ^ method cannot be called on `S` due to unsatisfied trait bounds
    |
+   = help: items from traits can only be used if the trait is implemented and in scope
 note: trait bound `<S as X>::Y<i32> = i32` was not satisfied
   --> $DIR/method-unsatisfied-assoc-type-predicate.rs:12:11
    |
@@ -14,7 +15,6 @@ LL | impl<T: X<Y<i32> = i32>> M for T {}
    |           ^^^^^^^^^^^^   -     -
    |           |
    |           unsatisfied trait bound introduced here
-   = help: items from traits can only be used if the trait is implemented and in scope
 note: `M` defines an item `f`, perhaps you need to implement it
   --> $DIR/method-unsatisfied-assoc-type-predicate.rs:8:1
    |

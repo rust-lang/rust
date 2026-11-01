@@ -16,11 +16,11 @@ error: unknown start of token: \u{a0}
 LL |         let x = 0;
    |     ^^^^
    |
-   = note: character appears 3 more times
 help: Unicode character ' ' (No-Break Space) looks like ' ' (Space), but it is not
    |
 LL |         let x = 0;
    |     ++++
+   = note: character appears 3 more times
 
 error: unknown start of token: \u{2a75}
   --> $DIR/unicode-chars.rs:9:15

@@ -104,12 +104,12 @@ error: cannot find derive macro `Serialize` in this scope
 LL | #[derive(Serialize)]
    |          ^^^^^^^^^
    |
+   = help: consider implementing `Serialize` for your type manually
 note: `Serialize` is a trait, not a derive macro
   --> $DIR/issue-88206.rs:11:5
    |
 LL |     pub trait Serialize {}
    |     ^^^^^^^^^^^^^^^^^^^^^^
-   = help: consider implementing `Serialize` for your type manually
 
 error: aborting due to 11 previous errors
 

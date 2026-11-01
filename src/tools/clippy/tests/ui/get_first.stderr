@@ -4,8 +4,8 @@ error: accessing first element with `x.get(0)`
 LL |     let _ = x.get(0);
    |             ^^^^^^^^ help: try: `x.first()`
    |
-   = note: `-D clippy::get-first` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::get_first)]`
+   = note: `-D clippy::get-first` implied by `-D warnings`
 
 error: accessing first element with `y.get(0)`
   --> tests/ui/get_first.rs:24:13

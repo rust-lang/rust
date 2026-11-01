@@ -4,8 +4,8 @@ error: replacing an `Option` with `None`
 LL |     let _ = mem::replace(&mut an_option, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `Option::take()` instead: `an_option.take()`
    |
-   = note: `-D clippy::mem-replace-option-with-none` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mem_replace_option_with_none)]`
+   = note: `-D clippy::mem-replace-option-with-none` implied by `-D warnings`
 
 error: replacing an `Option` with `None`
   --> tests/ui/mem_replace_option_with_none.rs:10:13

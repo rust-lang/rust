@@ -4,17 +4,17 @@ error: unnecessary parentheses around type
 LL |     for<'b> (for<'a> fn(Inv<'a>)): Trait<'b>,
    |             ^                   ^
    |
+help: remove these parentheses
+   |
+LL -     for<'b> (for<'a> fn(Inv<'a>)): Trait<'b>,
+LL +     for<'b> for<'a> fn(Inv<'a>): Trait<'b>,
+   |
 note: the lint level is defined here
   --> $DIR/issue-105061-should-lint.rs:2:9
    |
 LL | #![deny(warnings)]
    |         ^^^^^^^^
    = note: `#[deny(unused_parens)]` implied by `#[deny(warnings)]`
-help: remove these parentheses
-   |
-LL -     for<'b> (for<'a> fn(Inv<'a>)): Trait<'b>,
-LL +     for<'b> for<'a> fn(Inv<'a>): Trait<'b>,
-   |
 
 error: unnecessary parentheses around type
   --> $DIR/issue-105061-should-lint.rs:17:15

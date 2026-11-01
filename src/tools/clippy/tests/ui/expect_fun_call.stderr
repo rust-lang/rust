@@ -4,8 +4,8 @@ error: function call inside of `expect`
 LL |     with_none_and_format.expect(&format!("Error {}: fake error", error_code));
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
    |
-   = note: `-D clippy::expect-fun-call` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::expect_fun_call)]`
+   = note: `-D clippy::expect-fun-call` implied by `-D warnings`
 
 error: function call inside of `expect`
   --> tests/ui/expect_fun_call.rs:35:26

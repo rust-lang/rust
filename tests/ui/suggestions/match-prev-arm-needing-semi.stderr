@@ -13,11 +13,6 @@ LL | |         false => async_dummy(),
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-note: calling an async function returns a future
-  --> $DIR/match-prev-arm-needing-semi.rs:26:18
-   |
-LL |         false => async_dummy(),
-   |                  ^^^^^^^^^^^^^
 help: consider `await`ing on the `Future`
    |
 LL |         false => async_dummy().await,
@@ -27,6 +22,11 @@ help: consider removing this semicolon
 LL -             async_dummy();
 LL +             async_dummy()
    |
+note: calling an async function returns a future
+  --> $DIR/match-prev-arm-needing-semi.rs:26:18
+   |
+LL |         false => async_dummy(),
+   |                  ^^^^^^^^^^^^^
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/match-prev-arm-needing-semi.rs:39:18
@@ -43,11 +43,6 @@ LL | |         false => async_dummy2(),
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-note: calling an async function returns a future
-  --> $DIR/match-prev-arm-needing-semi.rs:39:18
-   |
-LL |         false => async_dummy2(),
-   |                  ^^^^^^^^^^^^^^
 help: consider `await`ing on the `Future`
    |
 LL |         false => async_dummy2().await,
@@ -59,6 +54,11 @@ LL |
 LL |         }
 LL ~         false => Box::new(async_dummy2()),
    |
+note: calling an async function returns a future
+  --> $DIR/match-prev-arm-needing-semi.rs:39:18
+   |
+LL |         false => async_dummy2(),
+   |                  ^^^^^^^^^^^^^^
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/match-prev-arm-needing-semi.rs:50:18
@@ -74,13 +74,13 @@ LL | |         false => async_dummy2(),
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: distinct uses of `impl Trait` result in different opaque types
 help: consider `await`ing on both `Future`s
    |
 LL ~         true => async_dummy().await,
 LL |
 LL ~         false => async_dummy2().await,
    |
+   = note: distinct uses of `impl Trait` result in different opaque types
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/match-prev-arm-needing-semi.rs:11:18

@@ -4,15 +4,15 @@ error[E0277]: the trait bound `X: Copy` is not satisfied
 LL | fn b<X>(_: B<X>) {}
    |            ^^^^ the trait `Copy` is not implemented for `X`
    |
+help: consider restricting type parameter `X` with trait `Copy`
+   |
+LL | fn b<X: std::marker::Copy>(_: B<X>) {}
+   |       +++++++++++++++++++
 note: required by a bound on the type alias `B`
   --> $DIR/use-site-wf.rs:6:11
    |
 LL | type B<T: Copy> = T;
    |           ^^^^ required by this bound
-help: consider restricting type parameter `X` with trait `Copy`
-   |
-LL | fn b<X: std::marker::Copy>(_: B<X>) {}
-   |       +++++++++++++++++++
 
 error[E0478]: lifetime bound not satisfied
   --> $DIR/use-site-wf.rs:14:13
@@ -33,16 +33,16 @@ error[E0277]: the trait bound `X: Copy` is not satisfied
 LL | fn b<X>(_: B<X>) {}
    |            ^^^^ the trait `Copy` is not implemented for `X`
    |
+help: consider restricting type parameter `X` with trait `Copy`
+   |
+LL | fn b<X: std::marker::Copy>(_: B<X>) {}
+   |       +++++++++++++++++++
 note: required by a bound on the type alias `B`
   --> $DIR/use-site-wf.rs:6:11
    |
 LL | type B<T: Copy> = T;
    |           ^^^^ required by this bound
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider restricting type parameter `X` with trait `Copy`
-   |
-LL | fn b<X: std::marker::Copy>(_: B<X>) {}
-   |       +++++++++++++++++++
 
 error: aborting due to 3 previous errors
 

@@ -4,12 +4,12 @@ warning: ambiguous wide pointer comparison, the comparison includes metadata whi
 LL |     let _ = a == b;
    |             ^^^^^^
    |
-   = note: `#[warn(ambiguous_wide_pointer_comparisons)]` on by default
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
 LL -     let _ = a == b;
 LL +     let _ = std::ptr::addr_eq(a, b);
    |
+   = note: `#[warn(ambiguous_wide_pointer_comparisons)]` on by default
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
   --> $DIR/wide_pointer_comparisons.rs:22:13

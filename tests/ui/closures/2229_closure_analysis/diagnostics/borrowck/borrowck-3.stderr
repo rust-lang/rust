@@ -7,15 +7,15 @@ LL |            let x = &mut p.x;
 LL |            println!("{:?}", p);
    |                             - `p` is borrowed here
    |
+help: to force the closure to take ownership of `p` (and any other referenced variables), use the `move` keyword
+   |
+LL |         move || {
+   |         ++++
 note: block requires argument type to outlive `'1`
   --> $DIR/borrowck-3.rs:9:9
    |
 LL |     let mut c = {
    |         ^^^^^
-help: to force the closure to take ownership of `p` (and any other referenced variables), use the `move` keyword
-   |
-LL |         move || {
-   |         ++++
 
 error: aborting due to 1 previous error
 

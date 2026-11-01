@@ -4,26 +4,26 @@ error[E0034]: multiple applicable items in scope
 LL |     ().hello();
    |        ^^^^^ multiple `hello` found
    |
-note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/no-common-ancestor.rs:7:5
-   |
-LL |     fn hello(&self) -> &'static str {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/no-common-ancestor.rs:19:5
-   |
-LL |     fn hello(&self) -> &'static str {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     ().hello();
 LL +     A::hello(&());
    |
+note: candidate #1 is defined in an impl of the trait `A` for the type `T`
+  --> $DIR/no-common-ancestor.rs:7:5
+   |
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #2
    |
 LL -     ().hello();
 LL +     B::hello(&());
    |
+note: candidate #2 is defined in an impl of the trait `B` for the type `T`
+  --> $DIR/no-common-ancestor.rs:19:5
+   |
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0221]: ambiguous associated type `Assoc` in bounds of `T`
   --> $DIR/no-common-ancestor.rs:37:23
@@ -54,6 +54,14 @@ error[E0034]: multiple applicable items in scope
 LL |     let _ = T::CONST;
    |                ^^^^^ multiple `CONST` found
    |
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     let _ = T::CONST;
+LL +     let _ = <T as A>::CONST;
+   |
+LL -     let _ = T::CONST;
+LL +     let _ = <T as B>::CONST;
+   |
 note: candidate #1 is defined in the trait `A`
   --> $DIR/no-common-ancestor.rs:11:5
    |
@@ -64,14 +72,6 @@ note: candidate #2 is defined in the trait `B`
    |
 LL |     const CONST: i32;
    |     ^^^^^^^^^^^^^^^^
-help: use fully-qualified syntax to disambiguate
-   |
-LL -     let _ = T::CONST;
-LL +     let _ = <T as A>::CONST;
-   |
-LL -     let _ = T::CONST;
-LL +     let _ = <T as B>::CONST;
-   |
 
 error: aborting due to 3 previous errors
 

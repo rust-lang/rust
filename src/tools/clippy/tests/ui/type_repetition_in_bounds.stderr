@@ -5,8 +5,8 @@ LL |     T: Clone,
    |     ^^^^^^^^
    |
    = help: consider combining the bounds: `T: Copy + Clone`
-   = note: `-D clippy::type-repetition-in-bounds` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::type_repetition_in_bounds)]`
+   = note: `-D clippy::type-repetition-in-bounds` implied by `-D warnings`
 
 error: type `Self` has already been used as a bound predicate
   --> tests/ui/type_repetition_in_bounds.rs:28:5

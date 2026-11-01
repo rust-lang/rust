@@ -32,12 +32,12 @@ error[E0573]: cannot find type `num` in this scope
 LL |     let foo: i32::from_be(num);
    |                           ^^^ not found in this scope
    |
-   = note: a local variable named `num` exists in another namespace
 help: use `=` if you meant to assign
    |
 LL -     let foo: i32::from_be(num);
 LL +     let foo = i32::from_be(num);
    |
+   = note: a local variable named `num` exists in another namespace
 
 error[E0573]: cannot find type `bar` in this scope
   --> $DIR/let-binding-init-expr-as-ty.rs:47:12
@@ -45,12 +45,12 @@ error[E0573]: cannot find type `bar` in this scope
 LL |     let x: bar();
    |            ^^^ not found in this scope
    |
-   = note: a function named `bar` exists in another namespace
 help: use `=` if you meant to assign
    |
 LL -     let x: bar();
 LL +     let x = bar();
    |
+   = note: a function named `bar` exists in another namespace
 
 error[E0573]: cannot find type `bar` in this scope
   --> $DIR/let-binding-init-expr-as-ty.rs:48:12
@@ -66,17 +66,17 @@ error[E0573]: cannot find type `x` in this scope
 LL |     let x: x;
    |            ^ not found in this scope
    |
+help: a struct with a similar name exists
+   |
+LL -     let x: x;
+LL +     let x: K;
+   |
    = note: a local variable named `x` exists in another namespace
 note: similarly named struct `K` defined here
   --> $DIR/let-binding-init-expr-as-ty.rs:18:1
    |
 LL | struct K(S::new(()));
    | ^^^^^^^^^^^^^^^^^^^^^
-help: a struct with a similar name exists
-   |
-LL -     let x: x;
-LL +     let x: K;
-   |
 help: use `=` if you meant to assign
    |
 LL -     let x: x;
@@ -89,8 +89,8 @@ error[E0658]: return type notation is experimental
 LL |     let x: S::new(..);
    |                  ^^^^
    |
-   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
    = help: add `#![feature(return_type_notation)]` to the crate attributes to enable
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: return type notation not allowed in this position yet

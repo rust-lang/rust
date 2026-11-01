@@ -9,8 +9,6 @@ LL | |         m.insert(k, v2);
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::map-entry` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
 help: try
    |
 LL ~     match m.entry(k) {
@@ -23,6 +21,8 @@ LL +             e.insert(v2);
 LL +         }
 LL +     }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
+   = note: `-D clippy::map-entry` implied by `-D warnings`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> tests/ui/entry_with_else.rs:20:5

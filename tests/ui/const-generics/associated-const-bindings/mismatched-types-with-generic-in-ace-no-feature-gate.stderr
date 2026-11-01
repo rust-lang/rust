@@ -4,8 +4,8 @@ error[E0658]: generic const items are experimental
 LL |     const C<const N: u32>: u32 = N;
    |            ^^^^^^^^^^^^^^
    |
-   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated const equality is incomplete
@@ -14,8 +14,8 @@ error[E0658]: associated const equality is incomplete
 LL | fn take0<const N: u64>(_: impl Owner<C<N> = { N }>) {}
    |                                      ^^^^^^^^^^^^
    |
-   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
    = help: add `#![feature(gca_min_const_items)]` to the crate attributes to enable
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 2 previous errors

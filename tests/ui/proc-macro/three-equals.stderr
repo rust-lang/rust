@@ -13,12 +13,12 @@ error: expected EOF, found `=`.
 LL |     three_equals!(=====);
    |                      ^
    |
+   = help: input must be: `===`
 note: last good input was here
   --> $DIR/three-equals.rs:15:21
    |
 LL |     three_equals!(=====);
    |                     ^
-   = help: input must be: `===`
 
 error: expected `=`, found `abc`.
   --> $DIR/three-equals.rs:18:19
@@ -38,12 +38,12 @@ error: expected EOF, found `a`.
 LL |     three_equals!(===a);
    |                      ^
    |
+   = help: input must be: `===`
 note: last good input was here
   --> $DIR/three-equals.rs:24:21
    |
 LL |     three_equals!(===a);
    |                     ^
-   = help: input must be: `===`
 
 error: aborting due to 5 previous errors
 

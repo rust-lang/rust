@@ -4,7 +4,6 @@ error[E0261]: use of undeclared lifetime name `'b`
 LL | fn two_htrb_outlives() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> {}
    |                                                                             ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'b` lifetime
    |
 LL | fn two_htrb_outlives() -> impl for<'b, 'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> {}
@@ -13,6 +12,7 @@ help: consider introducing lifetime `'b` here
    |
 LL | fn two_htrb_outlives<'b>() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> {}
    |                     ++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/nested-rpit-hrtb.rs:64:82

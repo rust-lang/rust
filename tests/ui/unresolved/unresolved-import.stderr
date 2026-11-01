@@ -31,16 +31,16 @@ LL | use food::baz;
    |           |
    |           no `baz` in `food`
    |
-note: module `food::zug::baz` exists but is inaccessible
-  --> $DIR/unresolved-import.rs:38:9
-   |
-LL |         pub mod baz {
-   |         ^^^^^^^^^^^ not accessible
 help: a similar name exists in the module
    |
 LL - use food::baz;
 LL + use food::bag;
    |
+note: module `food::zug::baz` exists but is inaccessible
+  --> $DIR/unresolved-import.rs:38:9
+   |
+LL |         pub mod baz {
+   |         ^^^^^^^^^^^ not accessible
 
 error[E0432]: unresolved import `food::beens`
   --> $DIR/unresolved-import.rs:24:12

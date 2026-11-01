@@ -100,12 +100,12 @@ LL |         &mut [_a, _b, _c] => {}
    |               |   ...and here
    |               data moved here
    |
-   = note: move occurs because these variables have types that don't implement the `Copy` trait
 help: consider removing the mutable borrow
    |
 LL -         &mut [_a, _b, _c] => {}
 LL +         [_a, _b, _c] => {}
    |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:85:13

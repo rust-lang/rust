@@ -4,13 +4,13 @@ error: unnested or-patterns
 LL |     if let deref!(0) | deref!(2) = Box::new(0) {}
    |            ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnested-or-patterns` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnested_or_patterns)]`
 help: nest the patterns
    |
 LL -     if let deref!(0) | deref!(2) = Box::new(0) {}
 LL +     if let deref!(0 | 2) = Box::new(0) {}
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnested_or_patterns)]`
+   = note: `-D clippy::unnested-or-patterns` implied by `-D warnings`
 
 error: unnested or-patterns
   --> tests/ui/unnested_or_patterns.rs:17:12

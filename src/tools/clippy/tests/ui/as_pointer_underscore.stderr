@@ -4,8 +4,8 @@ error: using inferred pointer cast
 LL |     &s as *const _ as usize
    |           ^^^^^^^^ help: use explicit type: `*const &S`
    |
-   = note: `-D clippy::as-pointer-underscore` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::as_pointer_underscore)]`
+   = note: `-D clippy::as-pointer-underscore` implied by `-D warnings`
 
 error: using inferred pointer cast
   --> tests/ui/as_pointer_underscore.rs:13:10

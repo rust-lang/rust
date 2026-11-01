@@ -4,16 +4,16 @@ error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
    |
-note: the binding is already a mutable borrow
-  --> $DIR/issue-31424.rs:6:12
-   |
-LL |     fn foo(&mut self) {
-   |            ^^^^^^^^^
 help: try removing `&mut` here
   --> $DIR/issue-31424.rs:7:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^
+note: the binding is already a mutable borrow
+  --> $DIR/issue-31424.rs:6:12
+   |
+LL |     fn foo(&mut self) {
+   |            ^^^^^^^^^
 
 warning: function cannot return without recursing
   --> $DIR/issue-31424.rs:13:5
@@ -33,6 +33,10 @@ error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
    |
+help: consider making the binding mutable if you need to reborrow multiple times
+   |
+LL |     fn bar(mut self: &mut Self) {
+   |            +++
 note: the binding is already a mutable borrow
   --> $DIR/issue-31424.rs:13:18
    |
@@ -43,10 +47,6 @@ help: try removing `&mut` here
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^
-help: consider making the binding mutable if you need to reborrow multiple times
-   |
-LL |     fn bar(mut self: &mut Self) {
-   |            +++
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

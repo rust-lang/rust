@@ -7,8 +7,8 @@ LL |     let a = if true { true };
    |             |         found here
    |             expected `bool`, found `()`
    |
-   = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
+   = note: `if` expressions without `else` evaluate to `()`
 
 error: aborting due to 1 previous error
 

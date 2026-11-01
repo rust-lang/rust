@@ -7,12 +7,12 @@ LL |     T::try_from();
    |        ^^^^^^^^ associated function or constant not found in `T`
    |
    = help: items from traits can only be used if the trait is in scope
-help: there is an associated function `from` with a similar name
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
 help: trait `TryFrom` which provides `try_from` is implemented but not in scope; perhaps you want to import it
    |
 LL + use std::convert::TryFrom;
    |
+help: there is an associated function `from` with a similar name
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
 
 error: aborting due to 1 previous error
 

@@ -4,6 +4,7 @@ error[E0038]: the trait `Foo` is not dyn compatible
 LL | fn f(_arg : Box<dyn for<'a> Foo<A<'a> = &'a ()>>) {}
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo` is not dyn compatible
    |
+   = help: consider moving `A` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/gat-in-trait-path.rs:6:10
@@ -12,7 +13,6 @@ LL | trait Foo {
    |       --- this trait is not dyn compatible...
 LL |     type A<'a> where Self: 'a;
    |          ^ ...because it contains generic associated type `A`
-   = help: consider moving `A` to another trait
 
 error[E0038]: the trait `Foo` is not dyn compatible
   --> $DIR/gat-in-trait-path.rs:27:5
@@ -20,6 +20,7 @@ error[E0038]: the trait `Foo` is not dyn compatible
 LL |   f(Box::new(foo));
    |     ^^^^^^^^^^^^^ `Foo` is not dyn compatible
    |
+   = help: consider moving `A` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/gat-in-trait-path.rs:6:10
@@ -28,7 +29,6 @@ LL | trait Foo {
    |       --- this trait is not dyn compatible...
 LL |     type A<'a> where Self: 'a;
    |          ^ ...because it contains generic associated type `A`
-   = help: consider moving `A` to another trait
 
 error: aborting due to 2 previous errors
 

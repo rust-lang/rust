@@ -4,8 +4,8 @@ error: strict comparison of `f32` or `f64` constant
 LL |     1f32 == ONE;
    |     ^^^^^^^^^^^ help: consider comparing them within some margin of error: `(1f32 - ONE).abs() < error_margin`
    |
-   = note: `-D clippy::float-cmp-const` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::float_cmp_const)]`
+   = note: `-D clippy::float-cmp-const` implied by `-D warnings`
 
 error: strict comparison of `f32` or `f64` constant
   --> tests/ui/float_cmp_const.rs:18:5

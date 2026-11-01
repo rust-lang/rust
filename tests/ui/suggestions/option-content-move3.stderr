@@ -39,6 +39,10 @@ LL |             let x = var;
    |                     ^^^ move occurs because `var` has type `NotCopyable`, which does not implement the `Copy` trait
    |
    = help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+help: consider borrowing here
+   |
+LL |             let x = &var;
+   |                     +
 note: if `NotCopyable` implemented `Clone`, you could clone the value
   --> $DIR/option-content-move3.rs:2:1
    |
@@ -47,10 +51,6 @@ LL | struct NotCopyable;
 ...
 LL |             let x = var;
    |                     --- you could clone this value
-help: consider borrowing here
-   |
-LL |             let x = &var;
-   |                     +
 
 error[E0507]: cannot move out of `var`, a captured variable in an `FnMut` closure
   --> $DIR/option-content-move3.rs:23:9

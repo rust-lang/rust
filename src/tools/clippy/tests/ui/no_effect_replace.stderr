@@ -4,8 +4,8 @@ error: replacing text with itself
 LL |     let _ = "12345".replace('1', "1");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::no-effect-replace` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::no_effect_replace)]`
+   = note: `-D clippy::no-effect-replace` implied by `-D warnings`
 
 error: replacing text with itself
   --> tests/ui/no_effect_replace.rs:7:13

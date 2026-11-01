@@ -13,15 +13,15 @@ error[E0107]: missing generics for enum `Quux`
 LL | fn foo(c: Quux) {
    |           ^^^^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL | fn foo(c: Quux<T>) {
+   |               +++
 note: enum defined here, with 1 generic parameter: `T`
   --> $DIR/generic-enum-errors.rs:3:6
    |
 LL | enum Quux<T> {
    |      ^^^^ -
-help: add missing generic argument
-   |
-LL | fn foo(c: Quux<T>) {
-   |               +++
 
 error: aborting due to 2 previous errors
 

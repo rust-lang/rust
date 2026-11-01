@@ -10,15 +10,15 @@ error[E0107]: struct takes 1 generic argument but 0 generic arguments were suppl
 LL | fn foo(b: Box<Bar()>) {
    |               ^^^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL | fn foo(b: Box<Bar(A)>) {
+   |                   +
 note: struct defined here, with 1 generic parameter: `A`
   --> $DIR/unboxed-closure-sugar-used-on-struct.rs:3:8
    |
 LL | struct Bar<A> {
    |        ^^^ -
-help: add missing generic argument
-   |
-LL | fn foo(b: Box<Bar(A)>) {
-   |                   +
 
 error: aborting due to 2 previous errors
 

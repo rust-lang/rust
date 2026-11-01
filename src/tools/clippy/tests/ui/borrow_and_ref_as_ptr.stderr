@@ -4,8 +4,8 @@ error: borrow as raw pointer
 LL |     f(&val as *const _);
    |       ^^^^^^^^^^^^^^^^ help: try: `&raw const val`
    |
-   = note: `-D clippy::borrow-as-ptr` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::borrow_as_ptr)]`
+   = note: `-D clippy::borrow-as-ptr` implied by `-D warnings`
 
 error: borrow as raw pointer
   --> tests/ui/borrow_and_ref_as_ptr.rs:12:7

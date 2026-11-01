@@ -462,7 +462,6 @@ LL |
 LL |         &mut Either::Two(_t) => (),
    |                          -- ...and here
    |
-   = note: move occurs because these variables have types that don't implement the `Copy` trait
 help: consider removing the mutable borrow
    |
 LL -         &mut Either::One(_t) => (),
@@ -473,6 +472,7 @@ help: consider removing the mutable borrow
 LL -         &mut Either::Two(_t) => (),
 LL +         Either::Two(_t) => (),
    |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
   --> $DIR/simple.rs:222:11
@@ -630,7 +630,6 @@ LL |
 LL |         (&mut Either::Two(_t),) => (),
    |                           -- ...and here
    |
-   = note: move occurs because these variables have types that don't implement the `Copy` trait
 help: consider removing the mutable borrow
    |
 LL -         (&mut Either::One(_t),) => (),
@@ -641,6 +640,7 @@ help: consider removing the mutable borrow
 LL -         (&mut Either::Two(_t),) => (),
 LL +         (Either::Two(_t),) => (),
    |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/simple.rs:289:18

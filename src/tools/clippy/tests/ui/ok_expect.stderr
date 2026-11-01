@@ -4,13 +4,13 @@ error: called `ok().expect()` on a `Result` value
 LL |     res.ok().expect("disaster!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::ok-expect` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::ok_expect)]`
 help: call `expect()` directly on the `Result`
    |
 LL -     res.ok().expect("disaster!");
 LL +     res.expect("disaster!");
    |
+   = help: to override `-D warnings` add `#[allow(clippy::ok_expect)]`
+   = note: `-D clippy::ok-expect` implied by `-D warnings`
 
 error: called `ok().expect()` on a `Result` value
   --> tests/ui/ok_expect.rs:20:5

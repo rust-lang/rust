@@ -10,6 +10,11 @@ LL | struct NonCopy;
 LL |     _ = x.clone();
    |           ^^^^^ method cannot be called on `Foo<NonCopy>` due to unsatisfied trait bounds
    |
+help: consider annotating `NonCopy` with `#[derive(Clone, Copy)]`
+   |
+LL + #[derive(Clone, Copy)]
+LL | struct NonCopy;
+   |
 note: there's an earlier shadowed binding `x` of type `Foo<u32>` that has method `clone` available
   --> $DIR/deriving-with-repr-packed-2.rs:13:9
    |
@@ -29,11 +34,6 @@ LL | #[repr(packed)]
 LL | pub struct Foo<T>(T, T, T);
    |                ^ type parameter would need to implement `Clone`
    = help: consider manually implementing the trait to avoid undesired bounds
-help: consider annotating `NonCopy` with `#[derive(Clone, Copy)]`
-   |
-LL + #[derive(Clone, Copy)]
-LL | struct NonCopy;
-   |
 
 error: aborting due to 1 previous error
 

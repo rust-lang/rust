@@ -4,7 +4,6 @@ error[E0261]: use of undeclared lifetime name `'b`
 LL |         + Deref<Target = Self::Item<'b>>;
    |                                     ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'b` lifetime
    |
 LL |         + for<'b> Deref<Target = Self::Item<'b>>;
@@ -13,6 +12,7 @@ help: consider introducing lifetime `'b` here
    |
 LL |     type Iter<'b, 'a>: Iterator<Item = Self::Item<'a>>
    |               +++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'b` here
    |
 LL | trait Iterable<'b> {

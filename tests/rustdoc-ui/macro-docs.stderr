@@ -9,12 +9,12 @@ LL |         /// A
 LL | m!();
    | ---- in this macro invocation
    |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
    = note: the link appears in this line:
            
            [`long_cat`] is really long
             ^^^^^^^^^^
    = note: no item named `long_cat` in scope
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
    = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
 
 warning: 1 warning emitted

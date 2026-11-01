@@ -4,16 +4,16 @@ error: expected `{`, found `;`
 LL |     if let Some(_) = Some(2); {}
    |                             ^ expected `{`
    |
-note: the `if` expression is missing a block after this condition
-  --> $DIR/if-semi-before-block.rs:7:8
-   |
-LL |     if let Some(_) = Some(2); {}
-   |        ^^^^^^^^^^^^^^^^^^^^^
 help: remove this semicolon
    |
 LL -     if let Some(_) = Some(2); {}
 LL +     if let Some(_) = Some(2) {}
    |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/if-semi-before-block.rs:7:8
+   |
+LL |     if let Some(_) = Some(2); {}
+   |        ^^^^^^^^^^^^^^^^^^^^^
 
 error: expected `{`, found `;`
   --> $DIR/if-semi-before-block.rs:15:29
@@ -21,16 +21,16 @@ error: expected `{`, found `;`
 LL |     if let Some(x) = Some(2); && x != 1 {}
    |                             ^ expected `{`
    |
-note: the `if` expression is missing a block after this condition
-  --> $DIR/if-semi-before-block.rs:15:8
-   |
-LL |     if let Some(x) = Some(2); && x != 1 {}
-   |        ^^^^^^^^^^^^^^^^^^^^^
 help: remove this semicolon
    |
 LL -     if let Some(x) = Some(2); && x != 1 {}
 LL +     if let Some(x) = Some(2) && x != 1 {}
    |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/if-semi-before-block.rs:15:8
+   |
+LL |     if let Some(x) = Some(2); && x != 1 {}
+   |        ^^^^^^^^^^^^^^^^^^^^^
 
 error: expected `{`, found `;`
   --> $DIR/if-semi-before-block.rs:23:29
@@ -38,16 +38,16 @@ error: expected `{`, found `;`
 LL |     if let Some(x) = Some(2); && (x > 0 && x != 1) {}
    |                             ^ expected `{`
    |
-note: the `if` expression is missing a block after this condition
-  --> $DIR/if-semi-before-block.rs:23:8
-   |
-LL |     if let Some(x) = Some(2); && (x > 0 && x != 1) {}
-   |        ^^^^^^^^^^^^^^^^^^^^^
 help: remove this semicolon
    |
 LL -     if let Some(x) = Some(2); && (x > 0 && x != 1) {}
 LL +     if let Some(x) = Some(2) && (x > 0 && x != 1) {}
    |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/if-semi-before-block.rs:23:8
+   |
+LL |     if let Some(x) = Some(2); && (x > 0 && x != 1) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^
 
 error: expected `{`, found `;`
   --> $DIR/if-semi-before-block.rs:31:29
@@ -55,16 +55,16 @@ error: expected `{`, found `;`
 LL |     if let Some(x) = Some(2); && Some(1) == Some(x) {}
    |                             ^ expected `{`
    |
-note: the `if` expression is missing a block after this condition
-  --> $DIR/if-semi-before-block.rs:31:8
-   |
-LL |     if let Some(x) = Some(2); && Some(1) == Some(x) {}
-   |        ^^^^^^^^^^^^^^^^^^^^^
 help: remove this semicolon
    |
 LL -     if let Some(x) = Some(2); && Some(1) == Some(x) {}
 LL +     if let Some(x) = Some(2) && Some(1) == Some(x) {}
    |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/if-semi-before-block.rs:31:8
+   |
+LL |     if let Some(x) = Some(2); && Some(1) == Some(x) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^
 
 error: expected `{`, found `;`
   --> $DIR/if-semi-before-block.rs:39:12
@@ -72,16 +72,16 @@ error: expected `{`, found `;`
 LL |     if true; || false {
    |            ^ expected `{`
    |
-note: the `if` expression is missing a block after this condition
-  --> $DIR/if-semi-before-block.rs:39:8
-   |
-LL |     if true; || false {
-   |        ^^^^
 help: remove this semicolon
    |
 LL -     if true; || false {
 LL +     if true || false {
    |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/if-semi-before-block.rs:39:8
+   |
+LL |     if true; || false {
+   |        ^^^^
 
 error: aborting due to 5 previous errors
 

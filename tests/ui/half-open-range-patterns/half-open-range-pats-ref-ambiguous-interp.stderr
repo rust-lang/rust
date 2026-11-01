@@ -15,12 +15,12 @@ error[E0586]: inclusive range with no end
 LL |         &0..= | _ => {}
    |           ^^^
    |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 help: use `..` instead
    |
 LL -         &0..= | _ => {}
 LL +         &0.. | _ => {}
    |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: the range pattern here has ambiguous interpretation
   --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:8:10
@@ -39,12 +39,12 @@ error[E0586]: inclusive range with no end
 LL |         &0... | _ => {}
    |           ^^^
    |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 help: use `..` instead
    |
 LL -         &0... | _ => {}
 LL +         &0.. | _ => {}
    |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: the range pattern here has ambiguous interpretation
   --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:16:10

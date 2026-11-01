@@ -25,6 +25,10 @@ LL |         takes_fnonce(m);
 LL |     takes_fnonce(m);
    |                  ^ value used here after move
    |
+help: consider mutably borrowing `m`
+   |
+LL |         takes_fnonce(&mut m);
+   |                      ++++
 help: if `impl FnMut()` implemented `Clone`, you could clone the value
   --> $DIR/borrow-closures-instead-of-move.rs:9:20
    |
@@ -33,10 +37,6 @@ LL | fn takes_fn_mut(m: impl FnMut()) {
 LL |     if maybe() {
 LL |         takes_fnonce(m);
    |                      - you could clone this value
-help: consider mutably borrowing `m`
-   |
-LL |         takes_fnonce(&mut m);
-   |                      ++++
 
 error[E0382]: borrow of moved value: `closure`
   --> $DIR/borrow-closures-instead-of-move.rs:25:5
@@ -47,15 +47,15 @@ LL |
 LL |     closure();
    |     ^^^^^^^ value borrowed here after move
    |
+help: consider mutably borrowing `closure`
+   |
+LL |     takes_fnonce(&mut closure);
+   |                  ++++
 note: closure cannot be moved more than once as it is not `Copy` due to moving the variable `x` out of its environment
   --> $DIR/borrow-closures-instead-of-move.rs:21:9
    |
 LL |         x += 1;
    |         ^
-help: consider mutably borrowing `closure`
-   |
-LL |     takes_fnonce(&mut closure);
-   |                  ++++
 
 error: aborting due to 3 previous errors
 

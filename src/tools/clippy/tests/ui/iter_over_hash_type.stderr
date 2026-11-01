@@ -7,8 +7,8 @@ LL | |         let _ = x;
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::iter-over-hash-type` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_over_hash_type)]`
+   = note: `-D clippy::iter-over-hash-type` implied by `-D warnings`
 
 error: iteration over unordered hash-based type
   --> tests/ui/iter_over_hash_type.rs:25:5
