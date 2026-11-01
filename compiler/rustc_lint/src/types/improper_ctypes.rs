@@ -48,7 +48,8 @@ declare_lint! {
     /// to resolve it.
     IMPROPER_CTYPES,
     Warn,
-    "proper use of libc types in foreign modules"
+    "proper use of libc types in foreign modules",
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -75,7 +76,8 @@ declare_lint! {
     /// on how to resolve it.
     IMPROPER_CTYPES_DEFINITIONS,
     Warn,
-    "proper use of libc types in foreign item definitions"
+    "proper use of libc types in foreign item definitions",
+    report_in_external_macro
 }
 
 declare_lint! {
