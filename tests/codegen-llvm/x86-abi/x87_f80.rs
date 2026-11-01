@@ -2,10 +2,15 @@
 //
 //@ revisions: X86 X86_64 DARWIN WIN64 WIN32
 //@ [X86] compile-flags: --target i686-unknown-linux-gnu
+//@ [X86] filecheck-flags: --check-prefix ALIGN4
 //@ [X86_64] compile-flags: --target x86_64-unknown-linux-gnu
+//@ [X86_64] filecheck-flags: --check-prefix ALIGN16
 //@ [DARWIN] compile-flags: --target i686-apple-darwin
+//@ [DARWIN] filecheck-flags: --check-prefix ALIGN16
 //@ [WIN32] compile-flags: --target i686-pc-windows-gnu
+//@ [WIN32] filecheck-flags: --check-prefix ALIGN4
 //@ [WIN64] compile-flags: --target x86_64-pc-windows-gnu
+//@ [WIN64] filecheck-flags: --check-prefix ALIGN16
 //@ compile-flags: -Copt-level=3 --crate-type=lib -Zmerge-functions=disabled
 //@ needs-llvm-components: x86
 
@@ -21,6 +26,46 @@ use minicore::arch::x86::{x87_f80, x87_f80_raw};
 use minicore::arch::x86_64::{x87_f80, x87_f80_raw};
 use minicore::simd::f64x2;
 use minicore::{Copy, MaybeUninit, mem};
+
+#[repr(C)]
+pub struct RawStruct(x87_f80_raw, u8);
+
+#[repr(C)]
+pub struct WrappedStruct(x87_f80, u8);
+
+// CHECK: @RAW = external global [10 x i8]
+// CHECK: @RAW_ARRAY = external global [30 x i8]
+// CHECK: @RAW_STRUCT = external global [11 x i8]
+#[allow(improper_ctypes)]
+unsafe extern "C" {
+    static RAW: x87_f80_raw;
+    static RAW_ARRAY: [x87_f80_raw; 3];
+    static RAW_STRUCT: RawStruct;
+}
+
+#[unsafe(no_mangle)]
+pub fn use_raw_statics() -> (&'static x87_f80_raw, &'static [x87_f80_raw; 3], &'static RawStruct) {
+    unsafe { (&RAW, &RAW_ARRAY, &RAW_STRUCT) }
+}
+
+// ALIGN4: @WRAPPED = external global [12 x i8]
+// ALIGN4: @WRAPPED_ARRAY = external global [36 x i8]
+// ALIGN4: @WRAPPED_STRUCT = external global [16 x i8]
+//
+// ALIGN16: @WRAPPED = external global [16 x i8]
+// ALIGN16: @WRAPPED_ARRAY = external global [48 x i8]
+// ALIGN16: @WRAPPED_STRUCT = external global [32 x i8]
+#[allow(improper_ctypes)]
+unsafe extern "C" {
+    static WRAPPED: x87_f80;
+    static WRAPPED_ARRAY: [x87_f80; 3];
+    static WRAPPED_STRUCT: WrappedStruct;
+}
+
+#[unsafe(no_mangle)]
+pub fn use_wrapped_statics() -> (&'static x87_f80, &'static [x87_f80; 3], &'static WrappedStruct) {
+    unsafe { (&WRAPPED, &WRAPPED_ARRAY, &WRAPPED_STRUCT) }
+}
 
 // CHECK-LABEL: size_of_raw_array
 #[unsafe(no_mangle)]

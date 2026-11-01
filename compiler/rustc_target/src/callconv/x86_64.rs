@@ -240,14 +240,12 @@ where
         }
         let mut cls_or_mem = classify_arg(cx, arg);
 
-        if is_arg {
-            if let Ok(cls) = cls_or_mem {
-                // An argument of class X87 is passed in memory.
-                if cls.contains(&Some(Class::X87)) {
-                    std::assert_matches!(cls, [Some(Class::X87), Some(Class::X87Up), ..]);
-                    cls_or_mem = Err(Memory);
-                }
-
+        if is_arg && let Ok(cls) = cls_or_mem {
+            if cls.contains(&Some(Class::X87)) {
+                // An argument of class X87 is always passed in memory.
+                std::assert_matches!(cls, [Some(Class::X87), Some(Class::X87Up), ..]);
+                cls_or_mem = Err(Memory);
+            } else {
                 let mut needed_int = 0;
                 let mut needed_sse = 0;
                 for c in cls {
