@@ -2727,24 +2727,25 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_test_binder_body(&mut self) -> PResult<'a, TestBinderBody> {
-        let mut foralls = ThinVec::new();
-        let mut exists = ThinVec::new();
-        let mut region_equalities = Vec::new();
-        let mut constraints = Vec::new();
-        let mut predicates = Vec::new();
+        let mut items: Vec<TestBinderItem> = Vec::new();
         let mut span = self.token.span;
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
             match this.token.ident() {
                 Some((Ident { name: sym::predicates, .. }, IdentKind::Normal)) => {
                     let span = this.token.span;
                     this.bump();
-                    predicates.extend(this.parse_where_clause_predicates(None, span)?.0);
+                    items.extend(
+                        this.parse_where_clause_predicates(None, span)?
+                            .0
+                            .into_iter()
+                            .map(TestBinderItem::Predicate),
+                    );
                 }
                 Some((Ident { name: sym::forall, .. }, IdentKind::Normal)) => {
-                    foralls.push(this.parse_test_binder_forall()?)
+                    items.push(TestBinderItem::Forall(this.parse_test_binder_forall()?));
                 }
                 Some((Ident { name: sym::exists, .. }, IdentKind::Normal)) => {
-                    exists.push(this.parse_test_binder_exists()?)
+                    items.push(TestBinderItem::Exists(this.parse_test_binder_exists()?));
                 }
 
                 _ if this.token.is_lifetime() && this.look_ahead(1, |t| t.kind == token::Eq) => {
@@ -2754,14 +2755,17 @@ impl<'a> Parser<'a> {
                         this.unexpected()?;
                     }
                     let rhs = this.expect_lifetime();
-                    region_equalities.push(TestBinderRegionEquality { lhs, rhs });
+                    items.push(TestBinderItem::RegionEquality(TestBinderRegionEquality {
+                        lhs,
+                        rhs,
+                    }));
                 }
-                _ => constraints.push(this.parse_test_binder_constraint()?),
+                _ => items.push(TestBinderItem::Constraint(this.parse_test_binder_constraint()?)),
             }
             Ok(())
         })?;
         span = span.to(self.prev_token.span);
-        Ok(TestBinderBody { foralls, exists, region_equalities, constraints, predicates, span })
+        Ok(TestBinderBody { items, span })
     }
 
     pub fn parse_test_binder_forall(&mut self) -> PResult<'a, TestBinderForall> {
