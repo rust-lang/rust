@@ -1,0 +1,52 @@
+error[E0720]: cannot resolve opaque type
+  --> $DIR/recursive-opaque-validate-mir-issue-151297.rs:8:13
+   |
+LL | fn foo() -> impl Quux {
+   |             ^^^^^^^^^ recursive opaque type
+...
+LL |     Foo(bar())
+   |     ---------- returning here with type `Foo<impl Quux>`
+...
+LL | fn bar() -> impl Quux {
+   |             --------- returning this type `Foo<impl Quux>`
+
+error[E0720]: cannot resolve opaque type
+  --> $DIR/recursive-opaque-validate-mir-issue-151297.rs:14:13
+   |
+LL | fn foo() -> impl Quux {
+   |             --------- returning this type `Bar<impl Quux>`
+...
+LL | fn bar() -> impl Quux {
+   |             ^^^^^^^^^ recursive opaque type
+...
+LL |     Bar(foo())
+   |     ---------- returning here with type `Bar<impl Quux>`
+
+error[E0720]: cannot resolve opaque type
+  --> $DIR/recursive-opaque-validate-mir-issue-151297.rs:20:13
+   |
+LL | fn ptr() -> impl Sized {
+   |             ^^^^^^^^^^ recursive opaque type
+LL |     &generator_sig() as *const _
+   |     ---------------------------- returning here with type `*const impl Sized`
+...
+LL | fn generator_sig() -> impl Sized {
+   |                       ---------- returning this type `*const impl Sized`
+
+error[E0720]: cannot resolve opaque type
+  --> $DIR/recursive-opaque-validate-mir-issue-151297.rs:24:23
+   |
+LL | fn ptr() -> impl Sized {
+   |             ---------- returning this opaque type `impl Sized`
+...
+LL | fn generator_sig() -> impl Sized {
+   |                       ^^^^^^^^^^ recursive opaque type
+LL |     ptr()
+   |     ----- returning here with type `impl Sized`
+
+error[E0275]: overflow evaluating the requirement `generator_sig::{opaque#0} == _`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0275, E0720.
+For more information about an error, try `rustc --explain E0275`.
