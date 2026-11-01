@@ -102,7 +102,10 @@ impl LintParser {
                     }
                 }
             }
-            if parsers.is_empty() {
+
+            // FIXME(164898) Lint attributes are unique because they're parsed twice with `ShouldEmit::ErrorsAndLints`
+            // To avoid emitting the lint twice, we check `cx.parse_filter`, which will be `Some` during AST linting
+            if parsers.is_empty() && cx.parse_filter.is_none() {
                 cx.emit_lint(
                     UNUSED_ATTRIBUTES,
                     diagnostics::Unused {
