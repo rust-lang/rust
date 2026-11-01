@@ -1,6 +1,5 @@
 //! Demonstrate some use cases of or patterns
 
-//@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 
 #![feature(
