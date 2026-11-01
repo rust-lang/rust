@@ -739,7 +739,6 @@ where
                 reason,
                 attr_id,
                 attr_span: _,
-                tool_span: _,
             } = lint_check;
 
             let level = match kind {
