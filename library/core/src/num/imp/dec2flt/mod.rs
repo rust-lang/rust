@@ -197,6 +197,15 @@ pub fn pfe_invalid() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Invalid }
 }
 
+#[inline]
+pub fn check_input_length(len: usize) -> Result<(), ParseFloatError> {
+    if len as u64 >= 1u64 << 50 {
+        Err(ParseFloatError { kind: FloatErrorKind::TooLong })
+    } else {
+        Ok(())
+    }
+}
+
 /// Converts a `BiasedFp` to the closest machine float type.
 fn biased_fp_to_float<F: FloatExt>(x: BiasedFp) -> F {
     let mut word = x.m;
@@ -207,6 +216,7 @@ fn biased_fp_to_float<F: FloatExt>(x: BiasedFp) -> F {
 /// Converts a decimal string into a floating point number.
 #[inline(always)] // Will be inlined into a function with `#[inline(never)]`, see above
 pub fn dec2flt<F: Lemire>(s: &str) -> Result<F, ParseFloatError> {
+    check_input_length(s.len())?;
     let mut s = s.as_bytes();
     let Some(&c) = s.first() else { return Err(pfe_empty()) };
     let negative = c == b'-';

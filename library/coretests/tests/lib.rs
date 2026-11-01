@@ -57,6 +57,7 @@
 #![feature(exact_div)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
+#![feature(extended_float_error_kind)]
 #![feature(extern_types)]
 #![feature(f16)]
 #![feature(f128)]

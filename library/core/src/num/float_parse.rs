@@ -32,8 +32,8 @@ macro_rules! from_str_float_impl {
             ///
             /// # Grammar
             ///
-            /// All strings that adhere to the following [EBNF] grammar when
-            /// lowercased will result in an [`Ok`] being returned:
+            /// All strings of length < 2^50 bytes that adhere to the following [EBNF] grammar
+            /// when lowercased will result in an [`Ok`] being returned:
             ///
             /// ```txt
             /// Float  ::= Sign? ( 'inf' | 'infinity' | 'nan' | Number )
@@ -138,6 +138,9 @@ pub enum FloatErrorKind {
     /// Invalid float literal.
     #[unstable(feature = "extended_float_error_kind", issue = "164793")]
     Invalid,
+    /// Only input lengths < 2^50 are supported.
+    #[unstable(feature = "extended_float_error_kind", issue = "164793")]
+    TooLong,
 }
 
 impl ParseFloatError {
@@ -160,6 +163,9 @@ impl fmt::Display for ParseFloatError {
         match self.kind {
             FloatErrorKind::Empty => "cannot parse float from empty string",
             FloatErrorKind::Invalid => "invalid float literal",
+            FloatErrorKind::TooLong => {
+                "ERROR: Your input is very large. Only input lengths < 2^50 are supported"
+            }
         }
         .fmt(f)
     }
