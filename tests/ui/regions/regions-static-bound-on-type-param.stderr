@@ -18,6 +18,11 @@ note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::
   ::: $SRC_DIR/core/src/error.rs:LL:COL
    |
    = note: lifetime requirement introduced here
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL - fn err_is<T: Error + 'static>(err: &dyn Error) -> bool {
+LL + fn err_is<T: Error + 'static>(err: &(dyn Error + 'static)) -> bool {
+   |
 
 error: aborting due to 1 previous error
 

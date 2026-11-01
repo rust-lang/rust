@@ -17,7 +17,7 @@ use rustc_middle::mir::{AnnotationSource, ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::{
     self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitor, fold_regions,
 };
-use rustc_span::{Ident, Span, Symbol, bug, kw};
+use rustc_span::{Ident, Pos, Span, Symbol, bug, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::nice_region_error::{
     self, HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor, find_anon_type,
@@ -672,6 +672,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         if let ConstraintCategory::CallArgument(Some(ty)) = category {
             self.explain_impl_static_obligation(&mut diag, ty, outlived_fr);
         }
+        self.suggest_explicit_static_object_lifetime(&mut diag, &errci);
 
         match variance_info {
             ty::VarianceDiagInfo::None => {}
@@ -1255,6 +1256,222 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     "to declare that the trait object {captures}, you can add a lifetime parameter `'a` in the type alias"
                 ),
                 spans_suggs,
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
+
+    fn suggest_explicit_static_object_lifetime(
+        &self,
+        diag: &mut Diag<'_>,
+        errci: &ErrorConstraintInfo<'tcx>,
+    ) {
+        let tcx = self.infcx.tcx;
+        let (Some(region), Some(outlived_region)) = (
+            self.regioncx.to_error_region(errci.fr),
+            self.regioncx.to_error_region(errci.outlived_fr),
+        ) else {
+            return;
+        };
+        if !outlived_region.is_static() {
+            return;
+        }
+        let ConstraintCategory::CallArgument(Some(fn_ty)) = errci.category else { return };
+        let ty::FnDef(def_id, args) = *fn_ty.kind() else { return };
+        let Some(args) = args.no_bound_vars() else { return };
+        if tcx.is_closure_like(def_id) {
+            return;
+        }
+        // CallArgument erases lifetime arguments. Bounds can still require the reference to
+        // outlive another region, even if the instantiated signature contains no `&'static`.
+        let clauses = tcx.clauses_of(def_id);
+        if clauses.instantiate_identity(tcx).into_iter().chain(clauses.instantiate(tcx, args)).any(
+            |(clause, _)| match clause.skip_norm_wip().kind().skip_binder() {
+                ty::ClauseKind::RegionOutlives(ty::OutlivesClause(longer, shorter)) => {
+                    longer != shorter && !longer.is_static()
+                }
+                ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ty, lifetime))
+                    if lifetime.is_static() =>
+                {
+                    ty.walk().any(|arg| {
+                        matches!(arg.as_type().map(Ty::kind),
+                            Some(ty::Ref(region, ..)) if !region.is_static())
+                    })
+                }
+                _ => false,
+            },
+        ) {
+            return;
+        }
+        let Some(call) = self.find_expr(errci.span) else { return };
+        let call_args: Vec<_> = match call.kind {
+            hir::ExprKind::Call(_, args) => args.iter().collect(),
+            hir::ExprKind::MethodCall(_, receiver, args, _) => {
+                std::iter::once(receiver).chain(args).collect()
+            }
+            _ => return,
+        };
+        let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id()) else { return };
+        let Some(hir_sig) = tcx.hir_fn_sig_by_hir_id(self.mir_hir_id()) else { return };
+        let decl = hir_sig.decl;
+        let callee_sig = tcx.fn_sig(def_id).instantiate(tcx, args).skip_norm_wip().skip_binder();
+        // Typeck results have erased regions. The liberated signature retains the object lifetime.
+        let caller_sig = tcx.liberate_late_bound_regions(
+            self.mir_def_id().to_def_id(),
+            tcx.fn_sig(self.mir_def_id()).instantiate_identity().skip_norm_wip(),
+        );
+        let needs_static_reference = |mut ty: Ty<'tcx>| {
+            while let ty::Ref(lifetime, inner, _) = *ty.kind() {
+                if lifetime.is_static() {
+                    return true;
+                }
+                ty = inner;
+            }
+            false
+        };
+        let mut seen_params = FxIndexSet::default();
+        for (arg, expected) in std::iter::zip(call_args.iter().copied(), callee_sig.inputs()) {
+            if needs_static_reference(*expected) {
+                continue;
+            }
+            let ty::Dynamic(expected_predicates, expected_region) = *expected.peel_refs().kind()
+            else {
+                continue;
+            };
+            if !expected_region.is_static() {
+                continue;
+            }
+
+            // Follow the actual argument back to its parameter, rather than editing another
+            // parameter that happens to use the same lifetime or trait.
+            let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = arg.kind else {
+                continue;
+            };
+            let hir::def::Res::Local(binding) = path.res else { continue };
+            let Some(index) = body.params.iter().position(|param| param.pat.hir_id == binding)
+            else {
+                continue;
+            };
+            let ty::Dynamic(predicates, object_region) =
+                *caller_sig.inputs()[index].peel_refs().kind()
+            else {
+                continue;
+            };
+            if object_region != region {
+                continue;
+            }
+            // Callee lifetimes may be bound or erased here. Preserve explicit `'static` and
+            // repeated lifetime arguments: changing the object bound cannot fix those mismatches.
+            let comparable_predicates = |predicates| {
+                let mut regions = FxIndexSet::default();
+                fold_regions(tcx, predicates, |region, _| {
+                    if region.is_static() {
+                        region
+                    } else {
+                        let (index, _) = regions.insert_full(region);
+                        ty::Region::new_late_param(
+                            tcx,
+                            self.mir_def_id().to_def_id(),
+                            ty::LateParamRegionKind::Anon(index as u32),
+                        )
+                    }
+                })
+            };
+            let source_predicates = comparable_predicates(predicates);
+            let target_predicates = comparable_predicates(expected_predicates);
+            if source_predicates.principal().map(|p| tcx.anonymize_bound_vars(p))
+                != target_predicates.principal().map(|p| tcx.anonymize_bound_vars(p))
+                || !source_predicates
+                    .projection_bounds()
+                    .map(|p| tcx.anonymize_bound_vars(p))
+                    .eq(target_predicates.projection_bounds().map(|p| tcx.anonymize_bound_vars(p)))
+            {
+                continue;
+            }
+            // The same parameter may also be passed where the reference itself must be static.
+            if !seen_params.insert(index)
+                || std::iter::zip(&call_args, callee_sig.inputs()).any(|(other, expected)| {
+                    needs_static_reference(*expected)
+                        && matches!(other.kind,
+                            hir::ExprKind::Path(hir::QPath::Resolved(None, path))
+                                if path.res == hir::def::Res::Local(binding))
+                })
+            {
+                continue;
+            }
+            let param_ty = decl.inputs[index];
+            let object_ty = param_ty.peel_refs();
+            let hir::TyKind::TraitObject(_, lifetime) = object_ty.kind else { continue };
+            if lifetime.kind != hir::LifetimeKind::ImplicitObjectLifetimeDefault
+                || !object_ty.span.can_be_used_for_suggestions()
+            {
+                continue;
+            }
+            let lifetime_explanation =
+                if rustc_trait_selection::traits::wf::object_region_bounds(tcx, predicates)
+                    .is_empty()
+                {
+                    "this trait object's lifetime defaults to the reference's lifetime"
+                } else {
+                    "this trait object's lifetime is inferred from its trait's lifetime bounds"
+                };
+
+            struct ElidedOutputLifetime<'tcx> {
+                tcx: TyCtxt<'tcx>,
+                object_lifetime: &'tcx hir::Lifetime,
+                found: bool,
+            }
+            impl<'tcx> Visitor<'tcx> for ElidedOutputLifetime<'tcx> {
+                fn visit_lifetime(&mut self, lifetime: &'tcx hir::Lifetime) {
+                    let resolved = self.tcx.named_bound_var(lifetime.hir_id);
+                    self.found |= lifetime.syntax != hir::LifetimeSyntax::ExplicitBound
+                        && resolved.is_some()
+                        && resolved == self.tcx.named_bound_var(self.object_lifetime.hir_id);
+                }
+            }
+            let mut output_lifetime =
+                ElidedOutputLifetime { tcx, object_lifetime: lifetime.pointer(), found: false };
+            if let hir::FnRetTy::Return(output) = decl.output {
+                output_lifetime.visit_ty_unambig(output);
+            }
+            if output_lifetime.found {
+                // Adding another input lifetime would make output lifetime elision ambiguous.
+                diag.span_note(object_ty.span, lifetime_explanation);
+                continue;
+            }
+
+            let source_map = tcx.sess.source_map();
+            let Ok(mut snippet) = source_map.span_to_snippet(object_ty.span) else { continue };
+            if let hir::TyKind::TraitObject(bounds, _) = object_ty.kind
+                && let Some(bound) = bounds.last()
+                && let Some(segment) = bound.trait_ref.path.segments.last()
+                && let Some(output) = segment.args().paren_sugar_output()
+                && let output = output.peel_refs()
+                && let hir::TyKind::TraitObject(..) = output.kind
+            {
+                if !object_ty.span.contains(output.span) {
+                    continue;
+                }
+                // Otherwise `+ 'static` would bind to the callable's output trait object.
+                let start = (output.span.lo() - object_ty.span.lo()).to_usize();
+                let end = (output.span.hi() - object_ty.span.lo()).to_usize();
+                snippet.insert(end, ')');
+                snippet.insert(start, '(');
+            }
+            let prefix = source_map
+                .span_to_snippet(param_ty.span.with_hi(object_ty.span.lo()))
+                .unwrap_or_default();
+            let replacement = if prefix.trim_end().ends_with('(') {
+                format!("{snippet} + 'static")
+            } else {
+                format!("({snippet} + 'static)")
+            };
+            diag.span_suggestion(
+                object_ty.span,
+                format!(
+                    "{lifetime_explanation}; consider adding an explicit `'static` bound to the trait object"
+                ),
+                replacement,
                 Applicability::MaybeIncorrect,
             );
         }
