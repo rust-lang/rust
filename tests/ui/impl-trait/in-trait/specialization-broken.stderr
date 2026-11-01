@@ -10,6 +10,7 @@ LL |     fn bar(&self) -> U {
 note: type in trait
   --> $DIR/specialization-broken.rs:8:22
    |
+LL | trait Foo {
 LL |     fn bar(&self) -> impl Sized;
    |                      ^^^^^^^^^^
    = note: expected signature `fn(&_) -> impl Sized`

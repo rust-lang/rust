@@ -1,6 +1,7 @@
 error[E0053]: method `call` has an incompatible type for trait
   --> $DIR/inline-wrong-abi.rs:7:5
    |
+LL | impl<T: Copy> Fn<()> for Foo<T> {
 LL |     extern "C" fn call(&self, _: ()) -> T {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected "rust-call" fn, found "C" fn
    |
