@@ -19,23 +19,8 @@ LL +         U: Super<i32, Assoc = u32>,
 LL +         U: Super<u32, Assoc = u32>
    |
 
-error[E0191]: the value of the associated types `Assoc` in `Super<i32>`, `Assoc` in `Super<u32>` must be specified
-  --> $DIR/dyn-trait-in-param-or-body.rs:7:18
-   |
-LL | trait Super<T> {
-LL |     type Assoc;
-   |     ----------
-   |     |
-   |     `Super::Assoc` defined here
-   |     `Super::Assoc` defined here
-...
-LL | fn foo<T>(_: dyn Trait<Assoc = u32>, _: T) {}
-   |                  ^^^^^^^^^^^^^^^^^^ associated types `Assoc` (from trait `Super<i32>`), `Assoc` (from trait `Super<u32>`) must be specified
-   |
-   = help: consider introducing a new type parameter, adding `where` constraints using the fully-qualified path to the associated types
-
 error[E0222]: ambiguous associated type `Assoc` in bounds of `Trait`
-  --> $DIR/dyn-trait-in-param-or-body.rs:12:22
+  --> $DIR/dyn-trait-in-param-or-body.rs:11:22
    |
 LL | trait Super<T> {
 LL |     type Assoc;
@@ -47,20 +32,6 @@ LL |     type Assoc;
 LL |     let _: dyn Trait<Assoc = u32>;
    |                      ^^^^^^^^^^^ ambiguous associated type `Assoc`
 
-error[E0191]: the value of the associated types `Assoc` in `Super<i32>`, `Assoc` in `Super<u32>` must be specified
-  --> $DIR/dyn-trait-in-param-or-body.rs:12:16
-   |
-LL | trait Super<T> {
-LL |     type Assoc;
-   |     ----------
-   |     |
-   |     `Super::Assoc` defined here
-   |     `Super::Assoc` defined here
-...
-LL |     let _: dyn Trait<Assoc = u32>;
-   |                ^^^^^^^^^^^^^^^^^^ associated types `Assoc` (from trait `Super<i32>`), `Assoc` (from trait `Super<u32>`) must be specified
+error: aborting due to 2 previous errors
 
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0191, E0222.
-For more information about an error, try `rustc --explain E0191`.
+For more information about this error, try `rustc --explain E0222`.

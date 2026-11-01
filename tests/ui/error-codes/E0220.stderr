@@ -4,22 +4,6 @@ error[E0220]: associated type `F` not found for `Trait`
 LL | type Foo = dyn Trait<F=i32>;
    |                      ^ help: `Trait` has the following associated type: `Bar`
 
-error[E0191]: the value of the associated type `Bar` in `Trait` must be specified
-  --> $DIR/E0220.rs:5:16
-   |
-LL | trait Trait {
-LL |     type Bar;
-   |     -------- `Bar` defined here
-...
-LL | type Foo = dyn Trait<F=i32>;
-   |                ^^^^^^^^^^^^
-   |
-help: specify the associated type
-   |
-LL | type Foo = dyn Trait<F=i32, Bar = /* Type */>;
-   |                           ++++++++++++++++++
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0191, E0220.
-For more information about an error, try `rustc --explain E0191`.
+For more information about this error, try `rustc --explain E0220`.
