@@ -1,9 +1,9 @@
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::{DepKindVTable, DepNodeKey, KeyFingerprintStyle};
 use rustc_middle::query::QueryCache;
+use rustc_middle::query::q_impl::incremental::promote_from_disk_inner;
 use rustc_span::bug;
 
-use crate::incremental::promote_from_disk_inner;
 use crate::query_vtables::GetQueryVTable;
 
 /// [`DepKindVTable`] constructors for special dep kinds that aren't queries.
@@ -117,7 +117,7 @@ where
         force_from_dep_node_fn: (can_recover && !is_no_force).then_some(
             |tcx, dep_node, _prev_index| {
                 let query = Q::query_vtable(tcx);
-                crate::execution::force_query_dep_node(tcx, query, dep_node)
+                rustc_middle::query::q_impl::execution::force_query_dep_node(tcx, query, dep_node)
             },
         ),
         promote_from_disk_fn: (can_recover && is_cache_on_disk).then_some(

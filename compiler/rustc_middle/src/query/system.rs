@@ -4,7 +4,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_errors::Diag;
-use rustc_span::{Span, Symbol};
+use rustc_span::Symbol;
 
 use crate::dep_graph::{
     DepKind, DepKindVTable, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex,
@@ -69,18 +69,6 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub format_value: fn(&C::Value) -> String,
 
     pub create_tagged_key: fn(C::Key) -> TaggedQueryKey<'tcx>,
-
-    /// Function pointer that is called by the query methods on [`TyCtxt`] and
-    /// friends[^1], after they have checked the in-memory cache and found no
-    /// existing value for this key.
-    ///
-    /// Transitive responsibilities include trying to load a disk-cached value
-    /// if possible (incremental only), invoking the query provider if necessary,
-    /// and putting the obtained value into the in-memory cache.
-    ///
-    /// [^1]: [`TyCtxt`], [`crate::query::TyCtxtAt`], [`crate::query::TyCtxtEnsureOk`],
-    /// [`crate::query::TyCtxtEnsureDone`]
-    pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
 }
 
 impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {

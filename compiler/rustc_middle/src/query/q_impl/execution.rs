@@ -7,29 +7,28 @@ use parking_lot::{Condvar, Mutex};
 use rustc_data_structures::hash_table::Entry;
 use rustc_data_structures::{defer, outline, sharded, sync};
 use rustc_errors::FatalError;
-use rustc_middle::dep_graph::{
-    DepGraphData, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex,
-};
+use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::query::{
-    ActiveKeyStatus, QueryCache, QueryCycle, QueryJob, QueryJobId, QueryLatch, QueryMode,
-    QueryState, QueryVTable, QueryWaiter,
+    ActiveKeyStatus, QueryCache, QueryCycle, QueryJob, QueryJobId, QueryLatch, QueryState,
+    QueryVTable, QueryWaiter,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::tls::{self, ImplicitCtxt};
-use rustc_middle::verify_ich::incremental_verify_ich;
+use rustc_middle::ty::tls::{self};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_structures::Limit;
 
-use crate::diagnostics::{QueryOverflow, QueryOverflowNote};
-use crate::handle_cycle_error;
-use crate::incremental::should_verify_loaded_value;
-use crate::job::{
-    CollectActiveJobsKind, collect_active_query_jobs, find_cycle_in_stack, find_dep_kind_root,
-};
+use super::diagnostics::{QueryOverflow, QueryOverflowNote};
+use super::handle_cycle_error;
+use crate::dep_graph::{DepGraphData, DepNode, DepNodeKey, SerializedDepNodeIndex};
+use crate::query::QueryMode;
+use crate::query::q_impl::incremental::should_verify_loaded_value;
+use crate::query::q_impl::job::{CollectActiveJobsKind, find_cycle_in_stack, find_dep_kind_root};
+use crate::ty::tls::ImplicitCtxt;
+use crate::verify_ich::incremental_verify_ich;
 
 #[inline]
-fn equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {
+pub fn equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {
     move |x| x.0 == k
 }
 
@@ -89,13 +88,13 @@ fn signal_complete(job: QueryJob<'_>) {
 ///
 /// This will poison the relevant query key if it is dropped without calling
 /// [`Self::complete`].
-struct ActiveJobGuard<'tcx, K>
+pub struct ActiveJobGuard<'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
-    state: &'tcx QueryState<'tcx, K>,
-    key: K,
-    key_hash: u64,
+    pub state: &'tcx QueryState<'tcx, K>,
+    pub key: K,
+    pub key_hash: u64,
 }
 
 impl<'tcx, K> ActiveJobGuard<'tcx, K>
@@ -104,7 +103,7 @@ where
 {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter, and forgets the guard so it won't poison the query.
-    fn complete<C>(self, cache: &C, value: C::Value, dep_node_index: DepNodeIndex)
+    pub fn complete<C>(self, cache: &C, value: C::Value, dep_node_index: DepNodeIndex)
     where
         C: QueryCache<Key = K>,
     {
@@ -160,7 +159,7 @@ where
 
 #[cold]
 #[inline(never)]
-fn find_and_handle_cycle<'tcx, C: QueryCache>(
+pub fn find_and_handle_cycle<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
@@ -169,7 +168,7 @@ fn find_and_handle_cycle<'tcx, C: QueryCache>(
 ) -> (C::Value, Option<DepNodeIndex>) {
     // Ensure there were no errors collecting all active jobs.
     // We need the complete map to ensure we find a cycle to break.
-    let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::FullNoContention);
+    let job_map = tcx.collect_active_query_jobs(CollectActiveJobsKind::FullNoContention);
 
     let cycle = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
     (handle_cycle(query, tcx, key, cycle), None)
@@ -217,7 +216,7 @@ fn latch_wait_on<'tcx>(
 }
 
 #[inline(always)]
-fn wait_for_query<'tcx, C: QueryCache>(
+pub fn wait_for_query<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     span: Span,
@@ -262,7 +261,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
 }
 
 #[inline]
-fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
+pub fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
     QueryJobId(
         NonZero::new(tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
             .unwrap(),
@@ -270,8 +269,61 @@ fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
 }
 
 #[inline]
-fn current_query_job() -> Option<QueryJobId> {
+pub fn current_query_job() -> Option<QueryJobId> {
     tls::with_context(|icx| icx.query)
+}
+
+#[inline(always)]
+pub fn check_feedable_consistency<'tcx, C: QueryCache>(
+    tcx: TyCtxt<'tcx>,
+    query: &'tcx QueryVTable<'tcx, C>,
+    key: C::Key,
+    value: &C::Value,
+    existing_value: &C::Value,
+) {
+    let Some(hash_value_fn) = query.hash_value_fn else {
+        panic!(
+            "no_hash fed query later has its value computed.\n\
+            Remove `no_hash` modifier to allow recomputation.\n\
+            The already cached value: {}",
+            (query.format_value)(&existing_value)
+        );
+    };
+
+    let (old_hash, new_hash) = tcx.with_stable_hashing_context(|mut hcx| {
+        (hash_value_fn(&mut hcx, &existing_value), hash_value_fn(&mut hcx, value))
+    });
+    let formatter = query.format_value;
+    if old_hash != new_hash {
+        // We have an inconsistency. This can happen if one of the two
+        // results is tainted by errors.
+        assert!(
+            tcx.dcx().has_errors().is_some(),
+            "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
+                computed={:#?}\nfed={:#?}",
+            query.dep_kind,
+            key,
+            formatter(value),
+            formatter(&existing_value),
+        );
+    }
+}
+
+pub fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
+    let job_map = tcx.collect_active_query_jobs(CollectActiveJobsKind::Full);
+    let (span, desc, depth) = find_dep_kind_root(tcx, job, job_map);
+
+    let suggested_limit = match tcx.recursion_limit() {
+        Limit(0) => Limit(2),
+        limit => limit * 2,
+    };
+
+    tcx.dcx().emit_fatal(QueryOverflow {
+        span,
+        note: QueryOverflowNote { desc, depth },
+        suggested_limit,
+        crate_name: tcx.crate_name(LOCAL_CRATE),
+    });
 }
 
 /// Shared main part of both [`execute_query_incr_inner`] and [`execute_query_non_incr_inner`].
@@ -323,8 +375,10 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
                 execute_job_non_incr(query, tcx, key, id)
             };
 
-            if query.feedable {
-                check_feedable_consistency(tcx, query, key, &value);
+            if query.feedable
+                && let Some((cached_value, _)) = query.cache.lookup(&key)
+            {
+                check_feedable_consistency(tcx, query, key, &value, &cached_value);
             }
 
             // Tell the guard to insert `value` in the cache and remove the status entry from
@@ -359,64 +413,6 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
     }
 }
 
-#[inline(always)]
-fn check_feedable_consistency<'tcx, C: QueryCache>(
-    tcx: TyCtxt<'tcx>,
-    query: &'tcx QueryVTable<'tcx, C>,
-    key: C::Key,
-    value: &C::Value,
-) {
-    // We should not compute queries that also got a value via feeding.
-    // This can't happen, as query feeding adds the very dependencies to the fed query
-    // as its feeding query had. So if the fed query is red, so is its feeder, which will
-    // get evaluated first, and re-feed the query.
-    let Some((cached_value, _)) = query.cache.lookup(&key) else { return };
-
-    let Some(hash_value_fn) = query.hash_value_fn else {
-        panic!(
-            "no_hash fed query later has its value computed.\n\
-            Remove `no_hash` modifier to allow recomputation.\n\
-            The already cached value: {}",
-            (query.format_value)(&cached_value)
-        );
-    };
-
-    let (old_hash, new_hash) = tcx.with_stable_hashing_context(|mut hcx| {
-        (hash_value_fn(&mut hcx, &cached_value), hash_value_fn(&mut hcx, value))
-    });
-    let formatter = query.format_value;
-    if old_hash != new_hash {
-        // We have an inconsistency. This can happen if one of the two
-        // results is tainted by errors.
-        assert!(
-            tcx.dcx().has_errors().is_some(),
-            "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
-                computed={:#?}\nfed={:#?}",
-            query.dep_kind,
-            key,
-            formatter(value),
-            formatter(&cached_value),
-        );
-    }
-}
-
-fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
-    let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::Full);
-    let (span, desc, depth) = find_dep_kind_root(tcx, job, job_map);
-
-    let suggested_limit = match tcx.recursion_limit() {
-        Limit(0) => Limit(2),
-        limit => limit * 2,
-    };
-
-    tcx.dcx().emit_fatal(QueryOverflow {
-        span,
-        note: QueryOverflowNote { desc, depth },
-        suggested_limit,
-        crate_name: tcx.crate_name(LOCAL_CRATE),
-    });
-}
-
 /// Executes a job by changing the `ImplicitCtxt` to point to the new query job while it executes.
 #[inline(always)]
 fn start_query<R>(job_id: QueryJobId, depth_limit: bool, compute: impl FnOnce() -> R) -> R {
@@ -439,7 +435,7 @@ fn start_query<R>(job_id: QueryJobId, depth_limit: bool, compute: impl FnOnce() 
 
 // Fast path for when incr. comp. is off.
 #[inline(always)]
-fn execute_job_non_incr<'tcx, C: QueryCache>(
+pub(super) fn execute_job_non_incr<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
@@ -467,7 +463,7 @@ fn execute_job_non_incr<'tcx, C: QueryCache>(
 }
 
 #[inline(always)]
-fn execute_job_incr<'tcx, C: QueryCache>(
+pub(super) fn execute_job_incr<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
@@ -628,7 +624,7 @@ fn ensure_can_skip_execution<'tcx, C: QueryCache>(
 /// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
 /// in non-incremental mode.
 #[inline(always)]
-pub(super) fn execute_query_non_incr_inner<'tcx, C: QueryCache>(
+pub(crate) fn execute_query_non_incr_inner<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     span: Span,
@@ -640,7 +636,7 @@ pub(super) fn execute_query_non_incr_inner<'tcx, C: QueryCache>(
 /// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
 /// in incremental mode.
 #[inline(always)]
-pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
+pub(crate) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     span: Span,
@@ -668,7 +664,7 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
 /// for query nodes.
 ///
 /// [force_fn]: rustc_middle::dep_graph::DepKindVTable::force_from_dep_node_fn
-pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
+pub fn force_query_dep_node<'tcx, C: QueryCache>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C>,
     dep_node: DepNode,

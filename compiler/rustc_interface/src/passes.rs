@@ -1026,7 +1026,6 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             providers.queries,
             providers.extern_queries,
             query_result_on_disk_cache,
-            incremental,
             track_present,
         ),
         providers.hooks,

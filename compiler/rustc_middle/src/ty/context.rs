@@ -64,6 +64,7 @@ use crate::middle::resolve::{ModChild, ResolverAstLowering};
 use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
+use crate::query::q_impl::QueryExecutionMethods;
 use crate::query::{IntoQueryKey, LocalCrate, Providers, QuerySystem, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
@@ -794,6 +795,7 @@ pub struct GlobalCtxt<'tcx> {
     untracked: Untracked,
 
     pub query_system: QuerySystem<'tcx>,
+    pub qs_methods: QueryExecutionMethods,
 
     pub caches: GlobalCaches<'tcx>,
 
@@ -984,6 +986,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
+        let qs_methods = QueryExecutionMethods(dep_graph.is_fully_enabled());
 
         let gcx = gcx_cell.get_or_init(|| GlobalCtxt {
             sess,
@@ -1001,6 +1004,7 @@ impl<'tcx> TyCtxt<'tcx> {
             consts: common_consts,
             untracked,
             query_system,
+            qs_methods,
             caches: Default::default(),
             data_layout,
             alloc_map: interpret::AllocMap::new(),
