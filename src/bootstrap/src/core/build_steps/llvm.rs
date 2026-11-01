@@ -2333,13 +2333,14 @@ fn get_locally_built_tpde_build_status(
         tpde_root_dir: out_dir,
     };
 
+    // TPDE links against LLVM.
+    // By including the LLVM hash as well as the TPDE hash we force a rebuild of TPDE when updating LLVM.
+    let tpde_hash_input = builder.in_tree_llvm_info.sha().unwrap_or_default().to_owned()
+        + builder.in_tree_tpde_info.sha().unwrap_or_default();
+
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
-        generate_smart_stamp_hash(
-            builder,
-            &builder.config.src.join("src/tpde"),
-            builder.in_tree_tpde_info.sha().unwrap_or_default(),
-        )
+        generate_smart_stamp_hash(builder, &builder.config.src.join("src/tpde"), &tpde_hash_input)
     });
 
     // Rebuild if build options change
@@ -2348,7 +2349,8 @@ fn get_locally_built_tpde_build_status(
         .add_stamp(smart_stamp_hash)
         .add_stamp(builder.config.llvm_assertions)
         .add_stamp(builder.config.llvm_optimize)
-        .add_stamp(builder.config.llvm_release_debuginfo);
+        .add_stamp(builder.config.llvm_release_debuginfo)
+        .add_stamp(builder.config.llvm_clang);
 
     if stamp.is_up_to_date() {
         if smart_stamp_hash.is_empty() {
@@ -2442,6 +2444,16 @@ impl CommandLineStep for Tpde {
         let mut ldflags = LdFlags::default();
         try_link_with_in_tree_lld(builder, target, &llvm, &mut cfg, &mut ldflags);
         configure_cmake(builder, target, &mut cfg, true, ldflags, CcFlags::default(), &[]);
+
+        if builder.config.llvm_clang {
+            let clang_bin_dir = llvm.llvm_config().parent().map(Path::to_path_buf).unwrap();
+            let clang = clang_bin_dir.join(exe("clang", target));
+            let clangxx = clang_bin_dir.join(exe("clang++", target));
+
+            cfg.define("CMAKE_C_COMPILER", &clang)
+                .define("CMAKE_CXX_COMPILER", &clangxx)
+                .define("CMAKE_ASM_COMPILER", &clang);
+        }
 
         if builder.config.dry_run() {
             return output;
