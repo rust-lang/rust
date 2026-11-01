@@ -3766,10 +3766,14 @@ impl<'a> Parser<'a> {
                             return Err(e);
                         }
                     }
-                    let guar = e.emit_err();
-                    if pth == kw::Async {
+                    let guar = if pth == kw::Async {
+                        self.psess.async_fn_in_2015.borrow_mut().insert(pth.span);
+                        let guar = e.stash(pth.span, StashKey::Edition2015).unwrap();
                         recovered_async = Some(guar);
-                    }
+                        guar
+                    } else {
+                        e.emit_err()
+                    };
 
                     // If we encountered an error which we are recovering from, treat the struct
                     // as if it has a `..` in it, because we don’t know what fields the user
@@ -3824,12 +3828,18 @@ impl<'a> Parser<'a> {
                     if !recover {
                         return Err(e);
                     }
-                    let guar = e.emit_err();
-                    if pth == kw::Async {
+                    let guar = if pth == kw::Async {
+                        self.psess.async_fn_in_2015.borrow_mut().insert(pth.span);
+                        let guar = e.stash(pth.span, StashKey::Edition2015).unwrap();
                         recovered_async = Some(guar);
-                    } else if let Some(f) = field_ident(self, guar) {
-                        fields.push(f);
-                    }
+                        guar
+                    } else {
+                        let guar = e.emit_err();
+                        if let Some(f) = field_ident(self, guar) {
+                            fields.push(f);
+                        }
+                        guar
+                    };
 
                     // See comment above on this same assignment inside of field parsing.
                     base = ast::StructRest::NoneWithError(guar);

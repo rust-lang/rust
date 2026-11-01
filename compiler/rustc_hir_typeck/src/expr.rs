@@ -3053,10 +3053,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We know by construction that `<expr>.await` is either on Rust 2015
             // or results in `ExprKind::Await`. Suggest switching the edition to 2018.
             err.note("to `.await` a `Future`, switch to Rust 2018 or later");
+            self.tcx.sess.early_sess.psess.async_fn_in_2015.borrow_mut().insert(ident.span);
             HelpUseLatestEdition::new().add_to_diag(&mut err);
+            err.stash(ident.span, StashKey::Edition2015).unwrap()
+        } else {
+            err.emit_err()
         }
-
-        err.emit_err()
     }
 
     fn ban_private_field_access(

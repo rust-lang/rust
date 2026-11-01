@@ -391,6 +391,7 @@ pub enum StashKey {
     /// the case we suppress this message and we give a better suggestion.
     GenericInFieldExpr,
     ReturnTypeNotation,
+    Edition2015,
 }
 
 fn default_track_diagnostic<R>(diag: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {
@@ -432,7 +433,7 @@ impl Drop for DiagCtxtInner {
         //
         // Important: it is sound to produce an `ErrorGuaranteed` when stashing
         // errors because they are guaranteed to be emitted here or earlier.
-        self.emit_stashed_diagnostics();
+        self.emit_stashed_diagnostics(&FxIndexSet::default());
 
         // Important: it is sound to produce an `ErrorGuaranteed` when emitting
         // delayed bugs because they are guaranteed to be emitted here if
@@ -707,8 +708,8 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     /// Emit all stashed diagnostics.
-    pub fn emit_stashed_diagnostics(&self) -> Option<ErrorGuaranteed> {
-        self.dcx.inner.borrow_mut().emit_stashed_diagnostics()
+    pub fn emit_stashed_diagnostics(&self, spans: &FxIndexSet<Span>) -> Option<ErrorGuaranteed> {
+        self.dcx.inner.borrow_mut().emit_stashed_diagnostics(spans)
     }
 
     /// This excludes delayed bugs.
@@ -1180,17 +1181,20 @@ impl DiagCtxtInner {
     }
 
     /// Emit all stashed diagnostics.
-    fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
+    fn emit_stashed_diagnostics(&mut self, spans: &FxIndexSet<Span>) -> Option<ErrorGuaranteed> {
         let mut guar = None;
         let has_errors = !self.err_guars.is_empty();
-        for (_, stashed_diagnostics) in mem::take(&mut self.stashed_diagnostics).into_iter() {
-            for (_, (diag, _guar, _thread)) in stashed_diagnostics {
+        for (key, stashed_diagnostics) in mem::take(&mut self.stashed_diagnostics).into_iter() {
+            for (span, (diag, _guar, _thread)) in stashed_diagnostics {
                 // When there are errors, skip flushing of stashed unforced warnings, to avoid
                 // warning overload. (They would have been stolen already if they were important.)
                 if has_errors
                     && let Warning(emission_override) = diag.level
                     && !matches!(emission_override, Some(EmissionOverride::Forced { .. }))
                 {
+                    continue;
+                }
+                if key == StashKey::Edition2015 && spans.contains(&span) {
                     continue;
                 }
                 guar = guar.or(self.emit_diagnostic(diag, None));

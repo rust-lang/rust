@@ -1,12 +1,3 @@
-error[E0670]: `async fn` is not permitted in Rust 2015
-  --> $DIR/continue-pointing-to-block-ice-113379.rs:5:1
-   |
-LL | async fn f999() -> Vec<usize> {
-   | ^^^^^ to use `async fn`, switch to Rust 2018 or later
-   |
-   = help: pass `--edition 2024` to `rustc`
-   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
-
 error[E0601]: `main` function not found in crate `continue_pointing_to_block_ice_113379`
   --> $DIR/continue-pointing-to-block-ice-113379.rs:12:2
    |
@@ -36,6 +27,15 @@ LL | |     }
    |
    = note: expected struct `Vec<usize>`
            found unit type `()`
+
+error[E0670]: `async fn` is not permitted in Rust 2015
+  --> $DIR/continue-pointing-to-block-ice-113379.rs:5:1
+   |
+LL | async fn f999() -> Vec<usize> {
+   | ^^^^^ to use `async fn`, switch to Rust 2018 or later
+   |
+   = help: pass `--edition 2024` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: aborting due to 4 previous errors
 

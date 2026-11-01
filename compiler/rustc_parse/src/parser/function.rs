@@ -4,7 +4,7 @@ use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::util::case::Case;
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{Applicability, PResult, StashKey};
 use rustc_lint_defs::builtin::VARARGS_WITHOUT_PATTERN;
 use rustc_span::edition::Edition;
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, respan, sym};
@@ -450,10 +450,13 @@ impl<'a> Parser<'a> {
             && let CoroutineKind::Async = coroutine_marker.kind
             && coroutine_marker.span.is_rust_2015()
         {
-            self.dcx().emit_err(diagnostics::AsyncFnIn2015 {
-                span: coroutine_marker.span,
+            self.psess.async_fn_in_2015.borrow_mut().insert(coroutine_marker.span);
+            let span = coroutine_marker.span;
+            let err = self.dcx().create_err(diagnostics::AsyncFnIn2015 {
+                span,
                 help: diagnostics::HelpUseLatestEdition::new(),
             });
+            err.stash(span, StashKey::Edition2015);
         }
 
         if let Some(coroutine_marker) = coroutine_marker
