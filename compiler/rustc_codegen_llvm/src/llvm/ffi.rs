@@ -554,15 +554,15 @@ pub(crate) enum DiagnosticKind {
     SrcMgr,
 }
 
-/// LLVMRustDiagnosticLevel
+/// LLVMDiagnosticSeverity
 #[derive(Copy, Clone)]
 #[repr(C)]
 #[allow(dead_code)] // Variants constructed by C++.
-pub(crate) enum DiagnosticLevel {
+pub(crate) enum DiagnosticSeverity {
     Error,
     Warning,
-    Note,
     Remark,
+    Note,
 }
 
 unsafe extern "C" {
@@ -2539,13 +2539,13 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustUnpackInlineAsmDiagnostic<'a>(
         DI: &'a DiagnosticInfo,
-        level_out: &mut DiagnosticLevel,
         cookie_out: &mut u64,
         message_out: &mut Option<&'a Twine>,
     );
 
     pub(crate) fn LLVMRustWriteDiagnosticInfoToString(DI: &DiagnosticInfo, s: &RustString);
     pub(crate) fn LLVMRustGetDiagInfoKind(DI: &DiagnosticInfo) -> DiagnosticKind;
+    pub(crate) fn LLVMGetDiagInfoSeverity(DI: &DiagnosticInfo) -> DiagnosticSeverity;
 
     pub(crate) fn LLVMRustGetSMDiagnostic<'a>(
         DI: &'a DiagnosticInfo,
@@ -2556,7 +2556,6 @@ unsafe extern "C" {
         d: &SMDiagnostic,
         message_out: &RustString,
         buffer_out: &RustString,
-        level_out: &mut DiagnosticLevel,
         loc_out: &mut c_uint,
         ranges_out: *mut c_uint,
         num_ranges: &mut usize,
