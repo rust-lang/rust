@@ -1208,6 +1208,10 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 fn analysis(tcx: TyCtxt<'_>, (): ()) {
     run_required_analyses(tcx);
 
+    if !tcx.sess.opts.output_types.requires_full_analysis() {
+        return;
+    }
+
     let sess = tcx.sess;
 
     // Avoid overwhelming user with errors if borrow checking failed.
