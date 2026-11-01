@@ -1,5 +1,6 @@
+// backchain on s390x is enabled with -Cforce-frame-pointers
 //@ add-minicore
-//@ revisions: wrong_arch only_packedstack backchain_attr backchain_cli with_softfloat
+//@ revisions: wrong_arch only_packedstack backchain_cli with_softfloat
 //@ compile-flags: -Zpacked-stack --crate-type=rlib
 //@ ignore-backends: gcc
 
@@ -11,32 +12,26 @@
 //@ [only_packedstack] build-pass
 //@ [only_packedstack] needs-llvm-components: systemz
 
-//@ [backchain_attr] compile-flags: --target=s390x-unknown-linux-gnu
-//@ [backchain_attr] build-fail
-//@ [backchain_attr] needs-llvm-components: systemz
-
-//@ [backchain_cli] compile-flags: -Ctarget-feature=+backchain --target=s390x-unknown-linux-gnu
+//@ [backchain_cli] compile-flags: --target=s390x-unknown-linux-gnu
+//@ [backchain_cli] compile-flags: -Cforce-frame-pointers
 //@ [backchain_cli] should-fail
 //@ [backchain_cli] needs-llvm-components: systemz
 
-//@ [with_softfloat] compile-flags: -Ctarget-feature=+backchain
+//@ [with_softfloat] compile-flags: -Cforce-frame-pointers
 //@ [with_softfloat] compile-flags: --target=s390x-unknown-none-softfloat
 //@ [with_softfloat] build-pass
 //@ [with_softfloat] needs-llvm-components: systemz
 
 #![feature(s390x_target_feature)]
 #![crate_type = "rlib"]
-#![feature(no_core,lang_items)]
+#![feature(no_core, lang_items)]
 #![no_core]
 
 extern crate minicore;
 use minicore::*;
 
 #[no_mangle]
-#[cfg_attr(backchain_attr,target_feature(enable = "backchain"))]
-pub fn test() {
-}
+pub fn test() {}
 
 //[wrong_arch]~? ERROR `-Zpacked-stack` is only supported on s390x
-//[backchain_cli]~? ERROR `-Zpacked-stack` is incompatible with `backchain` target feature
-//[backchain_attr]~? ERROR `-Zpacked-stack` is incompatible with `backchain` target feature
+//[backchain_cli]~? ERROR `-Zpacked-stack` is incompatible with `-Cforce-frame-pointers` (backchain)
