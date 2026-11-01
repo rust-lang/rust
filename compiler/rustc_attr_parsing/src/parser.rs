@@ -16,7 +16,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{
-    AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, PathSegment, StmtKind, UnOp,
+    AttrArgs, AttrKind, Expr, ExprKind, LitKind, MetaItemLit, Path, PathSegment, StmtKind,
+    SyntheticAttr, UnOp,
 };
 use rustc_ast_pretty::pprust;
 use rustc_attr_ir::AttrPath;
@@ -30,7 +31,7 @@ use thin_vec::ThinVec;
 
 use crate::ShouldEmit;
 use crate::diagnostics::{
-    AdditionalCommaSuggestion, AttributeInEarlyAttribute, ExpectedComma, InvalidMetaItem,
+    AdditionalCommaSuggestion, AttributeOnAttributeValue, ExpectedComma, InvalidMetaItem,
     InvalidMetaItemQuoteIdentSugg, InvalidMetaItemRemoveNegSugg, MetaBadDelim, MetaBadDelimSugg,
     SuffixedLiteralInAttribute,
 };
@@ -411,12 +412,24 @@ fn expr_to_lit<'sess>(
     expr: &Expr,
     should_emit: ShouldEmit,
 ) -> PResult<'sess, Option<MetaItemLit>> {
-    // FIXME: HACK: Misappropriating `ShouldEmit` here!
-    if let ShouldEmit::EarlyFatal { .. } = should_emit
-        && let Some(attr) = expr.attrs.first()
-    {
-        let span = attr.span.to(expr.attrs.last().unwrap().span);
-        return Err(psess.dcx().create_err(AttributeInEarlyAttribute { span }));
+    // FIXME(fmease): Explainer.
+    let attrs: Vec<_> = expr
+        .attrs
+        .iter()
+        .filter(|attr| {
+            !matches!(
+                attr.kind,
+                AttrKind::Synthetic(SyntheticAttr::CfgTrace(_) | SyntheticAttr::CfgAttrTrace(_))
+            )
+        })
+        .map(|attr| attr.span)
+        .collect();
+
+    if let Some(attr) = attrs.first() {
+        let count = attrs.len();
+        let spans =
+            if expr.attrs.len() == count { vec![attr.to(*attrs.last().unwrap())] } else { attrs };
+        return Err(psess.dcx().create_err(AttributeOnAttributeValue { spans, count }));
     }
 
     if let ExprKind::Lit(token_lit) = expr.kind {
@@ -428,6 +441,7 @@ fn expr_to_lit<'sess>(
                 } else if lit.kind.is_unsuffixed() {
                     Ok(Some(lit))
                 } else {
+                    // XXX FIXME: unreachable???????
                     Err(psess.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span }))
                 }
             }
@@ -496,6 +510,7 @@ struct MetaItemListParserContext<'a, 'sess> {
 
 impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
     fn parse_unsuffixed_meta_item_lit(&mut self) -> PResult<'sess, MetaItemLit> {
+        // XXX XXX XXX FIXME: What about AST attrs? Who calls this API & how do they handle attrs?
         let Some(token_lit) = self.parser.eat_token_lit() else { return Err(self.expected_lit()) };
         self.unsuffixed_meta_item_from_lit(token_lit)
     }
@@ -587,6 +602,8 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
             let end = self.parser.prev_token.span;
             ArgParser::List(MetaItemListParser { sub_parsers, span: start.with_hi(end.hi()) })
         } else if self.parser.eat(exp!(Eq)) {
+            // XXX FIXME
+
             let eq_span = self.parser.prev_token.span;
             let value = self.parse_unsuffixed_meta_item_lit()?;
 

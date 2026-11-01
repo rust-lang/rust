@@ -1880,10 +1880,16 @@ pub(crate) struct SuffixedLiteralInAttribute {
 }
 
 #[derive(Diagnostic)]
-#[diag("attributes are not allowed in this context")]
-pub(crate) struct AttributeInEarlyAttribute {
+#[diag(
+    "{$count ->
+    [one] this attribute is
+    *[other] these attributes are
+    } not allowed in this context"
+)]
+pub(crate) struct AttributeOnAttributeValue {
     #[primary_span]
-    pub span: Span,
+    pub spans: Vec<Span>,
+    pub count: usize,
 }
 
 #[derive(Diagnostic)]

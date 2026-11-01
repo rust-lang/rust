@@ -3,9 +3,8 @@ use std::convert::identity;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
-use rustc_ast::{AttrStyle, CRATE_NODE_ID, NodeId, Safety};
+use rustc_ast::{self as ast, AttrKind, AttrStyle, CRATE_NODE_ID, NodeId, Safety, SyntheticAttr};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{AttrArgs, AttrItem, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
 use rustc_data_structures::sync::{DynSend, DynSync};
@@ -561,6 +560,7 @@ impl<'sess> AttributeParser<'sess> {
         ATTRIBUTE_PARSERS.accepters.contains_key(path) || SPECIAL_ATTRIBUTES.contains(&path)
     }
 
+    // XXX
     fn lower_attr_args(&self, args: &ast::AttrArgs, lower_span: impl Fn(Span) -> Span) -> AttrArgs {
         match args {
             ast::AttrArgs::Empty => AttrArgs::Empty,
@@ -569,6 +569,28 @@ impl<'sess> AttributeParser<'sess> {
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
             // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
             ast::AttrArgs::Eq { eq_span, expr } => {
+                // XXX XXX XXX
+
+                // FIXME(fmease): Explainer.
+                let attrs: Vec<_> = expr
+                    .attrs
+                    .iter()
+                    .filter(|attr| {
+                        !matches!(
+                            attr.kind,
+                            AttrKind::Synthetic(
+                                SyntheticAttr::CfgTrace(_) | SyntheticAttr::CfgAttrTrace(_)
+                            )
+                        )
+                    })
+                    .map(|attr| attr.span)
+                    .collect();
+
+                if !attrs.is_empty() {
+                    // XXX FIXME msg
+                    self.dcx().span_delayed_bug(attrs, "attrs on expr (inert attr parsing)");
+                }
+
                 // In valid code the value always ends up as a single literal. Otherwise, a dummy
                 // literal suffices because the error is handled elsewhere.
                 let lit = if let ast::ExprKind::Lit(token_lit) = expr.kind
@@ -579,7 +601,7 @@ impl<'sess> AttributeParser<'sess> {
                 } else {
                     let guar = self.dcx().span_delayed_bug(
                         args.span().unwrap_or(DUMMY_SP),
-                        "expr in place where literal is expected (builtin attr parsing)",
+                        "expr in place where literal is expected (inert attr parsing)",
                     );
                     ast::MetaItemLit {
                         symbol: sym::dummy,

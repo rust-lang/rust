@@ -7,7 +7,7 @@ use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
     self as ast, AttrArgs, AttrKind, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind,
-    Safety,
+    Safety, SyntheticAttr,
 };
 use rustc_attr_ir::AttrPath;
 use rustc_errors::{Applicability, Diagnostic, PResult};
@@ -80,6 +80,35 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                 MetaItemKind::List(nmis)
             }
             AttrArgs::Eq { expr, .. } => {
+                // XXX XXX XXX
+
+                // FIXME(fmease): Explainer.
+                let attrs: Vec<_> = expr
+                    .attrs
+                    .iter()
+                    .filter(|attr| {
+                        !matches!(
+                            attr.kind,
+                            AttrKind::Synthetic(
+                                SyntheticAttr::CfgTrace(_) | SyntheticAttr::CfgAttrTrace(_)
+                            )
+                        )
+                    })
+                    .map(|attr| attr.span)
+                    .collect();
+
+                if let Some(attr) = attrs.first() {
+                    let count = attrs.len();
+                    let spans = if expr.attrs.len() == count {
+                        vec![attr.to(*attrs.last().unwrap())]
+                    } else {
+                        attrs
+                    };
+                    return Err(psess
+                        .dcx()
+                        .create_err(errors::AttributeOnAttributeValue { spans, count }));
+                }
+
                 if let ast::ExprKind::Lit(token_lit) = expr.kind {
                     let res = ast::MetaItemLit::from_token_lit(token_lit, expr.span);
 
