@@ -11,10 +11,13 @@ Target triplets available:
 * `i686-oe-linux-gnu`
 * `armv7-oe-linux-gnueabihf`
 * `riscv64-oe-linux-gnu`
+* `powerpc64-oe-linux-gnu`
+* `powerpc64le-oe-linux-gnu`
 
 ## Target maintainers
 
 [@DeepeshWR](https://github.com/DeepeshWR)
+(for powerpc64-oe-linux-gnu and powerpc64le-oe-linux-gnu only) [@jkrishnanjanappa] (https://github.com/jkrishnanjanappa)
 
 ## Requirements
 

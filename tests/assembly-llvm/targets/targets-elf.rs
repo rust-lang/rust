@@ -409,6 +409,9 @@
 //@ revisions: msp430_none_elf
 //@ [msp430_none_elf] compile-flags: --target msp430-none-elf
 //@ [msp430_none_elf] needs-llvm-components: msp430
+//@ revisions: powerpc64_oe_linux_gnu
+//@ [powerpc64_oe_linux_gnu] compile-flags: --target powerpc64-oe-linux-gnu
+//@ [powerpc64_oe_linux_gnu] needs-llvm-components: powerpc
 //@ revisions: powerpc64_sony_ps3
 //@ [powerpc64_sony_ps3] compile-flags: --target powerpc64-sony-ps3
 //@ [powerpc64_sony_ps3] needs-llvm-components: powerpc
@@ -430,6 +433,9 @@
 //@ revisions: powerpc64_wrs_vxworks
 //@ [powerpc64_wrs_vxworks] compile-flags: --target powerpc64-wrs-vxworks
 //@ [powerpc64_wrs_vxworks] needs-llvm-components: powerpc
+//@ revisions: powerpc64le_oe_linux_gnu
+//@ [powerpc64le_oe_linux_gnu] compile-flags: --target powerpc64le-oe-linux-gnu
+//@ [powerpc64le_oe_linux_gnu] needs-llvm-components: powerpc
 //@ revisions: powerpc64le_unknown_freebsd
 //@ [powerpc64le_unknown_freebsd] compile-flags: --target powerpc64le-unknown-freebsd
 //@ [powerpc64le_unknown_freebsd] needs-llvm-components: powerpc
