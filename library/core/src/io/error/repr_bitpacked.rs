@@ -227,22 +227,56 @@ impl Repr {
 }
 
 impl Drop for Repr {
+    // What this will end up inlining into the destructor call site is merely a
+    // bitwise AND of the pointer with the constant TAG_MASK, a comparison to
+    // the constant TAG_CUSTOM, and a call to drop_custom that is jumped over
+    // if the tag isn't TAG_CUSTOM.
     #[inline]
     fn drop(&mut self) {
-        // SAFETY: We're a Repr, decode_repr is fine. The `Box::from_raw` is
-        // safe because we're being dropped.
-        unsafe {
-            let _ = decode_repr(self.0, |p| {
-                CustomOwner::from_raw(core::ptr::NonNull::new_unchecked(p))
-            });
+        // Inlining the destructor of a custom error does not confer any
+        // optimization opportunities, as it is type-erased. The cost,
+        // meanwhile, is a code size increase by a factor of up to 5.4 in the
+        // case of dropping multiple io::Results in the same function
+        // (https://godbolt.org/z/8hfGchjsT).
+        //
+        // FIXME the 32-bit variant still has the code bloat that is being
+        // avoided here, see the discussion in
+        // https://github.com/rust-lang/rust/pull/149146
+        #[inline(never)]
+        // The destructor of a custom error value is normally only called
+        // after it has been displayed or logged, or if it has been downcasted
+        // and handled appropriately. Displaying and logging errors is
+        // considered a cold path in most programs, and downcasting is
+        // similarly not something that is considered performance-critical.
+        // Thus, in the interest of happy path performance, have block
+        // placement get the calls to this function out of the way.
+        #[cold]
+        unsafe fn drop_custom(ptr: NonNull<()>) {
+            // SAFETY: we're being dropped
+            unsafe {
+                let _ = CustomOwner::from_raw(ptr.byte_sub(TAG_CUSTOM).cast::<Custom>());
+            }
+        }
+        // The sum of the below code and the body of drop_custom is a
+        // transclusion from decode_repr. This used to be a call to
+        // decode_repr, but we need the amount of IR produced here to be the
+        // smallest it can possibly be, as this destructor is ubiquitously
+        // inlined into every io::Error destruction site. It has been confirmed
+        // via visual inspection of the disassembly that the codegen for that
+        // was absolutely atrocious. As such, the duplication of logic is
+        // justified.
+        if self.0.addr().get() & TAG_MASK == TAG_CUSTOM {
+            // SAFETY: as per decode_repr
+            unsafe { drop_custom(self.0) };
         }
     }
 }
 
-// Shared helper to decode a `Repr`'s internal pointer into an ErrorData.
-//
-// Safety: `ptr`'s bits should be encoded as described in the document at the
-// top (it should `some_repr.0`)
+/// Shared helper to decode a [`Repr`]'s internal pointer into an [`ErrorData`].
+///
+/// # Safety
+/// `ptr`'s bits should be encoded as described in the document at the
+/// top (it should be `some_repr.0`).
 #[inline]
 unsafe fn decode_repr<C, F>(ptr: NonNull<()>, make_custom: F) -> ErrorData<C>
 where
