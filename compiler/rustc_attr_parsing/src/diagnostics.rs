@@ -2225,3 +2225,11 @@ pub(crate) struct DocKeywordAttributeNotAnonConst {
     pub span: Span,
     pub attr_name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag("the `lint::{$unknown}` attribute is not recognized")]
+pub(crate) struct UnknownLintHelper {
+    #[primary_span]
+    pub span: Span,
+    pub unknown: Symbol,
+}

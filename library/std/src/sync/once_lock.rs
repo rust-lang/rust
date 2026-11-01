@@ -180,7 +180,7 @@ impl<T> OnceLock<T> {
     /// This method never blocks.
     #[inline]
     #[stable(feature = "once_cell", since = "1.70.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[lint::should_not_be_called_on_const_items]
     pub fn get(&self) -> Option<&T> {
         if self.initialized() {
             // Safe b/c checked initialized
@@ -228,7 +228,7 @@ impl<T> OnceLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "once_wait", since = "1.86.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[lint::should_not_be_called_on_const_items]
     pub fn wait(&self) -> &T {
         self.once.wait_force();
 
@@ -263,7 +263,7 @@ impl<T> OnceLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "once_cell", since = "1.70.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[lint::should_not_be_called_on_const_items]
     pub fn set(&self, value: T) -> Result<(), T> {
         match self.try_insert(value) {
             Ok(_) => Ok(()),
@@ -303,7 +303,7 @@ impl<T> OnceLock<T> {
     /// ```
     #[inline]
     #[unstable(feature = "once_cell_try_insert", issue = "116693")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[lint::should_not_be_called_on_const_items]
     pub fn try_insert(&self, value: T) -> Result<&T, (&T, T)> {
         let mut value = Some(value);
         let res = self.get_or_init(|| value.take().unwrap());
@@ -342,7 +342,7 @@ impl<T> OnceLock<T> {
     /// ```
     #[inline]
     #[stable(feature = "once_cell", since = "1.70.0")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[lint::should_not_be_called_on_const_items]
     pub fn get_or_init<F>(&self, f: F) -> &T
     where
         F: FnOnce() -> T,
@@ -423,7 +423,7 @@ impl<T> OnceLock<T> {
     /// ```
     #[inline]
     #[unstable(feature = "once_cell_try", issue = "109737")]
-    #[rustc_should_not_be_called_on_const_items]
+    #[lint::should_not_be_called_on_const_items]
     pub fn get_or_try_init<F, E>(&self, f: F) -> Result<&T, E>
     where
         F: FnOnce() -> Result<T, E>,

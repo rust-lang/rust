@@ -1,0 +1,11 @@
+error: attribute macro `lint::as_ptr` is ambiguous
+  --> $DIR/resolve_as_macro.rs:9:3
+   |
+LL | #[lint::as_ptr]
+   |   ^^^^^^^^^^^^
+   |
+   = note: ambiguous because of a name conflict with a tool namespace
+   = note: `lint` could refer to a tool namespace
+
+error: aborting due to 1 previous error
+
