@@ -159,7 +159,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Address length should be exactly the length of an IPv4 address.
                 return interp_ok(Err(LibcError("EINVAL")));
             }
-            let address = address.transmute(sockaddr_in_layout, this)?;
+            let address = this.ptr_to_mplace(address.ptr(), sockaddr_in_layout);
 
             let port_field = this.project_field_named(&address, "sin_port")?;
             // Read bytes and treat them as big endian since port is stored in network byte order.
@@ -185,8 +185,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Address length should be exactly the length of an IPv6 address.
                 return interp_ok(Err(LibcError("EINVAL")));
             }
-            // We cannot transmute since the `sockaddr_in6` layout is bigger than the `sockaddr` layout.
-            let address = address.offset(Size::ZERO, sockaddr_in6_layout, this)?;
+            let address = this.ptr_to_mplace(address.ptr(), sockaddr_in6_layout);
 
             let port_field = this.project_field_named(&address, "sin6_port")?;
             // Read bytes and treat them as big endian since port is stored in network byte order.
