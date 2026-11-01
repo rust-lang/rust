@@ -292,7 +292,8 @@ pub fn current_exe() -> io::Result<PathBuf> {
     target_os = "hurd",
     target_os = "android",
     target_os = "nuttx",
-    target_os = "emscripten"
+    target_os = "emscripten",
+    target_os = "serenity",
 ))]
 pub fn current_exe() -> io::Result<PathBuf> {
     match crate::fs::read_link("/proc/self/exe") {

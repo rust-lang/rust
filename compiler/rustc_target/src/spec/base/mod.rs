@@ -31,6 +31,7 @@ pub(crate) mod openbsd;
 pub(crate) mod qnx_sdp;
 pub(crate) mod qtee;
 pub(crate) mod redox;
+pub(crate) mod serenity;
 pub(crate) mod solaris;
 pub(crate) mod solid;
 pub(crate) mod teeos;
