@@ -166,7 +166,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
                         ));
                     }
                     ty::Invariant => {
-                        infcx.inner.borrow_mut().type_variables().equate(a_id, b_id);
+                        infcx.inner.borrow_mut().equate_ty_vids(a_id, b_id);
                     }
                     ty::Bivariant => {
                         unreachable!("Expected bivariance to be handled in relate_with_variance")
