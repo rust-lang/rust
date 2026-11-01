@@ -1423,7 +1423,9 @@ impl<'db> InferenceContext<'db> {
                             // falling back to the inherited reference didn't work. This should be
                             // the same error as the old-Edition version below.
                             debug_assert!(ref_pat_matches_mut_ref);
-                            // FIXME: Emit an error.
+                            self.push_diagnostic(
+                                InferenceDiagnostic::MatchInheritedImmRefWithMutRefPat { pat },
+                            );
                         }
 
                         pat_info.binding_mode = ByRef::No;
