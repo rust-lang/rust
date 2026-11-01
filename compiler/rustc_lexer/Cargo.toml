@@ -16,7 +16,7 @@ Rust lexer used by rustc. No stability guarantees are provided.
 [dependencies]
 memchr = "2.7.6"
 unicode-properties = { version = "0.1.4", default-features = false, features = ["emoji"] }
-unicode-ident = "1.0.22"
+unicode-ident = "1.0.24"
 
 [dev-dependencies]
 expect-test = "1.4.0"
