@@ -239,6 +239,8 @@ struct Args {
     /// Run tests that require offload.
     #[arg(long)]
     has_offload: bool,
+    #[arg(long)]
+    has_tpde: bool,
     /// Whether rustc was built with debug assertions.
     #[arg(long)]
     with_rustc_debug_assertions: bool,
@@ -455,6 +457,7 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
 
         has_enzyme: args.has_enzyme,
         has_offload: args.has_offload,
+        has_tpde: args.has_tpde,
         host: args.host,
         host_compile_lib_path: make_absolute(args.compile_lib_path),
         host_linker: args.host_linker,

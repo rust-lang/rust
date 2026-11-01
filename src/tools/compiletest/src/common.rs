@@ -682,6 +682,9 @@ pub(crate) struct Config {
     /// Whether to run `offload` autodiff tests.
     pub(crate) has_offload: bool,
 
+    /// Whether to run tests with the `tpde` LLVM backend
+    pub(crate) has_tpde: bool,
+
     /// The current Rust channel info.
     ///
     /// FIXME: treat this more carefully; "stable", "beta" and "nightly" are definitely valid, but

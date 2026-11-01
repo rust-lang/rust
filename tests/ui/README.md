@@ -1410,6 +1410,10 @@ Broad category for parallelism and multi-threaded tests, including attempting to
 
 Exercises [tool attributes](https://doc.rust-lang.org/reference/attributes.html#tool-attributes).
 
+## `tests/ui/tpde`
+
+Exercises the experimental TPDE-LLVM codegen backend.
+
 ## `tests/ui/track-diagnostics/`
 
 Exercises `#[track_caller]` and `-Z track-diagnostics`.

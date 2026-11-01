@@ -21,9 +21,11 @@ pub(crate) mod enzyme_ffi;
 mod ffi;
 mod metadata_kind;
 pub(crate) mod offload_ffi;
+pub(crate) mod tpde_ffi;
 
 pub(crate) use self::enzyme_ffi::*;
 pub(crate) use self::offload_ffi::*;
+pub(crate) use self::tpde_ffi::*;
 
 impl LLVMRustResult {
     pub(crate) fn into_result(self) -> Result<(), ()> {
