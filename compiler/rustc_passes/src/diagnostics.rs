@@ -105,10 +105,6 @@ pub(crate) struct ReprConflicting {
 }
 
 #[derive(Diagnostic)]
-#[diag("conflicting representation hints", code = E0566)]
-pub(crate) struct ReprConflictingLint;
-
-#[derive(Diagnostic)]
 #[diag("couldn't read {$file}: {$error}")]
 pub(crate) struct DebugVisualizerUnreadable<'a> {
     #[primary_span]
