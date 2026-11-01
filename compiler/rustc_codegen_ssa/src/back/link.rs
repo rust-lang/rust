@@ -44,7 +44,7 @@ use rustc_span::{Symbol, bug};
 use rustc_structures::{CrateType, NativeLibKind};
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
-    BinaryFormat, Cc, CfgAbi, Env, LinkOutputKind, LinkSelfContainedComponents,
+    Arch, BinaryFormat, Cc, CfgAbi, Env, LinkOutputKind, LinkSelfContainedComponents,
     LinkSelfContainedDefault, LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, Os, RelocModel,
     RelroLevel, SanitizerSet, SplitDebuginfo,
 };
@@ -1336,12 +1336,34 @@ fn link_natively(
         if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, Lld::Yes))
             && unknown_arg_regex.is_match(&out)
             && out.contains("-fuse-ld=lld")
-            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-fuse-ld=lld")
+            && cmd.get_args().iter().any(|e| e == "-fuse-ld=lld")
         {
             info!("linker output: {:?}", out);
             info!("The linker driver does not support `-fuse-ld=lld`. Retrying without it.");
             for arg in cmd.take_args() {
-                if arg.to_string_lossy() != "-fuse-ld=lld" {
+                if arg != "-fuse-ld=lld" {
+                    cmd.arg(arg);
+                }
+            }
+            info!("{cmd:?}");
+            continue;
+        }
+
+        // Check if linking failed with an error message that the linker doesn't recognise the
+        // cortex-a53 mitigation. We pass `-mfix-cortex-a53-843419` to CC-based linker drivers,
+        // which forward `--fix-cortex-a53-843419` to the linker itself, but either component may
+        // not recognise each flag. Notably this was only added to Clang in version 21.
+        if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
+            && unknown_arg_regex.is_match(&out)
+            && out.contains("fix-cortex-a53-843419")
+            && cmd.get_args().iter().any(|e| e == "-mfix-cortex-a53-843419")
+        {
+            info!("linker output: {:?}", out);
+            info!(
+                "The linker or linker driver do not support `fix-cortex-a53-843419`. Retrying without it."
+            );
+            for arg in cmd.take_args() {
+                if arg != "-mfix-cortex-a53-843419" {
                     cmd.arg(arg);
                 }
             }
@@ -2405,6 +2427,16 @@ fn add_post_link_objects(
 /// Add arbitrary "pre-link" args defined by the target spec or from command line.
 /// FIXME: Determine where exactly these args need to be inserted.
 fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+    // Emit the CC flag for the A53 mitigation early, as later linker args can override it if
+    // required with `-mno-fix-cortex-a53-843419`
+    if sess.target.arch == Arch::AArch64
+        && !sess.target.is_like_darwin
+        && sess.target.os != Os::Windows
+        && matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, ..))
+    {
+        cmd.cc_arg("-mfix-cortex-a53-843419");
+    }
+
     if let Some(args) = sess.target.pre_link_args.get(&flavor) {
         cmd.verbatim_args(args.iter().map(Deref::deref));
     }
