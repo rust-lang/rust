@@ -1362,10 +1362,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
             // Exclude ZST values. We need to compute the dynamic size/align to properly
             // handle slices and trait objects.
             let zst = self.ecx.size_and_align_of_val(val)?.is_some_and(|(s, _a)| s.bytes() == 0);
-            if !zst
-                && let Some(def) = val.layout.ty.ty_adt_def()
-                && def.is_unsafe_cell()
-            {
+            if !zst && val.layout.ty.is_like_unsafe_cell() {
                 if !self.in_mutable_memory(val) {
                     throw_validation_failure!(
                         self.path,
