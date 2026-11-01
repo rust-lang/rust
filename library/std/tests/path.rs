@@ -2183,6 +2183,48 @@ pub fn test_compare() {
     relative_from: Some("foo/bar")
     );
 
+    tc!("/a/b", "a/b",
+    eq: false,
+    starts_with: false,
+    ends_with: true,
+    relative_from: None
+    );
+
+    tc!("/", "",
+    eq: false,
+    starts_with: true,
+    ends_with: true,
+    relative_from: Some("/")
+    );
+
+    tc!("//x", "x",
+    eq: false,
+    starts_with: false,
+    ends_with: true,
+    relative_from: None
+    );
+
+    tc!("/usr/lib", "usr/lib",
+    eq: false,
+    starts_with: false,
+    ends_with: true,
+    relative_from: None
+    );
+
+    tc!("/a/b", "/./a/b",
+    eq: true,
+    starts_with: true,
+    ends_with: true,
+    relative_from: Some("")
+    );
+
+    tc!("/", "//",
+    eq: true,
+    starts_with: true,
+    ends_with: true,
+    relative_from: Some("")
+    );
+
     if cfg!(windows) {
         tc!(r"C:\src\rust\cargo-test\test\Cargo.toml",
         r"c:\src\rust\cargo-test\test",
@@ -2214,6 +2256,51 @@ pub fn test_compare() {
         );
 
         tc!(r"\\?\C:\foo\.\bar.txt", r"\\?\C:\foo\bar.txt",
+        eq: false,
+        starts_with: false,
+        ends_with: false,
+        relative_from: None
+        );
+
+        tc!(r"C:\foo", r"C:foo",
+        eq: false,
+        starts_with: false,
+        ends_with: false,
+        relative_from: None
+        );
+
+        tc!(r"\\?\C:\foo", r"\\?\C:foo",
+        eq: false,
+        starts_with: false,
+        ends_with: false,
+        relative_from: None
+        );
+
+        // The pair (r"\\?\C:/foo", r"\\?\C:\foo") is broken -- eq is true for them but they hash
+        // differently. See https://github.com/rust-lang/rust/issues/161651.
+
+        tc!(r"\foo", "foo",
+        eq: false,
+        starts_with: false,
+        ends_with: true,
+        relative_from: None
+        );
+
+        tc!(r"\\server\share", r"\\server\share\",
+        eq: true,
+        starts_with: true,
+        ends_with: true,
+        relative_from: Some("")
+        );
+
+        tc!(r"\\.\COM42", r"\\.\COM42\",
+        eq: true,
+        starts_with: true,
+        ends_with: true,
+        relative_from: Some("")
+        );
+
+        tc!(r"\\?\UNC\server\share", r"\\?\UNC\server\share\",
         eq: false,
         starts_with: false,
         ends_with: false,
