@@ -11,7 +11,7 @@ use rustc_hir::{Block, Expr, ExprKind, StmtKind};
 use rustc_lexer::TokenKind;
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::{BytePos, Span, Symbol};
-use rustc_structures::LintName;
+use rustc_lint_defs::LintName;
 
 declare_clippy_lint! {
     /// ### What it does

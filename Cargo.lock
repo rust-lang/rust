@@ -4347,7 +4347,6 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
- "rustc_structures",
  "serde",
 ]
 

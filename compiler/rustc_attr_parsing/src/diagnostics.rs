@@ -5,9 +5,9 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, E0264, Level, MultiSpan,
 };
+use rustc_lint_defs::LintName;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
-use rustc_structures::LintName;
 use rustc_target::spec::TargetTuple;
 
 use crate::AttributeTemplate;

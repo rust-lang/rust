@@ -13,13 +13,13 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
+use rustc_lint_defs::LintName;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::{Ident, Span, Symbol, sym};
-use rustc_structures::LintName;
 
 use crate::LateContext;
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};

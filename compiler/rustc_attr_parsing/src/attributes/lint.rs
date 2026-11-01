@@ -3,9 +3,8 @@ use rustc_attr_ir::AttributeKind;
 use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
 use rustc_lint_defs::builtin::{RENAMED_AND_REMOVED_LINTS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES};
-use rustc_lint_defs::{CheckLintNameResult, LintId};
+use rustc_lint_defs::{CheckLintNameResult, LintId, LintName};
 use rustc_span::{Span, Symbol, sym};
-use rustc_structures::LintName;
 use thin_vec::ThinVec;
 
 use crate::attributes::{AcceptMapping, AttributeParser, AttributeStability};
