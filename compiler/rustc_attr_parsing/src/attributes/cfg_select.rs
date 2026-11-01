@@ -1,7 +1,7 @@
 use rustc_ast::token::Token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, NodeId, token};
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_ir::{AttrPath, CfgEntry};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
@@ -125,7 +125,7 @@ pub fn parse_cfg_select(
                 lint_node_id,
                 // Doesn't matter what the target actually is here.
                 Target::Crate,
-                rustc_attr_ir::target::AstTarget::None,
+                AstTarget::None(Target::Crate),
                 features,
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
                 &meta,

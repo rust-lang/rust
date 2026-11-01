@@ -762,7 +762,7 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         AstOwner::Crate(c) => with_lctx(tcx, &*resolver, CRATE_NODE_ID, |lctx| {
             debug_assert_eq!(lctx.curr_owner.owner_id(), CRATE_OWNER_ID);
             let module = lctx.lower_mod(&c.items, &c.spans);
-            lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs, c.spans.inner_span, AstTarget::Crate);
+            lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs, c.spans.inner_span, AstTarget::Crate(c));
             hir::OwnerNode::Crate(module)
         }),
         AstOwner::Item(item) => {

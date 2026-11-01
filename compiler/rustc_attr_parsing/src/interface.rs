@@ -108,7 +108,7 @@ impl<'sess> AttributeParser<'sess> {
             sess,
             attrs,
             Some(parse_filter),
-            AstTarget::Crate,
+            AstTarget::None(Target::Crate),
             target_span,
             CRATE_NODE_ID,
             features,
@@ -497,6 +497,7 @@ impl<'sess> AttributeParser<'sess> {
                     cx: self,
                     target_span,
                     target: Target::from_ast_target(&ast_target),
+                    ast_target,
                     emit_lint: &mut emit_lint,
                     #[cfg(debug_assertions)]
                     has_lint_been_emitted: AtomicBool::new(false),
@@ -521,6 +522,7 @@ impl<'sess> AttributeParser<'sess> {
                             cx: self,
                             target_span,
                             target: Target::from_ast_target(&ast_target),
+                            ast_target,
                             emit_lint: &mut emit_lint,
                             #[cfg(debug_assertions)]
                             has_lint_been_emitted: AtomicBool::new(false),

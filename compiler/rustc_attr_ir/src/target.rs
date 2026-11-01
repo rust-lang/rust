@@ -5,10 +5,10 @@ use std::fmt::{self, Display};
 use rustc_abi::ExternAbi;
 pub use rustc_ast::visit::AssocCtxt;
 use rustc_ast::{
-    Arm, AssocItemKind, Closure, ConstBlockItem, ConstItem, EnumDef, Expr, ExprField, FieldDef, Fn,
-    ForeignItemKind, ForeignMod, GenericParam, GenericParamKind, Generics, Impl, InlineAsm,
-    MacroDef, ModKind, Param, Pat, Safety, StaticItem, Stmt, Trait, TraitAlias, TyAlias, UseTree,
-    Variant, VariantData, WherePredicate, ast,
+    Arm, AssocItemKind, Closure, ConstBlockItem, ConstItem, Crate, EnumDef, Expr, ExprField,
+    FieldDef, Fn, ForeignItemKind, ForeignMod, GenericParam, GenericParamKind, Generics, Impl,
+    InlineAsm, MacroDef, ModKind, Param, Pat, Safety, StaticItem, Stmt, Trait, TraitAlias, TyAlias,
+    UseTree, Variant, VariantData, WherePredicate, ast,
 };
 use rustc_macros::StableHash;
 use rustc_span::{Ident, Symbol};
@@ -17,7 +17,9 @@ use rustc_span::{Ident, Symbol};
 #[derive(Clone, Copy, Debug)]
 pub enum AstTarget<'a> {
     // Target types that may correspond to different kinds of items.
-    Delegation { mac: bool },
+    Delegation {
+        mac: bool,
+    },
     MacroCall,
 
     // Target types that correspond exclusively to `AssocItem` kind. Mapping is obtained from `Target::from_assoc_item_kind`.
@@ -53,7 +55,7 @@ pub enum AstTarget<'a> {
     Expression(&'a Expr),
 
     Arm(&'a Arm),
-    Crate,
+    Crate(&'a Crate),
     ExprField(&'a ExprField),
     Field(&'a FieldDef),
     GenericParam(&'a GenericParam),
@@ -62,6 +64,10 @@ pub enum AstTarget<'a> {
     Statement(&'a Stmt),
     Variant(&'a Variant),
     WherePredicate(&'a WherePredicate),
+
+    /// Used when it is not possible to obtain detailed AST information.
+    /// In this case, None is just a wrapper for `Target`.
+    None(Target),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -262,7 +268,7 @@ impl Target {
             AstTarget::Expression(e) => Target::from_expr(e),
 
             AstTarget::Arm(_) => Target::Arm,
-            AstTarget::Crate => Target::Crate,
+            AstTarget::Crate(_) => Target::Crate,
             AstTarget::ExprField(_) => Target::ExprField,
             AstTarget::Field(_) => Target::Field,
             AstTarget::GenericParam(g) => match g.kind {
@@ -275,6 +281,8 @@ impl Target {
             AstTarget::Statement(_) => Target::Statement,
             AstTarget::Variant(_) => Target::Variant,
             AstTarget::WherePredicate(_) => Target::WherePredicate,
+
+            AstTarget::None(target) => *target,
         }
     }
 
