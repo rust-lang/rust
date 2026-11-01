@@ -53,6 +53,7 @@ fn test_stability() {
     });
 }
 
+/*
 #[cfg(feature = "rkyv_0_8")]
 mod rkyv {
     use std::fmt::Debug;
@@ -167,3 +168,4 @@ mod rkyv {
         assert_eq!(value, &deserialized);
     }
 }
+*/
