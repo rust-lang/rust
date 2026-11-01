@@ -1462,7 +1462,9 @@ impl<'db> InferenceContext<'db> {
                         // inherited reference.
                         if pat_mutbl > inh_mut {
                             // We can't match a lone inherited shared reference with `&mut`.
-                            // FIXME: Emit an error.
+                            self.push_diagnostic(
+                                InferenceDiagnostic::MatchInheritedImmRefWithMutRefPat { pat },
+                            );
                         }
 
                         self.result.skipped_ref_pats.insert(pat);
