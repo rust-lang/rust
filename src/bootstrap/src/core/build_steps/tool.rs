@@ -45,7 +45,7 @@ struct ToolBuild {
     build_compiler: Compiler,
     target: TargetSelection,
     tool: &'static str,
-    path: &'static str,
+    path: String,
     mode: Mode,
     source_type: SourceType,
     extra_features: Vec<String>,
@@ -79,7 +79,7 @@ impl Step for ToolBuild {
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         let target = self.target;
         let mut tool = self.tool;
-        let path = self.path;
+        let path = &self.path;
 
         match self.mode {
             Mode::ToolRustcPrivate => {
@@ -137,7 +137,7 @@ impl Step for ToolBuild {
             }
         }
 
-        let pgo_config = match self.path {
+        let pgo_config = match self.path.as_str() {
             "src/tools/rustdoc" => Some(&builder.config.rustdoc_pgo),
             "src/tools/cargo" => Some(&builder.config.cargo_pgo),
             "src/tools/clippy" => Some(&builder.config.clippy_pgo),
@@ -474,7 +474,7 @@ macro_rules! bootstrap_tool {
                     target: self.target,
                     tool: $tool_name,
                     mode: Mode::ToolBootstrap,
-                    path: $path,
+                    path: $path.to_string(),
                     source_type: if false $(|| $external)* {
                         SourceType::Submodule
                     } else {
@@ -550,12 +550,15 @@ pub struct RustcPerf {
     pub target: TargetSelection,
 }
 
+pub const DEFAULT_RUSTC_PERF_PATH: &str = "src/tools/rustc-perf";
+
 impl CommandLineStep for RustcPerf {
     /// Path to the built `collector` binary.
     type Output = ToolBuildResult;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/rustc-perf")
+        let rustc_perf_path = run.builder.rustc_perf_path();
+        run.path(&rustc_perf_path)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -566,15 +569,18 @@ impl CommandLineStep for RustcPerf {
     }
 
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
-        // We need to ensure the rustc-perf submodule is initialized.
-        builder.require_submodule("src/tools/rustc-perf", None);
+        let rustc_perf_path = builder.rustc_perf_path();
+        if rustc_perf_path == DEFAULT_RUSTC_PERF_PATH {
+            // We need to ensure the rustc-perf submodule is initialized.
+            builder.require_submodule(DEFAULT_RUSTC_PERF_PATH, None);
+        }
 
         let tool = ToolBuild {
             build_compiler: self.compiler,
             target: self.target,
             tool: "collector",
             mode: Mode::ToolBootstrap,
-            path: "src/tools/rustc-perf",
+            path: rustc_perf_path,
             source_type: SourceType::Submodule,
             extra_features: Vec::new(),
             allow_features: "",
@@ -645,7 +651,7 @@ impl CommandLineStep for ErrorIndex {
             target: self.compilers.target(),
             tool: "error_index_generator",
             mode: Mode::ToolRustcPrivate,
-            path: "src/tools/error_index_generator",
+            path: "src/tools/error_index_generator".to_string(),
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
@@ -691,7 +697,7 @@ impl CommandLineStep for RemoteTestServer {
             target: self.target,
             tool: "remote-test-server",
             mode: Mode::ToolTarget,
-            path: "src/tools/remote-test-server",
+            path: "src/tools/remote-test-server".to_string(),
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
@@ -799,7 +805,7 @@ impl CommandLineStep for Rustdoc {
                 // rustdoc a different name.
                 tool: "rustdoc-tool-binary",
                 mode: Mode::ToolRustcPrivate,
-                path: "src/tools/rustdoc",
+                path: "src/tools/rustdoc".to_string(),
                 source_type: SourceType::InTree,
                 extra_features,
                 allow_features: "",
@@ -875,7 +881,7 @@ impl CommandLineStep for Cargo {
             target: self.target,
             tool: "cargo",
             mode: Mode::ToolTarget,
-            path: "src/tools/cargo",
+            path: "src/tools/cargo".to_string(),
             source_type: SourceType::Submodule,
             extra_features: Vec::new(),
             // Cargo is compilable with a stable compiler, but since we run in bootstrap,
@@ -946,7 +952,7 @@ impl CommandLineStep for LldWrapper {
             target: self.target,
             tool: "lld-wrapper",
             mode: Mode::ToolTarget,
-            path: "src/tools/lld-wrapper",
+            path: "src/tools/lld-wrapper".to_string(),
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
             allow_features: "",
@@ -1037,7 +1043,7 @@ impl CommandLineStep for WasmComponentLd {
             target: self.target,
             tool: "wasm-component-ld",
             mode: Mode::ToolTarget,
-            path: "src/tools/wasm-component-ld",
+            path: "src/tools/wasm-component-ld".to_string(),
             source_type: SourceType::InTree,
             extra_features: vec![],
             allow_features: "",
@@ -1092,7 +1098,7 @@ impl CommandLineStep for RustAnalyzer {
             target,
             tool: "rust-analyzer",
             mode: Mode::ToolRustcPrivate,
-            path: "src/tools/rust-analyzer",
+            path: "src/tools/rust-analyzer".to_string(),
             extra_features: vec!["in-rust-tree".to_owned()],
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
@@ -1150,7 +1156,7 @@ impl CommandLineStep for RustAnalyzerProcMacroSrv {
             target: self.compilers.target(),
             tool: "rust-analyzer-proc-macro-srv",
             mode: Mode::ToolRustcPrivate,
-            path: "src/tools/rust-analyzer/crates/proc-macro-srv-cli",
+            path: "src/tools/rust-analyzer/crates/proc-macro-srv-cli".to_string(),
             extra_features: vec!["in-rust-tree".to_owned()],
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
@@ -1237,7 +1243,7 @@ impl CommandLineStep for LlvmBitcodeLinker {
             target: self.target,
             tool: "llvm-bitcode-linker",
             mode: Mode::ToolTarget,
-            path: "src/tools/llvm-bitcode-linker",
+            path: "src/tools/llvm-bitcode-linker".to_string(),
             source_type: SourceType::InTree,
             extra_features: vec![],
             allow_features: "",
@@ -1340,7 +1346,7 @@ impl CommandLineStep for BuildManifest {
             target: self.target,
             tool: "build-manifest",
             mode: Mode::ToolStd,
-            path: "src/tools/build-manifest",
+            path: "src/tools/build-manifest".to_string(),
             source_type: SourceType::InTree,
             extra_features: vec![],
             allow_features: "",
@@ -1549,7 +1555,7 @@ fn build_extended_rustc_tool(
         target,
         tool: tool_name,
         mode: Mode::ToolRustcPrivate,
-        path,
+        path: path.to_string(),
         extra_features: Vec::new(),
         source_type: SourceType::InTree,
         allow_features: "",

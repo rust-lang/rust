@@ -73,9 +73,10 @@ define_config! {
         tidy_extra_checks: Option<String> = "tidy-extra-checks",
         ccache: Option<StringOrBool> = "ccache",
         exclude: Option<Vec<PathBuf>> = "exclude",
-        record_failed_tests_path: Option<String> = "record_failed_tests_path",
+        record_failed_tests_path: Option<String> = "record-failed-tests-path",
         sde: Option<String> = "sde",
         allocator: Option<Allocator> = "allocator",
+        rustc_perf_path: Option<PathBuf> = "rustc-perf-path",
     }
 }
 
