@@ -72,6 +72,8 @@ pub enum RecoverColon {
 #[derive(PartialEq, Copy, Clone)]
 pub enum CommaRecoveryMode {
     LikelyTuple,
+    /// Only used for the pattern of a `match` arm, which the recovery relies on: it gives up when
+    /// the comma-separated list is not followed by the `=>` or the guard of an arm.
     EitherTupleOrPipe,
 }
 
