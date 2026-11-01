@@ -20,7 +20,6 @@ from lldb_providers import (
     StdCellSyntheticProvider,
     StdHashMapSyntheticProvider,
     StdNonZeroNumberSummaryProvider,
-    StdOldHashMapSyntheticProvider,
     StdOsStringSummaryProvider,
     StdPathBufSummaryProvider,
     StdPathSummaryProvider,
@@ -464,24 +463,12 @@ def register_summary(
         )
 
 
-# BACKCOMPAT: rust 1.35
-def is_hashbrown_hashmap(hash_map: lldb.SBValue) -> bool:
-    return len(hash_map.type.fields) == 1
-
-
 def classify_hashmap(valobj: lldb.SBValue, _dict: LLDBOpaque) -> object:
-    if is_hashbrown_hashmap(valobj):
-        return StdHashMapSyntheticProvider(valobj, _dict)
-    else:
-        return StdOldHashMapSyntheticProvider(valobj, _dict)
+    return StdHashMapSyntheticProvider(valobj, _dict)
 
 
 def classify_hashset(valobj: lldb.SBValue, _dict: LLDBOpaque) -> object:
-    hash_map = valobj.GetChildAtIndex(0)
-    if is_hashbrown_hashmap(hash_map):
-        return StdHashMapSyntheticProvider(valobj, _dict, show_values=False)
-    else:
-        return StdOldHashMapSyntheticProvider(hash_map, _dict, show_values=False)
+    return StdHashMapSyntheticProvider(valobj, _dict, show_values=False)
 
 
 def arc_synthetic(valobj: lldb.SBValue, _dict: LLDBOpaque) -> object:
