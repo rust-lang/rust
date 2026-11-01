@@ -2,6 +2,7 @@
 use std::num::NonZero;
 
 use rustc_attr_ir::find_attr;
+use rustc_attr_parsing::{RenamedLintSuggestion, UnknownLintSuggestion};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
@@ -64,17 +65,6 @@ impl Subdiagnostic for OverruledAttributeSub {
             }
         }
     }
-}
-
-#[derive(Diagnostic)]
-#[diag("unknown tool name `{$tool_name}` found in scoped lint: `{$lint_name}`", code = E0710)]
-pub(crate) struct UnknownToolInScopedLint {
-    #[primary_span]
-    pub span: Option<Span>,
-    pub tool_name: Symbol,
-    pub lint_name: LintName,
-    #[help("add `#![register_tool({$tool_name})]` to the crate root")]
-    pub is_nightly_build: bool,
 }
 
 #[derive(Diagnostic)]
@@ -1414,42 +1404,12 @@ pub(crate) struct OverruledAttributeLint<'a> {
 
 #[derive(Diagnostic)]
 #[diag("lint name `{$lint_name}` is deprecated and may not have an effect in the future")]
-pub(crate) struct DeprecatedLintName {
-    pub lint_name: LintName,
-    #[suggestion("change it to", code = "{replacement}", applicability = "machine-applicable")]
-    pub suggestion: Span,
-    pub replacement: LintName,
-}
-
-#[derive(Diagnostic)]
-#[diag("lint name `{$lint_name}` is deprecated and may not have an effect in the future")]
 #[help("change it to {$replacement}")]
 pub(crate) struct DeprecatedLintNameFromCommandLine {
     pub lint_name: LintName,
     pub replacement: LintName,
     #[subdiagnostic]
     pub requested_level: RequestedLevel,
-}
-
-#[derive(Diagnostic)]
-#[diag("lint `{$name}` has been renamed to `{$replacement}`")]
-pub(crate) struct RenamedLint {
-    pub name: LintName,
-    pub replacement: LintName,
-    #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum RenamedLintSuggestion {
-    #[suggestion("use the new name", code = "{replacement}", applicability = "machine-applicable")]
-    WithSpan {
-        #[primary_span]
-        suggestion: Span,
-        replacement: LintName,
-    },
-    #[help("use the new name `{$replacement}`")]
-    WithoutSpan { replacement: LintName },
 }
 
 #[derive(Diagnostic)]
@@ -1464,52 +1424,12 @@ pub(crate) struct RenamedLintFromCommandLine {
 }
 
 #[derive(Diagnostic)]
-#[diag("lint `{$name}` has been removed: {$reason}")]
-pub(crate) struct RemovedLint<'a> {
-    pub name: LintName,
-    pub reason: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag("lint `{$lint_name}` has been removed: {$reason}")]
 pub(crate) struct RemovedLintFromCommandLine<'a> {
     pub lint_name: LintName,
     pub reason: &'a str,
     #[subdiagnostic]
     pub requested_level: RequestedLevel,
-}
-
-#[derive(Diagnostic)]
-#[diag("unknown lint: `{$name}`")]
-pub(crate) struct UnknownLint {
-    pub name: LintName,
-    #[subdiagnostic]
-    pub suggestion: Option<UnknownLintSuggestion>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum UnknownLintSuggestion {
-    #[suggestion(
-        "{$from_rustc ->
-            [true] a lint with a similar name exists in `rustc` lints
-            *[false] did you mean
-        }",
-        code = "{replacement}",
-        applicability = "maybe-incorrect"
-    )]
-    WithSpan {
-        #[primary_span]
-        suggestion: Span,
-        replacement: LintName,
-        from_rustc: bool,
-    },
-    #[help(
-        "{$from_rustc ->
-            [true] a lint with a similar name exists in `rustc` lints: `{$replacement}`
-            *[false] did you mean: `{$replacement}`
-        }"
-    )]
-    WithoutSpan { replacement: LintName, from_rustc: bool },
 }
 
 #[derive(Diagnostic)]
