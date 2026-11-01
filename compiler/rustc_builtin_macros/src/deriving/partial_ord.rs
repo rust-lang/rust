@@ -104,7 +104,7 @@ pub(crate) fn discr_data_order(item: &ast::Item) -> bool {
 // ```
 // Some(::core::cmp::Ord::cmp(self, other))
 // ```
-fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr>) -> BlockOrExpr {
+fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: ast::Expr) -> BlockOrExpr {
     let ord_cmp_path = cx.std_path(span, &[sym::cmp, sym::Ord, sym::cmp]);
     let cmp_expr =
         cx.expr_call_global(span, ord_cmp_path, thin_vec![cx.expr_self(span), other_expr]);
@@ -140,7 +140,7 @@ pub(crate) fn cmp_body(
     substructure: Substructure<'_>,
     discr_then_data: bool,
     derive: OrdlikeDerive,
-) -> Box<Expr> {
+) -> Expr {
     let is_partial_ord = derive == OrdlikeDerive::PartialOrd;
     let method_path = if is_partial_ord {
         [sym::cmp, sym::PartialOrd, sym::partial_cmp]
@@ -151,7 +151,7 @@ pub(crate) fn cmp_body(
 
     // The combination of two field expressions. E.g. for `Ord::cmp` this
     // is something like `<field1 comparison> && <field2 comparison>`.
-    let combine = |span, mut expr1: Box<Expr>, expr2| {
+    let combine = |span, mut expr1: Expr, expr2| {
         // For `PartialOrd` (`Ord` works the same but without the `Some` wrapping),
         // when the item is an enum, this expands to
         // ```
@@ -188,7 +188,7 @@ pub(crate) fn cmp_body(
             && let Some(last) = arms.last_mut()
             && let ast::PatKind::Wild = last.pat.kind
         {
-            last.body = Some(expr2);
+            last.body = Some(Box::new(expr2));
             expr1
         } else {
             let eq_pat = cx.pat_path(span, equal_path.clone());

@@ -1770,7 +1770,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
     /// When encountering `Ty < Ty, Ty > call()` in function and method call arguments, suggest
     /// using the turbofish and silence redundant resolve errors.
-    pub(in crate::late) fn detect_missing_turbofish(&mut self, arguments: &'ast [Box<Expr>]) {
+    pub(in crate::late) fn detect_missing_turbofish(&mut self, arguments: &'ast [Expr]) {
         if self.use_injections.is_empty() {
             // Avoid doing unnecessary work, we would have had resolve errors by now if this mistake
             // had happened.
@@ -2961,7 +2961,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         err: &mut Diag<'_>,
         path_span: Span,
         call_span: Span,
-        args: &[Box<Expr>],
+        args: &[Expr],
     ) {
         if def_id.is_local() {
             // Doing analysis on local `DefId`s would cause infinite recursion.

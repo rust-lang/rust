@@ -19,7 +19,7 @@ pub(crate) fn expand<'cx>(
     };
 
     ExpandResult::Ready(Box::new(base::MacEager {
-        expr: Some(cx.expr(span, ast::ExprKind::GcaMacro(expr.clone()))),
+        expr: Some(Box::new(cx.expr(span, ast::ExprKind::GcaMacro(expr.clone())))),
         ty: Some(cx.ty(span, ast::TyKind::GcaMacro(expr))),
         ..Default::default()
     }))

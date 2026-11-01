@@ -81,6 +81,6 @@ pub(crate) fn expand_concat(
         DummyResult::any(sp, guar)
     } else {
         let sp = cx.with_def_site_ctxt(sp);
-        MacEager::expr(cx.expr_str(sp, Symbol::intern(&accumulator)))
+        MacEager::expr(Box::from(cx.expr_str(sp, Symbol::intern(&accumulator))))
     })
 }

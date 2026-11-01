@@ -266,10 +266,10 @@ pub(crate) struct FieldInfo {
     pub name: Option<Ident>,
     /// The expression corresponding to this field of `self`
     /// (specifically, a reference to it).
-    pub self_expr: Box<Expr>,
+    pub self_expr: Expr,
     /// The expression corresponding to a reference to this field in
     /// the other selflike argument.
-    pub other_selflike_expr: Option<Box<Expr>>,
+    pub other_selflike_expr: Option<Expr>,
     pub maybe_scalar: bool,
 }
 
@@ -285,7 +285,7 @@ pub(crate) enum Substructure<'a> {
 
     /// The discriminant of an enum. The field is the expression to combine the
     /// discriminant expression with; it will be `None` if no match is necessary.
-    EnumDiscr(Option<Box<Expr>>),
+    EnumDiscr(Option<Expr>),
 
     /// A static method where `Self` is a struct.
     StaticStruct(&'a ast::VariantData),
@@ -316,18 +316,18 @@ struct TypeParameter {
 /// avoiding the insertion of any unnecessary blocks.
 ///
 /// The statements come before the expression.
-pub(crate) struct BlockOrExpr(ThinVec<ast::Stmt>, Option<Box<Expr>>);
+pub(crate) struct BlockOrExpr(ThinVec<ast::Stmt>, Option<Expr>);
 
 impl BlockOrExpr {
     pub(crate) fn new_stmts(stmts: ThinVec<ast::Stmt>) -> BlockOrExpr {
         BlockOrExpr(stmts, None)
     }
 
-    pub(crate) fn new_expr(expr: Box<Expr>) -> BlockOrExpr {
+    pub(crate) fn new_expr(expr: Expr) -> BlockOrExpr {
         BlockOrExpr(ThinVec::new(), Some(expr))
     }
 
-    pub(crate) fn new_mixed(stmts: ThinVec<ast::Stmt>, expr: Option<Box<Expr>>) -> BlockOrExpr {
+    pub(crate) fn new_mixed(stmts: ThinVec<ast::Stmt>, expr: Option<Expr>) -> BlockOrExpr {
         BlockOrExpr(stmts, expr)
     }
 
@@ -340,7 +340,7 @@ impl BlockOrExpr {
     }
 
     // Converts it into an expression.
-    fn into_expr(self, cx: &ExtCtxt<'_>, span: Span) -> Box<Expr> {
+    fn into_expr(self, cx: &ExtCtxt<'_>, span: Span) -> Expr {
         if self.0.is_empty() {
             match self.1 {
                 None => cx.expr_block(cx.block(span, ThinVec::new())),
@@ -351,7 +351,7 @@ impl BlockOrExpr {
             && self.1.is_none()
         {
             // There's only a single statement expression. Pull it out.
-            expr.clone()
+            (**expr).clone()
         } else {
             // Multiple statements and/or expressions.
             cx.expr_block(self.into_block(cx, span))
@@ -1067,7 +1067,7 @@ fn create_struct_patterns(
 
 fn create_fields<F>(span: Span, struct_def: &VariantData, mk_exprs: F) -> Vec<FieldInfo>
 where
-    F: Fn(usize, &ast::FieldDef, Span) -> Vec<Box<Expr>>,
+    F: Fn(usize, &ast::FieldDef, Span) -> Vec<Expr>,
 {
     struct_def
         .fields()
@@ -1108,7 +1108,7 @@ fn create_struct_pattern_fields(
 fn create_struct_field_access_fields(
     span: Span,
     cx: &ExtCtxt<'_>,
-    selflike_args: &[Box<Expr>],
+    selflike_args: &[Expr],
     struct_def: &VariantData,
     is_packed: bool,
 ) -> Vec<FieldInfo> {
@@ -1123,7 +1123,7 @@ fn create_struct_field_access_fields(
                 let mut field_expr = cx.expr(
                     sp,
                     ast::ExprKind::Field(
-                        selflike_arg.clone(),
+                        Box::new(selflike_arg.clone()),
                         struct_field
                             .ident
                             .unwrap_or_else(|| Ident::new(sym::integer(i), struct_field.span)),

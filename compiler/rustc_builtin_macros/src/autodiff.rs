@@ -537,7 +537,8 @@ mod llvm_enzyme {
                 decl_span: span,
             })),
         );
-        let primal_fn_ptr = ecx.expr(span, ast::ExprKind::Cast(primal_path_expr, fn_ptr_ty));
+        let primal_fn_ptr =
+            ecx.expr(span, ast::ExprKind::Cast(Box::from(primal_path_expr), fn_ptr_ty));
 
         let diff_path_expr = gen_turbofish_expr(ecx, diff, generics, span, is_impl);
 
@@ -572,7 +573,7 @@ mod llvm_enzyme {
         generics: &Generics,
         span: Span,
         is_impl: bool,
-    ) -> Box<ast::Expr> {
+    ) -> ast::Expr {
         let generic_args = generics
             .params
             .iter()
@@ -780,7 +781,7 @@ mod llvm_enzyme {
                     // We have to return [T; width+1], +1 for the primal return.
                     let anon_const = rustc_ast::AnonConst {
                         id: ast::DUMMY_NODE_ID,
-                        value: ecx.expr_usize(span, 1 + x.width as usize),
+                        value: Box::from(ecx.expr_usize(span, 1 + x.width as usize)),
                     };
                     TyKind::Array(ty.clone(), anon_const)
                 };
@@ -794,7 +795,7 @@ mod llvm_enzyme {
                 if x.width > 1 {
                     let anon_const = rustc_ast::AnonConst {
                         id: ast::DUMMY_NODE_ID,
-                        value: ecx.expr_usize(span, x.width as usize),
+                        value: Box::from(ecx.expr_usize(span, x.width as usize)),
                     };
                     let kind = TyKind::Array(ty.clone(), anon_const);
                     let ty = Box::new(rustc_ast::Ty { kind, id: ty.id, span: ty.span });

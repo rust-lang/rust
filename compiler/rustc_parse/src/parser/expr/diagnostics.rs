@@ -264,7 +264,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Recover from array expressions as found in C like `{0, 1, 2, 3}`.
-    pub(super) fn recover_from_c_array(&mut self, lo: Span) -> Option<Box<Expr>> {
+    pub(super) fn recover_from_c_array(&mut self, lo: Span) -> Option<Expr> {
         if !self.may_recover()
             || self.token.kind != token::OpenBrace
             || self.look_ahead(1, |t| !matches!(t.kind, token::Literal(_)))

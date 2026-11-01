@@ -101,7 +101,7 @@ fn show_substructure(
     const CUTOFF: usize = 5;
 
     let len = fields.len();
-    let expr_for_field = |field: FieldInfo, index: usize| -> Box<ast::Expr> {
+    let expr_for_field = |field: FieldInfo, index: usize| -> ast::Expr {
         if index < len - 1 {
             field.self_expr
         } else {
@@ -292,7 +292,7 @@ fn show_fieldless_enum_concat_str(
     span: Span,
     def: &EnumDef,
     type_ident: Ident,
-) -> Option<Box<ast::Expr>> {
+) -> Option<ast::Expr> {
     // Minimum variant count where this optimization starts to pay off.
     // Initial value of 10 came from https://github.com/rust-lang/rust/pull/155452.
     // Refined with the new impl in https://github.com/rust-lang/rust/pull/162535.

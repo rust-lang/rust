@@ -273,7 +273,7 @@ impl<'a> Parser<'a> {
                     if let Some(guar) = self.fn_body_missing_semi_guar.take() {
                         body.stmts.push(self.mk_stmt(
                             body.span,
-                            StmtKind::Expr(self.mk_expr(body.span, ExprKind::Err(guar))),
+                            StmtKind::Expr(Box::new(self.mk_expr(body.span, ExprKind::Err(guar)))),
                         ));
                     }
                     (attrs, Some(body))

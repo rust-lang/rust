@@ -365,7 +365,7 @@ fn add_main(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
 
 /// Creates a slice containing every test like so:
 /// &[&test1, &test2]
-fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> Box<ast::Expr> {
+fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> ast::Expr {
     debug!("building test vector from {} tests", cx.test_cases.len());
     let ecx = &cx.ext_cx;
 

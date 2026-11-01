@@ -141,7 +141,7 @@ macro_rules! ast_fragments {
                 match self {
                     AstFragment::OptExpr(opt_expr) => {
                         if let Some(expr) = opt_expr.take() {
-                            *opt_expr = vis.filter_map_expr(expr)
+                            *opt_expr = Box::try_map(expr, |expr| vis.filter_map_expr(expr))
                         }
                     }
                     AstFragment::MethodReceiverExpr(expr) => vis.visit_method_receiver_expr(expr),
@@ -1124,11 +1124,13 @@ pub fn parse_ast_fragment<'a>(
             }
             AstFragment::Stmts(stmts)
         }
-        AstFragmentKind::Expr => AstFragment::Expr(this.parse_expr()?),
-        AstFragmentKind::MethodReceiverExpr => AstFragment::MethodReceiverExpr(this.parse_expr()?),
+        AstFragmentKind::Expr => AstFragment::Expr(Box::new(this.parse_expr()?)),
+        AstFragmentKind::MethodReceiverExpr => {
+            AstFragment::MethodReceiverExpr(Box::new(this.parse_expr()?))
+        }
         AstFragmentKind::OptExpr => {
             if this.token != token::Eof {
-                AstFragment::OptExpr(Some(this.parse_expr()?))
+                AstFragment::OptExpr(Some(Box::new(this.parse_expr()?)))
             } else {
                 AstFragment::OptExpr(None)
             }
@@ -2606,8 +2608,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.visit_node(AstNodeWrapper::from_mut(node, MethodReceiverTag))
     }
 
-    fn filter_map_expr(&mut self, node: Box<ast::Expr>) -> Option<Box<ast::Expr>> {
-        self.flat_map_node(AstNodeWrapper::new(node, OptExprTag))
+    fn filter_map_expr(&mut self, node: ast::Expr) -> Option<ast::Expr> {
+        self.flat_map_node(AstNodeWrapper::new(Box::new(node), OptExprTag)).map(|node| *node)
     }
 
     fn visit_block(&mut self, node: &mut ast::Block) {

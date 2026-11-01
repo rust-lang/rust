@@ -38,7 +38,7 @@ pub(crate) fn expand_line(
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
-    ExpandResult::Ready(MacEager::expr(cx.expr_u32(topmost, loc.line as u32)))
+    ExpandResult::Ready(MacEager::expr(Box::new(cx.expr_u32(topmost, loc.line as u32))))
 }
 
 /// Expand `column!()` to the current column number.
@@ -53,7 +53,9 @@ pub(crate) fn expand_column(
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
-    ExpandResult::Ready(MacEager::expr(cx.expr_u32(topmost, loc.col.to_usize() as u32 + 1)))
+    ExpandResult::Ready(MacEager::expr(Box::new(
+        cx.expr_u32(topmost, loc.col.to_usize() as u32 + 1),
+    )))
 }
 
 /// Expand `file!()` to the current filename.
@@ -69,10 +71,10 @@ pub(crate) fn expand_file(
     let file = cx.source_map().lookup_source_file(topmost.lo());
 
     use rustc_span::RemapPathScopeComponents;
-    ExpandResult::Ready(MacEager::expr(cx.expr_str(
+    ExpandResult::Ready(MacEager::expr(Box::new(cx.expr_str(
         topmost,
         Symbol::intern(&file.name.display(RemapPathScopeComponents::MACRO).to_string_lossy()),
-    )))
+    ))))
 }
 
 /// Expand `stringify!($input)`.
@@ -83,7 +85,7 @@ pub(crate) fn expand_stringify(
 ) -> MacroExpanderResult<'static> {
     let sp = cx.with_def_site_ctxt(sp);
     let s = pprust::tts_to_string(&tts);
-    ExpandResult::Ready(MacEager::expr(cx.expr_str(sp, Symbol::intern(&s))))
+    ExpandResult::Ready(MacEager::expr(Box::new(cx.expr_str(sp, Symbol::intern(&s)))))
 }
 
 /// Expand `module_path!()` to (a textual representation of) the current module path.
@@ -97,7 +99,7 @@ pub(crate) fn expand_mod(
     let mod_path = &cx.current_expansion.module.mod_path;
     let string = join_path_idents(mod_path);
 
-    ExpandResult::Ready(MacEager::expr(cx.expr_str(sp, Symbol::intern(&string))))
+    ExpandResult::Ready(MacEager::expr(Box::new(cx.expr_str(sp, Symbol::intern(&string)))))
 }
 
 /// Expand `include!($input)`.
@@ -156,7 +158,7 @@ pub(crate) fn expand_include<'cx>(
                     diagnostics::IncompleteInclude,
                 );
             }
-            Some(expr)
+            Some(Box::new(expr))
         }
 
         fn make_items(self: Box<ExpandInclude<'a>>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
@@ -220,7 +222,7 @@ pub(crate) fn expand_include_str(
             Ok(src) => {
                 let interned_src = Symbol::intern(src);
                 // MacEager converts the expr into a pat if need be.
-                MacEager::expr(cx.expr_str(cx.with_def_site_ctxt(bsp), interned_src))
+                MacEager::expr(Box::new(cx.expr_str(cx.with_def_site_ctxt(bsp), interned_src)))
             }
             Err(utf8err) => {
                 let mut err = cx.dcx().struct_span_err(sp, format!("`{path}` wasn't a utf-8 file"));
@@ -255,7 +257,7 @@ pub(crate) fn expand_include_bytes(
             // because the console can't really show them anyway.
             let expr = cx.expr(sp, ast::ExprKind::IncludedBytes(ByteSymbol::intern(&bytes)));
             // MacEager converts the expr into a pat if need be.
-            MacEager::expr(expr)
+            MacEager::expr(Box::new(expr))
         }
         Err(dummy) => dummy,
     })

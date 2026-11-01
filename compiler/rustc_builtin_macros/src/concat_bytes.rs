@@ -89,7 +89,7 @@ fn handle_array_element(
     cx: &ExtCtxt<'_>,
     guar: &mut Option<ErrorGuaranteed>,
     missing_literals: &mut Vec<rustc_span::Span>,
-    expr: &Box<rustc_ast::Expr>,
+    expr: &rustc_ast::Expr,
 ) -> Option<u8> {
     let dcx = cx.dcx();
 
@@ -202,11 +202,11 @@ pub(crate) fn expand_concat_bytes(
     ExpandResult::Ready(if !missing_literals.is_empty() {
         let guar =
             cx.dcx().emit_err(diagnostics::ConcatBytesMissingLiteral { spans: missing_literals });
-        MacEager::expr(DummyResult::raw_expr(sp, Some(guar)))
+        MacEager::expr(Box::from(DummyResult::raw_expr(sp, Some(guar))))
     } else if let Some(guar) = guar {
-        MacEager::expr(DummyResult::raw_expr(sp, Some(guar)))
+        MacEager::expr(Box::from(DummyResult::raw_expr(sp, Some(guar))))
     } else {
         let sp = cx.with_def_site_ctxt(sp);
-        MacEager::expr(cx.expr_byte_str(sp, accumulator))
+        MacEager::expr(Box::from(cx.expr_byte_str(sp, accumulator)))
     })
 }
