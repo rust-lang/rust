@@ -1,0 +1,8 @@
+error: attributes are not allowed in this context
+  --> $DIR/recursion-limit-nested-attr.rs:11:22
+   |
+LL | #![recursion_limit = #[replace::with("0")] "64"]
+   |                      ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
