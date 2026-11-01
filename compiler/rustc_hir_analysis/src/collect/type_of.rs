@@ -2,6 +2,7 @@ use core::ops::ControlFlow;
 
 use rustc_attr_ir::find_attr;
 use rustc_errors::{Applicability, StashKey, Suggestions};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg, HirId};
@@ -58,6 +59,38 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             );
         }
         None => {}
+    }
+
+    // These params are newly created for RPITIT and have no HIR backing.
+    // Their types therefore match those of the corresponding trait params.
+    // However, the trait param types need to be instantiated with the
+    // trait-to-impl args, since they are indexed in the trait's generics.
+    if tcx.def_kind(def_id) == DefKind::ConstParam {
+        let impl_assoc_def_id = tcx.local_parent(def_id);
+        if tcx.is_impl_rpitit_param(def_id) {
+            let trait_assoc_def_id = tcx.trait_item_of(impl_assoc_def_id).unwrap();
+            let impl_assoc_generics = tcx.generics_of(impl_assoc_def_id);
+            let own_param_idx = impl_assoc_generics
+                .param_def_id_to_index(tcx, def_id.to_def_id())
+                .unwrap() as usize
+                - impl_assoc_generics.parent_count;
+            let trait_param = &tcx.generics_of(trait_assoc_def_id).own_params[own_param_idx];
+            let impl_assoc_identity_args =
+                ty::GenericArgs::identity_for_item(tcx, impl_assoc_def_id);
+            let impl_def_id = tcx.local_parent(impl_assoc_def_id);
+            let impl_trait_ref_args =
+                tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_norm_wip().args;
+            let trait_to_impl_args = impl_assoc_identity_args.rebase_onto(
+                tcx,
+                impl_def_id.to_def_id(),
+                impl_trait_ref_args,
+            );
+            let ty = tcx
+                .type_of(trait_param.def_id)
+                .instantiate(tcx, trait_to_impl_args)
+                .skip_norm_wip();
+            return ty::EarlyBinder::bind(tcx, ty);
+        }
     }
 
     let new_bound_fn_def = |hir: HirId, did| {

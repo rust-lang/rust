@@ -2887,6 +2887,23 @@ impl<'tcx> TyCtxt<'tcx> {
         self.opt_rpitit_info(def_id).is_some()
     }
 
+    /// Returns whether `def_id` is a generic parameter of an RPITIT's assoc type
+    /// in an impl.
+    pub fn is_impl_rpitit_param(self, def_id: LocalDefId) -> bool {
+        if matches!(
+            self.def_kind(def_id),
+            DefKind::ConstParam | DefKind::TyParam | DefKind::LifetimeParam
+        ) {
+            let parent_def = self.local_parent(def_id);
+            if let Some(ty::ImplTraitInTraitData::Impl { .. }) =
+                self.opt_rpitit_info(parent_def.to_def_id())
+            {
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn get_impl_future_output_ty(self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let (def_id, args) = match *ty.kind() {
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => (def_id, args),
