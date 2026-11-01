@@ -436,7 +436,7 @@ enum MoveSubPath {
     Field(FieldIdx),
     ConstantIndex(u64),
     Downcast(VariantIdx),
-    UnwrapUnsafeBinder,
+    Transmute,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -460,7 +460,7 @@ impl MoveSubPath {
                 MoveSubPath::ConstantIndex(offset)
             }
             ProjectionKind::Downcast(_, idx) => MoveSubPath::Downcast(idx),
-            ProjectionKind::UnwrapUnsafeBinder(_) => MoveSubPath::UnwrapUnsafeBinder,
+            ProjectionKind::Transmute(_) => MoveSubPath::Transmute,
 
             // this should be the same move path as its parent
             // its fine to skip because it cannot have sibling move paths

@@ -222,7 +222,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                             _ => bug!("Unexpected type {:#?}", place_ty.is_array()),
                         },
                         MoveSubPath::Downcast(_) => (),
-                        MoveSubPath::UnwrapUnsafeBinder => (),
+                        MoveSubPath::Transmute => (),
                     };
 
                     move_elem

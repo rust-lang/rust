@@ -7,7 +7,7 @@ fn main() -> () {
     let mut _3: Droppy;
     let mut _4: Aligned;
     let mut _5: Droppy;
-    let mut _6: Aligned;
+    let mut _6: std::mem::MaybeDangling<Aligned>;
     scope 1 {
         debug x => _1;
     }
@@ -27,7 +27,7 @@ fn main() -> () {
         _4 = Aligned(move _5);
         StorageDead(_5);
         StorageLive(_6);
-        _6 = move (_1.0: Aligned);
+        _6 = move transmute!((_1.0: Aligned); MaybeDangling<Aligned>);
         drop(_6) -> [return: bb4, unwind: bb1];
     }
 

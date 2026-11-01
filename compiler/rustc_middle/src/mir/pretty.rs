@@ -1371,8 +1371,8 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
             ProjectionElem::Index(_)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. } => {}
-            ProjectionElem::UnwrapUnsafeBinder(_) => {
-                write!(fmt, "unwrap_binder!(")?;
+            ProjectionElem::Transmute(_) => {
+                write!(fmt, "transmute!(")?;
             }
             ProjectionElem::PhantomDeref => {
                 write!(fmt, "reborrow!(")?;
@@ -1422,7 +1422,7 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
             ProjectionElem::Subslice { from, to, from_end: false } => {
                 write!(fmt, "[{from:?}..{to:?}]")?;
             }
-            ProjectionElem::UnwrapUnsafeBinder(ty) => {
+            ProjectionElem::Transmute(ty) => {
                 write!(fmt, "; {ty})")?;
             }
         }

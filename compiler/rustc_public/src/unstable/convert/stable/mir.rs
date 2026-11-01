@@ -467,7 +467,7 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
             // found at https://github.com/rust-lang/rust/pull/117517#issuecomment-1811683486
             Downcast(_, idx) => crate::mir::ProjectionElem::Downcast(idx.stable(tables, cx)),
             OpaqueCast(ty) => crate::mir::ProjectionElem::OpaqueCast(ty.stable(tables, cx)),
-            UnwrapUnsafeBinder(..) => unimplemented!("FIXME(unsafe_binders):"),
+            Transmute(..) => unimplemented!("FIXME(unsafe_binders):"),
         }
     }
 }

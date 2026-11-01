@@ -75,7 +75,7 @@ pub(in crate::builder) struct PlaceBuilder<'tcx> {
 /// Given a list of MIR projections, convert them to list of HIR ProjectionKind.
 /// The projections are truncated to represent a path that might be captured by a
 /// closure/coroutine. This implies the vector returned from this function doesn't contain
-/// ProjectionElems `Downcast`, `ConstantIndex`, `Index`, or `Subslice` because those will never be
+/// ProjectionElems `Downcast`, `ConstantIndex`, `Index`, `Subslice`, or `Transmute` because those will never be
 /// part of a path that is captured by a closure. We stop applying projections once we see the first
 /// projection that isn't captured by a closure.
 fn convert_to_hir_projections_and_truncate_for_capture(
@@ -101,7 +101,8 @@ fn convert_to_hir_projections_and_truncate_for_capture(
                 variant = Some(*idx);
                 continue;
             }
-            ProjectionElem::UnwrapUnsafeBinder(_) => HirProjectionKind::UnwrapUnsafeBinder,
+            // FIXME: `Transmute` may be used for other `HirProjectionKind`s in the future
+            ProjectionElem::Transmute(_) => HirProjectionKind::UnwrapUnsafeBinder,
             // These do not affect anything, they just make sure we know the right type.
             ProjectionElem::OpaqueCast(_) => continue,
             ProjectionElem::Index(..)
@@ -241,7 +242,7 @@ fn strip_prefix<'tcx>(
                 assert_matches!(iter.next(), Some(ProjectionElem::OpaqueCast(..)));
             }
             HirProjectionKind::UnwrapUnsafeBinder => {
-                assert_matches!(iter.next(), Some(ProjectionElem::UnwrapUnsafeBinder(..)));
+                assert_matches!(iter.next(), Some(ProjectionElem::Transmute(..)));
             }
             HirProjectionKind::Index | HirProjectionKind::Subslice => {
                 bug!("unexpected projection kind: {:?}", projection);
@@ -536,13 +537,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let place_builder = unpack!(
                     block = this.expr_as_place(block, source, mutability, fake_borrow_temps,)
                 );
-                block.and(place_builder.project(PlaceElem::UnwrapUnsafeBinder(expr.ty)))
+                block.and(place_builder.project(PlaceElem::Transmute(expr.ty)))
             }
             ExprKind::ValueUnwrapUnsafeBinder { source } => {
                 let temp_lifetime =
                     this.region_scope_tree.temporary_scope(this.thir[source].temp_scope_id);
                 let temp = unpack!(block = this.as_temp(block, temp_lifetime, source, mutability));
-                block.and(PlaceBuilder::from(temp).project(PlaceElem::UnwrapUnsafeBinder(expr.ty)))
+                block.and(PlaceBuilder::from(temp).project(PlaceElem::Transmute(expr.ty)))
             }
 
             ExprKind::Array { .. }
@@ -808,7 +809,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     | ProjectionElem::OpaqueCast(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
-                    | ProjectionElem::UnwrapUnsafeBinder(_) => (),
+                    | ProjectionElem::Transmute(_) => (),
                 }
             }
         }

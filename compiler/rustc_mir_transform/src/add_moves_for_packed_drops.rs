@@ -1,5 +1,6 @@
+use rustc_attr_ir::LangItem;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use tracing::debug;
 
 use crate::patch::MirPatch;
@@ -90,7 +91,16 @@ fn add_move_for_packed_drop<'tcx>(
 
     let source_info = terminator.source_info;
     let ty = place.ty(body, tcx).ty;
-    let temp = patch.new_temp(ty, source_info.span);
+
+    // The value being dropped could contain a dangling reference or `Box`,
+    // so perform the move as `MaybeDangling`.
+
+    let maybedangling_ty = Ty::new_adt(
+        tcx,
+        tcx.adt_def(tcx.require_lang_item(LangItem::MaybeDangling, source_info.span)),
+        tcx.mk_args(&[ty.into()]),
+    );
+    let temp = patch.new_temp(maybedangling_ty, source_info.span);
 
     let storage_dead_block = patch.new_block(BasicBlockData::new_stmts(
         vec![Statement::new(source_info, StatementKind::StorageDead(temp))],
@@ -99,7 +109,15 @@ fn add_move_for_packed_drop<'tcx>(
     ));
 
     patch.add_statement(loc, StatementKind::StorageLive(temp));
-    patch.add_assign(loc, Place::from(temp), Rvalue::Use(Operand::Move(*place), WithRetag::Yes));
+
+    let maybedangling_projected_place =
+        place.project_deeper(&[PlaceElem::Transmute(maybedangling_ty)], tcx);
+    patch.add_assign(
+        loc,
+        Place::from(temp),
+        Rvalue::Use(Operand::Move(maybedangling_projected_place), WithRetag::Yes),
+    );
+
     patch.patch_terminator(
         loc.block,
         TerminatorKind::Drop {

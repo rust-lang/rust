@@ -1926,24 +1926,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 )
                 .unwrap();
             }
-            ProjectionElem::UnwrapUnsafeBinder(ty) => {
-                let ty::UnsafeBinder(binder_ty) = *base_ty.ty.kind() else {
-                    unreachable!();
-                };
-                let found_ty = self.infcx.instantiate_binder_with_fresh_vars(
-                    self.body.source_info(location).span,
-                    BoundRegionConversionTime::HigherRankedType,
-                    binder_ty.into(),
-                );
-                self.relate_types(
-                    ty,
-                    context.ambient_variance(),
-                    found_ty,
-                    location.to_locations(),
-                    ConstraintCategory::Boring,
-                )
-                .unwrap();
-            }
+            ProjectionElem::Transmute(_) => {}
         }
     }
 }
@@ -2474,7 +2457,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. }
-                | ProjectionElem::UnwrapUnsafeBinder(_) => {
+                | ProjectionElem::Transmute(_) => {
                     // other field access
                 }
             }
