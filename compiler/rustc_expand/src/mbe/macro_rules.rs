@@ -822,9 +822,8 @@ pub fn compile_declarative_macro(
             if let Some(guar) = check_no_eof(sess, &p, "expected macro attr args") {
                 return dummy_syn_ext(guar);
             }
-            let args = p.parse_token_tree();
-            check_args_parens(sess, sym::attr, &args);
-            let args = parse_one_tt(args, RulePart::Pattern, sess, node_id, features, edition);
+            check_args_parens(sess, sym::attr, &p);
+            let args = parse_one_tt(&mut p, RulePart::Pattern, sess, features, edition);
             check_emission(check_lhs(sess, features, node_id, &args));
             if let Some(guar) = check_no_eof(sess, &p, "expected macro attr body") {
                 return dummy_syn_ext(guar);
@@ -844,11 +843,11 @@ pub fn compile_declarative_macro(
             if let Some(guar) = check_no_eof(sess, &p, "expected `()` after `derive`") {
                 return dummy_syn_ext(guar);
             }
-            let args = p.parse_token_tree();
-            check_args_parens(sess, sym::derive, &args);
-            let args_empty_result = check_args_empty(sess, &args);
+            check_args_parens(sess, sym::derive, &p);
+            let args_empty_result = check_args_empty(sess, &p);
             let args_not_empty = args_empty_result.is_err();
             check_emission(args_empty_result);
+            let _args = p.parse_token_tree();
             if let Some(guar) = check_no_eof(sess, &p, "expected macro derive body") {
                 return dummy_syn_ext(guar);
             }
@@ -872,8 +871,7 @@ pub fn compile_declarative_macro(
             }
             (None, false)
         };
-        let lhs_tt = p.parse_token_tree();
-        let lhs_tt = parse_one_tt(lhs_tt, RulePart::Pattern, sess, node_id, features, edition);
+        let lhs_tt = parse_one_tt(&mut p, RulePart::Pattern, sess, features, edition);
         check_emission(check_lhs(sess, features, node_id, &lhs_tt));
         if let Err(e) = p.expect(exp!(FatArrow)) {
             return dummy_syn_ext(e.emit_err());
@@ -881,8 +879,7 @@ pub fn compile_declarative_macro(
         if let Some(guar) = check_no_eof(sess, &p, "expected right-hand side of macro rule") {
             return dummy_syn_ext(guar);
         }
-        let rhs = p.parse_token_tree();
-        let rhs = parse_one_tt(rhs, RulePart::Body, sess, node_id, features, edition);
+        let rhs = parse_one_tt(&mut p, RulePart::Body, sess, features, edition);
         check_emission(check_rhs(sess, &rhs));
         check_emission(check_meta_variables(&sess.psess, node_id, args.as_ref(), &lhs_tt, &rhs));
         let lhs_span = lhs_tt.span();
@@ -961,11 +958,15 @@ fn check_no_eof(sess: &Session, p: &Parser<'_>, msg: &'static str) -> Option<Err
     None
 }
 
-fn check_args_parens(sess: &Session, rule_kw: Symbol, args: &tokenstream::TokenTree) {
+fn check_args_parens(sess: &Session, rule_kw: Symbol, parser: &Parser<'_>) {
     // This does not handle the non-delimited case; that gets handled separately by `check_lhs`.
-    if let tokenstream::TokenTree::Delimited(dspan, _, delim, _) = args
-        && *delim != Delimiter::Parenthesis
+    if let Some(delim) = parser.token.kind.open_delim()
+        && delim != Delimiter::Parenthesis
     {
+        let tokenstream::TokenTree::Delimited(dspan, ..) = parser.clone().parse_token_tree() else {
+            unreachable!()
+        };
+
         sess.dcx().emit_err(diagnostics::MacroArgsBadDelim {
             span: dspan.entire(),
             sugg: diagnostics::MacroArgsBadDelimSugg { open: dspan.open, close: dspan.close },
@@ -974,13 +975,14 @@ fn check_args_parens(sess: &Session, rule_kw: Symbol, args: &tokenstream::TokenT
     }
 }
 
-fn check_args_empty(sess: &Session, args: &tokenstream::TokenTree) -> Result<(), ErrorGuaranteed> {
-    match args {
-        tokenstream::TokenTree::Delimited(.., delimited) if delimited.is_empty() => Ok(()),
-        _ => {
-            let msg = "`derive` rules do not accept arguments; `derive` must be followed by `()`";
-            Err(sess.dcx().span_err(args.span(), msg))
-        }
+fn check_args_empty(sess: &Session, parser: &Parser<'_>) -> Result<(), ErrorGuaranteed> {
+    if parser.token.kind.open_delim().is_some()
+        && parser.look_ahead(1, |&t| t.kind.close_delim().is_some())
+    {
+        Ok(())
+    } else {
+        let msg = "`derive` rules do not accept arguments; `derive` must be followed by `()`";
+        Err(sess.dcx().span_err(parser.clone().parse_token_tree().span(), msg))
     }
 }
 
