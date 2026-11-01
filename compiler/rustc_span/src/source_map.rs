@@ -15,6 +15,7 @@ use std::{fs, path};
 
 use rustc_data_structures::sync::{IntoDynSyncSend, MappedReadGuard, ReadGuard, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
+use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use tracing::{debug, instrument, trace};
 
 use crate::*;
@@ -820,62 +821,26 @@ impl SourceMap {
     }
 
     /// Given a 'Span', tries to tell if it's wrapped by "<>" or "()"
-    /// the algorithm searches if the next character is '>' or ')' after skipping white space
-    /// then searches the previous character to match '<' or '(' after skipping white space
+    /// the algorithm searches if the next character is '>' or ')' after skipping whitespace and comments
+    /// then searches the previous character to match '<' or '(' after skipping whitespace and comments
     /// return true if wrapped by '<>' or '()'
     pub fn span_wrapped_by_angle_or_parentheses(&self, span: Span) -> bool {
         self.span_to_source(span, |src, start_index, end_index| {
             if src.get(start_index..end_index).is_none() {
                 return Ok(false);
             }
-            // test the right side to match '>' after skipping white space
-            let end_src = &src[end_index..];
-            let mut i = 0;
-            let mut found_right_parentheses = false;
-            let mut found_right_angle = false;
-            while let Some(cc) = end_src.chars().nth(i) {
-                if cc == ' ' {
-                    i = i + 1;
-                } else if cc == '>' {
-                    // found > in the right;
-                    found_right_angle = true;
-                    break;
-                } else if cc == ')' {
-                    found_right_parentheses = true;
-                    break;
-                } else {
-                    // failed to find '>' return false immediately
-                    return Ok(false);
-                }
-            }
-            // test the left side to match '<' after skipping white space
-            i = start_index;
-            let start_src = &src[0..start_index];
-            while let Some(cc) = start_src.chars().nth(i) {
-                if cc == ' ' {
-                    if i == 0 {
-                        return Ok(false);
-                    }
-                    i = i - 1;
-                } else if cc == '<' {
-                    // found < in the left
-                    if !found_right_angle {
-                        // skip something like "(< )>"
-                        return Ok(false);
-                    }
-                    break;
-                } else if cc == '(' {
-                    if !found_right_parentheses {
-                        // skip something like "<(>)"
-                        return Ok(false);
-                    }
-                    break;
-                } else {
-                    // failed to find '<' return false immediately
-                    return Ok(false);
-                }
-            }
-            Ok(true)
+            let right = tokenize(&src[end_index..], FrontmatterAllowed::No)
+                .find_map(|token| (!is_trivia(token.kind)).then_some(token.kind));
+            let left = tokenize(&src[..start_index], FrontmatterAllowed::No)
+                .map(|token| token.kind)
+                .filter(|kind| !is_trivia(*kind))
+                .last();
+
+            Ok(matches!(
+                (left, right),
+                (Some(TokenKind::Lt), Some(TokenKind::Gt))
+                    | (Some(TokenKind::OpenParen), Some(TokenKind::CloseParen))
+            ))
         })
         .is_ok_and(|is_accessible| is_accessible)
     }
@@ -1324,4 +1289,13 @@ impl FilePathMapping {
 
         found
     }
+}
+
+fn is_trivia(kind: TokenKind) -> bool {
+    matches!(
+        kind,
+        TokenKind::Whitespace
+            | TokenKind::LineComment { doc_style: None, .. }
+            | TokenKind::BlockComment { doc_style: None, .. }
+    )
 }
