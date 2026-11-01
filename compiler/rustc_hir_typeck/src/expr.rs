@@ -2055,7 +2055,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                if !self.tcx.features().default_field_values() {
+                if !(self.tcx.features().default_field_values()
+                    || span.allows_unstable(sym::default_field_values))
+                {
                     let sugg = self.tcx.crate_level_attribute_injection_span();
                     self.dcx().emit_err(BaseExpressionDoubleDot {
                         span: span.shrink_to_hi(),
