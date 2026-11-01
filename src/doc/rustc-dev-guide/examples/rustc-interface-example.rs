@@ -28,12 +28,11 @@ fn main() {
     println!("{HELLO}");
 }
 "#
-                .into(),
+            .into(),
         },
-        output_dir: None,                // Option<PathBuf>
-        output_file: None,               // Option<PathBuf>
-        file_loader: None,               // Option<Box<dyn FileLoader + Send + Sync>>
-        lint_caps: FxHashMap::default(), // FxHashMap<lint::LintId, lint::Level>
+        output_dir: None,  // Option<PathBuf>
+        output_file: None, // Option<PathBuf>
+        file_loader: None, // Option<Box<dyn FileLoader + Send + Sync>>
         // This is a callback from the driver that is called when [`ParseSess`] is created.
         psess_created: None, //Option<Box<dyn FnOnce(&mut ParseSess) + Send>>
         // This is a callback from the driver that is called when we're registering lints;
