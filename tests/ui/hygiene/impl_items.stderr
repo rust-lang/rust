@@ -1,9 +1,9 @@
-error: type `for<'a> fn(&'a foo::S) {foo::S::f}` is private
+error: method `foo::S::f` is private
   --> $DIR/impl_items.rs:10:23
    |
 LL |     pub macro m() {
 LL |         let _: () = S.f();
-   |                       ^ private type
+   |                       ^ private method
 ...
 LL |     foo::m!();
    |     --------- in this macro invocation
