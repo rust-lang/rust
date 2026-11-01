@@ -205,16 +205,14 @@ fn check_inline_or_reference_unknown_redundancy(
             let Self { explicit_span, display_span, link_span, display_link } = self;
 
             Diag::new(dcx, level, "redundant explicit link target")
-                .with_span_label(
-                    explicit_span,
-                    "explicit target is redundant",
-                )
+                .with_span_label(explicit_span, "explicit target is redundant")
                 .with_span_label(
                     display_span,
                     "because label contains path that resolves to same destination",
                 )
                 .with_note(
-                    "when a link's destination is not specified,\nthe label is used to resolve intra-doc links"
+                    "when a link's destination is not specified,\n\
+                     the label is used to resolve intra-doc links",
                 )
                 // FIXME (GuillaumeGomez): We cannot use `derive(Diagnostic)` because of this method.
                 .with_span_suggestion_with_style(
