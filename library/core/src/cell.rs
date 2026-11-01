@@ -1715,7 +1715,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         }
     }
 
-    /// Tries to makes a new `Ref` for a component of the borrowed data.
+    /// Tries to make a new `Ref` for a component of the borrowed data.
     /// On failure, the original guard is returned alongside with the error
     /// returned by the closure.
     ///
@@ -1728,7 +1728,6 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(refcell_try_map)]
     /// use std::cell::{RefCell, Ref};
     /// use std::str::{from_utf8, Utf8Error};
     ///
@@ -1744,7 +1743,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// assert_eq!(*b3, vec![0xF0, 0x9F, 0xA6]);
     /// assert_eq!(e.valid_up_to(), 0);
     /// ```
-    #[unstable(feature = "refcell_try_map", issue = "143801")]
+    #[stable(feature = "refcell_try_map", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn try_map<U: ?Sized, E>(
         orig: Ref<'b, T>,
@@ -1917,7 +1916,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         }
     }
 
-    /// Tries to makes a new `RefMut` for a component of the borrowed data.
+    /// Tries to make a new `RefMut` for a component of the borrowed data.
     /// On failure, the original guard is returned alongside with the error
     /// returned by the closure.
     ///
@@ -1930,7 +1929,6 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(refcell_try_map)]
     /// use std::cell::{RefCell, RefMut};
     /// use std::str::{from_utf8_mut, Utf8Error};
     ///
@@ -1951,7 +1949,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// assert_eq!(*b3, vec![0xFF]);
     /// assert_eq!(e.valid_up_to(), 0);
     /// ```
-    #[unstable(feature = "refcell_try_map", issue = "143801")]
+    #[stable(feature = "refcell_try_map", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn try_map<U: ?Sized, E>(
         mut orig: RefMut<'b, T>,
