@@ -52,8 +52,10 @@ where
     F: FnOnce() -> B,
     B: Deref<Target = Body<'tcx>>,
 {
+    // FIXME(khyperia): direct consts (where const_of_item returns Some) could theoretically be
+    // considered trivial consts here
     match tcx.def_kind(def) {
-        DefKind::AssocConst | DefKind::Const => (),
+        DefKind::AssocConst | DefKind::Const if tcx.const_of_item(def).is_none() => (),
         DefKind::AnonConst if tcx.anon_const_kind(def) != AnonConstKind::NonTypeSystemInline => (),
         _ => return None,
     }

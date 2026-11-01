@@ -7,6 +7,7 @@
 
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::def::DefKind;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir;
 use rustc_middle::mir::*;
@@ -374,7 +375,11 @@ where
         assert!(promoted.is_none() || Q::ALLOW_PROMOTED);
 
         // Don't peak inside trait associated constants.
-        if promoted.is_none() && cx.tcx.trait_of_assoc(def).is_none() {
+        if promoted.is_none()
+            && cx.tcx.trait_of_assoc(def).is_none()
+            && (!matches!(cx.tcx.def_kind(def), DefKind::Const | DefKind::AssocConst)
+                || cx.tcx.const_of_item(def).is_none())
+        {
             let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def);
 
             if !Q::in_qualifs(&qualifs) {

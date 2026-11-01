@@ -74,8 +74,14 @@ impl<'tcx> TyCtxt<'tcx> {
         // FIXME: maybe have a separate version for resolving mir::UnevaluatedConst?
         match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
-                let cid = GlobalId { instance, promoted: ct.promoted };
-                self.const_eval_global_id(typing_env, cid, span)
+                if let Some(direct_eval) =
+                    self.const_eval_if_direct_const(typing_env, ct, instance, span)
+                {
+                    direct_eval
+                } else {
+                    let cid = GlobalId { instance, promoted: ct.promoted };
+                    self.const_eval_global_id(typing_env, cid, span)
+                }
             }
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
@@ -83,6 +89,74 @@ impl<'tcx> TyCtxt<'tcx> {
             Err(err) => {
                 Err(ErrorHandled::Reported(ReportedErrorInfo::non_const_eval_error(err), DUMMY_SP))
             }
+        }
+    }
+
+    /// Checks if `resolved` is a directly represented const (i.e. `gca!` const) and if so,
+    /// evaluates it.
+    fn const_eval_if_direct_const(
+        self,
+        typing_env: ty::TypingEnv<'tcx>,
+        unresolved: mir::UnevaluatedConst<'tcx>,
+        resolved: ty::Instance<'tcx>,
+        span: Span,
+    ) -> Option<EvalToConstValueResult<'tcx>> {
+        let ty::InstanceKind::Item(def_id) = resolved.def else {
+            return None;
+        };
+        let def_kind = self.def_kind(def_id);
+        let (DefKind::Const | DefKind::AssocConst) = def_kind else {
+            return None;
+        };
+        if self.const_of_item(def_id).is_none() {
+            return None;
+        };
+        let alias_const = if def_kind == DefKind::Const {
+            let kind = ty::AliasConstKind::Free { def_id };
+            ty::AliasConst::new(self, kind, resolved.args)
+        } else {
+            if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) {
+                let kind = ty::AliasConstKind::InherentImpl { def_id };
+                ty::AliasConst::new(self, kind, resolved.args)
+            } else {
+                // HACK(khyperia): the trait solver does not support a resolved impl
+                // item def_id inside Projection, so pass in the unresolved impl, and
+                // let the trait solver re-resolve it. This must always resolve to the
+                // same impl.
+                let kind = ty::AliasConstKind::Projection { def_id: unresolved.def };
+                ty::AliasConst::new(self, kind, unresolved.args)
+            }
+        };
+        Some(self.const_eval_direct_const(typing_env, alias_const, span))
+    }
+
+    /// `alias_const` *must* be a const item whose `const_of_item` returns `Some`
+    fn const_eval_direct_const(
+        self,
+        typing_env: ty::TypingEnv<'tcx>,
+        alias_const: ty::AliasConst<'tcx>,
+        span: Span,
+    ) -> EvalToConstValueResult<'tcx> {
+        let value = ty::Const::new_alias(self, ty::IsRigid::No, alias_const);
+        let unnormalized = ty::Unnormalized::new(value);
+        let normalized = match self.try_normalize_erasing_regions(typing_env, unnormalized) {
+            Ok(value) => value,
+            Err(erroring_term) => {
+                return match erroring_term.error_reported() {
+                    Ok(()) => Err(ErrorHandled::TooGeneric(span)),
+                    Err(guar) => Err(ErrorHandled::Reported(
+                        ReportedErrorInfo::non_const_eval_error(guar),
+                        span,
+                    )),
+                };
+            }
+        };
+        if let Err(guar) = normalized.error_reported() {
+            Err(ErrorHandled::Reported(ReportedErrorInfo::non_const_eval_error(guar), span))
+        } else if let ty::ConstKind::Value(value) = normalized.kind() {
+            Ok(self.valtree_to_const_val(value))
+        } else {
+            Err(ErrorHandled::TooGeneric(span))
         }
     }
 
@@ -171,6 +245,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
+    /// NOTE: The only callsite of this function is rustc_public.
     pub fn const_eval_instance(
         self,
         typing_env: ty::TypingEnv<'tcx>,

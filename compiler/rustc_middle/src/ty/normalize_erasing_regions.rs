@@ -7,7 +7,7 @@
 //! `normalize_generic_arg_after_erasing_regions` query for each type
 //! or constant found within. (This underlying query is what is cached.)
 
-use rustc_macros::{StableHash, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeVisitable};
 use rustc_span::bug;
 use tracing::{debug, instrument};
 
@@ -17,7 +17,7 @@ use crate::ty::{
     TypeVisitableExt, Unnormalized,
 };
 
-#[derive(Debug, Copy, Clone, StableHash, TyEncodable, TyDecodable)]
+#[derive(Debug, Copy, Clone, StableHash, TyEncodable, TyDecodable, TypeVisitable)]
 pub enum NormalizationError<'tcx> {
     Type(Ty<'tcx>),
     Const(ty::Const<'tcx>),
