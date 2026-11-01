@@ -21,9 +21,9 @@ impl Foo {
 }
 
 // Testing spans, so all tests below code
-//@ is "$.index[?(@.docs=='has span')].span.begin" "[19, 1]"
-//@ is "$.index[?(@.docs=='has span')].span.end" "[21, 2]"
-//@ is "$.index[?(@.docs=='has span')].inner.impl.is_synthetic" false
+//@ is "$.index[?(@.docs[0].text=='has span')].span.begin" "[19, 1]"
+//@ is "$.index[?(@.docs[0].text=='has span')].span.end" "[21, 2]"
+//@ is "$.index[?(@.docs[0].text=='has span')].inner.impl.is_synthetic" false
 //@ is "$.index[?(@.inner.impl.is_synthetic==true)].span" null
 //@ is "$.index[?(@.inner.impl.is_synthetic==true)].inner.impl.for.resolved_path.path" '"Foo"'
 //@ is "$.index[?(@.inner.impl.is_synthetic==true)].inner.impl.trait.path" '"Bar"'
