@@ -271,6 +271,12 @@ mod private {
 #[stable(feature = "never_type", since = "1.100.0")]
 impl Error for ! {}
 
+#[unstable(feature = "error_type_id_internal", issue = "none")]
+#[doc(hidden)]
+pub fn error_type_id<E: ?Sized + Error + 'static>(err: &E) -> TypeId {
+    E::type_id(err, private::Internal)
+}
+
 // Copied from `any.rs`.
 impl dyn Error + 'static {
     /// Returns `true` if the inner type is the same as `T`.
@@ -281,7 +287,7 @@ impl dyn Error + 'static {
         let t = TypeId::of::<T>();
 
         // Get `TypeId` of the type in the trait object (`self`).
-        let concrete = self.type_id(private::Internal);
+        let concrete = error_type_id::<Self>(self);
 
         // Compare both `TypeId`s on equality.
         t == concrete
