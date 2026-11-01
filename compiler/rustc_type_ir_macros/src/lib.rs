@@ -7,6 +7,7 @@ use syn::visit_mut::VisitMut;
 use syn::{Attribute, parse_quote};
 use synstructure::decl_derive;
 
+decl_derive!([GenMarker, attributes(gen_marker)] => gen_marker);
 decl_derive!(
     [TypeVisitable_Generic, attributes(type_visitable)] => type_visitable_derive
 );
@@ -480,4 +481,50 @@ fn parse_generic_type_visitable_bound(
 
         if input.is_empty() { Ok(proof) } else { Err(input.error("unexpected token")) }
     })
+}
+
+/// Generate a marker enum for an enum... For example;
+///
+/// ```ignore (purely an example)
+/// enum MyEnum<I: Interner> {
+///    Foo,
+///    Bar(u32),
+///    Baz(SomeStruct),
+///    Exotic(I::ExternDefinedStruct)
+/// }
+/// ```
+///
+/// Where you want to discriminate on MyEnum but you want the variants as `u32`'s
+/// so you can create static dispatch based off `MyEnum` but perhaps the properties
+/// in `MyEnum` cannot use `ConstParamTy`.
+///
+/// We get;
+///
+/// ```ignore (purely an example building upon the above example to show what would be generated)
+/// #[repr(u32)]
+/// #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// enum MyEnumMarker {
+///    Foo,
+///    Bar,
+///    Baz,
+///    Exotic
+/// }
+fn gen_marker(s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+    let input = s.ast();
+    let syn::Data::Enum(enum_data) = &input.data else { panic!("can only derive enums") };
+
+    let variants = enum_data.variants.iter().map(|variant| &variant.ident);
+
+    let vis = &input.vis;
+    let marker_name = quote::format_ident!("{}Marker", input.ident);
+
+    quote::quote! {
+        #[repr(u32)]
+        #[derive(Clone, Copy, Debug, Hash)]
+        #[derive_const(PartialEq, Eq)]
+        #vis enum #marker_name {
+            #(#variants),*
+        }
+    }
+    .into()
 }
