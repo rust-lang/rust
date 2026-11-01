@@ -40,7 +40,7 @@ pub use self::operator::AtomicRmwOp;
 pub use self::place::{MPlaceTy, MemPlaceMeta, PlaceTy, Writeable};
 use self::place::{MemPlace, Place};
 pub use self::projection::{OffsetMode, Projectable};
-pub use self::stack::{Frame, FrameInfo, LocalState, ReturnContinuation};
+pub use self::stack::{CallerLocation, Frame, FrameInfo, LocalState, ReturnContinuation};
 pub use self::util::EnteredTraceSpan;
 pub(crate) use self::util::{
     create_static_alloc, ensure_monomorphic_enough, type_implements_dyn_trait,

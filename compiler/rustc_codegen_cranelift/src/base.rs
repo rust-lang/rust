@@ -390,7 +390,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     AssertKind::BoundsCheck { len, index } => {
                         let len = codegen_operand(fx, len).load_scalar(fx);
                         let index = codegen_operand(fx, index).load_scalar(fx);
-                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+                        let location = fx.codegen_caller_location(source_info).load_scalar(fx);
 
                         codegen_panic_inner(
                             fx,
@@ -403,7 +403,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     AssertKind::MisalignedPointerDereference { required, found } => {
                         let required = codegen_operand(fx, required).load_scalar(fx);
                         let found = codegen_operand(fx, found).load_scalar(fx);
-                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+                        let location = fx.codegen_caller_location(source_info).load_scalar(fx);
 
                         codegen_panic_inner(
                             fx,
@@ -414,7 +414,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                         );
                     }
                     AssertKind::NullPointerDereference => {
-                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+                        let location = fx.codegen_caller_location(source_info).load_scalar(fx);
 
                         codegen_panic_inner(
                             fx,
@@ -425,7 +425,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                         )
                     }
                     AssertKind::NullReferenceConstructed => {
-                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+                        let location = fx.codegen_caller_location(source_info).load_scalar(fx);
 
                         codegen_panic_inner(
                             fx,
@@ -437,7 +437,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     }
                     AssertKind::InvalidEnumConstruction(source) => {
                         let source = codegen_operand(fx, source).load_scalar(fx);
-                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+                        let location = fx.codegen_caller_location(source_info).load_scalar(fx);
 
                         codegen_panic_inner(
                             fx,
@@ -448,7 +448,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                         )
                     }
                     _ => {
-                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+                        let location = fx.codegen_caller_location(source_info).load_scalar(fx);
 
                         codegen_panic_inner(
                             fx,
