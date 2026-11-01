@@ -1350,3 +1350,29 @@ pub(crate) struct ShowSpan {
     pub span: Span,
     pub kind: &'static str,
 }
+
+#[derive(Diagnostic)]
+#[diag("unexpected parentheses surrounding `match` arm pattern")]
+pub(crate) struct ParenAroundGuardedPatInMatchArm {
+    #[primary_span]
+    pub span: Vec<Span>,
+    #[subdiagnostic]
+    pub sugg_removal: RemoveParenFromGuardedPatInMatchArm,
+    #[note(
+        "see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information"
+    )]
+    #[help("add `#![feature(guard_patterns)]` to the crate attributes to enable")]
+    pub sugg_feature: bool,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "remove parentheses surrounding the pattern",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct RemoveParenFromGuardedPatInMatchArm {
+    #[suggestion_part(code = "")]
+    pub left: Span,
+    #[suggestion_part(code = "")]
+    pub right: Span,
+}

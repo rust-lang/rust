@@ -3138,8 +3138,15 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
-            let (pat, guard) = this.parse_match_arm_pat_and_guard()?;
-            let pat = Box::new(pat);
+
+            let pat = Box::new(this.parse_pat_no_top_guard(
+                None,
+                RecoverComma::Yes,
+                RecoverColon::Yes,
+                CommaRecoveryMode::EitherTupleOrPipe,
+            )?);
+
+            let guard = this.parse_match_arm_guard()?;
 
             let span_before_body = this.prev_token.span;
             let arm_body;
@@ -3373,52 +3380,6 @@ impl<'a> Parser<'a> {
 
         let guard = Guard { cond: *cond, span_with_leading_if: leading_if_span.to(cond_span) };
         Ok(Box::new(guard))
-    }
-
-    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Pat, Option<Box<Guard>>)> {
-        if self.token == token::OpenParen {
-            let left = self.token.span;
-            let pat = self.parse_pat_no_top_guard(
-                None,
-                RecoverComma::Yes,
-                RecoverColon::Yes,
-                CommaRecoveryMode::EitherTupleOrPipe,
-            )?;
-            if let ast::PatKind::Paren(subpat) = &pat.kind
-                && let ast::PatKind::Guard(..) = &subpat.kind
-            {
-                // Detect and recover from `($pat if $cond) => $arm`.
-                // FIXME(guard_patterns): convert this to a normal guard instead
-                let span = pat.span;
-                let ast::PatKind::Paren(subpat) = pat.kind else { unreachable!() };
-                let ast::PatKind::Guard(_, mut guard) = subpat.kind else { unreachable!() };
-                self.psess.gated_spans.ungate_last(sym::guard_patterns, guard.span());
-                let mut checker = CondChecker::new(self, LetChainsPolicy::AlwaysAllowed);
-                checker.visit_expr(&mut guard.cond);
-
-                let right = self.prev_token.span;
-                self.dcx().emit_err(crate::diagnostics::ParenthesesInMatchPat {
-                    span: vec![left, right],
-                    sugg: crate::diagnostics::ParenthesesInMatchPatSugg { left, right },
-                });
-
-                if let Some(guar) = checker.found_incorrect_let_chain {
-                    guard.cond = *self.mk_expr_err(guard.span(), guar);
-                }
-                Ok((self.mk_pat(span, ast::PatKind::Wild), Some(guard)))
-            } else {
-                Ok((pat, self.parse_match_arm_guard()?))
-            }
-        } else {
-            // Regular parser flow:
-            let pat = self.parse_pat_no_top_guard(
-                None,
-                RecoverComma::Yes,
-                RecoverColon::Yes,
-                CommaRecoveryMode::EitherTupleOrPipe,
-            )?;
-            Ok((pat, self.parse_match_arm_guard()?))
-        }
     }
 
     fn parse_match_guard_condition(

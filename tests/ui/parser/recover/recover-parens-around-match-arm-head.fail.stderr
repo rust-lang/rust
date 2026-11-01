@@ -1,0 +1,30 @@
+error[E0308]: mismatched types
+  --> $DIR/recover-parens-around-match-arm-head.rs:16:19
+   |
+LL |     let _y: u32 = x;
+   |             ---   ^ expected `u32`, found `u8`
+   |             |
+   |             expected due to this
+   |
+help: you can convert a `u8` to a `u32`
+   |
+LL |     let _y: u32 = x.into();
+   |                    +++++++
+
+error: unexpected parentheses surrounding `match` arm pattern
+  --> $DIR/recover-parens-around-match-arm-head.rs:9:9
+   |
+LL |         (0 if true) => {
+   |         ^         ^
+   |
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
+   = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
+help: remove parentheses surrounding the pattern
+   |
+LL -         (0 if true) => {
+LL +         0 if true => {
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
