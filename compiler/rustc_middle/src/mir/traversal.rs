@@ -21,7 +21,7 @@ use super::*;
 #[derive(Clone)]
 pub struct Preorder<'a, 'tcx> {
     body: &'a Body<'tcx>,
-    visited: DenseBitSet<BasicBlock>,
+    inspected: DenseBitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
 }
 
@@ -29,7 +29,10 @@ impl<'a, 'tcx> Preorder<'a, 'tcx> {
     pub fn new(body: &'a Body<'tcx>, root: BasicBlock) -> Preorder<'a, 'tcx> {
         let worklist = vec![root];
 
-        Preorder { body, visited: DenseBitSet::new_empty(body.basic_blocks.len()), worklist }
+        let mut inspected = DenseBitSet::new_empty(body.basic_blocks.len());
+        inspected.insert(root);
+
+        Preorder { body, inspected, worklist }
     }
 }
 
@@ -47,15 +50,11 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
     type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
 
     fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
-        while let Some(idx) = self.worklist.pop() {
-            if !self.visited.insert(idx) {
-                continue;
-            }
-
+        if let Some(idx) = self.worklist.pop() {
             let data = &self.body[idx];
 
             if let Some(ref term) = data.terminator {
-                self.worklist.extend(term.successors());
+                self.worklist.extend(term.successors().filter(|bb| self.inspected.insert(*bb)));
             }
 
             return Some((idx, data));
@@ -253,7 +252,7 @@ pub fn reachable<'a, 'tcx>(
 pub fn reachable_as_bitset(body: &Body<'_>) -> DenseBitSet<BasicBlock> {
     let mut iter = preorder(body);
     while let Some(_) = iter.next() {}
-    iter.visited
+    iter.inspected
 }
 
 /// Reverse postorder traversal of a graph.
