@@ -1,4 +1,4 @@
-error: Undefined Behavior: memory access failed: attempting to access 1024 bytes, but got ALLOC which is only 4 bytes from the end of the allocation
+error: Undefined Behavior: memory access failed: attempting to access 4294967295 bytes, but got ALLOC which is only 4 bytes from the end of the allocation
   --> tests/fail-dep/libc/getsockopt_buffer_too_small.rs:LL:CC
    |
 LL | /         libc::getsockopt(
