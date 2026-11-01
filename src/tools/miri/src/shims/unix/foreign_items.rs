@@ -18,6 +18,7 @@ use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::cpu_affinity::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::{shim_sig, *};
+use crate::eval::ExitType;
 
 pub fn is_dyn_sym(name: &str, target: &Target) -> bool {
     match name {
@@ -1443,6 +1444,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 } else {
                     this.write_null(&result)?;
                     this.write_scalar(this.eval_libc("ERANGE"), dest)?;
+                }
+            }
+
+            // Terminating the process.
+            "_exit" => {
+                // FIXME: This does not have a direct test (#3179).
+                let [exit_code] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn(i32) -> ()), (link_name, abi, args))?;
+                let exit_code = this.read_scalar(exit_code)?.to_i32()?;
+                // In GenMC mode, we do not immediately stop execution on exit.
+                if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+                    // If there's no error, execution will continue (on another thread).
+                    genmc_ctx.handle_exit(
+                        this.machine.threads.active_thread(),
+                        exit_code,
+                        ExitType::ExitCalled,
+                    )?;
+                } else {
+                    // Stop interpreter loop.
+                    throw_machine_stop!(TerminationInfo::Exit {
+                        exit_code,
+                        leak_check: false,
+                    });
                 }
             }
 

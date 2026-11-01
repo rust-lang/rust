@@ -183,12 +183,7 @@ fn lang_start_internal(
             101
         });
         let ret_code = ret_code as isize;
-
         cleanup();
-        // Guard against multiple threads calling `libc::exit` concurrently.
-        // See the documentation for `unique_thread_exit` for more information.
-        crate::sys::exit::unique_thread_exit();
-
         ret_code
     })
     .unwrap_or_else(handle_rt_panic)
