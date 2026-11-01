@@ -11,6 +11,8 @@ LL |     x = foo::<()>;
    |
    = note: expected fn item `fn(F) -> F {bar::<F>}`
               found fn item `fn(()) -> () {foo::<()>}`
+   = note: different fn items have unique types, even if their signatures are the same
+   = help: consider casting both fn items to fn pointers using `as fn(Alias(No, Alias { kind: Opaque { def_id: DefId(0:8 ~ fn_def_opaque_coercion_to_fn_ptr[7fda]::F::{opaque#0}) }, args: [], .. })) -> Alias(No, Alias { kind: Opaque { def_id: DefId(0:8 ~ fn_def_opaque_coercion_to_fn_ptr[7fda]::F::{opaque#0}) }, args: [], .. })`
 
 error[E0308]: mismatched types
   --> $DIR/fn_def_opaque_coercion_to_fn_ptr.rs:29:9
@@ -28,6 +30,8 @@ LL |     x = foo::<I>;
    |
    = note: expected fn item `fn(()) -> () {bar::<()>}`
               found fn item `fn(I) -> I {foo::<I>}`
+   = note: different fn items have unique types, even if their signatures are the same
+   = help: consider casting both fn items to fn pointers using `as fn(())`
 help: use parentheses to call this function
    |
 LL |     x = foo::<I>(/* I */);
