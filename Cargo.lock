@@ -4349,8 +4349,7 @@ version = "0.0.0"
 dependencies = [
  "expect-test",
  "memchr",
- "unicode-ident",
- "unicode-properties",
+ "rustc_unicode",
 ]
 
 [[package]]
@@ -4381,10 +4380,10 @@ dependencies = [
  "rustc_symbol_mangling",
  "rustc_target",
  "rustc_trait_selection",
+ "rustc_unicode",
  "smallvec",
  "thin-vec",
  "tracing",
- "unicode-security",
 ]
 
 [[package]]
@@ -4634,11 +4633,9 @@ dependencies = [
  "rustc_macros",
  "rustc_session",
  "rustc_span",
+ "rustc_unicode",
  "thin-vec",
  "tracing",
- "unicode-normalization",
- "unicode-properties",
- "unicode-width 0.2.3",
 ]
 
 [[package]]
@@ -4872,11 +4869,11 @@ dependencies = [
  "rustc_lexer",
  "rustc_macros",
  "rustc_serialize",
+ "rustc_unicode",
  "scoped-tls",
  "sha1",
  "sha2",
  "tracing",
- "unicode-width 0.2.3",
 ]
 
 [[package]]
@@ -5077,6 +5074,18 @@ dependencies = [
  "quote",
  "syn 2.0.117",
  "synstructure",
+]
+
+[[package]]
+name = "rustc_unicode"
+version = "0.0.0"
+dependencies = [
+ "unicode-ident",
+ "unicode-normalization",
+ "unicode-properties",
+ "unicode-script",
+ "unicode-security",
+ "unicode-width 0.2.3",
 ]
 
 [[package]]
