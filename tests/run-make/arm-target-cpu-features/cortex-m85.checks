@@ -1,0 +1,12 @@
+// Cortex-M85 enables the Helium instructions.
+CHECK-LABEL: vadd_f32_q:
+CHECK: vld{{.*}}
+CHECK: vld{{.*}}
+CHECK: vadd.f32{{.*}}q
+CHECK: vst{{.*}} [r0]
+CHECK: bx lr
+
+// Cortex-M85 enables double-precision.
+CHECK-LABEL: vadd_f64:
+CHECK: vadd.f64 d0, d0, d1
+CHECK: bx lr
