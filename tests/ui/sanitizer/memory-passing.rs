@@ -1,5 +1,6 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-memory
+//@ ignore-backends: gcc
 //
 //@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //

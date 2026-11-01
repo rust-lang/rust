@@ -3,6 +3,7 @@
 
 //@ needs-profiler-runtime
 //@ needs-dynamic-linking
+//@ ignore-backends: gcc
 
 use run_make_support::{dynamic_lib_name, rustc};
 

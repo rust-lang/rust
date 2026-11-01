@@ -3,6 +3,7 @@
 //
 //@ check-pass
 //@ compile-flags: --crate-type=lib -Cinstrument-coverage  -Zno-profiler-runtime
+//@ ignore-backends: gcc
 
 #![feature(const_precise_live_drops)]
 

@@ -3,6 +3,7 @@
 //@ needs-sanitizer-kcfi
 //@ aux-build:kcfi-normalize-ints.rs
 //@ compile-flags: -Cpanic=abort
+//@ ignore-backends: gcc
 
 //@ revisions: ok wrong_flag wrong_sanitizer
 //@[ok] compile-flags: -Zsanitizer=kcfi -Zsanitizer-cfi-normalize-integers
