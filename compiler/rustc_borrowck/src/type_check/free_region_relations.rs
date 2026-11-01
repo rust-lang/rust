@@ -1,3 +1,6 @@
+use std::iter;
+
+use itertools::Itertools;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::transitive_relation::{TransitiveRelation, TransitiveRelationBuilder};
 use rustc_hir::def::DefKind;
@@ -9,7 +12,7 @@ use rustc_infer::infer::{InferOk, outlives};
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::query::MirBorrowckImpliedOutlivesBounds;
 use rustc_infer::traits::query::type_op::Normalize;
-use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::mir::{Body, ConstraintCategory, Local, RETURN_PLACE};
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, RegionVid, Ty, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, Span};
@@ -55,6 +58,7 @@ pub(crate) struct CreateResult<'tcx> {
 
 pub(crate) fn create<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
+    body: &Body<'tcx>,
     universal_regions: UniversalRegions<'tcx>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
 ) -> CreateResult<'tcx> {
@@ -66,7 +70,7 @@ pub(crate) fn create<'tcx>(
         outlives: Default::default(),
         inverse_outlives: Default::default(),
     }
-    .create()
+    .create(body)
 }
 
 impl UniversalRegionRelations<'_> {
@@ -341,7 +345,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(crate) fn create(mut self) -> CreateResult<'tcx> {
+    pub(crate) fn create(mut self, body: &Body<'tcx>) -> CreateResult<'tcx> {
         if !self.infcx.next_trait_solver() {
             return self.create_old();
         }
@@ -402,13 +406,22 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         //
         // This does assume that `unnormalized_input_output_tys` would normalize to the same
         // thing as `query_normalized_inputs_and_output`.
-        let mut normalized_inputs_and_output =
-            Vec::with_capacity(self.universal_regions.unnormalized_input_tys.len() + 1);
-        for ty in query_normalized_inputs_and_output {
+        //
+        // This may define opaque types, so we use the span of the corresponding local as the
+        // span of their hidden types instead of the span of the whole item.
+        let num_inputs = self.universal_regions.unnormalized_input_tys.len();
+        let input_output_spans = (0..num_inputs)
+            .map(Local::arg)
+            .chain(iter::once(RETURN_PLACE))
+            .map(|local| body.local_decls[local].source_info.span);
+        let mut normalized_inputs_and_output = Vec::with_capacity(num_inputs + 1);
+        for (ty, ty_span) in
+            query_normalized_inputs_and_output.into_iter().zip_eq(input_output_spans)
+        {
             let ty = ty::set_aliases_to_non_rigid(tcx, ty);
             let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
                 .infcx
-                .fully_perform(Normalize { value: ty }, span)
+                .fully_perform(Normalize { value: ty }, ty_span)
                 .unwrap_or_else(|guar| TypeOpOutput {
                     output: Ty::new_error(self.infcx.tcx, guar),
                     constraints: None,
