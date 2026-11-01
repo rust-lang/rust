@@ -1312,17 +1312,17 @@ impl Integer {
         }
     }
 
-    pub fn align<C: HasDataLayout>(self, cx: &C) -> AbiAlign {
+    pub fn align<C: HasDataLayout>(self, cx: &C) -> Align {
         use Integer::*;
         let dl = cx.data_layout();
 
-        AbiAlign::new(match self {
+        match self {
             I8 => dl.i8_align,
             I16 => dl.i16_align,
             I32 => dl.i32_align,
             I64 => dl.i64_align,
             I128 => dl.i128_align,
-        })
+        }
     }
 
     /// Returns the largest signed value that can be represented by this Integer.
@@ -1383,7 +1383,7 @@ impl Integer {
         let dl = cx.data_layout();
 
         [I8, I16, I32, I64, I128].into_iter().find(|&candidate| {
-            wanted == candidate.align(dl).abi && wanted.bytes() == candidate.size().bytes()
+            wanted == candidate.align(dl) && wanted.bytes() == candidate.size().bytes()
         })
     }
 
@@ -1394,7 +1394,7 @@ impl Integer {
 
         // FIXME(eddyb) maybe include I128 in the future, when it works everywhere.
         for candidate in [I64, I32, I16] {
-            if wanted >= candidate.align(dl).abi && wanted.bytes() >= candidate.size().bytes() {
+            if wanted >= candidate.align(dl) && wanted.bytes() >= candidate.size().bytes() {
                 return candidate;
             }
         }
@@ -1572,7 +1572,7 @@ impl Primitive {
         let dl = cx.data_layout();
 
         match self {
-            Int(i, _) => i.align(dl),
+            Int(i, _) => AbiAlign::new(i.align(dl)),
             Float(f) => f.align(dl),
             Pointer(a) => AbiAlign::new(dl.pointer_align_in(a)),
         }
