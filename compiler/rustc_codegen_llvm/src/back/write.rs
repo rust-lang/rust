@@ -998,14 +998,27 @@ pub(crate) fn codegen(
 
         if config.bitcode_needed() {
             if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
-                let thin = {
+                let thin;
+                // When emitting thin-link-bitcode, we already ran ThinLTOBitcodeWriterPass and
+                // generated the necessary thinLTO bitcode. Under those circumstances we should
+                // reuse the bitcode, since otherwise ModuleBuffer::new will run
+                // ThinLTOBitcodeWriterPass again which causes the `.o` and `.indexing.o` module
+                // hash to no longer match and has other unintended side effects (e.g. it drops
+                // debug info that should be preserved and causes duplicate global aliases within
+                // the CFI pass).
+                let data = if cgcx.lto != Lto::Fat
+                    && config.emit_thin_lto_summary
+                    && let Some(thin_bc) = module.thin_lto_buffer.as_deref()
+                {
+                    thin_bc
+                } else {
                     let _timer = prof.generic_activity_with_arg(
                         "LLVM_module_codegen_make_bitcode",
                         &*module.name,
                     );
-                    ModuleBuffer::new(llmod, cgcx.lto != Lto::Fat)
+                    thin = ModuleBuffer::new(llmod, cgcx.lto != Lto::Fat);
+                    thin.data()
                 };
-                let data = thin.data();
                 let _timer = prof
                     .generic_activity_with_arg("LLVM_module_codegen_emit_bitcode", &*module.name);
                 if let Some(bitcode_filename) = bc_out.file_name() {
