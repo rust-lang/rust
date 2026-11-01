@@ -1,6 +1,6 @@
+use rustc_lint_defs::LintName;
 use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::{Span, Symbol, sym};
-use rustc_structures::LintName;
 
 use crate::{HashIgnoredAttrId, PrintAttribute};
 

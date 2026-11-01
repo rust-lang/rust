@@ -21,7 +21,7 @@ use rustc_lint_defs::builtin::{
     UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
 };
 use rustc_lint_defs::{
-    CheckLintNameResult, Level, Lint, LintExpectationId, LintId, StableLintExpectationId,
+    CheckLintNameResult, Level, Lint, LintExpectationId, LintId, LintName, StableLintExpectationId,
     UnstableLintExpectationId,
 };
 use rustc_middle::hir::nested_filter;
@@ -34,7 +34,6 @@ use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
 use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::{AttrId, DUMMY_SP, Span, Symbol, sym};
-use rustc_structures::LintName;
 use tracing::{debug, instrument};
 
 use crate::builtin::MISSING_DOCS;
