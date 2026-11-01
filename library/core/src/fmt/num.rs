@@ -289,7 +289,8 @@ macro_rules! impl_Display {
                 {
                     // Lossless conversion (with as) is asserted at the top of
                     // this macro.
-                    offset = ${concat($fmt_fn, _in_buf_small)}(self.unsigned_abs() as $T, &mut buf.buf);
+                    // SAFETY: `buf` will always be big enough to contain all digits.
+                    offset = unsafe { ${concat($fmt_fn, _in_buf_small)}(self.unsigned_abs() as $T, &mut buf.buf) };
                 }
                 // Only difference between signed and unsigned are these 4 lines.
                 if self < 0 {
@@ -337,7 +338,8 @@ macro_rules! impl_Display {
                 {
                     // Lossless conversion (with as) is asserted at the top of
                     // this macro.
-                    offset = ${concat($fmt_fn, _in_buf_small)}(self as $T, &mut buf.buf);
+                    // SAFETY: `buf` will always be big enough to contain all digits.
+                    offset = unsafe { ${concat($fmt_fn, _in_buf_small)}(self as $T, &mut buf.buf) };
                 }
                 // SAFETY: Starting from `offset`, all elements of the slice have been set.
                 unsafe { slice_buffer_to_str(&buf.buf, offset) }
@@ -346,18 +348,24 @@ macro_rules! impl_Display {
 
         )*
 
+        /// # Safety
+        /// The number's decimal representation must fit into the buffer.
+        /// i.e. `n == 0 && buf.len() >= 1 || n.ilog10() + 1 <= buf.len()`
         #[cfg(feature = "optimize_for_size")]
-        fn ${concat($fmt_fn, _in_buf_small)}(mut n: $T, buf: &mut [MaybeUninit::<u8>]) -> usize {
+        unsafe fn ${concat($fmt_fn, _in_buf_small)}(mut n: $T, buf: &mut [MaybeUninit::<u8>]) -> usize {
+            debug_assert!(n == 0 && buf.len() >= 1 || buf.len() >= n.ilog10() as usize + 1);
+
             let mut curr = buf.len();
 
-            // SAFETY: To show that it's OK to copy into `buf_ptr`, notice that at the beginning
-            // `curr == buf.len() == 39 > log(n)` since `n < 2^128 < 10^39`, and at
-            // each step this is kept the same as `n` is divided. Since `n` is always
-            // non-negative, this means that `curr > 0` so `buf_ptr[curr..curr + 1]`
-            // is safe to access.
             loop {
                 curr -= 1;
-                buf[curr].write((n % 10) as u8 + b'0');
+                // SAFETY:
+                // For `n == 0`, this loop only runs once and there is no issue.
+                // Otherwise, it takes `n.ilog10() + 1` divisions by 10 for `n`
+                // to become 0. Hence `curr` is decremented at most that many times.
+                // Then due to `buf.len() >= n.ilog10() + 1`, `curr` can never
+                // wrap, which means it is in-bounds.
+                unsafe { buf.get_unchecked_mut(curr) }.write((n % 10) as u8 + b'0');
                 n /= 10;
 
                 if n == 0 {
@@ -372,7 +380,8 @@ macro_rules! impl_Display {
             const MAX_DEC_N: usize = $T::MAX.ilog10() as usize + 1;
             let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
 
-            let offset = ${concat($fmt_fn, _in_buf_small)}(n, &mut buf);
+            // SAFETY: `T::MAX` is the largest possible decimal length, so the buffer is large enough.
+            let offset = unsafe { ${concat($fmt_fn, _in_buf_small)}(n, &mut buf) };
             // SAFETY: Starting from `offset`, all elements of the slice have been set.
             let buf_slice = unsafe { slice_buffer_to_str(&buf, offset) };
             f.pad_integral(is_nonnegative, "", buf_slice)
