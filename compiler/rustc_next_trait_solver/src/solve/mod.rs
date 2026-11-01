@@ -82,35 +82,6 @@ fn has_only_region_constraints<I: Interner>(response: ty::Canonical<I, Response<
         && normalization_nested_goals.is_empty()
 }
 
-/// Whether two canonical responses are exactly equal except for their
-/// region constraints.
-fn equal_response_modulo_region_constraints<I: Interner>(
-    a: &CanonicalResponse<I>,
-    b: &CanonicalResponse<I>,
-) -> bool {
-    let CanonicalResponse {
-        max_universe: a_max_universe,
-        var_kinds: a_var_kinds,
-        value:
-            Response {
-                certainty: a_certainty,
-                var_values: a_var_values,
-                var_values_is_identity: _, // ignore because it's purely derived from `var_values`
-                external_constraints: a_external_constraints,
-            },
-    } = a;
-
-    let ExternalConstraintsData { region_constraints: _, opaque_types, normalization_nested_goals } =
-        &**a_external_constraints;
-
-    a_max_universe == &b.max_universe
-        && a_var_kinds == &b.var_kinds
-        && a_var_values == &b.value.var_values
-        && a_certainty == &b.value.certainty
-        && opaque_types == &b.value.external_constraints.opaque_types
-        && normalization_nested_goals == &b.value.external_constraints.normalization_nested_goals
-}
-
 impl<'a, D, I> EvalCtxt<'a, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -310,62 +281,50 @@ where
     }
 }
 
-#[derive(Debug)]
-enum MergeCandidateInfo {
-    AlwaysApplicable(usize),
-    EqualResponse,
-}
-
 impl<D, I> EvalCtxt<'_, D>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     /// Try to merge multiple possible ways to prove a goal, if that is not possible returns `None`.
+    /// We only merge candidates which are equal modulo region constraints. Long-term, we want to
+    /// emit an OR of the constraints of all candidates, for now we fail with ambiguity unless all
+    /// candidates have the same constraints or one candidate has no region constraints at all.
     ///
     /// In this case we tend to flounder and return ambiguity by calling `[EvalCtxt::flounder]`.
     #[instrument(level = "trace", skip(self), ret)]
     fn try_merge_candidates(
         &mut self,
         candidates: &[Candidate<I>],
-    ) -> Option<(CanonicalResponse<I>, MergeCandidateInfo)> {
-        if candidates.is_empty() {
+    ) -> Option<CanonicalResponse<I>> {
+        let Some((first, rest)) = candidates.split_first() else {
             return None;
+        };
+
+        // If all candidates are equal, just return that result.
+        if rest.iter().all(|c| first.result == c.result) {
+            return Some(first.result);
         }
 
-        let always_applicable = candidates.iter().enumerate().find(|(_, candidate)| {
-            candidate.result.value.certainty == Certainty::Yes
-                && has_no_inference_or_external_constraints(candidate.result)
-        });
-
-        if let Some((i, candidate)) = always_applicable {
-            return Some((candidate.result, MergeCandidateInfo::AlwaysApplicable(i)));
-        }
-
-        let one: CanonicalResponse<I> = candidates[0].result;
-
-        if candidates[1..]
+        // If not, check whether one of the candidates has no region constraints.
+        // Long-term we likely want to also handle cases where one candidate has
+        // strictly weaker region constraints or emit an OR of the region constraints
+        // if candidates are otherwise equal.
+        //
+        // While we could also prefer candidates with weaker non-region constraints,
+        // that's currently not necessary. We intentionally do not prefer candidates
+        // if there's still am ambiguous candidate. We do so to potentially better
+        // handle region uniquification at the start of MIR borrowck, see #163928 for
+        // more details.
+        if let Some(choice) = candidates
             .iter()
-            .all(|candidate| equal_response_modulo_region_constraints(&one, &candidate.result))
+            .find(|c| c.result.value.external_constraints.region_constraints.is_empty())
         {
-            let region_constraints = &one.value.external_constraints.region_constraints;
-            if candidates[1..].iter().all(|candidate| {
-                &candidate.result.value.external_constraints.region_constraints
-                    == region_constraints
-            }) {
-                return Some((one, MergeCandidateInfo::EqualResponse));
-            }
-
-            // If candidates differ only in region constraints, their merged region
-            // constraints are an `Or` of their respective constraints. If one of them
-            // has no region constraints, the `Or` constraint evaluates to `true`.
-            //
-            // This is a special case of `-Zassumptions-on-binders` and should be
-            // replaced eventually.
-            if let Some(candidate) = candidates.iter().find(|candidate| {
-                candidate.result.value.external_constraints.region_constraints.is_empty()
-            }) {
-                return Some((candidate.result, MergeCandidateInfo::EqualResponse));
+            if candidates
+                .iter()
+                .all(|c| self.responses_equal_modulo_region_constraints(&choice.result, &c.result))
+            {
+                return Some(choice.result);
             }
         }
 

@@ -144,7 +144,7 @@ impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
 
 impl<'a, 'tcx, Ie, Id, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<Ie, Id, T> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
-        e.emit_usize(self.width);
+        e.emit_usize(self.width_and_sparse);
         e.emit_usize(self.len);
         e.emit_lazy_distance(self.position);
     }

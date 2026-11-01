@@ -54,7 +54,7 @@ fn write_output_file<'ll>(
     dcx: DiagCtxtHandle<'_>,
     target: &'ll llvm::TargetMachine,
     no_builtins: bool,
-    m: &'ll llvm::Module,
+    m: llvm::Module<'ll>,
     output: &Path,
     dwo_output: Option<&Path>,
     file_type: llvm::FileType,
@@ -407,7 +407,7 @@ impl<'a, 'll> Drop for DiagnosticHandlers<'a, 'll> {
 fn report_inline_asm(
     cgcx: &CodegenContext,
     msg: String,
-    level: llvm::DiagnosticLevel,
+    severity: llvm::DiagnosticSeverity,
     cookie: u64,
     source: Option<(String, Vec<InnerSpan>)>,
 ) -> InlineAsmError {
@@ -421,10 +421,10 @@ fn report_inline_asm(
         let hi = BytePos::from_u32((cookie >> 32) as u32);
         (lo, hi)
     };
-    let level = match level {
-        llvm::DiagnosticLevel::Error => Level::Error,
-        llvm::DiagnosticLevel::Warning => Level::Warning(None),
-        llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
+    let level = match severity {
+        llvm::DiagnosticSeverity::Error => Level::Error,
+        llvm::DiagnosticSeverity::Warning => Level::Warning(None),
+        llvm::DiagnosticSeverity::Note | llvm::DiagnosticSeverity::Remark => Level::Note,
     };
     let msg = msg.trim_prefix("error: ").to_string();
     InlineAsmError { lo, hi, msg, level, source }
@@ -455,7 +455,7 @@ fn diagnostic_handler_callback_inner(
             shared_emitter.inline_asm_error(report_inline_asm(
                 cgcx,
                 inline.message,
-                inline.level,
+                inline.severity,
                 inline.cookie,
                 inline.source,
             ));
@@ -478,21 +478,25 @@ fn diagnostic_handler_callback_inner(
                 message: &opt.message,
             });
         }
-        llvm::diagnostic::PGO(diagnostic_ref) | llvm::diagnostic::Linker(diagnostic_ref) => {
+
+        // FIXME(#164677): Don't ignore stack size warnings.
+        llvm::diagnostic::StackSize => {}
+
+        llvm::diagnostic::Other(diagnostic_ref) => {
             let message = llvm::build_string(|s| unsafe {
                 llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
             })
             .expect("non-UTF8 diagnostic");
-            dcx.emit_warn(FromLlvmDiag { message });
+            match diagnostic_ref.severity() {
+                llvm::DiagnosticSeverity::Error => {
+                    dcx.emit_err(FromLlvmDiag { message });
+                }
+                llvm::DiagnosticSeverity::Warning => {
+                    dcx.emit_warn(FromLlvmDiag { message });
+                }
+                _ => {}
+            };
         }
-        llvm::diagnostic::Unsupported(diagnostic_ref) => {
-            let message = llvm::build_string(|s| unsafe {
-                llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
-            })
-            .expect("non-UTF8 diagnostic");
-            dcx.emit_err(FromLlvmDiag { message });
-        }
-        llvm::diagnostic::UnknownDiagnostic(..) => {}
     }
 }
 
@@ -1207,7 +1211,7 @@ pub(crate) fn bitcode_section_name(cgcx: &CodegenContext) -> &'static CStr {
 fn embed_bitcode<'ll>(
     cgcx: &CodegenContext,
     llcx: llvm::Context<'ll>,
-    llmod: &'ll llvm::Module,
+    llmod: llvm::Module<'ll>,
     bitcode: &[u8],
 ) {
     // We're adding custom sections to the output object file, but we definitely
@@ -1293,7 +1297,7 @@ fn embed_bitcode<'ll>(
 fn create_msvc_imps<'ll>(
     cgcx: &CodegenContext,
     llcx: llvm::Context<'ll>,
-    llmod: &'ll llvm::Module,
+    llmod: llvm::Module<'ll>,
 ) {
     if !cgcx.msvc_imps_needed {
         return;
@@ -1359,7 +1363,11 @@ fn record_artifact_size(
     }
 }
 
-fn record_llvm_cgu_instructions_stats(prof: &SelfProfilerRef, name: &str, llmod: &llvm::Module) {
+fn record_llvm_cgu_instructions_stats<'ll>(
+    prof: &SelfProfilerRef,
+    name: &str,
+    llmod: llvm::Module<'ll>,
+) {
     if !prof.enabled() {
         return;
     }

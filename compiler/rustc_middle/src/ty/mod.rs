@@ -923,7 +923,7 @@ impl<'tcx> ProvisionalHiddenType<'tcx> {
         // This zip may have several times the same lifetime in `args` paired with a different
         // lifetime from `id_args`. Simply `collect`ing the iterator is the correct behaviour:
         // it will pick the last one, which is the one we introduced in the impl-trait desugaring.
-        let map = args.iter().zip(id_args).collect();
+        let map = args.iter().zip(id_args.iter()).collect();
         debug!("map = {:#?}", map);
 
         // Convert the type from the function into a type valid outside by mapping generic
@@ -1584,11 +1584,7 @@ impl Hash for FieldDef {
 impl<'tcx> FieldDef {
     /// Returns the type of this field. The `args` are typically obtained via
     /// the second field of [`TyKind::Adt`].
-    pub fn ty(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> Unnormalized<'tcx, Ty<'tcx>> {
+    pub fn ty(&self, tcx: TyCtxt<'tcx>, args: GenericArgs<'tcx>) -> Unnormalized<'tcx, Ty<'tcx>> {
         tcx.type_of(self.did).instantiate(tcx, args)
     }
 
@@ -1976,7 +1972,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn ordinary_coroutine_layout(
         self,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         let coroutine_kind_ty = args.as_coroutine().kind_ty();
         let mir = self.optimized_mir(def_id);
@@ -2017,7 +2013,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn async_drop_coroutine_layout(
         self,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         let ty = || Ty::new_coroutine(self, def_id, args);
         if args[0].has_placeholders() || args[0].has_non_region_param() {
@@ -2034,7 +2030,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn coroutine_layout(
         self,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         if self.is_async_drop_in_place_coroutine(def_id) {
             // layout of `async_drop_in_place<T>::{closure}` in case,

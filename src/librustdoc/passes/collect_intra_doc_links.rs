@@ -21,7 +21,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
 use rustc_resolve::rustdoc::{
-    DocStrings, MalformedGenerics, has_primitive_or_keyword_or_attribute_docs,
+    DocStrings, MalformedGenerics, has_primitive_or_keyword_or_attribute_docs_hir,
     prepare_to_doc_link_resolution, source_span_for_markdown_range, strip_generics_from_path,
 };
 use rustc_span::def_id::ModId;
@@ -1081,7 +1081,7 @@ impl LinkCollector<'_, '_> {
                 && item_id
                     .as_local()
                     .is_some_and(|local_def_id| !effective_visibilities.is_exported(local_def_id))
-                && !has_primitive_or_keyword_or_attribute_docs(&item.attrs.other_attrs)
+                && !has_primitive_or_keyword_or_attribute_docs_hir(&item.attrs.other_attrs)
         };
 
         if let Some(def_id) = item.item_id.as_def_id()

@@ -1011,7 +1011,7 @@ pub fn iter_fields<'tcx>(
             for (v_index, v_def) in def.variants().iter_enumerated() {
                 let variant = if def.is_struct() { None } else { Some(v_index) };
                 for (f_index, f_def) in v_def.fields.iter().enumerate() {
-                    let field_ty = f_def.ty(tcx, args);
+                    let field_ty = f_def.ty(tcx, *args);
                     let field_ty =
                         tcx.try_normalize_erasing_regions(typing_env, field_ty).unwrap_or_else(
                             |_| tcx.erase_and_anonymize_regions(field_ty.skip_norm_wip()),

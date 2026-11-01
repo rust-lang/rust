@@ -178,6 +178,7 @@ impl<'sess> AttributeParser<'sess> {
         target_span: Span,
         target_node_id: NodeId,
         target: Target,
+        ast_target: AstTarget<'_>,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
         parse_fn: fn(cx: &mut AcceptContext<'_, '_>, item: &ArgParser) -> Option<T>,
@@ -208,6 +209,7 @@ impl<'sess> AttributeParser<'sess> {
             target_span,
             target_node_id,
             target,
+            ast_target,
             features,
             emit_errors,
             &args,
@@ -230,6 +232,7 @@ impl<'sess> AttributeParser<'sess> {
         target_span: Span,
         target_node_id: NodeId,
         target: Target,
+        ast_target: AstTarget<'_>,
         features: Option<&'sess Features>,
         should_emit: ShouldEmit,
         args: &I,
@@ -257,6 +260,7 @@ impl<'sess> AttributeParser<'sess> {
                 emit_lint: &mut emit_lint,
                 #[cfg(debug_assertions)]
                 has_lint_been_emitted: AtomicBool::new(false),
+                ast_target,
             },
             attr_span,
             inner_span,
@@ -423,6 +427,7 @@ impl<'sess> AttributeParser<'sess> {
                                 emit_lint: &mut emit_lint,
                                 #[cfg(debug_assertions)]
                                 has_lint_been_emitted: AtomicBool::new(false),
+                                ast_target,
                             },
                             attr_span,
                             inner_span,
@@ -494,6 +499,7 @@ impl<'sess> AttributeParser<'sess> {
                     cx: self,
                     target_span,
                     target,
+                    ast_target,
                     emit_lint: &mut emit_lint,
                     #[cfg(debug_assertions)]
                     has_lint_been_emitted: AtomicBool::new(false),
@@ -518,13 +524,13 @@ impl<'sess> AttributeParser<'sess> {
                             cx: self,
                             target_span,
                             target,
+                            ast_target,
                             emit_lint: &mut emit_lint,
                             #[cfg(debug_assertions)]
                             has_lint_been_emitted: AtomicBool::new(false),
                         },
                         all_attrs: &attr_paths,
                         parsed_attrs: &attributes,
-                        ast_target,
                     },
                     attr_span,
                 );

@@ -2,7 +2,9 @@ error: expected expression, found `let` statement
   --> $DIR/invalid-let-in-a-valid-let-context.rs:8:19
    |
 LL |         let _ = &&let Some(x) = Some(42);
-   |                   ^^^
+   |                  -^^^
+   |                  |
+   |                  expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -18,7 +20,9 @@ error: expected expression, found `let` statement
   --> $DIR/invalid-let-in-a-valid-let-context.rs:13:57
    |
 LL |         if let Some(elem) = _opt && [1, 2, 3][let _ = &&let Some(x) = Some(42)] = 1 {
-   |                                                         ^^^
+   |                                                        -^^^
+   |                                                        |
+   |                                                        expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -66,7 +70,9 @@ error: expected expression, found `let` statement
   --> $DIR/invalid-let-in-a-valid-let-context.rs:42:21
    |
 LL |             let x = let y = 1;
-   |                     ^^^
+   |                   - ^^^
+   |                   |
+   |                   expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 

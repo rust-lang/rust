@@ -15,6 +15,8 @@ from typing import Optional, Union
 import lldb
 import lldb_lookup
 
+from debugger_tester.common import print_error
+
 from ..common import (
     BLESS,
     TARGET,
@@ -266,9 +268,18 @@ def child_from_lldb(child: lldb.SBValue) -> Child:
     else:
         value = None
 
-    children = [
-        child_from_lldb(child.GetChildAtIndex(i)) for i in range(child.GetNumChildren())
-    ]
+    children = []
+
+    for i in range(child.GetNumChildren()):
+        inner_child = child.GetChildAtIndex(i)
+        if inner_child.IsValid():
+            children.append(child_from_lldb(inner_child))
+        else:
+            print_error(
+                child.get_expr_path(),
+                f"GetChildAtIndex({i}) returned an invalid SBValue",
+            )
+            children.append(Child("", "", None, None))
 
     if is_arraylike(children):
         children = make_arraylike(children)
@@ -327,9 +338,17 @@ def variable_from_lldb(var: lldb.SBValue) -> Variable:
     else:
         pretty_print = None
 
-    children = [
-        child_from_lldb(var.GetChildAtIndex(i)) for i in range(var.GetNumChildren())
-    ]
+    children = []
+
+    for i in range(var.GetNumChildren()):
+        child = var.GetChildAtIndex(i)
+        if child.IsValid():
+            children.append(child_from_lldb(child))
+        else:
+            print_error(
+                var.GetName(), f"GetChildAtIndex({i}) returned an invalid SBValue"
+            )
+            children.append(Child("", "", None, None))
 
     if is_arraylike(children):
         children = make_arraylike(children)

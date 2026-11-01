@@ -1399,6 +1399,11 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             // See tests/ui/traits/next-solver/cycles/fixpoint-rerun-all-cycle-heads.rs
             // for an example.
             //
+            // FIXME: We should assert that region constraints match when both results
+            // have certainty `Yes` but the weakened leak check means there
+            // may be additional constraints involving leaked placeholders.
+            // See `tests/ui/traits/next-solver/cycles/leak-check-coinductive-cycle.rs`.
+            //
             // Check whether we reached a fixpoint, either because the final result
             // is equal to the provisional result of the previous iteration, or because
             // this was only the head of either coinductive or inductive cycles, and the

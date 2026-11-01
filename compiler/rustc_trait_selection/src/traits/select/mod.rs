@@ -25,9 +25,9 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, CandidatePreferenceMode, CantBeErased, DeepRejectCtxt, GenericArgsRef,
-    PolyProjectionClause, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode,
-    Unnormalized, Upcast, elaborate, may_use_unstable_feature,
+    self, CandidatePreferenceMode, CantBeErased, DeepRejectCtxt, GenericArgs, PolyProjectionClause,
+    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
+    elaborate, may_use_unstable_feature,
 };
 use rustc_next_trait_solver::solve::AliasBoundKind;
 use rustc_span::bug;
@@ -1680,7 +1680,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // want, but fixing it causes some ambiguity:
             // <https://github.com/rust-lang/rust/issues/125196>.
             if !generics.is_own_empty()
-                && obligation.predicate.args[generics.parent_count..].iter().any(|&p| {
+                && obligation.predicate.args.as_slice()[generics.parent_count..].iter().any(|&p| {
                     p.has_non_region_infer()
                         && match p.kind() {
                             ty::GenericArgKind::Const(ct) => {
@@ -2372,7 +2372,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &mut self,
         impl_def_id: DefId,
         obligation: &PolyTraitObligation<'tcx>,
-    ) -> Normalized<'tcx, GenericArgsRef<'tcx>> {
+    ) -> Normalized<'tcx, GenericArgs<'tcx>> {
         let impl_trait_header = self.tcx().impl_trait_header(impl_def_id);
         match self.match_impl(impl_def_id, impl_trait_header, obligation) {
             Ok(args) => args,
@@ -2389,7 +2389,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         impl_def_id: DefId,
         impl_trait_header: ty::ImplTraitHeader<'tcx>,
         obligation: &PolyTraitObligation<'tcx>,
-    ) -> Result<Normalized<'tcx, GenericArgsRef<'tcx>>, ()> {
+    ) -> Result<Normalized<'tcx, GenericArgs<'tcx>>, ()> {
         let placeholder_obligation =
             self.infcx.enter_forall_and_leak_universe(obligation.predicate);
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
@@ -2703,8 +2703,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         cause: &ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
-        def_id: DefId,              // of impl or trait
-        args: GenericArgsRef<'tcx>, // for impl or trait
+        def_id: DefId,           // of impl or trait
+        args: GenericArgs<'tcx>, // for impl or trait
         parent_trait_pred: ty::Binder<'tcx, ty::TraitClause<'tcx>>,
     ) -> PredicateObligations<'tcx> {
         let tcx = self.tcx();

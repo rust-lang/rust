@@ -167,7 +167,7 @@ fn needless_borrow_count<'tcx>(
     cx: &LateContext<'tcx>,
     possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
     fn_id: DefId,
-    callee_args: ty::GenericArgsRef<'tcx>,
+    callee_args: ty::GenericArgs<'tcx>,
     arg_index: usize,
     param_ty: ParamTy,
     mut expr: &Expr<'tcx>,
@@ -244,7 +244,7 @@ fn needless_borrow_count<'tcx>(
 
     // `args_with_referent_ty` can be constructed outside of `check_referent` because the same
     // elements are modified each time `check_referent` is called.
-    let mut args_with_referent_ty = callee_args.to_vec();
+    let mut args_with_referent_ty = callee_args.as_slice().to_vec();
 
     let mut check_reference_and_referent = |reference: &Expr<'tcx>, referent: &Expr<'tcx>| {
         if let ExprKind::Field(base, _) = &referent.kind

@@ -1,0 +1,34 @@
+error: `if` expression that could be written as a logical && expression
+  --> tests/ui/ifs_as_logical_ops.rs:13:5
+   |
+LL |     if b1 { b2 } else { false }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b1 && b2`
+   |
+   = note: `-D clippy::ifs-as-logical-ops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ifs_as_logical_ops)]`
+
+error: `if` expression that could be written as a logical && expression
+  --> tests/ui/ifs_as_logical_ops.rs:22:5
+   |
+LL |     if b1 { { b2 } } else { false }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b1 && { b2 }`
+
+error: `if` expression that could be written as a logical && expression
+  --> tests/ui/ifs_as_logical_ops.rs:120:12
+   |
+LL |       } else if b2 {
+   |  ____________^
+LL | |         b3
+LL | |     } else {
+LL | |         false
+LL | |     }
+   | |_____^ help: try: `{ b2 && b3 }`
+
+error: `if` expression that could be written as a logical && expression
+  --> tests/ui/ifs_as_logical_ops.rs:171:5
+   |
+LL |     if b1 { b2!() } else { false }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b1 && b2!()`
+
+error: aborting due to 4 previous errors
+

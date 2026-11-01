@@ -965,11 +965,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // so offsetting a pointer to ZST is a noop.
                     lhs
                 } else {
-                    let llty = bx.cx().backend_type(pointee_layout);
                     if !rhs_ty.is_signed() {
-                        bx.inbounds_nuw_gep(llty, lhs, &[rhs])
+                        bx.inbounds_nuw_gep(pointee_layout.size, lhs, rhs)
                     } else {
-                        bx.inbounds_gep(llty, lhs, &[rhs])
+                        bx.inbounds_gep(pointee_layout.size, lhs, rhs)
                     }
                 }
             }

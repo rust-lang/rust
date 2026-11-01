@@ -15,7 +15,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::Session;
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::{
@@ -55,13 +55,13 @@ pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
 
     type_map: metadata::TypeMap<'ll, 'tcx>,
-    adt_stack: RefCell<Vec<(DefId, GenericArgsRef<'tcx>)>>,
+    adt_stack: RefCell<Vec<(DefId, GenericArgs<'tcx>)>>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
 }
 
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
-    pub(crate) fn new(llmod: &'ll llvm::Module, sess: &Session) -> Self {
+    pub(crate) fn new(llmod: llvm::Module<'ll>, sess: &Session) -> Self {
         debug!("CodegenUnitDebugContext::new");
 
         match sess.target.debuginfo_kind {
@@ -287,7 +287,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         fn get_template_parameters<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
             generics: &ty::Generics,
-            args: GenericArgsRef<'tcx>,
+            args: GenericArgs<'tcx>,
         ) -> &'ll DIArray {
             if args.terms().next().is_none() {
                 return create_DIArray(DIB(cx), &[]);

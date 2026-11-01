@@ -246,29 +246,6 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn is_doc_keyword_or_attribute(&self) -> bool {
-        match &self.kind {
-            AttrKind::Normal(_) => {
-                if self.has_name(sym::doc)
-                    && let Some(items) = self.meta_item_list()
-                {
-                    for item in items {
-                        if item.has_name(sym::keyword) || item.has_name(sym::attribute) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-
-        false
-    }
-
-    fn is_rustc_doc_primitive(&self) -> bool {
-        self.has_name(sym::rustc_doc_primitive)
-    }
-
     /// Returns whether this attribute is any of the proc macro attributes.
     /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
     fn is_proc_macro_attr(&self) -> bool {
@@ -993,12 +970,6 @@ pub trait AttributeExt: Debug + 'static {
     /// commented module (for inner doc) vs within its parent module (for outer
     /// doc).
     fn doc_resolution_scope(&self) -> Option<AttrStyle>;
-
-    /// Returns `true` is this attribute contains `doc(keyword)` or `doc(attribute)`.
-    fn is_doc_keyword_or_attribute(&self) -> bool;
-
-    /// Returns `true` if this is a `#[rustc_doc_primitive]` attribute.
-    fn is_rustc_doc_primitive(&self) -> bool;
 }
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding

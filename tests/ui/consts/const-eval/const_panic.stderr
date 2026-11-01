@@ -73,10 +73,10 @@ LL | const W2_CORE: () = core::panic!("{}", MSG);
 error[E0080]: the program aborted execution
   --> $DIR/const_panic.rs:44:19
    |
-LL | const ABORT: () = core::process::abort_immediate();
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `ABORT` failed inside this call
+LL | const ABORT: () = core::process::crash();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `ABORT` failed inside this call
    |
-note: inside `std::process::abort_immediate`
+note: inside `crash`
   --> $SRC_DIR/core/src/process.rs:LL:COL
 
 error: aborting due to 13 previous errors

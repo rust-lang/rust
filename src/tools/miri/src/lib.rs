@@ -47,6 +47,7 @@
     clippy::too_long_first_doc_paragraph,
     clippy::len_zero,
     clippy::while_let_loop,
+    clippy::new_instead_of_clear,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
 )]

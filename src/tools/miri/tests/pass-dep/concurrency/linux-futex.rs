@@ -190,6 +190,8 @@ fn wait_wake() {
 fn wait_wake_bitset() {
     static mut FUTEX: i32 = 0;
 
+    let start = Instant::now();
+
     let t = thread::spawn(move || {
         thread::sleep(Duration::from_millis(50));
         unsafe {
@@ -222,8 +224,6 @@ fn wait_wake_bitset() {
             );
         }
     });
-
-    let start = Instant::now();
 
     unsafe {
         assert_eq!(
