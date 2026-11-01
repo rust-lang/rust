@@ -6,13 +6,13 @@ LL |         foo(0);
    |         |
    |         arguments to this function are incorrect
    |
-   = note: expected raw pointer `*const u8`
-                     found type `usize`
 help: if you meant to create a null pointer, use `std::ptr::null()`
    |
 LL -         foo(0);
 LL +         foo(std::ptr::null());
    |
+   = note: expected raw pointer `*const u8`
+                     found type `usize`
 note: function defined here
   --> $DIR/suggest-null-ptr.rs:7:8
    |
@@ -27,13 +27,13 @@ LL |         foo_mut(0);
    |         |
    |         arguments to this function are incorrect
    |
-   = note: expected raw pointer `*mut u8`
-                     found type `usize`
 help: if you meant to create a null pointer, use `std::ptr::null_mut()`
    |
 LL -         foo_mut(0);
 LL +         foo_mut(std::ptr::null_mut());
    |
+   = note: expected raw pointer `*mut u8`
+                     found type `usize`
 note: function defined here
   --> $DIR/suggest-null-ptr.rs:9:8
    |
@@ -48,13 +48,13 @@ LL |         usize(0);
    |         |
    |         arguments to this function are incorrect
    |
-   = note: expected raw pointer `*const usize`
-                     found type `usize`
 help: if you meant to create a null pointer, use `std::ptr::null()`
    |
 LL -         usize(0);
 LL +         usize(std::ptr::null());
    |
+   = note: expected raw pointer `*const usize`
+                     found type `usize`
 note: function defined here
   --> $DIR/suggest-null-ptr.rs:11:8
    |
@@ -69,13 +69,13 @@ LL |         usize_mut(0);
    |         |
    |         arguments to this function are incorrect
    |
-   = note: expected raw pointer `*mut usize`
-                     found type `usize`
 help: if you meant to create a null pointer, use `std::ptr::null_mut()`
    |
 LL -         usize_mut(0);
 LL +         usize_mut(std::ptr::null_mut());
    |
+   = note: expected raw pointer `*mut usize`
+                     found type `usize`
 note: function defined here
   --> $DIR/suggest-null-ptr.rs:13:8
    |

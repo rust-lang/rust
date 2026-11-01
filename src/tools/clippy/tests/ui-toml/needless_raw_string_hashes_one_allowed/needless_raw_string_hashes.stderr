@@ -4,13 +4,13 @@ error: unnecessary hashes around raw string literal
 LL |     r##"\aaa"##;
    |     ^^^^^^^^^^^
    |
-   = note: `-D clippy::needless-raw-string-hashes` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_raw_string_hashes)]`
 help: remove one hash from both sides of the string literal
    |
 LL -     r##"\aaa"##;
 LL +     r#"\aaa"#;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::needless_raw_string_hashes)]`
+   = note: `-D clippy::needless-raw-string-hashes` implied by `-D warnings`
 
 error: unnecessary hashes around raw string literal
   --> tests/ui-toml/needless_raw_string_hashes_one_allowed/needless_raw_string_hashes.rs:8:5

@@ -7,8 +7,8 @@ LL | |         some_slice[i] = 0;
 LL | |     }
    | |_____^ help: try: `some_slice.fill(0);`
    |
-   = note: `-D clippy::manual-slice-fill` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_slice_fill)]`
+   = note: `-D clippy::manual-slice-fill` implied by `-D warnings`
 
 error: manually filling a slice
   --> tests/ui/manual_slice_fill.rs:31:5

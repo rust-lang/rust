@@ -8,8 +8,8 @@ LL | |         value
 LL | |     }
    | |_____^ expected `i32`, found `()`
    |
-   = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
+   = note: `if` expressions without `else` evaluate to `()`
 help: consider using an irrefutable `let` binding instead
    |
 LL ~     let Enum::Variant(value) = x;
@@ -27,8 +27,8 @@ LL | |         x
 LL | |     }
    | |_____^ expected `i32`, found `()`
    |
-   = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
+   = note: `if` expressions without `else` evaluate to `()`
 help: consider using an irrefutable `let` binding instead
    |
 LL ~     let Enum::Variant(value) = x;
@@ -47,8 +47,8 @@ LL | |         x
 LL | |     }
    | |_____^ expected `i32`, found `()`
    |
-   = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
+   = note: `if` expressions without `else` evaluate to `()`
 help: consider using an irrefutable `let` binding instead
    |
 LL ~     let Struct(value) = x;

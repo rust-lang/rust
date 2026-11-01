@@ -4,12 +4,12 @@ error[E0532]: cannot find tuple struct or tuple variant `Option` in this scope
 LL |     if let Option(_) = x {
    |            ^^^^^^
    |
-   = note: an enum named `Option` exists in another namespace
 help: try to match against one of the enum's variants
    |
 LL -     if let Option(_) = x {
 LL +     if let std::option::Option::Some(_) = x {
    |
+   = note: an enum named `Option` exists in another namespace
    = help: you might have meant to match against the enum's non-tuple variant
 
 error[E0532]: cannot find tuple struct or tuple variant `Example` in this scope
@@ -18,11 +18,11 @@ error[E0532]: cannot find tuple struct or tuple variant `Example` in this scope
 LL |     if let Example(_) = y {
    |            ^^^^^^^
    |
-   = note: an enum named `Example` exists in another namespace
 help: try to match against one of the enum's variants
    |
 LL |     if let Example::Ex(_) = y {
    |                   ++++
+   = note: an enum named `Example` exists in another namespace
    = help: you might have meant to match against the enum's non-tuple variant
 note: the enum is defined here
   --> $DIR/issue-43871-enum-instead-of-variant.rs:1:1
@@ -36,12 +36,12 @@ error[E0423]: cannot find function, tuple struct or tuple variant `Option` in th
 LL |     let x = Option(1);
    |             ^^^^^^
    |
-   = note: an enum named `Option` exists in another namespace
 help: try to construct one of the enum's variants
    |
 LL -     let x = Option(1);
 LL +     let x = std::option::Option::Some(1);
    |
+   = note: an enum named `Option` exists in another namespace
    = help: you might have meant to construct the enum's non-tuple variant
 
 error[E0423]: cannot find function, tuple struct or tuple variant `Void` in this scope
@@ -50,8 +50,8 @@ error[E0423]: cannot find function, tuple struct or tuple variant `Void` in this
 LL |     let y = Void();
    |             ^^^^
    |
-   = note: an enum named `Void` exists in another namespace
    = help: the enum has no tuple variants to construct
+   = note: an enum named `Void` exists in another namespace
 note: the enum is defined here
   --> $DIR/issue-43871-enum-instead-of-variant.rs:3:1
    |
@@ -64,8 +64,8 @@ error[E0423]: cannot find function, tuple struct or tuple variant `ManyVariants`
 LL |     let z = ManyVariants();
    |             ^^^^^^^^^^^^
    |
-   = note: an enum named `ManyVariants` exists in another namespace
    = help: the enum has no tuple variants to construct
+   = note: an enum named `ManyVariants` exists in another namespace
    = help: you might have meant to construct one of the enum's non-tuple variants
 note: the enum is defined here
   --> $DIR/issue-43871-enum-instead-of-variant.rs:5:1

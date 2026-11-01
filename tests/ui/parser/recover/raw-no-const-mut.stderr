@@ -74,16 +74,16 @@ error[E0425]: cannot find function `f` in this scope
 LL |     f(&raw 2);
    |     ^ not found in this scope
    |
-note: similarly named function `a` defined here
-  --> $DIR/raw-no-const-mut.rs:1:1
-   |
-LL | fn a() {
-   | ^^^^^^
 help: a function with a similar name exists
    |
 LL -     f(&raw 2);
 LL +     a(&raw 2);
    |
+note: similarly named function `a` defined here
+  --> $DIR/raw-no-const-mut.rs:1:1
+   |
+LL | fn a() {
+   | ^^^^^^
 
 error: aborting due to 6 previous errors
 

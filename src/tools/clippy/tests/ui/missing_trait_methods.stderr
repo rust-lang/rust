@@ -9,8 +9,8 @@ help: implement the method
    |
 LL |     fn provided() {}
    |     ^^^^^^^^^^^^^
-   = note: `-D clippy::missing-trait-methods` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::missing_trait_methods)]`
+   = note: `-D clippy::missing-trait-methods` implied by `-D warnings`
 
 error: missing trait method provided by default: `b`
   --> tests/ui/missing_trait_methods.rs:26:1

@@ -38,6 +38,10 @@ LL |         val.use_self()
    |         `val` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
    |
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl MyTrait for Box<dyn ObjectTrait<Assoc = i32> + '_> {
+   |                                                       ++++
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:60:30
    |
@@ -45,10 +49,6 @@ LL |     impl MyTrait for Box<dyn ObjectTrait<Assoc = i32>> {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
 LL |         fn use_self(&self) -> &() { panic!() }
    |            -------- calling this method introduces the `impl`'s `'static` requirement
-help: consider relaxing the implicit `'static` requirement
-   |
-LL |     impl MyTrait for Box<dyn ObjectTrait<Assoc = i32> + '_> {
-   |                                                       ++++
 
 error[E0515]: cannot return value referencing function parameter `val`
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:66:9

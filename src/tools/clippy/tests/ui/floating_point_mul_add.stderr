@@ -4,9 +4,9 @@ error: multiply and add expressions may be calculated more efficiently and accur
 LL |     let _ = a * b + c;
    |             ^^^^^^^^^ help: consider using: `a.mul_add(b, c)`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
    = note: the performance gain from `mul_add` may vary depending on the target architecture
    = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
 
 error: multiply and add expressions may be calculated more efficiently and accurately
   --> tests/ui/floating_point_mul_add.rs:11:13

@@ -4,12 +4,12 @@ error: expected a pattern, found an expression
 LL |         x.y => (),
    |         ^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x.y => (),
 LL +         val if val == x.y => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.y;
@@ -24,12 +24,12 @@ error: expected a pattern, found an expression
 LL |         x.0 => (),
    |         ^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x.0 => (),
 LL +         val if val == x.0 => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0;
@@ -45,12 +45,12 @@ error: expected a pattern, found an expression
 LL |         x._0 => (),
    |         ^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x._0 => (),
 LL +         val if val == x._0 => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x._0;
@@ -67,12 +67,12 @@ error: expected a pattern, found an expression
 LL |         x.0.1 => (),
    |         ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x.0.1 => (),
 LL +         val if val == x.0.1 => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0.1;
@@ -89,12 +89,12 @@ error: expected a pattern, found an expression
 LL |         x.4.y.17.__z => (),
    |         ^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x.4.y.17.__z => (),
 LL +         val if val == x.4.y.17.__z => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.4.y.17.__z;
@@ -141,12 +141,12 @@ error: expected a pattern, found an expression
 LL |         x[0] => (),
    |         ^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x[0] => (),
 LL +         val if val == x[0] => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x[0];
@@ -160,12 +160,12 @@ error: expected a pattern, found an expression
 LL |         x[..] => (),
    |         ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x[..] => (),
 LL +         val if val == x[..] => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x[..];
@@ -207,12 +207,12 @@ error: expected a pattern, found an expression
 LL |         x.f() => (),
    |         ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x.f() => (),
 LL +         val if val == x.f() => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.f();
@@ -226,12 +226,12 @@ error: expected a pattern, found an expression
 LL |         x._f() => (),
    |         ^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x._f() => (),
 LL +         val if val == x._f() => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x._f();
@@ -246,12 +246,12 @@ error: expected a pattern, found an expression
 LL |         x? => (),
    |         ^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x? => (),
 LL +         val if val == x? => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x?;
@@ -267,12 +267,12 @@ error: expected a pattern, found an expression
 LL |         ().f() => (),
    |         ^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         ().f() => (),
 LL +         val if val == ().f() => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = ().f();
@@ -289,12 +289,12 @@ error: expected a pattern, found an expression
 LL |         (0, x)?.f() => (),
    |         ^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         (0, x)?.f() => (),
 LL +         val if val == (0, x)?.f() => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = (0, x)?.f();
@@ -311,12 +311,12 @@ error: expected a pattern, found an expression
 LL |         x.f().g() => (),
    |         ^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x.f().g() => (),
 LL +         val if val == x.f().g() => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.f().g();
@@ -333,12 +333,12 @@ error: expected a pattern, found an expression
 LL |         0.f()?.g()?? => (),
    |         ^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         0.f()?.g()?? => (),
 LL +         val if val == 0.f()?.g()?? => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 0.f()?.g()??;
@@ -355,12 +355,12 @@ error: expected a pattern, found an expression
 LL |         x as usize => (),
    |         ^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x as usize => (),
 LL +         val if val == x as usize => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x as usize;
@@ -374,12 +374,12 @@ error: expected a pattern, found an expression
 LL |         0 as usize => (),
    |         ^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         0 as usize => (),
 LL +         val if val == 0 as usize => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 0 as usize;
@@ -394,12 +394,12 @@ error: expected a pattern, found an expression
 LL |         x.f().0.4 as f32 => (),
    |         ^^^^^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x.f().0.4 as f32 => (),
 LL +         val if val == x.f().0.4 as f32 => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.f().0.4 as f32;
@@ -415,12 +415,12 @@ error: expected a pattern, found an expression
 LL |         1 + 1 => (),
    |         ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         1 + 1 => (),
 LL +         val if val == 1 + 1 => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 1;
@@ -434,12 +434,12 @@ error: expected a pattern, found an expression
 LL |         (1 + 2) * 3 => (),
    |         ^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         (1 + 2) * 3 => (),
 LL +         val if val == (1 + 2) * 3 => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = (1 + 2) * 3;
@@ -454,12 +454,12 @@ error: expected a pattern, found an expression
 LL |         x.0 > 2 => (),
    |         ^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x.0 > 2 => (),
 LL +         val if val == (x.0 > 2) => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0 > 2;
@@ -476,12 +476,12 @@ error: expected a pattern, found an expression
 LL |         x.0 == 2 => (),
    |         ^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         x.0 == 2 => (),
 LL +         val if val == (x.0 == 2) => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0 == 2;
@@ -498,12 +498,12 @@ error: expected a pattern, found an expression
 LL |         (x, y.0 > 2) if x != 0 => (),
    |             ^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to the match arm guard
    |
 LL -         (x, y.0 > 2) if x != 0 => (),
 LL +         (x, val) if x != 0 && val == (y.0 > 2) => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = y.0 > 2;
@@ -517,12 +517,12 @@ error: expected a pattern, found an expression
 LL |         (x, y.0 > 2) if x != 0 || x != 1 => (),
    |             ^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to the match arm guard
    |
 LL -         (x, y.0 > 2) if x != 0 || x != 1 => (),
 LL +         (x, val) if (x != 0 || x != 1) && val == (y.0 > 2) => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = y.0 > 2;
@@ -554,12 +554,12 @@ error: expected a pattern, found an expression
 LL |         u8::MAX.abs() => (),
    |         ^^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         u8::MAX.abs() => (),
 LL +         val if val == u8::MAX.abs() => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = u8::MAX.abs();
@@ -573,12 +573,12 @@ error: expected a pattern, found an expression
 LL |         z @ w @ v.u() => (),
    |                 ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         z @ w @ v.u() => (),
 LL +         z @ w @ val if val == v.u() => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = v.u();
@@ -595,12 +595,12 @@ error: expected a pattern, found an expression
 LL |         y.ilog(3) => (),
    |         ^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         y.ilog(3) => (),
 LL +         val if val == y.ilog(3) => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = y.ilog(3);
@@ -617,12 +617,12 @@ error: expected a pattern, found an expression
 LL |         n + 1 => (),
    |         ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         n + 1 => (),
 LL +         val if val == n + 1 => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = n + 1;
@@ -639,12 +639,12 @@ error: expected a pattern, found an expression
 LL |         ("".f() + 14 * 8) => (),
    |          ^^^^^^^^^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         ("".f() + 14 * 8) => (),
 LL +         (val) if val == "".f() + 14 * 8 => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = "".f() + 14 * 8;
@@ -661,12 +661,12 @@ error: expected a pattern, found an expression
 LL |         f?() => (),
    |         ^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
 LL -         f?() => (),
 LL +         val if val == f?() => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = f?();

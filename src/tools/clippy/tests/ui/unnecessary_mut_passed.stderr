@@ -4,13 +4,13 @@ error: the function `takes_ref` doesn't need a mutable reference
 LL |     takes_ref(&mut 42);
    |               ^^^^^^^
    |
-   = note: `-D clippy::unnecessary-mut-passed` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_mut_passed)]`
 help: remove this `mut`
    |
 LL -     takes_ref(&mut 42);
 LL +     takes_ref(&42);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_mut_passed)]`
+   = note: `-D clippy::unnecessary-mut-passed` implied by `-D warnings`
 
 error: the function `takes_ref_ref` doesn't need a mutable reference
   --> tests/ui/unnecessary_mut_passed.rs:60:19

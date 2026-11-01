@@ -7,12 +7,12 @@ LL |
 LL |         Either::Right(_) => {}
    |         ^^^^^^^^^^^^^^^^ expected `S`, found `Either<_, _>`
    |
-   = note: expected struct `S`
-                found enum `Either<_, _>`
 help: try wrapping the pattern in `S`
    |
 LL |         S(Either::Right(_)) => {}
    |         ++                +
+   = note: expected struct `S`
+                found enum `Either<_, _>`
 help: you might have meant to use field `0` whose type is `Either<usize, usize>`
    |
 LL |     match S(Either::Left(5)).0 {

@@ -4,13 +4,13 @@ error: binding's name is too similar to existing binding
 LL |     let bluby: i32;
    |         ^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::similar_names)]`
 note: existing binding defined here
   --> tests/ui/similar_names.rs:44:9
    |
 LL |     let blubx: i32;
    |         ^^^^^
    = note: `-D clippy::similar-names` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::similar_names)]`
 
 error: binding's name is too similar to existing binding
   --> tests/ui/similar_names.rs:49:9

@@ -4,8 +4,8 @@ error[E0658]: use of unstable library feature `gca_min_const_items`
 LL |     let _: S<gca!([1, 2])> = S::<gca!([1, 2])>;
    |              ^^^
    |
-   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
    = help: add `#![feature(gca_min_const_items)]` to the crate attributes to enable
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `gca_min_const_items`
@@ -14,8 +14,8 @@ error[E0658]: use of unstable library feature `gca_min_const_items`
 LL |     let _: S<gca!([1, 2])> = S::<gca!([1, 2])>;
    |                                  ^^^
    |
-   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
    = help: add `#![feature(gca_min_const_items)]` to the crate attributes to enable
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: expected type, found `gca!()` constant
@@ -36,8 +36,8 @@ error[E0658]: use of unstable library feature `gca_min_const_items`
 LL | use std::gca;
    |     ^^^^^^^^
    |
-   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
    = help: add `#![feature(gca_min_const_items)]` to the crate attributes to enable
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0747]: type provided when a constant was expected

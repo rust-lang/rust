@@ -4,8 +4,8 @@ error: used `cloned` where `copied` could be used instead
 LL |     let _ = [1].iter().cloned();
    |                        ^^^^^^ help: try: `copied`
    |
-   = note: `-D clippy::cloned-instead-of-copied` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cloned_instead_of_copied)]`
+   = note: `-D clippy::cloned-instead-of-copied` implied by `-D warnings`
 
 error: used `cloned` where `copied` could be used instead
   --> tests/ui/cloned_instead_of_copied.rs:8:31

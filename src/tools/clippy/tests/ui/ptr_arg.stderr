@@ -4,13 +4,13 @@ error: writing `&Vec` instead of `&[_]` involves a new object where a slice will
 LL | fn do_vec(x: &Vec<i64>) {
    |              ^^^^^^^^^
    |
-   = note: `-D clippy::ptr-arg` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::ptr_arg)]`
 help: change this to
    |
 LL - fn do_vec(x: &Vec<i64>) {
 LL + fn do_vec(x: &[i64]) {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::ptr_arg)]`
+   = note: `-D clippy::ptr-arg` implied by `-D warnings`
 
 error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
   --> tests/ui/ptr_arg.rs:12:18
@@ -396,12 +396,12 @@ LL |     fn cow_good_ret_ty<'a>(input: &'a Cow<'a, str>) -> &str {
    |                                    the lifetime is named here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
-   = note: `-D mismatched-lifetime-syntaxes` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(mismatched_lifetime_syntaxes)]`
 help: consistently use `'a`
    |
 LL |     fn cow_good_ret_ty<'a>(input: &'a Cow<'a, str>) -> &'a str {
    |                                                         ++
+   = help: to override `-D warnings` add `#[allow(mismatched_lifetime_syntaxes)]`
+   = note: `-D mismatched-lifetime-syntaxes` implied by `-D warnings`
 
 error: aborting due to 33 previous errors
 

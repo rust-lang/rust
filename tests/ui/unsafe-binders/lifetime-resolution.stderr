@@ -8,11 +8,11 @@ help: consider making the type lifetime-generic with a new `'missing` lifetime
    |
 LL |     let missing: unsafe<'missing, > &'missing ();
    |                         +++++++++
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'missing` here
    |
 LL | fn foo<'missing, 'a>() {
    |        +++++++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/lifetime-resolution.rs:10:30

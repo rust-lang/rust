@@ -9,12 +9,12 @@ LL |         A(self.0 + rhs.0)
    |         |
    |         arguments to this struct are incorrect
    |
-   = note: expected type parameter `B`
-             found associated type `<B as Add>::Output`
 help: consider further restricting this bound
    |
 LL | impl<B> Add for A<B> where B: Add<Output = B> {
    |                                  ++++++++++++
+   = note: expected type parameter `B`
+             found associated type `<B as Add>::Output`
 help: the type constructed contains `<B as Add>::Output` due to the type of the argument passed
   --> $DIR/missing-bounds.rs:13:9
    |
@@ -39,12 +39,12 @@ LL |         Self(self.0 + rhs.0)
    |         |
    |         arguments to this function are incorrect
    |
-   = note: expected type parameter `B`
-             found associated type `<B as Add>::Output`
 help: consider further restricting this bound
    |
 LL | impl<B: Add<Output = B>> Add for C<B> {
    |            ++++++++++++
+   = note: expected type parameter `B`
+             found associated type `<B as Add>::Output`
 note: tuple struct defined here
   --> $DIR/missing-bounds.rs:17:8
    |

@@ -22,15 +22,15 @@ LL |   type Output<'a> = FooRef<'a, U> where Self: 'a;
    |   |           the parameter type `U` must be valid for the lifetime `'a` as defined here...
    |   ...so that the type `U` will meet its required lifetime bounds...
    |
+help: consider adding an explicit lifetime bound
+   |
+LL |   type Output<'a> = FooRef<'a, U> where Self: 'a, U: 'a;
+   |                                                 +++++++
 note: ...that is required by this bound
   --> $DIR/issue-87735.rs:23:22
    |
 LL | struct FooRef<'a, U>(&'a [U]);
    |                      ^^^^^^^
-help: consider adding an explicit lifetime bound
-   |
-LL |   type Output<'a> = FooRef<'a, U> where Self: 'a, U: 'a;
-   |                                                 +++++++
 
 error: aborting due to 2 previous errors
 

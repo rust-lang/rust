@@ -4,8 +4,8 @@ error: slicing when dereferencing would work
 LL |     let _ = &vec[..];
    |             ^^^^^^^^ help: dereference the original value instead: `&*vec`
    |
-   = note: `-D clippy::deref-by-slicing` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::deref_by_slicing)]`
+   = note: `-D clippy::deref-by-slicing` implied by `-D warnings`
 
 error: slicing when dereferencing would work
   --> tests/ui/deref_by_slicing.rs:9:13

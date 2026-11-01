@@ -4,12 +4,12 @@ error[E0586]: inclusive range with no end
 LL |     for _ in 1..= {}
    |               ^^^
    |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 help: use `..` instead
    |
 LL -     for _ in 1..= {}
 LL +     for _ in 1.. {}
    |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: aborting due to 1 previous error
 

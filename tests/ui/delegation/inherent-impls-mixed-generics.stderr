@@ -10,16 +10,16 @@ error[E0061]: this function takes 1 argument but 0 arguments were supplied
 LL |     reuse S::foo_self;
    |              ^^^^^^^^ argument #1 of type `S<'static, _, usize, _>` is missing
    |
+help: provide the argument
+   |
+LL |     reuse S::foo_self(/* value */);
+   |                      +++++++++++++
 note: method defined here
   --> $DIR/inherent-impls-mixed-generics.rs:8:8
    |
 LL | impl<'a, 'b, 'c, A, const C: usize> S<'static, A, usize, C> {
 LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
-help: provide the argument
-   |
-LL |     reuse S::foo_self(/* value */);
-   |                      +++++++++++++
 
 error: aborting due to 2 previous errors
 

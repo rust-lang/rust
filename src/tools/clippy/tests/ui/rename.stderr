@@ -4,8 +4,8 @@ error: lint `clippy::almost_complete_letter_range` has been renamed to `clippy::
 LL | #![warn(clippy::almost_complete_letter_range)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::almost_complete_range`
    |
-   = note: `-D renamed-and-removed-lints` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(renamed_and_removed_lints)]`
+   = note: `-D renamed-and-removed-lints` implied by `-D warnings`
 
 error: lint `clippy::blacklisted_name` has been renamed to `clippy::disallowed_names`
   --> tests/ui/rename.rs:71:9

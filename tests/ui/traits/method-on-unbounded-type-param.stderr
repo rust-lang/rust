@@ -20,6 +20,7 @@ error[E0599]: no method named `cmp` found for type parameter `&T` in the current
 LL |     (&a).cmp(&b)
    |          ^^^ method cannot be called on `&T` due to unsatisfied trait bounds
    |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
    = note: the following trait bounds were not satisfied:
            `T: Ord`
            which is required by `&T: Ord`
@@ -27,7 +28,6 @@ LL |     (&a).cmp(&b)
            which is required by `&mut &T: Iterator`
            `T: Iterator`
            which is required by `&mut T: Iterator`
-   = help: items from traits can only be used if the type parameter is bounded by the trait
 help: the following traits define an item `cmp`, perhaps you need to restrict type parameter `T` with one of them:
    |
 LL | fn g<T: Iterator>(a: T, b: T) -> std::cmp::Ordering {
@@ -41,6 +41,7 @@ error[E0599]: no method named `cmp` found for type parameter `&T` in the current
 LL |     a.cmp(&b)
    |       ^^^ method cannot be called on `&T` due to unsatisfied trait bounds
    |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
    = note: the following trait bounds were not satisfied:
            `T: Ord`
            which is required by `&T: Ord`
@@ -48,7 +49,6 @@ LL |     a.cmp(&b)
            which is required by `&mut &T: Iterator`
            `T: Iterator`
            which is required by `&mut T: Iterator`
-   = help: items from traits can only be used if the type parameter is bounded by the trait
 help: the following traits define an item `cmp`, perhaps you need to restrict type parameter `T` with one of them:
    |
 LL | fn h<T: Iterator>(a: &T, b: T) -> std::cmp::Ordering {
@@ -65,6 +65,7 @@ LL | trait T {}
 LL |     x.cmp(&x);
    |       ^^^ method cannot be called on `Box<dyn T>` due to unsatisfied trait bounds
    |
+   = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait bounds were not satisfied:
            `dyn T: Iterator`
            which is required by `Box<dyn T>: Iterator`
@@ -74,7 +75,6 @@ LL |     x.cmp(&x);
            which is required by `&mut Box<dyn T>: Iterator`
            `dyn T: Iterator`
            which is required by `&mut dyn T: Iterator`
-   = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following traits define an item `cmp`, perhaps you need to implement one of them:
            candidate #1: `Ord`
    = note: the trait `Iterator` defines an item `cmp`, but is explicitly unimplemented

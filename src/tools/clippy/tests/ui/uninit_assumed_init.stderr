@@ -4,8 +4,8 @@ error: this call for this type may be undefined behavior
 LL |     let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::uninit-assumed-init` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::uninit_assumed_init)]`
+   = note: `-D clippy::uninit-assumed-init` implied by `-D warnings`
 
 error: this call for this type may be undefined behavior
   --> tests/ui/uninit_assumed_init.rs:35:29

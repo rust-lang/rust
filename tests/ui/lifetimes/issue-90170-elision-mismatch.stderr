@@ -11,9 +11,9 @@ help: consider introducing a named lifetime parameter
    |
 LL | pub fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
    |           ++++              ++          ++
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of a mutable reference to `Vec<&u8>`
    = note: mutable references are invariant over their type parameter
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/issue-90170-elision-mismatch.rs:5:44
@@ -29,9 +29,9 @@ help: consider introducing a named lifetime parameter
 LL - pub fn foo2(x: &mut Vec<&'_ u8>, y: &u8) { x.push(y); }
 LL + pub fn foo2<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
    |
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of a mutable reference to `Vec<&u8>`
    = note: mutable references are invariant over their type parameter
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/issue-90170-elision-mismatch.rs:7:63
@@ -46,9 +46,9 @@ help: consider reusing a named lifetime parameter
    |
 LL | pub fn foo3<'a>(_other: &'a [u8], x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
    |                                                ++          ++
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of a mutable reference to `Vec<&u8>`
    = note: mutable references are invariant over their type parameter
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to 3 previous errors
 

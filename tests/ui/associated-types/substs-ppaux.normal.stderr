@@ -11,12 +11,12 @@ LL |       let x: () = <i8 as Foo<'static, 'static, u8>>::bar::<'static, char>;
    |              |
    |              expected due to this
    |
-   = note: expected unit type `()`
-                found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
 help: use parentheses to call this associated function
    |
 LL |     let x: () = <i8 as Foo<'static, 'static, u8>>::bar::<'static, char>();
    |                                                                        ++
+   = note: expected unit type `()`
+                found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
 
 error[E0308]: mismatched types
   --> $DIR/substs-ppaux.rs:30:17
@@ -31,12 +31,12 @@ LL |       let x: () = <i8 as Foo<'static, 'static, u32>>::bar::<'static, char>;
    |              |
    |              expected due to this
    |
-   = note: expected unit type `()`
-                found fn item `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
 help: use parentheses to call this associated function
    |
 LL |     let x: () = <i8 as Foo<'static, 'static, u32>>::bar::<'static, char>();
    |                                                                         ++
+   = note: expected unit type `()`
+                found fn item `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
 
 error[E0308]: mismatched types
   --> $DIR/substs-ppaux.rs:38:17
@@ -49,12 +49,12 @@ LL |     let x: () = <i8 as Foo<'static, 'static, u8>>::baz;
    |            |
    |            expected due to this
    |
-   = note: expected unit type `()`
-                found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
 help: use parentheses to call this associated function
    |
 LL |     let x: () = <i8 as Foo<'static, 'static, u8>>::baz();
    |                                                       ++
+   = note: expected unit type `()`
+                found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
 
 error[E0308]: mismatched types
   --> $DIR/substs-ppaux.rs:46:17
@@ -69,12 +69,12 @@ LL |       let x: () = foo::<'static>;
    |              |
    |              expected due to this
    |
-   = note: expected unit type `()`
-                found fn item `fn() {foo::<'static>}`
 help: use parentheses to call this function
    |
 LL |     let x: () = foo::<'static>();
    |                               ++
+   = note: expected unit type `()`
+                found fn item `fn() {foo::<'static>}`
 
 error[E0277]: the trait bound `str: Foo<'_, '_, u8>` is not satisfied
   --> $DIR/substs-ppaux.rs:54:6

@@ -88,12 +88,12 @@ error[E0753]: expected outer doc comment
 LL |     //! inner doc comment
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
 help: you might have meant to write a regular comment
    |
 LL -     //! inner doc comment
 LL +     // inner doc comment
    |
+   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
 
 error: doc comments cannot be applied to `cfg_select` branches
   --> $DIR/cfg_select.rs:232:5
@@ -115,12 +115,12 @@ error[E0753]: expected outer doc comment
 LL |     //! inner doc comment
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
 help: you might have meant to write a regular comment
    |
 LL -     //! inner doc comment
 LL +     // inner doc comment
    |
+   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
 
 error: doc comments cannot be applied to `cfg_select` branches
   --> $DIR/cfg_select.rs:249:5

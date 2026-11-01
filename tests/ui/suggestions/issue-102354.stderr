@@ -4,12 +4,12 @@ error[E0599]: no method named `func` found for type `i32` in the current scope
 LL |     x.func();
    |       ^^^^ this is an associated function, not a method
    |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 help: use associated function syntax instead
    |
 LL -     x.func();
 LL +     i32::func();
    |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in the trait `Trait`
   --> $DIR/issue-102354.rs:2:5
    |

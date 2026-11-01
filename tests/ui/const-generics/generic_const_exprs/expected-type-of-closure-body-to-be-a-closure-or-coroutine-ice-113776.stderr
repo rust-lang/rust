@@ -4,12 +4,12 @@ error[E0425]: cannot find type `F` in this scope
 LL |          let f: F = async { 1 };
    |                 ^ not found in this scope
    |
-note: similarly named trait `Fn` defined here
-  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 help: a trait with a similar name exists
    |
 LL |          let f: Fn = async { 1 };
    |                  +
+note: similarly named trait `Fn` defined here
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 help: you might be missing a type parameter
    |
 LL | fn f<T, F>(

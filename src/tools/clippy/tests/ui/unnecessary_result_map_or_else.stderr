@@ -4,13 +4,13 @@ error: unused "map closure" when calling `Result::map_or_else` value
 LL |     x.map_or_else(|err| err, |n| n);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-result-map-or-else` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_result_map_or_else)]`
 help: consider using `unwrap_or_else`
    |
 LL -     x.map_or_else(|err| err, |n| n);
 LL +     x.unwrap_or_else(|err| err);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_result_map_or_else)]`
+   = note: `-D clippy::unnecessary-result-map-or-else` implied by `-D warnings`
 
 error: unused "map closure" when calling `Result::map_or_else` value
   --> tests/ui/unnecessary_result_map_or_else.rs:12:5

@@ -4,8 +4,8 @@ error[E0658]: use of unstable library feature `async_drop`
 LL | use std::future::AsyncDrop;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #126482 <https://github.com/rust-lang/rust/issues/126482> for more information
    = help: add `#![feature(async_drop)]` to the crate attributes to enable
+   = note: see issue #126482 <https://github.com/rust-lang/rust/issues/126482> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `async_drop`
@@ -14,8 +14,8 @@ error[E0658]: use of unstable library feature `async_drop`
 LL |     async fn drop(self: Pin<&mut Self>) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #126482 <https://github.com/rust-lang/rust/issues/126482> for more information
    = help: add `#![feature(async_drop)]` to the crate attributes to enable
+   = note: see issue #126482 <https://github.com/rust-lang/rust/issues/126482> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `async_drop`
@@ -24,8 +24,8 @@ error[E0658]: use of unstable library feature `async_drop`
 LL | impl AsyncDrop for Foo {
    |      ^^^^^^^^^
    |
-   = note: see issue #126482 <https://github.com/rust-lang/rust/issues/126482> for more information
    = help: add `#![feature(async_drop)]` to the crate attributes to enable
+   = note: see issue #126482 <https://github.com/rust-lang/rust/issues/126482> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 3 previous errors

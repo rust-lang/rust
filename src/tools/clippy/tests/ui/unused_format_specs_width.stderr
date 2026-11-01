@@ -5,8 +5,8 @@ LL |     println!("{:#02X}", 1u8);
    |               ^^^^^^^
    |
    = help: consider removing the width or increasing it to at least 4
-   = note: `-D clippy::unused-format-specs` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unused_format_specs)]`
+   = note: `-D clippy::unused-format-specs` implied by `-D warnings`
 
 error: format width has no effect on the output for this format trait
   --> tests/ui/unused_format_specs_width.rs:10:15

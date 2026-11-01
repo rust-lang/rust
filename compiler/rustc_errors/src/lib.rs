@@ -1746,3 +1746,25 @@ pub enum TerminalUrl {
     Yes,
     Auto,
 }
+
+pub(crate) fn place_notes_after_next_help<T>(
+    items: Vec<T>,
+    is_note: impl Fn(&T) -> bool,
+    is_help: impl Fn(&T) -> bool,
+) -> Vec<T> {
+    let mut ordered = Vec::with_capacity(items.len());
+    let mut pending_notes = Vec::new();
+    for item in items {
+        if is_note(&item) {
+            pending_notes.push(item);
+        } else {
+            let help = is_help(&item);
+            ordered.push(item);
+            if help {
+                ordered.append(&mut pending_notes);
+            }
+        }
+    }
+    ordered.append(&mut pending_notes);
+    ordered
+}

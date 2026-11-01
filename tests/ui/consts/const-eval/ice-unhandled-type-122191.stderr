@@ -4,8 +4,8 @@ error[E0658]: use of unstable library feature `type_alias_impl_trait`: `type_ali
 LL | #[define_opaque(Foo)]
    |   ^^^^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl Trait` in type aliases is unstable
@@ -14,8 +14,8 @@ error[E0658]: `impl Trait` in type aliases is unstable
 LL | type Foo = impl Send;
    |            ^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0425]: cannot find function `value` in this scope
@@ -24,16 +24,16 @@ error[E0425]: cannot find function `value` in this scope
 LL |     value()
    |     ^^^^^ not found in this scope
    |
-note: similarly named constant `VALUE` defined here
-  --> $DIR/ice-unhandled-type-122191.rs:13:1
-   |
-LL | const VALUE: Foo = foo();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists
    |
 LL -     value()
 LL +     VALUE()
    |
+note: similarly named constant `VALUE` defined here
+  --> $DIR/ice-unhandled-type-122191.rs:13:1
+   |
+LL | const VALUE: Foo = foo();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/ice-unhandled-type-122191.rs:17:9

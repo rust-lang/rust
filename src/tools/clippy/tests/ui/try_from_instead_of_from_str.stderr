@@ -9,9 +9,6 @@ LL | |     type Error = ();
 LL | | }
    | |_^
    |
-   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
-   = note: `-D clippy::try-from-instead-of-from-str` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::try_from_instead_of_from_str)]`
 help: replace with
    |
 LL + impl core::str::FromStr for MyType {
@@ -22,6 +19,9 @@ LL +         Ok(MyType)
 LL +     }
 LL + }
    |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
+   = help: to override `-D warnings` add `#[allow(clippy::try_from_instead_of_from_str)]`
+   = note: `-D clippy::try-from-instead-of-from-str` implied by `-D warnings`
 
 error: `TryFrom<str>` could be `FromStr`
   --> tests/ui/try_from_instead_of_from_str.rs:24:1
@@ -34,7 +34,6 @@ LL | |     type Error = &'static str;
 LL | | }
    | |_^
    |
-   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
 help: replace with
    |
 LL + impl core::str::FromStr for Bar {
@@ -45,6 +44,7 @@ LL +         Ok(Bar)
 LL +     }
 LL + }
    |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
 
 error: `TryFrom<str>` could be `FromStr`
   --> tests/ui/try_from_instead_of_from_str.rs:37:1
@@ -57,7 +57,6 @@ LL | |     type Error = &'static str;
 LL | | }
    | |_^
    |
-   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
 help: replace with
    |
 LL + impl<'a> core::str::FromStr for Tarte<'a> {
@@ -68,6 +67,7 @@ LL +         Ok(Tarte(&()))
 LL +     }
 LL + }
    |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
 
 error: `TryFrom<str>` could be `FromStr`
   --> tests/ui/try_from_instead_of_from_str.rs:96:1
@@ -79,7 +79,6 @@ LL | |     type Error = LifetimeErr2<for<'b> fn(&'b u32)>;
 LL | | }
    | |_^
    |
-   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
 help: replace with
    |
 LL + impl core::str::FromStr for Lifetime3 {
@@ -90,6 +89,7 @@ LL +         Ok(Lifetime3)
 LL +     }
 LL + }
    |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
 
 error: `TryFrom<str>` could be `FromStr`
   --> tests/ui/try_from_instead_of_from_str.rs:108:1
@@ -101,7 +101,6 @@ LL | |     type Error = LifetimeErr2<&'a ()>;
 LL | | }
    | |_^
    |
-   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
 help: replace with
    |
 LL + impl<'a> core::str::FromStr for Lifetime4<&'a ()> {
@@ -112,6 +111,7 @@ LL +         Ok(Lifetime4(&()))
 LL +     }
 LL + }
    |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
 
 error: `TryFrom<str>` could be `FromStr`
   --> tests/ui/try_from_instead_of_from_str.rs:166:5
@@ -124,7 +124,6 @@ LL | |         fn try_from(some_other_name: &str) -> Result<Self, Self::Error> {
 LL | |     }
    | |_____^
    |
-   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
 help: replace with
    |
 LL ~     impl core::str::FromStr for NotValue {
@@ -136,6 +135,7 @@ LL +             Ok(Self)
 LL +         }
 LL + }
    |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
 
 error: `TryFrom<str>` could be `FromStr`
   --> tests/ui/try_from_instead_of_from_str.rs:176:5
@@ -148,7 +148,6 @@ LL | |         fn try_from(mut __value_value_value__: &str) -> Result<Self, Self
 LL | |     }
    | |_____^
    |
-   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
 help: replace with
    |
 LL ~     impl core::str::FromStr for NotValue2 {
@@ -160,6 +159,7 @@ LL +             Ok(Self)
 LL +         }
 LL + }
    |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
 
 error: aborting due to 7 previous errors
 

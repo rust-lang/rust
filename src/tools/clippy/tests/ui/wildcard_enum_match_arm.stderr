@@ -4,8 +4,8 @@ error: wildcard match will also match any future added variants
 LL |         _ => eprintln!("Not red"),
    |         ^ help: try: `Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan`
    |
-   = note: `-D clippy::wildcard-enum-match-arm` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::wildcard_enum_match_arm)]`
+   = note: `-D clippy::wildcard-enum-match-arm` implied by `-D warnings`
 
 error: wildcard match will also match any future added variants
   --> tests/ui/wildcard_enum_match_arm.rs:37:9

@@ -6,12 +6,12 @@ LL |     let abs: i32 = 3i32.checked_abs();
    |              |
    |              expected due to this
    |
-   = note: expected type `i32`
-              found enum `Option<i32>`
 help: consider using `Option::expect` to unwrap the `Option<i32>` value, panicking if the value is an `Option::None`
    |
 LL |     let abs: i32 = 3i32.checked_abs().expect("REASON");
    |                                      +++++++++++++++++
+   = note: expected type `i32`
+              found enum `Option<i32>`
 
 error: aborting due to 1 previous error
 

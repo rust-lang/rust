@@ -4,8 +4,8 @@ error: conversion to degrees can be done more accurately
 LL |     let _ = x * 180f32 / std::f32::consts::PI;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.to_degrees()`
    |
-   = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
+   = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
 
 error: conversion to radians can be done more accurately
   --> tests/ui/floating_point_rad.rs:17:13

@@ -14,9 +14,9 @@ help: ... and use the `write!` macro here
    |
 LL |     bytes.iter().map(|b| format!("{b:02X}")).collect()
    |                          ^^^^^^^^^^^^^^^^^^
+   = help: to override `-D warnings` add `#[allow(clippy::format_collect)]`
    = note: this can be written more efficiently by appending to a `String` directly
    = note: `-D clippy::format-collect` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::format_collect)]`
 
 error: use of `format!` to build up a string from an iterator
   --> tests/ui/format_collect.rs:10:5

@@ -4,6 +4,7 @@ error: `S` is ambiguous
 LL |     let _: m1::S = S {};
    |                    ^ ambiguous name
    |
+   = help: consider adding an explicit import of `S` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `S` could refer to the struct imported here
   --> $DIR/overwrite-different-ambig-2.rs:18:5
@@ -16,7 +17,6 @@ note: `S` could also refer to the struct imported here
    |
 LL | use m2::*;
    |     ^^^^^
-   = help: consider adding an explicit import of `S` to disambiguate
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
@@ -30,6 +30,7 @@ error: `S` is ambiguous
 LL |     let _: m1::S = S {};
    |                    ^ ambiguous name
    |
+   = help: consider adding an explicit import of `S` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `S` could refer to the struct imported here
   --> $DIR/overwrite-different-ambig-2.rs:18:5
@@ -42,7 +43,6 @@ note: `S` could also refer to the struct imported here
    |
 LL | use m2::*;
    |     ^^^^^
-   = help: consider adding an explicit import of `S` to disambiguate
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
    = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default

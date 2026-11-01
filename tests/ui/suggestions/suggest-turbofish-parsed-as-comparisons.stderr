@@ -136,16 +136,16 @@ error[E0425]: cannot find value `a` in this scope
 LL |     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
    |                 ^ not found in this scope
    |
-note: similarly named unit struct `S` defined here
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
-   |
-LL | struct S;
-   | ^^^^^^^^^
 help: a unit struct with a similar name exists
    |
 LL -     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
 LL +     let _ = bar(S, b, Many<i32, i32, i32, i32>::new(), c, d);
    |
+note: similarly named unit struct `S` defined here
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
+   |
+LL | struct S;
+   | ^^^^^^^^^
 
 error[E0425]: cannot find value `b` in this scope
   --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:42:20
@@ -153,16 +153,16 @@ error[E0425]: cannot find value `b` in this scope
 LL |     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
    |                    ^ not found in this scope
    |
-note: similarly named unit struct `S` defined here
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
-   |
-LL | struct S;
-   | ^^^^^^^^^
 help: a unit struct with a similar name exists
    |
 LL -     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
 LL +     let _ = bar(a, S, Many<i32, i32, i32, i32>::new(), c, d);
    |
+note: similarly named unit struct `S` defined here
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
+   |
+LL | struct S;
+   | ^^^^^^^^^
 
 error[E0425]: cannot find value `c` in this scope
   --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:42:56
@@ -170,16 +170,16 @@ error[E0425]: cannot find value `c` in this scope
 LL |     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
    |                                                        ^ not found in this scope
    |
-note: similarly named unit struct `S` defined here
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
-   |
-LL | struct S;
-   | ^^^^^^^^^
 help: a unit struct with a similar name exists
    |
 LL -     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
 LL +     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), S, d);
    |
+note: similarly named unit struct `S` defined here
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
+   |
+LL | struct S;
+   | ^^^^^^^^^
 
 error[E0425]: cannot find value `d` in this scope
   --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:42:59
@@ -187,16 +187,16 @@ error[E0425]: cannot find value `d` in this scope
 LL |     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
    |                                                           ^ not found in this scope
    |
-note: similarly named unit struct `S` defined here
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
-   |
-LL | struct S;
-   | ^^^^^^^^^
 help: a unit struct with a similar name exists
    |
 LL -     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
 LL +     let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, S);
    |
+note: similarly named unit struct `S` defined here
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
+   |
+LL | struct S;
+   | ^^^^^^^^^
 
 error[E0425]: cannot find value `a` in this scope
   --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:48:19
@@ -204,16 +204,16 @@ error[E0425]: cannot find value `a` in this scope
 LL |     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
    |                   ^ not found in this scope
    |
-note: similarly named unit struct `S` defined here
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
-   |
-LL | struct S;
-   | ^^^^^^^^^
 help: a unit struct with a similar name exists
    |
 LL -     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
 LL +     let _ = S.bar(S, b, Many<i32, i32, i32, i32>::new(), c, d);
    |
+note: similarly named unit struct `S` defined here
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
+   |
+LL | struct S;
+   | ^^^^^^^^^
 
 error[E0425]: cannot find value `b` in this scope
   --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:48:22
@@ -221,16 +221,16 @@ error[E0425]: cannot find value `b` in this scope
 LL |     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
    |                      ^ not found in this scope
    |
-note: similarly named unit struct `S` defined here
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
-   |
-LL | struct S;
-   | ^^^^^^^^^
 help: a unit struct with a similar name exists
    |
 LL -     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
 LL +     let _ = S.bar(a, S, Many<i32, i32, i32, i32>::new(), c, d);
    |
+note: similarly named unit struct `S` defined here
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
+   |
+LL | struct S;
+   | ^^^^^^^^^
 
 error[E0425]: cannot find value `c` in this scope
   --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:48:58
@@ -238,16 +238,16 @@ error[E0425]: cannot find value `c` in this scope
 LL |     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
    |                                                          ^ not found in this scope
    |
-note: similarly named unit struct `S` defined here
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
-   |
-LL | struct S;
-   | ^^^^^^^^^
 help: a unit struct with a similar name exists
    |
 LL -     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
 LL +     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), S, d);
    |
+note: similarly named unit struct `S` defined here
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
+   |
+LL | struct S;
+   | ^^^^^^^^^
 
 error[E0425]: cannot find value `d` in this scope
   --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:48:61
@@ -255,16 +255,16 @@ error[E0425]: cannot find value `d` in this scope
 LL |     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
    |                                                             ^ not found in this scope
    |
-note: similarly named unit struct `S` defined here
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
-   |
-LL | struct S;
-   | ^^^^^^^^^
 help: a unit struct with a similar name exists
    |
 LL -     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
 LL +     let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, S);
    |
+note: similarly named unit struct `S` defined here
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:6:1
+   |
+LL | struct S;
+   | ^^^^^^^^^
 
 error: aborting due to 20 previous errors
 

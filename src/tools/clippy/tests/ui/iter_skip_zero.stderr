@@ -4,9 +4,9 @@ error: usage of `.skip(0)`
 LL |     let _ = [1, 2, 3].iter().skip(0);
    |                                   ^ help: if you meant to skip the first element, use: `1`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::iter_skip_zero)]`
    = note: this call to `skip` does nothing and is useless; remove it
    = note: `-D clippy::iter-skip-zero` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::iter_skip_zero)]`
 
 error: usage of `.skip(0)`
   --> tests/ui/iter_skip_zero.rs:13:39

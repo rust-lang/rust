@@ -15,8 +15,8 @@ LL | |     };
    | |_____^
    |
    = help: move the lock call outside of the `if let ...` expression
-   = note: `-D clippy::if-let-mutex` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::if_let_mutex)]`
+   = note: `-D clippy::if-let-mutex` implied by `-D warnings`
 
 error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock
   --> tests/ui/if_let_mutex.rs:30:5

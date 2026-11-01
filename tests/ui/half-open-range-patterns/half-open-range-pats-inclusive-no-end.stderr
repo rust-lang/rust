@@ -4,12 +4,12 @@ error[E0586]: inclusive range with no end
 LL |     if let 0... = 1 {}
    |             ^^^
    |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 help: use `..` instead
    |
 LL -     if let 0... = 1 {}
 LL +     if let 0.. = 1 {}
    |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
   --> $DIR/half-open-range-pats-inclusive-no-end.rs:9:13
@@ -17,12 +17,12 @@ error[E0586]: inclusive range with no end
 LL |     if let 0..= = 1 {}
    |             ^^^
    |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 help: use `..` instead
    |
 LL -     if let 0..= = 1 {}
 LL +     if let 0.. = 1 {}
    |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
   --> $DIR/half-open-range-pats-inclusive-no-end.rs:11:13
@@ -30,12 +30,12 @@ error[E0586]: inclusive range with no end
 LL |     if let X... = 1 {}
    |             ^^^
    |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 help: use `..` instead
    |
 LL -     if let X... = 1 {}
 LL +     if let X.. = 1 {}
    |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
   --> $DIR/half-open-range-pats-inclusive-no-end.rs:12:13
@@ -43,12 +43,12 @@ error[E0586]: inclusive range with no end
 LL |     if let X..= = 1 {}
    |             ^^^
    |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 help: use `..` instead
    |
 LL -     if let X..= = 1 {}
 LL +     if let X.. = 1 {}
    |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
   --> $DIR/half-open-range-pats-inclusive-no-end.rs:18:19
@@ -61,12 +61,12 @@ LL |             let $e...;
 LL |     mac!(0);
    |     ------- in this macro invocation
    |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 help: use `..` instead
    |
 LL -             let $e...;
 LL +             let $e..;
    |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0586]: inclusive range with no end
   --> $DIR/half-open-range-pats-inclusive-no-end.rs:20:19
@@ -79,12 +79,12 @@ LL |             let $e..=;
 LL |     mac!(0);
    |     ------- in this macro invocation
    |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 help: use `..` instead
    |
 LL -             let $e..=;
 LL +             let $e..;
    |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/half-open-range-pats-inclusive-no-end.rs:18:17

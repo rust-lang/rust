@@ -8,11 +8,11 @@ help: consider making the bound lifetime-generic with a new `'short` lifetime
    |
 LL |     for<'short> Foo<'short, 'out, T>: Convert<'a, 'b>;
    |     +++++++++++
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'short` here
    |
 LL | struct Foo<'short, 'a, 'b, T>(PhantomData<(&'a (), &'b (), T)>)
    |            +++++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 
 error[E0261]: use of undeclared lifetime name `'out`
   --> $DIR/issue-107090.rs:4:17

@@ -4,8 +4,8 @@ error: unchecked subtraction of a `Duration`
 LL |     let _ = dur1 - dur2 - dur3;
    |             ^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unchecked-time-subtraction` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unchecked_time_subtraction)]`
+   = note: `-D clippy::unchecked-time-subtraction` implied by `-D warnings`
 
 error: unchecked subtraction of a `Duration`
   --> tests/ui/unchecked_time_subtraction_unfixable.rs:12:13

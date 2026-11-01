@@ -4,8 +4,8 @@ error: struct `PubOne` has a public `len` method, but no `is_empty` method
 LL |     pub fn len(&self) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::len-without-is-empty` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::len_without_is_empty)]`
+   = note: `-D clippy::len-without-is-empty` implied by `-D warnings`
 
 error: trait `PubTraitsToo` has a `len` method but no (possibly inherited) `is_empty` method
   --> tests/ui/len_without_is_empty.rs:56:1
@@ -98,8 +98,8 @@ LL |     pub fn len(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: use a custom `Error` type instead
-   = note: `-D clippy::result-unit-err` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::result_unit_err)]`
+   = note: `-D clippy::result-unit-err` implied by `-D warnings`
 
 error: this returns a `Result<_, ()>`
   --> tests/ui/len_without_is_empty.rs:256:5

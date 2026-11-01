@@ -4,8 +4,8 @@ error: use of a disallowed method `regex::Regex::new`
 LL |     let re = Regex::new(r"ab.*c").unwrap();
    |              ^^^^^^^^^^
    |
-   = note: `-D clippy::disallowed-methods` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
+   = note: `-D clippy::disallowed-methods` implied by `-D warnings`
 
 error: use of a disallowed method `regex::Regex::is_match`
   --> tests/ui-toml/toml_disallowed_methods/conf_disallowed_methods.rs:37:8

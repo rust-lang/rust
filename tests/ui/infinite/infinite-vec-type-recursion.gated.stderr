@@ -4,9 +4,9 @@ error[E0391]: cycle detected when expanding type alias `X`
 LL | type X = Vec<X>;
    |              ^
    |
+   = help: consider using a struct, enum, or union instead to break the cycle
    = note: ...which immediately requires expanding type alias `X` again
    = note: type aliases cannot be recursive
-   = help: consider using a struct, enum, or union instead to break the cycle
    = help: see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
 note: cycle used when checking that `X` is well-formed
   --> $DIR/infinite-vec-type-recursion.rs:6:1

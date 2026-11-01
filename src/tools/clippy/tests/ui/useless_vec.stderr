@@ -4,8 +4,8 @@ error: useless use of `vec!`
 LL |     on_slice(&vec![]);
    |              ^^^^^^^ help: you can use a slice directly: `&[]`
    |
-   = note: `-D clippy::useless-vec` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::useless_vec)]`
+   = note: `-D clippy::useless-vec` implied by `-D warnings`
 
 error: useless use of `vec!`
   --> tests/ui/useless_vec.rs:32:18

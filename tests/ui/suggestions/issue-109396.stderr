@@ -22,8 +22,6 @@ LL |             0,
 LL |             0,
    |             - unexpected argument #4 of type `{integer}`
    |
-note: function defined here
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 help: remove the extra arguments
    |
 LL -             file.as_raw_fd(),
@@ -34,6 +32,8 @@ LL -             0,
 LL -         );
 LL +             );
    |
+note: function defined here
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error: aborting due to 2 previous errors
 

@@ -7,8 +7,8 @@ LL |       let _ = opt.map(|x| x + 1)
 LL | |         .unwrap_or_else(|| 0);
    | |_____________________________^ help: try: `opt.map_or_else(|| 0, |x| x + 1)`
    |
-   = note: `-D clippy::map-unwrap-or` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::map_unwrap_or)]`
+   = note: `-D clippy::map-unwrap-or` implied by `-D warnings`
 
 error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value
   --> tests/ui/map_unwrap_or_fixable.rs:48:13

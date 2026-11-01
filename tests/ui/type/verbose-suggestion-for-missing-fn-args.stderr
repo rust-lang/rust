@@ -4,6 +4,10 @@ error[E0061]: this function takes 5 arguments but 0 arguments were supplied
 LL |     my_very_long_function_name_with_lots_of_args();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-- multiple arguments are missing
    |
+help: provide the arguments
+   |
+LL |     my_very_long_function_name_with_lots_of_args(/* bool */, /* HashMap<Arc<String>, Vec<BTreeSet<usize>>> */, /* usize */, /* String */, /* Mutex<Option<VecDeque<Arc<String>>>> */);
+   |                                                  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 note: function defined here
   --> $DIR/verbose-suggestion-for-missing-fn-args.rs:8:4
    |
@@ -19,10 +23,6 @@ LL |     _fourth_long_param: String,
    |     --------------------------
 LL |     _fifth_long_param: Mutex<Option<VecDeque<Arc<String>>>>,
    |     -------------------------------------------------------
-help: provide the arguments
-   |
-LL |     my_very_long_function_name_with_lots_of_args(/* bool */, /* HashMap<Arc<String>, Vec<BTreeSet<usize>>> */, /* usize */, /* String */, /* Mutex<Option<VecDeque<Arc<String>>>> */);
-   |                                                  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

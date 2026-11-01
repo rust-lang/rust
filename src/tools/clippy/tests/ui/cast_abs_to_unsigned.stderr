@@ -4,8 +4,8 @@ error: casting the result of `i32::abs()` to u32
 LL |     let y: u32 = x.abs() as u32;
    |                  ^^^^^^^^^^^^^^ help: replace with: `x.unsigned_abs()`
    |
-   = note: `-D clippy::cast-abs-to-unsigned` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cast_abs_to_unsigned)]`
+   = note: `-D clippy::cast-abs-to-unsigned` implied by `-D warnings`
 
 error: casting the result of `i32::abs()` to usize
   --> tests/ui/cast_abs_to_unsigned.rs:10:20

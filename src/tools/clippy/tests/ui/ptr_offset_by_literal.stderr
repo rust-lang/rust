@@ -6,8 +6,8 @@ LL |         let _ = ptr.offset(0);
    |                    |
    |                    help: remove the call to `offset`
    |
-   = note: `-D clippy::ptr-offset-by-literal` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::ptr_offset_by_literal)]`
+   = note: `-D clippy::ptr-offset-by-literal` implied by `-D warnings`
 
 error: use of `offset` with zero
   --> tests/ui/ptr_offset_by_literal.rs:15:17

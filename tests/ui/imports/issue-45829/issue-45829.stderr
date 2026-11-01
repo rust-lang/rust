@@ -6,11 +6,11 @@ LL | use foo::{A, B as A};
    |           |
    |           previous import of the type `A` here
    |
-   = note: `A` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | use foo::{A, B as OtherA};
    |                   +++++
+   = note: `A` must be defined only once in the type namespace of this module
 
 error: aborting due to 1 previous error
 

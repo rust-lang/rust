@@ -4,13 +4,13 @@ error: constructing a `Duration` using a smaller unit when a larger unit would b
 LL |     let dur = Duration::from_secs(60 * 3);
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::duration-suboptimal-units` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::duration_suboptimal_units)]`
 help: try using `Duration::from_mins`
    |
 LL -     let dur = Duration::from_secs(60 * 3);
 LL +     let dur = Duration::from_mins(3);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::duration_suboptimal_units)]`
+   = note: `-D clippy::duration-suboptimal-units` implied by `-D warnings`
 
 error: constructing a `Duration` using a smaller unit when a larger unit would be more readable
   --> tests/ui/duration_suboptimal_units.rs:28:15

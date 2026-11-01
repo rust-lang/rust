@@ -9,8 +9,8 @@ help: consider removing the safety comment
    |
 LL |     // SAFETY:
    |        ^^^^^^^
-   = note: `-D clippy::unnecessary-safety-comment` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_safety_comment)]`
+   = note: `-D clippy::unnecessary-safety-comment` implied by `-D warnings`
 
 error: static has unnecessary safety comment
   --> tests/ui/unnecessary_safety_comment.rs:10:5

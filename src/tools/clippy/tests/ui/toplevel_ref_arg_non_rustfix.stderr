@@ -4,8 +4,8 @@ error: `ref` directly on a function parameter does not prevent taking ownership 
 LL | fn the_answer(ref mut x: u8) {
    |               ^^^^^^^^^
    |
-   = note: `-D clippy::toplevel-ref-arg` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::toplevel_ref_arg)]`
+   = note: `-D clippy::toplevel-ref-arg` implied by `-D warnings`
 
 error: `ref` directly on a function parameter does not prevent taking ownership of the passed argument. Consider using a reference type instead
   --> tests/ui/toplevel_ref_arg_non_rustfix.rs:20:24

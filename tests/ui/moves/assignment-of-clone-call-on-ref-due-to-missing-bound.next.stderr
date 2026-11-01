@@ -6,6 +6,8 @@ LL |             let mut x: HashSet<Day> = v.clone();
    |                        |
    |                        expected due to this
    |
+help: `Clone` is not implemented because a trait bound is not satisfied
+  --> $SRC_DIR/std/src/collections/hash/set.rs:LL:COL
    = note: expected struct `HashSet<_>`
            found reference `&HashSet<_>`
 note: `HashSet<Day>` does not implement `Clone`, so `&HashSet<Day>` was cloned instead
@@ -13,8 +15,6 @@ note: `HashSet<Day>` does not implement `Clone`, so `&HashSet<Day>` was cloned i
    |
 LL |             let mut x: HashSet<Day> = v.clone();
    |                                       ^
-help: `Clone` is not implemented because a trait bound is not satisfied
-  --> $SRC_DIR/std/src/collections/hash/set.rs:LL:COL
 help: consider annotating `Day` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

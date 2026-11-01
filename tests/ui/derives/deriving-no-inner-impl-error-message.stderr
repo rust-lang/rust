@@ -7,16 +7,16 @@ LL | struct E {
 LL |     x: NoCloneOrEq
    |     ^^^^^^^^^^^^^^
    |
-note: an implementation of `PartialEq` might be missing for `NoCloneOrEq`
-  --> $DIR/deriving-no-inner-impl-error-message.rs:1:1
-   |
-LL | struct NoCloneOrEq;
-   | ^^^^^^^^^^^^^^^^^^ must implement `PartialEq`
 help: consider annotating `NoCloneOrEq` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]
 LL | struct NoCloneOrEq;
    |
+note: an implementation of `PartialEq` might be missing for `NoCloneOrEq`
+  --> $DIR/deriving-no-inner-impl-error-message.rs:1:1
+   |
+LL | struct NoCloneOrEq;
+   | ^^^^^^^^^^^^^^^^^^ must implement `PartialEq`
 
 error[E0277]: the trait bound `NoCloneOrEq: Clone` is not satisfied
   --> $DIR/deriving-no-inner-impl-error-message.rs:9:5

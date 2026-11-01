@@ -4,8 +4,8 @@ error: transmuting a known null pointer into a reference
 LL |         let _: &u64 = std::mem::transmute(0 as *const u64);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::transmuting-null` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::transmuting_null)]`
+   = note: `-D clippy::transmuting-null` implied by `-D warnings`
 
 error: transmuting a known null pointer into a reference
   --> tests/ui/transmuting_null.rs:11:23

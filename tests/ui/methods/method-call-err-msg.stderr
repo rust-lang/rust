@@ -4,17 +4,17 @@ error[E0061]: this method takes 0 arguments but 1 argument was supplied
 LL |     x.zero(0)
    |       ^^^^ - unexpected argument of type `{integer}`
    |
+help: remove the extra argument
+   |
+LL -     x.zero(0)
+LL +     x.zero()
+   |
 note: method defined here
   --> $DIR/method-call-err-msg.rs:5:8
    |
 LL | impl Foo {
 LL |     fn zero(self) -> Foo { self }
    |        ^^^^
-help: remove the extra argument
-   |
-LL -     x.zero(0)
-LL +     x.zero()
-   |
 
 error[E0061]: this method takes 1 argument but 0 arguments were supplied
   --> $DIR/method-call-err-msg.rs:14:7
@@ -22,6 +22,10 @@ error[E0061]: this method takes 1 argument but 0 arguments were supplied
 LL |      .one()
    |       ^^^-- argument #1 of type `isize` is missing
    |
+help: provide the argument
+   |
+LL |      .one(/* isize */)
+   |           +++++++++++
 note: method defined here
   --> $DIR/method-call-err-msg.rs:6:8
    |
@@ -29,10 +33,6 @@ LL | impl Foo {
 LL |     fn zero(self) -> Foo { self }
 LL |     fn one(self, _: isize) -> Foo { self }
    |        ^^^       --------
-help: provide the argument
-   |
-LL |      .one(/* isize */)
-   |           +++++++++++
 
 error[E0061]: this method takes 2 arguments but 1 argument was supplied
   --> $DIR/method-call-err-msg.rs:15:7
@@ -40,6 +40,10 @@ error[E0061]: this method takes 2 arguments but 1 argument was supplied
 LL |      .two(0);
    |       ^^^--- argument #2 of type `isize` is missing
    |
+help: provide the argument
+   |
+LL |      .two(0, /* isize */);
+   |            +++++++++++++
 note: method defined here
   --> $DIR/method-call-err-msg.rs:7:8
    |
@@ -47,10 +51,6 @@ LL | impl Foo {
 ...
 LL |     fn two(self, _: isize, _: isize) -> Foo { self }
    |        ^^^                 --------
-help: provide the argument
-   |
-LL |      .two(0, /* isize */);
-   |            +++++++++++++
 
 error[E0599]: no method named `take` found for struct `Foo` in the current scope
   --> $DIR/method-call-err-msg.rs:19:7
@@ -62,12 +62,12 @@ LL |     y.zero()
 LL |      .take()
    |       ^^^^ `Foo` is not an iterator
    |
+   = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait bounds were not satisfied:
            `Foo: Iterator`
            which is required by `&mut Foo: Iterator`
 note: the trait `Iterator` must be implemented
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following traits define an item `take`, perhaps you need to implement one of them:
            candidate #1: `Iterator`
            candidate #2: `std::io::Read`
@@ -78,6 +78,10 @@ error[E0061]: this method takes 3 arguments but 0 arguments were supplied
 LL |     y.three::<usize>();
    |       ^^^^^^^^^^^^^^-- three arguments of type `usize`, `usize`, and `usize` are missing
    |
+help: provide the arguments
+   |
+LL |     y.three::<usize>(/* usize */, /* usize */, /* usize */);
+   |                      +++++++++++++++++++++++++++++++++++++
 note: method defined here
   --> $DIR/method-call-err-msg.rs:8:8
    |
@@ -85,10 +89,6 @@ LL | impl Foo {
 ...
 LL |     fn three<T>(self, _: T, _: T, _: T) -> Foo { self }
    |        ^^^^^          ----  ----  ----
-help: provide the arguments
-   |
-LL |     y.three::<usize>(/* usize */, /* usize */, /* usize */);
-   |                      +++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 5 previous errors
 

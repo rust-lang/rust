@@ -11,12 +11,12 @@ LL |     bar(foo);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected struct `Vec<i32>`
-              found struct `Vec<&{integer}>`
 help: consider dereferencing the borrow
    |
 LL |         foo.push(*i);
    |                  +
+   = note: expected struct `Vec<i32>`
+              found struct `Vec<&{integer}>`
 note: function defined here
   --> $DIR/point-at-inference.rs:2:4
    |

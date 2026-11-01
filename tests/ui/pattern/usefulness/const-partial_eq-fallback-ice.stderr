@@ -10,16 +10,16 @@ LL | const CONSTANT: &&MyType = &&MyType;
 LL |     if let CONSTANT = &&MyType {
    |            ^^^^^^^^ constant of non-structural type
    |
-note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
-  --> $DIR/const-partial_eq-fallback-ice.rs:5:1
-   |
-LL | impl PartialEq<usize> for MyType {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: check for equality instead of pattern matching
    |
 LL -     if let CONSTANT = &&MyType {
 LL +     if CONSTANT == &&MyType {
    |
+note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+  --> $DIR/const-partial_eq-fallback-ice.rs:5:1
+   |
+LL | impl PartialEq<usize> for MyType {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

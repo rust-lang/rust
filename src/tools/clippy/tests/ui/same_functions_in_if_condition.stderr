@@ -7,8 +7,8 @@ LL |
 LL |     } else if function() {
    |               ^^^^^^^^^^
    |
-   = note: `-D clippy::same-functions-in-if-condition` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::same_functions_in_if_condition)]`
+   = note: `-D clippy::same-functions-in-if-condition` implied by `-D warnings`
 
 error: these `if` branches have the same function call
   --> tests/ui/same_functions_in_if_condition.rs:35:8

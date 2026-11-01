@@ -4,9 +4,9 @@ error[E0793]: reference to field of packed struct is unaligned
 LL |     let _ = &p.b;
    |             ^^^^
    |
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
    = note: this struct is 1-byte aligned, but the type of this field may require higher alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to field of packed struct is unaligned
   --> $DIR/issue-53114-safety-checks.rs:28:17
@@ -14,9 +14,9 @@ error[E0793]: reference to field of packed struct is unaligned
 LL |     let (_,) = (&p.b,);
    |                 ^^^^
    |
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
    = note: this struct is 1-byte aligned, but the type of this field may require higher alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
   --> $DIR/issue-53114-safety-checks.rs:24:13
@@ -56,9 +56,9 @@ error[E0793]: reference to field of packed struct is unaligned
 LL |     let _: _ = &p.b;
    |                ^^^^
    |
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
    = note: this struct is 1-byte aligned, but the type of this field may require higher alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to field of packed struct is unaligned
   --> $DIR/issue-53114-safety-checks.rs:42:20
@@ -66,9 +66,9 @@ error[E0793]: reference to field of packed struct is unaligned
 LL |     let (_,): _ = (&p.b,);
    |                    ^^^^
    |
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
    = note: this struct is 1-byte aligned, but the type of this field may require higher alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
   --> $DIR/issue-53114-safety-checks.rs:38:16
@@ -108,9 +108,9 @@ error[E0793]: reference to field of packed struct is unaligned
 LL |     match &p.b  { _ => { } }
    |           ^^^^
    |
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
    = note: this struct is 1-byte aligned, but the type of this field may require higher alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to field of packed struct is unaligned
   --> $DIR/issue-53114-safety-checks.rs:56:12
@@ -118,9 +118,9 @@ error[E0793]: reference to field of packed struct is unaligned
 LL |     match (&p.b,)  { (_,) => { } }
    |            ^^^^
    |
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
    = note: this struct is 1-byte aligned, but the type of this field may require higher alignment
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
   --> $DIR/issue-53114-safety-checks.rs:52:11

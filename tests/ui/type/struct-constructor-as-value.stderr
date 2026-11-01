@@ -9,12 +9,12 @@ LL | fn test() -> Foo { Foo }
    |              |
    |              expected `Foo` because of return type
    |
-   = note:          expected struct `Foo`
-           found struct constructor `fn(u32) -> Foo {Foo}`
 help: use parentheses to construct this tuple struct
    |
 LL | fn test() -> Foo { Foo(/* u32 */) }
    |                       +++++++++++
+   = note:          expected struct `Foo`
+           found struct constructor `fn(u32) -> Foo {Foo}`
 
 error: aborting due to 1 previous error
 

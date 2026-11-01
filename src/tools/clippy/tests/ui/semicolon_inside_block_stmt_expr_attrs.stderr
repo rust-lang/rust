@@ -4,13 +4,13 @@ error: consider moving the `;` inside the block for consistent formatting
 LL |     {0; 0};
    |     ^^^^^^^
    |
-   = note: `-D clippy::semicolon-inside-block` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::semicolon_inside_block)]`
 help: put the `;` here
    |
 LL -     {0; 0};
 LL +     {0; 0;}
    |
+   = help: to override `-D warnings` add `#[allow(clippy::semicolon_inside_block)]`
+   = note: `-D clippy::semicolon-inside-block` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

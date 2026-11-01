@@ -12,11 +12,11 @@ error[E0423]: cannot find value `path` in this scope
 LL |     path;
    |     ^^^^ not found in this scope
    |
-   = note: a built-in attribute named `path` exists in another namespace
 help: a local variable with a similar name exists
    |
 LL |     pathh;
    |         +
+   = note: a built-in attribute named `path` exists in another namespace
 
 error[E0423]: cannot find value `path` in this scope
   --> $DIR/builtin-attribute-not-value.rs:24:15

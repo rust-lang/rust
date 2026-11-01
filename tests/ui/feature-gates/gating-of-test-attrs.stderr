@@ -23,8 +23,8 @@ error[E0658]: inner macro attributes are unstable
 LL |     mod inner { #![test] }
    |                    ^^^^
    |
-   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: the `test` attribute may only be used on a free function
@@ -106,8 +106,8 @@ error[E0658]: inner macro attributes are unstable
 LL |     mod inner { #![bench] }
    |                    ^^^^^
    |
-   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: the `bench` attribute may only be used on a free function

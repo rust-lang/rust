@@ -4,13 +4,13 @@ error: manual check for common ascii range
 LL |     assert!(matches!('x', 'a'..='z'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::manual-is-ascii-check` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_is_ascii_check)]`
 help: try
    |
 LL -     assert!(matches!('x', 'a'..='z'));
 LL +     assert!('x'.is_ascii_lowercase());
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_is_ascii_check)]`
+   = note: `-D clippy::manual-is-ascii-check` implied by `-D warnings`
 
 error: manual check for common ascii range
   --> tests/ui/manual_is_ascii_check.rs:6:13

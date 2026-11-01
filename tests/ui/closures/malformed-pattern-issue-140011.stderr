@@ -15,6 +15,10 @@ error[E0005]: refutable pattern in local binding
 LL |         let B::E(a) = h;
    |             ^^^^^^^ pattern `B::C(_)` not covered
    |
+help: you might want to use `let...else` to handle the variant that isn't matched
+   |
+LL |         let B::E(a) = h else { todo!() };
+   |                         ++++++++++++++++
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `B` defined here
@@ -25,10 +29,6 @@ LL | enum B {
 LL |     C(D),
    |     - not covered
    = note: the matched value is of type `B`
-help: you might want to use `let...else` to handle the variant that isn't matched
-   |
-LL |         let B::E(a) = h else { todo!() };
-   |                         ++++++++++++++++
 
 error: aborting due to 2 previous errors
 

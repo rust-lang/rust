@@ -8,7 +8,6 @@ help: consider specifying a concrete type for the type parameter `T`
    |
 LL |     hello::</* Type */>();
    |          ++++++++++++++
-   = note: the type must implement `Hello`
 help: the following types implement trait `Hello`
   --> $DIR/overflow-computing-ambiguity.rs:8:1
    |
@@ -17,6 +16,7 @@ LL | impl<'a, T> Hello for Foo<'a, &'a T> where Foo<'a, T>: Hello {}
 LL |
 LL | impl Hello for Foo<'static, i32> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo<'static, i32>`
+   = note: the type must implement `Hello`
 note: required by a bound in `hello`
   --> $DIR/overflow-computing-ambiguity.rs:12:13
    |

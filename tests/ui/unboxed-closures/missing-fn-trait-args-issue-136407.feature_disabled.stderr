@@ -4,13 +4,13 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
 LL | pub fn shared<T: Fn>() {}
    |                  ^^
    |
-   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
 help: use parenthetical notation instead
    |
 LL | pub fn shared<T: Fn() -> ()>() {}
    |                    ++++++++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0107]: missing generics for trait `Fn`
   --> $DIR/missing-fn-trait-args-issue-136407.rs:9:18
@@ -24,13 +24,13 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
 LL | pub fn mutable<T: FnMut>() {}
    |                   ^^^^^
    |
-   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
 help: use parenthetical notation instead
    |
 LL | pub fn mutable<T: FnMut() -> ()>() {}
    |                        ++++++++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0107]: missing generics for trait `FnMut`
   --> $DIR/missing-fn-trait-args-issue-136407.rs:13:19
@@ -44,13 +44,13 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
 LL | pub fn once<T: FnOnce>() {}
    |                ^^^^^^
    |
-   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
 help: use parenthetical notation instead
    |
 LL | pub fn once<T: FnOnce() -> ()>() {}
    |                      ++++++++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0107]: missing generics for trait `FnOnce`
   --> $DIR/missing-fn-trait-args-issue-136407.rs:17:16
@@ -64,13 +64,13 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
 LL | pub fn async_shared<T: AsyncFn>() {}
    |                        ^^^^^^^
    |
-   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
 help: use parenthetical notation instead
    |
 LL | pub fn async_shared<T: AsyncFn() -> ()>() {}
    |                               ++++++++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0107]: missing generics for trait `AsyncFn`
   --> $DIR/missing-fn-trait-args-issue-136407.rs:21:24
@@ -84,13 +84,13 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
 LL | pub fn async_mutable<T: AsyncFnMut>() {}
    |                         ^^^^^^^^^^
    |
-   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
 help: use parenthetical notation instead
    |
 LL | pub fn async_mutable<T: AsyncFnMut() -> ()>() {}
    |                                   ++++++++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0107]: missing generics for trait `AsyncFnMut`
   --> $DIR/missing-fn-trait-args-issue-136407.rs:25:25
@@ -104,13 +104,13 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
 LL | pub fn async_once<T: AsyncFnOnce>() {}
    |                      ^^^^^^^^^^^
    |
-   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
 help: use parenthetical notation instead
    |
 LL | pub fn async_once<T: AsyncFnOnce() -> ()>() {}
    |                                 ++++++++
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0107]: missing generics for trait `AsyncFnOnce`
   --> $DIR/missing-fn-trait-args-issue-136407.rs:29:22
@@ -124,14 +124,14 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
 LL | pub fn with_output<T: Fn<Output = ()>>() {}
    |                       ^^^^^^^^^^^^^^^
    |
-   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
 help: use parenthetical notation instead
    |
 LL - pub fn with_output<T: Fn<Output = ()>>() {}
 LL + pub fn with_output<T: Fn() -> ()>() {}
    |
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/missing-fn-trait-args-issue-136407.rs:33:23

@@ -6,12 +6,12 @@ LL |     let name_str = Some(name) else { return; };
    |     |
    |     assigning to binding pattern will always succeed
    |
-   = note: this pattern always matches, so the else clause is unreachable
 help: consider using `let Some(name_str) = name` to match on a specific variant
    |
 LL -     let name_str = Some(name) else { return; };
 LL +     let Some(name_str) = name else { return; };
    |
+   = note: this pattern always matches, so the else clause is unreachable
    = note: `#[warn(irrefutable_let_patterns)]` on by default
 
 warning: 1 warning emitted

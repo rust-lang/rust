@@ -4,8 +4,8 @@ error: this argument (N byte) is passed by reference, but would be more efficien
 LL | fn bad(x: &u32, y: &Foo, z: &Baz) {}
    |           ^^^^ help: consider passing by value instead: `u32`
    |
-   = note: `-D clippy::trivially-copy-pass-by-ref` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::trivially_copy_pass_by_ref)]`
+   = note: `-D clippy::trivially-copy-pass-by-ref` implied by `-D warnings`
 
 error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
   --> tests/ui/trivially_copy_pass_by_ref.rs:48:20

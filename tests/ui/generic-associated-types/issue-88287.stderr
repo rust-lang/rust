@@ -12,15 +12,15 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
 LL -     A: SearchableResource<B> + ?Sized + 'f,
 LL +     A: SearchableResource<B> + 'f,
    |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     T: SearchableResource<Criteria> + ?Sized,
+   |                                     ++++++++
 note: required by an implicit `Sized` bound in `<T as SearchableResourceExt<Criteria>>`
   --> $DIR/issue-88287.rs:24:6
    |
 LL | impl<T, Criteria> SearchableResourceExt<Criteria> for T
    |      ^ required by the implicit `Sized` requirement on this type parameter in `<T as SearchableResourceExt<Criteria>>`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL |     T: SearchableResource<Criteria> + ?Sized,
-   |                                     ++++++++
 
 error: aborting due to 1 previous error
 

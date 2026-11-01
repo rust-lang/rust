@@ -94,11 +94,11 @@ LL | use issue_52891::a::inner;
 LL | use issue_52891::b::inner;
    |     ^^^^^^^^^^^^^^^^^^^^^ `inner` reimported here
    |
-   = note: `inner` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | use issue_52891::b::inner as other_inner;
    |                           ++++++++++++++
+   = note: `inner` must be defined only once in the type namespace of this module
 
 error[E0254]: the name `issue_52891` is defined multiple times
   --> $DIR/issue-52891.rs:31:19

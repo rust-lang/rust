@@ -28,11 +28,11 @@ LL | |     impl<const N: usize> Foo<N> {
 LL | | }]>;
    | |__^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: aborting due to 2 previous errors
 

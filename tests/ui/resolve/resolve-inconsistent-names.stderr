@@ -91,12 +91,12 @@ LL |         (A, B) | (ref B, c) | (c, A) => ()
    |             |
    |             first introduced with type `E` here
    |
-   = note: in the same arm, a binding must have the same type in all alternatives
 help: consider removing `ref`
    |
 LL -         (A, B) | (ref B, c) | (c, A) => ()
 LL +         (A, B) | (B, c) | (c, A) => ()
    |
+   = note: in the same arm, a binding must have the same type in all alternatives
 
 error: aborting due to 9 previous errors
 

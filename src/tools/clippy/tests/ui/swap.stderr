@@ -7,9 +7,9 @@ LL | |     bar.a = bar.b;
 LL | |     bar.b = temp;
    | |_________________^ help: try: `std::mem::swap(&mut bar.a, &mut bar.b);`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_swap)]`
    = note: or maybe you should use `std::mem::replace`?
    = note: `-D clippy::manual-swap` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_swap)]`
 
 error: this looks like you are swapping elements of `foo` manually
   --> tests/ui/swap.rs:35:5
@@ -119,9 +119,9 @@ LL | |
 LL | |     b = a;
    | |_________^ help: try: `std::mem::swap(&mut a, &mut b)`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::almost_swapped)]`
    = note: or maybe you should use `std::mem::replace`?
    = note: `-D clippy::almost-swapped` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::almost_swapped)]`
 
 error: this looks like you are trying to swap `c.0` and `a`
   --> tests/ui/swap.rs:148:5

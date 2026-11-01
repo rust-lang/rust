@@ -6,12 +6,12 @@ LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<T> for T {
 LL |     type Item<'a> = T;
    |                     ^ expected type parameter `T`, found associated type
    |
-   = note: expected type parameter `T`
-             found associated type `<T as Deref>::Target`
 help: consider further restricting this bound
    |
 LL | impl<T: Copy + std::ops::Deref<Target = T>> UnsafeCopy<T> for T {
    |                               ++++++++++++
+   = note: expected type parameter `T`
+             found associated type `<T as Deref>::Target`
 note: required by a bound in `UnsafeCopy::Item`
   --> $DIR/issue-68656-unsized-values.rs:4:36
    |

@@ -5,8 +5,8 @@ LL |     f.read_to_end(&mut buffer)?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using `fs::read` instead
-   = note: `-D clippy::verbose-file-reads` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::verbose_file_reads)]`
+   = note: `-D clippy::verbose-file-reads` implied by `-D warnings`
 
 error: use of `File::read_to_string`
   --> tests/ui/verbose_file_reads.rs:28:5

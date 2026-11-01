@@ -5,6 +5,8 @@ LL |     a.test_mut();
    |       ^^^^^^^^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+help: there is a method `get_mut` with a similar name, but with different arguments
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
 note: `MyIter` defines an item `test_mut`, perhaps you need to implement it
   --> $DIR/vec-autoderef-autoref.rs:13:1
    |
@@ -12,8 +14,6 @@ LL | trait MyIter {
    | ^^^^^^^^^^^^
 LL |     fn test_mut(&mut self);
    |
-help: there is a method `get_mut` with a similar name, but with different arguments
-  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
 
 error[E0599]: no method named `test` found for struct `Vec<{integer}>` in the current scope
   --> $DIR/vec-autoderef-autoref.rs:7:7

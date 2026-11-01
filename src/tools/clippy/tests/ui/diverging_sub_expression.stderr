@@ -4,8 +4,8 @@ error: sub-expression diverges
 LL |     b || diverge();
    |          ^^^^^^^^^
    |
-   = note: `-D clippy::diverging-sub-expression` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::diverging_sub_expression)]`
+   = note: `-D clippy::diverging-sub-expression` implied by `-D warnings`
 
 error: sub-expression diverges
   --> tests/ui/diverging_sub_expression.rs:24:10

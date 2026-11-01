@@ -4,8 +4,8 @@ error: unknown diagnostic attribute
 LL | #[diagnostic::opaque]
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this is an experimental diagnostic attribute
    = help: add `#![feature(diagnostic_opaque)]` to the crate attributes to enable
+   = note: this is an experimental diagnostic attribute
 note: the lint level is defined here
   --> $DIR/feature-gate-diagnostic-opaque.rs:3:9
    |
@@ -18,8 +18,8 @@ error: unknown diagnostic attribute
 LL | #[diagnostic::opaque]
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this is an experimental diagnostic attribute
    = help: add `#![feature(diagnostic_opaque)]` to the crate attributes to enable
+   = note: this is an experimental diagnostic attribute
 
 error: aborting due to 2 previous errors
 

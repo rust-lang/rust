@@ -4,15 +4,15 @@ error[E0425]: cannot find type `T` in this scope
 LL | fn mk_array(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}
    |                 ^ not found in this scope
    |
+help: a trait with a similar name exists
+   |
+LL | fn mk_array(_x: Tr) -> [(); <T as Tr<bool>>::SIZE] {}
+   |                  +
 note: similarly named trait `Tr` defined here
   --> $DIR/projection-error.rs:8:1
    |
 LL | pub trait Tr<A> {
    | ^^^^^^^^^^^^^^^
-help: a trait with a similar name exists
-   |
-LL | fn mk_array(_x: Tr) -> [(); <T as Tr<bool>>::SIZE] {}
-   |                  +
 help: you might be missing a type parameter
    |
 LL | fn mk_array<T>(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}
@@ -24,15 +24,15 @@ error[E0425]: cannot find type `T` in this scope
 LL | fn mk_array(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}
    |                             ^ not found in this scope
    |
+help: a trait with a similar name exists
+   |
+LL | fn mk_array(_x: T) -> [(); <Tr as Tr<bool>>::SIZE] {}
+   |                              +
 note: similarly named trait `Tr` defined here
   --> $DIR/projection-error.rs:8:1
    |
 LL | pub trait Tr<A> {
    | ^^^^^^^^^^^^^^^
-help: a trait with a similar name exists
-   |
-LL | fn mk_array(_x: T) -> [(); <Tr as Tr<bool>>::SIZE] {}
-   |                              +
 help: you might be missing a type parameter
    |
 LL | fn mk_array<T>(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}

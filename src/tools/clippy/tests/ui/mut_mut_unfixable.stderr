@@ -4,13 +4,13 @@ error: multiple successive mutable references
 LL | fn fun(x: &mut &mut u32) -> bool {
    |           ^^^^^^^^^^
    |
-   = note: `-D clippy::mut-mut` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::mut_mut)]`
 help: use only a single mutable reference
    |
 LL - fn fun(x: &mut &mut u32) -> bool {
 LL + fn fun(x: &mut u32) -> bool {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::mut_mut)]`
+   = note: `-D clippy::mut-mut` implied by `-D warnings`
 
 error: multiple successive mutable borrows
   --> tests/ui/mut_mut_unfixable.rs:14:17

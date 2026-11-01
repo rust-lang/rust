@@ -18,12 +18,12 @@ LL | fn double_move<T: Add<Output=()>>(x: T) {
    |                ^ consider constraining this type parameter with `Clone`
 LL |     x
    |     - you could clone this value
-note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: consider further restricting type parameter `T` with trait `Copy`
    |
 LL | fn double_move<T: Add<Output=()> + Copy>(x: T) {
    |                                  ++++++
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/binop-move-semantics.rs:15:5
@@ -102,8 +102,6 @@ LL | |     +
 LL | |     *n;
    | |______- `*m` moved due to usage in operator
    |
-note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: if `T` implemented `Clone`, you could clone the value
   --> $DIR/binop-move-semantics.rs:27:24
    |
@@ -112,6 +110,8 @@ LL | fn illegal_dereference<T: Add<Output=()>>(mut x: T, y: T) {
 ...
 LL |     *m
    |     -- you could clone this value
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0507]: cannot move out of `*n` which is behind a shared reference
   --> $DIR/binop-move-semantics.rs:33:5

@@ -4,8 +4,8 @@ error: unnecessary use of `clone` to create a slice from a reference
 LL |         let _ = &[data_ref.clone()];
    |                 ^^^^^^^^^^^^^^^^^^^ help: try: `std::slice::from_ref(data_ref)`
    |
-   = note: `-D clippy::cloned-ref-to-slice-refs` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cloned_ref_to_slice_refs)]`
+   = note: `-D clippy::cloned-ref-to-slice-refs` implied by `-D warnings`
 
 error: unnecessary use of `clone` to create a slice from a reference
   --> tests/ui/cloned_ref_to_slice_refs.rs:14:17

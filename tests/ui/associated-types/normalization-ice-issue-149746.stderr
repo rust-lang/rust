@@ -4,11 +4,11 @@ error[E0277]: expected `FnMut()` signature, found `T`
 LL |     _significant_drop: <() as Owner>::Ty<T>,
    |                        ^^^^^^^^^^^^^^^^^^^^ expected `FnMut()` signature, found `T`
    |
-   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
 help: consider restricting type parameter `T` with trait `FnMut`
    |
 LL | pub struct Warns<T: FnMut()> {
    |                   +++++++++
+   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `Owner::Ty`
   --> $DIR/normalization-ice-issue-149746.rs:3:26
    |

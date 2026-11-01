@@ -4,8 +4,8 @@ error: this multiplication by -1 can be written more succinctly
 LL |     x * -1;
    |     ^^^^^^ help: consider using: `-x`
    |
-   = note: `-D clippy::neg-multiply` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::neg_multiply)]`
+   = note: `-D clippy::neg-multiply` implied by `-D warnings`
 
 error: this multiplication by -1 can be written more succinctly
   --> tests/ui/neg_multiply.rs:31:5

@@ -40,6 +40,11 @@ error[E0425]: message
 LL | const X: u32 = x::WAHT;
    |                   ^^^^ label
    |
+help: a constant with a similar name exists
+   |
+LL - const X: u32 = x::WAHT;
+LL + const X: u32 = x::WHAT;
+   |
    = note: cannot find value `WAHT` in module `x`
    = note: note
 note: similarly named constant `WHAT` defined here
@@ -47,11 +52,6 @@ note: similarly named constant `WHAT` defined here
    |
 LL |     const WHAT: u32 = 1;
    |     ^^^^^^^^^^^^^^^^^^^^
-help: a constant with a similar name exists
-   |
-LL - const X: u32 = x::WAHT;
-LL + const X: u32 = x::WHAT;
-   |
 
 error: aborting due to 5 previous errors
 

@@ -4,9 +4,9 @@ warning: unknown lint: `implicit_provenance_casts`
 LL | #![deny(implicit_provenance_casts)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: add `#![feature(strict_provenance_lints)]` to the crate attributes to enable
    = note: the `implicit_provenance_casts` lint is unstable
    = note: see issue #130351 <https://github.com/rust-lang/rust/issues/130351> for more information
-   = help: add `#![feature(strict_provenance_lints)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: `#[warn(unknown_lints)]` on by default
 
@@ -24,9 +24,9 @@ warning: unknown lint: `implicit_provenance_casts`
 LL | #![deny(fuzzy_provenance_casts)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: add `#![feature(strict_provenance_lints)]` to the crate attributes to enable
    = note: the `implicit_provenance_casts` lint is unstable
    = note: see issue #130351 <https://github.com/rust-lang/rust/issues/130351> for more information
-   = help: add `#![feature(strict_provenance_lints)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 warning: lint `lossy_provenance_casts` has been renamed to `implicit_provenance_casts`
@@ -41,9 +41,9 @@ warning: unknown lint: `implicit_provenance_casts`
 LL | #![deny(lossy_provenance_casts)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: add `#![feature(strict_provenance_lints)]` to the crate attributes to enable
    = note: the `implicit_provenance_casts` lint is unstable
    = note: see issue #130351 <https://github.com/rust-lang/rust/issues/130351> for more information
-   = help: add `#![feature(strict_provenance_lints)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 warning: 5 warnings emitted

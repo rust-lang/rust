@@ -4,8 +4,8 @@ error: `panic` should not be present in production code
 LL |     panic!();
    |     ^^^^^^^^
    |
-   = note: `-D clippy::panic` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::panic)]`
+   = note: `-D clippy::panic` implied by `-D warnings`
 
 error: `panic` should not be present in production code
   --> tests/ui/panicking_macros.rs:27:5
@@ -43,8 +43,8 @@ error: `todo` should not be present in production code
 LL |     todo!();
    |     ^^^^^^^
    |
-   = note: `-D clippy::todo` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::todo)]`
+   = note: `-D clippy::todo` implied by `-D warnings`
 
 error: `todo` should not be present in production code
   --> tests/ui/panicking_macros.rs:55:5
@@ -64,8 +64,8 @@ error: `unimplemented` should not be present in production code
 LL |     unimplemented!();
    |     ^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unimplemented` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unimplemented)]`
+   = note: `-D clippy::unimplemented` implied by `-D warnings`
 
 error: `unimplemented` should not be present in production code
   --> tests/ui/panicking_macros.rs:69:5
@@ -85,8 +85,8 @@ error: usage of the `unreachable!` macro
 LL |     unreachable!();
    |     ^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unreachable` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unreachable)]`
+   = note: `-D clippy::unreachable` implied by `-D warnings`
 
 error: usage of the `unreachable!` macro
   --> tests/ui/panicking_macros.rs:83:5

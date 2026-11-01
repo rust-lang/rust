@@ -4,8 +4,8 @@ error: usage of `process::exit`
 LL |     std::process::exit(3);
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::exit` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::exit)]`
+   = note: `-D clippy::exit` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

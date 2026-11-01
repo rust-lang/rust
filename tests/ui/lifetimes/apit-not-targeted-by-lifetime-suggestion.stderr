@@ -12,9 +12,9 @@ help: consider introducing a named lifetime parameter
    |
 LL | fn push_apit<'a>(vec: &mut Vec<&'a str>, s: &'a str, _fun: impl Clone) {
    |             ++++                ++           ++
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of a mutable reference to `Vec<&str>`
    = note: mutable references are invariant over their type parameter
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/apit-not-targeted-by-lifetime-suggestion.rs:15:5
@@ -30,9 +30,9 @@ help: consider introducing a named lifetime parameter
    |
 LL | fn push_ref_apit<'a>(vec: &mut Vec<&'a str>, s: &'a str, _fun: &impl Clone) {
    |                 ++++                ++           ++
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of a mutable reference to `Vec<&str>`
    = note: mutable references are invariant over their type parameter
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/apit-not-targeted-by-lifetime-suggestion.rs:20:5
@@ -48,9 +48,9 @@ help: consider introducing a named lifetime parameter
    |
 LL | fn push_real_generic<'a, T>(vec: &mut Vec<&'a str>, s: &'a str, _fun: T) {
    |                      +++                   ++           ++
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of a mutable reference to `Vec<&str>`
    = note: mutable references are invariant over their type parameter
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to 3 previous errors
 

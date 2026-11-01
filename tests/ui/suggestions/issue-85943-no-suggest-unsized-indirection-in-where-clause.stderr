@@ -5,11 +5,6 @@ LL | struct B(A<[u8]>);
    |          ^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
-note: required by an implicit `Sized` bound in `A`
-  --> $DIR/issue-85943-no-suggest-unsized-indirection-in-where-clause.rs:4:10
-   |
-LL | struct A<T>(T) where T: Send;
-   |          ^ required by the implicit `Sized` requirement on this type parameter in `A`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/issue-85943-no-suggest-unsized-indirection-in-where-clause.rs:4:10
    |
@@ -17,6 +12,11 @@ LL | struct A<T>(T) where T: Send;
    |          ^  - ...if indirection were used here: `Box<T>`
    |          |
    |          this could be changed to `T: ?Sized`...
+note: required by an implicit `Sized` bound in `A`
+  --> $DIR/issue-85943-no-suggest-unsized-indirection-in-where-clause.rs:4:10
+   |
+LL | struct A<T>(T) where T: Send;
+   |          ^ required by the implicit `Sized` requirement on this type parameter in `A`
 
 error: aborting due to 1 previous error
 

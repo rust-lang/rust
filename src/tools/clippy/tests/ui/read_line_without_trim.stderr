@@ -6,13 +6,13 @@ LL |     let _x: i32 = input.parse().unwrap();
    |                   |
    |                   help: try: `input.trim_end()`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::read_line_without_trim)]`
 note: call to `.read_line()` here, which leaves a trailing newline character in the buffer, which in turn will cause the checking to always fail
   --> tests/ui/read_line_without_trim.rs:10:5
    |
 LL |     std::io::stdin().read_line(&mut input).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::read-line-without-trim` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::read_line_without_trim)]`
 
 error: calling `.parse()` on a string without trimming the trailing newline character
   --> tests/ui/read_line_without_trim.rs:16:20

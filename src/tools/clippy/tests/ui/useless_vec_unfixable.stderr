@@ -9,13 +9,13 @@ LL | |         3, 4, // but this one going away ;-;
 LL | |     ]; // that is life anyways
    | |_____^
    |
-   = note: `-D clippy::useless-vec` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::useless_vec)]`
 help: you can use an array directly
    |
 LL ~     let _some_variable = [1, 2, // i'm here to stay
 LL ~         3, 4]; // that is life anyways
    |
+   = help: to override `-D warnings` add `#[allow(clippy::useless_vec)]`
+   = note: `-D clippy::useless-vec` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

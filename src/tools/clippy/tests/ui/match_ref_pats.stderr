@@ -8,8 +8,6 @@ LL | |             &None => println!("none"),
 LL | |         }
    | |_________^
    |
-   = note: `-D clippy::match-ref-pats` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::match_ref_pats)]`
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
 LL ~         match *v {
@@ -17,6 +15,8 @@ LL |
 LL ~             Some(v) => println!("{:?}", v),
 LL ~             None => println!("none"),
    |
+   = help: to override `-D warnings` add `#[allow(clippy::match_ref_pats)]`
+   = note: `-D clippy::match-ref-pats` implied by `-D warnings`
 
 error: you don't need to add `&` to both the expression and the patterns
   --> tests/ui/match_ref_pats.rs:25:5
@@ -42,13 +42,13 @@ error: redundant pattern matching
 LL |     if let &None = a {
    |            ^^^^^
    |
-   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 help: consider using `is_none()`
    |
 LL -     if let &None = a {
 LL +     if a.is_none() {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
+   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
 error: redundant pattern matching
   --> tests/ui/match_ref_pats.rs:44:12

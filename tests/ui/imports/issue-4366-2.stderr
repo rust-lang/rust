@@ -16,11 +16,11 @@ error[E0423]: cannot find function `foo` in this scope
 LL |     foo();
    |     ^^^ not found in this scope
    |
-   = note: a module named `foo` exists in another namespace
 help: consider importing this function instead
    |
 LL + use foo::foo;
    |
+   = note: a module named `foo` exists in another namespace
 note: function `m1::foo` exists but is inaccessible
   --> $DIR/issue-4366-2.rs:22:5
    |

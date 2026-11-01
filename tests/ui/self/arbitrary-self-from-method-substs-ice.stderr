@@ -27,8 +27,8 @@ error[E0801]: invalid generic `self` parameter type: `R`
 LL |     const fn get<R: Deref<Target = Self>>(self: R) -> u32 {
    |                                                 ^
    |
-   = note: type of `self` must not be a method generic parameter type
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+   = note: type of `self` must not be a method generic parameter type
 
 error: aborting due to 3 previous errors
 

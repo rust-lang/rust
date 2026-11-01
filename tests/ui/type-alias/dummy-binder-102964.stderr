@@ -6,13 +6,13 @@ LL | fn bar_function<T>(function: Foo<T>) -> RcFoo<T> {
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
    |
-   = note: expected struct `Rc<&dyn for<'a> Fn(&'a T)>`
-           found unit type `()`
 help: consider returning the local binding `rc`
    |
 LL ~     let rc = Rc::new(function);
 LL +     rc
    |
+   = note: expected struct `Rc<&dyn for<'a> Fn(&'a T)>`
+           found unit type `()`
 
 error: aborting due to 1 previous error
 

@@ -4,11 +4,11 @@ error: prefix `r` is unknown
 LL | r'r'
    | ^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL | r 'r'
    |  +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: prefix `c` is unknown
   --> <proc-macro source code>:1:1
@@ -16,11 +16,11 @@ error: prefix `c` is unknown
 LL | c'r'
    | ^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL | c 'r'
    |  +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: unknown start of token: \u{2000}
   --> <proc-macro source code>:1:1

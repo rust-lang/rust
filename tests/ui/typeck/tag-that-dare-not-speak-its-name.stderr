@@ -6,12 +6,12 @@ LL |     let x : char = last(y);
    |             |
    |             expected due to this
    |
-   = note: expected type `char`
-              found enum `Option<_>`
 help: consider using `Option::expect` to unwrap the `Option<_>` value, panicking if the value is an `Option::None`
    |
 LL |     let x : char = last(y).expect("REASON");
    |                           +++++++++++++++++
+   = note: expected type `char`
+              found enum `Option<_>`
 
 error: aborting due to 1 previous error
 

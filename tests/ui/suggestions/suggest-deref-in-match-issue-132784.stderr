@@ -7,12 +7,12 @@ LL |     match x {
 LL |         Some(_) => {}
    |         ^^^^^^^ expected `Arc<Option<{integer}>>`, found `Option<_>`
    |
-   = note: expected struct `Arc<Option<{integer}>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *x {
    |           +
+   = note: expected struct `Arc<Option<{integer}>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:9:9
@@ -23,12 +23,12 @@ LL |     match x {
 LL |         None => {}
    |         ^^^^ expected `Arc<Option<{integer}>>`, found `Option<_>`
    |
-   = note: expected struct `Arc<Option<{integer}>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *x {
    |           +
+   = note: expected struct `Arc<Option<{integer}>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:16:9
@@ -39,12 +39,12 @@ LL |     match &x {
 LL |         Some(_) => {}
    |         ^^^^^^^ expected `Arc<Option<{integer}>>`, found `Option<_>`
    |
-   = note: expected struct `Arc<Option<{integer}>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &*x {
    |            +
+   = note: expected struct `Arc<Option<{integer}>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:18:9
@@ -55,12 +55,12 @@ LL |     match &x {
 LL |         None => {}
    |         ^^^^ expected `Arc<Option<{integer}>>`, found `Option<_>`
    |
-   = note: expected struct `Arc<Option<{integer}>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &*x {
    |            +
+   = note: expected struct `Arc<Option<{integer}>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:26:9
@@ -71,12 +71,12 @@ LL |     match y {
 LL |         Some(_) => {}
    |         ^^^^^^^ expected `Box<Option<{integer}>>`, found `Option<_>`
    |
-   = note: expected struct `Box<Option<{integer}>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *y {
    |           +
+   = note: expected struct `Box<Option<{integer}>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:28:9
@@ -87,12 +87,12 @@ LL |     match y {
 LL |         None => {}
    |         ^^^^ expected `Box<Option<{integer}>>`, found `Option<_>`
    |
-   = note: expected struct `Box<Option<{integer}>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match *y {
    |           +
+   = note: expected struct `Box<Option<{integer}>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:36:9
@@ -103,13 +103,13 @@ LL |     match z as Arc<Option<i32>> {
 LL |         Some(_) => {}
    |         ^^^^^^^ expected `Arc<Option<i32>>`, found `Option<_>`
    |
-   = note: expected struct `Arc<Option<i32>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL -     match z as Arc<Option<i32>> {
 LL +     match *(z as Arc<Option<i32>>) {
    |
+   = note: expected struct `Arc<Option<i32>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:38:9
@@ -120,13 +120,13 @@ LL |     match z as Arc<Option<i32>> {
 LL |         None => {}
    |         ^^^^ expected `Arc<Option<i32>>`, found `Option<_>`
    |
-   = note: expected struct `Arc<Option<i32>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL -     match z as Arc<Option<i32>> {
 LL +     match *(z as Arc<Option<i32>>) {
    |
+   = note: expected struct `Arc<Option<i32>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:46:9
@@ -137,12 +137,12 @@ LL |     match z_const {
 LL |         Some(_) => {}
    |         ^^^^^^^ expected `Arc<Option<i32>>`, found `Option<_>`
    |
-   = note: expected struct `Arc<Option<i32>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &**z_const {
    |           +++
+   = note: expected struct `Arc<Option<i32>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:48:9
@@ -153,12 +153,12 @@ LL |     match z_const {
 LL |         None => {}
    |         ^^^^ expected `Arc<Option<i32>>`, found `Option<_>`
    |
-   = note: expected struct `Arc<Option<i32>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &**z_const {
    |           +++
+   = note: expected struct `Arc<Option<i32>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:57:9
@@ -169,12 +169,12 @@ LL |     match z_mut {
 LL |         Some(_) => {}
    |         ^^^^^^^ expected `Arc<Option<i32>>`, found `Option<_>`
    |
-   = note: expected struct `Arc<Option<i32>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &**z_mut {
    |           +++
+   = note: expected struct `Arc<Option<i32>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:59:9
@@ -185,12 +185,12 @@ LL |     match z_mut {
 LL |         None => {}
    |         ^^^^ expected `Arc<Option<i32>>`, found `Option<_>`
    |
-   = note: expected struct `Arc<Option<i32>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &**z_mut {
    |           +++
+   = note: expected struct `Arc<Option<i32>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:68:9
@@ -201,12 +201,12 @@ LL |     match y_mut {
 LL |         Some(_) => {}
    |         ^^^^^^^ expected `Box<Option<i32>>`, found `Option<_>`
    |
-   = note: expected struct `Box<Option<i32>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &**y_mut {
    |           +++
+   = note: expected struct `Box<Option<i32>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:70:9
@@ -217,12 +217,12 @@ LL |     match y_mut {
 LL |         None => {}
    |         ^^^^ expected `Box<Option<i32>>`, found `Option<_>`
    |
-   = note: expected struct `Box<Option<i32>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL |     match &**y_mut {
    |           +++
+   = note: expected struct `Box<Option<i32>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:79:9
@@ -233,13 +233,13 @@ LL |     match (& (&difficult)  ) {
 LL |         Some(_) => {}
    |         ^^^^^^^ expected `Arc<Option<{integer}>>`, found `Option<_>`
    |
-   = note: expected struct `Arc<Option<{integer}>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL -     match (& (&difficult)  ) {
 LL +     match &*difficult {
    |
+   = note: expected struct `Arc<Option<{integer}>>`
+                found enum `Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:81:9
@@ -250,13 +250,13 @@ LL |     match (& (&difficult)  ) {
 LL |         None => {}
    |         ^^^^ expected `Arc<Option<{integer}>>`, found `Option<_>`
    |
-   = note: expected struct `Arc<Option<{integer}>>`
-                found enum `Option<_>`
 help: consider dereferencing to access the inner value using the `Deref` trait
    |
 LL -     match (& (&difficult)  ) {
 LL +     match &*difficult {
    |
+   = note: expected struct `Arc<Option<{integer}>>`
+                found enum `Option<_>`
 
 error: aborting due to 16 previous errors
 

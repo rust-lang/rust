@@ -4,13 +4,13 @@ error: usage of `Rc<T>` when `T` is a buffer type
 LL |     bad1: Rc<String>,
    |           ^^^^^^^^^^
    |
-   = note: `-D clippy::rc-buffer` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::rc_buffer)]`
 help: try
    |
 LL -     bad1: Rc<String>,
 LL +     bad1: Rc<str>,
    |
+   = help: to override `-D warnings` add `#[allow(clippy::rc_buffer)]`
+   = note: `-D clippy::rc-buffer` implied by `-D warnings`
 
 error: usage of `Rc<T>` when `T` is a buffer type
   --> tests/ui/rc_buffer.rs:12:11

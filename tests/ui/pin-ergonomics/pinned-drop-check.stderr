@@ -38,15 +38,15 @@ help: implement `pin_drop` instead
 LL -         fn drop(&mut self) {}
 LL +         fn pin_drop(&pin mut self) {}
    |
+help: remove the `#[pin_v2]` attribute if it is not intended for structurally pinning
+   |
+LL -     #[pin_v2]
+   |
 note: `Bar` is marked `#[pin_v2]` here
   --> $DIR/pinned-drop-check.rs:10:5
    |
 LL |     #[pin_v2]
    |     ^^^^^^^^^
-help: remove the `#[pin_v2]` attribute if it is not intended for structurally pinning
-   |
-LL -     #[pin_v2]
-   |
 
 error: conflicting implementations of `Drop::drop` and `Drop::pin_drop`
   --> $DIR/pinned-drop-check.rs:41:5
@@ -100,15 +100,15 @@ help: implement `pin_drop` instead
 LL -         fn drop(&pin const self) {}
 LL +         fn pin_drop(&pin mut self) {}
    |
+help: remove the `#[pin_v2]` attribute if it is not intended for structurally pinning
+   |
+LL -     #[pin_v2]
+   |
 note: `Bar` is marked `#[pin_v2]` here
   --> $DIR/pinned-drop-check.rs:79:5
    |
 LL |     #[pin_v2]
    |     ^^^^^^^^^
-help: remove the `#[pin_v2]` attribute if it is not intended for structurally pinning
-   |
-LL -     #[pin_v2]
-   |
 
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:83:17
@@ -150,15 +150,15 @@ help: implement `pin_drop` instead
 LL -         fn drop<'a>(&'a pin mut self) {}
 LL +         fn pin_drop(&pin mut self) {}
    |
+help: remove the `#[pin_v2]` attribute if it is not intended for structurally pinning
+   |
+LL -     #[pin_v2]
+   |
 note: `Bar` is marked `#[pin_v2]` here
   --> $DIR/pinned-drop-check.rs:95:5
    |
 LL |     #[pin_v2]
    |     ^^^^^^^^^
-help: remove the `#[pin_v2]` attribute if it is not intended for structurally pinning
-   |
-LL -     #[pin_v2]
-   |
 
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:99:21
@@ -200,15 +200,15 @@ help: implement `pin_drop` instead
 LL -         fn drop(self: Pin<&mut Self>) {}
 LL +         fn pin_drop(&pin mut self) {}
    |
+help: remove the `#[pin_v2]` attribute if it is not intended for structurally pinning
+   |
+LL -     #[pin_v2]
+   |
 note: `Bar` is marked `#[pin_v2]` here
   --> $DIR/pinned-drop-check.rs:114:5
    |
 LL |     #[pin_v2]
    |     ^^^^^^^^^
-help: remove the `#[pin_v2]` attribute if it is not intended for structurally pinning
-   |
-LL -     #[pin_v2]
-   |
 
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:118:23
@@ -278,15 +278,15 @@ help: implement `pin_drop` instead
 LL -         fn drop(&mut self) {
 LL +         fn pin_drop(&pin mut self) {
    |
+help: remove the `#[pin_v2]` attribute if it is not intended for structurally pinning
+   |
+LL -     #[pin_v2]
+   |
 note: `Bar` is marked `#[pin_v2]` here
   --> $DIR/pinned-drop-check.rs:145:5
    |
 LL |     #[pin_v2]
    |     ^^^^^^^^^
-help: remove the `#[pin_v2]` attribute if it is not intended for structurally pinning
-   |
-LL -     #[pin_v2]
-   |
 
 error[E0040]: explicit use of destructor method
   --> $DIR/pinned-drop-check.rs:150:13

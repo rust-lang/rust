@@ -10,8 +10,6 @@ LL | |         ()
 LL | |     };
    | |______^
    |
-   = note: `-D clippy::manual-let-else` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
 help: consider writing
    |
 LL ~     let Some(v) = g() else {
@@ -19,6 +17,8 @@ LL +         panic!();
 LL +         ()
 LL +     };
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
+   = note: `-D clippy::manual-let-else` implied by `-D warnings`
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else_unfixable.rs:31:5

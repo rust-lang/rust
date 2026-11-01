@@ -4,6 +4,7 @@ error[E0659]: `inline` is ambiguous
 LL | #[inline]
    |   ^^^^^^ ambiguous name
    |
+   = help: use `crate::inline` to refer to this attribute macro unambiguously
    = note: ambiguous because of a name conflict with a builtin attribute
    = note: `inline` could refer to a built-in attribute
 note: `inline` could also refer to the attribute macro defined here
@@ -11,7 +12,6 @@ note: `inline` could also refer to the attribute macro defined here
    |
 LL | #[eii(inline)]
    | ^^^^^^^^^^^^^^
-   = help: use `crate::inline` to refer to this attribute macro unambiguously
 
 error: `#[inline]` function required, but not found
   --> $DIR/shadow_builtin.rs:6:7

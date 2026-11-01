@@ -7,12 +7,12 @@ LL |     h2(|_: (), _: (), _: (), x: &_| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'a, 't0> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'t0 (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
-              found closure signature `fn((), (), (), &_) -> _`
 help: consider adjusting the signature so it borrows its arguments
    |
 LL |     h2(|_: &(), _: (), _: &(), x: &_| {});
    |            +              +
+   = note: expected closure signature `for<'a, 't0> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'t0 (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
+              found closure signature `fn((), (), (), &_) -> _`
 help: consider adjusting the signature so it does not borrow its argument
    |
 LL -     h2(|_: (), _: (), _: (), x: &_| {});

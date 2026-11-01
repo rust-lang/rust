@@ -7,15 +7,15 @@ LL |     impl<'a, T> Trait<'a, T> for () {
 LL |             req
    |             ^^^ ...so that the type `&'a T` will meet its required lifetime bounds...
    |
+help: consider adding an explicit lifetime bound
+   |
+LL |     impl<'a, T: 'a> Trait<'a, T> for () {
+   |               ++++
 note: ...that is required by this bound
   --> $DIR/wf-in-associated-type.rs:39:36
    |
 LL |         type Opaque = impl Sized + 'a;
    |                                    ^^
-help: consider adding an explicit lifetime bound
-   |
-LL |     impl<'a, T: 'a> Trait<'a, T> for () {
-   |               ++++
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/wf-in-associated-type.rs:41:13

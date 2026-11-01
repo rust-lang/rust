@@ -44,8 +44,8 @@ error: generic parameters may not be used in const operations
 LL | struct BreakTy0<T>(T, [u8; { size_of::<*mut T>() }]);
    |                                             ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -54,8 +54,8 @@ error: generic parameters may not be used in const operations
 LL | struct BreakTy1<T>(T, [u8; { { size_of::<*mut T>() } }]);
    |                                               ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -64,8 +64,8 @@ error: generic parameters may not be used in const operations
 LL |     let _: [u8; size_of::<*mut T>() + 1];
    |                                ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 warning: cannot use constants which depend on generic parameters in types

@@ -4,8 +4,8 @@ error: draining all elements of a collection into a new collection of the same t
 LL |     v.drain(..).collect()
    |     ^^^^^^^^^^^^^^^^^^^^^ help: use `mem::take` to avoid creating a new allocation: `core::mem::take(v)`
    |
-   = note: `-D clippy::drain-collect` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::drain_collect)]`
+   = note: `-D clippy::drain-collect` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

@@ -9,12 +9,12 @@ LL |     let _: Option<()> = produces_string().and_then(takes_str);
    |                                           |
    |                                           required by a bound introduced by this call
    |
-   = note: expected function signature `fn(String) -> _`
-              found function signature `fn(&str) -> _`
 help: consider wrapping the function in a closure
    |
 LL |     let _: Option<()> = produces_string().and_then(|arg0: String| takes_str(/* &str */));
    |                                                    ++++++++++++++          ++++++++++++
+   = note: expected function signature `fn(String) -> _`
+              found function signature `fn(&str) -> _`
 help: call `Option::as_deref()` first
    |
 LL |     let _: Option<()> = produces_string().as_deref().and_then(takes_str);
@@ -33,12 +33,12 @@ LL |     let _: Option<Option<()>> = produces_string().map(takes_str);
    |                                                   |
    |                                                   required by a bound introduced by this call
    |
-   = note: expected function signature `fn(String) -> _`
-              found function signature `fn(&str) -> _`
 help: consider wrapping the function in a closure
    |
 LL |     let _: Option<Option<()>> = produces_string().map(|arg0: String| takes_str(/* &str */));
    |                                                       ++++++++++++++          ++++++++++++
+   = note: expected function signature `fn(String) -> _`
+              found function signature `fn(&str) -> _`
 help: call `Option::as_deref()` first
    |
 LL |     let _: Option<Option<()>> = produces_string().as_deref().map(takes_str);
@@ -57,12 +57,12 @@ LL |     let _: Option<Option<()>> = produces_string().map(takes_str_mut);
    |                                                   |
    |                                                   required by a bound introduced by this call
    |
-   = note: expected function signature `fn(String) -> _`
-              found function signature `fn(&mut str) -> _`
 help: consider wrapping the function in a closure
    |
 LL |     let _: Option<Option<()>> = produces_string().map(|arg0: String| takes_str_mut(/* &mut str */));
    |                                                       ++++++++++++++              ++++++++++++++++
+   = note: expected function signature `fn(String) -> _`
+              found function signature `fn(&mut str) -> _`
 help: call `Option::as_deref_mut()` first
    |
 LL |     let _: Option<Option<()>> = produces_string().as_deref_mut().map(takes_str_mut);
@@ -81,12 +81,12 @@ LL |     let _ = produces_string().and_then(generic_ref);
    |                               |
    |                               required by a bound introduced by this call
    |
-   = note: expected function signature `fn(String) -> _`
-              found function signature `fn(&_) -> _`
 help: consider wrapping the function in a closure
    |
 LL |     let _ = produces_string().and_then(|arg0: String| generic_ref(&arg0));
    |                                        ++++++++++++++            +++++++
+   = note: expected function signature `fn(String) -> _`
+              found function signature `fn(&_) -> _`
 help: consider adjusting the signature so it does not borrow its argument
    |
 LL - fn generic_ref<T>(_: &T) -> Option<()> {

@@ -36,9 +36,9 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the type `Cell<&'?6 ()>`, which makes the generic argument `&'?6 ()` invariant
    = note: the struct `Cell<T>` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:45:39
@@ -92,9 +92,9 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the type `Cell<&'?7 ()>`, which makes the generic argument `&'?7 ()` invariant
    = note: the struct `Cell<T>` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:56:39

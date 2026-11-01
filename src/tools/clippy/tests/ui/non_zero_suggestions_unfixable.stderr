@@ -4,8 +4,8 @@ error: consider using `NonZeroU64::from()` for more efficient and type-safe conv
 LL |     let x: u64 = u64::from(NonZeroU32::new(5).unwrap().get());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(NonZeroU32::new(5).unwrap())`
    |
-   = note: `-D clippy::non-zero-suggestions` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::non_zero_suggestions)]`
+   = note: `-D clippy::non-zero-suggestions` implied by `-D warnings`
 
 error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
   --> tests/ui/non_zero_suggestions_unfixable.rs:10:13

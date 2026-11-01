@@ -4,8 +4,8 @@ error: function call inside of `unwrap_or`
 LL |     let s = Some(String::from("test string")).unwrap_or("Fail".to_string()).len();
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| "Fail".to_string())`
    |
-   = note: `-D clippy::or-fun-call` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::or_fun_call)]`
+   = note: `-D clippy::or-fun-call` implied by `-D warnings`
 
 error: function call inside of `unwrap_or`
   --> tests/ui/unwrap_or.rs:10:47

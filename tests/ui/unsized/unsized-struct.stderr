@@ -11,11 +11,6 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
 LL - fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
 LL + fn foo2<T>() { not_sized::<Foo<T>>() }
    |
-note: required by an implicit `Sized` bound in `Foo`
-  --> $DIR/unsized-struct.rs:4:12
-   |
-LL | struct Foo<T> { data: T }
-   |            ^ required by the implicit `Sized` requirement on this type parameter in `Foo`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/unsized-struct.rs:4:12
    |
@@ -23,6 +18,11 @@ LL | struct Foo<T> { data: T }
    |            ^          - ...if indirection were used here: `Box<T>`
    |            |
    |            this could be changed to `T: ?Sized`...
+note: required by an implicit `Sized` bound in `Foo`
+  --> $DIR/unsized-struct.rs:4:12
+   |
+LL | struct Foo<T> { data: T }
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Foo`
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/unsized-struct.rs:13:35

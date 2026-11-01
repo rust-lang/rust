@@ -18,6 +18,10 @@ error[E0038]: the trait `Trait` is not dyn compatible
 LL |     Trait::nonexistent(());
    |     ^^^^^ `Trait` is not dyn compatible
    |
+help: consider turning `dyn_incompatible` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
+   |
+LL |     fn dyn_incompatible(&self) -> Self;
+   |                         +++++
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/spurious-dyn-compat-errors-58734.rs:6:8
@@ -27,10 +31,6 @@ LL | trait Trait {
 ...
 LL |     fn dyn_incompatible() -> Self;
    |        ^^^^^^^^^^^^^^^^ ...because associated function `dyn_incompatible` has no `self` parameter
-help: consider turning `dyn_incompatible` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
-   |
-LL |     fn dyn_incompatible(&self) -> Self;
-   |                         +++++
 help: alternatively, consider constraining `dyn_incompatible` so it is explicitly marked as not applying to trait objects
    |
 LL |     fn dyn_incompatible() -> Self where Self: Sized;

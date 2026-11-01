@@ -4,6 +4,11 @@ error[E0599]: no associated function or constant named `mew` found for struct `V
 LL |     Vec::<Q>::mew()
    |               ^^^ associated function or constant not found in `Vec<Q>`
    |
+help: there is an associated function `new` with a similar name
+   |
+LL -     Vec::<Q>::mew()
+LL +     Vec::<Q>::new()
+   |
 note: if you're trying to build a new `Vec<Q>` consider using one of the following associated functions:
       Vec::<T>::new
       Vec::<T>::with_capacity
@@ -11,11 +16,6 @@ note: if you're trying to build a new `Vec<Q>` consider using one of the followi
       Vec::<T>::from_raw_parts
       and 7 others
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-help: there is an associated function `new` with a similar name
-   |
-LL -     Vec::<Q>::mew()
-LL +     Vec::<Q>::new()
-   |
 
 error: aborting due to 1 previous error
 

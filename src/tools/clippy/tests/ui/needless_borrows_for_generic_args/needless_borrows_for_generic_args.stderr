@@ -4,8 +4,8 @@ error: the borrowed expression implements the required traits
 LL |     let _ = Command::new("ls").args(&["-a", "-l"]).status().unwrap();
    |                                     ^^^^^^^^^^^^^ help: change this to: `["-a", "-l"]`
    |
-   = note: `-D clippy::needless-borrows-for-generic-args` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_borrows_for_generic_args)]`
+   = note: `-D clippy::needless-borrows-for-generic-args` implied by `-D warnings`
 
 error: the borrowed expression implements the required traits
   --> tests/ui/needless_borrows_for_generic_args/needless_borrows_for_generic_args.rs:18:33

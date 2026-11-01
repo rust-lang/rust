@@ -4,13 +4,13 @@ error: use of `default` to create a unit struct
 LL |         Self::default()
    |         ^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::default-constructed-unit-structs` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::default_constructed_unit_structs)]`
 help: remove this call to `default`
    |
 LL -         Self::default()
 LL +         Self
    |
+   = help: to override `-D warnings` add `#[allow(clippy::default_constructed_unit_structs)]`
+   = note: `-D clippy::default-constructed-unit-structs` implied by `-D warnings`
 
 error: use of `default` to create a unit struct
   --> tests/ui/default_constructed_unit_structs.rs:53:20

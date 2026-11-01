@@ -4,8 +4,8 @@ error: use of `filter_map` with an identity function
 LL |         copy_vec_non_inferred().into_iter().filter_map(|x| x);
    |                                             ^^^^^^^^^^^^^^^^^ help: try: `flatten()`
    |
-   = note: `-D clippy::filter-map-identity` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::filter_map_identity)]`
+   = note: `-D clippy::filter-map-identity` implied by `-D warnings`
 
 error: use of `filter_map` with an identity function
   --> tests/ui/filter_map_identity.rs:31:45

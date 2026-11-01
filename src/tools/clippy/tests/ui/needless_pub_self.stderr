@@ -4,9 +4,9 @@ error: unnecessary `pub(self)`
 LL | pub(self) fn a() {}
    | ^^^^^^^^^
    |
-   = note: `-D clippy::needless-pub-self` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_pub_self)]`
    = help: remove it
+   = help: to override `-D warnings` add `#[allow(clippy::needless_pub_self)]`
+   = note: `-D clippy::needless-pub-self` implied by `-D warnings`
 
 error: unnecessary `pub(in self)`
   --> tests/ui/needless_pub_self.rs:14:1

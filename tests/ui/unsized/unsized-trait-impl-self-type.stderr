@@ -20,11 +20,6 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
 LL - impl<X: ?Sized> T3<X> for S5<X> {
 LL + impl<X> T3<X> for S5<X> {
    |
-note: required by an implicit `Sized` bound in `S5`
-  --> $DIR/unsized-trait-impl-self-type.rs:8:11
-   |
-LL | struct S5<Y>(Y);
-   |           ^ required by the implicit `Sized` requirement on this type parameter in `S5`
 help: you could relax the implicit `Sized` bound on `Y` if it were used through indirection like `&Y` or `Box<Y>`
   --> $DIR/unsized-trait-impl-self-type.rs:8:11
    |
@@ -32,6 +27,11 @@ LL | struct S5<Y>(Y);
    |           ^  - ...if indirection were used here: `Box<Y>`
    |           |
    |           this could be changed to `Y: ?Sized`...
+note: required by an implicit `Sized` bound in `S5`
+  --> $DIR/unsized-trait-impl-self-type.rs:8:11
+   |
+LL | struct S5<Y>(Y);
+   |           ^ required by the implicit `Sized` requirement on this type parameter in `S5`
 
 error: aborting due to 2 previous errors
 

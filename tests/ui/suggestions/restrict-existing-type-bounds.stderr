@@ -9,12 +9,12 @@ LL |         Ok(self)
    |         |
    |         arguments to this enum variant are incorrect
    |
-   = note: expected enum `Option<<T as TryAdd>::Output>`
-              found enum `Option<T>`
 help: consider further restricting this bound
    |
 LL | impl<T: TryAdd<Output = T>> TryAdd for Option<T> {
    |               ++++++++++++
+   = note: expected enum `Option<<T as TryAdd>::Output>`
+              found enum `Option<T>`
 help: the type constructed contains `Option<T>` due to the type of the argument passed
   --> $DIR/restrict-existing-type-bounds.rs:13:9
    |
@@ -36,12 +36,12 @@ LL |         Ok(self)
    |         |
    |         arguments to this enum variant are incorrect
    |
-   = note: expected struct `Other<<T as TryAdd>::Output>`
-              found struct `Other<T>`
 help: consider further restricting this bound
    |
 LL | impl<T: TryAdd<Error = X, Output = T>> TryAdd for Other<T> {
    |                         ++++++++++++
+   = note: expected struct `Other<<T as TryAdd>::Output>`
+              found struct `Other<T>`
 help: the type constructed contains `Other<T>` due to the type of the argument passed
   --> $DIR/restrict-existing-type-bounds.rs:26:9
    |

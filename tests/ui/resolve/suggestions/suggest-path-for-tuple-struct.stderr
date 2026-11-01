@@ -4,12 +4,12 @@ error[E0423]: cannot find value `SomeTupleStruct` in this scope
 LL |     let _ = SomeTupleStruct.new();
    |             ^^^^^^^^^^^^^^^
    |
-   = note: a struct named `SomeTupleStruct` exists in another namespace
 help: use the path separator to refer to an item
    |
 LL -     let _ = SomeTupleStruct.new();
 LL +     let _ = SomeTupleStruct::new();
    |
+   = note: a struct named `SomeTupleStruct` exists in another namespace
 
 error[E0423]: cannot find value `SomeRegularStruct` in this scope
   --> $DIR/suggest-path-for-tuple-struct.rs:24:13
@@ -17,12 +17,12 @@ error[E0423]: cannot find value `SomeRegularStruct` in this scope
 LL |     let _ = SomeRegularStruct.new();
    |             ^^^^^^^^^^^^^^^^^
    |
-   = note: a struct named `SomeRegularStruct` exists in another namespace
 help: use the path separator to refer to an item
    |
 LL -     let _ = SomeRegularStruct.new();
 LL +     let _ = SomeRegularStruct::new();
    |
+   = note: a struct named `SomeRegularStruct` exists in another namespace
 
 error: aborting due to 2 previous errors
 

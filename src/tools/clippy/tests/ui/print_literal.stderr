@@ -4,13 +4,13 @@ error: literal with an empty format string
 LL |     print!("Hello {}", "world");
    |                        ^^^^^^^
    |
-   = note: `-D clippy::print-literal` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::print_literal)]`
 help: try
    |
 LL -     print!("Hello {}", "world");
 LL +     print!("Hello world");
    |
+   = help: to override `-D warnings` add `#[allow(clippy::print_literal)]`
+   = note: `-D clippy::print-literal` implied by `-D warnings`
 
 error: literal with an empty format string
   --> tests/ui/print_literal.rs:30:36

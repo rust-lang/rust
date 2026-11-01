@@ -4,8 +4,8 @@ error: manually reimplementing `ilog2`
 LL |     31 - a.leading_zeros();
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `a.ilog2()`
    |
-   = note: `-D clippy::manual-ilog2` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_ilog2)]`
+   = note: `-D clippy::manual-ilog2` implied by `-D warnings`
 
 error: manually reimplementing `ilog2`
   --> tests/ui/manual_ilog2.rs:9:5

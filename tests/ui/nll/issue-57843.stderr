@@ -4,12 +4,12 @@ error: implementation of `FnOnce` is not general enough
 LL |     Foo(Box::new(|_| ()));
    |         ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: closure with signature `fn(&'2 bool)` must implement `FnOnce<(&'1 bool,)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 bool,)>`, for some specific lifetime `'2`
 help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     Foo(Box::new(|_: &'a bool| ()));
    |                    ++++++++++
+   = note: closure with signature `fn(&'2 bool)` must implement `FnOnce<(&'1 bool,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 bool,)>`, for some specific lifetime `'2`
 
 error: aborting due to 1 previous error
 

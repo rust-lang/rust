@@ -9,8 +9,8 @@ LL | |         Err(_) => None,
 LL | |     };
    | |_____^ help: replace with: `funcall().ok()`
    |
-   = note: `-D clippy::manual-ok-err` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_ok_err)]`
+   = note: `-D clippy::manual-ok-err` implied by `-D warnings`
 
 error: manual implementation of `ok`
   --> tests/ui/manual_ok_err.rs:14:13

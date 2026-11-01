@@ -5,8 +5,8 @@ LL |     print!(r"a ZWS >​< here");
    |            ^^^^^^^^^^^^^^^^
    |
    = help: use a normal string literal instead of a raw one to escape the character
-   = note: `-D clippy::invisible-characters` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::invisible_characters)]`
+   = note: `-D clippy::invisible-characters` implied by `-D warnings`
 
 error: invisible character detected
   --> tests/ui/invisible_characters_unfixable.rs:8:12

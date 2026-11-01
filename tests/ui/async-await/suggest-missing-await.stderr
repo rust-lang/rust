@@ -31,15 +31,15 @@ help: consider `await`ing on the `Future`
    |
 LL |     dummy().await
    |            ++++++
+help: consider using a semicolon here
+   |
+LL |     dummy();
+   |            +
 note: calling an async function returns a future
   --> $DIR/suggest-missing-await.rs:23:5
    |
 LL |     dummy()
    |     ^^^^^^^
-help: consider using a semicolon here
-   |
-LL |     dummy();
-   |            +
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/suggest-missing-await.rs:36:9
@@ -56,12 +56,12 @@ LL | |
 LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
-   = note: expected opaque type `impl Future<Output = ()>`
-                found unit type `()`
 help: consider `await`ing on the `Future`
    |
 LL |         dummy().await
    |                ++++++
+   = note: expected opaque type `impl Future<Output = ()>`
+                found unit type `()`
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/suggest-missing-await.rs:46:14
@@ -78,13 +78,13 @@ LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: expected opaque type `impl Future<Output = ()>`
-                found unit type `()`
 help: consider `await`ing on the `Future`
    |
 LL ~         0 => dummy().await,
 LL ~         1 => dummy().await,
    |
+   = note: expected opaque type `impl Future<Output = ()>`
+                found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:54:9
@@ -94,12 +94,12 @@ LL |     let _x = match dummy() {
 LL |         () => {}
    |         ^^ expected future, found `()`
    |
-   = note: expected opaque type `impl Future<Output = ()>`
-                found unit type `()`
 help: consider `await`ing on the `Future`
    |
 LL |     let _x = match dummy().await {
    |                           ++++++
+   = note: expected opaque type `impl Future<Output = ()>`
+                found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:68:9
@@ -110,12 +110,12 @@ LL |     match dummy_result() {
 LL |         Ok(_) => {}
    |         ^^^^^ expected future, found `Result<_, _>`
    |
-   = note: expected opaque type `impl Future<Output = Result<(), ()>>`
-                     found enum `Result<_, _>`
 help: consider `await`ing on the `Future`
    |
 LL |     match dummy_result().await {
    |                         ++++++
+   = note: expected opaque type `impl Future<Output = Result<(), ()>>`
+                     found enum `Result<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:70:9
@@ -126,12 +126,12 @@ LL |     match dummy_result() {
 LL |         Err(_) => {}
    |         ^^^^^^ expected future, found `Result<_, _>`
    |
-   = note: expected opaque type `impl Future<Output = Result<(), ()>>`
-                     found enum `Result<_, _>`
 help: consider `await`ing on the `Future`
    |
 LL |     match dummy_result().await {
    |                         ++++++
+   = note: expected opaque type `impl Future<Output = Result<(), ()>>`
+                     found enum `Result<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:78:27

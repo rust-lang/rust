@@ -9,8 +9,6 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::collapsible-if` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
 help: collapse nested if block
    |
 LL ~     if let Some(a) = Some(3)
@@ -19,6 +17,8 @@ LL ~         && let Some(b) = Some(4) {
 LL |             let _ = a + b;
 LL ~         }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+   = note: `-D clippy::collapsible-if` implied by `-D warnings`
 
 error: this `if` statement can be collapsed
   --> tests/ui-toml/collapsible_if/collapsible_if_let_chains.rs:12:5

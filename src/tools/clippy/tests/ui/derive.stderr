@@ -10,8 +10,8 @@ LL | | }
    | |_^
    |
    = help: consider deriving `Clone` or removing `Copy`
-   = note: `-D clippy::expl-impl-clone-on-copy` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::expl_impl_clone_on_copy)]`
+   = note: `-D clippy::expl-impl-clone-on-copy` implied by `-D warnings`
 
 error: you are implementing `Clone` explicitly on a `Copy` type
   --> tests/ui/derive.rs:39:1
@@ -71,8 +71,8 @@ error: docs for unsafe field missing `# Safety` section
 LL |         pub unsafe actual: (),
    |         ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::missing-safety-doc` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::missing_safety_doc)]`
+   = note: `-D clippy::missing-safety-doc` implied by `-D warnings`
 
 error: aborting due to 6 previous errors
 

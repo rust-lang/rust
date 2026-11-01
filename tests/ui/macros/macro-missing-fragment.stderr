@@ -4,8 +4,8 @@ error: missing fragment specifier
 LL |     ( $( any_token $field_rust_type )* ) => {};
    |                    ^^^^^^^^^^^^^^^^
    |
-   = note: fragment specifiers must be provided
    = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+   = note: fragment specifiers must be provided
 help: try adding a specifier here
    |
 LL |     ( $( any_token $field_rust_type:spec )* ) => {};
@@ -17,8 +17,8 @@ error: missing fragment specifier
 LL |     ( $name ) => {};
    |       ^^^^^
    |
-   = note: fragment specifiers must be provided
    = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+   = note: fragment specifiers must be provided
 help: try adding a specifier here
    |
 LL |     ( $name:spec ) => {};
@@ -30,8 +30,8 @@ error: missing fragment specifier
 LL |     ( $name ) => {};
    |       ^^^^^
    |
-   = note: fragment specifiers must be provided
    = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+   = note: fragment specifiers must be provided
 help: try adding a specifier here
    |
 LL |     ( $name:spec ) => {};
@@ -43,8 +43,8 @@ error: missing fragment specifier
 LL |     ( $test:$tt ) => {};
    |             ^
    |
-   = note: fragment specifiers must be provided
    = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+   = note: fragment specifiers must be provided
 help: fragment specifiers should not be prefixed with `$`
    |
 LL -     ( $test:$tt ) => {};
@@ -57,8 +57,8 @@ error: missing fragment specifier
 LL |     ( $($test:$tt),* ) => {};
    |               ^
    |
-   = note: fragment specifiers must be provided
    = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+   = note: fragment specifiers must be provided
 help: fragment specifiers should not be prefixed with `$`
    |
 LL -     ( $($test:$tt),* ) => {};

@@ -10,8 +10,8 @@ LL |     let (b, c, d): (i32, i64, i16);
 LL |             let e: i32;
    |                 ^
    |
-   = note: `-D clippy::many-single-char-names` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::many_single_char_names)]`
+   = note: `-D clippy::many-single-char-names` implied by `-D warnings`
 
 error: 6 bindings with single-character names in scope
   --> tests/ui/many_single_char_names.rs:5:9

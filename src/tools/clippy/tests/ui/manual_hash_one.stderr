@@ -4,14 +4,14 @@ error: manual implementation of `BuildHasher::hash_one`
 LL |     hasher.finish()
    |     ^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::manual-hash-one` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_hash_one)]`
 help: try
    |
 LL ~     
 LL ~     
 LL ~     b.hash_one(&true)
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_hash_one)]`
+   = note: `-D clippy::manual-hash-one` implied by `-D warnings`
 
 error: manual implementation of `BuildHasher::hash_one`
   --> tests/ui/manual_hash_one.rs:16:13

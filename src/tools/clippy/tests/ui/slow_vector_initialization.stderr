@@ -7,8 +7,8 @@ LL |       let mut vec1 = Vec::with_capacity(len);
 LL | |     vec1.extend(repeat(0).take(len));
    | |____________________________________^ help: consider replacing this with: `vec![0; len]`
    |
-   = note: `-D clippy::slow-vector-initialization` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::slow_vector_initialization)]`
+   = note: `-D clippy::slow-vector-initialization` implied by `-D warnings`
 
 error: slow zero-filling initialization
   --> tests/ui/slow_vector_initialization.rs:18:20

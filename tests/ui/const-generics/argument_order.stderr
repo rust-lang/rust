@@ -10,8 +10,8 @@ error[E0747]: lifetime provided when a type was expected
 LL |     let _: Bad<7, 'static, u32, 'static, 17, u16>;
    |                   ^^^^^^^
    |
-   = note: lifetime arguments must be provided before type arguments
    = help: reorder the arguments: lifetimes, then type and consts: `<'a, 'b, N, T, M, U>`
+   = note: lifetime arguments must be provided before type arguments
 
 error: aborting due to 2 previous errors
 

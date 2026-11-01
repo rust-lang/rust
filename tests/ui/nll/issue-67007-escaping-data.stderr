@@ -10,9 +10,9 @@ LL |         fcx.use_it(other);
    |         ^^^^^^^^^^^^^^^^^ argument requires that `'a` must outlive `'tcx`
    |
    = help: consider adding the following bound: `'a: 'tcx`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the type `FnCtxt<'_, '_>`, which makes the generic argument `'_` invariant
    = note: the struct `FnCtxt<'a, 'tcx>` is invariant over the parameter `'tcx`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to 1 previous error
 

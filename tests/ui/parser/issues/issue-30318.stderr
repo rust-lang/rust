@@ -21,12 +21,12 @@ LL | #![cfg(test)]
 LL | fn baz() { }
    | ------------ the inner attribute doesn't annotate this function
    |
-   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
 help: to annotate the function, change the attribute from inner to outer style
    |
 LL - #![cfg(test)]
 LL + #[cfg(test)]
    |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
 
 error[E0753]: expected outer doc comment
   --> $DIR/issue-30318.rs:13:1
@@ -49,12 +49,12 @@ error[E0753]: expected outer doc comment
 LL | //! Misplaced comment...
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
 help: you might have meant to write a regular comment
    |
 LL - //! Misplaced comment...
 LL + // Misplaced comment...
    |
+   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
 
 error[E0753]: expected outer doc comment
   --> $DIR/issue-30318.rs:23:1
@@ -62,12 +62,12 @@ error[E0753]: expected outer doc comment
 LL | /*! Misplaced comment... */
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
 help: you might have meant to write a regular comment
    |
 LL - /*! Misplaced comment... */
 LL + /* Misplaced comment... */
    |
+   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
 
 error: expected item after doc comment
   --> $DIR/issue-30318.rs:23:1

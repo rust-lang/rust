@@ -4,17 +4,12 @@ error[E0576]: cannot find associated type `N` in trait `Tr`
 LL |     let _: <u8 as Tr>::N;
    |                        ^ not found in `Tr`
    |
-note: similarly named associated type `Y` defined here
-  --> $DIR/ufcs-partially-resolved.rs:4:5
-   |
-LL |     type Y = u16;
-   |     ^^^^^^^^^^^^^
 help: an associated type with a similar name exists
    |
 LL -     let _: <u8 as Tr>::N;
 LL +     let _: <u8 as Tr>::Y;
    |
-note: associated type `Y` defined here
+note: similarly named associated type `Y` defined here
   --> $DIR/ufcs-partially-resolved.rs:4:5
    |
 LL |     type Y = u16;
@@ -24,6 +19,11 @@ help: maybe you meant this associated type
 LL -     let _: <u8 as Tr>::N;
 LL +     let _: <u8 as Tr>::Y;
    |
+note: associated type `Y` defined here
+  --> $DIR/ufcs-partially-resolved.rs:4:5
+   |
+LL |     type Y = u16;
+   |     ^^^^^^^^^^^^^
 
 error[E0404]: expected trait, found enum `E`
   --> $DIR/ufcs-partially-resolved.rs:20:19
@@ -31,12 +31,12 @@ error[E0404]: expected trait, found enum `E`
 LL |     let _: <u8 as E>::N;
    |                   ^ not a trait
    |
-note: similarly named trait `Eq` defined here
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 help: a trait with a similar name exists
    |
 LL |     let _: <u8 as Eq>::N;
    |                    +
+note: similarly named trait `Eq` defined here
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
 error[E0404]: expected trait, found type alias `A`
   --> $DIR/ufcs-partially-resolved.rs:21:19
@@ -56,17 +56,12 @@ error[E0576]: cannot find method or associated constant `N` in trait `Tr`
 LL |     <u8 as Tr>::N;
    |                 ^ not found in `Tr`
    |
-note: similarly named associated function `Y` defined here
-  --> $DIR/ufcs-partially-resolved.rs:5:5
-   |
-LL |     fn Y() {}
-   |     ^^^^^^
 help: an associated function with a similar name exists
    |
 LL -     <u8 as Tr>::N;
 LL +     <u8 as Tr>::Y;
    |
-note: associated function `Y` defined here
+note: similarly named associated function `Y` defined here
   --> $DIR/ufcs-partially-resolved.rs:5:5
    |
 LL |     fn Y() {}
@@ -76,6 +71,11 @@ help: maybe you meant this associated function
 LL -     <u8 as Tr>::N;
 LL +     <u8 as Tr>::Y;
    |
+note: associated function `Y` defined here
+  --> $DIR/ufcs-partially-resolved.rs:5:5
+   |
+LL |     fn Y() {}
+   |     ^^^^^^
 
 error[E0404]: expected trait, found enum `E`
   --> $DIR/ufcs-partially-resolved.rs:23:12
@@ -83,12 +83,12 @@ error[E0404]: expected trait, found enum `E`
 LL |     <u8 as E>::N;
    |            ^ not a trait
    |
-note: similarly named trait `Eq` defined here
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 help: a trait with a similar name exists
    |
 LL |     <u8 as Eq>::N;
    |             +
+note: similarly named trait `Eq` defined here
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
 error[E0404]: expected trait, found type alias `A`
   --> $DIR/ufcs-partially-resolved.rs:24:12
@@ -108,12 +108,12 @@ error[E0404]: expected trait, found enum `E`
 LL |     let _: <u8 as E>::Y;
    |                   ^ not a trait
    |
-note: similarly named trait `Eq` defined here
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 help: a trait with a similar name exists
    |
 LL |     let _: <u8 as Eq>::Y;
    |                    +
+note: similarly named trait `Eq` defined here
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
 error[E0404]: expected trait, found enum `E`
   --> $DIR/ufcs-partially-resolved.rs:28:12
@@ -121,12 +121,12 @@ error[E0404]: expected trait, found enum `E`
 LL |     <u8 as E>::Y;
    |            ^ not a trait
    |
-note: similarly named trait `Eq` defined here
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 help: a trait with a similar name exists
    |
 LL |     <u8 as Eq>::Y;
    |             +
+note: similarly named trait `Eq` defined here
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
 error[E0576]: cannot find associated type `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:30:24
@@ -134,17 +134,12 @@ error[E0576]: cannot find associated type `N` in trait `Tr`
 LL |     let _: <u8 as Tr>::N::NN;
    |                        ^ not found in `Tr`
    |
-note: similarly named associated type `Y` defined here
-  --> $DIR/ufcs-partially-resolved.rs:4:5
-   |
-LL |     type Y = u16;
-   |     ^^^^^^^^^^^^^
 help: an associated type with a similar name exists
    |
 LL -     let _: <u8 as Tr>::N::NN;
 LL +     let _: <u8 as Tr>::Y::NN;
    |
-note: associated type `Y` defined here
+note: similarly named associated type `Y` defined here
   --> $DIR/ufcs-partially-resolved.rs:4:5
    |
 LL |     type Y = u16;
@@ -154,6 +149,11 @@ help: maybe you meant this associated type
 LL -     let _: <u8 as Tr>::N::NN;
 LL +     let _: <u8 as Tr>::Y::NN;
    |
+note: associated type `Y` defined here
+  --> $DIR/ufcs-partially-resolved.rs:4:5
+   |
+LL |     type Y = u16;
+   |     ^^^^^^^^^^^^^
 
 error[E0404]: expected trait, found enum `E`
   --> $DIR/ufcs-partially-resolved.rs:31:19
@@ -161,12 +161,12 @@ error[E0404]: expected trait, found enum `E`
 LL |     let _: <u8 as E>::N::NN;
    |                   ^ not a trait
    |
-note: similarly named trait `Eq` defined here
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 help: a trait with a similar name exists
    |
 LL |     let _: <u8 as Eq>::N::NN;
    |                    +
+note: similarly named trait `Eq` defined here
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
 error[E0404]: expected trait, found type alias `A`
   --> $DIR/ufcs-partially-resolved.rs:32:19
@@ -186,17 +186,12 @@ error[E0576]: cannot find associated type `N` in trait `Tr`
 LL |     <u8 as Tr>::N::NN;
    |                 ^ not found in `Tr`
    |
-note: similarly named associated type `Y` defined here
-  --> $DIR/ufcs-partially-resolved.rs:4:5
-   |
-LL |     type Y = u16;
-   |     ^^^^^^^^^^^^^
 help: an associated type with a similar name exists
    |
 LL -     <u8 as Tr>::N::NN;
 LL +     <u8 as Tr>::Y::NN;
    |
-note: associated type `Y` defined here
+note: similarly named associated type `Y` defined here
   --> $DIR/ufcs-partially-resolved.rs:4:5
    |
 LL |     type Y = u16;
@@ -206,6 +201,11 @@ help: maybe you meant this associated type
 LL -     <u8 as Tr>::N::NN;
 LL +     <u8 as Tr>::Y::NN;
    |
+note: associated type `Y` defined here
+  --> $DIR/ufcs-partially-resolved.rs:4:5
+   |
+LL |     type Y = u16;
+   |     ^^^^^^^^^^^^^
 
 error[E0404]: expected trait, found enum `E`
   --> $DIR/ufcs-partially-resolved.rs:34:12
@@ -213,12 +213,12 @@ error[E0404]: expected trait, found enum `E`
 LL |     <u8 as E>::N::NN;
    |            ^ not a trait
    |
-note: similarly named trait `Eq` defined here
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 help: a trait with a similar name exists
    |
 LL |     <u8 as Eq>::N::NN;
    |             +
+note: similarly named trait `Eq` defined here
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
 error[E0404]: expected trait, found type alias `A`
   --> $DIR/ufcs-partially-resolved.rs:35:12
@@ -238,12 +238,12 @@ error[E0404]: expected trait, found enum `E`
 LL |     let _: <u8 as E>::Y::NN;
    |                   ^ not a trait
    |
-note: similarly named trait `Eq` defined here
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 help: a trait with a similar name exists
    |
 LL |     let _: <u8 as Eq>::Y::NN;
    |                    +
+note: similarly named trait `Eq` defined here
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
 error[E0404]: expected trait, found enum `E`
   --> $DIR/ufcs-partially-resolved.rs:39:12
@@ -251,12 +251,12 @@ error[E0404]: expected trait, found enum `E`
 LL |     <u8 as E>::Y::NN;
    |            ^ not a trait
    |
-note: similarly named trait `Eq` defined here
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 help: a trait with a similar name exists
    |
 LL |     <u8 as Eq>::Y::NN;
    |             +
+note: similarly named trait `Eq` defined here
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
 error[E0405]: cannot find trait `N` in trait `Tr`
   --> $DIR/ufcs-partially-resolved.rs:41:23
@@ -324,18 +324,13 @@ error[E0575]: cannot find associated type `Z` in trait `Dr`
 LL |     let _: <u8 as Dr>::Z;
    |                        ^ not found in `Dr`
    |
-   = note: an associated function named `Dr::Z` exists in another namespace
-note: similarly named associated type `X` defined here
-  --> $DIR/ufcs-partially-resolved.rs:10:5
-   |
-LL |     type X = u16;
-   |     ^^^^^^^^^^^^^
 help: an associated type with a similar name exists
    |
 LL -     let _: <u8 as Dr>::Z;
 LL +     let _: <u8 as Dr>::X;
    |
-note: associated type `X` defined here
+   = note: an associated function named `Dr::Z` exists in another namespace
+note: similarly named associated type `X` defined here
   --> $DIR/ufcs-partially-resolved.rs:10:5
    |
 LL |     type X = u16;
@@ -345,6 +340,11 @@ help: maybe you meant this associated type
 LL -     let _: <u8 as Dr>::Z;
 LL +     let _: <u8 as Dr>::X;
    |
+note: associated type `X` defined here
+  --> $DIR/ufcs-partially-resolved.rs:10:5
+   |
+LL |     type X = u16;
+   |     ^^^^^^^^^^^^^
 
 error[E0575]: cannot find method or associated constant `X` in trait `Dr`
   --> $DIR/ufcs-partially-resolved.rs:53:17
@@ -352,18 +352,13 @@ error[E0575]: cannot find method or associated constant `X` in trait `Dr`
 LL |     <u8 as Dr>::X;
    |                 ^ not found in `Dr`
    |
-   = note: an associated type named `Dr::X` exists in another namespace
-note: similarly named associated function `Z` defined here
-  --> $DIR/ufcs-partially-resolved.rs:11:5
-   |
-LL |     fn Z() {}
-   |     ^^^^^^
 help: an associated function with a similar name exists
    |
 LL -     <u8 as Dr>::X;
 LL +     <u8 as Dr>::Z;
    |
-note: associated function `Z` defined here
+   = note: an associated type named `Dr::X` exists in another namespace
+note: similarly named associated function `Z` defined here
   --> $DIR/ufcs-partially-resolved.rs:11:5
    |
 LL |     fn Z() {}
@@ -373,6 +368,11 @@ help: maybe you meant this associated function
 LL -     <u8 as Dr>::X;
 LL +     <u8 as Dr>::Z;
    |
+note: associated function `Z` defined here
+  --> $DIR/ufcs-partially-resolved.rs:11:5
+   |
+LL |     fn Z() {}
+   |     ^^^^^^
 
 error[E0575]: cannot find associated type `Z` in trait `Dr`
   --> $DIR/ufcs-partially-resolved.rs:54:24
@@ -380,18 +380,13 @@ error[E0575]: cannot find associated type `Z` in trait `Dr`
 LL |     let _: <u8 as Dr>::Z::N;
    |                        ^ not found in `Dr`
    |
-   = note: an associated function named `Dr::Z` exists in another namespace
-note: similarly named associated type `X` defined here
-  --> $DIR/ufcs-partially-resolved.rs:10:5
-   |
-LL |     type X = u16;
-   |     ^^^^^^^^^^^^^
 help: an associated type with a similar name exists
    |
 LL -     let _: <u8 as Dr>::Z::N;
 LL +     let _: <u8 as Dr>::X::N;
    |
-note: associated type `X` defined here
+   = note: an associated function named `Dr::Z` exists in another namespace
+note: similarly named associated type `X` defined here
   --> $DIR/ufcs-partially-resolved.rs:10:5
    |
 LL |     type X = u16;
@@ -401,6 +396,11 @@ help: maybe you meant this associated type
 LL -     let _: <u8 as Dr>::Z::N;
 LL +     let _: <u8 as Dr>::X::N;
    |
+note: associated type `X` defined here
+  --> $DIR/ufcs-partially-resolved.rs:10:5
+   |
+LL |     type X = u16;
+   |     ^^^^^^^^^^^^^
 
 error[E0223]: ambiguous associated type
   --> $DIR/ufcs-partially-resolved.rs:36:12

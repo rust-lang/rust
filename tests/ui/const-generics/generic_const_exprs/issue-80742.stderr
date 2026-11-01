@@ -5,15 +5,15 @@ LL |     let dst = Inline::<dyn Debug>::new(0);
    |               ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn Debug`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | struct Inline<T: ?Sized>
+   |                ++++++++
 note: required by an implicit `Sized` bound in `Inline`
   --> $DIR/issue-80742.rs:10:15
    |
 LL | struct Inline<T>
    |               ^ required by the implicit `Sized` requirement on this type parameter in `Inline`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | struct Inline<T: ?Sized>
-   |                ++++++++
 
 error[E0599]: the associated function or constant `new` exists for struct `Inline<dyn Debug>`, but its trait bounds were not satisfied
   --> $DIR/issue-80742.rs:28:36

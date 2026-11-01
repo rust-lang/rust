@@ -11,13 +11,13 @@ LL |   let None: isize = 42;
    |
    = note: unit variant defined here
    |
-   = note: expected type `isize`
-              found enum `Option<_>`
 help: introduce a new binding instead
    |
 LL -   let None: isize = 42;
 LL +   let other_none: isize = 42;
    |
+   = note: expected type `isize`
+              found enum `Option<_>`
 
 error: aborting due to 1 previous error
 

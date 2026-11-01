@@ -6,8 +6,8 @@ LL |         0u32;
    |         |
    |         help: did you mean to return it?: `return`
    |
-   = note: `-D clippy::no-effect` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::no_effect)]`
+   = note: `-D clippy::no-effect` implied by `-D warnings`
 
 error: statement with no effect
   --> tests/ui/no_effect_return.rs:18:9

@@ -4,8 +4,8 @@ error[E0658]: use of unstable library feature `unstable_test_feature`
 LL |     use stable_in_unstable_core::new_unstable_module;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
@@ -14,8 +14,8 @@ error[E0658]: use of unstable library feature `unstable_test_feature`
 LL |     use stable_in_unstable_core::new_unstable_module::OldTrait;
    |                                  ^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
@@ -24,8 +24,8 @@ error[E0658]: use of unstable library feature `unstable_test_feature`
 LL |     use stable_in_unstable_core::new_unstable_module::OldTrait;
    |                                  ^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
@@ -34,8 +34,8 @@ error[E0658]: use of unstable library feature `unstable_test_feature`
 LL |     impl stable_in_unstable_core::new_unstable_module::OldTrait for LocalType {}
    |                                   ^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
@@ -44,8 +44,8 @@ error[E0658]: use of unstable library feature `unstable_test_feature`
 LL |     use stable_in_unstable_core::new_unstable_module::{OldTrait};
    |                                  ^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
@@ -54,8 +54,8 @@ error[E0658]: use of unstable library feature `unstable_test_feature`
 LL |     use stable_in_unstable_core::new_unstable_module::*;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 6 previous errors

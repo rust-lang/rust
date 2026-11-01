@@ -7,10 +7,10 @@ LL |             p1 = in(reg) p,
 LL |             p3 = in(reg) p,
    |             ^^^^^^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::pointers_in_nomem_asm_block)]`
    = note: `nomem` means that no memory write or read happens inside the asm! block
    = note: if this is intentional and no pointers are read or written to, consider allowing the lint
    = note: `-D clippy::pointers-in-nomem-asm-block` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::pointers_in_nomem_asm_block)]`
 
 error: passing pointers to nomem asm block
   --> tests/ui/pointers_in_nomem_asm_block.rs:32:26

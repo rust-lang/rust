@@ -4,14 +4,14 @@ error: looks like a footnote ref, but has no matching footnote
 LL | //! This is not a footnote[^1].
    |                           ^^^^
    |
-   = note: `-D clippy::doc-suspicious-footnotes` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::doc_suspicious_footnotes)]`
 help: add footnote definition
    |
 LL ~ //! This is not a footnote[^1].
 LL + //!
 LL + //! [^1]: <!-- description -->
    |
+   = help: to override `-D warnings` add `#[allow(clippy::doc_suspicious_footnotes)]`
+   = note: `-D clippy::doc-suspicious-footnotes` implied by `-D warnings`
 
 error: looks like a footnote ref, but has no matching footnote
   --> tests/ui/doc_suspicious_footnotes.rs:18:27

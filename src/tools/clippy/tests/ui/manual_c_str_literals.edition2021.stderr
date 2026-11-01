@@ -4,8 +4,8 @@ error: calling `CStr::new` with a byte string literal
 LL |     CStr::from_bytes_with_nul(b"foo\0");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use a `c""` literal: `c"foo"`
    |
-   = note: `-D clippy::manual-c-str-literals` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_c_str_literals)]`
+   = note: `-D clippy::manual-c-str-literals` implied by `-D warnings`
 
 error: calling `CStr::new` with a byte string literal
   --> tests/ui/manual_c_str_literals.rs:40:5

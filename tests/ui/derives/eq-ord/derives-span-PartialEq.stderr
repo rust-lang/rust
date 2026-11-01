@@ -7,16 +7,16 @@ LL | #[derive(PartialEq)]
 LL |         x: Error,
    |         ^^^^^^^^
    |
-note: an implementation of `PartialEq` might be missing for `Error`
-  --> $DIR/derives-span-PartialEq.rs:4:1
-   |
-LL | struct Error;
-   | ^^^^^^^^^^^^ must implement `PartialEq`
 help: consider annotating `Error` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]
 LL | struct Error;
    |
+note: an implementation of `PartialEq` might be missing for `Error`
+  --> $DIR/derives-span-PartialEq.rs:4:1
+   |
+LL | struct Error;
+   | ^^^^^^^^^^^^ must implement `PartialEq`
 
 error[E0369]: binary operation `==` cannot be applied to type `&Error`
   --> $DIR/derives-span-PartialEq.rs:16:9
@@ -27,16 +27,16 @@ LL | #[derive(PartialEq)]
 LL |         Error,
    |         ^^^^^
    |
-note: an implementation of `PartialEq` might be missing for `Error`
-  --> $DIR/derives-span-PartialEq.rs:4:1
-   |
-LL | struct Error;
-   | ^^^^^^^^^^^^ must implement `PartialEq`
 help: consider annotating `Error` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]
 LL | struct Error;
    |
+note: an implementation of `PartialEq` might be missing for `Error`
+  --> $DIR/derives-span-PartialEq.rs:4:1
+   |
+LL | struct Error;
+   | ^^^^^^^^^^^^ must implement `PartialEq`
 
 error[E0369]: binary operation `==` cannot be applied to type `Error`
   --> $DIR/derives-span-PartialEq.rs:21:5
@@ -47,16 +47,16 @@ LL | struct Struct {
 LL |     x: Error,
    |     ^^^^^^^^
    |
-note: an implementation of `PartialEq` might be missing for `Error`
-  --> $DIR/derives-span-PartialEq.rs:4:1
-   |
-LL | struct Error;
-   | ^^^^^^^^^^^^ must implement `PartialEq`
 help: consider annotating `Error` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]
 LL | struct Error;
    |
+note: an implementation of `PartialEq` might be missing for `Error`
+  --> $DIR/derives-span-PartialEq.rs:4:1
+   |
+LL | struct Error;
+   | ^^^^^^^^^^^^ must implement `PartialEq`
 
 error[E0369]: binary operation `==` cannot be applied to type `Error`
   --> $DIR/derives-span-PartialEq.rs:26:5
@@ -67,16 +67,16 @@ LL | struct TupleStruct(
 LL |     Error,
    |     ^^^^^
    |
-note: an implementation of `PartialEq` might be missing for `Error`
-  --> $DIR/derives-span-PartialEq.rs:4:1
-   |
-LL | struct Error;
-   | ^^^^^^^^^^^^ must implement `PartialEq`
 help: consider annotating `Error` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]
 LL | struct Error;
    |
+note: an implementation of `PartialEq` might be missing for `Error`
+  --> $DIR/derives-span-PartialEq.rs:4:1
+   |
+LL | struct Error;
+   | ^^^^^^^^^^^^ must implement `PartialEq`
 
 error: aborting due to 4 previous errors
 

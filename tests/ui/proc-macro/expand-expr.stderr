@@ -28,11 +28,11 @@ error: macro expansion ignores `hello` and any tokens following
 LL | expand_expr_is!("string", echo_tts!("string"; hello));
    |                           --------------------^^^^^- caused by the macro expansion here
    |
-   = note: the usage of `echo_tts!` is likely invalid in expression context
 help: you might be missing a semicolon here
    |
 LL | expand_expr_is!("string", echo_tts!("string"; hello););
    |                                                     +
+   = note: the usage of `echo_tts!` is likely invalid in expression context
 
 error: macro expansion ignores `;` and any tokens following
   --> $DIR/expand-expr.rs:119:44
@@ -40,11 +40,11 @@ error: macro expansion ignores `;` and any tokens following
 LL | expand_expr_is!("string", echo_pm!("string"; hello));
    |                           -----------------^------- caused by the macro expansion here
    |
-   = note: the usage of `echo_pm!` is likely invalid in expression context
 help: you might be missing a semicolon here
    |
 LL | expand_expr_is!("string", echo_pm!("string"; hello););
    |                                                    +
+   = note: the usage of `echo_pm!` is likely invalid in expression context
 
 error: recursion limit reached while expanding `recursive_expand!`
   --> $DIR/expand-expr.rs:127:16

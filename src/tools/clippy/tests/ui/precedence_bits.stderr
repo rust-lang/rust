@@ -4,8 +4,8 @@ error: operator precedence might not be obvious
 LL |     0x0F00 & 0x00F0 << 4;
    |     ^^^^^^^^^^^^^^^^^^^^ help: consider parenthesizing your expression: `0x0F00 & (0x00F0 << 4)`
    |
-   = note: `-D clippy::precedence-bits` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::precedence_bits)]`
+   = note: `-D clippy::precedence-bits` implied by `-D warnings`
 
 error: operator precedence might not be obvious
   --> tests/ui/precedence_bits.rs:23:5

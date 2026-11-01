@@ -73,8 +73,8 @@ LL | #[cfg(no_values = "bar")]
    |                |
    |                help: remove the value
    |
-   = note: no expected value for `no_values`
    = help: consider using a Cargo feature instead
+   = note: no expected value for `no_values`
    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
             [lints.rust]
             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(no_values, values("bar"))'] }
@@ -89,8 +89,8 @@ LL | #[cfg(quote = "quote\"")]
    |               |
    |               help: there is a expected value with a similar name: `"quote"`
    |
-   = note: expected values for `quote` are: `quote`
    = help: consider using a Cargo feature instead
+   = note: expected values for `quote` are: `quote`
    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
             [lints.rust]
             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(quote, values("quote\""))'] }

@@ -7,6 +7,7 @@ LL | struct Foo;
 LL |     Foo::bat(());
    |          ^^^ associated function or constant cannot be called on `Foo` due to unsatisfied trait bounds
    |
+   = help: items from traits can only be used if the trait is implemented and in scope
 note: for `bat` to be available, `Foo` must implement `Bar` and `Baz`
   --> $DIR/associated-item-unsatisfied-trait-bounds.rs:5:38
    |
@@ -21,7 +22,6 @@ LL | trait Bar {}
    | ^^^^^^^^^
 LL | trait Baz {}
    | ^^^^^^^^^
-   = help: items from traits can only be used if the trait is implemented and in scope
 note: `Bat` defines an item `bat`, perhaps you need to implement it
   --> $DIR/associated-item-unsatisfied-trait-bounds.rs:4:1
    |

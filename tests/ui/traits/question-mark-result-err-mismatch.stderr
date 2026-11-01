@@ -29,7 +29,6 @@ LL |         .map_err(|_| ())?;
    |          |
    |          this can't be annotated with `?` because it has type `Result<_, ()>`
    |
-   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: `String` implements trait `From<T>`:
              From<&String>
              From<&mut str>
@@ -37,6 +36,7 @@ LL |         .map_err(|_| ())?;
              From<Box<str>>
              From<Cow<'_, str>>
              From<char>
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = note: required for `Result<(), String>` to implement `FromResidual<Result<!, ()>>`
 
 error[E0277]: `?` couldn't convert the error to `String`

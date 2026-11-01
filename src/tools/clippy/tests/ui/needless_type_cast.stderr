@@ -4,8 +4,8 @@ error: this binding is defined as `u8` but is always cast to `i32`
 LL |     let a: u8 = 10;
    |            ^^ help: consider defining it as: `i32`
    |
-   = note: `-D clippy::needless-type-cast` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_type_cast)]`
+   = note: `-D clippy::needless-type-cast` implied by `-D warnings`
 
 error: this binding is defined as `u8` but is always cast to `usize`
   --> tests/ui/needless_type_cast.rs:37:12

@@ -6,13 +6,13 @@ LL |     (&mut x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
    |      |
    |      expected `Foo<T, U>`, found `&mut _`
    |
-   = note:         expected struct `Foo<T, U>`
-           found mutable reference `&mut _`
 help: consider removing `&mut` from the pattern
    |
 LL -     (&mut x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
 LL +     (x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
    |
+   = note:         expected struct `Foo<T, U>`
+           found mutable reference `&mut _`
 note: to declare a mutable binding use: `mut x`
   --> $DIR/pattern-matching.rs:115:6
    |
@@ -27,12 +27,12 @@ LL |     &mut (x,): Pin<&'a mut (&'a mut Foo<T, U>,)>,
    |     |
    |     expected `Pin<&mut (&mut Foo<T, U>,)>`, found `&mut _`
    |
-   = note:         expected struct `Pin<&'a mut (&'a mut Foo<T, U>,)>`
-           found mutable reference `&mut _`
 help: you might have meant to use field `pointer` whose type is `&'a mut (&'a mut Foo<T, U>,)`
    |
 LL |     &mut (x,): Pin<&'a mut (&'a mut Foo<T, U>,)>.pointer,
    |                                                 ++++++++
+   = note:         expected struct `Pin<&'a mut (&'a mut Foo<T, U>,)>`
+           found mutable reference `&mut _`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching.rs:127:5
@@ -42,12 +42,12 @@ LL |     &mut (x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
    |     |
    |     expected `Pin<&mut &mut (Foo<T, U>,)>`, found `&mut _`
    |
-   = note:         expected struct `Pin<&'a mut &'a mut (Foo<T, U>,)>`
-           found mutable reference `&mut _`
 help: you might have meant to use field `pointer` whose type is `&'a mut &'a mut (Foo<T, U>,)`
    |
 LL |     &mut (x,): Pin<&'a mut &'a mut (Foo<T, U>,)>.pointer,
    |                                                 ++++++++
+   = note:         expected struct `Pin<&'a mut &'a mut (Foo<T, U>,)>`
+           found mutable reference `&mut _`
 
 error: aborting due to 3 previous errors
 

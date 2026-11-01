@@ -13,14 +13,14 @@ LL | |     foo()
 LL | | }
    | |_- temporary `lock` is currently being dropped at the end of its contained scope
    |
-   = note: this might lead to unnecessary resource contention
-   = note: `-D clippy::significant-drop-tightening` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::significant_drop_tightening)]`
 help: drop the temporary after the end of its last usage
    |
 LL ~     let _ = *lock;
 LL +     drop(lock);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::significant_drop_tightening)]`
+   = note: this might lead to unnecessary resource contention
+   = note: `-D clippy::significant-drop-tightening` implied by `-D warnings`
 
 error: temporary with significant `Drop` can be early dropped
   --> tests/ui/significant_drop_tightening.rs:105:13
@@ -34,12 +34,12 @@ LL | |         do_heavy_computation_that_takes_time((rslt0, rslt1));
 LL | |     }
    | |_____- temporary `lock` is currently being dropped at the end of its contained scope
    |
-   = note: this might lead to unnecessary resource contention
 help: drop the temporary after the end of its last usage
    |
 LL ~         let rslt1 = lock.is_positive();
 LL +         drop(lock);
    |
+   = note: this might lead to unnecessary resource contention
 
 error: temporary with significant `Drop` can be early dropped
   --> tests/ui/significant_drop_tightening.rs:127:13
@@ -53,7 +53,6 @@ LL | |         do_heavy_computation_that_takes_time(rslt0);
 LL | |     }
    | |_____- temporary `lock` is currently being dropped at the end of its contained scope
    |
-   = note: this might lead to unnecessary resource contention
 help: merge the temporary construction with its single usage
    |
 LL ~         
@@ -61,6 +60,7 @@ LL +         let rslt0 = mutex.lock().unwrap().abs();
 LL |
 LL ~         
    |
+   = note: this might lead to unnecessary resource contention
 
 error: temporary with significant `Drop` can be early dropped
   --> tests/ui/significant_drop_tightening.rs:134:17
@@ -74,7 +74,6 @@ LL | |         do_heavy_computation_that_takes_time(());
 LL | |     }
    | |_____- temporary `lock` is currently being dropped at the end of its contained scope
    |
-   = note: this might lead to unnecessary resource contention
 help: merge the temporary construction with its single usage
    |
 LL ~         
@@ -82,6 +81,7 @@ LL +         mutex.lock().unwrap().clear();
 LL |
 LL ~         
    |
+   = note: this might lead to unnecessary resource contention
 
 error: temporary with significant `Drop` can be early dropped
   --> tests/ui/significant_drop_tightening.rs:151:9
@@ -98,7 +98,6 @@ LL | |     println!("Hello {}!", buffer);
 LL | | }
    | |_- temporary `stdin` is currently being dropped at the end of its contained scope
    |
-   = note: this might lead to unnecessary resource contention
 help: merge the temporary construction with its single usage
    |
 LL ~     
@@ -108,6 +107,7 @@ LL |     let mut buffer = String::with_capacity(10);
 LL |
 LL ~     
    |
+   = note: this might lead to unnecessary resource contention
 
 error: temporary with significant `Drop` can be early dropped
   --> tests/ui/significant_drop_tightening.rs:155:13
@@ -124,12 +124,12 @@ LL | |     println!("Hello {}!", buffer);
 LL | | }
    | |_- temporary `stdin` is currently being dropped at the end of its contained scope
    |
-   = note: this might lead to unnecessary resource contention
 help: drop the temporary after the end of its last usage
    |
 LL ~     }
 LL +     drop(stdin);
    |
+   = note: this might lead to unnecessary resource contention
 
 error: temporary with significant `Drop` can be early dropped
   --> tests/ui/significant_drop_tightening.rs:171:9
@@ -145,12 +145,12 @@ LL | |     let lock = storage.lock().unwrap();
 LL | | }
    | |_- temporary `lock` is currently being dropped at the end of its contained scope
    |
-   = note: this might lead to unnecessary resource contention
 help: drop the temporary after the end of its last usage
    |
 LL ~     let items = get_items(&lock);
 LL +     drop(lock);
    |
+   = note: this might lead to unnecessary resource contention
 
 error: aborting due to 7 previous errors
 

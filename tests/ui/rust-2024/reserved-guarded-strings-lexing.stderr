@@ -4,11 +4,11 @@ error: prefix `Ñ` is unknown
 LL |     demo2!(Ñ"foo");
    |            ^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL |     demo2!(Ñ "foo");
    |             +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: prefix `Ñ` is unknown
   --> $DIR/reserved-guarded-strings-lexing.rs:72:12
@@ -16,11 +16,11 @@ error: prefix `Ñ` is unknown
 LL |     demo4!(Ñ#""#);
    |            ^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL |     demo4!(Ñ #""#);
    |             +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: identifiers cannot contain emoji: `🙃`
   --> $DIR/reserved-guarded-strings-lexing.rs:76:12

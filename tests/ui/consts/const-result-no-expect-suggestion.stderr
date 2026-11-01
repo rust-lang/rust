@@ -15,10 +15,10 @@ error[E0599]: no method named `len` found for enum `Result<T, E>` in the current
 LL | const TEST2: usize = g().len();
    |                          ^^^
    |
-note: the method `len` exists on the type `String`
-  --> $SRC_DIR/alloc/src/string.rs:LL:COL
 help: there is a method `le` with a similar name, but with different arguments
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
+note: the method `len` exists on the type `String`
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
 
 error: aborting due to 2 previous errors
 

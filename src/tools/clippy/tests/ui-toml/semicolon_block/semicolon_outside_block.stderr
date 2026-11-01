@@ -4,13 +4,13 @@ error: consider moving the `;` outside the block for consistent formatting
 LL |     { unit_fn_block(); }
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::semicolon-outside-block` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::semicolon_outside_block)]`
 help: put the `;` here
    |
 LL -     { unit_fn_block(); }
 LL +     { unit_fn_block() };
    |
+   = help: to override `-D warnings` add `#[allow(clippy::semicolon_outside_block)]`
+   = note: `-D clippy::semicolon-outside-block` implied by `-D warnings`
 
 error: consider moving the `;` outside the block for consistent formatting
   --> tests/ui-toml/semicolon_block/semicolon_outside_block.rs:42:5

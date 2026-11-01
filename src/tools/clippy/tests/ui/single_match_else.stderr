@@ -11,8 +11,6 @@ LL | |         },
 LL | |     };
    | |_____^
    |
-   = note: `-D clippy::single-match-else` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::single_match_else)]`
 help: try
    |
 LL ~     let _ = if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else {
@@ -20,6 +18,8 @@ LL +         let x = 5;
 LL +         None
 LL ~     };
    |
+   = help: to override `-D warnings` add `#[allow(clippy::single_match_else)]`
+   = note: `-D clippy::single-match-else` implied by `-D warnings`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> tests/ui/single_match_else.rs:84:5
@@ -73,7 +73,6 @@ LL | |         },
 LL | |     }
    | |_____^
    |
-   = note: you might want to preserve the comments from inside the `match`
 help: try
    |
 LL ~     if let Some(a) = Some(1) { println!("${:?}", a) } else {
@@ -81,6 +80,7 @@ LL +         println!("else block");
 LL +         return;
 LL +     }
    |
+   = note: you might want to preserve the comments from inside the `match`
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> tests/ui/single_match_else.rs:115:5

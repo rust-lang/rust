@@ -6,13 +6,13 @@ LL |     foo(*hello);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&_`
-                 found struct `S`
 help: consider removing deref here
    |
 LL -     foo(*hello);
 LL +     foo(hello);
    |
+   = note: expected reference `&_`
+                 found struct `S`
 note: function defined here
   --> $DIR/suggest-remove-deref.rs:10:4
    |

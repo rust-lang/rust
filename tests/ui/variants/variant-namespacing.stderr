@@ -7,11 +7,11 @@ LL | type XStruct = u8;
 LL | pub use variant_namespacing::XE::{XStruct, XTuple, XUnit};
    |                                   ^^^^^^^ `XStruct` reimported here
    |
-   = note: `XStruct` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | pub use variant_namespacing::XE::{XStruct as OtherXStruct, XTuple, XUnit};
    |                                           +++++++++++++++
+   = note: `XStruct` must be defined only once in the type namespace of this module
 
 error[E0255]: the name `XTuple` is defined multiple times
   --> $DIR/variant-namespacing.rs:24:44
@@ -22,11 +22,11 @@ LL | type XTuple = u8;
 LL | pub use variant_namespacing::XE::{XStruct, XTuple, XUnit};
    |                                            ^^^^^^ `XTuple` reimported here
    |
-   = note: `XTuple` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | pub use variant_namespacing::XE::{XStruct, XTuple as OtherXTuple, XUnit};
    |                                                   ++++++++++++++
+   = note: `XTuple` must be defined only once in the type namespace of this module
 
 error[E0255]: the name `XUnit` is defined multiple times
   --> $DIR/variant-namespacing.rs:24:52
@@ -37,11 +37,11 @@ LL | type XUnit = u8;
 LL | pub use variant_namespacing::XE::{XStruct, XTuple, XUnit};
    |                                                    ^^^^^ `XUnit` reimported here
    |
-   = note: `XUnit` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | pub use variant_namespacing::XE::{XStruct, XTuple, XUnit as OtherXUnit};
    |                                                          +++++++++++++
+   = note: `XUnit` must be defined only once in the type namespace of this module
 
 error[E0255]: the name `Struct` is defined multiple times
   --> $DIR/variant-namespacing.rs:28:13
@@ -52,11 +52,11 @@ LL | type Struct = u8;
 LL | pub use E::{Struct, Tuple, Unit};
    |             ^^^^^^ `Struct` reimported here
    |
-   = note: `Struct` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | pub use E::{Struct as OtherStruct, Tuple, Unit};
    |                    ++++++++++++++
+   = note: `Struct` must be defined only once in the type namespace of this module
 
 error[E0255]: the name `Tuple` is defined multiple times
   --> $DIR/variant-namespacing.rs:28:21
@@ -67,11 +67,11 @@ LL | type Tuple = u8;
 LL | pub use E::{Struct, Tuple, Unit};
    |                     ^^^^^ `Tuple` reimported here
    |
-   = note: `Tuple` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | pub use E::{Struct, Tuple as OtherTuple, Unit};
    |                           +++++++++++++
+   = note: `Tuple` must be defined only once in the type namespace of this module
 
 error[E0255]: the name `Unit` is defined multiple times
   --> $DIR/variant-namespacing.rs:28:28
@@ -82,11 +82,11 @@ LL | type Unit = u8;
 LL | pub use E::{Struct, Tuple, Unit};
    |                            ^^^^ `Unit` reimported here
    |
-   = note: `Unit` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
 LL | pub use E::{Struct, Tuple, Unit as OtherUnit};
    |                                 ++++++++++++
+   = note: `Unit` must be defined only once in the type namespace of this module
 
 error: aborting due to 6 previous errors
 

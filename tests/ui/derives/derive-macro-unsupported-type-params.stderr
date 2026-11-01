@@ -24,16 +24,16 @@ LL | enum C<T> {
 LL |     Variant(T),
    |             ^ not found in this scope
    |
-note: similarly named enum `A` defined here
-  --> $DIR/derive-macro-unsupported-type-params.rs:8:1
-   |
-LL | enum A<T> {
-   | ^^^^^^^^^
 help: an enum with a similar name exists
    |
 LL -     Variant(T),
 LL +     Variant(A),
    |
+note: similarly named enum `A` defined here
+  --> $DIR/derive-macro-unsupported-type-params.rs:8:1
+   |
+LL | enum A<T> {
+   | ^^^^^^^^^
 
 error[E0425]: cannot find value `T` in this scope
   --> $DIR/derive-macro-unsupported-type-params.rs:25:13

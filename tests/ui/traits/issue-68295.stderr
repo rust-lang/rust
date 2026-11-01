@@ -7,9 +7,9 @@ LL | fn crash<R, C>(input: Matrix<R, C, ()>) -> Matrix<R, C, u32>
 LL |     input.into_owned()
    |     ^^^^^^^^^^^^^^^^^^ expected `Matrix<R, C, u32>`, found `Matrix<R, C, _>`
    |
+   = help: consider constraining the associated type `<() as Allocator<R, C>>::Buffer` to `u32`
    = note: expected struct `Matrix<_, _, u32>`
               found struct `Matrix<_, _, <() as Allocator<R, C>>::Buffer>`
-   = help: consider constraining the associated type `<() as Allocator<R, C>>::Buffer` to `u32`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error: aborting due to 1 previous error

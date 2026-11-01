@@ -4,11 +4,11 @@ error[E0277]: expected `Fn()` signature, found `T`
 LL |     type F<'a> = Self;
    |                  ^^^^ expected `Fn()` signature, found `T`
    |
-   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
 help: consider restricting type parameter `T` with trait `Fn`
    |
 LL | impl<T: Fn()> Fun for T {
    |       ++++++
+   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `Fun::F`
   --> $DIR/issue-68643-broken-mir.rs:4:17
    |

@@ -16,14 +16,14 @@ LL | /         if let Some(y) = n {
 LL | |             println!("{}", y);
 LL | |         }
    | |_________^
-   = note: `-D clippy::manual-flatten` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_flatten)]`
 help: try
    |
 LL ~     for y in x.into_iter().flatten() {
 LL +         println!("{}", y);
 LL +     }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_flatten)]`
+   = note: `-D clippy::manual-flatten` implied by `-D warnings`
 
 error: unnecessary `if let` since only the `Ok` variant of the iterator element is used
   --> tests/ui/manual_flatten.rs:17:5

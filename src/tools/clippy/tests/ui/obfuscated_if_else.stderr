@@ -4,8 +4,8 @@ error: this method chain can be written more clearly with `if .. else ..`
 LL |     true.then_some("a").unwrap_or("b");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { "a" } else { "b" }`
    |
-   = note: `-D clippy::obfuscated-if-else` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::obfuscated_if_else)]`
+   = note: `-D clippy::obfuscated-if-else` implied by `-D warnings`
 
 error: this method chain can be written more clearly with `if .. else ..`
   --> tests/ui/obfuscated_if_else.rs:13:5

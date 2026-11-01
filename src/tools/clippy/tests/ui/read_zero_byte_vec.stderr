@@ -4,13 +4,13 @@ error: reading zero byte data to `Vec`
 LL |     f.read_exact(&mut data).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::read-zero-byte-vec` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::read_zero_byte_vec)]`
 help: try
    |
 LL ~     data.resize(20, 0);
 LL ~     f.read_exact(&mut data).unwrap();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::read_zero_byte_vec)]`
+   = note: `-D clippy::read-zero-byte-vec` implied by `-D warnings`
 
 error: reading zero byte data to `Vec`
   --> tests/ui/read_zero_byte_vec.rs:24:5

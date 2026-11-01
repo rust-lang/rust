@@ -13,7 +13,6 @@ LL |         pool.execute(move || {
 LL |             let mut r = results.lock().unwrap();
    |                         ------- use occurs due to use in closure
    |
-   = note: consider using `Arc::clone`
 help: consider cloning the value before moving it into the closure
    |
 LL ~         let value = results.clone();
@@ -23,6 +22,7 @@ LL |
 LL |
 LL ~             let mut r = value.lock().unwrap();
    |
+   = note: consider using `Arc::clone`
 
 error: aborting due to 1 previous error
 

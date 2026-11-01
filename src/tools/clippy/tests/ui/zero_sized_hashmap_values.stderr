@@ -5,8 +5,8 @@ LL | const CONST_NOT_OK: Option<HashMap<String, ()>> = None;
    |                            ^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using a set instead
-   = note: `-D clippy::zero-sized-map-values` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::zero_sized_map_values)]`
+   = note: `-D clippy::zero-sized-map-values` implied by `-D warnings`
 
 error: map with zero-sized value type
   --> tests/ui/zero_sized_hashmap_values.rs:9:30

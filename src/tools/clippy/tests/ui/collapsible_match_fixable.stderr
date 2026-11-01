@@ -4,8 +4,6 @@ error: this `if` can be collapsed into the outer `match`
 LL |             if s == 1 { s } else { 1 }
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::collapsible-match` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::collapsible_match)]`
 help: collapse nested if block
    |
 LL ~         Some(s)
@@ -13,6 +11,8 @@ LL ~             if s == 1 => { s }
 LL |
 LL ~         ,
    |
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_match)]`
+   = note: `-D clippy::collapsible-match` implied by `-D warnings`
 
 error: this `if` can be collapsed into the outer `match`
   --> tests/ui/collapsible_match_fixable.rs:16:13

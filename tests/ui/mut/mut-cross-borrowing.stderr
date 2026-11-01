@@ -6,12 +6,12 @@ LL |     f(x)
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected mutable reference `&mut isize`
-                         found struct `Box<{integer}>`
 help: consider mutably borrowing here
    |
 LL |     f(&mut x)
    |       ++++
+   = note: expected mutable reference `&mut isize`
+                         found struct `Box<{integer}>`
 note: function defined here
   --> $DIR/mut-cross-borrowing.rs:1:4
    |

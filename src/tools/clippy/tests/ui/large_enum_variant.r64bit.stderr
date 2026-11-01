@@ -10,13 +10,13 @@ LL | |     B([i32; 8000]),
 LL | | }
    | |_^ the entire enum is at least 32004 bytes
    |
-   = note: `-D clippy::large-enum-variant` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
 help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
    |
 LL -     B([i32; 8000]),
 LL +     B(Box<[i32; 8000]>),
    |
+   = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
+   = note: `-D clippy::large-enum-variant` implied by `-D warnings`
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:36:1
@@ -194,16 +194,16 @@ LL | |     B([u64; 8000]),
 LL | | }
    | |_^ the entire enum is at least 64008 bytes
    |
-note: boxing a variant would require the type no longer be `Copy`
-  --> tests/ui/large_enum_variant.rs:113:6
-   |
-LL | enum CopyableLargeEnum {
-   |      ^^^^^^^^^^^^^^^^^
 help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
   --> tests/ui/large_enum_variant.rs:116:5
    |
 LL |     B([u64; 8000]),
    |     ^^^^^^^^^^^^^^
+note: boxing a variant would require the type no longer be `Copy`
+  --> tests/ui/large_enum_variant.rs:113:6
+   |
+LL | enum CopyableLargeEnum {
+   |      ^^^^^^^^^^^^^^^^^
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:119:1
@@ -217,16 +217,16 @@ LL | |     B([u64; 8000]),
 LL | | }
    | |_^ the entire enum is at least 64008 bytes
    |
-note: boxing a variant would require the type no longer be `Copy`
-  --> tests/ui/large_enum_variant.rs:119:6
-   |
-LL | enum ManuallyCopyLargeEnum {
-   |      ^^^^^^^^^^^^^^^^^^^^^
 help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
   --> tests/ui/large_enum_variant.rs:122:5
    |
 LL |     B([u64; 8000]),
    |     ^^^^^^^^^^^^^^
+note: boxing a variant would require the type no longer be `Copy`
+  --> tests/ui/large_enum_variant.rs:119:6
+   |
+LL | enum ManuallyCopyLargeEnum {
+   |      ^^^^^^^^^^^^^^^^^^^^^
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:133:1
@@ -240,16 +240,16 @@ LL | |     B([u64; 4000]),
 LL | | }
    | |_^ the entire enum is at least 32008 bytes
    |
-note: boxing a variant would require the type no longer be `Copy`
-  --> tests/ui/large_enum_variant.rs:133:6
-   |
-LL | enum SomeGenericPossiblyCopyEnum<T> {
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
   --> tests/ui/large_enum_variant.rs:136:5
    |
 LL |     B([u64; 4000]),
    |     ^^^^^^^^^^^^^^
+note: boxing a variant would require the type no longer be `Copy`
+  --> tests/ui/large_enum_variant.rs:133:6
+   |
+LL | enum SomeGenericPossiblyCopyEnum<T> {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:147:1

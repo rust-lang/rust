@@ -4,8 +4,8 @@ error: unneeded use of `concat!` macro
 LL |     let x = concat!();
    |             ^^^^^^^^^ help: replace with: `""`
    |
-   = note: `-D clippy::useless-concat` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::useless_concat)]`
+   = note: `-D clippy::useless-concat` implied by `-D warnings`
 
 error: unneeded use of `concat!` macro
   --> tests/ui/useless_concat.rs:17:13

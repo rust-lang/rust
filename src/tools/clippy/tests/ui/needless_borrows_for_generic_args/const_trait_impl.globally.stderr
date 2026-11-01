@@ -4,8 +4,8 @@ error: the borrowed expression implements the required traits
 LL |         value.filter(&predicate)
    |                      ^^^^^^^^^^ help: change this to: `predicate`
    |
-   = note: `-D clippy::needless-borrows-for-generic-args` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_borrows_for_generic_args)]`
+   = note: `-D clippy::needless-borrows-for-generic-args` implied by `-D warnings`
 
 error: the borrowed expression implements the required traits
   --> tests/ui/needless_borrows_for_generic_args/const_trait_impl.rs:24:22

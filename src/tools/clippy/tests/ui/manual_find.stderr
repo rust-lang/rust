@@ -9,9 +9,9 @@ LL | |         if s == String::new() {
 LL | |     None
    | |________^ help: replace with an iterator: `strings.into_iter().find(|s| s == String::new())`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_find)]`
    = note: you may need to dereference some variables
    = note: `-D clippy::manual-find` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_find)]`
 
 error: manual implementation of `Iterator::find`
   --> tests/ui/manual_find.rs:15:5

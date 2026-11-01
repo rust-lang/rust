@@ -4,13 +4,13 @@ error: literal cannot be represented as the underlying type without loss of prec
 LL |     let _: f32 = 16_777_217.0;
    |                  ^^^^^^^^^^^^
    |
-   = note: `-D clippy::lossy-float-literal` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::lossy_float_literal)]`
 help: consider changing the type or replacing it with
    |
 LL -     let _: f32 = 16_777_217.0;
 LL +     let _: f32 = 16_777_216.0;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::lossy_float_literal)]`
+   = note: `-D clippy::lossy-float-literal` implied by `-D warnings`
 
 error: literal cannot be represented as the underlying type without loss of precision
   --> tests/ui/lossy_float_literal.rs:16:18

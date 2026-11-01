@@ -4,11 +4,11 @@ error: prefix `foo` is unknown
 LL |     demo3!(foo#bar);
    |            ^^^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL |     demo3!(foo #bar);
    |               +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:17:12
@@ -16,11 +16,11 @@ error: prefix `foo` is unknown
 LL |     demo2!(foo"bar");
    |            ^^^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL |     demo2!(foo "bar");
    |               +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:18:12
@@ -28,11 +28,11 @@ error: prefix `foo` is unknown
 LL |     demo2!(foo'b');
    |            ^^^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL |     demo2!(foo 'b');
    |               +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:20:12
@@ -40,11 +40,11 @@ error: prefix `foo` is unknown
 LL |     demo2!(foo'b);
    |            ^^^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL |     demo2!(foo 'b);
    |               +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:21:12
@@ -52,11 +52,11 @@ error: prefix `foo` is unknown
 LL |     demo3!(foo# bar);
    |            ^^^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL |     demo3!(foo # bar);
    |               +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:22:12
@@ -64,11 +64,11 @@ error: prefix `foo` is unknown
 LL |     demo4!(foo#! bar);
    |            ^^^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL |     demo4!(foo #! bar);
    |               +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:23:12
@@ -76,11 +76,11 @@ error: prefix `foo` is unknown
 LL |     demo4!(foo## bar);
    |            ^^^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL |     demo4!(foo ## bar);
    |               +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: prefix `foo` is unknown
   --> $DIR/reserved-prefixes.rs:25:12
@@ -88,11 +88,11 @@ error: prefix `foo` is unknown
 LL |     demo4!(foo#bar#);
    |            ^^^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL |     demo4!(foo #bar#);
    |               +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: prefix `bar` is unknown
   --> $DIR/reserved-prefixes.rs:25:16
@@ -100,11 +100,11 @@ error: prefix `bar` is unknown
 LL |     demo4!(foo#bar#);
    |                ^^^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL |     demo4!(foo#bar #);
    |                   +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: aborting due to 9 previous errors
 

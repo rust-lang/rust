@@ -32,8 +32,8 @@ LL | #[cfg(has_bar = "yes")]
    |              |
    |              help: remove the value
    |
-   = note: no expected value for `has_bar`
    = help: consider using a Cargo feature instead
+   = note: no expected value for `has_bar`
    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
             [lints.rust]
             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(has_bar, values("yes"))'] }

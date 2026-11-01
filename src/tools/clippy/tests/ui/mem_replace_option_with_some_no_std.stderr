@@ -4,8 +4,8 @@ error: replacing an `Option` with `Some(..)`
 LL |     let replaced = mem::replace(&mut an_option, Some(1));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `Option::replace()` instead: `an_option.replace(1)`
    |
-   = note: `-D clippy::mem-replace-option-with-some` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mem_replace_option_with_some)]`
+   = note: `-D clippy::mem-replace-option-with-some` implied by `-D warnings`
 
 error: replacing an `Option` with `Some(..)`
   --> tests/ui/mem_replace_option_with_some_no_std.rs:13:20

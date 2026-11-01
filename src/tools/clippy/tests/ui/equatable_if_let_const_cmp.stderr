@@ -4,8 +4,8 @@ error: this pattern matching can be expressed using `matches!`
 LL |     const _: u32 = if let ConstEq::A = C { 0 } else { 1 };
    |                       ^^^^^^^^^^^^^^^^^^ help: try: `matches!(C, ConstEq::A)`
    |
-   = note: `-D clippy::equatable-if-let` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::equatable_if_let)]`
+   = note: `-D clippy::equatable-if-let` implied by `-D warnings`
 
 error: this pattern matching can be expressed using `matches!`
   --> tests/ui/equatable_if_let_const_cmp.rs:21:23

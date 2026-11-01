@@ -6,12 +6,12 @@ LL | fn main() { test(Ok(())); }
    |                  |
    |                  arguments to this enum variant are incorrect
    |
-   = note:   expected enum `Option<()>`
-           found unit type `()`
 help: try wrapping the expression in `Some`
    |
 LL | fn main() { test(Ok(Some(()))); }
    |                     +++++  +
+   = note:   expected enum `Option<()>`
+           found unit type `()`
 help: the type constructed contains `()` due to the type of the argument passed
   --> $DIR/issue-46112.rs:8:18
    |

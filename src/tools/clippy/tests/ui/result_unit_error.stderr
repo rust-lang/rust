@@ -5,8 +5,8 @@ LL | pub fn returns_unit_error() -> Result<u32, ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: use a custom `Error` type instead
-   = note: `-D clippy::result-unit-err` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::result_unit_err)]`
+   = note: `-D clippy::result-unit-err` implied by `-D warnings`
 
 error: this returns a `Result<_, ()>`
   --> tests/ui/result_unit_error.rs:14:5

@@ -4,8 +4,8 @@ error: matching over `()` is more explicit
 LL |         Ok(_) => {},
    |            ^ help: use `()` instead of `_`: `()`
    |
-   = note: `-D clippy::ignored-unit-patterns` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::ignored_unit_patterns)]`
+   = note: `-D clippy::ignored-unit-patterns` implied by `-D warnings`
 
 error: matching over `()` is more explicit
   --> tests/ui/ignored_unit_patterns.rs:13:13

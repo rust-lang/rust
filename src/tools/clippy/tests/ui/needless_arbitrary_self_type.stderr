@@ -4,13 +4,13 @@ error: the type of the `self` parameter does not need to be arbitrary
 LL |     pub fn bad(self: Self) {
    |                ^^^^^^^^^^
    |
-   = note: `-D clippy::needless-arbitrary-self-type` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_arbitrary_self_type)]`
 help: remove the type
    |
 LL -     pub fn bad(self: Self) {
 LL +     pub fn bad(self) {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::needless_arbitrary_self_type)]`
+   = note: `-D clippy::needless-arbitrary-self-type` implied by `-D warnings`
 
 error: the type of the `self` parameter does not need to be arbitrary
   --> tests/ui/needless_arbitrary_self_type.rs:19:20

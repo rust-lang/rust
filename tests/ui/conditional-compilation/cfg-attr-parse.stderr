@@ -6,11 +6,11 @@ LL | #[cfg_attr()]
    |           |
    |           expected at least 1 argument here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: must be of the form
    |
 LL | #[cfg_attr(predicate, attr1, attr2, ...)]
    |            ++++++++++++++++++++++++++++
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: expected `,`, found end of `cfg_attr` input
   --> $DIR/cfg-attr-parse.rs:8:16

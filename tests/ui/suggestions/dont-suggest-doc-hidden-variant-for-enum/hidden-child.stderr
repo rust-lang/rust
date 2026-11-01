@@ -6,12 +6,12 @@ LL |     let x: Option<i32> = 1i32;
    |            |
    |            expected due to this
    |
-   = note: expected enum `Option<i32>`
-              found type `i32`
 help: try wrapping the expression in `Some`
    |
 LL |     let x: Option<i32> = Some(1i32);
    |                          +++++    +
+   = note: expected enum `Option<i32>`
+              found type `i32`
 
 error: aborting due to 1 previous error
 

@@ -47,15 +47,15 @@ LL |
 LL |     closure();
    |     ^^^^^^^ value borrowed here after move
    |
+help: consider mutably borrowing `closure`
+   |
+LL |     takes_fnonce(&mut closure);
+   |                  ++++
 note: closure cannot be moved more than once as it is not `Copy` due to moving the variable `x` out of its environment
   --> $DIR/borrow-closures-instead-of-move.rs:21:9
    |
 LL |         x += 1;
    |         ^
-help: consider mutably borrowing `closure`
-   |
-LL |     takes_fnonce(&mut closure);
-   |                  ++++
 
 error: aborting due to 3 previous errors
 

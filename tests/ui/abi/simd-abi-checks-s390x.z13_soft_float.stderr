@@ -14,8 +14,8 @@ error: this function definition requires the `vector` target feature, which is n
 LL | extern "C" fn vector_ret_small(x: &i8x8) -> i8x8 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
    |
-   = note: the function has type `Simd<i8, 8>` in its signature, which is passed in SIMD vector registers under the "C" ABI
    = help: consider enabling the missing target feature globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
+   = note: the function has type `Simd<i8, 8>` in its signature, which is passed in SIMD vector registers under the "C" ABI
 
 error: this function definition requires the `vector` target feature, which is not enabled
   --> $DIR/simd-abi-checks-s390x.rs:37:1
@@ -23,8 +23,8 @@ error: this function definition requires the `vector` target feature, which is n
 LL | extern "C" fn vector_ret(x: &i8x16) -> i8x16 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
    |
-   = note: the function has type `Simd<i8, 16>` in its signature, which is passed in SIMD vector registers under the "C" ABI
    = help: consider enabling the missing target feature globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
+   = note: the function has type `Simd<i8, 16>` in its signature, which is passed in SIMD vector registers under the "C" ABI
 
 error: this function definition requires the `vector` target feature, which is not enabled
   --> $DIR/simd-abi-checks-s390x.rs:83:1
@@ -34,8 +34,8 @@ LL | |     x: &TransparentWrapper<i8x8>,
 LL | | ) -> TransparentWrapper<i8x8> {
    | |_____________________________^ function defined here
    |
-   = note: the function has type `TransparentWrapper<Simd<i8, 8>>` in its signature, which is passed in SIMD vector registers under the "C" ABI
    = help: consider enabling the missing target feature globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
+   = note: the function has type `TransparentWrapper<Simd<i8, 8>>` in its signature, which is passed in SIMD vector registers under the "C" ABI
 
 error: this function definition requires the `vector` target feature, which is not enabled
   --> $DIR/simd-abi-checks-s390x.rs:90:1
@@ -45,8 +45,8 @@ LL | |     x: &TransparentWrapper<i8x16>,
 LL | | ) -> TransparentWrapper<i8x16> {
    | |______________________________^ function defined here
    |
-   = note: the function has type `TransparentWrapper<Simd<i8, 16>>` in its signature, which is passed in SIMD vector registers under the "C" ABI
    = help: consider enabling the missing target feature globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
+   = note: the function has type `TransparentWrapper<Simd<i8, 16>>` in its signature, which is passed in SIMD vector registers under the "C" ABI
 
 error: this function definition requires the `vector` target feature, which is not enabled
   --> $DIR/simd-abi-checks-s390x.rs:105:1
@@ -54,8 +54,8 @@ error: this function definition requires the `vector` target feature, which is n
 LL | extern "C" fn vector_arg_small(x: i8x8) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
    |
-   = note: the function has type `Simd<i8, 8>` in its signature, which is passed in SIMD vector registers under the "C" ABI
    = help: consider enabling the missing target feature globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
+   = note: the function has type `Simd<i8, 8>` in its signature, which is passed in SIMD vector registers under the "C" ABI
 
 error: this function definition requires the `vector` target feature, which is not enabled
   --> $DIR/simd-abi-checks-s390x.rs:110:1
@@ -63,8 +63,8 @@ error: this function definition requires the `vector` target feature, which is n
 LL | extern "C" fn vector_arg(x: i8x16) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
    |
-   = note: the function has type `Simd<i8, 16>` in its signature, which is passed in SIMD vector registers under the "C" ABI
    = help: consider enabling the missing target feature globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
+   = note: the function has type `Simd<i8, 16>` in its signature, which is passed in SIMD vector registers under the "C" ABI
 
 error: this function definition requires the `vector` target feature, which is not enabled
   --> $DIR/simd-abi-checks-s390x.rs:121:1
@@ -72,8 +72,8 @@ error: this function definition requires the `vector` target feature, which is n
 LL | extern "C" fn vector_wrapper_arg_small(x: Wrapper<i8x8>) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
    |
-   = note: the function has type `Wrapper<Simd<i8, 8>>` in its signature, which is passed in SIMD vector registers under the "C" ABI
    = help: consider enabling the missing target feature globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
+   = note: the function has type `Wrapper<Simd<i8, 8>>` in its signature, which is passed in SIMD vector registers under the "C" ABI
 
 error: this function definition requires the `vector` target feature, which is not enabled
   --> $DIR/simd-abi-checks-s390x.rs:126:1
@@ -81,8 +81,8 @@ error: this function definition requires the `vector` target feature, which is n
 LL | extern "C" fn vector_wrapper_arg(x: Wrapper<i8x16>) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
    |
-   = note: the function has type `Wrapper<Simd<i8, 16>>` in its signature, which is passed in SIMD vector registers under the "C" ABI
    = help: consider enabling the missing target feature globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
+   = note: the function has type `Wrapper<Simd<i8, 16>>` in its signature, which is passed in SIMD vector registers under the "C" ABI
 
 error: this function definition requires the `vector` target feature, which is not enabled
   --> $DIR/simd-abi-checks-s390x.rs:137:1
@@ -90,8 +90,8 @@ error: this function definition requires the `vector` target feature, which is n
 LL | extern "C" fn vector_transparent_wrapper_arg_small(x: TransparentWrapper<i8x8>) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
    |
-   = note: the function has type `TransparentWrapper<Simd<i8, 8>>` in its signature, which is passed in SIMD vector registers under the "C" ABI
    = help: consider enabling the missing target feature globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
+   = note: the function has type `TransparentWrapper<Simd<i8, 8>>` in its signature, which is passed in SIMD vector registers under the "C" ABI
 
 error: this function definition requires the `vector` target feature, which is not enabled
   --> $DIR/simd-abi-checks-s390x.rs:142:1
@@ -99,8 +99,8 @@ error: this function definition requires the `vector` target feature, which is n
 LL | extern "C" fn vector_transparent_wrapper_arg(x: TransparentWrapper<i8x16>) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
    |
-   = note: the function has type `TransparentWrapper<Simd<i8, 16>>` in its signature, which is passed in SIMD vector registers under the "C" ABI
    = help: consider enabling the missing target feature globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
+   = note: the function has type `TransparentWrapper<Simd<i8, 16>>` in its signature, which is passed in SIMD vector registers under the "C" ABI
 
 error: aborting due to 10 previous errors; 2 warnings emitted
 

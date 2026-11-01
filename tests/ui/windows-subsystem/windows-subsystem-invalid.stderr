@@ -6,7 +6,6 @@ LL | #![windows_subsystem = "wrong"]
    |                        |
    |                        valid arguments are "console" or "windows"
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #![windows_subsystem = "wrong"]
@@ -15,6 +14,7 @@ LL + #![windows_subsystem = "console"]
 LL - #![windows_subsystem = "wrong"]
 LL + #![windows_subsystem = "windows"]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute>
 
 error: aborting due to 1 previous error
 

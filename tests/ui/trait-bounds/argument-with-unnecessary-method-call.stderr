@@ -11,12 +11,12 @@ help: try using a fully qualified path to specify the expected types
 LL -     qux(Bar.into());
 LL +     qux(<Bar as Into<T>>::into(Bar));
    |
-   = note: the type must implement `From<Bar>`
 help: consider removing this method call, as the receiver has type `Bar` and `Bar: From<Bar>` trivially holds
    |
 LL -     qux(Bar.into());
 LL +     qux(Bar);
    |
+   = note: the type must implement `From<Bar>`
 note: required by a bound in `qux`
   --> $DIR/argument-with-unnecessary-method-call.rs:6:16
    |

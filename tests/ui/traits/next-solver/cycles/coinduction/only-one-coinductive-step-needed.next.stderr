@@ -28,15 +28,15 @@ error[E0275]: overflow evaluating the requirement `Foo<u32>: Sized`
 LL |     is_send::<Foo<u32>>();
    |               ^^^^^^^^
    |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn is_send<T: Send + ?Sized>() {}
+   |                    ++++++++
 note: required by an implicit `Sized` bound in `is_send`
   --> $DIR/only-one-coinductive-step-needed.rs:33:12
    |
 LL | fn is_send<T: Send>() {}
    |            ^ required by the implicit `Sized` requirement on this type parameter in `is_send`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | fn is_send<T: Send + ?Sized>() {}
-   |                    ++++++++
 
 error: aborting due to 4 previous errors
 

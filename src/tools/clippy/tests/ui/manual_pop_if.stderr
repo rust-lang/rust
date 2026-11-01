@@ -6,8 +6,6 @@ LL |     if vec.last().is_some_and(|x| *x > 2) {
 LL |         vec.pop().unwrap();
    |         ^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::manual-pop-if` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_pop_if)]`
 help: try
    |
 LL -     if vec.last().is_some_and(|x| *x > 2) {
@@ -15,6 +13,8 @@ LL -         vec.pop().unwrap();
 LL -     }
 LL +     vec.pop_if(|x| *x > 2);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_pop_if)]`
+   = note: `-D clippy::manual-pop-if` implied by `-D warnings`
 
 error: manual implementation of `Vec::pop_if`
   --> tests/ui/manual_pop_if.rs:30:5

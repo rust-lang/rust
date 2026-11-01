@@ -4,8 +4,8 @@ error: manual implementation of `Instant::elapsed`
 LL |     let duration = Instant::now() - prev_instant;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `prev_instant.elapsed()`
    |
-   = note: `-D clippy::manual-instant-elapsed` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_instant_elapsed)]`
+   = note: `-D clippy::manual-instant-elapsed` implied by `-D warnings`
 
 error: manual implementation of `Instant::elapsed`
   --> tests/ui/manual_instant_elapsed.rs:23:5

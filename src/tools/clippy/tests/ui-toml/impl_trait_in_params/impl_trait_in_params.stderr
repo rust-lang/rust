@@ -4,12 +4,12 @@ error: `impl Trait` used as a function parameter
 LL |     fn t(_: impl Trait);
    |             ^^^^^^^^^^
    |
-   = note: `-D clippy::impl-trait-in-params` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::impl_trait_in_params)]`
 help: add a type parameter
    |
 LL |     fn t<{ /* Generic name */ }: Trait>(_: impl Trait);
    |         +++++++++++++++++++++++++++++++
+   = help: to override `-D warnings` add `#[allow(clippy::impl_trait_in_params)]`
+   = note: `-D clippy::impl-trait-in-params` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

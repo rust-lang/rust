@@ -6,12 +6,12 @@ LL |         Ty::List(elem) => foo(elem),
    |                           |
    |                           arguments to this function are incorrect
    |
-   = note: expected enum `Ty`
-            found struct `Box<Ty>`
 help: consider unboxing the value
    |
 LL |         Ty::List(elem) => foo(*elem),
    |                               +
+   = note: expected enum `Ty`
+            found struct `Box<Ty>`
 note: function defined here
   --> $DIR/boxed-variant-field.rs:6:4
    |

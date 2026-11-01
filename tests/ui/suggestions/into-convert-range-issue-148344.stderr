@@ -6,12 +6,12 @@ LL |     let _: Strange = 0..10;
    |            |
    |            expected due to this
    |
-   = note: expected struct `Strange`
-              found struct `std::ops::Range<{integer}>`
 help: call `Into::into` on this expression to convert `std::ops::Range<{integer}>` into `Strange`
    |
 LL |     let _: Strange = (0..10).into();
    |                      +     ++++++++
+   = note: expected struct `Strange`
+              found struct `std::ops::Range<{integer}>`
 
 error: aborting due to 1 previous error
 

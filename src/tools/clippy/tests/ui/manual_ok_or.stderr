@@ -4,8 +4,8 @@ error: this pattern reimplements `Option::ok_or`
 LL |     foo.map_or(Err("error"), |v| Ok(v));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `foo.ok_or("error")`
    |
-   = note: `-D clippy::manual-ok-or` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_ok_or)]`
+   = note: `-D clippy::manual-ok-or` implied by `-D warnings`
 
 error: this pattern reimplements `Option::ok_or`
   --> tests/ui/manual_ok_or.rs:17:5

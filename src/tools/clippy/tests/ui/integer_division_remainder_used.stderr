@@ -4,8 +4,8 @@ error: use of `/` has been disallowed in this context
 LL |         Self(self.0 / rhs.0)
    |              ^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::integer-division-remainder-used` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::integer_division_remainder_used)]`
+   = note: `-D clippy::integer-division-remainder-used` implied by `-D warnings`
 
 error: use of `%` has been disallowed in this context
   --> tests/ui/integer_division_remainder_used.rs:18:14

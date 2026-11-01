@@ -26,12 +26,12 @@ LL |     let mut x = bar::<()>;
 LL |     x = foo::<I>;
    |         ^^^^^^^^ expected fn item, found a different fn item
    |
-   = note: expected fn item `fn(()) -> () {bar::<()>}`
-              found fn item `fn(I) -> I {foo::<I>}`
 help: use parentheses to call this function
    |
 LL |     x = foo::<I>(/* I */);
    |                 +++++++++
+   = note: expected fn item `fn(()) -> () {bar::<()>}`
+              found fn item `fn(I) -> I {foo::<I>}`
 
 error: aborting due to 2 previous errors
 

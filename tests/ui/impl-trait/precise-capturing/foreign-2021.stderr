@@ -10,16 +10,16 @@ LL |     x.push(0);
 LL |     println!("{h}");
    |                - immutable borrow later used here
    |
-note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
-  --> $DIR/foreign-2021.rs:7:13
-   |
-LL |     let h = foreign::hello(&x);
-   |             ^^^^^^^^^^^^^^^^^^
 help: if you can modify this crate, add a precise capturing bound to avoid overcapturing: `+ use<>`
   --> $DIR/auxiliary/foreign.rs:5:31
    |
 LL | pub fn hello(x: &Vec<i32>) -> impl Display { 0 }
    |                               ^^^^^^^^^^^^
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/foreign-2021.rs:7:13
+   |
+LL |     let h = foreign::hello(&x);
+   |             ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

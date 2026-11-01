@@ -16,11 +16,11 @@ error[E0200]: the trait `MyUnsafeTrait` requires an `unsafe impl` declaration
 LL | impl MyUnsafeTrait for Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the trait `MyUnsafeTrait` enforces invariants that the compiler can't check. Review the trait documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
 help: add `unsafe` to this trait implementation
    |
 LL | unsafe impl MyUnsafeTrait for Foo {}
    | ++++++
+   = note: the trait `MyUnsafeTrait` enforces invariants that the compiler can't check. Review the trait documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
 
 error: aborting due to 2 previous errors
 

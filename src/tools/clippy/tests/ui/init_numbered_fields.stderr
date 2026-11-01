@@ -10,8 +10,8 @@ LL | |         2: 23u8,
 LL | |     };
    | |_____^ help: use tuple initialization: `TupleStruct(1u32, 42, 23u8)`
    |
-   = note: `-D clippy::init-numbered-fields` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::init_numbered_fields)]`
+   = note: `-D clippy::init-numbered-fields` implied by `-D warnings`
 
 error: used a field initializer for a tuple struct
   --> tests/ui/init_numbered_fields.rs:25:13

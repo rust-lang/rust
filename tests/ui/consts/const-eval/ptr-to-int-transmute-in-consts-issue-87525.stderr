@@ -4,9 +4,9 @@ error: pointers cannot be transmuted to integers during const eval
 LL |         std::mem::transmute(ptr)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
    = note: at compile-time, pointers do not have an integer value
    = note: avoiding this restriction via `union` or raw pointers leads to compile-time undefined behavior
-   = help: for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
 note: the lint level is defined here
   --> $DIR/ptr-to-int-transmute-in-consts-issue-87525.rs:1:9
    |
@@ -19,9 +19,9 @@ error: pointers cannot be transmuted to integers during const eval
 LL |             std::mem::transmute(ptr)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
    = note: at compile-time, pointers do not have an integer value
    = note: avoiding this restriction via `union` or raw pointers leads to compile-time undefined behavior
-   = help: for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
 
 error: pointers cannot be transmuted to integers during const eval
   --> $DIR/ptr-to-int-transmute-in-consts-issue-87525.rs:32:13
@@ -29,9 +29,9 @@ error: pointers cannot be transmuted to integers during const eval
 LL |             std::mem::transmute(ptr)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
    = note: at compile-time, pointers do not have an integer value
    = note: avoiding this restriction via `union` or raw pointers leads to compile-time undefined behavior
-   = help: for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
 
 error: pointers cannot be transmuted to integers during const eval
   --> $DIR/ptr-to-int-transmute-in-consts-issue-87525.rs:58:9
@@ -39,9 +39,9 @@ error: pointers cannot be transmuted to integers during const eval
 LL |         std::mem::transmute(ptr)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
    = note: at compile-time, pointers do not have an integer value
    = note: avoiding this restriction via `union` or raw pointers leads to compile-time undefined behavior
-   = help: for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
 
 error: aborting due to 4 previous errors
 

@@ -4,8 +4,8 @@ error: this `repeat().take()` can be written more concisely
 LL |     let _ = repeat(10).take(3);
    |             ^^^^^^^^^^^^^^^^^^ help: consider using `repeat_n()` instead: `std::iter::repeat_n(10, 3)`
    |
-   = note: `-D clippy::manual-repeat-n` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_repeat_n)]`
+   = note: `-D clippy::manual-repeat-n` implied by `-D warnings`
 
 error: this `repeat().take()` can be written more concisely
   --> tests/ui/manual_repeat_n.rs:9:13

@@ -4,8 +4,8 @@ error: possible intra-doc link using quotes instead of backticks
 LL | /// Calls ['bar'] uselessly
    |            ^^^^^
    |
-   = note: `-D clippy::doc-link-with-quotes` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::doc_link_with_quotes)]`
+   = note: `-D clippy::doc-link-with-quotes` implied by `-D warnings`
 
 error: possible intra-doc link using quotes instead of backticks
   --> tests/ui/doc_link_with_quotes.rs:11:12

@@ -5,8 +5,8 @@ LL | impl Wake for PartialWaker {
    |      ^^^^
    |
    = help: use `std::task::Waker::noop()` instead
-   = note: `-D clippy::manual-noop-waker` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_noop_waker)]`
+   = note: `-D clippy::manual-noop-waker` implied by `-D warnings`
 
 error: manual implementation of a no-op waker
   --> tests/ui/manual_noop_waker.rs:12:6

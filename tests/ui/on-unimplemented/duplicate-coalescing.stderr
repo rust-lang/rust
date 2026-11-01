@@ -16,15 +16,15 @@ LL |     let _: <i32 as Coalesced>::Output;
    |             ^^^ later filter label
    |
    = help: the trait `Coalesced` is not implemented for `i32`
-   = note: first filter note
-   = note: second filter note
-   = note: first root note
-   = note: second root note
 help: this trait has no implementations, consider adding one
   --> $DIR/duplicate-coalescing.rs:28:1
    |
 LL | trait Coalesced {
    | ^^^^^^^^^^^^^^^
+   = note: first filter note
+   = note: second filter note
+   = note: first root note
+   = note: second root note
 
 error[E0277]: fallback message
   --> $DIR/duplicate-coalescing.rs:56:13
@@ -33,14 +33,14 @@ LL |     let _: <u32 as Coalesced>::Output;
    |             ^^^ later filter label
    |
    = help: the trait `Coalesced` is not implemented for `u32`
-   = note: second filter note
-   = note: first root note
-   = note: second root note
 help: this trait has no implementations, consider adding one
   --> $DIR/duplicate-coalescing.rs:28:1
    |
 LL | trait Coalesced {
    | ^^^^^^^^^^^^^^^
+   = note: second filter note
+   = note: first root note
+   = note: second root note
 
 error[E0277]: stable message
   --> $DIR/duplicate-coalescing.rs:63:13

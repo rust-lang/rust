@@ -4,11 +4,11 @@ error: `std::ops::Range<usize>` is forbidden as the type of a const generic para
 LL | struct _Range<const R: std::ops::Range<usize>>;
    |                        ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `std::ops::RangeFrom<usize>` is forbidden as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:13:28
@@ -16,11 +16,11 @@ error: `std::ops::RangeFrom<usize>` is forbidden as the type of a const generic 
 LL | struct _RangeFrom<const R: std::ops::RangeFrom<usize>>;
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `RangeFull` is forbidden as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:18:28
@@ -28,11 +28,11 @@ error: `RangeFull` is forbidden as the type of a const generic parameter
 LL | struct _RangeFull<const R: std::ops::RangeFull>;
    |                            ^^^^^^^^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `std::ops::RangeInclusive<usize>` is forbidden as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:24:33
@@ -40,11 +40,11 @@ error: `std::ops::RangeInclusive<usize>` is forbidden as the type of a const gen
 LL | struct _RangeInclusive<const R: std::ops::RangeInclusive<usize>>;
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `RangeTo<usize>` is forbidden as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:29:26
@@ -52,11 +52,11 @@ error: `RangeTo<usize>` is forbidden as the type of a const generic parameter
 LL | struct _RangeTo<const R: std::ops::RangeTo<usize>>;
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `std::ops::RangeToInclusive<usize>` is forbidden as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:34:35
@@ -64,11 +64,11 @@ error: `std::ops::RangeToInclusive<usize>` is forbidden as the type of a const g
 LL | struct _RangeToInclusive<const R: std::ops::RangeToInclusive<usize>>;
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: aborting due to 6 previous errors
 

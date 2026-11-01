@@ -4,8 +4,8 @@ error: usage of wildcard import
 LL | use crate::fn_mod::*;
    |     ^^^^^^^^^^^^^^^^ help: try: `crate::fn_mod::foo`
    |
-   = note: `-D clippy::wildcard-imports` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::wildcard_imports)]`
+   = note: `-D clippy::wildcard-imports` implied by `-D warnings`
 
 error: usage of wildcard import
   --> tests/ui/wildcard_imports_2021.rs:17:5

@@ -210,12 +210,12 @@ error[E0586]: inclusive range with no end
 LL | fn dot_dot_dot() { ··· }
    |                    ^^^
    |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 help: use `..` instead
    |
 LL - fn dot_dot_dot() { ··· }
 LL + fn dot_dot_dot() { .. }
    |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: unexpected token: `...`
   --> $DIR/range-inclusive-suggestion-span.rs:17:23
@@ -240,12 +240,12 @@ error: unexpected `=` after inclusive range
 LL | fn dot_dot_dot_eq() { ···= }
    |                       ^^^^
    |
-   = note: inclusive ranges end with a single equals sign (`..=`)
 help: use `..=` instead
    |
 LL - fn dot_dot_dot_eq() { ···= }
 LL + fn dot_dot_dot_eq() { ..= }
    |
+   = note: inclusive ranges end with a single equals sign (`..=`)
 
 error: unexpected token: `...`
   --> $DIR/range-inclusive-suggestion-span.rs:24:23
@@ -270,12 +270,12 @@ error[E0586]: inclusive range with no end
 LL | fn dot_dot_dot_gt() { ···> }
    |                       ^^^
    |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 help: use `..` instead
    |
 LL - fn dot_dot_dot_gt() { ···> }
 LL + fn dot_dot_dot_gt() { ..> }
    |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: expected one of `;` or `}`, found `>`
   --> $DIR/range-inclusive-suggestion-span.rs:24:26
@@ -289,12 +289,12 @@ error[E0586]: inclusive range with no end
 LL | fn dot_dot_eq() { ··= }
    |                   ^^^
    |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 help: use `..` instead
    |
 LL - fn dot_dot_eq() { ··= }
 LL + fn dot_dot_eq() { .. }
    |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: unexpected `=` after inclusive range
   --> $DIR/range-inclusive-suggestion-span.rs:37:22
@@ -302,12 +302,12 @@ error: unexpected `=` after inclusive range
 LL | fn dot_dot_eq_eq() { ··== }
    |                      ^^^^
    |
-   = note: inclusive ranges end with a single equals sign (`..=`)
 help: use `..=` instead
    |
 LL - fn dot_dot_eq_eq() { ··== }
 LL + fn dot_dot_eq_eq() { ..= }
    |
+   = note: inclusive ranges end with a single equals sign (`..=`)
 
 error: unexpected `>` after inclusive range
   --> $DIR/range-inclusive-suggestion-span.rs:42:25

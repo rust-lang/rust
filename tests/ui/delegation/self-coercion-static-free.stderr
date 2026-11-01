@@ -158,12 +158,12 @@ LL | reuse to_reuse::{value, mut_ref, r#ref} { F }
    |                         |
    |                         arguments to this function are incorrect
    |
-   = note: expected mutable reference `&mut _`
-                         found struct `F`
 help: consider mutably borrowing here
    |
 LL | reuse to_reuse::{value, mut_ref, r#ref} { &mut F }
    |                                           ++++
+   = note: expected mutable reference `&mut _`
+                         found struct `F`
 note: function defined here
   --> $DIR/self-coercion-static-free.rs:48:12
    |
@@ -178,12 +178,12 @@ LL | reuse to_reuse::{value, mut_ref, r#ref} { F }
    |                                  |
    |                                  arguments to this function are incorrect
    |
-   = note: expected reference `&_`
-                 found struct `F`
 help: consider borrowing here
    |
 LL | reuse to_reuse::{value, mut_ref, r#ref} { &F }
    |                                           +
+   = note: expected reference `&_`
+                 found struct `F`
 note: function defined here
   --> $DIR/self-coercion-static-free.rs:49:12
    |

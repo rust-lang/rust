@@ -38,12 +38,12 @@ error[E0423]: cannot find function `deref` in this scope
 LL |     deref(p);
    |     ^^^^^ not found in this scope
    |
-   = note: a macro named `deref` exists in another namespace
 help: use the `.` operator to call the method `Deref::deref` on `&&()`
    |
 LL -     deref(p);
 LL +     p.deref();
    |
+   = note: a macro named `deref` exists in another namespace
 
 error: aborting due to 4 previous errors
 

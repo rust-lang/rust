@@ -7,8 +7,8 @@ LL |
 LL |     } else if b {
    |               ^
    |
-   = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::ifs_same_cond)]`
+   = note: `-D clippy::ifs-same-cond` implied by `-D warnings`
 
 error: these `if` branches have the same condition
   --> tests/ui/ifs_same_cond.rs:17:8

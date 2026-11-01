@@ -8,15 +8,15 @@ help: consider further restricting `Self`
    |
 LL | pub trait Bar: Foo<Assoc=()> + Sized {
    |                              +++++++
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | pub trait Foo<RHS: ?Sized=Self> {
+   |                  ++++++++
 note: required by an implicit `Sized` bound in `Foo`
   --> $DIR/issue-28576.rs:1:15
    |
 LL | pub trait Foo<RHS=Self> {
    |               ^^^^^^^^ required by the implicit `Sized` requirement on this type parameter in `Foo`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | pub trait Foo<RHS: ?Sized=Self> {
-   |                  ++++++++
 
 error[E0038]: the trait `Bar` is not dyn compatible
   --> $DIR/issue-28576.rs:9:16
@@ -52,15 +52,15 @@ help: consider further restricting `Self`
    |
 LL |     ) where Self: Sized;
    |       +++++++++++++++++
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | pub trait Foo<RHS: ?Sized=Self> {
+   |                  ++++++++
 note: required by an implicit `Sized` bound in `Foo`
   --> $DIR/issue-28576.rs:1:15
    |
 LL | pub trait Foo<RHS=Self> {
    |               ^^^^^^^^ required by the implicit `Sized` requirement on this type parameter in `Foo`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | pub trait Foo<RHS: ?Sized=Self> {
-   |                  ++++++++
 
 error: aborting due to 3 previous errors
 

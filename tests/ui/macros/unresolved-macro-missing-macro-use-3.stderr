@@ -12,6 +12,7 @@ error[E0659]: `a_macro` is ambiguous
 LL |     a_macro!();
    |     ^^^^^^^ ambiguous name
    |
+   = help: consider removing this
    = note: ambiguous because of a conflict between a `macro_rules` name and a non-`macro_rules` name from another module
 note: `a_macro` could refer to the macro defined here
   --> $DIR/unresolved-macro-missing-macro-use-3.rs:5:5
@@ -23,7 +24,6 @@ note: `a_macro` could also refer to the unresolved item imported here
    |
 LL | use crate::has_a_macro::a_macro;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: consider removing this
 
 error: aborting due to 2 previous errors
 

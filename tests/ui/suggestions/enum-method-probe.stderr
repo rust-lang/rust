@@ -4,15 +4,15 @@ error[E0599]: no method named `get` found for enum `Result<T, E>` in the current
 LL |     res.get();
    |         ^^^ method not found in `Result<Foo, ()>`
    |
+help: use the `?` operator to extract the `Foo` value, propagating a `Result::Err` value to the caller
+   |
+LL |     res?.get();
+   |        +
 note: the method `get` exists on the type `Foo`
   --> $DIR/enum-method-probe.rs:9:5
    |
 LL |     fn get(&self) -> u8 {
    |     ^^^^^^^^^^^^^^^^^^^
-help: use the `?` operator to extract the `Foo` value, propagating a `Result::Err` value to the caller
-   |
-LL |     res?.get();
-   |        +
 
 error[E0599]: no method named `get` found for enum `Result<T, E>` in the current scope
   --> $DIR/enum-method-probe.rs:39:9
@@ -20,15 +20,15 @@ error[E0599]: no method named `get` found for enum `Result<T, E>` in the current
 LL |     res.get();
    |         ^^^ method not found in `Result<Foo, ()>`
    |
+help: consider using `Result::expect` to unwrap the `Foo` value, panicking if the value is a `Result::Err`
+   |
+LL |     res.expect("REASON").get();
+   |        +++++++++++++++++
 note: the method `get` exists on the type `Foo`
   --> $DIR/enum-method-probe.rs:9:5
    |
 LL |     fn get(&self) -> u8 {
    |     ^^^^^^^^^^^^^^^^^^^
-help: consider using `Result::expect` to unwrap the `Foo` value, panicking if the value is a `Result::Err`
-   |
-LL |     res.expect("REASON").get();
-   |        +++++++++++++++++
 
 error[E0599]: no method named `get` found for enum `Result<T, E>` in the current scope
   --> $DIR/enum-method-probe.rs:16:9
@@ -36,15 +36,15 @@ error[E0599]: no method named `get` found for enum `Result<T, E>` in the current
 LL |     res.get();
    |         ^^^ method not found in `Result<Foo, ()>`
    |
+help: use the `?` operator to extract the `Foo` value, propagating a `Result::Err` value to the caller
+   |
+LL |     res?.get();
+   |        +
 note: the method `get` exists on the type `Foo`
   --> $DIR/enum-method-probe.rs:9:5
    |
 LL |     fn get(&self) -> u8 {
    |     ^^^^^^^^^^^^^^^^^^^
-help: use the `?` operator to extract the `Foo` value, propagating a `Result::Err` value to the caller
-   |
-LL |     res?.get();
-   |        +
 
 error[E0599]: no method named `get` found for enum `Result<T, E>` in the current scope
   --> $DIR/enum-method-probe.rs:32:9
@@ -52,15 +52,15 @@ error[E0599]: no method named `get` found for enum `Result<T, E>` in the current
 LL |     res.get();
    |         ^^^ method not found in `Result<Foo, ()>`
    |
+help: consider using `Result::expect` to unwrap the `Foo` value, panicking if the value is a `Result::Err`
+   |
+LL |     res.expect("REASON").get();
+   |        +++++++++++++++++
 note: the method `get` exists on the type `Foo`
   --> $DIR/enum-method-probe.rs:9:5
    |
 LL |     fn get(&self) -> u8 {
    |     ^^^^^^^^^^^^^^^^^^^
-help: consider using `Result::expect` to unwrap the `Foo` value, panicking if the value is a `Result::Err`
-   |
-LL |     res.expect("REASON").get();
-   |        +++++++++++++++++
 
 error[E0599]: no method named `get` found for enum `Option<T>` in the current scope
   --> $DIR/enum-method-probe.rs:46:9
@@ -68,15 +68,15 @@ error[E0599]: no method named `get` found for enum `Option<T>` in the current sc
 LL |     res.get();
    |         ^^^ method not found in `Option<Foo>`
    |
+help: use the `?` operator to extract the `Foo` value, propagating an `Option::None` value to the caller
+   |
+LL |     res?.get();
+   |        +
 note: the method `get` exists on the type `Foo`
   --> $DIR/enum-method-probe.rs:9:5
    |
 LL |     fn get(&self) -> u8 {
    |     ^^^^^^^^^^^^^^^^^^^
-help: use the `?` operator to extract the `Foo` value, propagating an `Option::None` value to the caller
-   |
-LL |     res?.get();
-   |        +
 
 error[E0599]: no method named `get` found for enum `Option<T>` in the current scope
   --> $DIR/enum-method-probe.rs:54:9
@@ -84,15 +84,15 @@ error[E0599]: no method named `get` found for enum `Option<T>` in the current sc
 LL |     res.get();
    |         ^^^ method not found in `Option<Foo>`
    |
+help: consider using `Option::expect` to unwrap the `Foo` value, panicking if the value is an `Option::None`
+   |
+LL |     res.expect("REASON").get();
+   |        +++++++++++++++++
 note: the method `get` exists on the type `Foo`
   --> $DIR/enum-method-probe.rs:9:5
    |
 LL |     fn get(&self) -> u8 {
    |     ^^^^^^^^^^^^^^^^^^^
-help: consider using `Option::expect` to unwrap the `Foo` value, panicking if the value is an `Option::None`
-   |
-LL |     res.expect("REASON").get();
-   |        +++++++++++++++++
 
 error[E0624]: method `len` is private
   --> $DIR/enum-method-probe.rs:61:9
@@ -103,12 +103,12 @@ LL |     res.len();
   --> $SRC_DIR/core/src/option.rs:LL:COL
    |
    = note: private method defined here
-note: the method `len` exists on the type `Vec<{integer}>`
-  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 help: consider using `Option::expect` to unwrap the `Vec<{integer}>` value, panicking if the value is an `Option::None`
    |
 LL |     res.expect("REASON").len();
    |        +++++++++++++++++
+note: the method `len` exists on the type `Vec<{integer}>`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 
 error: aborting due to 7 previous errors
 

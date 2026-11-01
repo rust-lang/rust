@@ -8,15 +8,15 @@ help: consider further restricting `Self`
    |
 LL | trait Baz : Bar<Self> + Sized {
    |                       +++++++
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | trait Bar<T: ?Sized> {
+   |            ++++++++
 note: required by an implicit `Sized` bound in `Bar`
   --> $DIR/supertrait-mentions-Self.rs:4:11
    |
 LL | trait Bar<T> {
    |           ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | trait Bar<T: ?Sized> {
-   |            ++++++++
 
 error[E0038]: the trait `Baz` is not dyn compatible
   --> $DIR/supertrait-mentions-Self.rs:16:35

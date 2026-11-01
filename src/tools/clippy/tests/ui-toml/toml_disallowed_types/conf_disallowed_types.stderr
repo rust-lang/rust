@@ -4,8 +4,8 @@ error: use of a disallowed type `std::sync::atomic::AtomicU32`
 LL | use std::sync::atomic::AtomicU32;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::disallowed-types` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::disallowed_types)]`
+   = note: `-D clippy::disallowed-types` implied by `-D warnings`
 
 error: use of a disallowed type `std::time::Instant`
   --> tests/ui-toml/toml_disallowed_types/conf_disallowed_types.rs:9:1

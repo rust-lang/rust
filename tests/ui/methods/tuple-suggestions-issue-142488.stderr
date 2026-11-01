@@ -20,6 +20,7 @@ error[E0599]: the method `meth` exists for tuple `((), HashMap<_, _>)`, but its 
 LL |     ((), std::collections::HashMap::new()).meth()
    |                                            ^^^^ method cannot be called on `((), HashMap<_, _>)` due to unsatisfied trait bounds
    |
+   = help: items from traits can only be used if the trait is implemented and in scope
 note: trait bound `HashMap<_, _>: Trait` was not satisfied
   --> $DIR/tuple-suggestions-issue-142488.rs:19:12
    |
@@ -27,7 +28,6 @@ LL | impl<T, U: Trait> Trait for (T, U) {
    |            ^^^^^  -----     ------
    |            |
    |            unsatisfied trait bound introduced here
-   = help: items from traits can only be used if the trait is implemented and in scope
 note: `Trait` defines an item `meth`, perhaps you need to implement it
   --> $DIR/tuple-suggestions-issue-142488.rs:15:1
    |
@@ -42,6 +42,7 @@ error[E0599]: the method `f` exists for tuple `(_,)`, but its trait bounds were 
 LL |     Struct.f().f();
    |                ^ method cannot be called on `(_,)` due to unsatisfied trait bounds
    |
+   = help: items from traits can only be used if the trait is implemented and in scope
 note: the following trait bounds were not satisfied:
       `&(_,): I`
       `&mut (_,): I`
@@ -50,7 +51,6 @@ note: the following trait bounds were not satisfied:
    |
 LL | impl<T> Tr for T where T: I {}
    |         --     -          ^ unsatisfied trait bound introduced here
-   = help: items from traits can only be used if the trait is implemented and in scope
 note: `Tr` defines an item `f`, perhaps you need to implement it
   --> $DIR/tuple-suggestions-issue-142488.rs:34:1
    |

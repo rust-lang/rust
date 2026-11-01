@@ -4,8 +4,8 @@ error: default numeric fallback might occur
 LL |         let x = 22;
    |                 ^^ help: consider adding suffix: `22_i32`
    |
-   = note: `-D clippy::default-numeric-fallback` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::default_numeric_fallback)]`
+   = note: `-D clippy::default-numeric-fallback` implied by `-D warnings`
 
 error: default numeric fallback might occur
   --> tests/ui/default_numeric_fallback_i32.rs:14:18

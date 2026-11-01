@@ -12,9 +12,9 @@ help: consider introducing a named lifetime parameter
    |
 LL | fn foo<'a>(z: &mut Vec<(&'a u8,&u8)>, (x, y): (&'a u8, &u8)) {
    |       ++++               ++                     ++
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of a mutable reference to `Vec<(&u8, &u8)>`
    = note: mutable references are invariant over their type parameter
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/ex3-both-anon-regions-3.rs:2:5
@@ -30,9 +30,9 @@ help: consider introducing a named lifetime parameter
    |
 LL | fn foo<'a>(z: &mut Vec<(&u8,&'a u8)>, (x, y): (&u8, &'a u8)) {
    |       ++++                   ++                      ++
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of a mutable reference to `Vec<(&u8, &u8)>`
    = note: mutable references are invariant over their type parameter
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to 2 previous errors
 

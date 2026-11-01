@@ -4,8 +4,8 @@ error: equal expressions as operands to `==`
 LL |     let _ = 1 == 1;
    |             ^^^^^^
    |
-   = note: `-D clippy::eq-op` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::eq_op)]`
+   = note: `-D clippy::eq-op` implied by `-D warnings`
 
 error: equal expressions as operands to `==`
   --> tests/ui/eq_op.rs:10:13

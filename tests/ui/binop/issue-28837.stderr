@@ -150,16 +150,16 @@ LL |     a == a;
    |     |
    |     A
    |
-note: an implementation of `PartialEq` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
-   |
-LL | struct A;
-   | ^^^^^^^^ must implement `PartialEq`
 help: consider annotating `A` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]
 LL | struct A;
    |
+note: an implementation of `PartialEq` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `PartialEq`
 
 error[E0369]: binary operation `!=` cannot be applied to type `A`
   --> $DIR/issue-28837.rs:26:7
@@ -169,16 +169,16 @@ LL |     a != a;
    |     |
    |     A
    |
-note: an implementation of `PartialEq` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
-   |
-LL | struct A;
-   | ^^^^^^^^ must implement `PartialEq`
 help: consider annotating `A` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]
 LL | struct A;
    |
+note: an implementation of `PartialEq` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `PartialEq`
 
 error[E0369]: binary operation `<` cannot be applied to type `A`
   --> $DIR/issue-28837.rs:28:7
@@ -188,16 +188,16 @@ LL |     a < a;
    |     |
    |     A
    |
-note: an implementation of `PartialOrd` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
-   |
-LL | struct A;
-   | ^^^^^^^^ must implement `PartialOrd`
 help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
    |
 LL + #[derive(PartialEq, PartialOrd)]
 LL | struct A;
    |
+note: an implementation of `PartialOrd` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `PartialOrd`
 
 error[E0369]: binary operation `<=` cannot be applied to type `A`
   --> $DIR/issue-28837.rs:30:7
@@ -207,16 +207,16 @@ LL |     a <= a;
    |     |
    |     A
    |
-note: an implementation of `PartialOrd` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
-   |
-LL | struct A;
-   | ^^^^^^^^ must implement `PartialOrd`
 help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
    |
 LL + #[derive(PartialEq, PartialOrd)]
 LL | struct A;
    |
+note: an implementation of `PartialOrd` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `PartialOrd`
 
 error[E0369]: binary operation `>` cannot be applied to type `A`
   --> $DIR/issue-28837.rs:32:7
@@ -226,16 +226,16 @@ LL |     a > a;
    |     |
    |     A
    |
-note: an implementation of `PartialOrd` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
-   |
-LL | struct A;
-   | ^^^^^^^^ must implement `PartialOrd`
 help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
    |
 LL + #[derive(PartialEq, PartialOrd)]
 LL | struct A;
    |
+note: an implementation of `PartialOrd` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `PartialOrd`
 
 error[E0369]: binary operation `>=` cannot be applied to type `A`
   --> $DIR/issue-28837.rs:34:7
@@ -245,16 +245,16 @@ LL |     a >= a;
    |     |
    |     A
    |
-note: an implementation of `PartialOrd` might be missing for `A`
-  --> $DIR/issue-28837.rs:1:1
-   |
-LL | struct A;
-   | ^^^^^^^^ must implement `PartialOrd`
 help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
    |
 LL + #[derive(PartialEq, PartialOrd)]
 LL | struct A;
    |
+note: an implementation of `PartialOrd` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `PartialOrd`
 
 error: aborting due to 15 previous errors
 

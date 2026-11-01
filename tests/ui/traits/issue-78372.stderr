@@ -15,16 +15,16 @@ error[E0425]: cannot find type `U` in this scope
 LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
    |                               ^ not found in this scope
    |
-note: similarly named type parameter `T` defined here
-  --> $DIR/issue-78372.rs:3:6
-   |
-LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
-   |      ^
 help: a type parameter with a similar name exists
    |
 LL - impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
 LL + impl<T> DispatchFromDyn<Smaht<T, MISC>> for T {}
    |
+note: similarly named type parameter `T` defined here
+  --> $DIR/issue-78372.rs:3:6
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |      ^
 help: you might be missing a type parameter
    |
 LL | impl<T, U> DispatchFromDyn<Smaht<U, MISC>> for T {}
@@ -71,8 +71,8 @@ error[E0307]: invalid `self` parameter type: `Smaht<Self, T>`
 LL |     fn foo(self: Smaht<Self, T>);
    |                  ^^^^^^^^^^^^^^
    |
-   = note: type of `self` must be `Self` or a type that dereferences to it
    = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+   = note: type of `self` must be `Self` or a type that dereferences to it
 
 error: aborting due to 7 previous errors
 

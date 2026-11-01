@@ -26,6 +26,7 @@ LL | |     }, e.mark(3), e.ok(4));
    | |__________________________this value will be stored in a temporary; let us call it `#1`
    |                            `#1` will be dropped later as of Edition 2024
    |
+   = warning: this changes meaning in Rust 2024
 note: `#3` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:503:1
    |
@@ -47,7 +48,6 @@ note: `#2` invokes this custom destructor
 LL | impl<'b> Drop for LogDrop<'b> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
-   = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: the lint level is defined here
   --> $DIR/drop-order-comparisons.rs:30:25
@@ -74,6 +74,7 @@ LL | |     }, e.mark(1), e.ok(4));
    | |__________________________this value will be stored in a temporary; let us call it `#1`
    |                            `#1` will be dropped later as of Edition 2024
    |
+   = warning: this changes meaning in Rust 2024
 note: `#2` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:503:1
    |
@@ -85,7 +86,6 @@ note: `#1` invokes this custom destructor
 LL | impl<'b> Drop for LogDrop<'b> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
-   = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 
 warning: relative drop order changing in Rust 2024
@@ -106,6 +106,7 @@ LL | |     }, e.mark(1), e.ok(4));
    | |__________________________this value will be stored in a temporary; let us call it `#1`
    |                            `#1` will be dropped later as of Edition 2024
    |
+   = warning: this changes meaning in Rust 2024
 note: `#2` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:503:1
    |
@@ -117,7 +118,6 @@ note: `#1` invokes this custom destructor
 LL | impl<'b> Drop for LogDrop<'b> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
-   = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 
 warning: relative drop order changing in Rust 2024
@@ -138,6 +138,7 @@ LL | |     }, e.mark(2), e.ok(3));
    | |__________________________this value will be stored in a temporary; let us call it `#1`
    |                            `#1` will be dropped later as of Edition 2024
    |
+   = warning: this changes meaning in Rust 2024
 note: `#2` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:503:1
    |
@@ -149,7 +150,6 @@ note: `#1` invokes this custom destructor
 LL | impl<'b> Drop for LogDrop<'b> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
-   = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 
 warning: relative drop order changing in Rust 2024
@@ -170,6 +170,7 @@ LL | |     }, e.mark(2), e.ok(3));
    | |__________________________this value will be stored in a temporary; let us call it `#1`
    |                            `#1` will be dropped later as of Edition 2024
    |
+   = warning: this changes meaning in Rust 2024
 note: `#2` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:503:1
    |
@@ -181,7 +182,6 @@ note: `#1` invokes this custom destructor
 LL | impl<'b> Drop for LogDrop<'b> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
-   = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 
 warning: `if let` assigns a shorter lifetime since Edition 2024
@@ -192,16 +192,16 @@ LL |     _ = (if let Ok(_) = e.ok(4).as_ref() {
    |                         |
    |                         this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-note: value invokes this custom destructor
-  --> $DIR/drop-order-comparisons.rs:503:1
-   |
-LL | impl<'b> Drop for LogDrop<'b> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:129:5
    |
 LL |     }, e.mark(2), e.ok(3));
    |     ^
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:503:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~     _ = (match e.ok(4).as_ref() { Ok(_) => {
@@ -222,16 +222,16 @@ LL |     _ = (if let Ok(_) = e.err(4).as_ref() {} else {
    |                         |
    |                         this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-note: value invokes this custom destructor
-  --> $DIR/drop-order-comparisons.rs:503:1
-   |
-LL | impl<'b> Drop for LogDrop<'b> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:147:44
    |
 LL |     _ = (if let Ok(_) = e.err(4).as_ref() {} else {
    |                                            ^
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:503:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~     _ = (match e.err(4).as_ref() { Ok(_) => {} _ => {
@@ -251,16 +251,16 @@ LL |         if let Ok(_) = e.err(4).as_ref() {} else {
    |                        |
    |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-note: value invokes this custom destructor
-  --> $DIR/drop-order-comparisons.rs:503:1
-   |
-LL | impl<'b> Drop for LogDrop<'b> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:249:43
    |
 LL |         if let Ok(_) = e.err(4).as_ref() {} else {
    |                                           ^
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:503:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(4).as_ref() { Ok(_) => {} _ => {
@@ -280,16 +280,16 @@ LL |         if let true = e.err(9).is_ok() {} else {
    |                       |
    |                       this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-note: value invokes this custom destructor
-  --> $DIR/drop-order-comparisons.rs:503:1
-   |
-LL | impl<'b> Drop for LogDrop<'b> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:320:41
    |
 LL |         if let true = e.err(9).is_ok() {} else {
    |                                         ^
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:503:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(9).is_ok() { true => {} _ => {
@@ -309,16 +309,16 @@ LL |         if let Ok(_v) = e.err(8) {} else {
    |                         |
    |                         this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-note: value invokes this custom destructor
-  --> $DIR/drop-order-comparisons.rs:503:1
-   |
-LL | impl<'b> Drop for LogDrop<'b> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:323:35
    |
 LL |         if let Ok(_v) = e.err(8) {} else {
    |                                   ^
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:503:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(8) { Ok(_v) => {} _ => {
@@ -338,16 +338,16 @@ LL |         if let Ok(_) = e.err(7) {} else {
    |                        |
    |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-note: value invokes this custom destructor
-  --> $DIR/drop-order-comparisons.rs:503:1
-   |
-LL | impl<'b> Drop for LogDrop<'b> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:326:34
    |
 LL |         if let Ok(_) = e.err(7) {} else {
    |                                  ^
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:503:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(7) { Ok(_) => {} _ => {
@@ -367,16 +367,16 @@ LL |         if let Ok(_) = e.err(6).as_ref() {} else {
    |                        |
    |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-note: value invokes this custom destructor
-  --> $DIR/drop-order-comparisons.rs:503:1
-   |
-LL | impl<'b> Drop for LogDrop<'b> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:329:43
    |
 LL |         if let Ok(_) = e.err(6).as_ref() {} else {
    |                                           ^
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:503:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(6).as_ref() { Ok(_) => {} _ => {
@@ -396,16 +396,16 @@ LL |         if let Ok(_v) = e.err(5) {} else {
    |                         |
    |                         this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-note: value invokes this custom destructor
-  --> $DIR/drop-order-comparisons.rs:503:1
-   |
-LL | impl<'b> Drop for LogDrop<'b> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:333:35
    |
 LL |         if let Ok(_v) = e.err(5) {} else {
    |                                   ^
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:503:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(5) { Ok(_v) => {} _ => {
@@ -425,16 +425,16 @@ LL |         if let Ok(_) = e.err(4) {} else {
    |                        |
    |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-note: value invokes this custom destructor
-  --> $DIR/drop-order-comparisons.rs:503:1
-   |
-LL | impl<'b> Drop for LogDrop<'b> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:336:34
    |
 LL |         if let Ok(_) = e.err(4) {} else {
    |                                  ^
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:503:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(4) { Ok(_) => {} _ => {
@@ -454,16 +454,16 @@ LL |         if let Ok(_) = e.err(4).as_ref() {} else {
    |                        |
    |                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-note: value invokes this custom destructor
-  --> $DIR/drop-order-comparisons.rs:503:1
-   |
-LL | impl<'b> Drop for LogDrop<'b> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:372:43
    |
 LL |         if let Ok(_) = e.err(4).as_ref() {} else {
    |                                           ^
+note: value invokes this custom destructor
+  --> $DIR/drop-order-comparisons.rs:503:1
+   |
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(4).as_ref() { Ok(_) => {} _ => {

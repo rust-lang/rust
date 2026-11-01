@@ -4,16 +4,16 @@ error[E0425]: cannot find type `T` in this scope
 LL |         T: Send + Sync + 'static,
    |         ^ not found in this scope
    |
-note: similarly named type parameter `H` defined here
-  --> $DIR/outlives-with-missing.rs:7:6
-   |
-LL | impl<H: HandlerFamily> HandlerWrapper<H> {
-   |      ^
 help: a type parameter with a similar name exists
    |
 LL -         T: Send + Sync + 'static,
 LL +         H: Send + Sync + 'static,
    |
+note: similarly named type parameter `H` defined here
+  --> $DIR/outlives-with-missing.rs:7:6
+   |
+LL | impl<H: HandlerFamily> HandlerWrapper<H> {
+   |      ^
 
 error: aborting due to 1 previous error
 

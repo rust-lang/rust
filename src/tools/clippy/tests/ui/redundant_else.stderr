@@ -8,14 +8,14 @@ LL | |             black_box(0)
 LL | |         };
    | |_________^
    |
-   = note: `-D clippy::redundant-else` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::redundant_else)]`
 help: remove the `else` block and move the contents out
    |
 LL ~         }
 LL +
 LL ~         black_box(0);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_else)]`
+   = note: `-D clippy::redundant-else` implied by `-D warnings`
 
 error: redundant else block
   --> tests/ui/redundant_else.rs:26:14
@@ -512,13 +512,13 @@ LL | |                 black_box(0);
 LL | |             }
    | |_____________^
    |
-   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: remove the `else` block and move the contents out
    |
 LL ~             }
 LL +
 LL +         black_box(0);
    |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: redundant else block
   --> tests/ui/redundant_else.rs:432:14
@@ -530,13 +530,13 @@ LL | |                 black_box(0);
 LL | |             }
    | |_____________^
    |
-   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: remove the `else` block and move the contents out
    |
 LL ~             }
 LL +
 LL +         black_box(0);
    |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: redundant else block
   --> tests/ui/redundant_else.rs:445:14
@@ -548,13 +548,13 @@ LL | |                 black_box(0);
 LL | |             }
    | |_____________^
    |
-   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: remove the `else` block and move the contents out
    |
 LL ~             }
 LL +
 LL +         black_box(0);
    |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: redundant else block
   --> tests/ui/redundant_else.rs:440:18
@@ -567,7 +567,6 @@ LL | |                     return
 LL | |                 }
    | |_________________^
    |
-   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: remove the `else` block and move the contents out
    |
 LL ~                 }
@@ -575,6 +574,7 @@ LL +
 LL +         let _ = ();
 LL +         return
    |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: redundant else block
   --> tests/ui/redundant_else.rs:458:14
@@ -586,13 +586,13 @@ LL | |                 black_box(0);
 LL | |             }
    | |_____________^
    |
-   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: remove the `else` block and move the contents out
    |
 LL ~             }
 LL +
 LL +         black_box(0);
    |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: redundant else block
   --> tests/ui/redundant_else.rs:472:14
@@ -604,13 +604,13 @@ LL | |                 inline!({ black_box(()); })
 LL | |             }
    | |_____________^
    |
-   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: remove the `else` block and move the contents out
    |
 LL ~             }
 LL +
 LL +         inline!({ black_box(()); });
    |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: redundant else block
   --> tests/ui/redundant_else.rs:480:14
@@ -622,13 +622,13 @@ LL | |                 $({ black_box(()) })
 LL | |             }
    | |_____________^
    |
-   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: remove the `else` block and move the contents out
    |
 LL ~             }
 LL +
 LL +         $({ black_box(()) });
    |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 35 previous errors
 

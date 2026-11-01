@@ -4,13 +4,13 @@ error[E0283]: type annotations needed
 LL |     T::Object::OPS
    |     ^^^^^^^^^ cannot infer type for type parameter `Ctx` declared on the associated type `Object`
    |
-   = note: the type must implement `Bound`
-   = note: associated types cannot be accessed directly on a `trait`, they can only be accessed through a specific `impl`
 help: use the fully qualified path to an implementation
    |
 LL -     T::Object::OPS
 LL +     <Type as Bound>::Object::OPS
    |
+   = note: the type must implement `Bound`
+   = note: associated types cannot be accessed directly on a `trait`, they can only be accessed through a specific `impl`
 note: required by a bound in `Driver::Object`
   --> $DIR/projection-no-progress-cycle-issue-157516.rs:12:22
    |

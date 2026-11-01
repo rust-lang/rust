@@ -64,11 +64,11 @@ LL |     is_send(Box::new(TestType));
    |     |
    |     required by a bound introduced by this call
    |
-   = note: the trait bound `boxed::BoxRaw<dummy2::TestType>: Send` is not satisfied
 help: consider borrowing here
    |
 LL |     is_send(&Box::new(TestType));
    |             +
+   = note: the trait bound `boxed::BoxRaw<dummy2::TestType>: Send` is not satisfied
    = note: required for `boxed::BoxRaw<dummy2::TestType>` to implement `Send`
 note: required because it appears within the type `Box<dummy2::TestType>`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL

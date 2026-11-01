@@ -4,8 +4,8 @@ error: this expression creates a reference which is immediately dereferenced by 
 LL |     (&&Test).run();
    |     ^^^^^^^^ help: change this to: `(&Test)`
    |
-   = note: `-D clippy::needless-borrow` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
+   = note: `-D clippy::needless-borrow` implied by `-D warnings`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
   --> tests/ui/needless_borrow_false_positive_16200.rs:34:5

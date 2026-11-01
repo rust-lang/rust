@@ -45,6 +45,10 @@ LL | reuse S::<(), 123>::foo_self;
    |                     doesn't have a size known at compile-time
    |                     this type parameter needs to be `Sized`
    |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     fn foo_self<T: ?Sized, const B: bool>() {}
+   |                  ++++++++
 note: required by an implicit `Sized` bound in `S::<C, {const error}>::foo_self`
   --> $DIR/const-param-type-name-collision-ice-162776.rs:9:17
    |
@@ -52,10 +56,6 @@ LL | impl<'b, 'c, C, const C: usize> S<C, C> {
 ...
 LL |     fn foo_self<T, const B: bool>() {}
    |                 ^ required by the implicit `Sized` requirement on this type parameter in `S::<C, {const error}>::foo_self`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL |     fn foo_self<T: ?Sized, const B: bool>() {}
-   |                  ++++++++
 
 error: aborting due to 5 previous errors
 

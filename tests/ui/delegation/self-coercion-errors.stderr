@@ -21,12 +21,12 @@ LL |     reuse Trait::{by_value, by_mut_ref, by_ref} {
 LL |         foo
    |         ^^^ expected `&mut _`, found fn item
    |
-   = note: expected mutable reference `&mut _`
-                        found fn item `fn() -> F {foo}`
 help: consider mutably borrowing here
    |
 LL |         &mut foo
    |         ++++
+   = note: expected mutable reference `&mut _`
+                        found fn item `fn() -> F {foo}`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:12:8
    |
@@ -44,12 +44,12 @@ LL |     reuse Trait::{by_value, by_mut_ref, by_ref} {
 LL |         foo
    |         ^^^ expected `&_`, found fn item
    |
-   = note: expected reference `&_`
-                found fn item `fn() -> F {foo}`
 help: consider borrowing here
    |
 LL |         &foo
    |         +
+   = note: expected reference `&_`
+                found fn item `fn() -> F {foo}`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:13:8
    |
@@ -66,13 +66,13 @@ LL |     reuse Trait::* { &mut self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note:         expected struct `Box<_>`
-           found mutable reference `&mut F`
-   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
 LL |     reuse Trait::* { Box::new(&mut self.0) }
    |                      +++++++++           +
+   = note:         expected struct `Box<_>`
+           found mutable reference `&mut F`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -89,12 +89,12 @@ LL |     reuse Trait::* { &mut self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note:         expected struct `Arc<_>`
-           found mutable reference `&mut F`
 help: call `Into::into` on this expression to convert `&mut F` into `Arc<_>`
    |
 LL |     reuse Trait::* { (&mut self.0).into() }
    |                      +           ++++++++
+   = note:         expected struct `Arc<_>`
+           found mutable reference `&mut F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -111,12 +111,12 @@ LL |     reuse Trait::* { &mut self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note:         expected struct `Rc<_>`
-           found mutable reference `&mut F`
 help: call `Into::into` on this expression to convert `&mut F` into `Rc<_>`
    |
 LL |     reuse Trait::* { (&mut self.0).into() }
    |                      +           ++++++++
+   = note:         expected struct `Rc<_>`
+           found mutable reference `&mut F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -133,12 +133,12 @@ LL |     reuse Trait::* { &mut self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note:         expected struct `Pin<Box<_>>`
-           found mutable reference `&mut F`
 help: you need to pin and box this expression
    |
 LL |     reuse Trait::* { Box::pin(&mut self.0) }
    |                      +++++++++           +
+   = note:         expected struct `Pin<Box<_>>`
+           found mutable reference `&mut F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -209,13 +209,13 @@ LL |     reuse Trait::* { &self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Box<_>`
-           found reference `&F`
-   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
 LL |     reuse Trait::* { Box::new(&self.0) }
    |                      +++++++++       +
+   = note: expected struct `Box<_>`
+           found reference `&F`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -232,12 +232,12 @@ LL |     reuse Trait::* { &self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Arc<_>`
-           found reference `&F`
 help: call `Into::into` on this expression to convert `&F` into `Arc<_>`
    |
 LL |     reuse Trait::* { (&self.0).into() }
    |                      +       ++++++++
+   = note: expected struct `Arc<_>`
+           found reference `&F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -254,12 +254,12 @@ LL |     reuse Trait::* { &self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Rc<_>`
-           found reference `&F`
 help: call `Into::into` on this expression to convert `&F` into `Rc<_>`
    |
 LL |     reuse Trait::* { (&self.0).into() }
    |                      +       ++++++++
+   = note: expected struct `Rc<_>`
+           found reference `&F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -276,12 +276,12 @@ LL |     reuse Trait::* { &self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Box<_>>`
-           found reference `&F`
 help: you need to pin and box this expression
    |
 LL |     reuse Trait::* { Box::pin(&self.0) }
    |                      +++++++++       +
+   = note: expected struct `Pin<Box<_>>`
+           found reference `&F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -352,13 +352,13 @@ LL |     reuse Trait::* { &&&&self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Box<_>`
-           found reference `&&&&F`
-   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
 LL |     reuse Trait::* { Box::new(&&&&self.0) }
    |                      +++++++++          +
+   = note: expected struct `Box<_>`
+           found reference `&&&&F`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -375,12 +375,12 @@ LL |     reuse Trait::* { &&&&self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Arc<_>`
-           found reference `&&&&F`
 help: call `Into::into` on this expression to convert `&&&&F` into `Arc<_>`
    |
 LL |     reuse Trait::* { (&&&&self.0).into() }
    |                      +          ++++++++
+   = note: expected struct `Arc<_>`
+           found reference `&&&&F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -397,12 +397,12 @@ LL |     reuse Trait::* { &&&&self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Rc<_>`
-           found reference `&&&&F`
 help: call `Into::into` on this expression to convert `&&&&F` into `Rc<_>`
    |
 LL |     reuse Trait::* { (&&&&self.0).into() }
    |                      +          ++++++++
+   = note: expected struct `Rc<_>`
+           found reference `&&&&F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -419,12 +419,12 @@ LL |     reuse Trait::* { &&&&self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Box<_>>`
-           found reference `&&&&F`
 help: you need to pin and box this expression
    |
 LL |     reuse Trait::* { Box::pin(&&&&self.0) }
    |                      +++++++++          +
+   = note: expected struct `Pin<Box<_>>`
+           found reference `&&&&F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -495,13 +495,13 @@ LL |     reuse Trait::* { self.0.as_ref() }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Box<_>`
-           found reference `&F`
 help: try removing the method call
    |
 LL -     reuse Trait::* { self.0.as_ref() }
 LL +     reuse Trait::* { self.0 }
    |
+   = note: expected struct `Box<_>`
+           found reference `&F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -518,12 +518,12 @@ LL |     reuse Trait::* { self.0.as_ref() }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Arc<_>`
-           found reference `&F`
 help: call `Into::into` on this expression to convert `&F` into `Arc<_>`
    |
 LL |     reuse Trait::* { self.0.as_ref().into() }
    |                                     +++++++
+   = note: expected struct `Arc<_>`
+           found reference `&F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -540,12 +540,12 @@ LL |     reuse Trait::* { self.0.as_ref() }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Rc<_>`
-           found reference `&F`
 help: call `Into::into` on this expression to convert `&F` into `Rc<_>`
    |
 LL |     reuse Trait::* { self.0.as_ref().into() }
    |                                     +++++++
+   = note: expected struct `Rc<_>`
+           found reference `&F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -562,12 +562,12 @@ LL |     reuse Trait::* { self.0.as_ref() }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Box<_>>`
-           found reference `&F`
 help: you need to pin and box this expression
    |
 LL |     reuse Trait::* { Box::pin(self.0.as_ref()) }
    |                      +++++++++               +
+   = note: expected struct `Pin<Box<_>>`
+           found reference `&F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -638,13 +638,13 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note:         expected struct `Box<_>`
-           found mutable reference `&mut &mut &mut F`
-   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
 LL |     reuse Trait::* { Box::new(&mut &mut &mut self.0) }
    |                      +++++++++                     +
+   = note:         expected struct `Box<_>`
+           found mutable reference `&mut &mut &mut F`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -661,12 +661,12 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note:         expected struct `Arc<_>`
-           found mutable reference `&mut &mut &mut F`
 help: call `Into::into` on this expression to convert `&mut &mut &mut F` into `Arc<_>`
    |
 LL |     reuse Trait::* { (&mut &mut &mut self.0).into() }
    |                      +                     ++++++++
+   = note:         expected struct `Arc<_>`
+           found mutable reference `&mut &mut &mut F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -683,12 +683,12 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note:         expected struct `Rc<_>`
-           found mutable reference `&mut &mut &mut F`
 help: call `Into::into` on this expression to convert `&mut &mut &mut F` into `Rc<_>`
    |
 LL |     reuse Trait::* { (&mut &mut &mut self.0).into() }
    |                      +                     ++++++++
+   = note:         expected struct `Rc<_>`
+           found mutable reference `&mut &mut &mut F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -705,12 +705,12 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note:         expected struct `Pin<Box<_>>`
-           found mutable reference `&mut &mut &mut F`
 help: you need to pin and box this expression
    |
 LL |     reuse Trait::* { Box::pin(&mut &mut &mut self.0) }
    |                      +++++++++                     +
+   = note:         expected struct `Pin<Box<_>>`
+           found mutable reference `&mut &mut &mut F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -781,13 +781,13 @@ LL |     reuse Trait::* { &&mut self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Box<_>`
-           found reference `&&mut F`
-   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
 LL |     reuse Trait::* { Box::new(&&mut self.0) }
    |                      +++++++++            +
+   = note: expected struct `Box<_>`
+           found reference `&&mut F`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -804,12 +804,12 @@ LL |     reuse Trait::* { &&mut self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Arc<_>`
-           found reference `&&mut F`
 help: call `Into::into` on this expression to convert `&&mut F` into `Arc<_>`
    |
 LL |     reuse Trait::* { (&&mut self.0).into() }
    |                      +            ++++++++
+   = note: expected struct `Arc<_>`
+           found reference `&&mut F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -826,12 +826,12 @@ LL |     reuse Trait::* { &&mut self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Rc<_>`
-           found reference `&&mut F`
 help: call `Into::into` on this expression to convert `&&mut F` into `Rc<_>`
    |
 LL |     reuse Trait::* { (&&mut self.0).into() }
    |                      +            ++++++++
+   = note: expected struct `Rc<_>`
+           found reference `&&mut F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -848,12 +848,12 @@ LL |     reuse Trait::* { &&mut self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Box<_>>`
-           found reference `&&mut F`
 help: you need to pin and box this expression
    |
 LL |     reuse Trait::* { Box::pin(&&mut self.0) }
    |                      +++++++++            +
+   = note: expected struct `Pin<Box<_>>`
+           found reference `&&mut F`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -924,13 +924,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Arc<_>`
-              found struct `Box<F>`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Arc<_>`
+              found struct `Box<F>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -947,13 +947,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Rc<_>`
-              found struct `Box<F>`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Rc<_>`
+              found struct `Box<F>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -970,13 +970,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Box<_>>`
-              found struct `Box<F>`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Pin<Box<_>>`
+              found struct `Box<F>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -993,13 +993,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Rc<_>>`
-              found struct `Box<F>`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Pin<Rc<_>>`
+              found struct `Box<F>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
@@ -1016,13 +1016,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Arc<_>>`
-              found struct `Box<F>`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Pin<Arc<_>>`
+              found struct `Box<F>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
@@ -1038,6 +1038,11 @@ LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Box<Box<_>>`, found `Box<F>`
    |                  |
    |                  arguments to this function are incorrect
+   |
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
    |
 note: there is a field `0` on `Box<Box<X6>>` with type `boxed::BoxRaw<Box<X6>>` but it is private; `0` from `X6` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
@@ -1055,11 +1060,6 @@ LL | struct X6(Box<F>);
    |        this struct is accessible through auto-deref
    = note: expected struct `Box<Box<_>>`
               found struct `Box<F>`
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
@@ -1076,12 +1076,12 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Arc<_>`
-              found struct `Box<Arc<Box<F>>>`
 help: consider unboxing the value
    |
 LL |     reuse Trait::* { *self.0 }
    |                      +
+   = note: expected struct `Arc<_>`
+              found struct `Box<Arc<Box<F>>>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -1098,13 +1098,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Rc<_>`
-              found struct `Box<Arc<Box<F>>>`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Rc<_>`
+              found struct `Box<Arc<Box<F>>>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -1121,13 +1121,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Box<_>>`
-              found struct `Box<Arc<Box<F>>>`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Pin<Box<_>>`
+              found struct `Box<Arc<Box<F>>>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -1144,13 +1144,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Rc<_>>`
-              found struct `Box<Arc<Box<F>>>`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Pin<Rc<_>>`
+              found struct `Box<Arc<Box<F>>>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
@@ -1167,13 +1167,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Arc<_>>`
-              found struct `Box<Arc<Box<F>>>`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Pin<Arc<_>>`
+              found struct `Box<Arc<Box<F>>>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
@@ -1189,6 +1189,11 @@ LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Box<Box<_>>`, found `Box<Arc<Box<F>>>`
    |                  |
    |                  arguments to this function are incorrect
+   |
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
    |
 note: there is a field `0` on `Box<Box<X7>>` with type `boxed::BoxRaw<Box<X7>>` but it is private; `0` from `X7` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
@@ -1206,11 +1211,6 @@ LL | struct X7(Box<Arc<Box<F>>>);
    |        this struct is accessible through auto-deref
    = note: expected struct `Box<Box<_>>`
               found struct `Box<Arc<Box<F>>>`
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
@@ -1226,6 +1226,11 @@ LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Box<_>`, found `Pin<Box<F>>`
    |                  |
    |                  arguments to this function are incorrect
+   |
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
    |
 note: there is a field `0` on `Box<X8>` with type `boxed::BoxRaw<X8>` but it is private; `0` from `X8` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
@@ -1243,11 +1248,6 @@ LL | struct X8(Pin<Box<F>>);
    |        this struct is accessible through auto-deref
    = note: expected struct `Box<_>`
               found struct `Pin<Box<F>>`
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -1264,13 +1264,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Arc<_>`
-              found struct `Pin<Box<F>>`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Arc<_>`
+              found struct `Pin<Box<F>>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -1287,13 +1287,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Rc<_>`
-              found struct `Pin<Box<F>>`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Rc<_>`
+              found struct `Pin<Box<F>>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -1310,13 +1310,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Rc<_>>`
-              found struct `Pin<Box<F>>`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Pin<Rc<_>>`
+              found struct `Pin<Box<F>>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
@@ -1333,13 +1333,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Arc<_>>`
-              found struct `Pin<Box<F>>`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Pin<Arc<_>>`
+              found struct `Pin<Box<F>>`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
@@ -1355,6 +1355,11 @@ LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Box<Box<_>>`, found `Pin<Box<F>>`
    |                  |
    |                  arguments to this function are incorrect
+   |
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
    |
 note: there is a field `0` on `Box<Box<X8>>` with type `boxed::BoxRaw<Box<X8>>` but it is private; `0` from `X8` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
@@ -1372,11 +1377,6 @@ LL | struct X8(Pin<Box<F>>);
    |        this struct is accessible through auto-deref
    = note: expected struct `Box<Box<_>>`
               found struct `Pin<Box<F>>`
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
@@ -1412,12 +1412,12 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected mutable reference `&mut _`
-                         found struct `OtherStruct`
 help: consider mutably borrowing here
    |
 LL |     reuse Trait::* { &mut self.0 }
    |                      ++++
+   = note: expected mutable reference `&mut _`
+                         found struct `OtherStruct`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:12:8
    |
@@ -1434,12 +1434,12 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected reference `&_`
-                 found struct `OtherStruct`
 help: consider borrowing here
    |
 LL |     reuse Trait::* { &self.0 }
    |                      +
+   = note: expected reference `&_`
+                 found struct `OtherStruct`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:13:8
    |
@@ -1455,6 +1455,11 @@ LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Box<_>`, found `OtherStruct`
    |                  |
    |                  arguments to this function are incorrect
+   |
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
    |
 note: there is a field `0` on `Box<X9>` with type `boxed::BoxRaw<X9>` but it is private; `0` from `X9` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
@@ -1472,11 +1477,6 @@ LL | struct X9(OtherStruct);
    |        this struct is accessible through auto-deref
    = note: expected struct `Box<_>`
               found struct `OtherStruct`
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -1493,13 +1493,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Arc<_>`
-              found struct `OtherStruct`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Arc<_>`
+              found struct `OtherStruct`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -1516,13 +1516,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Rc<_>`
-              found struct `OtherStruct`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Rc<_>`
+              found struct `OtherStruct`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -1539,13 +1539,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Box<_>>`
-              found struct `OtherStruct`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Pin<Box<_>>`
+              found struct `OtherStruct`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -1562,13 +1562,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Rc<_>>`
-              found struct `OtherStruct`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Pin<Rc<_>>`
+              found struct `OtherStruct`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
@@ -1585,13 +1585,13 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Arc<_>>`
-              found struct `OtherStruct`
 help: consider removing the tuple struct field `0`
    |
 LL -     reuse Trait::* { self.0 }
 LL +     reuse Trait::* { self }
    |
+   = note: expected struct `Pin<Arc<_>>`
+              found struct `OtherStruct`
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
@@ -1607,6 +1607,11 @@ LL |     reuse Trait::* { self.0 }
    |                  -   ^^^^^^ expected `Box<Box<_>>`, found `OtherStruct`
    |                  |
    |                  arguments to this function are incorrect
+   |
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
    |
 note: there is a field `0` on `Box<Box<X9>>` with type `boxed::BoxRaw<Box<X9>>` but it is private; `0` from `X9` was accessed through auto-deref instead
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
@@ -1624,11 +1629,6 @@ LL | struct X9(OtherStruct);
    |        this struct is accessible through auto-deref
    = note: expected struct `Box<Box<_>>`
               found struct `OtherStruct`
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
@@ -1977,6 +1977,10 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  value moved due to this method call
    |
+help: you could `clone` the value and consume it, if the `F: Clone` trait bound could be satisfied
+   |
+LL |     reuse Trait::* { <Box<F> as Clone>::clone(&self.0) }
+   |                      ++++++++++++++++++++++++++      +
 note: `Trait::r#box` takes ownership of the receiver `self`, which moves value
   --> $DIR/self-coercion-errors.rs:14:14
    |
@@ -1984,10 +1988,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |              ^^^^
-help: you could `clone` the value and consume it, if the `F: Clone` trait bound could be satisfied
-   |
-LL |     reuse Trait::* { <Box<F> as Clone>::clone(&self.0) }
-   |                      ++++++++++++++++++++++++++      +
 help: consider annotating `F` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -2041,6 +2041,10 @@ LL |     reuse Trait::* { self.0 }
    |                  |
    |                  value moved due to this method call
    |
+help: you could `clone` the value and consume it, if the `F: Clone` trait bound could be satisfied
+   |
+LL |     reuse Trait::* { <Pin<Box<F>> as Clone>::clone(&self.0) }
+   |                      +++++++++++++++++++++++++++++++      +
 note: `Trait::pin_box` takes ownership of the receiver `self`, which moves value
   --> $DIR/self-coercion-errors.rs:17:16
    |
@@ -2048,10 +2052,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |                ^^^^
-help: you could `clone` the value and consume it, if the `F: Clone` trait bound could be satisfied
-   |
-LL |     reuse Trait::* { <Pin<Box<F>> as Clone>::clone(&self.0) }
-   |                      +++++++++++++++++++++++++++++++      +
 help: consider annotating `F` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

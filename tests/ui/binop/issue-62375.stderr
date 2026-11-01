@@ -6,15 +6,15 @@ LL |     a == A::Value;
    |     |
    |     A
    |
+help: use parentheses to construct this tuple variant
+   |
+LL |     a == A::Value(/* () */);
+   |                  ++++++++++
 note: an implementation of `PartialEq<fn(()) -> A {A::Value}>` might be missing for `A`
   --> $DIR/issue-62375.rs:1:1
    |
 LL | enum A {
    | ^^^^^^ must implement `PartialEq<fn(()) -> A {A::Value}>`
-help: use parentheses to construct this tuple variant
-   |
-LL |     a == A::Value(/* () */);
-   |                  ++++++++++
 
 error: aborting due to 1 previous error
 

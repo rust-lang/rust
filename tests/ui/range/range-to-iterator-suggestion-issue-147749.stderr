@@ -4,14 +4,14 @@ error[E0599]: `RangeTo<{integer}>` is not an iterator
 LL |     for x in (..4).rev() {
    |                    ^^^ `RangeTo<{integer}>` is not an iterator
    |
-   = note: the following trait bounds were not satisfied:
-           `RangeTo<{integer}>: Iterator`
-           which is required by `&mut RangeTo<{integer}>: Iterator`
-   = note: you might have meant to use a bounded `Range`
 help: consider using a bounded `Range` by adding a concrete starting value
    |
 LL |     for x in (0..4).rev() {
    |               +
+   = note: the following trait bounds were not satisfied:
+           `RangeTo<{integer}>: Iterator`
+           which is required by `&mut RangeTo<{integer}>: Iterator`
+   = note: you might have meant to use a bounded `Range`
 
 error[E0599]: `std::ops::RangeToInclusive<{integer}>` is not an iterator
   --> $DIR/range-to-iterator-suggestion-issue-147749.rs:8:21
@@ -19,14 +19,14 @@ error[E0599]: `std::ops::RangeToInclusive<{integer}>` is not an iterator
 LL |     for x in (..=4).rev() {
    |                     ^^^ `std::ops::RangeToInclusive<{integer}>` is not an iterator
    |
-   = note: the following trait bounds were not satisfied:
-           `std::ops::RangeToInclusive<{integer}>: Iterator`
-           which is required by `&mut std::ops::RangeToInclusive<{integer}>: Iterator`
-   = note: you might have meant to use a bounded `RangeInclusive`
 help: consider using a bounded `RangeInclusive` by adding a concrete starting value
    |
 LL |     for x in (0..=4).rev() {
    |               +
+   = note: the following trait bounds were not satisfied:
+           `std::ops::RangeToInclusive<{integer}>: Iterator`
+           which is required by `&mut std::ops::RangeToInclusive<{integer}>: Iterator`
+   = note: you might have meant to use a bounded `RangeInclusive`
 
 error[E0599]: no method named `iter` found for struct `RangeTo<Idx>` in the current scope
   --> $DIR/range-to-iterator-suggestion-issue-147749.rs:15:28
@@ -40,14 +40,14 @@ error[E0599]: `RangeTo<char>` is not an iterator
 LL |     for _x in (..'a').rev() {}
    |                       ^^^ `RangeTo<char>` is not an iterator
    |
-   = note: the following trait bounds were not satisfied:
-           `RangeTo<char>: Iterator`
-           which is required by `&mut RangeTo<char>: Iterator`
-   = note: you might have meant to use a bounded `Range`
 help: consider using a bounded `Range` by adding a concrete starting value
    |
 LL |     for _x in (/* start */..'a').rev() {}
    |                +++++++++++
+   = note: the following trait bounds were not satisfied:
+           `RangeTo<char>: Iterator`
+           which is required by `&mut RangeTo<char>: Iterator`
+   = note: you might have meant to use a bounded `Range`
 
 error[E0599]: `std::ops::RangeToInclusive<char>` is not an iterator
   --> $DIR/range-to-iterator-suggestion-issue-147749.rs:22:24
@@ -55,14 +55,14 @@ error[E0599]: `std::ops::RangeToInclusive<char>` is not an iterator
 LL |     for _x in (..='a').rev() {}
    |                        ^^^ `std::ops::RangeToInclusive<char>` is not an iterator
    |
-   = note: the following trait bounds were not satisfied:
-           `std::ops::RangeToInclusive<char>: Iterator`
-           which is required by `&mut std::ops::RangeToInclusive<char>: Iterator`
-   = note: you might have meant to use a bounded `RangeInclusive`
 help: consider using a bounded `RangeInclusive` by adding a concrete starting value
    |
 LL |     for _x in (/* start */..='a').rev() {}
    |                +++++++++++
+   = note: the following trait bounds were not satisfied:
+           `std::ops::RangeToInclusive<char>: Iterator`
+           which is required by `&mut std::ops::RangeToInclusive<char>: Iterator`
+   = note: you might have meant to use a bounded `RangeInclusive`
 
 error[E0599]: `RangeTo<{integer}>` is not an iterator
   --> $DIR/range-to-iterator-suggestion-issue-147749.rs:26:23
@@ -70,14 +70,14 @@ error[E0599]: `RangeTo<{integer}>` is not an iterator
 LL |     for _x in (..-10).rev() {}
    |                       ^^^ `RangeTo<{integer}>` is not an iterator
    |
-   = note: the following trait bounds were not satisfied:
-           `RangeTo<{integer}>: Iterator`
-           which is required by `&mut RangeTo<{integer}>: Iterator`
-   = note: you might have meant to use a bounded `Range`
 help: consider using a bounded `Range` by adding a concrete starting value
    |
 LL |     for _x in (/* start */..-10).rev() {}
    |                +++++++++++
+   = note: the following trait bounds were not satisfied:
+           `RangeTo<{integer}>: Iterator`
+           which is required by `&mut RangeTo<{integer}>: Iterator`
+   = note: you might have meant to use a bounded `Range`
 
 error[E0599]: `std::ops::RangeToInclusive<{integer}>` is not an iterator
   --> $DIR/range-to-iterator-suggestion-issue-147749.rs:30:24
@@ -85,14 +85,14 @@ error[E0599]: `std::ops::RangeToInclusive<{integer}>` is not an iterator
 LL |     for _x in (..=-10).rev() {}
    |                        ^^^ `std::ops::RangeToInclusive<{integer}>` is not an iterator
    |
-   = note: the following trait bounds were not satisfied:
-           `std::ops::RangeToInclusive<{integer}>: Iterator`
-           which is required by `&mut std::ops::RangeToInclusive<{integer}>: Iterator`
-   = note: you might have meant to use a bounded `RangeInclusive`
 help: consider using a bounded `RangeInclusive` by adding a concrete starting value
    |
 LL |     for _x in (/* start */..=-10).rev() {}
    |                +++++++++++
+   = note: the following trait bounds were not satisfied:
+           `std::ops::RangeToInclusive<{integer}>: Iterator`
+           which is required by `&mut std::ops::RangeToInclusive<{integer}>: Iterator`
+   = note: you might have meant to use a bounded `RangeInclusive`
 
 error[E0599]: `RangeTo<{integer}>` is not an iterator
   --> $DIR/range-to-iterator-suggestion-issue-147749.rs:35:28
@@ -100,14 +100,14 @@ error[E0599]: `RangeTo<{integer}>` is not an iterator
 LL |     for _x in (..-end_val).rev() {}
    |                            ^^^ `RangeTo<{integer}>` is not an iterator
    |
-   = note: the following trait bounds were not satisfied:
-           `RangeTo<{integer}>: Iterator`
-           which is required by `&mut RangeTo<{integer}>: Iterator`
-   = note: you might have meant to use a bounded `Range`
 help: consider using a bounded `Range` by adding a concrete starting value
    |
 LL |     for _x in (/* start */..-end_val).rev() {}
    |                +++++++++++
+   = note: the following trait bounds were not satisfied:
+           `RangeTo<{integer}>: Iterator`
+           which is required by `&mut RangeTo<{integer}>: Iterator`
+   = note: you might have meant to use a bounded `Range`
 
 error: aborting due to 8 previous errors
 

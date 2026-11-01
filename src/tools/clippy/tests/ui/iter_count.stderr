@@ -4,8 +4,8 @@ error: called `.iter().count()` on a `slice`
 LL |     &vec[..].iter().count();
    |      ^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec[..].len()`
    |
-   = note: `-D clippy::iter-count` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_count)]`
+   = note: `-D clippy::iter-count` implied by `-D warnings`
 
 error: called `.iter().count()` on a `Vec`
   --> tests/ui/iter_count.rs:49:5

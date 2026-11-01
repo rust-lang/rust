@@ -7,12 +7,12 @@ LL |     fn f() -> impl Sized;
 LL |     fn f() {}
    |     ^^^^^^
    |
-   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
-   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 help: replace the return type so that it matches the trait
    |
 LL |     fn f()-> impl Sized  {}
    |           +++++++++++++
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 note: the lint level is defined here
   --> $DIR/refine-return-type-notation.rs:2:9
    |

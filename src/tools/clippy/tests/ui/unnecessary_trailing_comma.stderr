@@ -4,8 +4,8 @@ error: unnecessary trailing comma
 LL |     println!("Foo" , );
    |                   ^^^ help: remove the trailing comma
    |
-   = note: `-D clippy::unnecessary-trailing-comma` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_trailing_comma)]`
+   = note: `-D clippy::unnecessary-trailing-comma` implied by `-D warnings`
 
 error: unnecessary trailing comma
   --> tests/ui/unnecessary_trailing_comma.rs:12:19

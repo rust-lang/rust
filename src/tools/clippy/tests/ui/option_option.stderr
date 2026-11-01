@@ -5,8 +5,8 @@ LL | const C: Option<Option<i32>> = None;
    |          ^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using `Option<i32>`, or a custom enum if you need to distinguish all 3 cases
-   = note: `-D clippy::option-option` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::option_option)]`
+   = note: `-D clippy::option-option` implied by `-D warnings`
 
 error: use of `Option<Option<T>>`
   --> tests/ui/option_option.rs:6:11

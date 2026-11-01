@@ -382,12 +382,12 @@ LL |     want::<&Foo<foo>>(f);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&Foo<_>`
-                 found struct `Foo<_>`
 help: consider borrowing here
    |
 LL |     want::<&Foo<foo>>(&f);
    |                       +
+   = note: expected reference `&Foo<_>`
+                 found struct `Foo<_>`
 note: function defined here
   --> $DIR/type-mismatch.rs:14:4
    |
@@ -562,12 +562,12 @@ LL |     want::<&Foo<foo, B>>(f);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&Foo<_, _>`
-                 found struct `Foo<_, _>`
 help: consider borrowing here
    |
 LL |     want::<&Foo<foo, B>>(&f);
    |                          +
+   = note: expected reference `&Foo<_, _>`
+                 found struct `Foo<_, _>`
 note: function defined here
   --> $DIR/type-mismatch.rs:14:4
    |

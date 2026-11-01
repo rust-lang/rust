@@ -4,9 +4,9 @@ warning: transmuting an integer to a pointer creates a pointer without provenanc
 LL |     let _ptr: *const u8 = unsafe { std::mem::transmute::<usize, *const u8>(a) };
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = note: this is dangerous because dereferencing the resulting pointer is undefined behavior
    = note: exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = help: for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
    = help: if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 help: use `std::ptr::with_exposed_provenance` instead to use a previously exposed provenance
@@ -22,9 +22,9 @@ warning: transmuting an integer to a pointer creates a pointer without provenanc
 LL |     let _ptr: *mut u8 = unsafe { std::mem::transmute::<usize, *mut u8>(a) };
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = note: this is dangerous because dereferencing the resulting pointer is undefined behavior
    = note: exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = help: for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
    = help: if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 help: use `std::ptr::with_exposed_provenance_mut` instead to use a previously exposed provenance
@@ -39,9 +39,9 @@ warning: transmuting an integer to a pointer creates a pointer without provenanc
 LL |     let _ref: &'static u8 = unsafe { std::mem::transmute::<usize, &'static u8>(a) };
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = note: this is dangerous because dereferencing the resulting pointer is undefined behavior
    = note: exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = help: for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
    = help: if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 help: use `std::ptr::with_exposed_provenance` instead to use a previously exposed provenance
@@ -56,9 +56,9 @@ warning: transmuting an integer to a pointer creates a pointer without provenanc
 LL |     let _ref: &'static mut u8 = unsafe { std::mem::transmute::<usize, &'static mut u8>(a) };
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = note: this is dangerous because dereferencing the resulting pointer is undefined behavior
    = note: exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = help: for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
    = help: if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 help: use `std::ptr::with_exposed_provenance_mut` instead to use a previously exposed provenance
@@ -73,9 +73,9 @@ warning: transmuting an integer to a pointer creates a pointer without provenanc
 LL |     let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(42usize) };
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = note: this is dangerous because dereferencing the resulting pointer is undefined behavior
    = note: exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = help: for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
    = help: if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 help: use `std::ptr::with_exposed_provenance` instead to use a previously exposed provenance
@@ -90,9 +90,9 @@ warning: transmuting an integer to a pointer creates a pointer without provenanc
 LL |     let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(a + a) };
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = note: this is dangerous because dereferencing the resulting pointer is undefined behavior
    = note: exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = help: for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
    = help: if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 help: use `std::ptr::with_exposed_provenance` instead to use a previously exposed provenance
@@ -107,9 +107,9 @@ warning: transmuting an integer to a pointer creates a pointer without provenanc
 LL |     let _ptr: *const u8 = unsafe { std::mem::transmute::<usize, *const u8>(a) };
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = note: this is dangerous because dereferencing the resulting pointer is undefined behavior
    = note: exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = help: for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
    = help: if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 help: use `std::ptr::with_exposed_provenance` instead to use a previously exposed provenance
@@ -124,9 +124,9 @@ warning: transmuting an integer to a pointer creates a pointer without provenanc
 LL |     let _ptr: *mut u8 = unsafe { std::mem::transmute::<usize, *mut u8>(a) };
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = note: this is dangerous because dereferencing the resulting pointer is undefined behavior
    = note: exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = help: for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
    = help: if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 help: use `std::ptr::with_exposed_provenance_mut` instead to use a previously exposed provenance
@@ -141,9 +141,9 @@ warning: transmuting an integer to a pointer creates a pointer without provenanc
 LL |     let _ref: &'static u8 = unsafe { std::mem::transmute::<usize, &'static u8>(a) };
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = note: this is dangerous because dereferencing the resulting pointer is undefined behavior
    = note: exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = help: for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
    = help: if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 help: use `std::ptr::with_exposed_provenance` instead to use a previously exposed provenance
@@ -158,9 +158,9 @@ warning: transmuting an integer to a pointer creates a pointer without provenanc
 LL |     let _ref: &'static mut u8 = unsafe { std::mem::transmute::<usize, &'static mut u8>(a) };
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = note: this is dangerous because dereferencing the resulting pointer is undefined behavior
    = note: exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = help: for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
    = help: if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 help: use `std::ptr::with_exposed_provenance_mut` instead to use a previously exposed provenance
@@ -175,9 +175,9 @@ warning: transmuting an integer to a pointer creates a pointer without provenanc
 LL |     let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(42usize) };
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = note: this is dangerous because dereferencing the resulting pointer is undefined behavior
    = note: exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = help: for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
    = help: if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 help: use `std::ptr::with_exposed_provenance` instead to use a previously exposed provenance
@@ -192,9 +192,9 @@ warning: transmuting an integer to a pointer creates a pointer without provenanc
 LL |     let _ptr = unsafe { std::mem::transmute::<usize, *const u8>(a + a) };
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = note: this is dangerous because dereferencing the resulting pointer is undefined behavior
    = note: exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-   = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = help: for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
    = help: if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 help: use `std::ptr::with_exposed_provenance` instead to use a previously exposed provenance

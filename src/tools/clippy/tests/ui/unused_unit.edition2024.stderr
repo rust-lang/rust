@@ -4,8 +4,8 @@ error: unneeded unit expression
 LL |         ()
    |         ^^ help: remove the final `()`
    |
-   = note: `-D clippy::unused-unit` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unused_unit)]`
+   = note: `-D clippy::unused-unit` implied by `-D warnings`
 
 error: unneeded unit expression
   --> tests/ui/unused_unit.rs:61:26

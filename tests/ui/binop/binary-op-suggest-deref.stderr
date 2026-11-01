@@ -231,13 +231,13 @@ LL |     _ = Box::new(42) == 42;
    |         |
    |         expected because this is `Box<{integer}>`
    |
-   = note: expected struct `Box<{integer}>`
-                found type `{integer}`
-   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
 LL |     _ = Box::new(42) == Box::new(42);
    |                         +++++++++  +
+   = note: expected struct `Box<{integer}>`
+                found type `{integer}`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 
 error[E0277]: can't compare `&&{integer}` with `Foo`
   --> $DIR/binary-op-suggest-deref.rs:58:13

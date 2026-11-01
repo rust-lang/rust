@@ -4,11 +4,11 @@ error[E0277]: `std::ops::Range<T>` is not an iterator
 LL |     for _ in t {}
    |              ^ `Range<T>` is not an iterator
    |
-   = note: `Range` only implements `Iterator` for select types in the standard library, particularly integers; to see the full list of types, see the documentation for the unstable `Step` trait
 help: consider restricting type parameter `T` with unstable trait `Step`
    |
 LL | pub fn baz<T: std::iter::Step>(t: std::ops::Range<T>) {
    |             +++++++++++++++++
+   = note: `Range` only implements `Iterator` for select types in the standard library, particularly integers; to see the full list of types, see the documentation for the unstable `Step` trait
    = note: required for `std::ops::Range<T>` to implement `Iterator`
    = note: required for `std::ops::Range<T>` to implement `IntoIterator`
 

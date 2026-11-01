@@ -9,8 +9,6 @@ LL | |         if *v == 10 {
 LL | |     });
    | |_______^
    |
-   = note: `-D clippy::needless-for-each` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_for_each)]`
 help: try
    |
 LL ~     for v in v.iter() {
@@ -28,6 +26,8 @@ help: ...and replace `return` with `continue`
 LL -             return;
 LL +             continue;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::needless_for_each)]`
+   = note: `-D clippy::needless-for-each` implied by `-D warnings`
 
 error: needless use of `for_each`
   --> tests/ui/needless_for_each_unfixable.rs:22:5

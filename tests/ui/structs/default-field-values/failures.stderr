@@ -119,16 +119,16 @@ LL |     let _ = Rak(..);
    |             |
    |             arguments to this struct are incorrect
    |
-note: tuple struct defined here
-  --> $DIR/failures.rs:28:12
-   |
-LL | pub struct Rak(i32 = 42);
-   |            ^^^
 help: you might have meant to use `..` to skip providing a value for expected fields, but this is only supported on non-tuple struct literals; it is instead interpreted as a `std::ops::RangeFull` literal
   --> $DIR/failures.rs:66:17
    |
 LL |     let _ = Rak(..);
    |                 ^^
+note: tuple struct defined here
+  --> $DIR/failures.rs:28:12
+   |
+LL | pub struct Rak(i32 = 42);
+   |            ^^^
 
 error[E0061]: this struct takes 1 argument but 2 arguments were supplied
   --> $DIR/failures.rs:68:13
@@ -141,16 +141,16 @@ help: you might have meant to use `..` to skip providing a value for expected fi
    |
 LL |     let _ = Rak(0, ..);
    |                    ^^
-note: tuple struct defined here
-  --> $DIR/failures.rs:28:12
-   |
-LL | pub struct Rak(i32 = 42);
-   |            ^^^
 help: remove the extra argument
    |
 LL -     let _ = Rak(0, ..);
 LL +     let _ = Rak(0);
    |
+note: tuple struct defined here
+  --> $DIR/failures.rs:28:12
+   |
+LL | pub struct Rak(i32 = 42);
+   |            ^^^
 
 error[E0061]: this struct takes 1 argument but 2 arguments were supplied
   --> $DIR/failures.rs:70:13
@@ -163,16 +163,16 @@ help: you might have meant to use `..` to skip providing a value for expected fi
    |
 LL |     let _ = Rak(.., 0);
    |                 ^^
-note: tuple struct defined here
-  --> $DIR/failures.rs:28:12
-   |
-LL | pub struct Rak(i32 = 42);
-   |            ^^^
 help: remove the extra argument
    |
 LL -     let _ = Rak(.., 0);
 LL +     let _ = Rak(0);
    |
+note: tuple struct defined here
+  --> $DIR/failures.rs:28:12
+   |
+LL | pub struct Rak(i32 = 42);
+   |            ^^^
 
 error: aborting due to 10 previous errors; 4 warnings emitted
 

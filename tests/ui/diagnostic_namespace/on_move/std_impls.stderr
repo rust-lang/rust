@@ -21,11 +21,11 @@ LL |     (arc, arc);
    |      |
    |      value moved here
    |
-   = note: consider using `Arc::clone`
 help: clone the value to increment its reference count
    |
 LL |     (arc.clone(), arc);
    |         ++++++++
+   = note: consider using `Arc::clone`
 
 error[E0382]: the type `Rc` does not implement `Copy`
   --> $DIR/std_impls.rs:22:10
@@ -38,11 +38,11 @@ LL |     (rc, rc);
    |      |
    |      value moved here
    |
-   = note: consider using `Rc::clone`
 help: clone the value to increment its reference count
    |
 LL |     (rc.clone(), rc);
    |        ++++++++
+   = note: consider using `Rc::clone`
 
 error: aborting due to 3 previous errors
 

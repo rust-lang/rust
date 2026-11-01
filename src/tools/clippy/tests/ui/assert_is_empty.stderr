@@ -4,13 +4,13 @@ error: used `assert!` to check that a value is empty
 LL |     assert!(vec.is_empty());
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::assert-is-empty` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::assert_is_empty)]`
 help: use `assert_eq!` to show the value on failure
    |
 LL -     assert!(vec.is_empty());
 LL +     assert_eq!(vec, [] as [i32; 0]);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::assert_is_empty)]`
+   = note: `-D clippy::assert-is-empty` implied by `-D warnings`
 
 error: used `assert!` to check that a value is not empty
   --> tests/ui/assert_is_empty.rs:9:5

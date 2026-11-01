@@ -6,14 +6,14 @@ LL | |
 LL | | fn a() {}
    | |_^
    |
-   = note: `-D clippy::four-forward-slashes` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::four_forward_slashes)]`
 help: make this a doc comment by removing one `/`
    |
 LL - //// whoops
 LL -
 LL + /// whoops
    |
+   = help: to override `-D warnings` add `#[allow(clippy::four_forward_slashes)]`
+   = note: `-D clippy::four-forward-slashes` implied by `-D warnings`
 
 error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
   --> tests/ui/four_forward_slashes.rs:14:1

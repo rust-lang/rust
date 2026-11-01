@@ -4,8 +4,8 @@ error: comparing with null is better expressed by the `.is_null()` method
 LL |     if p == ptr::null() {
    |        ^^^^^^^^^^^^^^^^ help: try: `p.is_null()`
    |
-   = note: `-D clippy::cmp-null` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cmp_null)]`
+   = note: `-D clippy::cmp-null` implied by `-D warnings`
 
 error: comparing with null is better expressed by the `.is_null()` method
   --> tests/ui/cmp_null.rs:13:8

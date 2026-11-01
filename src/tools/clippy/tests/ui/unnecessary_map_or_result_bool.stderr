@@ -6,8 +6,8 @@ LL |     let _ = result.map_or(false, |_| true);
    |                    |
    |                    help: use `is_ok` instead: `is_ok()`
    |
-   = note: `-D clippy::unnecessary-map-or` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
+   = note: `-D clippy::unnecessary-map-or` implied by `-D warnings`
 
 error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or_result_bool.rs:16:20

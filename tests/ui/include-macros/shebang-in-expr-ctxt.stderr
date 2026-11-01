@@ -4,8 +4,8 @@ error: expected `[`, found `/`
 LL | #!/usr/bin/env my-rust-expr-evaluator
    |   ^ expected `[`
    |
-   = note: the token sequence `#!` here looks like the start of a shebang interpreter directive but it is not
    = help: if you meant this to be a shebang interpreter directive, move it to the very start of the file
+   = note: the token sequence `#!` here looks like the start of a shebang interpreter directive but it is not
 
 error: non-expression macro in expression position: include
   --> $DIR/shebang-in-expr-ctxt.rs:8:9
@@ -19,8 +19,8 @@ error: expected `[`, found `/`
 LL | #!/usr/bin/env my-rust-expr-evaluator
    |   ^ expected `[`
    |
-   = note: the token sequence `#!` here looks like the start of a shebang interpreter directive but it is not
    = help: if you meant this to be a shebang interpreter directive, move it to the very start of the file
+   = note: the token sequence `#!` here looks like the start of a shebang interpreter directive but it is not
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: non-statement macro in statement position: include

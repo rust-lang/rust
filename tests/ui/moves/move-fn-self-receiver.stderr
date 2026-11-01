@@ -6,12 +6,12 @@ LL |     val.0.into_iter().next();
 LL |     val.0;
    |     ^^^^^ value used here after move
    |
-note: `std::iter::IntoIterator::into_iter` takes ownership of the receiver `self`, which moves `val.0`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     val.0.clone().into_iter().next();
    |          ++++++++
+note: `std::iter::IntoIterator::into_iter` takes ownership of the receiver `self`, which moves `val.0`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    = note: move occurs because `val.0` has type `Vec<bool>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `foo`
@@ -51,6 +51,10 @@ LL |     boxed_foo.use_box_self();
 LL |     boxed_foo;
    |     ^^^^^^^^^ value used here after move
    |
+help: you could `clone` the value and consume it, if the `Foo: Clone` trait bound could be satisfied
+   |
+LL |     boxed_foo.clone().use_box_self();
+   |              ++++++++
 note: `Foo::use_box_self` takes ownership of the receiver `self`, which moves `boxed_foo`
   --> $DIR/move-fn-self-receiver.rs:14:21
    |
@@ -58,10 +62,6 @@ LL | impl Foo {
 LL |     fn use_self(self) {}
 LL |     fn use_box_self(self: Box<Self>) {}
    |                     ^^^^
-help: you could `clone` the value and consume it, if the `Foo: Clone` trait bound could be satisfied
-   |
-LL |     boxed_foo.clone().use_box_self();
-   |              ++++++++
 help: consider annotating `Foo` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -78,6 +78,10 @@ LL |     pin_box_foo.use_pin_box_self();
 LL |     pin_box_foo;
    |     ^^^^^^^^^^^ value used here after move
    |
+help: you could `clone` the value and consume it, if the `Foo: Clone` trait bound could be satisfied
+   |
+LL |     pin_box_foo.clone().use_pin_box_self();
+   |                ++++++++
 note: `Foo::use_pin_box_self` takes ownership of the receiver `self`, which moves `pin_box_foo`
   --> $DIR/move-fn-self-receiver.rs:15:25
    |
@@ -85,10 +89,6 @@ LL | impl Foo {
 ...
 LL |     fn use_pin_box_self(self: Pin<Box<Self>>) {}
    |                         ^^^^
-help: you could `clone` the value and consume it, if the `Foo: Clone` trait bound could be satisfied
-   |
-LL |     pin_box_foo.clone().use_pin_box_self();
-   |                ++++++++
 help: consider annotating `Foo` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -117,6 +117,10 @@ LL |     rc_foo.use_rc_self();
 LL |     rc_foo;
    |     ^^^^^^ value used here after move
    |
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |     rc_foo.clone().use_rc_self();
+   |           ++++++++
    = note: consider using `Rc::clone`
 note: `Foo::use_rc_self` takes ownership of the receiver `self`, which moves `rc_foo`
   --> $DIR/move-fn-self-receiver.rs:16:20
@@ -125,10 +129,6 @@ LL | impl Foo {
 ...
 LL |     fn use_rc_self(self: Rc<Self>) {}
    |                    ^^^^
-help: you can `clone` the value and consume it, but this might not be your desired behavior
-   |
-LL |     rc_foo.clone().use_rc_self();
-   |           ++++++++
 
 error[E0382]: use of moved value: `foo_add`
   --> $DIR/move-fn-self-receiver.rs:59:5

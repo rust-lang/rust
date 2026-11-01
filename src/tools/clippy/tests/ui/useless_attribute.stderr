@@ -4,8 +4,8 @@ error: useless lint attribute
 LL | #[allow(dead_code)]
    | ^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![allow(dead_code)]`
    |
-   = note: `-D clippy::useless-attribute` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::useless_attribute)]`
+   = note: `-D clippy::useless-attribute` implied by `-D warnings`
 
 error: useless lint attribute
   --> tests/ui/useless_attribute.rs:9:1

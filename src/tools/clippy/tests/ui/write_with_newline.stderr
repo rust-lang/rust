@@ -4,13 +4,13 @@ error: using `write!()` with a format string that ends in a single newline
 LL |     write!(v, "Hello\n");
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::write-with-newline` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::write_with_newline)]`
 help: use `writeln!` instead
    |
 LL -     write!(v, "Hello\n");
 LL +     writeln!(v, "Hello");
    |
+   = help: to override `-D warnings` add `#[allow(clippy::write_with_newline)]`
+   = note: `-D clippy::write-with-newline` implied by `-D warnings`
 
 error: using `write!()` with a format string that ends in a single newline
   --> tests/ui/write_with_newline.rs:13:5

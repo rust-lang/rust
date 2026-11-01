@@ -6,13 +6,13 @@ LL |     takes_option(&None);
    |     |
    |     arguments to this function are incorrect
    |
-   = note:   expected enum `Option<&String>`
-           found reference `&Option<_>`
 help: consider removing the borrow
    |
 LL -     takes_option(&None);
 LL +     takes_option(None);
    |
+   = note:   expected enum `Option<&String>`
+           found reference `&Option<_>`
 note: function defined here
   --> $DIR/option-ref-advice.rs:3:4
    |
@@ -27,13 +27,13 @@ LL |     takes_option(&res);
    |     |
    |     arguments to this function are incorrect
    |
-   = note:   expected enum `Option<&String>`
-           found reference `&Option<String>`
 help: try using `.as_ref()` to convert `&Option<String>` to `Option<&String>`
    |
 LL -     takes_option(&res);
 LL +     takes_option(res.as_ref());
    |
+   = note:   expected enum `Option<&String>`
+           found reference `&Option<String>`
 note: function defined here
   --> $DIR/option-ref-advice.rs:3:4
    |

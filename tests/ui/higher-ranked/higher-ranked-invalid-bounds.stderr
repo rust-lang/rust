@@ -22,8 +22,8 @@ error[E0658]: only lifetime parameters can be used in this context
 LL | type D = for<'a, T> fn();
    |                  ^
    |
-   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
    = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: only lifetime parameters can be used in this context
@@ -32,8 +32,8 @@ error[E0658]: only lifetime parameters can be used in this context
 LL | type E = dyn for<T, U> Fn();
    |                  ^  ^
    |
-   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
    = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 5 previous errors

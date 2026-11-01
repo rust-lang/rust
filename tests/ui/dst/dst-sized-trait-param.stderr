@@ -5,15 +5,15 @@ LL | impl Foo<[isize]> for usize { }
    |      ^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[isize]`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | trait Foo<T: ?Sized> : Sized { fn take(self, x: &T) { } } // Note: T is sized
+   |            ++++++++
 note: required by an implicit `Sized` bound in `Foo`
   --> $DIR/dst-sized-trait-param.rs:5:11
    |
 LL | trait Foo<T> : Sized { fn take(self, x: &T) { } } // Note: T is sized
    |           ^ required by the implicit `Sized` requirement on this type parameter in `Foo`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | trait Foo<T: ?Sized> : Sized { fn take(self, x: &T) { } } // Note: T is sized
-   |            ++++++++
 
 error[E0277]: the size for values of type `[usize]` cannot be known at compilation time
   --> $DIR/dst-sized-trait-param.rs:10:21

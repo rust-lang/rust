@@ -9,9 +9,9 @@ LL |     let mut x = foo::<&'a ()>;
    |                 ^^^^^^^^^^^^^ assignment requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/fn_def_coercion.rs:11:5
@@ -25,9 +25,9 @@ LL |     x = foo::<&'b ()>;
    |     ^^^^^^^^^^^^^^^^^ assignment requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: one or more lifetime errors were found in this item
   --> $DIR/fn_def_coercion.rs:9:4
@@ -62,9 +62,9 @@ LL |     x = foo::<&'b ()>;
    |     ^^^^^^^^^^^^^^^^^ assignment requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/fn_def_coercion.rs:31:5
@@ -78,9 +78,9 @@ LL |     x = foo::<&'a ()>;
    |     ^^^^^^^^^^^^^^^^^ assignment requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: one or more lifetime errors were found in this item
   --> $DIR/fn_def_coercion.rs:28:4
@@ -102,9 +102,9 @@ LL |         true => foo::<&'b ()>,
    |                 ^^^^^^^^^^^^^ assignment requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/fn_def_coercion.rs:40:18
@@ -118,9 +118,9 @@ LL |         false => foo::<&'a ()>,
    |                  ^^^^^^^^^^^^^ assignment requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: one or more lifetime errors were found in this item
   --> $DIR/fn_def_coercion.rs:37:4
@@ -142,9 +142,9 @@ LL |         true => foo::<&'c ()>,
    |                 ^^^^^^^^^^^^^ assignment requires that `'a` must outlive `'c`
    |
    = help: consider adding the following bound: `'a: 'c`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/fn_def_coercion.rs:50:18
@@ -158,9 +158,9 @@ LL |         false => foo::<&'a ()>,
    |                  ^^^^^^^^^^^^^ assignment requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the function item type defined by `foo`
    = note: the function `foo` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to 12 previous errors
 

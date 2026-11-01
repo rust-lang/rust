@@ -8,12 +8,12 @@ LL |     v.sort_by(compare);
    |       |
    |       required by a bound introduced by this call
    |
-   = note: expected closure signature `for<'a, 'b> fn(&'a ({integer},), &'b ({integer},)) -> _`
-              found closure signature `fn((_,), (_,)) -> _`
 help: consider wrapping the function in a closure
    |
 LL |     v.sort_by(|arg0, arg1| compare(*arg0, *arg1));
    |               ++++++++++++        ++++++++++++++
+   = note: expected closure signature `for<'a, 'b> fn(&'a ({integer},), &'b ({integer},)) -> _`
+              found closure signature `fn((_,), (_,)) -> _`
 help: consider adjusting the signature so it borrows its arguments
    |
 LL |     let compare = |&(a,), &(e,)| todo!();

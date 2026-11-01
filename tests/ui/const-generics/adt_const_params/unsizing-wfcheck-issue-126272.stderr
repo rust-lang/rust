@@ -5,11 +5,6 @@ LL |     nested: &'static Bar<dyn std::fmt::Debug>,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
-note: required by an implicit `Sized` bound in `Bar`
-  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
-   |
-LL | struct Bar<T>(T);
-   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
    |
@@ -17,6 +12,11 @@ LL | struct Bar<T>(T);
    |            ^  - ...if indirection were used here: `Box<T>`
    |            |
    |            this could be changed to `T: ?Sized`...
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
 
 error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
   --> $DIR/unsizing-wfcheck-issue-126272.rs:9:8
@@ -116,11 +116,6 @@ LL |     nested: &'static Bar<dyn std::fmt::Debug>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn Debug`
-note: required by an implicit `Sized` bound in `Bar`
-  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
-   |
-LL | struct Bar<T>(T);
-   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
    |
@@ -128,6 +123,11 @@ LL | struct Bar<T>(T);
    |            ^  - ...if indirection were used here: `Box<T>`
    |            |
    |            this could be changed to `T: ?Sized`...
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
 
 error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
   --> $DIR/unsizing-wfcheck-issue-126272.rs:25:33
@@ -136,11 +136,6 @@ LL |     let x: Test<{ Foo { nested: &Bar(4) } }> = Test;
    |                                 ^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
-note: required by an implicit `Sized` bound in `Bar`
-  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
-   |
-LL | struct Bar<T>(T);
-   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
    |
@@ -148,6 +143,11 @@ LL | struct Bar<T>(T);
    |            ^  - ...if indirection were used here: `Box<T>`
    |            |
    |            this could be changed to `T: ?Sized`...
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/unsizing-wfcheck-issue-126272.rs:20:12
+   |
+LL | struct Bar<T>(T);
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
 
 error: aborting due to 7 previous errors
 

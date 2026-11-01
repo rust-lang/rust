@@ -4,12 +4,12 @@ error: unused attribute
 LL | #[must_use = "BBB"]
    | ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 note: attribute also specified here
   --> $DIR/attr-order-must-use.rs:4:1
    |
 LL | #[must_use = "AAA"]
    | ^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 note: the lint level is defined here
   --> $DIR/attr-order-must-use.rs:1:9
    |
@@ -23,11 +23,11 @@ error: unused return value of `must_use` that must be used
 LL |     must_use();
    |     ^^^^^^^^^^
    |
-   = note: AAA
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = must_use();
    |     +++++++
+   = note: AAA
    = note: `#[deny(unused_must_use)]` implied by `#[deny(unused)]`
 
 error: aborting due to 2 previous errors

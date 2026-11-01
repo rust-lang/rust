@@ -8,8 +8,6 @@ LL | |         foo();
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::map-entry` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
 help: try
    |
 LL ~     if let std::collections::btree_map::Entry::Vacant(e) = m.entry(k) {
@@ -18,6 +16,8 @@ LL +         e.insert(v);
 LL +         foo();
 LL +     }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
+   = note: `-D clippy::map-entry` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

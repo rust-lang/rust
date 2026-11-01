@@ -4,13 +4,13 @@ error: this `match` arm has a differing case than its expression
 LL |         "Bar" => {},
    |         ^^^^^
    |
-   = note: `-D clippy::match-str-case-mismatch` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::match_str_case_mismatch)]`
 help: consider changing the case of this arm to respect `to_ascii_lowercase`
    |
 LL -         "Bar" => {},
 LL +         "bar" => {},
    |
+   = help: to override `-D warnings` add `#[allow(clippy::match_str_case_mismatch)]`
+   = note: `-D clippy::match-str-case-mismatch` implied by `-D warnings`
 
 error: this `match` arm has a differing case than its expression
   --> tests/ui/match_str_case_mismatch.rs:122:9

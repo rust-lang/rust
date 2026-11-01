@@ -4,9 +4,9 @@ warning: where clauses on type aliases are not enforced
 LL | type _TaWhere1<T> where T: Iterator<Item: Copy> = T;
    |                         ^^^^^^^^^^^^^^^^^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this where clause
    |
 LL - type _TaWhere1<T> where T: Iterator<Item: Copy> = T;
@@ -20,9 +20,9 @@ warning: where clauses on type aliases are not enforced
 LL | type _TaWhere2<T> where T: Iterator<Item: 'static> = T;
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this where clause
    |
 LL - type _TaWhere2<T> where T: Iterator<Item: 'static> = T;
@@ -35,9 +35,9 @@ warning: where clauses on type aliases are not enforced
 LL | type _TaWhere3<T> where T: Iterator<Item: 'static> = T;
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this where clause
    |
 LL - type _TaWhere3<T> where T: Iterator<Item: 'static> = T;
@@ -50,9 +50,9 @@ warning: where clauses on type aliases are not enforced
 LL | type _TaWhere4<T> where T: Iterator<Item: 'static + Copy + Send> = T;
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this where clause
    |
 LL - type _TaWhere4<T> where T: Iterator<Item: 'static + Copy + Send> = T;
@@ -65,9 +65,9 @@ warning: where clauses on type aliases are not enforced
 LL | type _TaWhere5<T> where T: Iterator<Item: for<'a> Into<&'a u8>> = T;
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this where clause
    |
 LL - type _TaWhere5<T> where T: Iterator<Item: for<'a> Into<&'a u8>> = T;
@@ -80,9 +80,9 @@ warning: where clauses on type aliases are not enforced
 LL | type _TaWhere6<T> where T: Iterator<Item: Iterator<Item: Copy>> = T;
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this where clause
    |
 LL - type _TaWhere6<T> where T: Iterator<Item: Iterator<Item: Copy>> = T;
@@ -95,9 +95,9 @@ warning: bounds on generic parameters in type aliases are not enforced
 LL | type _TaInline1<T: Iterator<Item: Copy>> = T;
    |                    ^^^^^^^^^^^^^^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this bound
    |
 LL - type _TaInline1<T: Iterator<Item: Copy>> = T;
@@ -110,9 +110,9 @@ warning: bounds on generic parameters in type aliases are not enforced
 LL | type _TaInline2<T: Iterator<Item: 'static>> = T;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this bound
    |
 LL - type _TaInline2<T: Iterator<Item: 'static>> = T;
@@ -125,9 +125,9 @@ warning: bounds on generic parameters in type aliases are not enforced
 LL | type _TaInline3<T: Iterator<Item: 'static>> = T;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this bound
    |
 LL - type _TaInline3<T: Iterator<Item: 'static>> = T;
@@ -140,9 +140,9 @@ warning: bounds on generic parameters in type aliases are not enforced
 LL | type _TaInline4<T: Iterator<Item: 'static + Copy + Send>> = T;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this bound
    |
 LL - type _TaInline4<T: Iterator<Item: 'static + Copy + Send>> = T;
@@ -155,9 +155,9 @@ warning: bounds on generic parameters in type aliases are not enforced
 LL | type _TaInline5<T: Iterator<Item: for<'a> Into<&'a u8>>> = T;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this bound
    |
 LL - type _TaInline5<T: Iterator<Item: for<'a> Into<&'a u8>>> = T;
@@ -170,9 +170,9 @@ warning: bounds on generic parameters in type aliases are not enforced
 LL | type _TaInline6<T: Iterator<Item: Iterator<Item: Copy>>> = T;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this bound
    |
 LL - type _TaInline6<T: Iterator<Item: Iterator<Item: Copy>>> = T;

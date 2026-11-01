@@ -34,12 +34,12 @@ error[E0586]: inclusive range with no end
 LL |         0..._ => ()
    |          ^^^
    |
-   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 help: use `..` instead
    |
 LL -         0..._ => ()
 LL +         0.._ => ()
    |
+   = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
 
 error: expected one of `=>`, `if`, or `|`, found reserved identifier `_`
   --> $DIR/recover-pat-wildcards.rs:35:13
@@ -77,13 +77,13 @@ error: expected a pattern range bound, found an expression
 LL |         4..=(2 + _) => ()
    |              ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 2 + _;
 LL |     match 9 {
 LL ~         4..=(VAL) => ()
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: aborting due to 11 previous errors
 

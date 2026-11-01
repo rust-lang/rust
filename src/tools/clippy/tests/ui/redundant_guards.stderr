@@ -4,13 +4,13 @@ error: redundant guard
 LL |         x if x == 0.0 => todo!(),
    |              ^^^^^^^^
    |
-   = note: `-D clippy::redundant-guards` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::redundant_guards)]`
 help: try
    |
 LL -         x if x == 0.0 => todo!(),
 LL +         0.0 => todo!(),
    |
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_guards)]`
+   = note: `-D clippy::redundant-guards` implied by `-D warnings`
 
 error: redundant guard
   --> tests/ui/redundant_guards.rs:29:14

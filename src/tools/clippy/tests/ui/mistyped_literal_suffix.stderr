@@ -4,8 +4,8 @@ error: mistyped literal suffix
 LL |     let fail14 = 2_32;
    |                  ^^^^ help: did you mean to write: `2_i32`
    |
-   = note: `-D clippy::mistyped-literal-suffixes` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mistyped_literal_suffixes)]`
+   = note: `-D clippy::mistyped-literal-suffixes` implied by `-D warnings`
 
 error: mistyped literal suffix
   --> tests/ui/mistyped_literal_suffix.rs:16:18

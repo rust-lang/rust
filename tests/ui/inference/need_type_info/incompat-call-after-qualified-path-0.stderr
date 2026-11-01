@@ -15,16 +15,16 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 LL |   f(|a, b| a.cmp(b));
    |   ^ --------------- unexpected argument
    |
-note: function defined here
-  --> $DIR/incompat-call-after-qualified-path-0.rs:17:4
-   |
-LL | fn f() {}
-   |    ^
 help: remove the extra argument
    |
 LL -   f(|a, b| a.cmp(b));
 LL +   f();
    |
+note: function defined here
+  --> $DIR/incompat-call-after-qualified-path-0.rs:17:4
+   |
+LL | fn f() {}
+   |    ^
 
 error: aborting due to 2 previous errors
 

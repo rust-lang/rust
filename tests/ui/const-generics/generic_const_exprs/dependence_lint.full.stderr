@@ -4,8 +4,8 @@ error: generic parameters may not be used in const operations
 LL |     let _: [u8; size_of::<*mut T>()]; // error on stable, error with gce
    |                                ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -14,8 +14,8 @@ error: generic parameters may not be used in const operations
 LL |     let _: [u8; if true { size_of::<T>() } else { 3 }]; // error on stable, error with gce
    |                                     ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 warning: cannot use constants which depend on generic parameters in types

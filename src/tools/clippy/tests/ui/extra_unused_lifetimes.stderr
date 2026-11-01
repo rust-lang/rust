@@ -4,8 +4,8 @@ error: this lifetime isn't used in the function definition
 LL | fn unused_lt<'a>(x: u8) {}
    |              ^^
    |
-   = note: `-D clippy::extra-unused-lifetimes` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::extra_unused_lifetimes)]`
+   = note: `-D clippy::extra-unused-lifetimes` implied by `-D warnings`
 
 error: this lifetime isn't used in the type
   --> tests/ui/extra_unused_lifetimes.rs:22:29

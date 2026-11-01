@@ -14,8 +14,8 @@ warning: unexpected `cfg` condition value: (none)
 LL | #[cfg(feature)]
    |       ^^^^^^^- help: specify a config value: `= "foo"`
    |
-   = note: expected values for `feature` are: `foo`
    = help: to expect this configuration use `--check-cfg=cfg(feature)`
+   = note: expected values for `feature` are: `foo`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `bar`
@@ -24,8 +24,8 @@ warning: unexpected `cfg` condition value: `bar`
 LL | #[cfg(feature = "bar")]
    |       ^^^^^^^^^^^^^^^
    |
-   = note: expected values for `feature` are: `foo`
    = help: to expect this configuration use `--check-cfg=cfg(feature, values("bar"))`
+   = note: expected values for `feature` are: `foo`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `zebra`
@@ -34,8 +34,8 @@ warning: unexpected `cfg` condition value: `zebra`
 LL | #[cfg(feature = "zebra")]
    |       ^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `feature` are: `foo`
    = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: expected values for `feature` are: `foo`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `uu`
@@ -63,8 +63,8 @@ warning: unexpected `cfg` condition value: `bar`
 LL |     cfg!(feature = "bar");
    |          ^^^^^^^^^^^^^^^
    |
-   = note: expected values for `feature` are: `foo`
    = help: to expect this configuration use `--check-cfg=cfg(feature, values("bar"))`
+   = note: expected values for `feature` are: `foo`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `zebra`
@@ -73,8 +73,8 @@ warning: unexpected `cfg` condition value: `zebra`
 LL |     cfg!(feature = "zebra");
    |          ^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `feature` are: `foo`
    = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: expected values for `feature` are: `foo`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `xxx`
@@ -110,8 +110,8 @@ warning: unexpected `cfg` condition value: `bad`
 LL |     cfg!(any(feature = "bad", windows));
    |              ^^^^^^^^^^^^^^^
    |
-   = note: expected values for `feature` are: `foo`
    = help: to expect this configuration use `--check-cfg=cfg(feature, values("bad"))`
+   = note: expected values for `feature` are: `foo`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `xxx`
@@ -174,8 +174,8 @@ warning: unexpected `cfg` condition value: `zebra`
 LL |     cfg!(any(unix, feature = "zebra"));
    |                    ^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `feature` are: `foo`
    = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: expected values for `feature` are: `foo`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `xxx`
@@ -193,8 +193,8 @@ warning: unexpected `cfg` condition value: `zebra`
 LL |     cfg!(any(xxx, feature = "zebra"));
    |                   ^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `feature` are: `foo`
    = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: expected values for `feature` are: `foo`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `xxx`
@@ -221,8 +221,8 @@ warning: unexpected `cfg` condition value: `zebra`
 LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
    |              ^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `feature` are: `foo`
    = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: expected values for `feature` are: `foo`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `zebra`
@@ -231,8 +231,8 @@ warning: unexpected `cfg` condition value: `zebra`
 LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
    |                                 ^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `feature` are: `foo`
    = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: expected values for `feature` are: `foo`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `zebra`
@@ -241,8 +241,8 @@ warning: unexpected `cfg` condition value: `zebra`
 LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
    |                                                    ^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `feature` are: `foo`
    = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: expected values for `feature` are: `foo`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: 26 warnings emitted

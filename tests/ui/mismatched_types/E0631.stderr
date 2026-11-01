@@ -43,12 +43,12 @@ LL |     foo(f);
    |     |
    |     required by a bound introduced by this call
    |
-   = note: expected function signature `fn(usize) -> _`
-              found function signature `fn(u64) -> _`
 help: consider wrapping the function in a closure
    |
 LL |     foo(|arg0: usize| f(/* u64 */));
    |         +++++++++++++  +++++++++++
+   = note: expected function signature `fn(usize) -> _`
+              found function signature `fn(u64) -> _`
 note: required by a bound in `foo`
   --> $DIR/E0631.rs:3:11
    |
@@ -66,12 +66,12 @@ LL |     bar(f);
    |     |
    |     required by a bound introduced by this call
    |
-   = note: expected function signature `fn(usize) -> _`
-              found function signature `fn(u64) -> _`
 help: consider wrapping the function in a closure
    |
 LL |     bar(|arg0: usize| f(/* u64 */));
    |         +++++++++++++  +++++++++++
+   = note: expected function signature `fn(usize) -> _`
+              found function signature `fn(u64) -> _`
 note: required by a bound in `bar`
   --> $DIR/E0631.rs:4:11
    |

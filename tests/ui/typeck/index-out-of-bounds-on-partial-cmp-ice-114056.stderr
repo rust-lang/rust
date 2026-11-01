@@ -7,6 +7,11 @@ LL | struct P<Q>(Q);
 LL |         self.partial_cmp(())
    |              ^^^^^^^^^^^ method cannot be called on `&P<Q>` due to unsatisfied trait bounds
    |
+help: consider annotating `P<Q>` with `#[derive(PartialEq, PartialOrd)]`
+   |
+LL + #[derive(PartialEq, PartialOrd)]
+LL | struct P<Q>(Q);
+   |
    = note: the following trait bounds were not satisfied:
            `P<Q>: PartialOrd<_>`
            which is required by `&P<Q>: PartialOrd<&_>`
@@ -16,11 +21,6 @@ LL |         self.partial_cmp(())
            which is required by `&mut P<Q>: Iterator`
 note: the trait `Iterator` must be implemented
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-help: consider annotating `P<Q>` with `#[derive(PartialEq, PartialOrd)]`
-   |
-LL + #[derive(PartialEq, PartialOrd)]
-LL | struct P<Q>(Q);
-   |
 
 error: aborting due to 1 previous error
 

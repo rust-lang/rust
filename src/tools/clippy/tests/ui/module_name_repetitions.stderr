@@ -4,8 +4,8 @@ error: item name starts with its containing module's name
 LL |     pub fn foo_bar() {}
    |            ^^^^^^^
    |
-   = note: `-D clippy::module-name-repetitions` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::module_name_repetitions)]`
+   = note: `-D clippy::module-name-repetitions` implied by `-D warnings`
 
 error: item name ends with its containing module's name
   --> tests/ui/module_name_repetitions.rs:10:12

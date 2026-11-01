@@ -6,14 +6,14 @@ LL |     this_function_expects_a_double_option(n);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected enum `DoubleOption<_>`
-              found type `usize`
 help: try wrapping the expression in a variant of `DoubleOption`
    |
 LL |     this_function_expects_a_double_option(DoubleOption::FirstSome(n));
    |                                           ++++++++++++++++++++++++ +
 LL |     this_function_expects_a_double_option(DoubleOption::AlternativeSome(n));
    |                                           ++++++++++++++++++++++++++++++ +
+   = note: expected enum `DoubleOption<_>`
+              found type `usize`
 note: function defined here
   --> $DIR/issue-42764.rs:7:4
    |

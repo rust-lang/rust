@@ -4,13 +4,13 @@ error: `x` is shadowed by itself in `x`
 LL |     let x = x;
    |         ^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::shadow_same)]`
 note: previous binding is here
   --> tests/ui/shadow.rs:18:9
    |
 LL |     let x = 1;
    |         ^
    = note: `-D clippy::shadow-same` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::shadow_same)]`
 
 error: `mut x` is shadowed by itself in `&x`
   --> tests/ui/shadow.rs:21:13
@@ -54,13 +54,13 @@ error: `x` is shadowed
 LL |     let x = x.0;
    |         ^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::shadow_reuse)]`
 note: previous binding is here
   --> tests/ui/shadow.rs:30:9
    |
 LL |     let x = ([[0]], ());
    |         ^
    = note: `-D clippy::shadow-reuse` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::shadow_reuse)]`
 
 error: `x` is shadowed
   --> tests/ui/shadow.rs:33:9
@@ -152,13 +152,13 @@ error: `x` shadows a previous, unrelated binding
 LL |     let x = 2;
    |         ^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::shadow_unrelated)]`
 note: previous binding is here
   --> tests/ui/shadow.rs:61:9
    |
 LL |     let x = 1;
    |         ^
    = note: `-D clippy::shadow-unrelated` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::shadow_unrelated)]`
 
 error: `x` shadows a previous, unrelated binding
   --> tests/ui/shadow.rs:68:13

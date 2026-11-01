@@ -4,8 +4,8 @@ error: this method is named `iter` but its return type does not implement `Itera
 LL |     fn iter(&self) -> Counter2 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::iter-not-returning-iterator` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_not_returning_iterator)]`
+   = note: `-D clippy::iter-not-returning-iterator` implied by `-D warnings`
 
 error: this method is named `iter_mut` but its return type does not implement `Iterator`
   --> tests/ui/iter_not_returning_iterator.rs:36:5

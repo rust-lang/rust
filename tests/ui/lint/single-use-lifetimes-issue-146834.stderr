@@ -13,15 +13,15 @@ LL | fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) {
    |                                          expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
+help: consider using one of the available lifetimes here
+   |
+LL | fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&'lifetime i32, &'lifetime i32) {
+   |                                           +++++++++       +++++++++
 note: these named lifetimes are available to use
   --> $DIR/single-use-lifetimes-issue-146834.rs:11:6
    |
 LL | fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) {
    |      ^^  ^^
-help: consider using one of the available lifetimes here
-   |
-LL | fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&'lifetime i32, &'lifetime i32) {
-   |                                           +++++++++       +++++++++
 
 warning: lifetime parameter `'a` only used once
   --> $DIR/single-use-lifetimes-issue-146834.rs:11:6

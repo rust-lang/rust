@@ -4,8 +4,8 @@ error: statement with no effect
 LL |     0;
    |     ^^
    |
-   = note: `-D clippy::no-effect` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::no_effect)]`
+   = note: `-D clippy::no-effect` implied by `-D warnings`
 
 error: statement with no effect
   --> tests/ui/no_effect.rs:123:5
@@ -145,8 +145,8 @@ error: binding to `_` prefixed variable with no side-effect
 LL |     let _unused = 1;
    |         ^^^^^^^
    |
-   = note: `-D clippy::no-effect-underscore-binding` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::no_effect_underscore_binding)]`
+   = note: `-D clippy::no-effect-underscore-binding` implied by `-D warnings`
 
 error: binding to `_` prefixed variable with no side-effect
   --> tests/ui/no_effect.rs:194:9

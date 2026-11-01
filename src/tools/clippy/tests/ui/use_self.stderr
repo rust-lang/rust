@@ -4,8 +4,8 @@ error: unnecessary structure name repetition
 LL |         fn new() -> Foo {
    |                     ^^^ help: use the applicable keyword: `Self`
    |
-   = note: `-D clippy::use-self` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::use_self)]`
+   = note: `-D clippy::use-self` implied by `-D warnings`
 
 error: unnecessary structure name repetition
   --> tests/ui/use_self.rs:19:13

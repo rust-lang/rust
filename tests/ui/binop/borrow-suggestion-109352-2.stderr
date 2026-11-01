@@ -22,12 +22,12 @@ LL |     let _ = ref_bar * ref_bar;
    |             |
    |             &Bar
    |
-   = note: an implementation for `&mut Bar * &mut Bar` exists
 help: consider making this expression a mutable borrow
   --> $DIR/borrow-suggestion-109352-2.rs:21:13
    |
 LL |     let _ = ref_bar * ref_bar;
    |             ^^^^^^^
+   = note: an implementation for `&mut Bar * &mut Bar` exists
 help: consider making this expression a mutable borrow
   --> $DIR/borrow-suggestion-109352-2.rs:21:23
    |
@@ -42,12 +42,12 @@ LL |     let _ = ref_bar * ref_mut_bar;
    |             |
    |             &Bar
    |
-   = note: an implementation for `&mut Bar * &mut Bar` exists
 help: consider making this expression a mutable borrow
   --> $DIR/borrow-suggestion-109352-2.rs:23:13
    |
 LL |     let _ = ref_bar * ref_mut_bar;
    |             ^^^^^^^
+   = note: an implementation for `&mut Bar * &mut Bar` exists
 
 error[E0308]: mismatched types
   --> $DIR/borrow-suggestion-109352-2.rs:25:27

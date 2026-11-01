@@ -4,6 +4,10 @@ error[E0038]: the trait `Tr` is not dyn compatible
 LL |     let _: &dyn Tr = &St;
    |                 ^^ `Tr` is not dyn compatible
    |
+help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
+   |
+LL |     fn foo(&self);
+   |            +++++
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/safety.rs:4:8
@@ -12,10 +16,6 @@ LL | trait Tr {
    |       -- this trait is not dyn compatible...
 LL |     fn foo();
    |        ^^^ ...because associated function `foo` has no `self` parameter
-help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
-   |
-LL |     fn foo(&self);
-   |            +++++
 help: alternatively, consider constraining `foo` so it is explicitly marked as not applying to trait objects
    |
 LL |     fn foo() where Self: Sized;

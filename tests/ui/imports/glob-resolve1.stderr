@@ -28,11 +28,11 @@ error[E0423]: cannot find value `B` in this scope
 LL |     B;
    |     ^
    |
-   = note: an enum named `B` exists in another namespace
 help: you might have meant to use the following enum variant
    |
 LL |     B::B1;
    |      ++++
+   = note: an enum named `B` exists in another namespace
 note: the enum is defined here
   --> $DIR/glob-resolve1.rs:15:5
    |
@@ -75,16 +75,16 @@ error[E0425]: cannot find type `A` in this scope
 LL |     foo::<A>();
    |           ^ not found in this scope
    |
-note: similarly named enum `B` defined here
-  --> $DIR/glob-resolve1.rs:15:5
-   |
-LL |     pub enum B {
-   |     ^^^^^^^^^^
 help: an enum with a similar name exists
    |
 LL -     foo::<A>();
 LL +     foo::<B>();
    |
+note: similarly named enum `B` defined here
+  --> $DIR/glob-resolve1.rs:15:5
+   |
+LL |     pub enum B {
+   |     ^^^^^^^^^^
 note: enum `bar::A` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:12:5
    |
@@ -97,16 +97,16 @@ error[E0425]: cannot find type `C` in this scope
 LL |     foo::<C>();
    |           ^ not found in this scope
    |
-note: similarly named enum `B` defined here
-  --> $DIR/glob-resolve1.rs:15:5
-   |
-LL |     pub enum B {
-   |     ^^^^^^^^^^
 help: an enum with a similar name exists
    |
 LL -     foo::<C>();
 LL +     foo::<B>();
    |
+note: similarly named enum `B` defined here
+  --> $DIR/glob-resolve1.rs:15:5
+   |
+LL |     pub enum B {
+   |     ^^^^^^^^^^
 note: struct `bar::C` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:19:5
    |
@@ -119,16 +119,16 @@ error[E0425]: cannot find type `D` in this scope
 LL |     foo::<D>();
    |           ^ not found in this scope
    |
-note: similarly named enum `B` defined here
-  --> $DIR/glob-resolve1.rs:15:5
-   |
-LL |     pub enum B {
-   |     ^^^^^^^^^^
 help: an enum with a similar name exists
    |
 LL -     foo::<D>();
 LL +     foo::<B>();
    |
+note: similarly named enum `B` defined here
+  --> $DIR/glob-resolve1.rs:15:5
+   |
+LL |     pub enum B {
+   |     ^^^^^^^^^^
 note: type alias `bar::D` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:21:5
    |

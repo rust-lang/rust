@@ -5,8 +5,8 @@ LL |     let i = 0u32 as u64;
    |             ^^^^^^^^^^^
    |
    = help: consider using a safe wrapper for this conversion
-   = note: `-D clippy::as-conversions` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::as_conversions)]`
+   = note: `-D clippy::as-conversions` implied by `-D warnings`
 
 error: using a potentially dangerous silent `as` conversion
   --> tests/ui/as_conversions.rs:12:13

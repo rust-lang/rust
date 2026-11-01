@@ -6,8 +6,8 @@ LL |         vec.push(item);
    |
    = help: consider using `vec![item;SIZE]`
    = help: or `vec.extend(std::iter::repeat_n(item, SIZE))`
-   = note: `-D clippy::same-item-push` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::same_item_push)]`
+   = note: `-D clippy::same-item-push` implied by `-D warnings`
 
 error: it looks like the same item is being pushed into this `Vec`
   --> tests/ui/same_item_push.rs:30:9

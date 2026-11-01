@@ -10,11 +10,11 @@ error[E0423]: cannot find function `baz` in this scope
 LL |     baz();
    |     ^^^ not found in this scope
    |
-   = note: a module named `baz` exists in another namespace
 help: consider importing this function instead
    |
 LL + use bar::baz;
    |
+   = note: a module named `baz` exists in another namespace
 
 error: aborting due to 2 previous errors
 

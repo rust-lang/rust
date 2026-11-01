@@ -11,12 +11,12 @@ LL |         FOO => todo!(),
    |
    = note: `Cow<'_, str>` is not usable in patterns
    |
-   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 help: add a condition to the match arm checking for equality
    |
 LL -         FOO => todo!(),
 LL +         binding if binding == FOO => todo!(),
    |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
 error: aborting due to 1 previous error
 

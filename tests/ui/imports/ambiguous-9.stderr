@@ -4,6 +4,7 @@ error[E0659]: `date_range` is ambiguous
 LL |     date_range();
    |     ^^^^^^^^^^ ambiguous name
    |
+   = help: consider adding an explicit import of `date_range` to disambiguate
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `date_range` could refer to the function imported here
   --> $DIR/ambiguous-9.rs:16:13
@@ -16,7 +17,6 @@ note: `date_range` could also refer to the function imported here
    |
 LL |     pub use self::t::*;
    |             ^^^^^^^^^^
-   = help: consider adding an explicit import of `date_range` to disambiguate
 
 warning: ambiguous glob re-exports
   --> $DIR/ambiguous-9.rs:16:13

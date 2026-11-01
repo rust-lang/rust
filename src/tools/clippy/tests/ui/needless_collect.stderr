@@ -4,8 +4,8 @@ error: avoid using `collect()` when not needed
 LL |     let len = sample.iter().collect::<Vec<_>>().len();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `count()`
    |
-   = note: `-D clippy::needless-collect` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_collect)]`
+   = note: `-D clippy::needless-collect` implied by `-D warnings`
 
 error: avoid using `collect()` when not needed
   --> tests/ui/needless_collect.rs:10:22

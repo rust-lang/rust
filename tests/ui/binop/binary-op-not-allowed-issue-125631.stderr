@@ -6,6 +6,11 @@ LL |     (Error::new(ErrorKind::Other, "1"), T1, 1) == (Error::new(ErrorKind::Ot
    |     |
    |     (std::io::Error, T1, {integer})
    |
+help: consider annotating `T1` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct T1;
+   |
 note: an implementation of `PartialEq` might be missing for `T1`
   --> $DIR/binary-op-not-allowed-issue-125631.rs:4:1
    |
@@ -15,11 +20,6 @@ note: `std::io::Error` does not implement `PartialEq`
   --> $SRC_DIR/core/src/io/error.rs:LL:COL
    |
    = note: `std::io::Error` is defined in another crate
-help: consider annotating `T1` with `#[derive(PartialEq)]`
-   |
-LL + #[derive(PartialEq)]
-LL | struct T1;
-   |
 
 error[E0369]: binary operation `==` cannot be applied to type `(std::io::Error, Thread)`
   --> $DIR/binary-op-not-allowed-issue-125631.rs:11:9
@@ -46,6 +46,11 @@ LL |     (Error::new(ErrorKind::Other, "4"), thread::current(), T1, T2)
 LL |         == (Error::new(ErrorKind::Other, "4"), thread::current(), T1, T2);
    |         ^^ -------------------------------------------------------------- (std::io::Error, Thread, T1, T2)
    |
+help: consider annotating `T1` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct T1;
+   |
 note: the following types would have to `impl` their required traits for this operation to be valid
   --> $DIR/binary-op-not-allowed-issue-125631.rs:4:1
    |
@@ -61,11 +66,6 @@ note: `std::io::Error` does not implement `PartialEq`
   --> $SRC_DIR/core/src/io/error.rs:LL:COL
    |
    = note: `std::io::Error` is defined in another crate
-help: consider annotating `T1` with `#[derive(PartialEq)]`
-   |
-LL + #[derive(PartialEq)]
-LL | struct T1;
-   |
 help: consider annotating `T2` with `#[derive(PartialEq)]`
    |
 LL + #[derive(PartialEq)]

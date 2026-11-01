@@ -46,16 +46,16 @@ help: use the tuple variant pattern syntax instead
    |
 LL |         XE::XEmpty5() => (),
    |                    ++
-note: similarly named unit variant `XEmpty4` defined here
-  --> $DIR/auxiliary/empty-struct.rs:7:5
-   |
-LL |     XEmpty4,
-   |     ^^^^^^^
 help: a unit variant with a similar name exists
    |
 LL -         XE::XEmpty5 => (),
 LL +         XE::XEmpty4 => (),
    |
+note: similarly named unit variant `XEmpty4` defined here
+  --> $DIR/auxiliary/empty-struct.rs:7:5
+   |
+LL |     XEmpty4,
+   |     ^^^^^^^
 
 error: aborting due to 4 previous errors
 

@@ -4,9 +4,9 @@ warning: bounds on generic parameters in type aliases are not enforced
 LL | type SVec<T: Send + Send> = Vec<T>;
    |              ^^^^   ^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this bound
    |
 LL - type SVec<T: Send + Send> = Vec<T>;
@@ -20,9 +20,9 @@ warning: where clauses on type aliases are not enforced
 LL | type S2Vec<T> where T: Send = Vec<T>;
    |                     ^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this where clause
    |
 LL - type S2Vec<T> where T: Send = Vec<T>;
@@ -35,9 +35,9 @@ warning: bounds on generic parameters in type aliases are not enforced
 LL | type VVec<'b, 'a: 'b + 'b> = (&'b u32, Vec<&'a i32>);
    |                   ^^   ^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this bound
    |
 LL - type VVec<'b, 'a: 'b + 'b> = (&'b u32, Vec<&'a i32>);
@@ -50,9 +50,9 @@ warning: bounds on generic parameters in type aliases are not enforced
 LL | type WVec<'b, T: 'b + 'b> = (&'b u32, Vec<T>);
    |                  ^^   ^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this bound
    |
 LL - type WVec<'b, T: 'b + 'b> = (&'b u32, Vec<T>);
@@ -65,9 +65,9 @@ warning: where clauses on type aliases are not enforced
 LL | type W2Vec<'b, T> where T: 'b, T: 'b = (&'b u32, Vec<T>);
    |                         ^^^^^  ^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this where clause
    |
 LL - type W2Vec<'b, T> where T: 'b, T: 'b = (&'b u32, Vec<T>);
@@ -80,9 +80,9 @@ warning: bounds on generic parameters in type aliases are not enforced
 LL | type T1<U: Bound> = U::Assoc;
    |            ^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this bound
    |
 LL - type T1<U: Bound> = U::Assoc;
@@ -99,9 +99,9 @@ warning: where clauses on type aliases are not enforced
 LL | type T2<U> where U: Bound = U::Assoc;
    |                  ^^^^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this where clause
    |
 LL - type T2<U> where U: Bound = U::Assoc;
@@ -118,9 +118,9 @@ warning: bounds on generic parameters in type aliases are not enforced
 LL | type T5<U: Bound> = <U as Bound>::Assoc;
    |            ^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this bound
    |
 LL - type T5<U: Bound> = <U as Bound>::Assoc;
@@ -133,9 +133,9 @@ warning: bounds on generic parameters in type aliases are not enforced
 LL | type T6<U: Bound> = ::std::vec::Vec<U>;
    |            ^^^^^ will not be checked at usage sites of the type alias
    |
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
-   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
 help: remove this bound
    |
 LL - type T6<U: Bound> = ::std::vec::Vec<U>;

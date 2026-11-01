@@ -1,11 +1,11 @@
 error[E0311]: the parameter type `Self` may not live long enough
    |
+   = help: consider adding an explicit lifetime bound `Self: 'a`...
 note: ...that is required by this bound
   --> $DIR/supertrait-mentions-GAT.rs:6:15
    |
 LL |         Self: 'a;
    |               ^^
-   = help: consider adding an explicit lifetime bound `Self: 'a`...
 
 error[E0038]: the trait `SuperTrait` is not dyn compatible
   --> $DIR/supertrait-mentions-GAT.rs:10:20
@@ -13,6 +13,7 @@ error[E0038]: the trait `SuperTrait` is not dyn compatible
 LL |     fn c(&self) -> dyn SuperTrait<T>;
    |                    ^^^^^^^^^^^^^^^^^ `SuperTrait` is not dyn compatible
    |
+   = help: consider moving `Gat` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/supertrait-mentions-GAT.rs:4:10
@@ -22,7 +23,6 @@ LL |     type Gat<'a>
 ...
 LL | trait SuperTrait<T>: for<'a> GatTrait<Gat<'a> = T> {
    |       ---------- this trait is not dyn compatible...
-   = help: consider moving `Gat` to another trait
 help: you might have meant to use `Self` to refer to the implementing type
    |
 LL -     fn c(&self) -> dyn SuperTrait<T>;

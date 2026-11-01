@@ -7,12 +7,12 @@ LL |         let s = std::array::from_fn(|_| ()).await;
    |                 this call returns `[(); _]`
    |
    = help: the trait `Future` is not implemented for `[(); _]`
-   = note: [(); _] must be a future or must implement `IntoFuture` to be awaited
 help: remove the `.await`
    |
 LL -         let s = std::array::from_fn(|_| ()).await;
 LL +         let s = std::array::from_fn(|_| ());
    |
+   = note: [(); _] must be a future or must implement `IntoFuture` to be awaited
    = note: required for `[(); _]` to implement `IntoFuture`
 
 error: aborting due to 1 previous error

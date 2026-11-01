@@ -11,8 +11,8 @@ LL | |             }
    | |_____________^
    |
    = help: consider using the `Entry` API: https://doc.rust-lang.org/std/collections/struct.HashMap.html#entry-api
-   = note: `-D clippy::map-entry` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
+   = note: `-D clippy::map-entry` implied by `-D warnings`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> tests/ui/entry_unfixable.rs:41:5

@@ -6,14 +6,14 @@ LL | fn forbidden_narratives() -> Result<isize, ()> {
 LL |     missing_discourses()?
    |     ^^^^^^^^^^^^^^^^^^^^^ expected `Result<isize, ()>`, found `isize`
    |
-   = note: `?` operator cannot convert from `isize` to `Result<isize, ()>`
-   = note: expected enum `Result<isize, ()>`
-              found type `isize`
 help: try removing this `?`
    |
 LL -     missing_discourses()?
 LL +     missing_discourses()
    |
+   = note: `?` operator cannot convert from `isize` to `Result<isize, ()>`
+   = note: expected enum `Result<isize, ()>`
+              found type `isize`
 help: try wrapping the expression in `Ok`
    |
 LL |     Ok(missing_discourses()?)

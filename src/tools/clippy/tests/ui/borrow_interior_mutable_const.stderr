@@ -17,8 +17,8 @@ error: borrow of a named constant with interior mutability
 LL |         let _ = C.get();
    |                 ^
    |
-   = note: there is a compiler inserted borrow here
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
+   = note: there is a compiler inserted borrow here
 
 error: borrow of a named constant with interior mutability
   --> tests/ui/borrow_interior_mutable_const.rs:42:17
@@ -42,8 +42,8 @@ error: borrow of a named constant with interior mutability
 LL |         C.swap(&local)
    |         ^
    |
-   = note: there is a compiler inserted borrow here
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
+   = note: there is a compiler inserted borrow here
 
 error: borrow of a named constant with interior mutability
   --> tests/ui/borrow_interior_mutable_const.rs:52:17
@@ -75,8 +75,8 @@ error: borrow of a named constant with interior mutability
 LL |         C[0].0.set(1);
    |         ^^^^^^
    |
-   = note: there is a compiler inserted borrow here
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
+   = note: there is a compiler inserted borrow here
 
 error: borrow of a named constant with interior mutability
   --> tests/ui/borrow_interior_mutable_const.rs:70:17
@@ -100,8 +100,8 @@ error: borrow of a named constant with interior mutability
 LL |         S::C.set(1);
    |         ^^^^
    |
-   = note: there is a compiler inserted call to `Deref::deref` here
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
+   = note: there is a compiler inserted call to `Deref::deref` here
 
 error: borrow of a named constant with interior mutability
   --> tests/ui/borrow_interior_mutable_const.rs:73:18
@@ -109,8 +109,8 @@ error: borrow of a named constant with interior mutability
 LL |         let _ = &*S::C;
    |                  ^^^^^
    |
-   = note: this deref expression is a call to `Deref::deref`
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
+   = note: this deref expression is a call to `Deref::deref`
 
 error: borrow of a named constant with interior mutability
   --> tests/ui/borrow_interior_mutable_const.rs:74:9
@@ -118,8 +118,8 @@ error: borrow of a named constant with interior mutability
 LL |         (*S::C).set(1);
    |         ^^^^^^^
    |
-   = note: this deref expression is a call to `Deref::deref`
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
+   = note: this deref expression is a call to `Deref::deref`
 
 error: borrow of a named constant with interior mutability
   --> tests/ui/borrow_interior_mutable_const.rs:85:17
@@ -159,8 +159,8 @@ error: borrow of a named constant with interior mutability
 LL |                 Self::C.cell.0.set(T::DEFAULT);
    |                 ^^^^^^^^^^^^^^
    |
-   = note: there is a compiler inserted borrow here
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
+   = note: there is a compiler inserted borrow here
 
 error: borrow of a named constant with interior mutability
   --> tests/ui/borrow_interior_mutable_const.rs:128:17
@@ -192,8 +192,8 @@ error: borrow of a named constant with interior mutability
 LL |         let _ = &C[0];
    |                  ^^^^
    |
-   = note: this index expression is a call to `Index::index`
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
+   = note: this index expression is a call to `Index::index`
 
 error: borrow of a named constant with interior mutability
   --> tests/ui/borrow_interior_mutable_const.rs:174:17

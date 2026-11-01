@@ -4,8 +4,8 @@ error: name `CWR` contains a capitalized acronym
 LL |     CWR,
    |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Cwr`
    |
-   = note: `-D clippy::upper-case-acronyms` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::upper_case_acronyms)]`
+   = note: `-D clippy::upper-case-acronyms` implied by `-D warnings`
 
 error: name `ECE` contains a capitalized acronym
   --> tests/ui/upper_case_acronyms.rs:11:5

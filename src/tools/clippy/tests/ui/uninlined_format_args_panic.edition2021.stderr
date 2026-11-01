@@ -4,13 +4,13 @@ error: variables can be used directly in the `format!` string
 LL |     println!("val='{}'", var);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::uninlined-format-args` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::uninlined_format_args)]`
 help: change this to
    |
 LL -     println!("val='{}'", var);
 LL +     println!("val='{var}'");
    |
+   = help: to override `-D warnings` add `#[allow(clippy::uninlined_format_args)]`
+   = note: `-D clippy::uninlined-format-args` implied by `-D warnings`
 
 error: variables can be used directly in the `format!` string
   --> tests/ui/uninlined_format_args_panic.rs:15:9

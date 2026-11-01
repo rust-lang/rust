@@ -7,8 +7,8 @@ LL |
 LL |         set.insert(value);
    |             ^^^^^^^^^^^^^
    |
-   = note: `-D clippy::set-contains-or-insert` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::set_contains_or_insert)]`
+   = note: `-D clippy::set-contains-or-insert` implied by `-D warnings`
 
 error: usage of `HashSet::insert` after `HashSet::contains`
   --> tests/ui/set_contains_or_insert.rs:16:12

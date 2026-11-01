@@ -306,12 +306,12 @@ LL | |                    drop(y);
 LL | |                 }
    | |_________________^ returns a closure that contains a reference to a captured variable, which then escapes the closure body
    |
-   = note: `FnMut` closures only have access to their captured variables while they are executing...
-   = note: ...therefore, they cannot allow references to captured variables to escape
 help: consider adding 'move' keyword before the nested closure
    |
 LL |                move || {
    |                ++++
+   = note: `FnMut` closures only have access to their captured variables while they are executing...
+   = note: ...therefore, they cannot allow references to captured variables to escape
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/borrowck-describe-lvalue.rs:263:20

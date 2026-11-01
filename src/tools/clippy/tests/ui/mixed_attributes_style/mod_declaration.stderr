@@ -6,8 +6,8 @@ LL | | mod foo {
 LL | |     #![allow(dead_code)]
    | |________________________^
    |
-   = note: `-D clippy::mixed-attributes-style` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mixed_attributes_style)]`
+   = note: `-D clippy::mixed-attributes-style` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

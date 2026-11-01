@@ -6,6 +6,7 @@ LL | use my_api::utils::get_u32;
 ...
 LL | macro_rules! define {
    |
+   = help: use `crate::my_api` to refer to this module unambiguously
    = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
    = note: `my_api` could refer to a namespaced crate passed with `--extern`
 note: `my_api` could also refer to the module defined here
@@ -21,7 +22,6 @@ LL | |         }
 ...
 LL |   define!();
    |   --------- in this macro invocation
-   = help: use `crate::my_api` to refer to this module unambiguously
 
 error: aborting due to 1 previous error
 

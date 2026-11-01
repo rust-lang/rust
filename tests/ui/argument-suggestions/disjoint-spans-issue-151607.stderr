@@ -4,16 +4,16 @@ error[E0425]: cannot find type `E` in this scope
 LL | fn foo(g: F, y: F, e: &E) {
    |                        ^ not found in this scope
    |
-note: similarly named struct `B` defined here
-  --> $DIR/disjoint-spans-issue-151607.rs:5:1
-   |
-LL | struct B;
-   | ^^^^^^^^^
 help: a struct with a similar name exists
    |
 LL - fn foo(g: F, y: F, e: &E) {
 LL + fn foo(g: F, y: F, e: &B) {
    |
+note: similarly named struct `B` defined here
+  --> $DIR/disjoint-spans-issue-151607.rs:5:1
+   |
+LL | struct B;
+   | ^^^^^^^^^
 help: you might be missing a type parameter
    |
 LL | fn foo<E>(g: F, y: F, e: &E) {
@@ -70,16 +70,16 @@ help: consider borrowing here
    |
 LL |     foo(B, g, D, E, F, &G)
    |                        +
-note: function defined here
-  --> $DIR/disjoint-spans-issue-151607.rs:8:4
-   |
-LL | fn foo(g: F, y: F, e: &E) {
-   |    ^^^             -----
 help: remove the extra arguments
    |
 LL -     foo(B, g, D, E, F, G)
 LL +     foo(, g, F, G)
    |
+note: function defined here
+  --> $DIR/disjoint-spans-issue-151607.rs:8:4
+   |
+LL | fn foo(g: F, y: F, e: &E) {
+   |    ^^^             -----
 
 error: aborting due to 4 previous errors
 

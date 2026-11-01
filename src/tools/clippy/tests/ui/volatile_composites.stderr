@@ -4,8 +4,8 @@ error: type `MyDevRegisters` is not volatile-compatible
 LL |         DEVICE_ADDR.write_volatile(regs);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::volatile-composites` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::volatile_composites)]`
+   = note: `-D clippy::volatile-composites` implied by `-D warnings`
 
 error: type `MyDevRegisters` is not volatile-compatible
   --> tests/ui/volatile_composites.rs:47:21

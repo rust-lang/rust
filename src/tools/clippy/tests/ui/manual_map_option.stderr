@@ -8,8 +8,8 @@ LL | |         None::<u32> => None,
 LL | |     };
    | |_____^ help: try: `Some(0).map(|_| 2)`
    |
-   = note: `-D clippy::manual-map` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_map)]`
+   = note: `-D clippy::manual-map` implied by `-D warnings`
 
 error: manual implementation of `Option::map`
   --> tests/ui/manual_map_option.rs:12:5

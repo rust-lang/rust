@@ -4,13 +4,13 @@ error: pinning a value with `Box::pin` when local pinning suffices
 LL |     accept_unpin_fut(Box::pin(fut()).as_mut());
    |                      ^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-box-pin` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_box_pin)]`
 help: use the `pin!` macro
    |
 LL -     accept_unpin_fut(Box::pin(fut()).as_mut());
 LL +     accept_unpin_fut(std::pin::pin!(fut()));
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_box_pin)]`
+   = note: `-D clippy::unnecessary-box-pin` implied by `-D warnings`
 
 error: pinning a value with `Box::pin` when local pinning suffices
   --> tests/ui/unnecessary_box_pin.rs:21:18

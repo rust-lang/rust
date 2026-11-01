@@ -6,12 +6,12 @@ LL |     accepts_trait(a);
    |     |
    |     required by a bound introduced by this call
    |
-   = note:    expected unit type `()`
-           found associated type `<A as Trait>::Associated`
 help: consider constraining the associated type `<A as Trait>::Associated` to `()`
    |
 LL |     A: Trait<Associated = ()> + 'static,
    |             +++++++++++++++++
+   = note:    expected unit type `()`
+           found associated type `<A as Trait>::Associated`
 note: required by a bound in `accepts_trait`
   --> $DIR/issue-87261.rs:43:27
    |
@@ -26,9 +26,9 @@ LL |     accepts_trait(b);
    |     |
    |     required by a bound introduced by this call
    |
+   = help: consider constraining the associated type `<B as Trait>::Associated` to `()`
    = note:    expected unit type `()`
            found associated type `<B as Trait>::Associated`
-   = help: consider constraining the associated type `<B as Trait>::Associated` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `accepts_trait`
   --> $DIR/issue-87261.rs:43:27
@@ -44,12 +44,12 @@ LL |     accepts_trait(c);
    |     |
    |     required by a bound introduced by this call
    |
-   = note:    expected unit type `()`
-           found associated type `<C as Trait>::Associated`
 help: consider constraining the associated type `<C as Trait>::Associated` to `()`
    |
 LL |     C: Trait<Associated = ()> + Foo,
    |             +++++++++++++++++
+   = note:    expected unit type `()`
+           found associated type `<C as Trait>::Associated`
 note: required by a bound in `accepts_trait`
   --> $DIR/issue-87261.rs:43:27
    |
@@ -64,9 +64,9 @@ LL |     accepts_trait(d);
    |     |
    |     required by a bound introduced by this call
    |
+   = help: consider constraining the associated type `<D as Trait>::Associated` to `()`
    = note:    expected unit type `()`
            found associated type `<D as Trait>::Associated`
-   = help: consider constraining the associated type `<D as Trait>::Associated` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `accepts_trait`
   --> $DIR/issue-87261.rs:43:27
@@ -82,12 +82,12 @@ LL |     accepts_generic_trait(e);
    |     |
    |     required by a bound introduced by this call
    |
-   = note:    expected unit type `()`
-           found associated type `<E as GenericTrait<()>>::Associated`
 help: consider constraining the associated type `<E as GenericTrait<()>>::Associated` to `()`
    |
 LL |     E: GenericTrait<(), Associated = ()> + 'static,
    |                       +++++++++++++++++
+   = note:    expected unit type `()`
+           found associated type `<E as GenericTrait<()>>::Associated`
 note: required by a bound in `accepts_generic_trait`
   --> $DIR/issue-87261.rs:44:46
    |
@@ -102,12 +102,12 @@ LL |     accepts_generic_trait(f);
    |     |
    |     required by a bound introduced by this call
    |
-   = note:    expected unit type `()`
-           found associated type `<F as GenericTrait<()>>::Associated`
 help: consider constraining the associated type `<F as GenericTrait<()>>::Associated` to `()`
    |
 LL |     F: GenericTrait<(), Associated = ()> + Foo,
    |                       +++++++++++++++++
+   = note:    expected unit type `()`
+           found associated type `<F as GenericTrait<()>>::Associated`
 note: required by a bound in `accepts_generic_trait`
   --> $DIR/issue-87261.rs:44:46
    |
@@ -122,9 +122,9 @@ LL |     accepts_generic_trait(g);
    |     |
    |     required by a bound introduced by this call
    |
+   = help: consider constraining the associated type `<G as GenericTrait<()>>::Associated` to `()`
    = note:    expected unit type `()`
            found associated type `<G as GenericTrait<()>>::Associated`
-   = help: consider constraining the associated type `<G as GenericTrait<()>>::Associated` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `accepts_generic_trait`
   --> $DIR/issue-87261.rs:44:46
@@ -143,12 +143,12 @@ LL |     accepts_trait(returns_opaque());
    |     |
    |     required by a bound introduced by this call
    |
-   = note:    expected unit type `()`
-           found associated type `<impl Trait + 'static as Trait>::Associated`
 help: consider constraining the associated type `<impl Trait + 'static as Trait>::Associated` to `()`
    |
 LL | fn returns_opaque() -> impl Trait<Associated = ()> + 'static {
    |                                  +++++++++++++++++
+   = note:    expected unit type `()`
+           found associated type `<impl Trait + 'static as Trait>::Associated`
 note: required by a bound in `accepts_trait`
   --> $DIR/issue-87261.rs:43:27
    |
@@ -166,12 +166,12 @@ LL |     accepts_trait(returns_opaque_derived());
    |     |
    |     required by a bound introduced by this call
    |
-   = note:    expected unit type `()`
-           found associated type `<impl DerivedTrait + 'static as Trait>::Associated`
 help: consider constraining the associated type `<impl DerivedTrait + 'static as Trait>::Associated` to `()`
    |
 LL | fn returns_opaque_derived() -> impl DerivedTrait<Associated = ()> + 'static {
    |                                                 +++++++++++++++++
+   = note:    expected unit type `()`
+           found associated type `<impl DerivedTrait + 'static as Trait>::Associated`
 note: required by a bound in `accepts_trait`
   --> $DIR/issue-87261.rs:43:27
    |
@@ -189,12 +189,12 @@ LL |     accepts_trait(returns_opaque_foo());
    |     |
    |     required by a bound introduced by this call
    |
-   = note:    expected unit type `()`
-           found associated type `<impl Trait + Foo as Trait>::Associated`
 help: consider constraining the associated type `<impl Trait + Foo as Trait>::Associated` to `()`
    |
 LL | fn returns_opaque_foo() -> impl Trait<Associated = ()> + Foo {
    |                                      +++++++++++++++++
+   = note:    expected unit type `()`
+           found associated type `<impl Trait + Foo as Trait>::Associated`
 note: required by a bound in `accepts_trait`
   --> $DIR/issue-87261.rs:43:27
    |
@@ -212,9 +212,9 @@ LL |     accepts_trait(returns_opaque_derived_foo());
    |     |
    |     required by a bound introduced by this call
    |
+   = help: consider constraining the associated type `<impl DerivedTrait + Foo as Trait>::Associated` to `()`
    = note:    expected unit type `()`
            found associated type `<impl DerivedTrait + Foo as Trait>::Associated`
-   = help: consider constraining the associated type `<impl DerivedTrait + Foo as Trait>::Associated` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `accepts_trait`
   --> $DIR/issue-87261.rs:43:27
@@ -233,12 +233,12 @@ LL |     accepts_generic_trait(returns_opaque_generic());
    |     |
    |     required by a bound introduced by this call
    |
-   = note:    expected unit type `()`
-           found associated type `<impl GenericTrait<()> + 'static as GenericTrait<()>>::Associated`
 help: consider constraining the associated type `<impl GenericTrait<()> + 'static as GenericTrait<()>>::Associated` to `()`
    |
 LL | fn returns_opaque_generic() -> impl GenericTrait<(), Associated = ()> + 'static {
    |                                                    +++++++++++++++++
+   = note:    expected unit type `()`
+           found associated type `<impl GenericTrait<()> + 'static as GenericTrait<()>>::Associated`
 note: required by a bound in `accepts_generic_trait`
   --> $DIR/issue-87261.rs:44:46
    |
@@ -256,12 +256,12 @@ LL |     accepts_generic_trait(returns_opaque_generic_foo());
    |     |
    |     required by a bound introduced by this call
    |
-   = note:    expected unit type `()`
-           found associated type `<impl GenericTrait<()> + Foo as GenericTrait<()>>::Associated`
 help: consider constraining the associated type `<impl GenericTrait<()> + Foo as GenericTrait<()>>::Associated` to `()`
    |
 LL | fn returns_opaque_generic_foo() -> impl GenericTrait<(), Associated = ()> + Foo {
    |                                                        +++++++++++++++++
+   = note:    expected unit type `()`
+           found associated type `<impl GenericTrait<()> + Foo as GenericTrait<()>>::Associated`
 note: required by a bound in `accepts_generic_trait`
   --> $DIR/issue-87261.rs:44:46
    |
@@ -279,9 +279,9 @@ LL |     accepts_generic_trait(returns_opaque_generic_duplicate());
    |     |
    |     required by a bound introduced by this call
    |
+   = help: consider constraining the associated type `<impl GenericTrait<()> + GenericTrait<u8> as GenericTrait<()>>::Associated` to `()`
    = note:    expected unit type `()`
            found associated type `<impl GenericTrait<()> + GenericTrait<u8> as GenericTrait<()>>::Associated`
-   = help: consider constraining the associated type `<impl GenericTrait<()> + GenericTrait<u8> as GenericTrait<()>>::Associated` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `accepts_generic_trait`
   --> $DIR/issue-87261.rs:44:46

@@ -44,9 +44,9 @@ LL |     fn sub(self, rhs: Self) -> Self::Output {}
    |        |
    |        implicitly returns `()` as its body has no tail or `return` expression
    |
+   = help: consider constraining the associated type `<(dyn Vector2 + 'static) as Sub>::Output` to `()` or calling a method that returns `<(dyn Vector2 + 'static) as Sub>::Output`
    = note: expected associated type `<(dyn Vector2 + 'static) as Sub>::Output`
                     found unit type `()`
-   = help: consider constraining the associated type `<(dyn Vector2 + 'static) as Sub>::Output` to `()` or calling a method that returns `<(dyn Vector2 + 'static) as Sub>::Output`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0277]: the size for values of type `(dyn Vector2 + 'static)` cannot be known at compilation time

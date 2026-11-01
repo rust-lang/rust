@@ -22,12 +22,12 @@ LL |     a(bar);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&dyn Foo`
-                 found struct `BarType<_>`
 help: consider borrowing here
    |
 LL |     a(&bar);
    |       +
+   = note: expected reference `&dyn Foo`
+                 found struct `BarType<_>`
 note: function defined here
   --> $DIR/lower-universe-resolved-const-issue-159703.rs:10:4
    |

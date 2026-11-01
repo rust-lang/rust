@@ -17,8 +17,8 @@ LL |             Ok(val) if make() => match val {
 LL |
 LL |                 Some(n) => foo(n),
    |                 ^^^^^^^ with this pattern
-   = note: `-D clippy::collapsible-match` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::collapsible_match)]`
+   = note: `-D clippy::collapsible-match` implied by `-D warnings`
 
 error: this `match` can be collapsed into the outer `match`
   --> tests/ui/collapsible_match2.rs:16:24

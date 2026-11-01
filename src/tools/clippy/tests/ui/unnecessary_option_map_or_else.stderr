@@ -4,13 +4,13 @@ error: unused "map closure" when calling `Option::map_or_else` value
 LL |     option.map_or_else(|| (), |x| x);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-option-map-or-else` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_option_map_or_else)]`
 help: consider using `unwrap_or_else`
    |
 LL -     option.map_or_else(|| (), |x| x);
 LL +     option.unwrap_or_else(|| ());
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_option_map_or_else)]`
+   = note: `-D clippy::unnecessary-option-map-or-else` implied by `-D warnings`
 
 error: unused "map closure" when calling `Option::map_or_else` value
   --> tests/ui/unnecessary_option_map_or_else.rs:22:5

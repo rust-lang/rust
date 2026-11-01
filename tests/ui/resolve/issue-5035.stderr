@@ -17,16 +17,16 @@ help: you might have meant to use `#![feature(trait_alias)]` instead of a `type`
 LL - type K = dyn I;
 LL + trait K = dyn I;
    |
-note: similarly named trait `I` defined here
-  --> $DIR/issue-5035.rs:3:1
-   |
-LL | trait I {}
-   | ^^^^^^^
 help: a trait with a similar name exists
    |
 LL - impl K for isize {}
 LL + impl I for isize {}
    |
+note: similarly named trait `I` defined here
+  --> $DIR/issue-5035.rs:3:1
+   |
+LL | trait I {}
+   | ^^^^^^^
 
 error: aborting due to 2 previous errors
 

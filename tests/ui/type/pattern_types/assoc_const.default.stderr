@@ -4,8 +4,8 @@ error: generic parameters may not be used in const operations
 LL | fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)) {}
    |                                         ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -14,8 +14,8 @@ error: generic parameters may not be used in const operations
 LL | fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)) {}
    |                                                             ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -24,8 +24,8 @@ error: generic parameters may not be used in const operations
 LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
    |                                        ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
@@ -34,8 +34,8 @@ error: generic parameters may not be used in const operations
 LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
    |                                                   ^ cannot perform const operation using `T`
    |
-   = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = note: type parameters may not be used in const expressions
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: aborting due to 4 previous errors

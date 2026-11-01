@@ -6,13 +6,13 @@ LL |     let res = FN() + 1;
 LL |     res
    |     ^^^
    |
-   = note: `-D clippy::let-and-return` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::let_and_return)]`
 help: return the expression directly
    |
 LL ~     
 LL ~     FN() + 1
    |
+   = help: to override `-D warnings` add `#[allow(clippy::let_and_return)]`
+   = note: `-D clippy::let-and-return` implied by `-D warnings`
 
 error: returning the result of a `let` binding from a block
   --> tests/ui/crashes/ice-8850.rs:11:5

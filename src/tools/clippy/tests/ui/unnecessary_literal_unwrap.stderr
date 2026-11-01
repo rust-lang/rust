@@ -4,13 +4,13 @@ error: used `unwrap()` on `Some` value
 LL |     let _val = Some(1).unwrap();
    |                ^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-literal-unwrap` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_literal_unwrap)]`
 help: remove the `Some` and `unwrap()`
    |
 LL -     let _val = Some(1).unwrap();
 LL +     let _val = 1;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_literal_unwrap)]`
+   = note: `-D clippy::unnecessary-literal-unwrap` implied by `-D warnings`
 
 error: used `expect()` on `Some` value
   --> tests/ui/unnecessary_literal_unwrap.rs:12:16

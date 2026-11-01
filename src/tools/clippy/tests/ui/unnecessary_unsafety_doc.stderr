@@ -4,8 +4,8 @@ error: safe function's docs have unnecessary `# Safety` section
 LL | pub fn apocalypse(universe: &mut ()) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-safety-doc` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_safety_doc)]`
+   = note: `-D clippy::unnecessary-safety-doc` implied by `-D warnings`
 
 error: safe function's docs have unnecessary `# Safety` section
   --> tests/ui/unnecessary_unsafety_doc.rs:45:5

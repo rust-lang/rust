@@ -4,8 +4,8 @@ error[E0658]: attributes on expressions are experimental
 LL |             if #[deny(unused_mut)]
    |                ^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `!` patterns are experimental
@@ -14,8 +14,8 @@ error[E0658]: `!` patterns are experimental
 LL |         Some(!)
    |              ^
    |
-   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: a guard on a never pattern will never be run
@@ -38,13 +38,13 @@ error[E0004]: non-exhaustive patterns: type `bool` is non-empty
 LL |     match false {}
    |           ^^^^^
    |
-   = note: the matched value is of type `bool`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     match false {
 LL +         _ => todo!(),
 LL ~     }
    |
+   = note: the matched value is of type `bool`
 
 error: aborting due to 5 previous errors
 

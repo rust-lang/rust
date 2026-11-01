@@ -4,13 +4,13 @@ error: you seem to want to iterate on a map's values
 LL |     for (_, v) in &m {
    |                   ^^
    |
-   = note: `-D clippy::for-kv-map` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::for_kv_map)]`
 help: use the corresponding method
    |
 LL -     for (_, v) in &m {
 LL +     for v in m.values() {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::for_kv_map)]`
+   = note: `-D clippy::for-kv-map` implied by `-D warnings`
 
 error: you seem to want to iterate on a map's values
   --> tests/ui/for_kv_map.rs:16:19

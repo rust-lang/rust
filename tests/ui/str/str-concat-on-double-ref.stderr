@@ -7,11 +7,11 @@ LL |     let c = a + b;
    |             | `+` cannot be used to concatenate two `&str` strings
    |             &String
    |
-   = note: string concatenation requires an owned `String` on the left
 help: create an owned `String` from a string reference
    |
 LL |     let c = a.to_owned() + b;
    |              +++++++++++
+   = note: string concatenation requires an owned `String` on the left
 
 error: aborting due to 1 previous error
 

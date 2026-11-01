@@ -4,8 +4,6 @@ error: variable appears on both sides of an assignment operation
 LL |     a += a + 1;
    |     ^^^^^^^^^^
    |
-   = note: `-D clippy::misrefactored-assign-op` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::misrefactored_assign_op)]`
 help: did you mean `a = a + 1` or `a = a + a + 1`? Consider replacing it with
    |
 LL -     a += a + 1;
@@ -16,6 +14,8 @@ help: or
 LL -     a += a + 1;
 LL +     a = a + a + 1;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::misrefactored_assign_op)]`
+   = note: `-D clippy::misrefactored-assign-op` implied by `-D warnings`
 
 error: variable appears on both sides of an assignment operation
   --> tests/ui/misrefactored_assign_op.rs:10:5

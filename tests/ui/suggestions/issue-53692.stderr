@@ -6,13 +6,13 @@ LL |     let items_clone: Vec<i32> = ref_items.clone();
    |                      |
    |                      expected due to this
    |
-   = note: expected struct `Vec<i32>`
-           found reference `&[i32]`
 help: try using a conversion method
    |
 LL -     let items_clone: Vec<i32> = ref_items.clone();
 LL +     let items_clone: Vec<i32> = ref_items.to_vec();
    |
+   = note: expected struct `Vec<i32>`
+           found reference `&[i32]`
 
 error[E0308]: mismatched types
   --> $DIR/issue-53692.rs:14:26

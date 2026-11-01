@@ -5,8 +5,8 @@ LL |     x & 9_8765_4321;
    |         ^^^^^^^^^^^
    |
    = help: use binary (0b11_1010_1101_1110_0110_1000_1011_0001), hex (0x3ade_68b1), or octal (0o7_267_464_261) notation for better readability
-   = note: `-D clippy::decimal-bitwise-operands` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::decimal_bitwise_operands)]`
+   = note: `-D clippy::decimal-bitwise-operands` implied by `-D warnings`
 
 error: using decimal literal for bitwise operation
   --> tests/ui/decimal_bitwise_operands.rs:22:9

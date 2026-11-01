@@ -6,16 +6,16 @@ LL |     if let Some(_value) = Droppy.get() {
    |                           |
    |                           this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
-note: value invokes this custom destructor
-  --> $DIR/lint-if-let-rescope-gated.rs:14:1
-   |
-LL | impl Drop for Droppy {
-   | ^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope-gated.rs:30:5
    |
 LL |     } else {
    |     ^
+note: value invokes this custom destructor
+  --> $DIR/lint-if-let-rescope-gated.rs:14:1
+   |
+LL | impl Drop for Droppy {
+   | ^^^^^^^^^^^^^^^^^^^^
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~     match Droppy.get() { Some(_value) => {

@@ -10,6 +10,11 @@ help: consider specifying a concrete type for the type parameter `Q`
    |
 LL |     opts.get::</* Type */>(opt.as_ref());
    |             ++++++++++++++
+help: consider removing this method call, as the receiver has type `String` and `String: Hash` trivially holds
+   |
+LL -     opts.get(opt.as_ref());
+LL +     opts.get(opt);
+   |
    = note: multiple `impl`s satisfying `String: Borrow<_>` found in the following crates: `alloc`, `core`:
            - impl Borrow<str> for String;
            - impl<T> Borrow<T> for T
@@ -18,18 +23,13 @@ LL |     opts.get::</* Type */>(opt.as_ref());
    = note: the type must also implement `Eq`
 note: required by a bound in `HashMap::<K, V, S, A>::get`
   --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
-help: consider removing this method call, as the receiver has type `String` and `String: Hash` trivially holds
+help: consider removing this method call, as the receiver has type `String` and `String: Eq` trivially holds
    |
 LL -     opts.get(opt.as_ref());
 LL +     opts.get(opt);
    |
 note: required by a bound in `HashMap::<K, V, S, A>::get`
   --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
-help: consider removing this method call, as the receiver has type `String` and `String: Eq` trivially holds
-   |
-LL -     opts.get(opt.as_ref());
-LL +     opts.get(opt);
-   |
 note: required by a bound in `HashMap::<K, V, S, A>::get`
   --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
 

@@ -9,13 +9,13 @@ LL | |     }
    | |_____^
    |
    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+   = help: to override `-D warnings` add `#[allow(clippy::panic_in_result_fn)]`
 note: return Err() instead of panicking
   --> tests/ui/panic_in_result_fn.rs:9:9
    |
 LL |         panic!("error");
    |         ^^^^^^^^^^^^^^^
    = note: `-D clippy::panic-in-result-fn` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::panic_in_result_fn)]`
 
 error: used `panic!()` or assertion in a function that returns `Result`
   --> tests/ui/panic_in_result_fn.rs:53:1

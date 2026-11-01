@@ -12,16 +12,16 @@ help: use this syntax instead
 LL -         A::D(_) => (),
 LL +         A::D => (),
    |
-note: similarly named tuple variant `B` defined here
-  --> $DIR/pattern-error-continue.rs:6:5
-   |
-LL |     B(isize, isize),
-   |     ^^^^^^^^^^^^^^^
 help: a tuple variant with a similar name exists
    |
 LL -         A::D(_) => (),
 LL +         A::B(_) => (),
    |
+note: similarly named tuple variant `B` defined here
+  --> $DIR/pattern-error-continue.rs:6:5
+   |
+LL |     B(isize, isize),
+   |     ^^^^^^^^^^^^^^^
 
 error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
   --> $DIR/pattern-error-continue.rs:19:14

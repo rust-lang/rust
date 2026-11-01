@@ -4,8 +4,6 @@ error: use of `to_be_bytes`
 LL |         let _ = 0u8.to_be_bytes();
    |                     ^^^^^^^^^^^
    |
-   = note: `-D clippy::big-endian-bytes` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::big_endian_bytes)]`
 help: convert to native endian
    |
 LL -         let _ = 0u8.to_be_bytes();
@@ -16,6 +14,8 @@ help: convert to little endian
 LL -         let _ = 0u8.to_be_bytes();
 LL +         let _ = 0u8.to_le_bytes();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::big_endian_bytes)]`
+   = note: `-D clippy::big-endian-bytes` implied by `-D warnings`
 
 error: use of `to_be_bytes`
   --> tests/ui/big_endian_bytes.rs:13:22
@@ -632,7 +632,6 @@ error: use of `to_be_bytes`
 LL |             let _ = 0u8.to_be_bytes();
    |                         ^^^^^^^^^^^
    |
-   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: convert to native endian
    |
 LL -             let _ = 0u8.to_be_bytes();
@@ -643,6 +642,7 @@ help: convert to little endian
 LL -             let _ = 0u8.to_be_bytes();
 LL +             let _ = 0u8.to_le_bytes();
    |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: use of `from_be_bytes`
   --> tests/ui/big_endian_bytes.rs:75:25
@@ -650,7 +650,6 @@ error: use of `from_be_bytes`
 LL |             let _ = u8::from_be_bytes([0; _]);
    |                         ^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: convert from native endian
    |
 LL -             let _ = u8::from_be_bytes([0; _]);
@@ -661,6 +660,7 @@ help: convert from little endian
 LL -             let _ = u8::from_be_bytes([0; _]);
 LL +             let _ = u8::from_le_bytes([0; _]);
    |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: use of `to_be_bytes`
   --> tests/ui/big_endian_bytes.rs:76:26

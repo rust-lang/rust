@@ -4,11 +4,6 @@ error: impl for `HashMap` should be generalized over different hashers
 LL | impl<K: Hash + Eq, V> Foo<i8> for HashMap<K, V> {
    |                                   ^^^^^^^^^^^^^
    |
-note: the lint level is defined here
-  --> tests/ui/implicit_hasher.rs:2:9
-   |
-LL | #![deny(clippy::implicit_hasher)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^
 help: add a type parameter for `BuildHasher`
    |
 LL ~ impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashMap<K, V, S> {
@@ -17,6 +12,11 @@ LL |
 LL |
 LL ~         (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
    |
+note: the lint level is defined here
+  --> tests/ui/implicit_hasher.rs:2:9
+   |
+LL | #![deny(clippy::implicit_hasher)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: impl for `HashMap` should be generalized over different hashers
   --> tests/ui/implicit_hasher.rs:25:36
@@ -102,7 +102,6 @@ error: impl for `HashMap` should be generalized over different hashers
 LL |         impl<K: Hash + Eq, V> Foo<u8> for HashMap<K, V> {
    |                                           ^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `__inline_mac_mod_gen_` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: add a type parameter for `BuildHasher`
    |
 LL ~         impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<u8> for HashMap<K, V, S> {
@@ -110,6 +109,7 @@ LL |
 LL |             fn make() -> (Self, Self) {
 LL ~                 (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
    |
+   = note: this error originates in the macro `__inline_mac_mod_gen_` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: parameter of type `HashMap` should be generalized over different hashers
   --> tests/ui/implicit_hasher.rs:108:35

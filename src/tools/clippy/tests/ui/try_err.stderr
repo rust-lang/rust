@@ -4,8 +4,8 @@ error: returning an `Err(_)` with the `?` operator
 LL |         Err(err)?;
    |         ^^^^^^^^^ help: try: `return Err(err)`
    |
-   = note: `-D clippy::try-err` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::try_err)]`
+   = note: `-D clippy::try-err` implied by `-D warnings`
 
 error: returning an `Err(_)` with the `?` operator
   --> tests/ui/try_err.rs:29:9

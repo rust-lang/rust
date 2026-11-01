@@ -6,13 +6,13 @@ LL | //! [queue](macro.queue.html)
    |      |
    |      because label contains path that resolves to same destination
    |
-   = note: when a link's destination is not specified,
-           the label is used to resolve intra-doc links
 help: remove explicit link target
    |
 LL - //! [queue](macro.queue.html)
 LL + //! [queue]
    |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
 note: the lint level is defined here
   --> $DIR/redundant-explicit-links-ice.rs:5:9
    |

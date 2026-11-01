@@ -9,8 +9,6 @@ LL |         Some(true)
    |         |
    |         arguments to this enum variant are incorrect
    |
-   = note: expected type parameter `bool` (type parameter `bool`)
-                        found type `bool` (`bool`)
 help: the type constructed contains `bool` due to the type of the argument passed
   --> $DIR/issue-35030.rs:9:9
    |
@@ -18,6 +16,8 @@ LL |         Some(true)
    |         ^^^^^----^
    |              |
    |              this argument influences the type of `Some`
+   = note: expected type parameter `bool` (type parameter `bool`)
+                        found type `bool` (`bool`)
 note: tuple variant defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
 

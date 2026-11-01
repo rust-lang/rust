@@ -4,13 +4,13 @@ error: parameter is only used in recursion
 LL | fn _with_inner(flag: u32, a: u32, b: u32) -> usize {
    |                                   ^ help: if this is intentional, prefix it with an underscore: `_b`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::only_used_in_recursion)]`
 note: parameter used here
   --> tests/ui/only_used_in_recursion2.rs:13:52
    |
 LL |     if flag == 0 { 0 } else { _with_inner(flag, a, b + x) }
    |                                                    ^
    = note: `-D clippy::only-used-in-recursion` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::only_used_in_recursion)]`
 
 error: parameter is only used in recursion
   --> tests/ui/only_used_in_recursion2.rs:6:25

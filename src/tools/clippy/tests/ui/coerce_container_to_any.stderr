@@ -4,8 +4,8 @@ error: coercing `&std::boxed::Box<dyn std::any::Any>` to `&dyn Any`
 LL |     f(&x);
    |       ^^ help: consider dereferencing: `&*x`
    |
-   = note: `-D clippy::coerce-container-to-any` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::coerce_container_to_any)]`
+   = note: `-D clippy::coerce-container-to-any` implied by `-D warnings`
 
 error: coercing `&std::boxed::Box<dyn std::any::Any>` to `&dyn Any`
   --> tests/ui/coerce_container_to_any.rs:12:7

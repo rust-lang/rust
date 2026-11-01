@@ -9,8 +9,8 @@ help: consider adding a type annotation
    |
 LL |     let _ = a();
    |          ^
-   = note: `-D clippy::let-underscore-untyped` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::let_underscore_untyped)]`
+   = note: `-D clippy::let-underscore-untyped` implied by `-D warnings`
 
 error: non-binding `let` without a type annotation
   --> tests/ui/let_underscore_untyped.rs:51:5

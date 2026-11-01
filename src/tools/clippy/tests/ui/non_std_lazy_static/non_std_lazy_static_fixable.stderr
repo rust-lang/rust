@@ -4,13 +4,13 @@ error: this type has been superseded by `LazyLock` in the standard library
 LL | static LAZY_FOO: Lazy<String> = Lazy::new(|| "foo".to_uppercase());
    |                  ^^^^
    |
-   = note: `-D clippy::non-std-lazy-statics` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::non_std_lazy_statics)]`
 help: use `std::sync::LazyLock` instead
    |
 LL - static LAZY_FOO: Lazy<String> = Lazy::new(|| "foo".to_uppercase());
 LL + static LAZY_FOO: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| "foo".to_uppercase());
    |
+   = help: to override `-D warnings` add `#[allow(clippy::non_std_lazy_statics)]`
+   = note: `-D clippy::non-std-lazy-statics` implied by `-D warnings`
 
 error: this type has been superseded by `LazyLock` in the standard library
   --> tests/ui/non_std_lazy_static/non_std_lazy_static_fixable.rs:13:18

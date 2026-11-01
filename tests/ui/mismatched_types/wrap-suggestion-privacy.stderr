@@ -6,12 +6,12 @@ LL |     needs_wrapper(0);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected struct `Wrapper<i32>`
-                found type `{integer}`
 help: try wrapping the expression in `inner::Wrapper` (its field is private, but it's local to this crate and its privacy can be changed)
    |
 LL |     needs_wrapper(inner::Wrapper(0));
    |                   +++++++++++++++ +
+   = note: expected struct `Wrapper<i32>`
+                found type `{integer}`
 note: function defined here
   --> $DIR/wrap-suggestion-privacy.rs:5:4
    |
@@ -26,12 +26,12 @@ LL |     needs_wrapping(0);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected struct `Wrapping<i32>`
-                found type `{integer}`
 help: try wrapping the expression in `std::num::Wrapping`
    |
 LL |     needs_wrapping(std::num::Wrapping(0));
    |                    +++++++++++++++++++ +
+   = note: expected struct `Wrapping<i32>`
+                found type `{integer}`
 note: function defined here
   --> $DIR/wrap-suggestion-privacy.rs:6:4
    |

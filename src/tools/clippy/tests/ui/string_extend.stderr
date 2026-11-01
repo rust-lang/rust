@@ -4,8 +4,8 @@ error: calling `.extend(_.chars())`
 LL |     s.extend(abc.chars());
    |     ^^^^^^^^^^^^^^^^^^^^^ help: try: `s.push_str(abc)`
    |
-   = note: `-D clippy::string-extend-chars` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::string_extend_chars)]`
+   = note: `-D clippy::string-extend-chars` implied by `-D warnings`
 
 error: calling `.extend(_.chars())`
   --> tests/ui/string_extend.rs:20:5

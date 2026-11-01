@@ -7,15 +7,15 @@ LL | |             1
 LL | |         }
    | |_________^
    |
-   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
-   = note: `-D clippy::unused-async-trait-impl` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unused_async_trait_impl)]`
 help: consider removing the `async` from this function and returning `impl Future<Output = u32>` instead
    |
 LL ~         fn do_something() -> impl Future<Output = u32> {
 LL |
 LL ~             std::future::ready(1)
    |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+   = help: to override `-D warnings` add `#[allow(clippy::unused_async_trait_impl)]`
+   = note: `-D clippy::unused-async-trait-impl` implied by `-D warnings`
 
 error: unused `async` for async trait impl function with no `.await` statements
   --> tests/ui/unused_async_trait_impl.rs:40:9
@@ -29,7 +29,6 @@ LL | |             x
 LL | |         }
    | |_________^
    |
-   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
 help: consider removing the `async` from this function and returning `impl Future<Output = u32>` instead
    |
 LL ~         fn do_something() -> impl Future<Output = u32> {
@@ -38,6 +37,7 @@ LL |
 LL |
 LL ~             std::future::ready(x)
    |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
 
 error: unused `async` for async trait impl function with no `.await` statements
   --> tests/ui/unused_async_trait_impl.rs:63:9
@@ -48,13 +48,13 @@ LL | |             5
 LL | |         }
    | |_________^
    |
-   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
 help: consider removing the `async` from this function and returning `impl Future<Output = u32>` instead
    |
 LL ~         fn do_something() -> impl Future<Output = u32> {
 LL |
 LL ~             std::future::ready(5)
    |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
 
 error: unused `async` for async trait impl function with no `.await` statements
   --> tests/ui/unused_async_trait_impl.rs:97:9
@@ -65,13 +65,13 @@ LL | |             Vec::new()
 LL | |         }
    | |_________^
    |
-   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
 help: consider removing the `async` from this function and returning `impl Future<Output = vec_ty!(u32)>` instead
    |
 LL ~         fn do_something() -> impl Future<Output = vec_ty!(u32)> {
 LL |
 LL ~             std::future::ready(Vec::new())
    |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
 
 error: unused `async` for async trait impl function with no `.await` statements
   --> tests/ui/unused_async_trait_impl.rs:104:9
@@ -82,13 +82,13 @@ LL | |             vec![]
 LL | |         }
    | |_________^
    |
-   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
 help: consider removing the `async` from this function and returning `impl Future<Output = Vec<u32>>` instead
    |
 LL ~         fn do_something() -> impl Future<Output = Vec<u32>> {
 LL |
 LL ~             std::future::ready(vec![])
    |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
 
 error: unused `async` for async trait impl function with no `.await` statements
   --> tests/ui/unused_async_trait_impl.rs:115:9
@@ -102,7 +102,6 @@ LL | |             5
 LL | |         }
    | |_________^
    |
-   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
 help: consider removing the `async` from this function and returning `impl Future<Output = u32>` instead
    |
 LL ~         fn do_something() -> impl Future<Output = u32> {
@@ -114,6 +113,7 @@ LL |             }
 LL |
 LL ~             std::future::ready(5)
    |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
 
 error: unused `async` for async trait impl function with no `.await` statements
   --> tests/ui/unused_async_trait_impl.rs:155:9
@@ -124,13 +124,13 @@ LL | |             1
 LL | |         }
    | |_________^
    |
-   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
 help: consider removing the `async` from this function and returning `impl Future<Output = u32>` instead
    |
 LL ~         fn do_something() -> impl Future<Output = u32> {
 LL |
 LL ~             std::future::ready(1)
    |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
 
 error: aborting due to 7 previous errors
 

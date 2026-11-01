@@ -6,13 +6,13 @@ LL |     reuse S::<(), 123>::by_box { self.get_s() }
    |                         |
    |                         arguments to this function are incorrect
    |
-   = note: expected struct `Box<S<_, _>>`
-              found struct `S<_, _>`
-   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 help: store this in the heap by calling `Box::new`
    |
 LL |     reuse S::<(), 123>::by_box { Box::new(self.get_s()) }
    |                                  +++++++++            +
+   = note: expected struct `Box<S<_, _>>`
+              found struct `S<_, _>`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
 note: method defined here
   --> $DIR/inherent-impls-self-replacement.rs:14:8
    |
@@ -29,12 +29,12 @@ LL |     reuse S::<(), 123>::by_rc { self.get_s() }
    |                         |
    |                         arguments to this function are incorrect
    |
-   = note: expected struct `Rc<S<_, _>>`
-              found struct `S<_, _>`
 help: call `Into::into` on this expression to convert `S<(), 123>` into `Rc<S<(), 123>>`
    |
 LL |     reuse S::<(), 123>::by_rc { self.get_s().into() }
    |                                             +++++++
+   = note: expected struct `Rc<S<_, _>>`
+              found struct `S<_, _>`
 note: method defined here
   --> $DIR/inherent-impls-self-replacement.rs:15:8
    |
@@ -51,12 +51,12 @@ LL |     reuse S::<(), 123>::by_pin { self.get_s() }
    |                         |
    |                         arguments to this function are incorrect
    |
-   = note: expected struct `Pin<Box<S<(), 123>>>`
-              found struct `S<(), 123>`
 help: you need to pin and box this expression
    |
 LL |     reuse S::<(), 123>::by_pin { Box::pin(self.get_s()) }
    |                                  +++++++++            +
+   = note: expected struct `Pin<Box<S<(), 123>>>`
+              found struct `S<(), 123>`
 note: method defined here
   --> $DIR/inherent-impls-self-replacement.rs:16:8
    |
@@ -156,12 +156,6 @@ LL |     reuse S::<(), 123>::by_ref { self.get_s() }
    |                                  |
    |                                  move occurs because `*self` has type `Self`, which does not implement the `Copy` trait
    |
-note: `Trait::get_s` takes ownership of the receiver `self`, which moves `*self`
-  --> $DIR/inherent-impls-self-replacement.rs:20:14
-   |
-LL | trait Trait: Sized {
-LL |     fn get_s(self) -> S<(), 123>;
-   |              ^^^^
 help: if `Self` implemented `Clone`, you could clone the value
   --> $DIR/inherent-impls-self-replacement.rs:19:1
    |
@@ -170,6 +164,12 @@ LL | trait Trait: Sized {
 ...
 LL |     reuse S::<(), 123>::by_ref { self.get_s() }
    |                                  ---- you could clone this value
+note: `Trait::get_s` takes ownership of the receiver `self`, which moves `*self`
+  --> $DIR/inherent-impls-self-replacement.rs:20:14
+   |
+LL | trait Trait: Sized {
+LL |     fn get_s(self) -> S<(), 123>;
+   |              ^^^^
 
 error[E0507]: cannot move out of `*self` which is behind a mutable reference
   --> $DIR/inherent-impls-self-replacement.rs:27:38
@@ -179,12 +179,6 @@ LL |     reuse S::<(), 123>::by_mut_ref { self.get_s() }
    |                                      |
    |                                      move occurs because `*self` has type `Self`, which does not implement the `Copy` trait
    |
-note: `Trait::get_s` takes ownership of the receiver `self`, which moves `*self`
-  --> $DIR/inherent-impls-self-replacement.rs:20:14
-   |
-LL | trait Trait: Sized {
-LL |     fn get_s(self) -> S<(), 123>;
-   |              ^^^^
 help: if `Self` implemented `Clone`, you could clone the value
   --> $DIR/inherent-impls-self-replacement.rs:19:1
    |
@@ -193,6 +187,12 @@ LL | trait Trait: Sized {
 ...
 LL |     reuse S::<(), 123>::by_mut_ref { self.get_s() }
    |                                      ---- you could clone this value
+note: `Trait::get_s` takes ownership of the receiver `self`, which moves `*self`
+  --> $DIR/inherent-impls-self-replacement.rs:20:14
+   |
+LL | trait Trait: Sized {
+LL |     fn get_s(self) -> S<(), 123>;
+   |              ^^^^
 
 error: aborting due to 11 previous errors
 

@@ -4,12 +4,12 @@ error: missing `return` statement
 LL |     true
    |     ^^^^
    |
-   = note: `-D clippy::implicit-return` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::implicit_return)]`
 help: add `return` as shown
    |
 LL |     return true
    |     ++++++
+   = help: to override `-D warnings` add `#[allow(clippy::implicit_return)]`
+   = note: `-D clippy::implicit-return` implied by `-D warnings`
 
 error: missing `return` statement
   --> tests/ui/implicit_return.rs:20:15

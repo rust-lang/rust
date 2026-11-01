@@ -4,8 +4,8 @@ error: manual `Range::contains` implementation
 LL |     x >= 8 && x < 12;
    |     ^^^^^^^^^^^^^^^^ help: use: `(8..12).contains(&x)`
    |
-   = note: `-D clippy::manual-range-contains` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_range_contains)]`
+   = note: `-D clippy::manual-range-contains` implied by `-D warnings`
 
 error: manual `Range::contains` implementation
   --> tests/ui/range_contains.rs:15:5

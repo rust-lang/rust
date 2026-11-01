@@ -4,12 +4,12 @@ error[E0277]: `T` cannot be unpinned
 LL |     |x: Pin<&mut T>| -> &mut T { x.get_mut() };
    |                                    ^^^^^^^ the trait `Unpin` is not implemented for `T`
    |
-   = note: consider using the `pin!` macro
-           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn get<T: std::marker::Unpin, U: Unpin>() {
    |         ++++++++++++++++++++
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 note: required by a bound in `Pin::<&'a mut T>::get_mut`
   --> $SRC_DIR/core/src/pin.rs:LL:COL
 
@@ -19,12 +19,12 @@ error[E0277]: `T` cannot be unpinned
 LL |     |x: Pin<&mut T>| -> &mut T { x };
    |                                  ^ the trait `Unpin` is not implemented for `T`
    |
-   = note: consider using the `pin!` macro
-           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn pin_to_ref<T: std::marker::Unpin, U: Unpin>() {
    |                ++++++++++++++++++++
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
    = note: required for the cast from `Pin<&mut T>` to `&mut T`
 
 error[E0277]: `T` cannot be unpinned
@@ -33,12 +33,12 @@ error[E0277]: `T` cannot be unpinned
 LL |     |x: Pin<&mut T>| -> &T { x };
    |                              ^ the trait `Unpin` is not implemented for `T`
    |
-   = note: consider using the `pin!` macro
-           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn pin_to_ref<T: std::marker::Unpin, U: Unpin>() {
    |                ++++++++++++++++++++
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
    = note: required for the cast from `Pin<&mut T>` to `&T`
 
 error[E0277]: `T` cannot be unpinned
@@ -47,12 +47,12 @@ error[E0277]: `T` cannot be unpinned
 LL |     |x: Pin<&T>| -> &T { x };
    |                          ^ the trait `Unpin` is not implemented for `T`
    |
-   = note: consider using the `pin!` macro
-           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn pin_to_ref<T: std::marker::Unpin, U: Unpin>() {
    |                ++++++++++++++++++++
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
    = note: required for the cast from `Pin<&T>` to `&T`
 
 error[E0308]: mismatched types
@@ -63,12 +63,12 @@ LL |     |x: Pin<&T>| -> &mut T { x };
    |                     |
    |                     expected `&mut T` because of return type
    |
-   = note: expected mutable reference `&mut T`
-                         found struct `Pin<&T>`
 help: consider mutably borrowing here
    |
 LL |     |x: Pin<&T>| -> &mut T { &mut x };
    |                              ++++
+   = note: expected mutable reference `&mut T`
+                         found struct `Pin<&T>`
 
 error[E0308]: mismatched types
   --> $DIR/pin-coercion-check.rs:37:30
@@ -78,12 +78,12 @@ LL |     |x: Pin<&U>| -> &mut U { x };
    |                     |
    |                     expected `&mut U` because of return type
    |
-   = note: expected mutable reference `&mut U`
-                         found struct `Pin<&U>`
 help: consider mutably borrowing here
    |
 LL |     |x: Pin<&U>| -> &mut U { &mut x };
    |                              ++++
+   = note: expected mutable reference `&mut U`
+                         found struct `Pin<&U>`
 
 error[E0277]: `T` cannot be unpinned
   --> $DIR/pin-coercion-check.rs:43:34
@@ -91,12 +91,12 @@ error[E0277]: `T` cannot be unpinned
 LL |     |x: &mut T| -> Pin<&mut T> { x };
    |                                  ^ the trait `Unpin` is not implemented for `T`
    |
-   = note: consider using the `pin!` macro
-           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn ref_to_pin<T: std::marker::Unpin, U: Unpin>() {
    |                ++++++++++++++++++++
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
    = note: required for the cast from `&mut T` to `Pin<&mut T>`
 
 error[E0277]: `T` cannot be unpinned
@@ -105,12 +105,12 @@ error[E0277]: `T` cannot be unpinned
 LL |     |x: &mut T| -> Pin<&T> { x };
    |                              ^ the trait `Unpin` is not implemented for `T`
    |
-   = note: consider using the `pin!` macro
-           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn ref_to_pin<T: std::marker::Unpin, U: Unpin>() {
    |                ++++++++++++++++++++
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
    = note: required for the cast from `&mut T` to `Pin<&T>`
 
 error[E0277]: `T` cannot be unpinned
@@ -119,12 +119,12 @@ error[E0277]: `T` cannot be unpinned
 LL |     |x: &T| -> Pin<&T> { x };
    |                          ^ the trait `Unpin` is not implemented for `T`
    |
-   = note: consider using the `pin!` macro
-           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn ref_to_pin<T: std::marker::Unpin, U: Unpin>() {
    |                ++++++++++++++++++++
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
    = note: required for the cast from `&T` to `Pin<&T>`
 
 error[E0308]: mismatched types

@@ -4,13 +4,13 @@ error: used `assert_eq!` with a literal bool
 LL |     assert_eq!("a".is_empty(), false);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::bool-assert-comparison` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::bool_assert_comparison)]`
 help: replace it with `assert!(..)`
    |
 LL -     assert_eq!("a".is_empty(), false);
 LL +     assert!(!"a".is_empty());
    |
+   = help: to override `-D warnings` add `#[allow(clippy::bool_assert_comparison)]`
+   = note: `-D clippy::bool-assert-comparison` implied by `-D warnings`
 
 error: used `assert_eq!` with a literal bool
   --> tests/ui/bool_assert_comparison.rs:98:5

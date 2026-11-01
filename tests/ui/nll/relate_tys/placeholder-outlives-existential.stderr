@@ -16,9 +16,9 @@ LL | fn e_outlives_p_static_err<'not_static>(
 LL |     x
    |     ^ returning this value requires that `'not_static` must outlive `'static`
    |
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of the type `Inv<'_>`, which makes the generic argument `'_` invariant
    = note: the struct `Inv<'a>` is invariant over the parameter `'a`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to 2 previous errors
 

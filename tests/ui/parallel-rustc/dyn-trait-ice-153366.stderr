@@ -53,12 +53,12 @@ LL | fn iso<A>(a: Fn) -> Option<_>
 LL |     Box::new(iso_un_option)
    |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<_>`, found `Box<fn() -> _ {iso_un_option::<_>}>`
    |
-   = note: expected enum `Option<_>`
-            found struct `Box<fn() -> {type error} {iso_un_option::<_>}>`
 help: use parentheses to call this function
    |
 LL |     Box::new(iso_un_option)()
    |                            ++
+   = note: expected enum `Option<_>`
+            found struct `Box<fn() -> {type error} {iso_un_option::<_>}>`
 help: try wrapping the expression in `Some`
    |
 LL |     Some(Box::new(iso_un_option))

@@ -4,8 +4,8 @@ error: unnecessary use of `first().is_some()` to check if slice is not empty
 LL |     let _: bool = s.first().is_some();
    |                   ^^^^^^^^^^^^^^^^^^^ help: replace this with: `!s.is_empty()`
    |
-   = note: `-D clippy::unnecessary-first-then-check` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_first_then_check)]`
+   = note: `-D clippy::unnecessary-first-then-check` implied by `-D warnings`
 
 error: unnecessary use of `first().is_none()` to check if slice is empty
   --> tests/ui/unnecessary_first_then_check.rs:9:21

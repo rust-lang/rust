@@ -4,12 +4,12 @@ error[E0599]: no method named `kind` found for enum `Option<T>` in the current s
 LL |     _value.kind();
    |            ^^^^ this is an associated function, not a method
    |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 help: use associated function syntax instead
    |
 LL -     _value.kind();
 LL +     Option::<i32>::kind();
    |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in the trait `Kind`
   --> $DIR/associated-fn-turbofish-issue-159813.rs:6:5
    |

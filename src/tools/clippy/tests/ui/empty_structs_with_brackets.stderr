@@ -4,9 +4,9 @@ error: found empty brackets on struct declaration
 LL | pub struct MyEmptyStruct {} // should trigger lint
    |                         ^^^
    |
-   = note: `-D clippy::empty-structs-with-brackets` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::empty_structs_with_brackets)]`
    = help: remove the brackets
+   = help: to override `-D warnings` add `#[allow(clippy::empty_structs_with_brackets)]`
+   = note: `-D clippy::empty-structs-with-brackets` implied by `-D warnings`
 
 error: found empty brackets on struct declaration
   --> tests/ui/empty_structs_with_brackets.rs:5:26

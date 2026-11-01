@@ -4,8 +4,8 @@ error: this range is reversed and using it to index a slice will panic at run-ti
 LL |     let _ = &arr[3usize..=1usize];
    |                  ^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::reversed-empty-ranges` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::reversed_empty_ranges)]`
+   = note: `-D clippy::reversed-empty-ranges` implied by `-D warnings`
 
 error: this range is reversed and using it to index a slice will panic at run-time
   --> tests/ui/reversed_empty_ranges_unfixable.rs:11:18

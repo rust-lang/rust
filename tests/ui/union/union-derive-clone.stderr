@@ -24,6 +24,11 @@ LL | struct CloneNoCopy;
 LL |     let w = u.clone();
    |               ^^^^^ method cannot be called on `U5<CloneNoCopy>` due to unsatisfied trait bounds
    |
+help: consider annotating `CloneNoCopy` with `#[derive(Clone, Copy)]`
+   |
+LL + #[derive(Clone, Copy)]
+LL | struct CloneNoCopy;
+   |
 note: trait bound `CloneNoCopy: Copy` was not satisfied
   --> $DIR/union-derive-clone.rs:26:10
    |
@@ -31,11 +36,6 @@ LL | #[derive(Clone, Copy)]
    |          ----- in this derive macro expansion
 LL | union U5<T> {
    |          ^ type parameter would need to implement `Clone`
-help: consider annotating `CloneNoCopy` with `#[derive(Clone, Copy)]`
-   |
-LL + #[derive(Clone, Copy)]
-LL | struct CloneNoCopy;
-   |
    = help: consider manually implementing the trait to avoid undesired bounds
 
 error: aborting due to 2 previous errors

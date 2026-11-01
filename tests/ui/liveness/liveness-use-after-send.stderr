@@ -8,15 +8,15 @@ LL |     send(ch, message);
 LL |     println!("{}", message);
    |                    ^^^^^^^ value borrowed here after move
    |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     send(ch, message.clone());
+   |                     ++++++++
 note: consider changing this parameter type in function `send` to borrow instead if owning the value isn't necessary
   --> $DIR/liveness-use-after-send.rs:3:54
    |
 LL | fn send<T:Send + std::fmt::Debug>(ch: Chan<T>, data: T) {
    |    ---- in this function                             ^ this parameter takes ownership of the value
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |     send(ch, message.clone());
-   |                     ++++++++
 
 error: aborting due to 1 previous error
 

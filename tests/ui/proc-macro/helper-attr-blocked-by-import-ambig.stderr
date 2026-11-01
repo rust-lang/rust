@@ -4,6 +4,7 @@ error[E0659]: `empty_helper` is ambiguous
 LL | #[empty_helper]
    |   ^^^^^^^^^^^^ ambiguous name
    |
+   = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
    = note: ambiguous because of a name conflict with a derive helper attribute
 note: `empty_helper` could refer to the derive helper attribute defined here
   --> $DIR/helper-attr-blocked-by-import-ambig.rs:10:10
@@ -15,7 +16,6 @@ note: `empty_helper` could also refer to the attribute macro imported here
    |
 LL | use test_macros::empty_attr as empty_helper;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
 
 error: derive helper attribute is used before it is introduced
   --> $DIR/helper-attr-blocked-by-import-ambig.rs:7:3

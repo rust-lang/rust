@@ -4,8 +4,8 @@ error: (e.pow(x) - 1) can be computed more accurately
 LL |     let _ = x.exp() - 1.0;
    |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
    |
-   = note: `-D clippy::imprecise-flops` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::imprecise_flops)]`
+   = note: `-D clippy::imprecise-flops` implied by `-D warnings`
 
 error: (e.pow(x) - 1) can be computed more accurately
   --> tests/ui/floating_point_exp.rs:10:13

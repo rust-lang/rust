@@ -16,12 +16,12 @@ LL | struct Foo {
 LL |         Foo { baz: 0 }.bar();
    |                        ^^^ this is an associated function, not a method
    |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 help: use associated function syntax instead
    |
 LL -         Foo { baz: 0 }.bar();
 LL +         Foo::bar();
    |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `Foo`
   --> $DIR/duplicate-method-call-on-self.rs:9:5
    |

@@ -4,8 +4,8 @@ error: needless `fn main` in doctest
 LL | /// fn main() {
    |     ^^^^^^^
    |
-   = note: `-D clippy::needless-doctest-main` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_doctest_main)]`
+   = note: `-D clippy::needless-doctest-main` implied by `-D warnings`
 
 error: needless `fn main` in doctest
   --> tests/ui/doc/needless_doctest_main.rs:64:5

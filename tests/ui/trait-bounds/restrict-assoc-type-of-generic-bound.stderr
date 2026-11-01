@@ -8,12 +8,12 @@ LL | pub fn foo<A: MyTrait, B>(a: A) -> B {
 LL |     return a.bar();
    |            ^^^^^^^ expected type parameter `B`, found associated type
    |
-   = note: expected type parameter `B`
-             found associated type `<A as MyTrait>::T`
 help: consider further restricting this bound
    |
 LL | pub fn foo<A: MyTrait<T = B>, B>(a: A) -> B {
    |                      +++++++
+   = note: expected type parameter `B`
+             found associated type `<A as MyTrait>::T`
    = note: the caller chooses a type for `B` which can be different from `<A as MyTrait>::T`
 
 error: aborting due to 1 previous error

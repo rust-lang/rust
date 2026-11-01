@@ -7,11 +7,11 @@ LL | #[derive(PartialEq)]
 LL |     pub parameters: HashSet<String, String>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: you might have intended to use a HashMap instead
 note: `String` does not implement `BuildHasher`
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
    = note: `String` is defined in another crate
-   = help: you might have intended to use a HashMap instead
 
 error[E0599]: the method `insert` exists for struct `HashSet<usize, usize>`, but its trait bounds were not satisfied
   --> $DIR/hashset_generics.rs:16:8
@@ -19,9 +19,9 @@ error[E0599]: the method `insert` exists for struct `HashSet<usize, usize>`, but
 LL |     h1.insert(1);
    |        ^^^^^^
    |
+   = help: you might have intended to use a HashMap instead
    = note: the following trait bounds were not satisfied:
            `usize: BuildHasher`
-   = help: you might have intended to use a HashMap instead
 
 error: aborting due to 2 previous errors
 

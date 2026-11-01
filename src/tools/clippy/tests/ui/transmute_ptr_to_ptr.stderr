@@ -4,13 +4,13 @@ error: transmute from a pointer to a pointer
 LL |         let _: *const f32 = transmute(ptr);
    |                             ^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::transmute-ptr-to-ptr` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::transmute_ptr_to_ptr)]`
 help: use `pointer::cast` instead
    |
 LL -         let _: *const f32 = transmute(ptr);
 LL +         let _: *const f32 = ptr.cast::<f32>();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::transmute_ptr_to_ptr)]`
+   = note: `-D clippy::transmute-ptr-to-ptr` implied by `-D warnings`
 
 error: transmute from a pointer to a pointer
   --> tests/ui/transmute_ptr_to_ptr.rs:41:27

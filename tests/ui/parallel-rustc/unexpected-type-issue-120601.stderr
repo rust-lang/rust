@@ -39,12 +39,12 @@ LL |     match tuple() {
 LL |         Tuple(_) => {}
    |         ^^^^^^^^ expected future, found `Tuple`
    |
-   = note: expected opaque type `impl Future<Output = Tuple>`
-                   found struct `Tuple`
 help: consider `await`ing on the `Future`
    |
 LL |     match tuple().await {
    |                  ++++++
+   = note: expected opaque type `impl Future<Output = Tuple>`
+                   found struct `Tuple`
 
 error: aborting due to 5 previous errors
 

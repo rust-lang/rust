@@ -88,7 +88,6 @@ error: expected a pattern range bound, found an expression
 LL |         ..=1 + 2 => (),
    |            ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 2;
@@ -98,6 +97,7 @@ LL |         0..=1 => (),
 LL |
 LL ~         ..=VAL => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern range bound, found an expression
   --> $DIR/recover-pat-ranges.rs:16:10
@@ -105,7 +105,6 @@ error: expected a pattern range bound, found an expression
 LL |         (-4 + 0).. => (),
    |          ^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = -4 + 0;
@@ -115,6 +114,7 @@ LL |         0..=1 => (),
 LL |
 LL ~         (VAL).. => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern range bound, found an expression
   --> $DIR/recover-pat-ranges.rs:19:10
@@ -122,7 +122,6 @@ error: expected a pattern range bound, found an expression
 LL |         (1 + 4)...1 * 2 => (),
    |          ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 4;
@@ -132,6 +131,7 @@ LL |         0..=1 => (),
 LL |
 LL ~         (VAL)...1 * 2 => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern range bound, found an expression
   --> $DIR/recover-pat-ranges.rs:19:19
@@ -139,7 +139,6 @@ error: expected a pattern range bound, found an expression
 LL |         (1 + 4)...1 * 2 => (),
    |                   ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 * 2;
@@ -149,6 +148,7 @@ LL |         0..=1 => (),
 LL |
 LL ~         (1 + 4)...VAL => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern range bound, found an expression
   --> $DIR/recover-pat-ranges.rs:25:9
@@ -156,7 +156,6 @@ error: expected a pattern range bound, found an expression
 LL |         0.x()..="y".z() => (),
    |         ^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 0.x();
@@ -166,6 +165,7 @@ LL |         0..=1 => (),
 LL |
 LL ~         VAL..="y".z() => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 error: expected a pattern range bound, found an expression
   --> $DIR/recover-pat-ranges.rs:25:17
@@ -173,7 +173,6 @@ error: expected a pattern range bound, found an expression
 LL |         0.x()..="y".z() => (),
    |                 ^^^^^^^ not a pattern
    |
-   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = "y".z();
@@ -183,6 +182,7 @@ LL |         0..=1 => (),
 LL |
 LL ~         0.x()..=VAL => (),
    |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 
 warning: `...` range patterns are deprecated
   --> $DIR/recover-pat-ranges.rs:19:16

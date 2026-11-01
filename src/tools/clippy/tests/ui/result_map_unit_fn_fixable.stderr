@@ -4,13 +4,13 @@ error: called `map(f)` on a `Result` value where `f` is a function that returns 
 LL |     x.field.map(do_nothing);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::result-map-unit-fn` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::result_map_unit_fn)]`
 help: use `if let` instead
    |
 LL -     x.field.map(do_nothing);
 LL +     if let Ok(x_field) = x.field { do_nothing(x_field) }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::result_map_unit_fn)]`
+   = note: `-D clippy::result-map-unit-fn` implied by `-D warnings`
 
 error: called `map(f)` on a `Result` value where `f` is a function that returns the unit type `()`
   --> tests/ui/result_map_unit_fn_fixable.rs:35:5

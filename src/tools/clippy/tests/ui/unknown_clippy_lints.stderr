@@ -4,8 +4,8 @@ error: unknown lint: `clippy::All`
 LL | #![allow(clippy::All)]
    |          ^^^^^^^^^^^ help: did you mean: `clippy::all`
    |
-   = note: `-D unknown-lints` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(unknown_lints)]`
+   = note: `-D unknown-lints` implied by `-D warnings`
 
 error: unknown lint: `clippy::CMP_OWNED`
   --> tests/ui/unknown_clippy_lints.rs:5:9

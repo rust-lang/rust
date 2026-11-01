@@ -4,13 +4,13 @@ error[E0308]: mismatched types
 LL |     a().await
    |     ^^^^^^^^^ expected `Result<(), i32>`, found `()`
    |
-   = note:   expected enum `Result<(), i32>`
-           found unit type `()`
 help: try adding an expression at the end of the block
    |
 LL ~     a().await;
 LL ~     Ok(())
    |
+   = note:   expected enum `Result<(), i32>`
+           found unit type `()`
 
 error: aborting due to 1 previous error
 

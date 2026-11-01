@@ -4,13 +4,13 @@ error: redundant clone
 LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned());
    |                                                                ^^^^^^^^^^^ help: remove this
    |
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_clone)]`
 note: this value is dropped without further use
   --> tests/ui/unnecessary_to_owned.rs:215:20
    |
 LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned());
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::redundant-clone` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::redundant_clone)]`
 
 error: redundant clone
   --> tests/ui/unnecessary_to_owned.rs:217:40
@@ -66,8 +66,8 @@ error: unnecessary use of `into_owned`
 LL |     require_c_str(&Cow::from(c_str).into_owned());
    |                                    ^^^^^^^^^^^^^ help: remove this
    |
-   = note: `-D clippy::unnecessary-to-owned` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_to_owned)]`
+   = note: `-D clippy::unnecessary-to-owned` implied by `-D warnings`
 
 error: unnecessary use of `to_owned`
   --> tests/ui/unnecessary_to_owned.rs:65:19

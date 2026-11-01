@@ -4,8 +4,8 @@ error: replacing a value of type `T` with `T::default()`
 LL |     let _ = mem::replace(&mut refstr, "");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `core::mem::take` instead: `core::mem::take(&mut refstr)`
    |
-   = note: `-D clippy::mem-replace-with-default` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mem_replace_with_default)]`
+   = note: `-D clippy::mem-replace-with-default` implied by `-D warnings`
 
 error: replacing a value of type `T` with `T::default()`
   --> tests/ui/mem_replace_with_default_no_std.rs:16:13

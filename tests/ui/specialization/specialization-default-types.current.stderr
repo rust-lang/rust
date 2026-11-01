@@ -22,9 +22,9 @@ LL | fn trouble<T>(t: T) -> Box<T> {
 LL |     Example::generate(t)
    |     ^^^^^^^^^^^^^^^^^^^^ expected `Box<T>`, found associated type
    |
+   = help: consider constraining the associated type `<T as Example>::Output` to `Box<T>`
    = note:       expected struct `Box<T>`
            found associated type `<T as Example>::Output`
-   = help: consider constraining the associated type `<T as Example>::Output` to `Box<T>`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
    = note: the associated type `<T as Example>::Output` is defined as `Box<T>` in the implementation, but the where-bound `T` shadows this definition
            see issue #152409 <https://github.com/rust-lang/rust/issues/152409> for more information

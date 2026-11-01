@@ -4,8 +4,8 @@ error: use of `extend` instead of `append` for moving the full contents of a sec
 LL |     vec2.extend(vec1.drain(..));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec2.append(&mut vec1)`
    |
-   = note: `-D clippy::extend-with-drain` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::extend_with_drain)]`
+   = note: `-D clippy::extend-with-drain` implied by `-D warnings`
 
 error: use of `extend` instead of `append` for moving the full contents of a second `Vec`
   --> tests/ui/extend_with_drain.rs:32:5

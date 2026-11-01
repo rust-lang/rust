@@ -4,8 +4,8 @@ error: manual slice size calculation
 LL |     let _ = s_i32.len() * size_of::<i32>(); // WARNING
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::mem::size_of_val(s_i32)`
    |
-   = note: `-D clippy::manual-slice-size-calculation` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_slice_size_calculation)]`
+   = note: `-D clippy::manual-slice-size-calculation` implied by `-D warnings`
 
 error: manual slice size calculation
   --> tests/ui/manual_slice_size_calculation.rs:19:13

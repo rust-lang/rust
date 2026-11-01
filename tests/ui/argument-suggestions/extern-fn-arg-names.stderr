@@ -10,15 +10,15 @@ error[E0061]: this function takes 2 arguments but 1 argument was supplied
 LL |     dstfn(1);
    |     ^^^^^--- argument #2 is missing
    |
+help: provide the argument
+   |
+LL |     dstfn(1, /* dst */);
+   |            +++++++++++
 note: function defined here
   --> $DIR/extern-fn-arg-names.rs:2:8
    |
 LL |     fn dstfn(src: i32, dst: err);
    |        ^^^^^           ---
-help: provide the argument
-   |
-LL |     dstfn(1, /* dst */);
-   |            +++++++++++
 
 error: aborting due to 2 previous errors
 

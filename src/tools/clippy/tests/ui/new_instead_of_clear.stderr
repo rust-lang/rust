@@ -4,9 +4,9 @@ error: assigning a new empty collection
 LL |     v = Vec::new();
    |     ^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `v.clear()`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::new_instead_of_clear)]`
    = note: `.clear()` retains the allocated memory for reuse
    = note: `-D clippy::new-instead-of-clear` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::new_instead_of_clear)]`
 
 error: assigning a new empty collection
   --> tests/ui/new_instead_of_clear.rs:26:5

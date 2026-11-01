@@ -10,16 +10,16 @@ error[E0425]: cannot find type `K` in this scope
 LL | fn trait_member<T>(val: &T, key: &K) -> bool {
    |                                   ^ not found in this scope
    |
-note: similarly named type parameter `T` defined here
-  --> $DIR/sysroot-private.rs:34:17
-   |
-LL | fn trait_member<T>(val: &T, key: &K) -> bool {
-   |                 ^
 help: a type parameter with a similar name exists
    |
 LL - fn trait_member<T>(val: &T, key: &K) -> bool {
 LL + fn trait_member<T>(val: &T, key: &T) -> bool {
    |
+note: similarly named type parameter `T` defined here
+  --> $DIR/sysroot-private.rs:34:17
+   |
+LL | fn trait_member<T>(val: &T, key: &K) -> bool {
+   |                 ^
 help: you might be missing a type parameter
    |
 LL | fn trait_member<T, K>(val: &T, key: &K) -> bool {

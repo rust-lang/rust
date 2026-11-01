@@ -5,8 +5,8 @@ LL |     let pipe_in_wrong_position = Regex::new("|");
    |                                             ^^^
    |
    = help: the regex is unlikely to be useful as it is
-   = note: `-D clippy::trivial-regex` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::trivial_regex)]`
+   = note: `-D clippy::trivial-regex` implied by `-D warnings`
 
 error: trivial regex
   --> tests/ui/regex.rs:16:60
@@ -22,8 +22,8 @@ error: regex syntax error: invalid character class range, the start must be <= t
 LL |     let wrong_char_ranice = Regex::new("[z-a]");
    |                                          ^^^
    |
-   = note: `-D clippy::invalid-regex` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::invalid_regex)]`
+   = note: `-D clippy::invalid-regex` implied by `-D warnings`
 
 error: regex syntax error: invalid character class range, the start must be <= the end
   --> tests/ui/regex.rs:21:37
@@ -206,8 +206,8 @@ help: move the regex construction outside this loop
    |
 LL |     loop {
    |     ^^^^
-   = note: `-D clippy::regex-creation-in-loops` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::regex_creation_in_loops)]`
+   = note: `-D clippy::regex-creation-in-loops` implied by `-D warnings`
 
 error: compiling a regex in a loop
   --> tests/ui/regex.rs:128:21

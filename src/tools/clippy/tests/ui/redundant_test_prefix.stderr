@@ -4,8 +4,8 @@ error: redundant `test_` prefix in test function name
 LL | fn test_f3() {
    |    ^^^^^^^ help: consider removing the `test_` prefix: `f3`
    |
-   = note: `-D clippy::redundant-test-prefix` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::redundant_test_prefix)]`
+   = note: `-D clippy::redundant-test-prefix` implied by `-D warnings`
 
 error: redundant `test_` prefix in test function name
   --> tests/ui/redundant_test_prefix.rs:25:4

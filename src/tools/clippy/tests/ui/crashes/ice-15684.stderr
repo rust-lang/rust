@@ -9,8 +9,8 @@ help: consider removing the safety comment
    |
 LL |     // SAFETY: fail ONLY if `accept-comment-above-attribute = false`
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: `-D clippy::unnecessary-safety-comment` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_safety_comment)]`
+   = note: `-D clippy::unnecessary-safety-comment` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

@@ -22,12 +22,12 @@ error: an `fn` pointer type cannot be `const`
 LL |     fn f(const fn());
    |          ^^^^^ `const` because of this
    |
-   = note: allowed qualifiers are: `unsafe` and `extern`
 help: remove the `const` qualifier
    |
 LL -     fn f(const fn());
 LL +     fn f(fn());
    |
+   = note: allowed qualifiers are: `unsafe` and `extern`
 
 error: const trait bounds are not allowed in trait object types
   --> $DIR/const-keyword-in-anon-param-2015.rs:20:10

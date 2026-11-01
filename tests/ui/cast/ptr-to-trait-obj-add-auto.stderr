@@ -4,8 +4,8 @@ error[E0804]: cannot add auto trait `Send` to dyn bound via pointer cast
 LL |     x as _
    |     ^^^^^^ unsupported cast
    |
-   = note: this could allow UB elsewhere
    = help: use `transmute` if you're sure this is sound
+   = note: this could allow UB elsewhere
 
 error[E0804]: cannot add auto traits `Send`, `Sync`, and `Unpin` to dyn bound via pointer cast
   --> $DIR/ptr-to-trait-obj-add-auto.rs:13:5
@@ -13,8 +13,8 @@ error[E0804]: cannot add auto traits `Send`, `Sync`, and `Unpin` to dyn bound vi
 LL |     x as _
    |     ^^^^^^ unsupported cast
    |
-   = note: this could allow UB elsewhere
    = help: use `transmute` if you're sure this is sound
+   = note: this could allow UB elsewhere
 
 error: aborting due to 2 previous errors
 

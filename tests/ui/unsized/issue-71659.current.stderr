@@ -4,6 +4,7 @@ error[E0038]: the trait `Foo` is not dyn compatible
 LL |     let x: &dyn Foo = &[];
    |                 ^^^ `Foo` is not dyn compatible
    |
+   = help: only type `[i32; 0]` implements `Foo` within this crate; consider using it directly instead.
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $SRC_DIR/core/src/marker.rs:LL:COL
@@ -14,7 +15,6 @@ note: for a trait to be dyn compatible it needs to allow building a vtable
    |
 LL | pub trait Foo: CastTo<[i32]> {}
    |           --- this trait is not dyn compatible...
-   = help: only type `[i32; 0]` implements `Foo` within this crate; consider using it directly instead.
    = note: `Foo` may be implemented in other crates; if you want to support your users passing their own types here, you can't refer to a specific type
 
 error: aborting due to 1 previous error

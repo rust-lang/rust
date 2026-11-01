@@ -4,13 +4,13 @@ error: type parameter `T` goes unused in function definition
 LL | fn unused_ty<T>(x: u8) {
    |             ^^^
    |
-   = note: `-D clippy::extra-unused-type-parameters` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::extra_unused_type_parameters)]`
 help: consider removing the parameter
    |
 LL - fn unused_ty<T>(x: u8) {
 LL + fn unused_ty(x: u8) {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::extra_unused_type_parameters)]`
+   = note: `-D clippy::extra-unused-type-parameters` implied by `-D warnings`
 
 error: type parameters go unused in function definition: T, U
   --> tests/ui/extra_unused_type_parameters.rs:14:16

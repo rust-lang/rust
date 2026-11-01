@@ -10,9 +10,9 @@ LL |     // This should not hide `&Self`, which would cause this to compile.
 LL |     fn method(self: Pin<&Self>, f: &u32) -> &u32 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(Pin<&'1 Pin<P>>, &'2 u32) -> &'1 u32`
    |
+   = help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
    = note: expected signature `fn(Pin<&'1 Pin<P>>, &'a u32) -> &'a u32`
               found signature `fn(Pin<&'1 Pin<P>>, &'2 u32) -> &'1 u32`
-   = help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
    = help: verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
 
 error: lifetime may not live long enough

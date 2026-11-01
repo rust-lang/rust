@@ -4,13 +4,13 @@ error[E0659]: `env` is ambiguous
 LL |         let x = env!("PATH");
    |                 ^^^ ambiguous name
    |
+   = help: consider adding an explicit import of `env` to disambiguate
    = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
 note: `env` could refer to the macro imported here
   --> $DIR/glob-shadowing.rs:9:9
    |
 LL |     use crate::m::*;
    |         ^^^^^^^^^^^
-   = help: consider adding an explicit import of `env` to disambiguate
    = help: or use `self::env` to refer to this macro unambiguously
 note: `env` could also refer to a macro from prelude
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
@@ -21,13 +21,13 @@ error[E0659]: `env` is ambiguous
 LL |             let x = env!("PATH");
    |                     ^^^ ambiguous name
    |
+   = help: consider adding an explicit import of `env` to disambiguate
    = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
 note: `env` could refer to the macro imported here
   --> $DIR/glob-shadowing.rs:17:13
    |
 LL |         use crate::m::*;
    |             ^^^^^^^^^^^
-   = help: consider adding an explicit import of `env` to disambiguate
 note: `env` could also refer to a macro from prelude
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
 
@@ -37,19 +37,19 @@ error[E0659]: `fenv` is ambiguous
 LL |             let x = fenv!();
    |                     ^^^^ ambiguous name
    |
+   = help: consider adding an explicit import of `fenv` to disambiguate
    = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
 note: `fenv` could refer to the macro imported here
   --> $DIR/glob-shadowing.rs:27:13
    |
 LL |         use crate::m::*;
    |             ^^^^^^^^^^^
-   = help: consider adding an explicit import of `fenv` to disambiguate
+   = help: use `self::fenv` to refer to this macro unambiguously
 note: `fenv` could also refer to the macro defined here
   --> $DIR/glob-shadowing.rs:25:5
    |
 LL |     pub macro fenv($e: expr) { $e }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: use `self::fenv` to refer to this macro unambiguously
 
 error: aborting due to 3 previous errors
 

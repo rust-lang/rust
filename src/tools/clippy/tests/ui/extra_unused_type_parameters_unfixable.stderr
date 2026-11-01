@@ -5,8 +5,8 @@ LL | fn unused_where_clause<T, U>(x: U)
    |                        ^
    |
    = help: consider removing the parameter
-   = note: `-D clippy::extra-unused-type-parameters` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::extra_unused_type_parameters)]`
+   = note: `-D clippy::extra-unused-type-parameters` implied by `-D warnings`
 
 error: type parameters go unused in function definition: T, V
   --> tests/ui/extra_unused_type_parameters_unfixable.rs:13:30

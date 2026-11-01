@@ -8,11 +8,11 @@ help: consider making the bound lifetime-generic with a new `'db` lifetime
    |
 LL | pub type Tait = impl for<'db> Iterator<Item = (&'db LocalKey, impl Iterator)>;
    |                      ++++++++
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'db` here
    |
 LL | pub type Tait<'db> = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;
    |              +++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 
 error[E0425]: cannot find type `LocalKey` in this scope
   --> $DIR/nested-impl-trait-in-tait.rs:3:44

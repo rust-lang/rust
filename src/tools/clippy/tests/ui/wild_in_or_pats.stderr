@@ -5,8 +5,8 @@ LL |         "bar" | _ => {
    |         ^^^^^^^^^
    |
    = help: consider handling `_` separately
-   = note: `-D clippy::wildcard-in-or-patterns` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::wildcard_in_or_patterns)]`
+   = note: `-D clippy::wildcard-in-or-patterns` implied by `-D warnings`
 
 error: wildcard pattern covers any other pattern as it will match anyway
   --> tests/ui/wild_in_or_pats.rs:18:9

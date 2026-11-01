@@ -9,8 +9,6 @@ LL | |             if n > 1 { Some(ret) } else { None }
 LL | |         })
    | |__________^
    |
-   = note: `-D clippy::return-and-then` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::return_and_then)]`
 help: try
    |
 LL ~         let n = opt?;
@@ -19,6 +17,8 @@ LL +         let mut ret = n + 1;
 LL +         ret += n;
 LL +         if n > 1 { Some(ret) } else { None }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::return_and_then)]`
+   = note: `-D clippy::return-and-then` implied by `-D warnings`
 
 error: use the `?` operator instead of an `and_then` call
   --> tests/ui/return_and_then.rs:15:9

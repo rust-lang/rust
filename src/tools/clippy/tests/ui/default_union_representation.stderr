@@ -9,8 +9,8 @@ LL | | }
    | |_^
    |
    = help: consider annotating `NoAttribute` with `#[repr(C)]` to explicitly specify memory layout
-   = note: `-D clippy::default-union-representation` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::default_union_representation)]`
+   = note: `-D clippy::default-union-representation` implied by `-D warnings`
 
 error: this union has the default representation
   --> tests/ui/default_union_representation.rs:18:1

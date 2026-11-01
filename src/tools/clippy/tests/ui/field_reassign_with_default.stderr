@@ -4,13 +4,13 @@ error: field assignment outside of initializer for an instance created with Defa
 LL |     a.i = 42;
    |     ^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::field_reassign_with_default)]`
 note: consider initializing the variable with `main::A { i: 42, ..Default::default() }` and removing relevant reassignments
   --> tests/ui/field_reassign_with_default.rs:56:5
    |
 LL |     let mut a: A = Default::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::field-reassign-with-default` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::field_reassign_with_default)]`
 
 error: field assignment outside of initializer for an instance created with Default::default()
   --> tests/ui/field_reassign_with_default.rs:98:5

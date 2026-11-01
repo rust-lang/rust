@@ -4,18 +4,18 @@ error[E0034]: multiple applicable items in scope
 LL |     assert_eq!(().hello(), "B");
    |                   ^^^^^ multiple `hello` found
    |
-   = note: candidate #1 is defined in an impl of the trait `shadowed_stability::A` for the type `T`
 help: disambiguate the method for candidate #1
    |
 LL -     assert_eq!(().hello(), "B");
 LL +     assert_eq!(shadowed_stability::A::hello(&()), "B");
    |
-   = note: candidate #2 is defined in an impl of the trait `shadowed_stability::B` for the type `T`
+   = note: candidate #1 is defined in an impl of the trait `shadowed_stability::A` for the type `T`
 help: disambiguate the method for candidate #2
    |
 LL -     assert_eq!(().hello(), "B");
 LL +     assert_eq!(shadowed_stability::B::hello(&()), "B");
    |
+   = note: candidate #2 is defined in an impl of the trait `shadowed_stability::B` for the type `T`
 
 error: aborting due to 1 previous error
 

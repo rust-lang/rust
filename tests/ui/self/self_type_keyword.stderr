@@ -22,12 +22,12 @@ error: `mut` must be followed by a named binding
 LL |         mut Self => (),
    |         ^^^^
    |
-   = note: `mut` may be followed by `variable` and `variable @ pattern`
 help: remove the `mut` prefix
    |
 LL -         mut Self => (),
 LL +         Self => (),
    |
+   = note: `mut` may be followed by `variable` and `variable @ pattern`
 
 error: expected identifier, found keyword `Self`
   --> $DIR/self_type_keyword.rs:20:17

@@ -23,13 +23,13 @@ LL |     fn iter(&self) -> impl '_ + Iterator<Item = Self::Item<'_>>;
 LL |     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {
    |                            ^^ this bound is stronger than that defined on the trait
    |
-   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
-   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 help: replace the return type so that it matches the trait
    |
 LL -     fn iter(&self) -> impl 'a + Iterator<Item = I::Item<'a>> {
 LL +     fn iter(&self) -> impl std::iter::Iterator<Item = <Self as Iterable>::Item<'_>> + '_ {
    |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
    = note: `#[warn(refining_impl_trait_reachable)]` (part of `#[warn(refining_impl_trait)]`) on by default
 
 error: aborting due to 1 previous error; 1 warning emitted

@@ -4,8 +4,8 @@ error: checking if a string is ascii using iterators
 LL |     "foo".chars().all(|c| c.is_ascii());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"foo".is_ascii()`
    |
-   = note: `-D clippy::needless-character-iteration` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_character_iteration)]`
+   = note: `-D clippy::needless-character-iteration` implied by `-D warnings`
 
 error: checking if a string is ascii using iterators
   --> tests/ui/needless_character_iteration.rs:22:5

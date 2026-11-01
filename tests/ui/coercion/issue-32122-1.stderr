@@ -6,12 +6,12 @@ LL |     let _: *const u8 = &a;
    |            |
    |            expected due to this
    |
-   = note: expected raw pointer `*const u8`
-                found reference `&Foo`
 help: consider dereferencing
    |
 LL |     let _: *const u8 = &*a;
    |                         +
+   = note: expected raw pointer `*const u8`
+                found reference `&Foo`
 
 error: aborting due to 1 previous error
 

@@ -6,12 +6,12 @@ LL |         qux(x.func())
    |         |
    |         arguments to this function are incorrect
    |
-   = note:         expected type `usize`
-           found associated type `<impl Trait as Trait>::A`
 help: consider constraining the associated type `<impl Trait as Trait>::A` to `usize`
    |
 LL |     fn foo<'a, T: Trait + 'a>(&self, _: impl Trait, x: impl Trait<A = usize>, _: T) {
    |                                                                  +++++++++++
+   = note:         expected type `usize`
+           found associated type `<impl Trait as Trait>::A`
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |
@@ -26,12 +26,12 @@ LL |         qux(x.func())
    |         |
    |         arguments to this function are incorrect
    |
-   = note:         expected type `usize`
-           found associated type `<T as Trait>::A`
 help: consider constraining the associated type `<T as Trait>::A` to `usize`
    |
 LL |     fn ban<T>(x: T) where T: Trait<A = usize> {
    |                                   +++++++++++
+   = note:         expected type `usize`
+           found associated type `<T as Trait>::A`
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |
@@ -46,12 +46,12 @@ LL |     qux(x.func())
    |     |
    |     arguments to this function are incorrect
    |
-   = note:         expected type `usize`
-           found associated type `<impl Trait as Trait>::A`
 help: consider constraining the associated type `<impl Trait as Trait>::A` to `usize`
    |
 LL | fn foo<'a, T: Trait + 'a>(_: impl Trait, x: impl Trait<A = usize>, _: T) {
    |                                                       +++++++++++
+   = note:         expected type `usize`
+           found associated type `<impl Trait as Trait>::A`
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |
@@ -66,12 +66,12 @@ LL |     qux(x.func())
    |     |
    |     arguments to this function are incorrect
    |
-   = note:         expected type `usize`
-           found associated type `<T as Trait>::A`
 help: consider constraining the associated type `<T as Trait>::A` to `usize`
    |
 LL | fn bar<T: Trait<A = usize>>(x: T) {
    |                +++++++++++
+   = note:         expected type `usize`
+           found associated type `<T as Trait>::A`
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |
@@ -86,12 +86,12 @@ LL |     qux(x.func())
    |     |
    |     arguments to this function are incorrect
    |
-   = note:         expected type `usize`
-           found associated type `<impl Trait<i32> as Trait<i32>>::A`
 help: consider constraining the associated type `<impl Trait<i32> as Trait<i32>>::A` to `usize`
    |
 LL | fn foo2(x: impl Trait<i32, A = usize>) {
    |                          +++++++++++
+   = note:         expected type `usize`
+           found associated type `<impl Trait<i32> as Trait<i32>>::A`
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |
@@ -106,12 +106,12 @@ LL |     qux(x.func())
    |     |
    |     arguments to this function are incorrect
    |
-   = note:         expected type `usize`
-           found associated type `<T as Trait<i32>>::A`
 help: consider constraining the associated type `<T as Trait<i32>>::A` to `usize`
    |
 LL | fn bar2<T: Trait<i32, A = usize>>(x: T) {
    |                     +++++++++++
+   = note:         expected type `usize`
+           found associated type `<T as Trait<i32>>::A`
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |
@@ -126,12 +126,12 @@ LL |     qux(x.func())
    |     |
    |     arguments to this function are incorrect
    |
-   = note:         expected type `usize`
-           found associated type `<T as Trait>::A`
 help: consider constraining the associated type `<T as Trait>::A` to `usize`
    |
 LL | fn ban<T>(x: T) where T: Trait<A = usize> {
    |                               +++++++++++
+   = note:         expected type `usize`
+           found associated type `<T as Trait>::A`
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |

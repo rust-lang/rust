@@ -6,8 +6,8 @@ LL | #[must_use]
 LL | pub fn must_use_default() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::must-use-unit` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::must_use_unit)]`
+   = note: `-D clippy::must-use-unit` implied by `-D warnings`
 
 error: this unit-returning function has a `#[must_use]` attribute
   --> tests/ui/must_use_unit.rs:14:1

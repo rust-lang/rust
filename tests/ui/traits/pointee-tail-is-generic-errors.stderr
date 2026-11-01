@@ -4,9 +4,9 @@ error[E0271]: type mismatch resolving `<T as Pointee>::Metadata == ()`
 LL |     is_thin::<T>();
    |               ^ expected `()`, found associated type
    |
+   = help: consider constraining the associated type `<T as Pointee>::Metadata` to `()`
    = note:    expected unit type `()`
            found associated type `<T as Pointee>::Metadata`
-   = help: consider constraining the associated type `<T as Pointee>::Metadata` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `is_thin`
   --> $DIR/pointee-tail-is-generic-errors.rs:21:33
@@ -23,12 +23,12 @@ LL | type Opaque = impl std::fmt::Debug + ?Sized;
 LL |     is_thin::<Opaque>();
    |               ^^^^^^ expected `()`, found associated type
    |
-   = note:    expected unit type `()`
-           found associated type `<Opaque as Pointee>::Metadata`
 help: consider constraining the associated type `<Opaque as Pointee>::Metadata` to `()`
    |
 LL | type Opaque = impl std::fmt::Debug<Metadata = ()> + ?Sized;
    |                                   +++++++++++++++
+   = note:    expected unit type `()`
+           found associated type `<Opaque as Pointee>::Metadata`
 note: required by a bound in `is_thin`
   --> $DIR/pointee-tail-is-generic-errors.rs:21:33
    |

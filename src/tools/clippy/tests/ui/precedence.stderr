@@ -4,8 +4,8 @@ error: operator precedence might not be obvious
 LL |     1 << 2 + 3;
    |     ^^^^^^^^^^ help: consider parenthesizing your expression: `1 << (2 + 3)`
    |
-   = note: `-D clippy::precedence` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::precedence)]`
+   = note: `-D clippy::precedence` implied by `-D warnings`
 
 error: operator precedence might not be obvious
   --> tests/ui/precedence.rs:16:5

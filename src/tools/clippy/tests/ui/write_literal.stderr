@@ -4,13 +4,13 @@ error: literal with an empty format string
 LL |     write!(v, "Hello {}", "world");
    |                           ^^^^^^^
    |
-   = note: `-D clippy::write-literal` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::write_literal)]`
 help: try
    |
 LL -     write!(v, "Hello {}", "world");
 LL +     write!(v, "Hello world");
    |
+   = help: to override `-D warnings` add `#[allow(clippy::write_literal)]`
+   = note: `-D clippy::write-literal` implied by `-D warnings`
 
 error: literal with an empty format string
   --> tests/ui/write_literal.rs:34:39

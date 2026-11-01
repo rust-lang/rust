@@ -6,13 +6,13 @@ LL | #[doc = "provided by a [`BufferProvider`](crate::BufferProvider)."]
    |                         |
    |                         because label contains path that resolves to same destination
    |
-   = note: when a link's destination is not specified,
-           the label is used to resolve intra-doc links
 help: remove explicit link target
    |
 LL - #[doc = "provided by a [`BufferProvider`](crate::BufferProvider)."]
 LL + #[doc = "provided by a [`BufferProvider`]."]
    |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
 note: the lint level is defined here
   --> $DIR/redundant_explicit_links-expansion.rs:4:9
    |
@@ -27,13 +27,13 @@ LL | /// a [`BufferProvider`](crate::BufferProvider).
    |        |
    |        because label contains path that resolves to same destination
    |
-   = note: when a link's destination is not specified,
-           the label is used to resolve intra-doc links
 help: remove explicit link target
    |
 LL - /// a [`BufferProvider`](crate::BufferProvider).
 LL + /// a [`BufferProvider`].
    |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
 
 error: aborting due to 2 previous errors
 

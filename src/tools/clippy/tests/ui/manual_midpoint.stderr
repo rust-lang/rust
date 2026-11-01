@@ -4,8 +4,8 @@ error: manual implementation of `midpoint` which can overflow
 LL |     let _ = (a + 5) / 2;
    |             ^^^^^^^^^^^ help: use `u32::midpoint` instead: `u32::midpoint(a, 5)`
    |
-   = note: `-D clippy::manual-midpoint` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_midpoint)]`
+   = note: `-D clippy::manual-midpoint` implied by `-D warnings`
 
 error: manual implementation of `midpoint` which can overflow
   --> tests/ui/manual_midpoint.rs:31:13

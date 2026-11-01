@@ -4,16 +4,16 @@ error[E0425]: cannot find value `foo` in this scope
 LL |     println!("{foo:X}");
    |                ^^^ not found in this scope
    |
-note: similarly named constant `FOO` defined here
-  --> $DIR/format-args-capture-issue-94010.rs:2:5
-   |
-LL |     const FOO: i32 = 123;
-   |     ^^^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists (notice the capitalization)
    |
 LL -     println!("{foo:X}");
 LL +     println!("{FOO:X}");
    |
+note: similarly named constant `FOO` defined here
+  --> $DIR/format-args-capture-issue-94010.rs:2:5
+   |
+LL |     const FOO: i32 = 123;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find value `foo` in this scope
   --> $DIR/format-args-capture-issue-94010.rs:5:18
@@ -21,16 +21,16 @@ error[E0425]: cannot find value `foo` in this scope
 LL |     println!("{:.foo$}", 0);
    |                  ^^^ not found in this scope
    |
-note: similarly named constant `FOO` defined here
-  --> $DIR/format-args-capture-issue-94010.rs:2:5
-   |
-LL |     const FOO: i32 = 123;
-   |     ^^^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists (notice the capitalization)
    |
 LL -     println!("{:.foo$}", 0);
 LL +     println!("{:.FOO$}", 0);
    |
+note: similarly named constant `FOO` defined here
+  --> $DIR/format-args-capture-issue-94010.rs:2:5
+   |
+LL |     const FOO: i32 = 123;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

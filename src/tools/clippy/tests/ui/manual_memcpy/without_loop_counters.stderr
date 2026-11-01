@@ -8,8 +8,8 @@ LL | |         dst[i] = src[i];
 LL | |     }
    | |_____^ help: try replacing the loop by: `dst[..src.len()].copy_from_slice(&src[..]);`
    |
-   = note: `-D clippy::manual-memcpy` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_memcpy)]`
+   = note: `-D clippy::manual-memcpy` implied by `-D warnings`
 
 error: it looks like you're manually copying between slices
   --> tests/ui/manual_memcpy/without_loop_counters.rs:16:5

@@ -11,8 +11,8 @@ LL | |         false;
 LL | |     } {}
    | |_____^
    |
-   = note: `-D clippy::unit-cmp` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unit_cmp)]`
+   = note: `-D clippy::unit-cmp` implied by `-D warnings`
 
 error: >-comparison of unit values detected. This will always be false
   --> tests/ui/unit_cmp.rs:20:8

@@ -41,12 +41,12 @@ LL |     let _a = cfg!(unsafe(foo));
    |                   |
    |                   valid arguments are `any`, `all`, `not` or `target`
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: must be of the form
    |
 LL -     let _a = cfg!(unsafe(foo));
 LL +     let _a = cfg!(predicate);
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 
 error: `ignore` is not an unsafe attribute
   --> $DIR/extraneous-unsafe-attributes.rs:12:3

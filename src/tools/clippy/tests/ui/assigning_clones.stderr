@@ -4,8 +4,8 @@ error: assigning the result of `Clone::clone()` may be inefficient
 LL |     *mut_thing = value_thing.clone();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `clone_from()`: `mut_thing.clone_from(&value_thing)`
    |
-   = note: `-D clippy::assigning-clones` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::assigning_clones)]`
+   = note: `-D clippy::assigning-clones` implied by `-D warnings`
 
 error: assigning the result of `Clone::clone()` may be inefficient
   --> tests/ui/assigning_clones.rs:26:5

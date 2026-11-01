@@ -10,8 +10,8 @@ LL | |         c()
 LL | |     }
    | |_____^ help: consider rewriting the `if` chain with `match`: `match x.cmp(&y) {...}`
    |
-   = note: `-D clippy::comparison-chain` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::comparison_chain)]`
+   = note: `-D clippy::comparison-chain` implied by `-D warnings`
 
 error: `if` chain can be rewritten with `match`
   --> tests/ui/comparison_chain.rs:38:5

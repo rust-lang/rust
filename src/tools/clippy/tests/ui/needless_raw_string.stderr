@@ -4,13 +4,13 @@ error: unnecessary raw string literal
 LL |     r#"aaa"#;
    |     ^^^^^^^^
    |
-   = note: `-D clippy::needless-raw-strings` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_raw_strings)]`
 help: use a plain string literal instead
    |
 LL -     r#"aaa"#;
 LL +     "aaa";
    |
+   = help: to override `-D warnings` add `#[allow(clippy::needless_raw_strings)]`
+   = note: `-D clippy::needless-raw-strings` implied by `-D warnings`
 
 error: unnecessary raw string literal
   --> tests/ui/needless_raw_string.rs:9:5

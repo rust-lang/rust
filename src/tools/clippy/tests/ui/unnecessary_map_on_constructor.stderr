@@ -4,8 +4,8 @@ error: unnecessary `map` on constructor `Some(_)`
 LL |     let a = Some(x).map(fun);
    |             ^^^^^^^^^^^^^^^^ help: try: `Some(fun(x))`
    |
-   = note: `-D clippy::unnecessary-map-on-constructor` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_on_constructor)]`
+   = note: `-D clippy::unnecessary-map-on-constructor` implied by `-D warnings`
 
 error: unnecessary `map` on constructor `Ok(_)`
   --> tests/ui/unnecessary_map_on_constructor.rs:33:27

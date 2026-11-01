@@ -9,8 +9,8 @@ LL | |             return Some(v);
 LL | |     None
    | |________^ help: replace with an iterator: `ARRAY.iter().find(|&&v| v == n).copied()`
    |
-   = note: `-D clippy::manual-find` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_find)]`
+   = note: `-D clippy::manual-find` implied by `-D warnings`
 
 error: manual implementation of `Iterator::find`
   --> tests/ui/manual_find_fixable.rs:19:5

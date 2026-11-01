@@ -4,8 +4,8 @@ error: borrow as raw pointer
 LL |     let _p = &val as *const i32;
    |              ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::addr_of!(val)`
    |
-   = note: `-D clippy::borrow-as-ptr` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::borrow_as_ptr)]`
+   = note: `-D clippy::borrow-as-ptr` implied by `-D warnings`
 
 error: borrow as raw pointer
   --> tests/ui/borrow_as_ptr.rs:22:18

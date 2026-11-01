@@ -6,12 +6,12 @@ LL | static STR: &'static [u8] = "a b";
    |             |
    |             expected because of the type of the static
    |
-   = note: expected reference `&'static [u8]`
-              found reference `&'static str`
 help: consider adding a leading `b`
    |
 LL | static STR: &'static [u8] = b"a b";
    |                             +
+   = note: expected reference `&'static [u8]`
+              found reference `&'static str`
 
 error: aborting due to 1 previous error
 

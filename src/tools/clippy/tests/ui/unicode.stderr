@@ -4,8 +4,8 @@ error: invisible character detected
 LL |     print!("Here >​< is a ZWS, and ​another");
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing the string with: `"Here >\u{200B}< is a ZWS, and \u{200B}another"`
    |
-   = note: `-D clippy::invisible-characters` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::invisible_characters)]`
+   = note: `-D clippy::invisible-characters` implied by `-D warnings`
 
 error: invisible character detected
   --> tests/ui/unicode.rs:7:12
@@ -25,8 +25,8 @@ error: non-NFC Unicode sequence detected
 LL |     print!("̀àh?");
    |            ^^^^^ help: consider replacing the string with: `"̀àh?"`
    |
-   = note: `-D clippy::unicode-not-nfc` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unicode_not_nfc)]`
+   = note: `-D clippy::unicode-not-nfc` implied by `-D warnings`
 
 error: literal non-ASCII character detected
   --> tests/ui/unicode.rs:27:16
@@ -34,8 +34,8 @@ error: literal non-ASCII character detected
 LL |         print!("Üben!");
    |                ^^^^^^^ help: consider replacing the string with: `"\u{dc}ben!"`
    |
-   = note: `-D clippy::non-ascii-literal` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::non_ascii_literal)]`
+   = note: `-D clippy::non-ascii-literal` implied by `-D warnings`
 
 error: literal non-ASCII character detected
   --> tests/ui/unicode.rs:34:36

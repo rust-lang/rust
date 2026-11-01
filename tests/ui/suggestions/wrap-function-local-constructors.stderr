@@ -24,12 +24,12 @@ LL |     _ = Bar(false);
    |         |
    |         arguments to this struct are incorrect
    |
-   = note: expected enum `LocalResult<bool>`
-              found type `bool`
 help: try wrapping the expression in `LocalResult::Ok`
    |
 LL |     _ = Bar(LocalResult::Ok(false));
    |             ++++++++++++++++     +
+   = note: expected enum `LocalResult<bool>`
+              found type `bool`
 note: tuple struct defined here
   --> $DIR/wrap-function-local-constructors.rs:23:12
    |

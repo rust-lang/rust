@@ -22,8 +22,8 @@ warning: found module declaration for lib.rs
 LL | mod lib;
    | ^^^^^^^^
    |
-   = note: lib.rs is the root of this crate's library target
    = help: to refer to it from other targets, use the library's name as the path
+   = note: lib.rs is the root of this crate's library target
    = note: `#[warn(special_module_name)]` on by default
 
 warning: found module declaration for main.rs

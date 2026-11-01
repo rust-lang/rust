@@ -6,10 +6,10 @@ LL |     let mut x = |c| c + 1;
 LL |     x = |c| c + 1;
    |         ^^^^^^^^^ expected closure, found a different closure
    |
+   = help: consider boxing your closure and/or using it as a trait object
    = note: expected closure `{closure@$DIR/unique-closure-type-mismatch.rs:4:17: 4:20}`
               found closure `{closure@$DIR/unique-closure-type-mismatch.rs:5:9: 5:12}`
    = note: no two closures, even if identical, have the same type
-   = help: consider boxing your closure and/or using it as a trait object
 
 error[E0284]: type annotations needed
   --> $DIR/unique-closure-type-mismatch.rs:11:15

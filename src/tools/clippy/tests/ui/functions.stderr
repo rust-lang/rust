@@ -4,8 +4,8 @@ error: this function has too many arguments (8/7)
 LL | fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::too-many-arguments` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::too_many_arguments)]`
+   = note: `-D clippy::too-many-arguments` implied by `-D warnings`
 
 error: this function has too many arguments (8/7)
   --> tests/ui/functions.rs:10:1

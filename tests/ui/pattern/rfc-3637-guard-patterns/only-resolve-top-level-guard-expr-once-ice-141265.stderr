@@ -27,10 +27,10 @@ error[E0658]: guard patterns are experimental
 LL |     else if b 0 {}
    |             ^
    |
-   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
    = help: consider using match arm guards
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0277]: `{integer}` is not an iterator
   --> $DIR/only-resolve-top-level-guard-expr-once-ice-141265.rs:6:15

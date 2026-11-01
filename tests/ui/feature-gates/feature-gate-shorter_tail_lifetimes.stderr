@@ -14,12 +14,12 @@ LL | }
    | `c` dropped here while still borrowed
    | ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `Ref<'_, &str>`
    |
-   = note: the temporary is part of an expression at the end of a block;
-           consider forcing this temporary to be dropped sooner, before the block's local variables are dropped
 help: for example, you could save the expression's value in a new local variable `x` and then make `x` be the expression at the end of the block
    |
 LL |     let x = c.borrow().len(); x
    |     +++++++                 +++
+   = note: the temporary is part of an expression at the end of a block;
+           consider forcing this temporary to be dropped sooner, before the block's local variables are dropped
 
 error: aborting due to 1 previous error
 

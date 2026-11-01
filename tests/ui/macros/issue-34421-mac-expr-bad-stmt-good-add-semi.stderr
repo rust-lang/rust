@@ -9,11 +9,11 @@ LL |         struct $a;
 LL |     make_item!(A)
    |     ------------- in this macro invocation
    |
-   = note: the macro call doesn't expand to an expression, but it can expand to a statement
 help: add `;` to interpret the expansion as a statement
    |
 LL |     make_item!(A);
    |                  +
+   = note: the macro call doesn't expand to an expression, but it can expand to a statement
 
 error: expected expression, found keyword `struct`
   --> $DIR/issue-34421-mac-expr-bad-stmt-good-add-semi.rs:3:9
@@ -26,11 +26,11 @@ LL |         struct $a;
 LL |     make_item!(B)
    |     ------------- in this macro invocation
    |
-   = note: the macro call doesn't expand to an expression, but it can expand to a statement
 help: add `;` to interpret the expansion as a statement
    |
 LL |     make_item!(B);
    |                  +
+   = note: the macro call doesn't expand to an expression, but it can expand to a statement
 
 error: aborting due to 2 previous errors
 

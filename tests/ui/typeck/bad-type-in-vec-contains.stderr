@@ -6,12 +6,12 @@ LL |     primes.contains(3);
    |            |
    |            arguments to this method are incorrect
    |
-   = note: expected reference `&_`
-                   found type `{integer}`
 help: consider borrowing here
    |
 LL |     primes.contains(&3);
    |                     +
+   = note: expected reference `&_`
+                   found type `{integer}`
 note: method defined here
   --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
 

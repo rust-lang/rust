@@ -9,12 +9,12 @@ LL |     map(Sexpr::Ident);
    |     |
    |     required by a bound introduced by this call
    |
-   = note: expected function signature `for<'a> fn(&'a _) -> _`
-              found function signature `fn(&mut _) -> _`
 help: consider wrapping the function in a closure
    |
 LL |     map(|arg0| Sexpr::Ident(&mut *arg0));
    |         ++++++             ++++++++++++
+   = note: expected function signature `for<'a> fn(&'a _) -> _`
+              found function signature `fn(&mut _) -> _`
 note: required by a bound in `map`
   --> $DIR/issue-118510.rs:5:19
    |

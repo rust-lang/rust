@@ -7,9 +7,9 @@ LL | fn foo<T>(x: <(*const T,) as Id>::This) -> (*const T,)
 LL |     x
    |     ^ expected `(*const T,)`, found associated type
    |
+   = help: consider constraining the associated type `<(*const T,) as Id>::This` to `(*const T,)`
    = note:        expected tuple `(*const T,)`
            found associated type `<(*const T,) as Id>::This`
-   = help: consider constraining the associated type `<(*const T,) as Id>::This` to `(*const T,)`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
    = note: the associated type `<(*const T,) as Id>::This` is defined as `(*const T,)` in the implementation, but the where-bound `(*const T,)` shadows this definition
            see issue #152409 <https://github.com/rust-lang/rust/issues/152409> for more information

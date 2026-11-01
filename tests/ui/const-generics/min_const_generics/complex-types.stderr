@@ -4,11 +4,11 @@ error: `[u8; 0]` is forbidden as the type of a const generic parameter
 LL | struct Foo<const N: [u8; 0]>;
    |                     ^^^^^^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `()` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:4:21
@@ -16,11 +16,11 @@ error: `()` is forbidden as the type of a const generic parameter
 LL | struct Bar<const N: ()>;
    |                     ^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `No` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:9:21
@@ -28,11 +28,11 @@ error: `No` is forbidden as the type of a const generic parameter
 LL | struct Fez<const N: No>;
    |                     ^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `&'static u8` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:12:21
@@ -40,11 +40,11 @@ error: `&'static u8` is forbidden as the type of a const generic parameter
 LL | struct Faz<const N: &'static u8>;
    |                     ^^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
    |
 LL + #![feature(unsized_const_params)]
@@ -64,11 +64,11 @@ error: `()` is forbidden as the type of a const generic parameter
 LL | enum Goo<const N: ()> { A, B }
    |                   ^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: `()` is forbidden as the type of a const generic parameter
   --> $DIR/complex-types.rs:21:20
@@ -76,11 +76,11 @@ error: `()` is forbidden as the type of a const generic parameter
 LL | union Boo<const N: ()> { a: () }
    |                    ^^
    |
-   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(min_adt_const_params)]
    |
+   = note: the only supported types are integers, `bool`, and `char`
 
 error: aborting due to 7 previous errors
 

@@ -8,12 +8,12 @@ LL | fn foo<T: Trait>(x: T) -> T::Assoc {
 LL |     x
    |     ^ expected associated type, found type parameter `T`
    |
-   = note: expected associated type `<T as Trait>::Assoc`
-               found type parameter `T`
 help: consider further restricting this bound
    |
 LL | fn foo<T: Trait<Assoc = T>>(x: T) -> T::Assoc {
    |                +++++++++++
+   = note: expected associated type `<T as Trait>::Assoc`
+               found type parameter `T`
    = note: the associated type `<T as Trait>::Assoc` is defined as `T` in the implementation, but the where-bound `T` shadows this definition
            see issue #152409 <https://github.com/rust-lang/rust/issues/152409> for more information
 

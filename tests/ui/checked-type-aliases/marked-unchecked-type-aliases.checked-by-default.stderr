@@ -4,12 +4,12 @@ warning: bounds on generic parameters in unchecked type aliases are not enforced
 LL | type Alias0<T: Copy> = T;
    |                ^^^^ will not be checked at usage sites of the type alias
    |
-   = note: `#[warn(type_alias_bounds)]` on by default
 help: remove this bound
    |
 LL - type Alias0<T: Copy> = T;
 LL + type Alias0<T> = T;
    |
+   = note: `#[warn(type_alias_bounds)]` on by default
 
 warning: 1 warning emitted
 

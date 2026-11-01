@@ -15,12 +15,12 @@ LL | fn add<A: Add<B, Output=()>, B>(lhs: A, rhs: B) {
    |        ^ consider constraining this type parameter with `Clone`
 LL |     lhs + rhs;
    |     --- you could clone this value
-note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: consider further restricting type parameter `A` with trait `Copy`
    |
 LL | fn add<A: Add<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:9:10
@@ -62,12 +62,12 @@ LL | fn sub<A: Sub<B, Output=()>, B>(lhs: A, rhs: B) {
    |        ^ consider constraining this type parameter with `Clone`
 LL |     lhs - rhs;
    |     --- you could clone this value
-note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: consider further restricting type parameter `A` with trait `Copy`
    |
 LL | fn sub<A: Sub<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:15:10
@@ -109,12 +109,12 @@ LL | fn mul<A: Mul<B, Output=()>, B>(lhs: A, rhs: B) {
    |        ^ consider constraining this type parameter with `Clone`
 LL |     lhs * rhs;
    |     --- you could clone this value
-note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: consider further restricting type parameter `A` with trait `Copy`
    |
 LL | fn mul<A: Mul<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:21:10
@@ -156,12 +156,12 @@ LL | fn div<A: Div<B, Output=()>, B>(lhs: A, rhs: B) {
    |        ^ consider constraining this type parameter with `Clone`
 LL |     lhs / rhs;
    |     --- you could clone this value
-note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: consider further restricting type parameter `A` with trait `Copy`
    |
 LL | fn div<A: Div<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:27:10
@@ -203,12 +203,12 @@ LL | fn rem<A: Rem<B, Output=()>, B>(lhs: A, rhs: B) {
    |        ^ consider constraining this type parameter with `Clone`
 LL |     lhs % rhs;
    |     --- you could clone this value
-note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: consider further restricting type parameter `A` with trait `Copy`
    |
 LL | fn rem<A: Rem<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:33:10
@@ -250,12 +250,12 @@ LL | fn bitand<A: BitAnd<B, Output=()>, B>(lhs: A, rhs: B) {
    |           ^ consider constraining this type parameter with `Clone`
 LL |     lhs & rhs;
    |     --- you could clone this value
-note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 help: consider further restricting type parameter `A` with trait `Copy`
    |
 LL | fn bitand<A: BitAnd<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                                   ++++++
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:39:10
@@ -297,12 +297,12 @@ LL | fn bitor<A: BitOr<B, Output=()>, B>(lhs: A, rhs: B) {
    |          ^ consider constraining this type parameter with `Clone`
 LL |     lhs | rhs;
    |     --- you could clone this value
-note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 help: consider further restricting type parameter `A` with trait `Copy`
    |
 LL | fn bitor<A: BitOr<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                                 ++++++
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:45:10
@@ -344,12 +344,12 @@ LL | fn bitxor<A: BitXor<B, Output=()>, B>(lhs: A, rhs: B) {
    |           ^ consider constraining this type parameter with `Clone`
 LL |     lhs ^ rhs;
    |     --- you could clone this value
-note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 help: consider further restricting type parameter `A` with trait `Copy`
    |
 LL | fn bitxor<A: BitXor<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                                   ++++++
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:51:10
@@ -391,12 +391,12 @@ LL | fn shl<A: Shl<B, Output=()>, B>(lhs: A, rhs: B) {
    |        ^ consider constraining this type parameter with `Clone`
 LL |     lhs << rhs;
    |     --- you could clone this value
-note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 help: consider further restricting type parameter `A` with trait `Copy`
    |
 LL | fn shl<A: Shl<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:57:10
@@ -438,12 +438,12 @@ LL | fn shr<A: Shr<B, Output=()>, B>(lhs: A, rhs: B) {
    |        ^ consider constraining this type parameter with `Clone`
 LL |     lhs >> rhs;
    |     --- you could clone this value
-note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 help: consider further restricting type parameter `A` with trait `Copy`
    |
 LL | fn shr<A: Shr<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
    |                             ++++++
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:63:10

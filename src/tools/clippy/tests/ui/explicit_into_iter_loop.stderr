@@ -4,8 +4,8 @@ error: it is more concise to loop over containers instead of using explicit iter
 LL |         for _ in iterator.into_iter() {}
    |                  ^^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `iterator`
    |
-   = note: `-D clippy::explicit-into-iter-loop` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::explicit_into_iter_loop)]`
+   = note: `-D clippy::explicit-into-iter-loop` implied by `-D warnings`
 
 error: it is more concise to loop over containers instead of using explicit iteration methods
   --> tests/ui/explicit_into_iter_loop.rs:23:14

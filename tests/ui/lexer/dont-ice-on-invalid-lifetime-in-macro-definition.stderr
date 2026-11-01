@@ -4,11 +4,11 @@ error: prefix `f` is unknown
 LL |             e::<f'g>
    |                 ^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
 LL |             e::<f 'g>
    |                  +
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error: aborting due to 1 previous error
 

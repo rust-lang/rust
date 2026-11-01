@@ -7,6 +7,7 @@ LL | struct B;
 LL |     B.request();
    |       ^^^^^^^ my label
    |
+   = help: items from traits can only be used if the trait is implemented and in scope
 note: trait bound `B: ProviderLt` was not satisfied
   --> $DIR/custom-on-unimplemented-diagnostic.rs:14:18
    |
@@ -20,7 +21,6 @@ note: the trait `ProviderLt` must be implemented
    |
 LL | pub trait ProviderLt {}
    | ^^^^^^^^^^^^^^^^^^^^
-   = help: items from traits can only be used if the trait is implemented and in scope
 note: `ProviderExt` defines an item `request`, perhaps you need to implement it
   --> $DIR/custom-on-unimplemented-diagnostic.rs:8:1
    |

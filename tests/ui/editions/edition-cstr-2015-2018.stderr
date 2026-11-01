@@ -4,9 +4,9 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 LL |     c"str";
    |      ^^^^^ expected one of 8 possible tokens
    |
+   = help: pass `--edition 2024` to `rustc`
    = note: you may be trying to write a c-string literal
    = note: c-string literals require Rust 2021 or later
-   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"str"`
@@ -15,9 +15,9 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 LL |     cr"str";
    |       ^^^^^ expected one of 8 possible tokens
    |
+   = help: pass `--edition 2024` to `rustc`
    = note: you may be trying to write a c-string literal
    = note: c-string literals require Rust 2021 or later
-   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `#`
@@ -26,9 +26,9 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 LL |     cr##"str"##;
    |       ^ expected one of 8 possible tokens
    |
+   = help: pass `--edition 2024` to `rustc`
    = note: you may be trying to write a c-string literal
    = note: c-string literals require Rust 2021 or later
-   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"str"`
@@ -55,9 +55,9 @@ LL | macro_rules! contain { () => { c"str" } }
 LL |     contain!();
    |     ---------- in this macro invocation
    |
+   = help: pass `--edition 2024` to `rustc`
    = note: you may be trying to write a c-string literal
    = note: c-string literals require Rust 2021 or later
-   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: aborting due to 6 previous errors

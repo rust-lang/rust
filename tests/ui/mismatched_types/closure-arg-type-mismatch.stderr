@@ -6,12 +6,12 @@ LL |     a.iter().map(|_: (u32, u32)| 45);
    |              |
    |              expected due to this
    |
-   = note: expected closure signature `fn(&(_, _)) -> _`
-              found closure signature `fn((_, _)) -> _`
 help: consider adjusting the signature so it borrows its argument
    |
 LL |     a.iter().map(|_: &(u32, u32)| 45);
    |                      +
+   = note: expected closure signature `fn(&(_, _)) -> _`
+              found closure signature `fn((_, _)) -> _`
 note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
@@ -54,9 +54,9 @@ LL |     baz(f);
    |     `f` escapes the function body here
    |     argument requires that `'a` must outlive `'static`
    |
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
    = note: requirement occurs because of a mutable pointer to `&u32`
    = note: mutable pointers are invariant over their type parameter
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 note: due to a current limitation of the type system, this implies a `'static` lifetime
   --> $DIR/closure-arg-type-mismatch.rs:8:11
    |

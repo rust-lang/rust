@@ -7,12 +7,12 @@ LL | |         Self { guess: 42 }
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_fn)]`
 help: make the function `const`
    |
 LL |     pub const fn new() -> Self {
    |         +++++
+   = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_fn)]`
+   = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
 
 error: this could be a `const fn`
   --> tests/ui/missing_const_for_fn/could_be_const.rs:18:5

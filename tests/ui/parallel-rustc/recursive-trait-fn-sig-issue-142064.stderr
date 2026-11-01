@@ -32,6 +32,10 @@ error[E0038]: the trait `A` is not dyn compatible
 LL | trait A { fn foo() -> A; }
    |                       ^ `A` is not dyn compatible
    |
+help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
+   |
+LL | trait A { fn foo(&self) -> A; }
+   |                  +++++
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/recursive-trait-fn-sig-issue-142064.rs:4:14
@@ -40,10 +44,6 @@ LL | trait A { fn foo() -> A; }
    |       -      ^^^ ...because associated function `foo` has no `self` parameter
    |       |
    |       this trait is not dyn compatible...
-help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
-   |
-LL | trait A { fn foo(&self) -> A; }
-   |                  +++++
 help: alternatively, consider constraining `foo` so it is explicitly marked as not applying to trait objects
    |
 LL | trait A { fn foo() -> A where Self: Sized; }
@@ -87,6 +87,10 @@ error[E0038]: the trait `A` is not dyn compatible
 LL | trait B { fn foo() -> A; }
    |                       ^ `A` is not dyn compatible
    |
+help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
+   |
+LL | trait A { fn foo(&self) -> A; }
+   |                  +++++
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/recursive-trait-fn-sig-issue-142064.rs:4:14
@@ -95,10 +99,6 @@ LL | trait A { fn foo() -> A; }
    |       -      ^^^ ...because associated function `foo` has no `self` parameter
    |       |
    |       this trait is not dyn compatible...
-help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
-   |
-LL | trait A { fn foo(&self) -> A; }
-   |                  +++++
 help: alternatively, consider constraining `foo` so it is explicitly marked as not applying to trait objects
    |
 LL | trait A { fn foo() -> A where Self: Sized; }

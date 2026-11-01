@@ -4,8 +4,8 @@ error: it is more concise to loop over references to containers instead of using
 LL |     for v in A.iter() {}
    |              ^^^^^^^^ help: to write this more concisely, try: `A`
    |
-   = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::explicit_iter_loop)]`
+   = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

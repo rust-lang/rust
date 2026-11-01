@@ -6,13 +6,13 @@ LL |     for ((_, _), (&mut c, _)) in &mut map {
    |                   |
    |                   expected `char`, found `&mut _`
    |
-   = note:           expected type `char`
-           found mutable reference `&mut _`
 help: consider removing `&mut` from the pattern
    |
 LL -     for ((_, _), (&mut c, _)) in &mut map {
 LL +     for ((_, _), (c, _)) in &mut map {
    |
+   = note:           expected type `char`
+           found mutable reference `&mut _`
 note: to declare a mutable binding use: `mut c`
   --> $DIR/for-loop-bad-item.rs:7:19
    |

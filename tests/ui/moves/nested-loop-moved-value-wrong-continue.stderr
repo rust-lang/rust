@@ -13,6 +13,10 @@ LL |         baz.push(foo);
 LL |     qux.push(foo);
    |              ^^^ value used here after move
    |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         baz.push(foo.clone());
+   |                     ++++++++
 note: verify that your loop breaking logic is correct
   --> $DIR/nested-loop-moved-value-wrong-continue.rs:13:9
    |
@@ -20,10 +24,6 @@ LL |     for foo in foos { for bar in &bars { if foo == *bar {
 ...
 LL |         continue;
    |         ^^^^^^^^ this `continue` advances the loop at $DIR/nested-loop-moved-value-wrong-continue.rs:6:23: 16:8
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |         baz.push(foo.clone());
-   |                     ++++++++
 
 error[E0382]: use of moved value: `foo`
   --> $DIR/nested-loop-moved-value-wrong-continue.rs:42:18
@@ -43,6 +43,10 @@ LL |                 baz.push(foo);
 LL |         qux.push(foo);
    |                  ^^^ value used here after move
    |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |                 baz.push(foo.clone());
+   |                             ++++++++
 note: verify that your loop breaking logic is correct
   --> $DIR/nested-loop-moved-value-wrong-continue.rs:37:17
    |
@@ -52,10 +56,6 @@ LL |         for bar in &bars {
 ...
 LL |                 continue;
    |                 ^^^^^^^^ this `continue` advances the loop at line 31
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |                 baz.push(foo.clone());
-   |                             ++++++++
 
 error: aborting due to 2 previous errors
 

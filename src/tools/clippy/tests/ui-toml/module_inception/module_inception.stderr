@@ -7,8 +7,8 @@ LL | |             pub mod foo2 {}
 LL | |         }
    | |_________^
    |
-   = note: `-D clippy::module-inception` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::module_inception)]`
+   = note: `-D clippy::module-inception` implied by `-D warnings`
 
 error: module has the same name as its containing module
   --> tests/ui-toml/module_inception/module_inception.rs:12:5

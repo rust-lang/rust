@@ -10,9 +10,9 @@ LL | |         x9 = CONST_MAX;
 LL | |     }
    | |_____^ help: replace with clamp: `x9 = x9.clamp(CONST_MIN, CONST_MAX);`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_clamp)]`
    = note: clamp will panic if max < min
    = note: `-D clippy::manual-clamp` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_clamp)]`
 
 error: clamp-like pattern without using clamp function
   --> tests/ui/manual_clamp.rs:224:5

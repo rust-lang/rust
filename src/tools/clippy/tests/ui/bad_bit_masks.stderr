@@ -4,9 +4,9 @@ error: this comparison is always true
 LL |     let _ = x & 0b0000 == 0b0000;
    |             ^^^^^^^^^^^^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::bad_bit_mask)]`
    = note: `_ & 0` is always equal to zero
    = note: `-D clippy::bad-bit-mask` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::bad_bit_mask)]`
 
 error: this comparison is always false
   --> tests/ui/bad_bit_masks.rs:14:13

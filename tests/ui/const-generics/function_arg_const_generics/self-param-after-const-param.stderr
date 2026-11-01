@@ -19,22 +19,22 @@ error[E0599]: no method named `a` found for reference `&Self` in the current sco
 LL |         self.a() + 2
    |              ^ this is an associated function, not a method
    |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 help: use associated function syntax instead
    |
 LL -         self.a() + 2
 LL +         Self::a() + 2
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+help: there is a method `b` with a similar name
+   |
+LL -         self.a() + 2
+LL +         self.b() + 2
    |
 note: the candidate is defined in the trait `Foo`
   --> $DIR/self-param-after-const-param.rs:4:5
    |
 LL |     fn a(const N: usize, self: [isize; N]) -> isize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: there is a method `b` with a similar name
-   |
-LL -         self.a() + 2
-LL +         self.b() + 2
-   |
 
 error: aborting due to 3 previous errors
 

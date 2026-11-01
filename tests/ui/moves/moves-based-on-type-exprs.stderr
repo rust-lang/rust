@@ -108,6 +108,10 @@ LL |         _ if guard(x) => 10,
 LL |     touch(&x);
    |           ^^ value borrowed here after move
    |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         _ if guard(x.clone()) => 10,
+   |                     ++++++++
 note: consider changing this parameter type in function `guard` to borrow instead if owning the value isn't necessary
   --> $DIR/moves-based-on-type-exprs.rs:6:14
    |
@@ -115,10 +119,6 @@ LL | fn guard(_s: String) -> bool {panic!()}
    |    -----     ^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |         _ if guard(x.clone()) => 10,
-   |                     ++++++++
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-exprs.rs:65:11
@@ -160,12 +160,12 @@ LL |     let _y = x.into_iter().next().unwrap();
 LL |     touch(&x);
    |           ^^ value borrowed here after move
    |
-note: `std::iter::IntoIterator::into_iter` takes ownership of the receiver `self`, which moves `x`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     let _y = x.clone().into_iter().next().unwrap();
    |               ++++++++
+note: `std::iter::IntoIterator::into_iter` takes ownership of the receiver `self`, which moves `x`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-exprs.rs:83:11
@@ -177,12 +177,12 @@ LL |     let _y = [x.into_iter().next().unwrap(); 1];
 LL |     touch(&x);
    |           ^^ value borrowed here after move
    |
-note: `std::iter::IntoIterator::into_iter` takes ownership of the receiver `self`, which moves `x`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     let _y = [x.clone().into_iter().next().unwrap(); 1];
    |                ++++++++
+note: `std::iter::IntoIterator::into_iter` takes ownership of the receiver `self`, which moves `x`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 
 error: aborting due to 11 previous errors
 

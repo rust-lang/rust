@@ -27,13 +27,13 @@ LL |     takes_foo(());
    |     required by a bound introduced by this call
    |
    = help: the trait `Foo` is not implemented for `()`
-   = note: custom note
-   = note: second note
 help: this trait has no implementations, consider adding one
   --> $DIR/report_warning_on_duplicated_options.rs:14:1
    |
 LL | trait Foo {}
    | ^^^^^^^^^
+   = note: custom note
+   = note: second note
 note: required by a bound in `takes_foo`
   --> $DIR/report_warning_on_duplicated_options.rs:17:22
    |

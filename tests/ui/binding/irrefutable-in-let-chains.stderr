@@ -4,8 +4,8 @@ warning: irrefutable `if let` pattern
 LL |     if let first = &opt {}
    |        ^^^^^^^^^^^^^^^^
    |
-   = note: this pattern will always match, so the `if let` is useless
    = help: consider replacing the `if let` with a `let`
+   = note: this pattern will always match, so the `if let` is useless
    = note: `#[warn(irrefutable_let_patterns)]` on by default
 
 warning: irrefutable `if let` pattern
@@ -14,8 +14,8 @@ warning: irrefutable `if let` pattern
 LL |     if let Range { start: local_start, end: _ } = (None..Some(1)) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this pattern will always match, so the `if let` is useless
    = help: consider replacing the `if let` with a `let`
+   = note: this pattern will always match, so the `if let` is useless
 
 warning: irrefutable `if let` pattern
   --> $DIR/irrefutable-in-let-chains.rs:37:8
@@ -23,8 +23,8 @@ warning: irrefutable `if let` pattern
 LL |     if let (a, b, c) = (Some(1), Some(1), Some(1)) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this pattern will always match, so the `if let` is useless
    = help: consider replacing the `if let` with a `let`
+   = note: this pattern will always match, so the `if let` is useless
 
 warning: irrefutable `if let` pattern
   --> $DIR/irrefutable-in-let-chains.rs:49:15
@@ -32,8 +32,8 @@ warning: irrefutable `if let` pattern
 LL |     } else if let x = opt.clone().map(|_| 1) {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this pattern will always match, so the `if let` is useless
    = help: consider replacing the `if let` with a `let`
+   = note: this pattern will always match, so the `if let` is useless
 
 warning: irrefutable `if let` guard pattern
   --> $DIR/irrefutable-in-let-chains.rs:70:28
@@ -41,8 +41,8 @@ warning: irrefutable `if let` guard pattern
 LL |         Some(ref first) if let second = first => {}
    |                            ^^^^^^^^^^^^^^^^^^
    |
-   = note: this pattern will always match, so the guard is useless
    = help: consider removing the guard and adding a `let` inside the match arm
+   = note: this pattern will always match, so the guard is useless
 
 warning: irrefutable `while let` pattern
   --> $DIR/irrefutable-in-let-chains.rs:99:11
@@ -50,8 +50,8 @@ warning: irrefutable `while let` pattern
 LL |     while let first = &opt {}
    |           ^^^^^^^^^^^^^^^^
    |
-   = note: this pattern will always match, so the loop will never exit
    = help: consider instead using a `loop { ... }` with a `let` inside it
+   = note: this pattern will always match, so the loop will never exit
 
 warning: 6 warnings emitted
 

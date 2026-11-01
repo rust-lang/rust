@@ -6,12 +6,12 @@ LL |     want_foo(b);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected struct `Foo`
-              found struct `Box<Foo>`
 help: consider unboxing the value
    |
 LL |     want_foo(*b);
    |              +
+   = note: expected struct `Foo`
+              found struct `Box<Foo>`
 note: function defined here
   --> $DIR/terr-sorts.rs:10:4
    |

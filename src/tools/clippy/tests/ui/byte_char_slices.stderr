@@ -4,8 +4,8 @@ error: can be more succinctly written as a byte str
 LL |     let bad = &[b'a', b'b', b'c'];
    |               ^^^^^^^^^^^^^^^^^^^ help: try: `b"abc"`
    |
-   = note: `-D clippy::byte-char-slices` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::byte_char_slices)]`
+   = note: `-D clippy::byte-char-slices` implied by `-D warnings`
 
 error: can be more succinctly written as a byte str
   --> tests/ui/byte_char_slices.rs:7:18

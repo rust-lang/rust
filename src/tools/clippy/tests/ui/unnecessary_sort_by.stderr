@@ -4,13 +4,13 @@ error: consider using `sort`
 LL |     vec.sort_by(|a, b| a.cmp(b));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-sort-by` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_sort_by)]`
 help: try
    |
 LL -     vec.sort_by(|a, b| a.cmp(b));
 LL +     vec.sort();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_sort_by)]`
+   = note: `-D clippy::unnecessary-sort-by` implied by `-D warnings`
 
 error: consider using `sort_unstable`
   --> tests/ui/unnecessary_sort_by.rs:15:5

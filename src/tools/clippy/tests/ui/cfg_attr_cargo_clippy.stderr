@@ -4,8 +4,8 @@ error: `feature = "cargo-clippy"` was replaced by `clippy`
 LL | #![cfg_attr(feature = "cargo-clippy", doc = "a")]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `clippy`
    |
-   = note: `-D clippy::deprecated-clippy-cfg-attr` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::deprecated_clippy_cfg_attr)]`
+   = note: `-D clippy::deprecated-clippy-cfg-attr` implied by `-D warnings`
 
 error: `feature = "cargo-clippy"` was replaced by `clippy`
   --> tests/ui/cfg_attr_cargo_clippy.rs:6:12

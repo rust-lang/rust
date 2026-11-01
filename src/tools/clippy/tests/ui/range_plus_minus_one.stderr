@@ -4,8 +4,8 @@ error: an inclusive range would be more readable
 LL |     for _ in 0..3 + 1 {}
    |              ^^^^^^^^ help: use: `0..=3`
    |
-   = note: `-D clippy::range-plus-one` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::range_plus_one)]`
+   = note: `-D clippy::range-plus-one` implied by `-D warnings`
 
 error: an inclusive range would be more readable
   --> tests/ui/range_plus_minus_one.rs:33:14
@@ -79,8 +79,8 @@ error: an exclusive range would be more readable
 LL |     (1..=n - 1).sum()
    |      ^^^^^^^^^ help: use: `1..n`
    |
-   = note: `-D clippy::range-minus-one` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::range_minus_one)]`
+   = note: `-D clippy::range-minus-one` implied by `-D warnings`
 
 error: an inclusive range would be more readable
   --> tests/ui/range_plus_minus_one.rs:188:14

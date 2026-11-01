@@ -139,6 +139,7 @@ error[E0038]: the trait `assoc_const::C` is not dyn compatible
 LL |     <dyn C>::A;
    |          ^ `assoc_const::C` is not dyn compatible
    |
+   = help: consider moving `A` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/item-privacy.rs:26:15
@@ -153,7 +154,6 @@ LL |     pub trait C: A + B {
    |               - this trait is not dyn compatible...
 LL |         const C: u8 = 0;
    |               ^ ...because it contains associated const `C`
-   = help: consider moving `A` to another trait
    = help: consider moving `B` to another trait
    = help: consider moving `C` to another trait
    = help: only type `S` implements `assoc_const::C`; consider using it directly instead.
@@ -164,6 +164,7 @@ error[E0038]: the trait `assoc_const::C` is not dyn compatible
 LL |     <dyn C>::B;
    |          ^ `assoc_const::C` is not dyn compatible
    |
+   = help: consider moving `A` to another trait
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/item-privacy.rs:26:15
@@ -178,7 +179,6 @@ LL |     pub trait C: A + B {
    |               - this trait is not dyn compatible...
 LL |         const C: u8 = 0;
    |               ^ ...because it contains associated const `C`
-   = help: consider moving `A` to another trait
    = help: consider moving `B` to another trait
    = help: consider moving `C` to another trait
    = help: only type `S` implements `assoc_const::C`; consider using it directly instead.

@@ -17,6 +17,7 @@ LL | macro_rules! define_other_core {
 LL |     core::panic!();
    |     ^^^^ ambiguous name
    |
+   = help: use `crate::core` to refer to this crate unambiguously
    = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
    = note: `core` could refer to a built-in crate
 note: `core` could also refer to the crate imported here
@@ -27,7 +28,6 @@ LL |         extern crate std as core;
 ...
 LL | define_other_core!();
    | -------------------- in this macro invocation
-   = help: use `crate::core` to refer to this crate unambiguously
 
 error: aborting due to 2 previous errors
 

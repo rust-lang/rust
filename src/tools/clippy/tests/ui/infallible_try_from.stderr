@@ -7,8 +7,8 @@ LL |
 LL |     type Error = !;
    |                  - infallible error type
    |
-   = note: `-D clippy::infallible-try-from` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::infallible_try_from)]`
+   = note: `-D clippy::infallible-try-from` implied by `-D warnings`
 
 error: infallible TryFrom impl; consider implementing From instead
   --> tests/ui/infallible_try_from.rs:13:1

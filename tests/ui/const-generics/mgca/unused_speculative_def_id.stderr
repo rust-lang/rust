@@ -4,13 +4,13 @@ error[E0425]: cannot find value `ERR` in this scope
 LL |     field: A<{ ERR::<const { 1 }> }>,
    |                ^^^ not found in this scope
    |
-note: similarly named tuple variant `Err` defined here
-  --> $SRC_DIR/core/src/result.rs:LL:COL
 help: a tuple variant with a similar name exists
    |
 LL -     field: A<{ ERR::<const { 1 }> }>,
 LL +     field: A<{ Err::<const { 1 }> }>,
    |
+note: similarly named tuple variant `Err` defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
 
 error: aborting due to 1 previous error
 

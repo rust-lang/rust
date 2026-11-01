@@ -6,12 +6,12 @@ LL | #[instruction_set(arm)]
    |                   |
    |                   valid arguments are `arm::a32` or `arm::t32`
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
 help: must be of the form
    |
 LL - #[instruction_set(arm)]
 LL + #[instruction_set(set)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
 
 error: expected identifier, found `<eof>`
   --> $DIR/instruction-set.rs:26:22
@@ -27,12 +27,12 @@ LL | #[instruction_set(arm::magic)]
    |                        |
    |                        valid arguments are `a32` or `t32`
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
 help: must be of the form
    |
 LL - #[instruction_set(arm::magic)]
 LL + #[instruction_set(set)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
 
 error: aborting due to 3 previous errors
 

@@ -30,12 +30,12 @@ LL |     fn test() {
 LL |         let _: Self::Err;
    |                ^^^^^^^^^ ambiguous associated type `Err`
    |
-   = note: associated type `Err` could derive from `FromStr`
 help: use fully-qualified syntax to disambiguate
    |
 LL -         let _: Self::Err;
 LL +         let _: <Self as My>::Err;
    |
+   = note: associated type `Err` could derive from `FromStr`
 
 error: aborting due to 2 previous errors
 

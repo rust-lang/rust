@@ -4,13 +4,13 @@ error: empty string literal in `println!`
 LL |     println!("" /* comment */);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::println_empty_string)]`
 note: remove the empty string
   --> tests/ui/println_empty_string_unfixable.rs:7:14
    |
 LL |     println!("" /* comment */);
    |              ^^
    = note: `-D clippy::println-empty-string` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::println_empty_string)]`
 
 error: empty string literal in `eprintln!`
   --> tests/ui/println_empty_string_unfixable.rs:9:5

@@ -4,8 +4,8 @@ error: item name ends with its containing module's name
 LL |     pub fn something_foo() {}
    |            ^^^^^^^^^^^^^
    |
-   = note: `-D clippy::module-name-repetitions` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::module_name_repetitions)]`
+   = note: `-D clippy::module-name-repetitions` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

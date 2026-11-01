@@ -4,8 +4,8 @@ warning: unknown lint: `malformed_diagnostic_filters`
 LL | #![allow(malformed_diagnostic_filters)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the `malformed_diagnostic_filters` lint is unstable
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `malformed_diagnostic_filters` lint is unstable
    = note: `#[warn(unknown_lints)]` on by default
 
 error[E0658]: use of an internal attribute

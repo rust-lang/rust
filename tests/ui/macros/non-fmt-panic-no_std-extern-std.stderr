@@ -4,12 +4,12 @@ warning: panic message is not a string literal
 LL |     std::panic!(123);
    |                 ^^^
    |
-   = note: this usage of `std::panic!()` is deprecated; it will be a hard error in Rust 2021
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
 help: add a "{}" format string to `Display` the message
    |
 LL |     std::panic!("{}", 123);
    |                 +++++
+   = note: this usage of `std::panic!()` is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
 help: or use std::panic::panic_any instead
    |
 LL -     std::panic!(123);

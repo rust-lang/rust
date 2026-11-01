@@ -4,13 +4,13 @@ error: this function is only used once
 LL | fn i() {}
    | ^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::single_call_fn)]`
 note: used here
   --> tests/ui/single_call_fn.rs:19:13
    |
 LL |     let a = i;
    |             ^
    = note: `-D clippy::single-call-fn` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::single_call_fn)]`
 
 error: this function is only used once
   --> tests/ui/single_call_fn.rs:14:1

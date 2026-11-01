@@ -30,10 +30,10 @@ LL | |         _ => unimplemented!(),
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
+   = help: consider boxing your closure and/or using it as a trait object
    = note: expected closure `{closure@$DIR/closure_cap_coerce_many_fail.rs:17:16: 17:22}`
               found closure `{closure@$DIR/closure_cap_coerce_many_fail.rs:18:16: 18:22}`
    = note: no two closures, even if identical, have the same type
-   = help: consider boxing your closure and/or using it as a trait object
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/closure_cap_coerce_many_fail.rs:27:16
@@ -51,10 +51,10 @@ LL | |         _ => unimplemented!(),
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
+   = help: consider boxing your closure and/or using it as a trait object
    = note: expected closure `{closure@$DIR/closure_cap_coerce_many_fail.rs:26:16: 26:22}`
               found closure `{closure@$DIR/closure_cap_coerce_many_fail.rs:27:16: 27:22}`
    = note: no two closures, even if identical, have the same type
-   = help: consider boxing your closure and/or using it as a trait object
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/closure_cap_coerce_many_fail.rs:35:16
@@ -72,10 +72,10 @@ LL | |         _ => unimplemented!(),
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
+   = help: consider boxing your closure and/or using it as a trait object
    = note: expected closure `{closure@$DIR/closure_cap_coerce_many_fail.rs:34:16: 34:22}`
               found closure `{closure@$DIR/closure_cap_coerce_many_fail.rs:35:16: 35:22}`
    = note: no two closures, even if identical, have the same type
-   = help: consider boxing your closure and/or using it as a trait object
 
 error: aborting due to 4 previous errors
 

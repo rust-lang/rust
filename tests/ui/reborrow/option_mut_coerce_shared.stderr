@@ -6,12 +6,12 @@ LL |     method(a);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected enum `Option<&()>`
-              found enum `Option<&mut ()>`
 help: try using `.as_deref()` to convert `Option<&mut ()>` to `Option<&()>`
    |
 LL |     method(a.as_deref());
    |             +++++++++++
+   = note: expected enum `Option<&()>`
+              found enum `Option<&mut ()>`
 note: function defined here
   --> $DIR/option_mut_coerce_shared.rs:6:4
    |

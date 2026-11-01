@@ -4,13 +4,13 @@ error: used underscore-prefixed binding
 LL |         _a;
    |         ^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::used_underscore_binding)]`
 note: binding is defined here
   --> tests/ui/used_underscore_binding.rs:19:13
    |
 LL |         let _a = 0;
    |             ^^
    = note: `-D clippy::used-underscore-binding` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::used_underscore_binding)]`
 
 error: used underscore-prefixed binding
   --> tests/ui/used_underscore_binding.rs:25:10

@@ -4,11 +4,11 @@ warning: unused return value of `add` that must be used
 LL |     x.add(4);
    |     ^^^^^^^^
    |
-   = note: this returns the result of the operation, without modifying the original
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = x.add(4);
    |     +++++++
+   = note: this returns the result of the operation, without modifying the original
 note: the lint level is defined here
   --> $DIR/issue-103320-must-use-ops.rs:3:9
    |
@@ -21,11 +21,11 @@ warning: unused return value of `sub` that must be used
 LL |     x.sub(4);
    |     ^^^^^^^^
    |
-   = note: this returns the result of the operation, without modifying the original
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = x.sub(4);
    |     +++++++
+   = note: this returns the result of the operation, without modifying the original
 
 warning: unused return value of `mul` that must be used
   --> $DIR/issue-103320-must-use-ops.rs:19:5
@@ -33,11 +33,11 @@ warning: unused return value of `mul` that must be used
 LL |     x.mul(4);
    |     ^^^^^^^^
    |
-   = note: this returns the result of the operation, without modifying the original
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = x.mul(4);
    |     +++++++
+   = note: this returns the result of the operation, without modifying the original
 
 warning: unused return value of `div` that must be used
   --> $DIR/issue-103320-must-use-ops.rs:21:5
@@ -45,11 +45,11 @@ warning: unused return value of `div` that must be used
 LL |     x.div(4);
    |     ^^^^^^^^
    |
-   = note: this returns the result of the operation, without modifying the original
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = x.div(4);
    |     +++++++
+   = note: this returns the result of the operation, without modifying the original
 
 warning: unused return value of `rem` that must be used
   --> $DIR/issue-103320-must-use-ops.rs:23:5
@@ -57,11 +57,11 @@ warning: unused return value of `rem` that must be used
 LL |     x.rem(4);
    |     ^^^^^^^^
    |
-   = note: this returns the result of the operation, without modifying the original
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = x.rem(4);
    |     +++++++
+   = note: this returns the result of the operation, without modifying the original
 
 warning: 5 warnings emitted
 

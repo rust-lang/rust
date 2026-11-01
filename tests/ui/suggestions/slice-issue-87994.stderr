@@ -4,13 +4,13 @@ error[E0277]: `[i32]` is not an iterator
 LL |   for _ in v[1..] {
    |            ^^^^^^ the trait `IntoIterator` is not implemented for `[i32]`
    |
-   = note: the trait bound `[i32]: IntoIterator` is not satisfied
 help: consider borrowing here
    |
 LL |   for _ in &v[1..] {
    |            +
 LL |   for _ in &mut v[1..] {
    |            ++++
+   = note: the trait bound `[i32]: IntoIterator` is not satisfied
    = note: required for `[i32]` to implement `IntoIterator`
 
 error[E0277]: `[i32]` is not an iterator
@@ -19,13 +19,13 @@ error[E0277]: `[i32]` is not an iterator
 LL |   for _ in v[1..] {
    |            ^^^^^^ the trait `Sized` is not implemented for `[i32]`
    |
-   = note: the trait bound `Sized` is not satisfied
 help: consider borrowing here
    |
 LL |   for _ in &v[1..] {
    |            +
 LL |   for _ in &mut v[1..] {
    |            ++++
+   = note: the trait bound `Sized` is not satisfied
    = note: required for `[i32]` to implement `IntoIterator`
 
 error[E0277]: `[K]` is not an iterator
@@ -34,13 +34,13 @@ error[E0277]: `[K]` is not an iterator
 LL |   for i2 in v2[1..] {
    |             ^^^^^^^ the trait `IntoIterator` is not implemented for `[K]`
    |
-   = note: the trait bound `[K]: IntoIterator` is not satisfied
 help: consider borrowing here
    |
 LL |   for i2 in &v2[1..] {
    |             +
 LL |   for i2 in &mut v2[1..] {
    |             ++++
+   = note: the trait bound `[K]: IntoIterator` is not satisfied
    = note: required for `[K]` to implement `IntoIterator`
 
 error[E0277]: `[K]` is not an iterator
@@ -49,13 +49,13 @@ error[E0277]: `[K]` is not an iterator
 LL |   for i2 in v2[1..] {
    |             ^^^^^^^ the trait `Sized` is not implemented for `[K]`
    |
-   = note: the trait bound `Sized` is not satisfied
 help: consider borrowing here
    |
 LL |   for i2 in &v2[1..] {
    |             +
 LL |   for i2 in &mut v2[1..] {
    |             ++++
+   = note: the trait bound `Sized` is not satisfied
    = note: required for `[K]` to implement `IntoIterator`
 
 error: aborting due to 4 previous errors

@@ -4,16 +4,16 @@ error: cannot project on type that is not `#[pin_v2]`
 LL |     let NonPinProject { x } = foo;
    |         ^^^^^^^^^^^^^^^^^^^
    |
-note: type defined here
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:28:1
-   |
-LL | struct NonPinProject<T> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^
 help: add `#[pin_v2]` here
    |
 LL + #[pin_v2]
 LL | struct NonPinProject<T> {
    |
+note: type defined here
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:28:1
+   |
+LL | struct NonPinProject<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cannot project on type that is not `#[pin_v2]`
   --> $DIR/pattern-matching-mix-deref-pattern.rs:125:9
@@ -21,16 +21,16 @@ error: cannot project on type that is not `#[pin_v2]`
 LL |     let NonPinProject { x } = bar;
    |         ^^^^^^^^^^^^^^^^^^^
    |
-note: type defined here
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:28:1
-   |
-LL | struct NonPinProject<T> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^
 help: add `#[pin_v2]` here
    |
 LL + #[pin_v2]
 LL | struct NonPinProject<T> {
    |
+note: type defined here
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:28:1
+   |
+LL | struct NonPinProject<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cannot project on type that is not `#[pin_v2]`
   --> $DIR/pattern-matching-mix-deref-pattern.rs:131:9
@@ -38,16 +38,16 @@ error: cannot project on type that is not `#[pin_v2]`
 LL |         NonPinProject { x } => {}
    |         ^^^^^^^^^^^^^^^^^^^
    |
-note: type defined here
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:28:1
-   |
-LL | struct NonPinProject<T> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^
 help: add `#[pin_v2]` here
    |
 LL + #[pin_v2]
 LL | struct NonPinProject<T> {
    |
+note: type defined here
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:28:1
+   |
+LL | struct NonPinProject<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cannot project on type that is not `#[pin_v2]`
   --> $DIR/pattern-matching-mix-deref-pattern.rs:139:9
@@ -55,16 +55,16 @@ error: cannot project on type that is not `#[pin_v2]`
 LL |         NonPinProject { x } => {}
    |         ^^^^^^^^^^^^^^^^^^^
    |
-note: type defined here
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:28:1
-   |
-LL | struct NonPinProject<T> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^
 help: add `#[pin_v2]` here
    |
 LL + #[pin_v2]
 LL | struct NonPinProject<T> {
    |
+note: type defined here
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:28:1
+   |
+LL | struct NonPinProject<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: mix of deref patterns and normal constructors
   --> $DIR/pattern-matching-mix-deref-pattern.rs:37:9

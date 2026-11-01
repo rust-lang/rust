@@ -11,6 +11,10 @@ help: consider relaxing the type parameter's implicit `Sized` bound
    |
 LL | impl<'a, T: ?Sized + Perpetrator /*+ ?Sized*/> VictimTrait for Victim<'a, T> {
    |             ++++++++
+help: consider restricting the type parameter to satisfy the trait bound
+   |
+LL |   Self: Sized, Self: Sized
+   |              +++++++++++++
 note: trait bound `Self: Sized` was not satisfied
   --> $DIR/impl-derived-implicit-sized-bound.rs:15:10
    |
@@ -18,10 +22,6 @@ LL | impl<'a, T: Perpetrator /*+ ?Sized*/> VictimTrait for Victim<'a, T> {
    |          ^                            -----------     -------------
    |          |
    |          unsatisfied trait bound introduced here
-help: consider restricting the type parameter to satisfy the trait bound
-   |
-LL |   Self: Sized, Self: Sized
-   |              +++++++++++++
 
 error: aborting due to 1 previous error
 

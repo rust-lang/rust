@@ -4,8 +4,6 @@ error: this function's return value is unnecessarily wrapped by `Option`
 LL | fn func1(a: bool, b: bool) -> Option<i32> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-wraps` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_wraps)]`
 help: remove `Option` from the return type...
    |
 LL - fn func1(a: bool, b: bool) -> Option<i32> {
@@ -21,6 +19,8 @@ LL ~         2
 LL |     } else {
 LL ~         return 1337;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_wraps)]`
+   = note: `-D clippy::unnecessary-wraps` implied by `-D warnings`
 
 error: this function's return value is unnecessarily wrapped by `Option`
   --> tests/ui/unnecessary_wraps.rs:22:1

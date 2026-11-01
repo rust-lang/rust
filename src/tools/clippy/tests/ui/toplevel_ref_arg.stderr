@@ -4,8 +4,8 @@ error: `ref` on an entire `let` pattern is discouraged, take a reference with `&
 LL |     let ref _x = 1;
    |     ----^^^^^^----- help: try: `let _x = &1;`
    |
-   = note: `-D clippy::toplevel-ref-arg` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::toplevel_ref_arg)]`
+   = note: `-D clippy::toplevel-ref-arg` implied by `-D warnings`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
   --> tests/ui/toplevel_ref_arg.rs:17:9

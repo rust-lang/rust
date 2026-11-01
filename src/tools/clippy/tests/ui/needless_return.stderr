@@ -4,13 +4,13 @@ error: unneeded `return` statement
 LL |     return true;
    |     ^^^^^^^^^^^
    |
-   = note: `-D clippy::needless-return` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_return)]`
 help: remove `return`
    |
 LL -     return true;
 LL +     true
    |
+   = help: to override `-D warnings` add `#[allow(clippy::needless_return)]`
+   = note: `-D clippy::needless-return` implied by `-D warnings`
 
 error: unneeded `return` statement
   --> tests/ui/needless_return.rs:28:5

@@ -7,27 +7,27 @@ LL | struct Qux;
 LL |     Qux.foo();
    |         ^^^ this is an associated function, not a method
    |
+help: disambiguate the associated function for candidate #1
+   |
+LL -     Qux.foo();
+LL +     <Qux as Foo>::foo();
+   |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: candidate #1 is defined in the trait `Foo`
   --> $DIR/method-ambiguity-no-rcvr.rs:4:5
    |
 LL |     fn foo();
    |     ^^^^^^^^^
-help: disambiguate the associated function for candidate #1
+help: disambiguate the associated function for candidate #2
    |
 LL -     Qux.foo();
-LL +     <Qux as Foo>::foo();
+LL +     <Qux as FooBar>::foo();
    |
 note: candidate #2 is defined in the trait `FooBar`
   --> $DIR/method-ambiguity-no-rcvr.rs:8:5
    |
 LL |     fn foo() {}
    |     ^^^^^^^^
-help: disambiguate the associated function for candidate #2
-   |
-LL -     Qux.foo();
-LL +     <Qux as FooBar>::foo();
-   |
 
 error: aborting due to 1 previous error
 

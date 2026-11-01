@@ -9,12 +9,12 @@ LL |     trader.set_closure(closure);
    |            |
    |            required by a bound introduced by this call
    |
-   = note: expected closure signature `for<'a, 'b> fn(&'a mut Trader<'b>) -> _`
-              found closure signature `fn(Trader<'_>) -> _`
 help: consider wrapping the function in a closure
    |
 LL |     trader.set_closure(|arg0: &mut Trader<'_>| closure(*arg0));
    |                        +++++++++++++++++++++++        +++++++
+   = note: expected closure signature `for<'a, 'b> fn(&'a mut Trader<'b>) -> _`
+              found closure signature `fn(Trader<'_>) -> _`
 help: consider adjusting the signature so it borrows its argument
    |
 LL |     let closure = |trader : &mut Trader| {

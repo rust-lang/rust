@@ -10,12 +10,12 @@ error: unexpected `||` before function parameter
 LL |     fn fun2( || A: E) {}
    |              ^^
    |
-   = note: alternatives in or-patterns are separated with `|`, not `||`
 help: remove the `||`
    |
 LL -     fn fun2( || A: E) {}
 LL +     fn fun2(  A: E) {}
    |
+   = note: alternatives in or-patterns are separated with `|`, not `||`
 
 error: unexpected token `||` in pattern
   --> $DIR/remove-leading-vert.rs:14:11

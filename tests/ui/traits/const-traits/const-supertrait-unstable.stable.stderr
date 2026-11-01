@@ -95,6 +95,7 @@ error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions
 LL |     x.a();
    |       ^^^
    |
+   = help: const traits are not yet supported on stable Rust
 note: method `a` is not const because trait `Foo` is not const
   --> $DIR/const-supertrait-unstable.rs:22:1
    |
@@ -102,7 +103,6 @@ LL | trait Foo {
    | ^^^^^^^^^ this trait is not const
 LL |     fn a(&self);
    |     ------------ this method is not const
-   = help: const traits are not yet supported on stable Rust
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 9 previous errors

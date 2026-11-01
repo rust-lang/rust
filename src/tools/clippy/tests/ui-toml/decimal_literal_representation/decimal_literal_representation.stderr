@@ -4,8 +4,8 @@ error: integer literal has a better hexadecimal representation
 LL |     let _ = 16777215;
    |             ^^^^^^^^ help: consider: `0x00FF_FFFF`
    |
-   = note: `-D clippy::decimal-literal-representation` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::decimal_literal_representation)]`
+   = note: `-D clippy::decimal-literal-representation` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

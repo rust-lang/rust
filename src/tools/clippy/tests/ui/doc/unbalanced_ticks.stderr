@@ -9,8 +9,8 @@ LL | | /// very `confusing_and_misleading`.
    | |____________________________________^
    |
    = help: a backtick may be missing a pair
-   = note: `-D clippy::doc-markdown` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
+   = note: `-D clippy::doc-markdown` implied by `-D warnings`
 
 error: backticks are unbalanced
   --> tests/ui/doc/unbalanced_ticks.rs:13:5

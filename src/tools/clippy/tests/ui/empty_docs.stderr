@@ -5,8 +5,8 @@ LL |     //!
    |     ^^^
    |
    = help: consider removing or filling it
-   = note: `-D clippy::empty-docs` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::empty_docs)]`
+   = note: `-D clippy::empty-docs` implied by `-D warnings`
 
 error: empty doc comment
   --> tests/ui/empty_docs.rs:20:5

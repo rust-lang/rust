@@ -4,10 +4,10 @@ error: used `unwrap()` on an `Option` value
 LL |     const UNWRAPPED: i32 = SOME.unwrap();
    |                            ^^^^^^^^^^^^^
    |
-   = note: if this value is `None`, it will panic
    = help: consider using `expect()` to provide a better panic message
-   = note: `-D clippy::unwrap-used` implied by `-D warnings`
+   = note: if this value is `None`, it will panic
    = help: to override `-D warnings` add `#[allow(clippy::unwrap_used)]`
+   = note: `-D clippy::unwrap-used` implied by `-D warnings`
 
 error: used `unwrap()` on an `Option` value
   --> tests/ui-toml/unwrap_used/unwrap_used_const.rs:8:9
@@ -15,8 +15,8 @@ error: used `unwrap()` on an `Option` value
 LL |         SOME.unwrap();
    |         ^^^^^^^^^^^^^
    |
-   = note: if this value is `None`, it will panic
    = help: consider using `expect()` to provide a better panic message
+   = note: if this value is `None`, it will panic
 
 error: aborting due to 2 previous errors
 

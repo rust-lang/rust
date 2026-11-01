@@ -4,8 +4,8 @@ error: manual absolute difference pattern without using `abs_diff`
 LL |     let _ = if a > b { a - b } else { b - a };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `abs_diff`: `a.abs_diff(b)`
    |
-   = note: `-D clippy::manual-abs-diff` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_abs_diff)]`
+   = note: `-D clippy::manual-abs-diff` implied by `-D warnings`
 
 error: manual absolute difference pattern without using `abs_diff`
   --> tests/ui/manual_abs_diff.rs:13:13

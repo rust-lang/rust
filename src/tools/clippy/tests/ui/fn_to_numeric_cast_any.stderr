@@ -4,12 +4,12 @@ error: casting function pointer `foo` to `i8`
 LL |     let _ = foo as i8;
    |             ^^^^^^^^^
    |
-   = note: `-D clippy::fn-to-numeric-cast-any` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::fn_to_numeric_cast_any)]`
 help: did you mean to invoke the function?
    |
 LL |     let _ = foo() as i8;
    |                ++
+   = help: to override `-D warnings` add `#[allow(clippy::fn_to_numeric_cast_any)]`
+   = note: `-D clippy::fn-to-numeric-cast-any` implied by `-D warnings`
 
 error: casting function pointer `foo` to `i16`
   --> tests/ui/fn_to_numeric_cast_any.rs:27:13

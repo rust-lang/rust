@@ -5,8 +5,8 @@ LL |     file.bytes();
    |     ^^^^^^^^^^^^
    |
    = help: consider using `BufReader`
-   = note: `-D clippy::unbuffered-bytes` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unbuffered_bytes)]`
+   = note: `-D clippy::unbuffered-bytes` implied by `-D warnings`
 
 error: calling .bytes() is very inefficient when data is not in memory
   --> tests/ui/unbuffered_bytes.rs:15:5

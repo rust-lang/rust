@@ -6,13 +6,13 @@ LL |     match x {
 LL |         _S(& (mut _y), _v) => {
    |            ^^^^^^^^^^ expected `u32`, found `&_`
    |
-   = note:   expected type `u32`
-           found reference `&_`
 help: consider removing `&` from the pattern
    |
 LL -         _S(& (mut _y), _v) => {
 LL +         _S(mut _y, _v) => {
    |
+   = note:   expected type `u32`
+           found reference `&_`
 
 error: aborting due to 1 previous error
 

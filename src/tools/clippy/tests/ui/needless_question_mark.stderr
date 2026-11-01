@@ -4,13 +4,13 @@ error: enclosing `Some` and `?` operator are unneeded
 LL |     return Some(to.magic?);
    |            ^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::needless-question-mark` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_question_mark)]`
 help: remove the enclosing `Some` and `?` operator
    |
 LL -     return Some(to.magic?);
 LL +     return to.magic;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::needless_question_mark)]`
+   = note: `-D clippy::needless-question-mark` implied by `-D warnings`
 
 error: enclosing `Some` and `?` operator are unneeded
   --> tests/ui/needless_question_mark.rs:23:12

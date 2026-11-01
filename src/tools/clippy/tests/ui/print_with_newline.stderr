@@ -4,13 +4,13 @@ error: using `print!()` with a format string that ends in a single newline
 LL |     print!("Hello\n");
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::print-with-newline` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::print_with_newline)]`
 help: use `println!` instead
    |
 LL -     print!("Hello\n");
 LL +     println!("Hello");
    |
+   = help: to override `-D warnings` add `#[allow(clippy::print_with_newline)]`
+   = note: `-D clippy::print-with-newline` implied by `-D warnings`
 
 error: using `print!()` with a format string that ends in a single newline
   --> tests/ui/print_with_newline.rs:8:5

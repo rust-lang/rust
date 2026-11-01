@@ -4,8 +4,8 @@ error: there is no need to manually implement bit rotation
 LL |     let y_u8 = (x_u8 >> 3) | (x_u8 << 5);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x_u8.rotate_right(3)`
    |
-   = note: `-D clippy::manual-rotate` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_rotate)]`
+   = note: `-D clippy::manual-rotate` implied by `-D warnings`
 
 error: there is no need to manually implement bit rotation
   --> tests/ui/manual_rotate.rs:10:17

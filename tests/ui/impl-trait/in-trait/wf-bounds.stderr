@@ -15,15 +15,15 @@ LL |     fn nya2() -> impl Wf<[u8]>;
    |                       ^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | trait Wf<T: ?Sized> {
+   |           ++++++++
 note: required by an implicit `Sized` bound in `Wf`
   --> $DIR/wf-bounds.rs:5:10
    |
 LL | trait Wf<T> {
    |          ^ required by the implicit `Sized` requirement on this type parameter in `Wf`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | trait Wf<T: ?Sized> {
-   |           ++++++++
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/wf-bounds.rs:18:44

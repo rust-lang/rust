@@ -44,12 +44,12 @@ LL |     foo.take()
    |         this is an associated function, not a method
    |         `Box<dyn Fn(bool) -> usize>` is not an iterator
    |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 help: use associated function syntax instead
    |
 LL -     foo.take()
 LL +     Box::<dyn Fn(bool) -> usize>::take(foo)
    |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
    = note: the candidate is defined in an impl for the type `Box<T, A>`
    = note: the following trait bounds were not satisfied:
            `dyn Fn(bool) -> usize: Iterator`

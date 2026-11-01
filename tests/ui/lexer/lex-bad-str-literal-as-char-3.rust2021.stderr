@@ -4,12 +4,12 @@ error: prefix `world` is unknown
 LL |     println!('hello world');
    |                     ^^^^^ unknown prefix
    |
-   = note: prefixed identifiers and literals are reserved since Rust 2021
 help: if you meant to write a string literal, use double quotes
    |
 LL -     println!('hello world');
 LL +     println!("hello world");
    |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
 
 error[E0762]: unterminated character literal
   --> $DIR/lex-bad-str-literal-as-char-3.rs:6:26

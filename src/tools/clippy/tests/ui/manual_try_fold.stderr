@@ -4,8 +4,8 @@ error: usage of `Iterator::fold` on a type that implements `Try`
 LL |         .fold(Some(0i32), |sum, i| sum?.checked_add(*i))
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `try_fold` instead: `try_fold(0i32, |sum, i| ...)`
    |
-   = note: `-D clippy::manual-try-fold` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_try_fold)]`
+   = note: `-D clippy::manual-try-fold` implied by `-D warnings`
 
 error: usage of `Iterator::fold` on a type that implements `Try`
   --> tests/ui/manual_try_fold.rs:77:10

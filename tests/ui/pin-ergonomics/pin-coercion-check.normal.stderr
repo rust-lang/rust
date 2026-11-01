@@ -4,12 +4,12 @@ error[E0277]: `T` cannot be unpinned
 LL |     |x: Pin<&mut T>| -> &mut T { x.get_mut() };
    |                                    ^^^^^^^ the trait `Unpin` is not implemented for `T`
    |
-   = note: consider using the `pin!` macro
-           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn get<T: std::marker::Unpin, U: Unpin>() {
    |         ++++++++++++++++++++
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 note: required by a bound in `Pin::<&'a mut T>::get_mut`
   --> $SRC_DIR/core/src/pin.rs:LL:COL
 
@@ -21,12 +21,12 @@ LL |     |x: Pin<&mut T>| -> &mut T { x };
    |                         |
    |                         expected `&mut T` because of return type
    |
-   = note: expected mutable reference `&mut T`
-                         found struct `Pin<&mut T>`
 help: consider mutably borrowing here
    |
 LL |     |x: Pin<&mut T>| -> &mut T { &mut x };
    |                                  ++++
+   = note: expected mutable reference `&mut T`
+                         found struct `Pin<&mut T>`
 
 error[E0308]: mismatched types
   --> $DIR/pin-coercion-check.rs:21:30
@@ -36,12 +36,12 @@ LL |     |x: Pin<&mut T>| -> &T { x };
    |                         |
    |                         expected `&T` because of return type
    |
-   = note: expected reference `&T`
-                 found struct `Pin<&mut T>`
 help: consider borrowing here
    |
 LL |     |x: Pin<&mut T>| -> &T { &x };
    |                              +
+   = note: expected reference `&T`
+                 found struct `Pin<&mut T>`
 
 error[E0308]: mismatched types
   --> $DIR/pin-coercion-check.rs:24:26
@@ -51,12 +51,12 @@ LL |     |x: Pin<&T>| -> &T { x };
    |                     |
    |                     expected `&T` because of return type
    |
-   = note: expected reference `&T`
-                 found struct `Pin<&T>`
 help: consider borrowing here
    |
 LL |     |x: Pin<&T>| -> &T { &x };
    |                          +
+   = note: expected reference `&T`
+                 found struct `Pin<&T>`
 
 error[E0308]: mismatched types
   --> $DIR/pin-coercion-check.rs:27:30
@@ -66,12 +66,12 @@ LL |     |x: Pin<&T>| -> &mut T { x };
    |                     |
    |                     expected `&mut T` because of return type
    |
-   = note: expected mutable reference `&mut T`
-                         found struct `Pin<&T>`
 help: consider mutably borrowing here
    |
 LL |     |x: Pin<&T>| -> &mut T { &mut x };
    |                              ++++
+   = note: expected mutable reference `&mut T`
+                         found struct `Pin<&T>`
 
 error[E0308]: mismatched types
   --> $DIR/pin-coercion-check.rs:31:34
@@ -81,12 +81,12 @@ LL |     |x: Pin<&mut U>| -> &mut U { x };
    |                         |
    |                         expected `&mut U` because of return type
    |
-   = note: expected mutable reference `&mut U`
-                         found struct `Pin<&mut U>`
 help: consider mutably borrowing here
    |
 LL |     |x: Pin<&mut U>| -> &mut U { &mut x };
    |                                  ++++
+   = note: expected mutable reference `&mut U`
+                         found struct `Pin<&mut U>`
 
 error[E0308]: mismatched types
   --> $DIR/pin-coercion-check.rs:33:30
@@ -96,12 +96,12 @@ LL |     |x: Pin<&mut U>| -> &U { x };
    |                         |
    |                         expected `&U` because of return type
    |
-   = note: expected reference `&U`
-                 found struct `Pin<&mut U>`
 help: consider borrowing here
    |
 LL |     |x: Pin<&mut U>| -> &U { &x };
    |                              +
+   = note: expected reference `&U`
+                 found struct `Pin<&mut U>`
 
 error[E0308]: mismatched types
   --> $DIR/pin-coercion-check.rs:35:26
@@ -111,12 +111,12 @@ LL |     |x: Pin<&U>| -> &U { x };
    |                     |
    |                     expected `&U` because of return type
    |
-   = note: expected reference `&U`
-                 found struct `Pin<&U>`
 help: consider borrowing here
    |
 LL |     |x: Pin<&U>| -> &U { &x };
    |                          +
+   = note: expected reference `&U`
+                 found struct `Pin<&U>`
 
 error[E0308]: mismatched types
   --> $DIR/pin-coercion-check.rs:37:30
@@ -126,12 +126,12 @@ LL |     |x: Pin<&U>| -> &mut U { x };
    |                     |
    |                     expected `&mut U` because of return type
    |
-   = note: expected mutable reference `&mut U`
-                         found struct `Pin<&U>`
 help: consider mutably borrowing here
    |
 LL |     |x: Pin<&U>| -> &mut U { &mut x };
    |                              ++++
+   = note: expected mutable reference `&mut U`
+                         found struct `Pin<&U>`
 
 error[E0308]: mismatched types
   --> $DIR/pin-coercion-check.rs:43:34

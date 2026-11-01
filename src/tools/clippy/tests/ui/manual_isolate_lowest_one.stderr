@@ -4,8 +4,8 @@ error: manual implementation of `isolate_lowest_one`
 LL |     let _ = x_u32 & x_u32.wrapping_neg();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.isolate_lowest_one()`: `x_u32.isolate_lowest_one()`
    |
-   = note: `-D clippy::manual-isolate-lowest-one` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_isolate_lowest_one)]`
+   = note: `-D clippy::manual-isolate-lowest-one` implied by `-D warnings`
 
 error: manual implementation of `isolate_lowest_one`
   --> tests/ui/manual_isolate_lowest_one.rs:11:13

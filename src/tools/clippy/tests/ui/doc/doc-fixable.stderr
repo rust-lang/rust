@@ -4,13 +4,13 @@ error: item in documentation is missing backticks
 LL | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
    |         ^^^^^^^
    |
-   = note: `-D clippy::doc-markdown` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
 help: try
    |
 LL - /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
 LL + /// The `foo_bar` function does _nothing_. See also foo::bar. (note the dot there)
    |
+   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
+   = note: `-D clippy::doc-markdown` implied by `-D warnings`
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:8:51

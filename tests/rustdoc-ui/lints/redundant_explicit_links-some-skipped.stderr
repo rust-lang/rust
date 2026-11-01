@@ -6,13 +6,13 @@ LL | /// [Option][Option]
    |      |
    |      because label contains path that resolves to same destination
    |
-   = note: when a link's destination is not specified,
-           the label is used to resolve intra-doc links
 help: remove explicit link target
    |
 LL - /// [Option][Option]
 LL + /// [Option]
    |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
 note: the lint level is defined here
   --> $DIR/redundant_explicit_links-some-skipped.rs:7:9
    |
@@ -27,13 +27,13 @@ LL | /// [Result][Result]
    |      |
    |      because label contains path that resolves to same destination
    |
-   = note: when a link's destination is not specified,
-           the label is used to resolve intra-doc links
 help: remove explicit link target
    |
 LL - /// [Result][Result]
 LL + /// [Result]
    |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
 
 error: aborting due to 2 previous errors
 

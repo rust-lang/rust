@@ -4,18 +4,13 @@ error[E0034]: multiple applicable items in scope
 LL |     ().hello();
    |        ^^^^^ multiple `hello` found
    |
-note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/no-common-ancestor-2.rs:8:5
-   |
-LL |     fn hello(&self) -> &'static str {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     ().hello();
 LL +     A::hello(&());
    |
-note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/no-common-ancestor-2.rs:20:5
+note: candidate #1 is defined in an impl of the trait `A` for the type `T`
+  --> $DIR/no-common-ancestor-2.rs:8:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,8 +19,8 @@ help: disambiguate the method for candidate #2
 LL -     ().hello();
 LL +     B::hello(&());
    |
-note: candidate #3 is defined in an impl of the trait `C` for the type `T`
-  --> $DIR/no-common-ancestor-2.rs:32:5
+note: candidate #2 is defined in an impl of the trait `B` for the type `T`
+  --> $DIR/no-common-ancestor-2.rs:20:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -34,8 +29,8 @@ help: disambiguate the method for candidate #3
 LL -     ().hello();
 LL +     C::hello(&());
    |
-note: candidate #4 is defined in an impl of the trait `D` for the type `T`
-  --> $DIR/no-common-ancestor-2.rs:48:5
+note: candidate #3 is defined in an impl of the trait `C` for the type `T`
+  --> $DIR/no-common-ancestor-2.rs:32:5
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,6 +39,11 @@ help: disambiguate the method for candidate #4
 LL -     ().hello();
 LL +     D::hello(&());
    |
+note: candidate #4 is defined in an impl of the trait `D` for the type `T`
+  --> $DIR/no-common-ancestor-2.rs:48:5
+   |
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0221]: ambiguous associated type `Assoc` in bounds of `T`
   --> $DIR/no-common-ancestor-2.rs:67:23
@@ -90,6 +90,20 @@ error[E0034]: multiple applicable items in scope
 LL |     let _ = T::CONST;
    |                ^^^^^ multiple `CONST` found
    |
+help: use fully-qualified syntax to disambiguate
+   |
+LL -     let _ = T::CONST;
+LL +     let _ = <T as A>::CONST;
+   |
+LL -     let _ = T::CONST;
+LL +     let _ = <T as B>::CONST;
+   |
+LL -     let _ = T::CONST;
+LL +     let _ = <T as C>::CONST;
+   |
+LL -     let _ = T::CONST;
+LL +     let _ = <T as D>::CONST;
+   |
 note: candidate #1 is defined in the trait `A`
   --> $DIR/no-common-ancestor-2.rs:12:5
    |
@@ -110,20 +124,6 @@ note: candidate #4 is defined in the trait `D`
    |
 LL |     const CONST: i32;
    |     ^^^^^^^^^^^^^^^^
-help: use fully-qualified syntax to disambiguate
-   |
-LL -     let _ = T::CONST;
-LL +     let _ = <T as A>::CONST;
-   |
-LL -     let _ = T::CONST;
-LL +     let _ = <T as B>::CONST;
-   |
-LL -     let _ = T::CONST;
-LL +     let _ = <T as C>::CONST;
-   |
-LL -     let _ = T::CONST;
-LL +     let _ = <T as D>::CONST;
-   |
 
 error: aborting due to 3 previous errors
 

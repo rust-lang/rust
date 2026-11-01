@@ -9,8 +9,6 @@ LL | |     type Item = &'a u8;
 LL | | }
    | |_^
    |
-   = note: `-D clippy::into-iter-without-iter` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::into_iter_without_iter)]`
 help: consider implementing `iter`
    |
 LL + 
@@ -20,6 +18,8 @@ LL +         <&Self as IntoIterator>::into_iter(self)
 LL +     }
 LL + }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::into_iter_without_iter)]`
+   = note: `-D clippy::into-iter-without-iter` implied by `-D warnings`
 
 error: `IntoIterator` implemented for a reference type without an `iter_mut` method
   --> tests/ui/into_iter_without_iter.rs:18:1

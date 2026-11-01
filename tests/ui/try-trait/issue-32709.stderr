@@ -8,7 +8,6 @@ LL |     Err(5)?;
    |     |
    |     this can't be annotated with `?` because it has type `Result<_, {integer}>`
    |
-   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the following other types implement trait `From<T>`:
              `(T,)` implements `From<[T; 1]>`
              `(T, T)` implements `From<[T; 2]>`
@@ -19,6 +18,7 @@ LL |     Err(5)?;
              `(T, T, T, T, T, T, T)` implements `From<[T; 7]>`
              `(T, T, T, T, T, T, T, T)` implements `From<[T; 8]>`
            and 4 others
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
 
 error: aborting due to 1 previous error
 

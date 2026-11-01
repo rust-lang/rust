@@ -4,13 +4,13 @@ error: called `filter_map(..).next()` on an `Iterator`
 LL |     let element: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next();
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::filter-map-next` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::filter_map_next)]`
 help: use `.find_map(..)` instead
    |
 LL -     let element: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next();
 LL +     let element: Option<i32> = a.iter().find_map(|s| s.parse().ok());
    |
+   = help: to override `-D warnings` add `#[allow(clippy::filter_map_next)]`
+   = note: `-D clippy::filter-map-next` implied by `-D warnings`
 
 error: called `filter_map(..).next()` on an `Iterator`
   --> tests/ui/filter_map_next.rs:11:26

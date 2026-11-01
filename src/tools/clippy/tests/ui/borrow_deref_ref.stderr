@@ -4,8 +4,8 @@ error: deref on an immutable reference
 LL |         let b = &*a;
    |                 ^^^ help: if you would like to reborrow, try removing `&*`: `a`
    |
-   = note: `-D clippy::borrow-deref-ref` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::borrow_deref_ref)]`
+   = note: `-D clippy::borrow-deref-ref` implied by `-D warnings`
 
 error: deref on an immutable reference
   --> tests/ui/borrow_deref_ref.rs:14:22

@@ -8,8 +8,8 @@ LL |         self.ne(other)
    |         -------------- recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
-   = note: `-D unconditional-recursion` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(unconditional_recursion)]`
+   = note: `-D unconditional-recursion` implied by `-D warnings`
 
 error: function cannot return without recursing
   --> tests/ui/unconditional_recursion.rs:54:5
@@ -65,13 +65,13 @@ LL | |         self != other
 LL | |     }
    | |_____^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unconditional_recursion)]`
 note: recursive call site
   --> tests/ui/unconditional_recursion.rs:18:9
    |
 LL |         self != other
    |         ^^^^^^^^^^^^^
    = note: `-D clippy::unconditional-recursion` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unconditional_recursion)]`
 
 error: function cannot return without recursing
   --> tests/ui/unconditional_recursion.rs:20:5

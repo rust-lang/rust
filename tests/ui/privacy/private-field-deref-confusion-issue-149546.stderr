@@ -53,6 +53,16 @@ LL |     5 + a.field;
    |       ^ no implementation for `{integer} + bool`
    |
    = help: the trait `Add<bool>` is not implemented for `{integer}`
+   = help: the following other types implement trait `Add<Rhs>`:
+             `&f128` implements `Add<f128>`
+             `&f128` implements `Add`
+             `&f16` implements `Add<f16>`
+             `&f16` implements `Add`
+             `&f32` implements `Add<f32>`
+             `&f32` implements `Add`
+             `&f64` implements `Add<f64>`
+             `&f64` implements `Add`
+           and 56 others
 note: there is a field `field` on `A` with type `usize` but it is private; `field` from `B` was accessed through auto-deref instead
   --> $DIR/private-field-deref-confusion-issue-149546.rs:7:16
    |
@@ -68,16 +78,6 @@ LL |         pub field: bool,
 ...
 LL |     impl std::ops::Deref for A {
    |     -------------------------- the field was accessed through this `Deref`
-   = help: the following other types implement trait `Add<Rhs>`:
-             `&f128` implements `Add<f128>`
-             `&f128` implements `Add`
-             `&f16` implements `Add<f16>`
-             `&f16` implements `Add`
-             `&f32` implements `Add<f32>`
-             `&f32` implements `Add`
-             `&f64` implements `Add<f64>`
-             `&f64` implements `Add`
-           and 56 others
 
 error[E0277]: cannot add `bool` to `{integer}`
   --> $DIR/private-field-deref-confusion-issue-149546.rs:54:7
@@ -86,21 +86,6 @@ LL |     5 + a.field;
    |       ^ no implementation for `{integer} + bool`
    |
    = help: the trait `Add<bool>` is not implemented for `{integer}`
-note: there is a field `field` on `A` with type `usize` but it is private; `field` from `B` was accessed through auto-deref instead
-  --> $DIR/private-field-deref-confusion-issue-149546.rs:7:16
-   |
-LL |     pub struct A {
-   |                ^ in this struct
-LL |         field: usize,
-   |         ----- if this field wasn't private, it would be accessible
-...
-LL |     pub struct B {
-   |                - this struct is accessible through auto-deref
-LL |         pub field: bool,
-   |             ----- this is the field that was accessed
-...
-LL |     impl std::ops::Deref for A {
-   |     -------------------------- the field was accessed through this `Deref`
    = help: the following other types implement trait `Add<Rhs>`:
              `&f128` implements `Add<f128>`
              `&f128` implements `Add`
@@ -111,6 +96,21 @@ LL |     impl std::ops::Deref for A {
              `&f64` implements `Add<f64>`
              `&f64` implements `Add`
            and 56 others
+note: there is a field `field` on `A` with type `usize` but it is private; `field` from `B` was accessed through auto-deref instead
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:7:16
+   |
+LL |     pub struct A {
+   |                ^ in this struct
+LL |         field: usize,
+   |         ----- if this field wasn't private, it would be accessible
+...
+LL |     pub struct B {
+   |                - this struct is accessible through auto-deref
+LL |         pub field: bool,
+   |             ----- this is the field that was accessed
+...
+LL |     impl std::ops::Deref for A {
+   |     -------------------------- the field was accessed through this `Deref`
 
 error[E0277]: cannot add-assign `bool` to `{integer}`
   --> $DIR/private-field-deref-confusion-issue-149546.rs:59:7
@@ -119,6 +119,16 @@ LL |     n += a.field;
    |       ^^ no implementation for `{integer} += bool`
    |
    = help: the trait `AddAssign<bool>` is not implemented for `{integer}`
+   = help: the following other types implement trait `AddAssign<Rhs>`:
+             `f128` implements `AddAssign<&f128>`
+             `f128` implements `AddAssign`
+             `f16` implements `AddAssign<&f16>`
+             `f16` implements `AddAssign`
+             `f32` implements `AddAssign<&f32>`
+             `f32` implements `AddAssign`
+             `f64` implements `AddAssign<&f64>`
+             `f64` implements `AddAssign`
+           and 24 others
 note: there is a field `field` on `A` with type `usize` but it is private; `field` from `B` was accessed through auto-deref instead
   --> $DIR/private-field-deref-confusion-issue-149546.rs:7:16
    |
@@ -134,16 +144,6 @@ LL |         pub field: bool,
 ...
 LL |     impl std::ops::Deref for A {
    |     -------------------------- the field was accessed through this `Deref`
-   = help: the following other types implement trait `AddAssign<Rhs>`:
-             `f128` implements `AddAssign<&f128>`
-             `f128` implements `AddAssign`
-             `f16` implements `AddAssign<&f16>`
-             `f16` implements `AddAssign`
-             `f32` implements `AddAssign<&f32>`
-             `f32` implements `AddAssign`
-             `f64` implements `AddAssign<&f64>`
-             `f64` implements `AddAssign`
-           and 24 others
 
 error[E0277]: cannot add-assign `bool` to `{integer}`
   --> $DIR/private-field-deref-confusion-issue-149546.rs:64:7
@@ -152,21 +152,6 @@ LL |     n += a.field;
    |       ^^ no implementation for `{integer} += bool`
    |
    = help: the trait `AddAssign<bool>` is not implemented for `{integer}`
-note: there is a field `field` on `A` with type `usize` but it is private; `field` from `B` was accessed through auto-deref instead
-  --> $DIR/private-field-deref-confusion-issue-149546.rs:7:16
-   |
-LL |     pub struct A {
-   |                ^ in this struct
-LL |         field: usize,
-   |         ----- if this field wasn't private, it would be accessible
-...
-LL |     pub struct B {
-   |                - this struct is accessible through auto-deref
-LL |         pub field: bool,
-   |             ----- this is the field that was accessed
-...
-LL |     impl std::ops::Deref for A {
-   |     -------------------------- the field was accessed through this `Deref`
    = help: the following other types implement trait `AddAssign<Rhs>`:
              `f128` implements `AddAssign<&f128>`
              `f128` implements `AddAssign`
@@ -177,13 +162,6 @@ LL |     impl std::ops::Deref for A {
              `f64` implements `AddAssign<&f64>`
              `f64` implements `AddAssign`
            and 24 others
-
-error[E0277]: the trait bound `bool: Marker` is not satisfied
-  --> $DIR/private-field-deref-confusion-issue-149546.rs:68:16
-   |
-LL |     Wrapper(5) + a.field;
-   |                ^ the trait `Marker` is not implemented for `bool`
-   |
 note: there is a field `field` on `A` with type `usize` but it is private; `field` from `B` was accessed through auto-deref instead
   --> $DIR/private-field-deref-confusion-issue-149546.rs:7:16
    |
@@ -199,11 +177,33 @@ LL |         pub field: bool,
 ...
 LL |     impl std::ops::Deref for A {
    |     -------------------------- the field was accessed through this `Deref`
+
+error[E0277]: the trait bound `bool: Marker` is not satisfied
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:68:16
+   |
+LL |     Wrapper(5) + a.field;
+   |                ^ the trait `Marker` is not implemented for `bool`
+   |
 help: the trait `Marker` is implemented for `usize`
   --> $DIR/private-field-deref-confusion-issue-149546.rs:31:1
    |
 LL | impl Marker for usize {}
    | ^^^^^^^^^^^^^^^^^^^^^
+note: there is a field `field` on `A` with type `usize` but it is private; `field` from `B` was accessed through auto-deref instead
+  --> $DIR/private-field-deref-confusion-issue-149546.rs:7:16
+   |
+LL |     pub struct A {
+   |                ^ in this struct
+LL |         field: usize,
+   |         ----- if this field wasn't private, it would be accessible
+...
+LL |     pub struct B {
+   |                - this struct is accessible through auto-deref
+LL |         pub field: bool,
+   |             ----- this is the field that was accessed
+...
+LL |     impl std::ops::Deref for A {
+   |     -------------------------- the field was accessed through this `Deref`
 note: required for `Wrapper` to implement `Add<bool>`
   --> $DIR/private-field-deref-confusion-issue-149546.rs:35:17
    |

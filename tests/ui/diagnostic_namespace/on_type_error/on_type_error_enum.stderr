@@ -6,13 +6,13 @@ LL |     let e: MyEnum<&str> = "hello";
    |            |
    |            expected due to this
    |
-   = note: custom on_type_error note: expected enum `MyEnum<&str>`, found `&'static str`
-   = note:   expected enum `MyEnum<&str>`
-           found reference `&'static str`
 help: try wrapping the expression in `MyEnum::Variant`
    |
 LL |     let e: MyEnum<&str> = MyEnum::Variant("hello");
    |                           ++++++++++++++++       +
+   = note: custom on_type_error note: expected enum `MyEnum<&str>`, found `&'static str`
+   = note:   expected enum `MyEnum<&str>`
+           found reference `&'static str`
 
 error: aborting due to 1 previous error
 

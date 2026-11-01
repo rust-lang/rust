@@ -8,8 +8,8 @@ LL | | }
    | |_^
    |
    = help: consider using a state machine or refactoring bools into two-variant enums
-   = note: `-D clippy::struct-excessive-bools` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::struct_excessive_bools)]`
+   = note: `-D clippy::struct-excessive-bools` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

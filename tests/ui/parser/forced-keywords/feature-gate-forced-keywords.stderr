@@ -4,8 +4,8 @@ error[E0658]: forced keywords are experimental
 LL | k#fn main() {}
    | ^^^^
    |
-   = note: see issue #153839 <https://github.com/rust-lang/rust/issues/153839> for more information
    = help: add `#![feature(forced_keywords)]` to the crate attributes to enable
+   = note: see issue #153839 <https://github.com/rust-lang/rust/issues/153839> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: forced keywords are experimental
@@ -14,8 +14,8 @@ error[E0658]: forced keywords are experimental
 LL | k#fn start() {}
    | ^^^^
    |
-   = note: see issue #153839 <https://github.com/rust-lang/rust/issues/153839> for more information
    = help: add `#![feature(forced_keywords)]` to the crate attributes to enable
+   = note: see issue #153839 <https://github.com/rust-lang/rust/issues/153839> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: forced keywords are experimental
@@ -24,8 +24,8 @@ error[E0658]: forced keywords are experimental
 LL | discard!(k#static);
    |          ^^^^^^^^
    |
-   = note: see issue #153839 <https://github.com/rust-lang/rust/issues/153839> for more information
    = help: add `#![feature(forced_keywords)]` to the crate attributes to enable
+   = note: see issue #153839 <https://github.com/rust-lang/rust/issues/153839> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 3 previous errors

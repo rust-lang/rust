@@ -4,8 +4,8 @@ error: usage of wildcard import
 LL | pub use utils::*;
    |         ^^^^^^^^ help: try: `utils::{BAR, print}`
    |
-   = note: `-D clippy::wildcard-imports` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::wildcard_imports)]`
+   = note: `-D clippy::wildcard-imports` implied by `-D warnings`
 
 error: usage of wildcard import
   --> tests/ui-toml/wildcard_imports/wildcard_imports.rs:25:5

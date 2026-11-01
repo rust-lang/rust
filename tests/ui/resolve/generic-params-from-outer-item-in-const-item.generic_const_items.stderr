@@ -8,12 +8,12 @@ LL |     const K: u32 = T::C;
    |           |
    |           generic parameter used in this inner constant item
    |
-   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try using a local `let` binding instead
    |
 LL -     const K: u32 = T::C;
 LL +     let K: u32 = T::C;
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |     const K<T>: u32 = T::C;
@@ -31,12 +31,12 @@ LL |         const I: u32 = T::C;
    |               |
    |               generic parameter used in this inner constant item
    |
-   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try using a local `let` binding instead
    |
 LL -         const I: u32 = T::C;
 LL +         let I: u32 = T::C;
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |         const I<T>: u32 = T::C;
@@ -53,12 +53,12 @@ LL |     const _: u32 = T::C;
    |           |
    |           generic parameter used in this inner constant item
    |
-   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try using a local `let` binding instead
    |
 LL -     const _: u32 = T::C;
 LL +     let _: u32 = T::C;
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |     const _<T>: u32 = T::C;

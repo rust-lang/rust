@@ -4,8 +4,8 @@ error: casting raw pointers to the same type and constness is unnecessary (`*con
 LL |     ptr as *const T
    |     ^^^^^^^^^^^^^^^ help: try: `ptr`
    |
-   = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_cast)]`
+   = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
 
 error: casting integer literal to `i32` is unnecessary
   --> tests/ui/unnecessary_cast.rs:56:5

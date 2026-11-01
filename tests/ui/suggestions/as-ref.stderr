@@ -78,12 +78,12 @@ LL |     let y: Option<&usize> = x;
    |            |
    |            expected due to this
    |
-   = note:   expected enum `Option<&_>`
-           found reference `&Option<_>`
 help: try using `.as_ref()` to convert `&Option<usize>` to `Option<&usize>`
    |
 LL |     let y: Option<&usize> = x.as_ref();
    |                              +++++++++
+   = note:   expected enum `Option<&_>`
+           found reference `&Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/as-ref.rs:15:37
@@ -93,12 +93,12 @@ LL |     let y: Result<&usize, &usize> = x;
    |            |
    |            expected due to this
    |
-   = note:   expected enum `Result<&_, &_>`
-           found reference `&Result<_, _>`
 help: try using `.as_ref()` to convert `&Result<usize, usize>` to `Result<&usize, &usize>`
    |
 LL |     let y: Result<&usize, &usize> = x.as_ref();
    |                                      +++++++++
+   = note:   expected enum `Result<&_, &_>`
+           found reference `&Result<_, _>`
 
 error[E0308]: mismatched types
   --> $DIR/as-ref.rs:19:36
@@ -191,13 +191,13 @@ LL |     let _: Result<&usize, _> = &Ok(42);
    |            |
    |            expected due to this
    |
-   = note:   expected enum `Result<&usize, _>`
-           found reference `&Result<{integer}, _>`
 help: try using `.as_ref()` to convert `&Result<{integer}, _>` to `Result<&usize, _>`
    |
 LL -     let _: Result<&usize, _> = &Ok(42);
 LL +     let _: Result<&usize, _> = Ok(42).as_ref();
    |
+   = note:   expected enum `Result<&usize, _>`
+           found reference `&Result<{integer}, _>`
 
 error: aborting due to 12 previous errors
 

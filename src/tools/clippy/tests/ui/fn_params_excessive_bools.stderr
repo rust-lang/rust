@@ -5,8 +5,8 @@ LL | fn g(_: bool, _: bool, _: bool, _: bool) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider refactoring bools into two-variant enums
-   = note: `-D clippy::fn-params-excessive-bools` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::fn_params_excessive_bools)]`
+   = note: `-D clippy::fn-params-excessive-bools` implied by `-D warnings`
 
 error: more than 3 bools in function parameters
   --> tests/ui/fn_params_excessive_bools.rs:23:1

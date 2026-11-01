@@ -4,11 +4,11 @@ error[E0404]: cannot find trait `Debug` in this scope
 LL |     <T as FromStr>::Err: Debug,
    |                          ^^^^^ not found in this scope
    |
-   = note: a derive macro named `Debug` exists in another namespace
 help: consider importing this trait instead
    |
 LL + use std::fmt::Debug;
    |
+   = note: a derive macro named `Debug` exists in another namespace
 
 error[E0405]: cannot find trait `some_unknown_name` in this scope
   --> $DIR/assoc-type-maybe-trait-147356.rs:11:26

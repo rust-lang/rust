@@ -4,13 +4,13 @@ error: missing lifetime in associated type
 LL |     type Item = &T;
    |                 ^ this lifetime must come from the implemented type
    |
-note: in the trait the associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: add a lifetime to the impl block and use it in the self type and associated type
    |
 LL ~ impl<'a> IntoIterator for &'a S {
 LL ~     type Item = &'a T;
    |
+note: in the trait the associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 
 error[E0106]: missing lifetime specifier
   --> $DIR/missing-lifetime-in-assoc-type-3.rs:7:56

@@ -6,12 +6,12 @@ LL |     take_str_maybe(option);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected enum `Option<&str>`
-              found enum `Option<String>`
 help: try using `.as_deref()` to convert `Option<String>` to `Option<&str>`
    |
 LL |     take_str_maybe(option.as_deref());
    |                          +++++++++++
+   = note: expected enum `Option<&str>`
+              found enum `Option<String>`
 note: function defined here
   --> $DIR/issue-89856.rs:3:4
    |
@@ -26,12 +26,12 @@ LL |     take_str_maybe(option_ref);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected enum `Option<&str>`
-              found enum `Option<&String>`
 help: try converting the passed type into a `&str`
    |
 LL |     take_str_maybe(option_ref.map(|x| x.as_str()));
    |                              ++++++++++++++++++++
+   = note: expected enum `Option<&str>`
+              found enum `Option<&String>`
 note: function defined here
   --> $DIR/issue-89856.rs:3:4
    |
@@ -46,12 +46,12 @@ LL |     take_str_maybe(option_ref_ref);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected enum `Option<&str>`
-              found enum `Option<&&String>`
 help: try converting the passed type into a `&str`
    |
 LL |     take_str_maybe(option_ref_ref.map(|x| x.as_str()));
    |                                  ++++++++++++++++++++
+   = note: expected enum `Option<&str>`
+              found enum `Option<&&String>`
 note: function defined here
   --> $DIR/issue-89856.rs:3:4
    |

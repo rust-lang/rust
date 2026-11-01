@@ -4,8 +4,8 @@ error[E0658]: use of unstable library feature `unstable_undeclared`
 LL |         a_unstable_undeclared_pub: _,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_undeclared`
@@ -14,8 +14,8 @@ error[E0658]: use of unstable library feature `unstable_undeclared`
 LL |     r.a_unstable_undeclared_pub;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0616]: field `b_crate` of struct `Record` is private
@@ -42,8 +42,8 @@ error[E0658]: use of unstable library feature `unstable_undeclared`
 LL |     t.2;
    |     ^^^
    |
-   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0616]: field `3` of struct `pub_and_stability::Tuple` is private
@@ -70,8 +70,8 @@ error[E0658]: use of unstable library feature `unstable_undeclared`
 LL |     r.unstable_undeclared_trait_method();
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_undeclared`
@@ -80,8 +80,8 @@ error[E0658]: use of unstable library feature `unstable_undeclared`
 LL |     r.unstable_undeclared();
    |       ^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0624]: method `pub_crate` is private
@@ -123,8 +123,8 @@ error[E0658]: use of unstable library feature `unstable_undeclared`
 LL |     t.unstable_undeclared_trait_method();
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `unstable_undeclared`
@@ -133,8 +133,8 @@ error[E0658]: use of unstable library feature `unstable_undeclared`
 LL |     t.unstable_undeclared();
    |       ^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0624]: method `pub_crate` is private

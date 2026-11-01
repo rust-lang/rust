@@ -7,8 +7,8 @@ LL |         x.unwrap();
    |         ^^^^^^^^^^
    |
    = help: try using `if let` or `match`
-   = note: `-D clippy::unnecessary-unwrap` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_unwrap)]`
+   = note: `-D clippy::unnecessary-unwrap` implied by `-D warnings`
 
 error: this call to `unwrap_err()` will always panic
   --> tests/ui/checked_unwrap/complex_conditionals.rs:11:9
@@ -19,8 +19,8 @@ LL |     if x.is_ok() && y.is_err() {
 LL |         x.unwrap_err();
    |         ^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::panicking-unwrap` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::panicking_unwrap)]`
+   = note: `-D clippy::panicking-unwrap` implied by `-D warnings`
 
 error: this call to `unwrap()` will always panic
   --> tests/ui/checked_unwrap/complex_conditionals.rs:14:9

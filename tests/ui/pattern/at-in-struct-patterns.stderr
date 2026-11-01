@@ -6,8 +6,8 @@ LL |     let Foo { var @ field1, .. } = foo;
    |         |
    |         while parsing the fields for this pattern
    |
-   = note: struct patterns use `field: pattern` syntax to bind to fields
    = help: consider replacing `new_name @ field_name` with `field_name: new_name` if that is what you intended
+   = note: struct patterns use `field: pattern` syntax to bind to fields
 
 error: `@ ..` is not supported in struct patterns
   --> $DIR/at-in-struct-patterns.rs:10:26

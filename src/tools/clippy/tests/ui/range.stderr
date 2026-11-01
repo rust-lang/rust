@@ -4,14 +4,14 @@ error: using `.zip()` with a range and `.len()`
 LL |     let _x = v1.iter().zip(0..v1.len());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the order of the element and the index will be swapped
-   = note: `-D clippy::range-zip-with-len` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::range_zip_with_len)]`
 help: use
    |
 LL -     let _x = v1.iter().zip(0..v1.len());
 LL +     let _x = v1.iter().enumerate();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::range_zip_with_len)]`
+   = note: the order of the element and the index will be swapped
+   = note: `-D clippy::range-zip-with-len` implied by `-D warnings`
 
 error: using `.zip()` with a range and `.len()`
   --> tests/ui/range.rs:9:19

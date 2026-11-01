@@ -7,6 +7,10 @@ LL | struct Foo<T> {
 LL |         self.foo();
    |              ^^^ method cannot be called on `&Foo<T>` due to unsatisfied trait bounds
    |
+help: consider restricting the type parameters to satisfy the trait bounds
+   |
+LL | struct Foo<T> where T: Bar, T: Default {
+   |               ++++++++++++++++++++++++
 note: the following trait bounds were not satisfied:
       `T: Bar`
       `T: Default`
@@ -17,10 +21,6 @@ LL | impl<T: Default + Bar> Bar for Foo<T> {}
    |         |         |
    |         |         unsatisfied trait bound introduced here
    |         unsatisfied trait bound introduced here
-help: consider restricting the type parameters to satisfy the trait bounds
-   |
-LL | struct Foo<T> where T: Bar, T: Default {
-   |               ++++++++++++++++++++++++
 
 error[E0599]: the method `foo` exists for reference `&Fin<T>`, but its trait bounds were not satisfied
   --> $DIR/missing-trait-bounds-for-method-call.rs:27:14
@@ -31,6 +31,10 @@ LL | struct Fin<T> where T: Bar {
 LL |         self.foo();
    |              ^^^ method cannot be called on `&Fin<T>` due to unsatisfied trait bounds
    |
+help: consider restricting the type parameter to satisfy the trait bound
+   |
+LL | struct Fin<T> where T: Bar, T: Default {
+   |                           ++++++++++++
 note: trait bound `T: Default` was not satisfied
   --> $DIR/missing-trait-bounds-for-method-call.rs:23:9
    |
@@ -38,10 +42,6 @@ LL | impl<T: Default + Bar> Bar for Fin<T> {}
    |         ^^^^^^^        ---     ------
    |         |
    |         unsatisfied trait bound introduced here
-help: consider restricting the type parameter to satisfy the trait bound
-   |
-LL | struct Fin<T> where T: Bar, T: Default {
-   |                           ++++++++++++
 
 error: aborting due to 2 previous errors
 

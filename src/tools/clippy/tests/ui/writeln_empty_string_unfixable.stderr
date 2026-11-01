@@ -4,13 +4,13 @@ error: empty string literal in `writeln!`
 LL |     writeln!(v, /* comment */ "");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::writeln_empty_string)]`
 note: remove the empty string
   --> tests/ui/writeln_empty_string_unfixable.rs:10:31
    |
 LL |     writeln!(v, /* comment */ "");
    |                               ^^
    = note: `-D clippy::writeln-empty-string` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::writeln_empty_string)]`
 
 error: empty string literal in `writeln!`
   --> tests/ui/writeln_empty_string_unfixable.rs:13:5

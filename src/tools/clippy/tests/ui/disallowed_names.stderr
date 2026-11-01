@@ -4,8 +4,8 @@ error: use of a disallowed/placeholder name `foo`
 LL | fn test(foo: ()) {}
    |         ^^^
    |
-   = note: `-D clippy::disallowed-names` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::disallowed_names)]`
+   = note: `-D clippy::disallowed-names` implied by `-D warnings`
 
 error: use of a disallowed/placeholder name `foo`
   --> tests/ui/disallowed_names.rs:12:9

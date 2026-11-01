@@ -4,8 +4,6 @@ error: this function can be simplified using the `async fn` syntax
 LL | fn fut() -> impl Future<Output = i32> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::manual-async-fn` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_async_fn)]`
 help: make the function `async` and return the output of the future directly
    |
 LL - fn fut() -> impl Future<Output = i32> {
@@ -14,6 +12,8 @@ LL -     async { 42 }
 LL - }
 LL + async fn fut() -> i32 { 42 }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_async_fn)]`
+   = note: `-D clippy::manual-async-fn` implied by `-D warnings`
 
 error: this function can be simplified using the `async fn` syntax
   --> tests/ui/manual_async_fn.rs:12:1

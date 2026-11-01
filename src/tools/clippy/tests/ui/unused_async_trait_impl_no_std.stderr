@@ -7,15 +7,15 @@ LL | |         1
 LL | |     }
    | |_____^
    |
-   = note: `core::future::ready` creates a `Future` which returns the value immediately when `poll`ed
-   = note: `-D clippy::unused-async-trait-impl` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unused_async_trait_impl)]`
 help: consider removing the `async` from this function and returning `impl Future<Output = u32>` instead
    |
 LL ~     fn do_something() -> impl Future<Output = u32> {
 LL |
 LL ~         core::future::ready(1)
    |
+   = note: `core::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+   = help: to override `-D warnings` add `#[allow(clippy::unused_async_trait_impl)]`
+   = note: `-D clippy::unused-async-trait-impl` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

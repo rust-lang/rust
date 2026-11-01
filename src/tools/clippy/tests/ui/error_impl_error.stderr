@@ -4,13 +4,13 @@ error: exported type named `Error` that implements `Error`
 LL |     pub struct Error;
    |                ^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::error_impl_error)]`
 note: `Error` was implemented here
   --> tests/ui/error_impl_error.rs:15:5
    |
 LL |     impl std::error::Error for Error {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::error-impl-error` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::error_impl_error)]`
 
 error: exported type named `Error` that implements `Error`
   --> tests/ui/error_impl_error.rs:20:21

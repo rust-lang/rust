@@ -16,8 +16,8 @@ LL |     }
 LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
    |          -- borrow later used here
    |
-   = note: `v1` is a collection that stores borrowed references, but `young[_]` does not live long enough to be stored in it
    = help: buffer reuse with borrowed references requires unsafe code or restructuring
+   = note: `v1` is a collection that stores borrowed references, but `young[_]` does not live long enough to be stored in it
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-let-suggestion-suffixes.rs:23:14

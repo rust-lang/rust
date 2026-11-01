@@ -11,8 +11,8 @@ LL | |         _ => i,
 LL | |     };
    | |_____^ help: replace it with: `i`
    |
-   = note: `-D clippy::needless-match` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_match)]`
+   = note: `-D clippy::needless-match` implied by `-D warnings`
 
 error: this match expression is unnecessary
   --> tests/ui/needless_match.rs:21:19

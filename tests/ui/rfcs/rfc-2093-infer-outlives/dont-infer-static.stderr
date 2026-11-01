@@ -7,15 +7,15 @@ LL |     bar: Bar<U>
    |          the parameter type `U` must be valid for the static lifetime...
    |          ...so that the type `U` will meet its required lifetime bounds...
    |
+help: consider adding an explicit lifetime bound
+   |
+LL | struct Foo<U: 'static> {
+   |             +++++++++
 note: ...that is required by this bound
   --> $DIR/dont-infer-static.rs:8:15
    |
 LL | struct Bar<T: 'static> {
    |               ^^^^^^^
-help: consider adding an explicit lifetime bound
-   |
-LL | struct Foo<U: 'static> {
-   |             +++++++++
 
 error: aborting due to 1 previous error
 

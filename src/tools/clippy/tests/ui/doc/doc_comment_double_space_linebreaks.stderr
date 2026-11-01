@@ -5,8 +5,8 @@ LL | //! Should warn on double space line breaks
    |                                            ^^
    |
    = help: replace this double space with a backslash: `\`
-   = note: `-D clippy::doc-comment-double-space-linebreaks` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::doc_comment_double_space_linebreaks)]`
+   = note: `-D clippy::doc-comment-double-space-linebreaks` implied by `-D warnings`
 
 error: doc comment uses two spaces for a hard line break
   --> tests/ui/doc/doc_comment_double_space_linebreaks.rs:37:51

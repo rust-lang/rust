@@ -13,6 +13,11 @@ LL | struct Foo<X, Y> (X, Y);
 LL |     let y = x.test();
    |               ^^^^ method cannot be called on `Foo<Enum, CloneEnum>` due to unsatisfied trait bounds
    |
+help: consider annotating `CloneEnum` with `#[derive(Default)]`
+   |
+LL + #[derive(Default)]
+LL | enum CloneEnum {
+   |
 note: the following trait bounds were not satisfied:
       `CloneEnum: Default`
       `Enum: Clone`
@@ -25,11 +30,6 @@ LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
    |         |       |                      unsatisfied trait bound introduced here
    |         |       unsatisfied trait bound introduced here
    |         unsatisfied trait bound introduced here
-help: consider annotating `CloneEnum` with `#[derive(Default)]`
-   |
-LL + #[derive(Default)]
-LL | enum CloneEnum {
-   |
 help: consider annotating `Enum` with `#[derive(Clone, Default)]`
    |
 LL + #[derive(Clone, Default)]
@@ -51,6 +51,11 @@ LL | struct Foo<X, Y> (X, Y);
 LL |     let y = x.test();
    |               ^^^^ method cannot be called on `Foo<Struct, CloneStruct>` due to unsatisfied trait bounds
    |
+help: consider annotating `CloneStruct` with `#[derive(Default)]`
+   |
+LL + #[derive(Default)]
+LL | struct CloneStruct {
+   |
 note: the following trait bounds were not satisfied:
       `CloneStruct: Default`
       `Struct: Clone`
@@ -63,11 +68,6 @@ LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
    |         |       |                      unsatisfied trait bound introduced here
    |         |       unsatisfied trait bound introduced here
    |         unsatisfied trait bound introduced here
-help: consider annotating `CloneStruct` with `#[derive(Default)]`
-   |
-LL + #[derive(Default)]
-LL | struct CloneStruct {
-   |
 help: consider annotating `Struct` with `#[derive(Clone, Default)]`
    |
 LL + #[derive(Clone, Default)]
@@ -86,6 +86,11 @@ LL | struct Foo<X, Y> (X, Y);
 LL |     let y = x.test();
    |               ^^^^ method cannot be called on `Foo<Vec<Enum>, Instant>` due to unsatisfied trait bounds
    |
+help: consider annotating `Enum` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | enum Enum {
+   |
 note: trait bound `Instant: Default` was not satisfied
   --> $DIR/derive-trait-for-method-call.rs:20:40
    |
@@ -96,11 +101,6 @@ LL | impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
    = note: the following trait bounds were not satisfied:
            `Enum: Clone`
            which is required by `Vec<Enum>: Clone`
-help: consider annotating `Enum` with `#[derive(Clone)]`
-   |
-LL + #[derive(Clone)]
-LL | enum Enum {
-   |
 
 error: aborting due to 3 previous errors
 

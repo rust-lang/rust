@@ -8,11 +8,11 @@ help: consider making the bound lifetime-generic with a new `'missing` lifetime
    |
 LL |     fn iter(&self) -> impl for<'missing> Iterator<Item = Self::Item<'missing>>;
    |                            +++++++++++++
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'missing` here
    |
 LL |     fn iter<'missing>(&self) -> impl Iterator<Item = Self::Item<'missing>>;
    |            ++++++++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'missing` here
    |
 LL | trait Iterable<'missing> {

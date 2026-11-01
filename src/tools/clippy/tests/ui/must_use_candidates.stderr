@@ -4,13 +4,13 @@ error: this function could have a `#[must_use]` attribute
 LL | pub fn pure(i: u8) -> u8 {
    |        ^^^^
    |
-   = note: `-D clippy::must-use-candidate` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::must_use_candidate)]`
 help: add the attribute
    |
 LL + #[must_use]
 LL | pub fn pure(i: u8) -> u8 {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::must_use_candidate)]`
+   = note: `-D clippy::must-use-candidate` implied by `-D warnings`
 
 error: this method could have a `#[must_use]` attribute
   --> tests/ui/must_use_candidates.rs:15:12

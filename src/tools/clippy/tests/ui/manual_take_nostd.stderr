@@ -11,8 +11,6 @@ LL | |         true
 LL | |     };
    | |_____^
    |
-   = note: `-D clippy::manual-take` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_take)]`
 help: use
    |
 LL -     let _lint_negated = if x {
@@ -24,6 +22,8 @@ LL -         true
 LL -     };
 LL +     let _lint_negated = !core::mem::take(&mut x);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_take)]`
+   = note: `-D clippy::manual-take` implied by `-D warnings`
 
 error: manual implementation of `mem::take`
   --> tests/ui/manual_take_nostd.rs:15:17

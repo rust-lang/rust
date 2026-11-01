@@ -4,13 +4,13 @@ error: this bound is already specified as the supertrait of `DerefMut<Target = T
 LL | fn deref_derefmut<T>(x: T) -> impl Deref<Target = T> + DerefMut<Target = T> {
    |                                    ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::implied-bounds-in-impls` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::implied_bounds_in_impls)]`
 help: try removing this bound
    |
 LL - fn deref_derefmut<T>(x: T) -> impl Deref<Target = T> + DerefMut<Target = T> {
 LL + fn deref_derefmut<T>(x: T) -> impl DerefMut<Target = T> {
    |
+   = help: to override `-D warnings` add `#[allow(clippy::implied_bounds_in_impls)]`
+   = note: `-D clippy::implied-bounds-in-impls` implied by `-D warnings`
 
 error: this bound is already specified as the supertrait of `GenericSubtrait<U, W, U>`
   --> tests/ui/implied_bounds_in_impls.rs:30:37

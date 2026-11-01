@@ -4,7 +4,6 @@ error[E0423]: cannot find value `A` in this scope
 LL |     A.foo();
    |     ^
    |
-   = note: an enum named `A` exists in another namespace
 help: you might have meant to use one of the following enum variants
    |
 LL -     A.foo();
@@ -12,6 +11,7 @@ LL +     (A::Tuple()).foo();
    |
 LL |     A::Unit.foo();
    |      ++++++
+   = note: an enum named `A` exists in another namespace
 help: alternatively, the following enum variant is available
    |
 LL -     A.foo();
@@ -35,12 +35,12 @@ error[E0423]: cannot find value `B` in this scope
 LL |     B.foo();
    |     ^
    |
-   = note: an enum named `B` exists in another namespace
 help: the following enum variant is available
    |
 LL -     B.foo();
 LL +     (B::TupleWithFields(/* fields */)).foo();
    |
+   = note: an enum named `B` exists in another namespace
 note: the enum is defined here
   --> $DIR/issue-73427.rs:9:1
    |
@@ -56,11 +56,11 @@ error[E0423]: cannot find value `C` in this scope
 LL |     C.foo();
    |     ^
    |
-   = note: an enum named `C` exists in another namespace
 help: you might have meant to use the following enum variant
    |
 LL |     C::Unit.foo();
    |      ++++++
+   = note: an enum named `C` exists in another namespace
 help: alternatively, the following enum variant is available
    |
 LL -     C.foo();
@@ -82,11 +82,11 @@ error[E0423]: cannot find value `D` in this scope
 LL |     D.foo();
    |     ^
    |
-   = note: an enum named `D` exists in another namespace
 help: you might have meant to use the following enum variant
    |
 LL |     D::Unit.foo();
    |      ++++++
+   = note: an enum named `D` exists in another namespace
 help: alternatively, the following enum variant is available
    |
 LL -     D.foo();
@@ -107,19 +107,12 @@ error[E0423]: cannot find value `E` in this scope
 LL |     E.foo();
    |     ^
    |
-   = note: an enum named `E` exists in another namespace
 help: the following enum variant is available
    |
 LL -     E.foo();
 LL +     (E::TupleWithFields(/* fields */)).foo();
    |
-note: the enum is defined here
-  --> $DIR/issue-73427.rs:25:1
-   |
-LL | / enum E {
-LL | |     TupleWithFields(()),
-LL | | }
-   | |_^
+   = note: an enum named `E` exists in another namespace
 help: consider importing one of these constants instead
    |
 LL + use std::f128::consts::E;
@@ -130,6 +123,13 @@ LL + use std::f32::consts::E;
    |
 LL + use std::f64::consts::E;
    |
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:25:1
+   |
+LL | / enum E {
+LL | |     TupleWithFields(()),
+LL | | }
+   | |_^
 
 error[E0532]: cannot find tuple struct or tuple variant `A` in this scope
   --> $DIR/issue-73427.rs:48:12
@@ -137,13 +137,13 @@ error[E0532]: cannot find tuple struct or tuple variant `A` in this scope
 LL |     if let A(3) = x { }
    |            ^
    |
-   = note: an enum named `A` exists in another namespace
 help: try to match against one of the enum's variants
    |
 LL |     if let A::Tuple(3) = x { }
    |             +++++++
 LL |     if let A::TupleWithFields(3) = x { }
    |             +++++++++++++++++
+   = note: an enum named `A` exists in another namespace
    = help: you might have meant to match against the enum's non-tuple variant
 note: the enum is defined here
   --> $DIR/issue-73427.rs:1:1
@@ -163,13 +163,13 @@ error[E0423]: cannot find function, tuple struct or tuple variant `A` in this sc
 LL |     let x = A(3);
    |             ^
    |
-   = note: an enum named `A` exists in another namespace
 help: try to construct one of the enum's variants
    |
 LL |     let x = A::Tuple(3);
    |              +++++++
 LL |     let x = A::TupleWithFields(3);
    |              +++++++++++++++++
+   = note: an enum named `A` exists in another namespace
    = help: you might have meant to construct the enum's non-tuple variant
 note: the enum is defined here
   --> $DIR/issue-73427.rs:1:1

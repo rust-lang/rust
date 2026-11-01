@@ -36,8 +36,8 @@ LL | |         }
                        }
                        println!("bleh");
                    }
-   = note: `-D clippy::needless-continue` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_continue)]`
+   = note: `-D clippy::needless-continue` implied by `-D warnings`
 
 error: there is no need for an explicit `else` block for this `if` expression
   --> tests/ui/needless_continue.rs:47:9

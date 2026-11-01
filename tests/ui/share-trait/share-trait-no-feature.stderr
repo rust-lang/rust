@@ -4,8 +4,8 @@ error[E0658]: use of unstable library feature `share_trait`
 LL | use std::clone::Share;
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #156756 <https://github.com/rust-lang/rust/issues/156756> for more information
    = help: add `#![feature(share_trait)]` to the crate attributes to enable
+   = note: see issue #156756 <https://github.com/rust-lang/rust/issues/156756> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `share_trait`
@@ -14,8 +14,8 @@ error[E0658]: use of unstable library feature `share_trait`
 LL | impl Share for Alias {}
    |      ^^^^^
    |
-   = note: see issue #156756 <https://github.com/rust-lang/rust/issues/156756> for more information
    = help: add `#![feature(share_trait)]` to the crate attributes to enable
+   = note: see issue #156756 <https://github.com/rust-lang/rust/issues/156756> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `share_trait`
@@ -24,8 +24,8 @@ error[E0658]: use of unstable library feature `share_trait`
 LL | fn share_generic<T: Share>(value: &T) -> T {
    |                     ^^^^^
    |
-   = note: see issue #156756 <https://github.com/rust-lang/rust/issues/156756> for more information
    = help: add `#![feature(share_trait)]` to the crate attributes to enable
+   = note: see issue #156756 <https://github.com/rust-lang/rust/issues/156756> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `share_trait`
@@ -34,8 +34,8 @@ error[E0658]: use of unstable library feature `share_trait`
 LL |     let _ = Share::share(&value);
    |             ^^^^^^^^^^^^
    |
-   = note: see issue #156756 <https://github.com/rust-lang/rust/issues/156756> for more information
    = help: add `#![feature(share_trait)]` to the crate attributes to enable
+   = note: see issue #156756 <https://github.com/rust-lang/rust/issues/156756> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `share_trait`
@@ -44,8 +44,8 @@ error[E0658]: use of unstable library feature `share_trait`
 LL |     value.share()
    |           ^^^^^
    |
-   = note: see issue #156756 <https://github.com/rust-lang/rust/issues/156756> for more information
    = help: add `#![feature(share_trait)]` to the crate attributes to enable
+   = note: see issue #156756 <https://github.com/rust-lang/rust/issues/156756> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 5 previous errors

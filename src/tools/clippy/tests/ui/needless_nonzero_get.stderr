@@ -4,13 +4,13 @@ error: unnecessary `get` before `leading_zeros`
 LL |     let _ = nz.get().leading_zeros();
    |                ^^^^^
    |
-   = note: `-D clippy::needless-nonzero-get` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_nonzero_get)]`
 help: remove this
    |
 LL -     let _ = nz.get().leading_zeros();
 LL +     let _ = nz.leading_zeros();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::needless_nonzero_get)]`
+   = note: `-D clippy::needless-nonzero-get` implied by `-D warnings`
 
 error: unnecessary `get` before `trailing_zeros`
   --> tests/ui/needless_nonzero_get.rs:15:16

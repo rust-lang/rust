@@ -5,8 +5,8 @@ LL |     pub fn as_ref(self) -> &'static str {
    |                   ^^^^
    |
    = help: consider choosing a less ambiguous name
-   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::wrong_self_convention)]`
+   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

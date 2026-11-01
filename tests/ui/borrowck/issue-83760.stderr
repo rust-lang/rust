@@ -27,12 +27,12 @@ LL |         foo = Some(Struct);
 LL |     let _y = foo;
    |              ^^^ value used here after move
    |
-note: `std::option::Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `foo`
-  --> $SRC_DIR/core/src/option.rs:LL:COL
 help: you could `clone` the value and consume it, if the `Struct: Clone` trait bound could be satisfied
    |
 LL |     let _x = foo.clone().unwrap();
    |                 ++++++++
+note: `std::option::Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `foo`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
 help: consider annotating `Struct` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -50,6 +50,10 @@ LL |     let _x = foo.unwrap();
 LL |     let _y = foo;
    |              ^^^ value used here after move
    |
+help: you could `clone` the value and consume it, if the `Struct2: Clone` trait bound could be satisfied
+   |
+LL |     let _x = foo.clone().unwrap();
+   |                 ++++++++
 note: these 3 reinitializations and 1 other might get skipped
   --> $DIR/issue-83760.rs:35:9
    |
@@ -63,10 +67,6 @@ LL |         foo = Some(Struct2);
    |         ^^^^^^^^^^^^^^^^^^^
 note: `std::option::Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `foo`
   --> $SRC_DIR/core/src/option.rs:LL:COL
-help: you could `clone` the value and consume it, if the `Struct2: Clone` trait bound could be satisfied
-   |
-LL |     let _x = foo.clone().unwrap();
-   |                 ++++++++
 help: consider annotating `Struct2` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

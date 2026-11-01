@@ -27,12 +27,12 @@ LL |     let name = Some(case) else {
    |     |
    |     assigning to binding pattern will always succeed
    |
-   = note: this pattern always matches, so the else clause is unreachable
 help: consider using `let Some(name) = case` to match on a specific variant
    |
 LL -     let name = Some(case) else {
 LL +     let Some(name) = case else {
    |
+   = note: this pattern always matches, so the else clause is unreachable
 
 warning: 3 warnings emitted
 

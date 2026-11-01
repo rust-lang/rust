@@ -6,12 +6,12 @@ LL |     let _ = haystack.contains(needle);
    |                      |
    |                      arguments to this method are incorrect
    |
-   = note: expected reference `&&[&str]`
-              found reference `&[&str]`
 help: consider borrowing here
    |
 LL |     let _ = haystack.contains(&needle);
    |                               +
+   = note: expected reference `&&[&str]`
+              found reference `&[&str]`
 note: method defined here
   --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
 
@@ -23,12 +23,12 @@ LL |     takes_nested_ref(text);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&&_`
-              found reference `&_`
 help: consider borrowing here
    |
 LL |     takes_nested_ref(&text);
    |                      +
+   = note: expected reference `&&_`
+              found reference `&_`
 note: function defined here
   --> $DIR/suggest-extra-borrow-issue-78613.rs:6:4
    |
@@ -43,12 +43,12 @@ LL |     takes_generic_nested_ref(number);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&&_`
-              found reference `&{integer}`
 help: consider borrowing here
    |
 LL |     takes_generic_nested_ref(&number);
    |                              +
+   = note: expected reference `&&_`
+              found reference `&{integer}`
 note: function defined here
   --> $DIR/suggest-extra-borrow-issue-78613.rs:8:4
    |
@@ -63,12 +63,12 @@ LL |     takes_nested_mut_ref(mutable_text);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected mutable reference `&mut &_`
-                      found reference `&_`
 help: consider mutably borrowing here
    |
 LL |     takes_nested_mut_ref(&mut mutable_text);
    |                          ++++
+   = note: expected mutable reference `&mut &_`
+                      found reference `&_`
 note: function defined here
   --> $DIR/suggest-extra-borrow-issue-78613.rs:10:4
    |

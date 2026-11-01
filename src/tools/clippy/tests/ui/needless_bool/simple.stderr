@@ -8,8 +8,8 @@ LL | |         true
 LL | |     };
    | |_____^
    |
-   = note: `-D clippy::needless-bool` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_bool)]`
+   = note: `-D clippy::needless-bool` implied by `-D warnings`
 
 error: this if-then-else expression will always return false
   --> tests/ui/needless_bool/simple.rs:13:5

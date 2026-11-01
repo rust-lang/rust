@@ -4,8 +4,8 @@ error: you are trying to use classic C overflow conditions that will fail in Rus
 LL |     if a + b < a {}
    |        ^^^^^^^^^
    |
-   = note: `-D clippy::panicking-overflow-checks` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::panicking_overflow_checks)]`
+   = note: `-D clippy::panicking-overflow-checks` implied by `-D warnings`
 
 error: you are trying to use classic C overflow conditions that will fail in Rust
   --> tests/ui/panicking_overflow_checks.rs:7:8

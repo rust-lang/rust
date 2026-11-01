@@ -7,8 +7,8 @@ LL | const NAN: f64 = f64::NAN;
 LL |         NAN => {},
    |         ^^^ evaluates to `NaN`, which is not allowed in patterns
    |
-   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
+   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
 
 error: cannot use NaN in patterns
   --> $DIR/issue-6804-nan-match.rs:19:10
@@ -19,8 +19,8 @@ LL | const NAN: f64 = f64::NAN;
 LL |         [NAN, _] => {},
    |          ^^^ evaluates to `NaN`, which is not allowed in patterns
    |
-   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
+   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
 
 error: cannot use NaN in patterns
   --> $DIR/issue-6804-nan-match.rs:24:9
@@ -31,8 +31,8 @@ LL | const C: MyType<f32> = MyType(f32::NAN);
 LL |         C => {},
    |         ^ evaluates to `NaN`, which is not allowed in patterns
    |
-   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
+   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
 
 error: cannot use NaN in patterns
   --> $DIR/issue-6804-nan-match.rs:30:9
@@ -43,8 +43,8 @@ LL | const NAN: f64 = f64::NAN;
 LL |         NAN..=1.0 => {},
    |         ^^^ evaluates to `NaN`, which is not allowed in patterns
    |
-   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
+   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
 
 error: cannot use NaN in patterns
   --> $DIR/issue-6804-nan-match.rs:31:16
@@ -55,8 +55,8 @@ LL | const NAN: f64 = f64::NAN;
 LL |         -1.0..=NAN => {},
    |                ^^^ evaluates to `NaN`, which is not allowed in patterns
    |
-   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
+   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
 
 error: cannot use NaN in patterns
   --> $DIR/issue-6804-nan-match.rs:32:9
@@ -67,8 +67,8 @@ LL | const NAN: f64 = f64::NAN;
 LL |         NAN.. => {},
    |         ^^^ evaluates to `NaN`, which is not allowed in patterns
    |
-   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
+   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
 
 error: cannot use NaN in patterns
   --> $DIR/issue-6804-nan-match.rs:33:11
@@ -79,8 +79,8 @@ LL | const NAN: f64 = f64::NAN;
 LL |         ..NAN => {},
    |           ^^^ evaluates to `NaN`, which is not allowed in patterns
    |
-   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
    = help: try using the `is_nan` method instead
+   = note: NaNs compare inequal to everything, even themselves, so this pattern would never match
 
 error: aborting due to 7 previous errors
 

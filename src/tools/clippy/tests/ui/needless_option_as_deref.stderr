@@ -4,8 +4,8 @@ error: derefed type is same as origin
 LL |     let _: Option<&usize> = Some(&1).as_deref();
    |                             ^^^^^^^^^^^^^^^^^^^ help: try: `Some(&1)`
    |
-   = note: `-D clippy::needless-option-as-deref` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_option_as_deref)]`
+   = note: `-D clippy::needless-option-as-deref` implied by `-D warnings`
 
 error: derefed type is same as origin
   --> tests/ui/needless_option_as_deref.rs:8:33

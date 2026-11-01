@@ -8,8 +8,6 @@ LL | |         Foo
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::new-without-default` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::new_without_default)]`
 help: try adding this
    |
 LL ~ }
@@ -20,6 +18,8 @@ LL +         Self::new()
 LL +     }
 LL + }
    |
+   = help: to override `-D warnings` add `#[allow(clippy::new_without_default)]`
+   = note: `-D clippy::new-without-default` implied by `-D warnings`
 
 error: you should consider adding a `Default` implementation for `Bar`
   --> tests/ui/new_without_default.rs:21:5

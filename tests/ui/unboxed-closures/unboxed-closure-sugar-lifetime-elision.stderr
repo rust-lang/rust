@@ -9,7 +9,6 @@ help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL |     let _: dyn for<'a> Foo(&'a isize, &'a usize) -> &'a usize;
    |                +++++++      ++         ++            ++
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing a named lifetime parameter
    |
 LL ~ fn main<'a>() {
@@ -18,6 +17,7 @@ LL |     eq::< dyn for<'a> Foo<(&'a isize,), Output=&'a isize>,
 LL |
 LL ~     let _: dyn Foo(&'a isize, &'a usize) -> &'a usize;
    |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 
 error: aborting due to 1 previous error
 

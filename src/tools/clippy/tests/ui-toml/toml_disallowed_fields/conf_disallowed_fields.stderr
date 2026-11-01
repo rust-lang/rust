@@ -4,8 +4,8 @@ error: use of a disallowed field `conf_disallowed_fields::Y::y`
 LL | fn b(X { y }: X) {}
    |          ^
    |
-   = note: `-D clippy::disallowed-fields` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::disallowed_fields)]`
+   = note: `-D clippy::disallowed-fields` implied by `-D warnings`
 
 error: use of a disallowed field `conf_disallowed_fields::Y::y`
   --> tests/ui-toml/toml_disallowed_fields/conf_disallowed_fields.rs:22:15

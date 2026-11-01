@@ -4,13 +4,13 @@ error: map of a closure that does not depend on its parameter over a range
 LL |     (0..10).map(|_| do_something());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::map-with-unused-argument-over-ranges` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::map_with_unused_argument_over_ranges)]`
 help: remove the explicit range and use `repeat_with` and `take`
    |
 LL -     (0..10).map(|_| do_something());
 LL +     std::iter::repeat_with(|| do_something()).take(10);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::map_with_unused_argument_over_ranges)]`
+   = note: `-D clippy::map-with-unused-argument-over-ranges` implied by `-D warnings`
 
 error: map of a closure that does not depend on its parameter over a range
   --> tests/ui/map_with_unused_argument_over_ranges.rs:22:5

@@ -4,8 +4,8 @@ error[E0658]: the `rustc_unchecked_type_alias` attribute is an experimental feat
 LL | #[rustc_unchecked_type_alias]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
    = help: add `#![feature(marked_unchecked_type_aliases)]` to the crate attributes to enable
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 1 previous error

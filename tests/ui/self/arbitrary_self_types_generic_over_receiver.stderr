@@ -4,8 +4,8 @@ error[E0801]: invalid generic `self` parameter type: `impl Receiver<Target = Sel
 LL |     fn a(self: impl Receiver<Target=Self>) -> u32 {
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: type of `self` must not be a method generic parameter type
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+   = note: type of `self` must not be a method generic parameter type
 
 error[E0801]: invalid generic `self` parameter type: `impl Deref<Target = Self>`
   --> $DIR/arbitrary_self_types_generic_over_receiver.rs:11:16
@@ -13,8 +13,8 @@ error[E0801]: invalid generic `self` parameter type: `impl Deref<Target = Self>`
 LL |     fn b(self: impl Deref<Target=Self>) -> u32 {
    |                ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: type of `self` must not be a method generic parameter type
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+   = note: type of `self` must not be a method generic parameter type
 
 error[E0277]: the trait bound `Foo: std::ops::Receiver` is not satisfied
   --> $DIR/arbitrary_self_types_generic_over_receiver.rs:19:9

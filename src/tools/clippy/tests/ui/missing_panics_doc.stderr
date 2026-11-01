@@ -4,13 +4,13 @@ error: docs for function which may panic missing `# Panics` section
 LL | pub fn unwrap() {
    | ^^^^^^^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::missing_panics_doc)]`
 note: first possible panic found here
   --> tests/ui/missing_panics_doc.rs:18:5
    |
 LL |     result.unwrap()
    |     ^^^^^^^^^^^^^^^
    = note: `-D clippy::missing-panics-doc` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::missing_panics_doc)]`
 
 error: docs for function which may panic missing `# Panics` section
   --> tests/ui/missing_panics_doc.rs:22:1

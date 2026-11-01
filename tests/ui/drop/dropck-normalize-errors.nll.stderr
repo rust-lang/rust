@@ -42,15 +42,15 @@ help: this trait has no implementations, consider adding one
    |
 LL | trait NonImplementedTrait {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Decoder: ?Sized;
+   |                 ++++++++
 note: required because it appears within the type `BDecoder`
   --> $DIR/dropck-normalize-errors.rs:31:12
    |
 LL | pub struct BDecoder {
    |            ^^^^^^^^
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL |     type Decoder: ?Sized;
-   |                 ++++++++
 note: required by a bound in `Decode::Decoder`
   --> $DIR/dropck-normalize-errors.rs:9:5
    |

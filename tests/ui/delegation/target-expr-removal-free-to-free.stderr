@@ -10,16 +10,16 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 LL | reuse to_reuse::{foo, bar} { self + 1 }
    |                       ^^^  ------------ unexpected argument
    |
-note: function defined here
-  --> $DIR/target-expr-removal-free-to-free.rs:5:12
-   |
-LL |     pub fn bar() -> () { () }
-   |            ^^^
 help: remove the extra argument
    |
 LL - reuse to_reuse::{foo, bar} { self + 1 }
 LL + reuse to_reuse::{foo, ba{ self + 1 }
    |
+note: function defined here
+  --> $DIR/target-expr-removal-free-to-free.rs:5:12
+   |
+LL |     pub fn bar() -> () { () }
+   |            ^^^
 
 error: aborting due to 2 previous errors
 

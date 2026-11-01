@@ -4,12 +4,12 @@ error[E0061]: this method takes 1 argument but 0 arguments were supplied
 LL |     Pin::new(&mut b).resume();
    |                      ^^^^^^-- argument #1 of type `()` is missing
    |
-note: method defined here
-  --> $SRC_DIR/core/src/ops/coroutine.rs:LL:COL
 help: provide the argument
    |
 LL |     Pin::new(&mut b).resume(());
    |                             ++
+note: method defined here
+  --> $SRC_DIR/core/src/ops/coroutine.rs:LL:COL
 
 error: aborting due to 1 previous error
 

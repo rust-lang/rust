@@ -5,8 +5,8 @@ LL |     foo: Rc<Mutex<i32>>,
    |          ^^^^^^^^^^^^^^
    |
    = help: consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
-   = note: `-D clippy::rc-mutex` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::rc_mutex)]`
+   = note: `-D clippy::rc-mutex` implied by `-D warnings`
 
 error: usage of `Rc<Mutex<_>>`
   --> tests/ui/rc_mutex.rs:27:18

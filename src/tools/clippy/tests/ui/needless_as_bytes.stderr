@@ -4,8 +4,8 @@ error: needless call to `as_bytes`
 LL |     if "some string".as_bytes().is_empty() {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: `is_empty()` can be called directly on strings: `"some string".is_empty()`
    |
-   = note: `-D clippy::needless-as-bytes` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_as_bytes)]`
+   = note: `-D clippy::needless-as-bytes` implied by `-D warnings`
 
 error: needless call to `as_bytes`
   --> tests/ui/needless_as_bytes.rs:20:30

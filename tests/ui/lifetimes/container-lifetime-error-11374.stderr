@@ -6,12 +6,12 @@ LL |     c.read_to(v);
    |       |
    |       arguments to this method are incorrect
    |
-   = note: expected mutable reference `&mut [u8]`
-                         found struct `Vec<_>`
 help: consider mutably borrowing here
    |
 LL |     c.read_to(&mut v);
    |               ++++
+   = note: expected mutable reference `&mut [u8]`
+                         found struct `Vec<_>`
 note: method defined here
   --> $DIR/container-lifetime-error-11374.rs:15:12
    |

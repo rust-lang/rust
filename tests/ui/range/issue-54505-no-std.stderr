@@ -6,12 +6,12 @@ LL |     take_range(0..1);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&_`
-                 found struct `core::ops::Range<{integer}>`
 help: consider borrowing here
    |
 LL |     take_range(&(0..1));
    |                ++    +
+   = note: expected reference `&_`
+                 found struct `core::ops::Range<{integer}>`
 note: function defined here
   --> $DIR/issue-54505-no-std.rs:22:4
    |
@@ -26,12 +26,12 @@ LL |     take_range(1..);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&_`
-                 found struct `core::ops::RangeFrom<{integer}>`
 help: consider borrowing here
    |
 LL |     take_range(&(1..));
    |                ++   +
+   = note: expected reference `&_`
+                 found struct `core::ops::RangeFrom<{integer}>`
 note: function defined here
   --> $DIR/issue-54505-no-std.rs:22:4
    |
@@ -46,22 +46,22 @@ LL |     take_range(..);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&_`
-                 found struct `RangeFull`
 help: consider borrowing here
    |
 LL |     take_range(&(..));
    |                ++  +
-note: function defined here
-  --> $DIR/issue-54505-no-std.rs:22:4
-   |
-LL | fn take_range(_r: &impl RangeBounds<i8>) {}
-   |    ^^^^^^^^^^ -------------------------
+   = note: expected reference `&_`
+                 found struct `RangeFull`
 help: you might have meant to use `..` to skip providing a value for expected fields, but this is only supported on non-tuple struct literals when `#![feature(default_field_values)]` is enabled; it is instead interpreted as a `std::ops::RangeFull` literal
   --> $DIR/issue-54505-no-std.rs:36:16
    |
 LL |     take_range(..);
    |                ^^
+note: function defined here
+  --> $DIR/issue-54505-no-std.rs:22:4
+   |
+LL | fn take_range(_r: &impl RangeBounds<i8>) {}
+   |    ^^^^^^^^^^ -------------------------
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505-no-std.rs:42:16
@@ -71,12 +71,12 @@ LL |     take_range(0..=1);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&_`
-                 found struct `core::ops::RangeInclusive<{integer}>`
 help: consider borrowing here
    |
 LL |     take_range(&(0..=1));
    |                ++     +
+   = note: expected reference `&_`
+                 found struct `core::ops::RangeInclusive<{integer}>`
 note: function defined here
   --> $DIR/issue-54505-no-std.rs:22:4
    |
@@ -91,12 +91,12 @@ LL |     take_range(..5);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&_`
-                 found struct `RangeTo<{integer}>`
 help: consider borrowing here
    |
 LL |     take_range(&(..5));
    |                ++   +
+   = note: expected reference `&_`
+                 found struct `RangeTo<{integer}>`
 note: function defined here
   --> $DIR/issue-54505-no-std.rs:22:4
    |
@@ -111,12 +111,12 @@ LL |     take_range(..=42);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected reference `&_`
-                 found struct `core::ops::RangeToInclusive<{integer}>`
 help: consider borrowing here
    |
 LL |     take_range(&(..=42));
    |                ++     +
+   = note: expected reference `&_`
+                 found struct `core::ops::RangeToInclusive<{integer}>`
 note: function defined here
   --> $DIR/issue-54505-no-std.rs:22:4
    |

@@ -4,12 +4,12 @@ error: cannot use a comma after the base struct
 LL |         ..Foo::default(),
    |         ^^^^^^^^^^^^^^^^
    |
-   = note: the base struct must always be the last field
 help: remove this comma
    |
 LL -         ..Foo::default(),
 LL +         ..Foo::default()
    |
+   = note: the base struct must always be the last field
 
 error: cannot use a comma after the base struct
   --> $DIR/struct-field-init-syntax.rs:16:9
@@ -17,12 +17,12 @@ error: cannot use a comma after the base struct
 LL |         ..Foo::default(),
    |         ^^^^^^^^^^^^^^^^
    |
-   = note: the base struct must always be the last field
 help: remove this comma
    |
 LL -         ..Foo::default(),
 LL +         ..Foo::default()
    |
+   = note: the base struct must always be the last field
 
 error: aborting due to 2 previous errors
 

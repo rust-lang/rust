@@ -16,15 +16,15 @@ error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
    |
+help: consider making the binding mutable if you need to reborrow multiple times
+   |
+LL |     fn bar(mut self: &mut Self) {
+   |            +++
 note: the binding is already a mutable borrow
   --> $DIR/issue-51191.rs:4:18
    |
 LL |     fn bar(self: &mut Self) {
    |                  ^^^^^^^^^
-help: consider making the binding mutable if you need to reborrow multiple times
-   |
-LL |     fn bar(mut self: &mut Self) {
-   |            +++
 help: try removing `&mut` here
   --> $DIR/issue-51191.rs:8:9
    |
@@ -62,16 +62,16 @@ error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
    |
-note: the binding is already a mutable borrow
-  --> $DIR/issue-51191.rs:28:16
-   |
-LL |     fn mtblref(&mut self) {
-   |                ^^^^^^^^^
 help: try removing `&mut` here
   --> $DIR/issue-51191.rs:29:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^
+note: the binding is already a mutable borrow
+  --> $DIR/issue-51191.rs:28:16
+   |
+LL |     fn mtblref(&mut self) {
+   |                ^^^^^^^^^
 
 error: aborting due to 5 previous errors; 1 warning emitted
 

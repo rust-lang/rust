@@ -4,13 +4,13 @@ error: variable declared with type underscore
 LL |     let x: _ = 1;
    |     ^^^^^^^^^^^^^
    |
-   = note: `-D clippy::let-with-type-underscore` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::let_with_type_underscore)]`
 help: remove the explicit type `_` declaration
    |
 LL -     let x: _ = 1;
 LL +     let x = 1;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::let_with_type_underscore)]`
+   = note: `-D clippy::let-with-type-underscore` implied by `-D warnings`
 
 error: variable declared with type underscore
   --> tests/ui/let_with_type_underscore.rs:16:5

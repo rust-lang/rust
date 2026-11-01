@@ -4,13 +4,13 @@ error: usage of `unwrap_unchecked` when an `_unchecked` variant of the function 
 LL |     let string_slice = unsafe { std::str::from_utf8(&[]).unwrap_unchecked() };
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-unwrap-unchecked` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_unwrap_unchecked)]`
 help: use `std::str::from_utf8_unchecked` instead, and remove the call to `.unwrap_unchecked()`
    |
 LL -     let string_slice = unsafe { std::str::from_utf8(&[]).unwrap_unchecked() };
 LL +     let string_slice = unsafe { std::str::from_utf8_unchecked(&[]) };
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_unwrap_unchecked)]`
+   = note: `-D clippy::unnecessary-unwrap-unchecked` implied by `-D warnings`
 
 error: usage of `unwrap_unchecked` when an `_unchecked` variant of the method exists
   --> tests/ui/unnecessary_unwrap_unchecked.rs:65:22

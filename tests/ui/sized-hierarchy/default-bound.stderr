@@ -17,15 +17,15 @@ LL |     bare::<[u8]>();
    |            ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn bare<T: ?Sized>() {}
+   |          ++++++++
 note: required by an implicit `Sized` bound in `bare`
   --> $DIR/default-bound.rs:6:9
    |
 LL | fn bare<T>() {}
    |         ^ required by the implicit `Sized` requirement on this type parameter in `bare`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | fn bare<T: ?Sized>() {}
-   |          ++++++++
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/default-bound.rs:31:13
@@ -47,15 +47,15 @@ LL |     bare::<Foo>();
    |            ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `main::Foo`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn bare<T: ?Sized>() {}
+   |          ++++++++
 note: required by an implicit `Sized` bound in `bare`
   --> $DIR/default-bound.rs:6:9
    |
 LL | fn bare<T>() {}
    |         ^ required by the implicit `Sized` requirement on this type parameter in `bare`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | fn bare<T: ?Sized>() {}
-   |          ++++++++
 
 error[E0277]: the size for values of type `main::Foo` cannot be known at compilation time
   --> $DIR/default-bound.rs:44:13

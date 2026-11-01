@@ -4,12 +4,12 @@ error[E0703]: invalid ABI: found `'`
 LL | extern "'" {}
    |        ^^^ invalid ABI
    |
-   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
 help: there's a similarly named valid ABI `C`
    |
 LL - extern "'" {}
 LL + extern "C" {}
    |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
 
 error[E0703]: invalid ABI: found `''`
   --> $DIR/extern-only-quotes-issue-147365.rs:9:8

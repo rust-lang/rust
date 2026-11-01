@@ -4,9 +4,9 @@ error: casting a known NaN to usize
 LL |     let _ = (0.0_f32 / -0.0) as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::cast_nan_to_int)]`
    = note: this always evaluates to 0
    = note: `-D clippy::cast-nan-to-int` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::cast_nan_to_int)]`
 
 error: casting a known NaN to usize
   --> tests/ui/cast_nan_to_int.rs:10:13

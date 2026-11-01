@@ -7,8 +7,8 @@ LL | |         return None;
 LL | |     }
    | |_____^ help: replace it with: `a?;`
    |
-   = note: `-D clippy::question-mark` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::question_mark)]`
+   = note: `-D clippy::question-mark` implied by `-D warnings`
 
 error: this block may be rewritten with the `?` operator
   --> tests/ui/question_mark.rs:59:9

@@ -4,8 +4,8 @@ error: transmute from a pointer type (`*const T`) to a reference type (`&T`)
 LL |         let _: &T = std::mem::transmute(p);
    |                     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*p`
    |
-   = note: `-D clippy::transmute-ptr-to-ref` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::transmute_ptr_to_ref)]`
+   = note: `-D clippy::transmute-ptr-to-ref` implied by `-D warnings`
 
 error: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
   --> tests/ui/transmute_ptr_to_ref.rs:10:25

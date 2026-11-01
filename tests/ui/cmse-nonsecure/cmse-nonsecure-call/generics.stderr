@@ -10,16 +10,16 @@ error[E0425]: cannot find type `U` in this scope
 LL |     f1: extern "cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
    |                                                  ^ not found in this scope
    |
-note: similarly named type parameter `T` defined here
-  --> $DIR/generics.rs:14:13
-   |
-LL | struct Test<T: Copy> {
-   |             ^
 help: a type parameter with a similar name exists
    |
 LL -     f1: extern "cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
 LL +     f1: extern "cmse-nonsecure-call" fn<U: Copy>(T, u32, u32, u32) -> u64,
    |
+note: similarly named type parameter `T` defined here
+  --> $DIR/generics.rs:14:13
+   |
+LL | struct Test<T: Copy> {
+   |             ^
 help: you might be missing a type parameter
    |
 LL | struct Test<T: Copy, U> {

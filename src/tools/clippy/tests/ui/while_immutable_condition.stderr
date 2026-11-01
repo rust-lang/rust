@@ -4,9 +4,9 @@ error: variables in the condition are not mutated in the loop body
 LL |     while y < 10 {
    |           ^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::while_immutable_condition)]`
    = note: this may lead to an infinite or to a never running loop
    = note: `-D clippy::while-immutable-condition` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::while_immutable_condition)]`
 
 error: variables in the condition are not mutated in the loop body
   --> tests/ui/while_immutable_condition.rs:29:11
@@ -78,9 +78,9 @@ error: variables in the condition are not mutated in the loop body
 LL |     while y < 10 {
    |           ^^^^^^
    |
+   = help: rewrite it as `if cond { loop { } }`
    = note: this may lead to an infinite or to a never running loop
    = note: this loop contains `return`s or `break`s
-   = help: rewrite it as `if cond { loop { } }`
 
 error: variables in the condition are not mutated in the loop body
   --> tests/ui/while_immutable_condition.rs:208:11
@@ -88,9 +88,9 @@ error: variables in the condition are not mutated in the loop body
 LL |     while y < 10 {
    |           ^^^^^^
    |
+   = help: rewrite it as `if cond { loop { } }`
    = note: this may lead to an infinite or to a never running loop
    = note: this loop contains `return`s or `break`s
-   = help: rewrite it as `if cond { loop { } }`
 
 error: aborting due to 11 previous errors
 

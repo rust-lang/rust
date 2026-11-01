@@ -6,11 +6,11 @@ LL |     let _ = ref_mut_foo * ref_foo;
    |             |
    |             &mut Foo
    |
-   = note: an implementation for `&Foo * &Foo` exists
 help: consider reborrowing this side
    |
 LL |     let _ = &*ref_mut_foo * ref_foo;
    |             ++
+   = note: an implementation for `&Foo * &Foo` exists
 
 error[E0369]: cannot multiply `&mut Foo` by `&mut Foo`
   --> $DIR/borrow-suggestion-109352.rs:23:25
@@ -20,11 +20,11 @@ LL |     let _ = ref_mut_foo * ref_mut_foo;
    |             |
    |             &mut Foo
    |
-   = note: an implementation for `&Foo * &Foo` exists
 help: consider reborrowing both sides
    |
 LL |     let _ = &*ref_mut_foo * &*ref_mut_foo;
    |             ++              ++
+   = note: an implementation for `&Foo * &Foo` exists
 
 error[E0369]: cannot multiply `&mut Foo` by `&Foo`
   --> $DIR/borrow-suggestion-109352.rs:25:25
@@ -34,11 +34,11 @@ LL |     let _ = ref_mut_foo * &owned_foo;
    |             |
    |             &mut Foo
    |
-   = note: an implementation for `&Foo * &Foo` exists
 help: consider reborrowing this side
    |
 LL |     let _ = &*ref_mut_foo * &owned_foo;
    |             ++
+   = note: an implementation for `&Foo * &Foo` exists
 
 error: aborting due to 3 previous errors
 

@@ -16,6 +16,11 @@ error[E0603]: derive macro import `Empty` is private
 LL | use m::Empty;
    |        ^^^^^ private derive macro import
    |
+help: import `Empty` directly
+   |
+LL - use m::Empty;
+LL + use test_macros::Empty;
+   |
 note: the derive macro import `Empty` is defined here...
   --> $DIR/disappearing-resolution.rs:9:9
    |
@@ -26,11 +31,6 @@ note: ...and refers to the derive macro `Empty` which is defined here
    |
 LL | pub fn empty_derive(_: TokenStream) -> TokenStream {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ you could import this directly
-help: import `Empty` directly
-   |
-LL - use m::Empty;
-LL + use test_macros::Empty;
-   |
 
 error: aborting due to 2 previous errors
 

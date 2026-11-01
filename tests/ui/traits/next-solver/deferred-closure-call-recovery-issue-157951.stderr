@@ -23,15 +23,15 @@ error[E0057]: this function takes 1 argument but 0 arguments were supplied
 LL |     f();
    |     ^-- argument #1 of type `(dyn Fn() + 'static)` is missing
    |
+help: provide the argument
+   |
+LL |     f(/* dyn Fn() */);
+   |       ++++++++++++++
 note: closure defined here
   --> $DIR/deferred-closure-call-recovery-issue-157951.rs:5:13
    |
 LL |     let f = |f: dyn Fn()| f;
    |             ^^^^^^^^^^^^^
-help: provide the argument
-   |
-LL |     f(/* dyn Fn() */);
-   |       ++++++++++++++
 
 error: aborting due to 3 previous errors
 

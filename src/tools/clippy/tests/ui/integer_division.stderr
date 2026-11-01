@@ -5,8 +5,8 @@ LL |     let n = 1 / 2;
    |             ^^^^^
    |
    = help: division of integers may cause loss of precision. consider using floats
-   = note: `-D clippy::integer-division` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::integer_division)]`
+   = note: `-D clippy::integer-division` implied by `-D warnings`
 
 error: integer division
   --> tests/ui/integer_division.rs:12:13

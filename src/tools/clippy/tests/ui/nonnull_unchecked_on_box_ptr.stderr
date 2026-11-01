@@ -8,8 +8,8 @@ LL | |             NonNull::new_unchecked(Box::into_raw(one))
 LL | |         };
    | |_________^ help: try: `Box::into_non_null(one)`
    |
-   = note: `-D clippy::nonnull-unchecked-on-box-ptr` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::nonnull_unchecked_on_box_ptr)]`
+   = note: `-D clippy::nonnull-unchecked-on-box-ptr` implied by `-D warnings`
 
 error: use of `NonNull::new_unchecked` with `Box::into_raw`
   --> tests/ui/nonnull_unchecked_on_box_ptr.rs:41:17

@@ -18,7 +18,6 @@ LL | #[macro_use = 5]
    |             |
    |             expected a list or no arguments here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use = 5]
@@ -27,6 +26,7 @@ LL + #[macro_use]
 LL - #[macro_use = 5]
 LL + #[macro_use(name1, name2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 
 error[E0565]: malformed `macro_use` attribute input
   --> $DIR/invalid-macro-use.rs:10:3
@@ -36,7 +36,6 @@ LL | #[macro_use(5)]
    |             |
    |             expected a valid identifier here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(5)]
@@ -45,6 +44,7 @@ LL + #[macro_use]
 LL - #[macro_use(5)]
 LL + #[macro_use(name1, name2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 
 error[E0565]: malformed `macro_use` attribute input
   --> $DIR/invalid-macro-use.rs:16:3
@@ -54,7 +54,6 @@ LL | #[macro_use(a = "b")]
    |               |
    |               didn't expect any arguments here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(a = "b")]
@@ -63,6 +62,7 @@ LL + #[macro_use]
 LL - #[macro_use(a = "b")]
 LL + #[macro_use(name1, name2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 
 error[E0565]: malformed `macro_use` attribute input
   --> $DIR/invalid-macro-use.rs:22:3
@@ -72,7 +72,6 @@ LL | #[macro_use(a(b))]
    |              |
    |              didn't expect any arguments here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(a(b))]
@@ -81,6 +80,7 @@ LL + #[macro_use]
 LL - #[macro_use(a(b))]
 LL + #[macro_use(name1, name2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 
 error[E0565]: malformed `macro_use` attribute input
   --> $DIR/invalid-macro-use.rs:28:3
@@ -90,7 +90,6 @@ LL | #[macro_use(a::b)]
    |             |
    |             expected a valid identifier here
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(a::b)]
@@ -99,6 +98,7 @@ LL + #[macro_use]
 LL - #[macro_use(a::b)]
 LL + #[macro_use(name1, name2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 
 error: unused attribute
   --> $DIR/invalid-macro-use.rs:34:1

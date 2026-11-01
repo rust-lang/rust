@@ -8,12 +8,12 @@ LL |     let _x: Option<Struct> = foo.map(|s| bar(&s));
 LL |     let _y = foo;
    |              ^^^ value used here after move
    |
-note: `std::option::Option::<T>::map` takes ownership of the receiver `self`, which moves `foo`
-  --> $SRC_DIR/core/src/option.rs:LL:COL
 help: consider calling `.as_ref()` to borrow the value's contents
    |
 LL |     let _x: Option<Struct> = foo.as_ref().map(|s| bar(&s));
    |                                 +++++++++
+note: `std::option::Option::<T>::map` takes ownership of the receiver `self`, which moves `foo`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
 help: consider calling `.as_mut()` to mutably borrow the value's contents
    |
 LL |     let _x: Option<Struct> = foo.as_mut().map(|s| bar(&s));

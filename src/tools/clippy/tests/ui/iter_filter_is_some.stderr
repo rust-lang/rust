@@ -4,8 +4,8 @@ error: `filter` for `is_some` on iterator over `Option`
 LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(Option::is_some);
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
    |
-   = note: `-D clippy::iter-filter-is-some` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_filter_is_some)]`
+   = note: `-D clippy::iter-filter-is-some` implied by `-D warnings`
 
 error: `filter` for `is_some` on iterator over `Option`
   --> tests/ui/iter_filter_is_some.rs:12:58

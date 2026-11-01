@@ -684,9 +684,9 @@ error[E0658]: cannot call conditionally-const method `<std::ops::Range<i32> as I
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |                      ^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
    = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
-   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `Iterator` is not yet stable as a const trait

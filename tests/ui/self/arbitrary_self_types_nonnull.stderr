@@ -4,8 +4,8 @@ error[E0307]: invalid `self` parameter type: `NonNull<A>`
 LL |     fn m(self: std::ptr::NonNull<Self>) {}
    |                ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: type of `self` must be `Self` or some type implementing `Receiver`
    = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+   = note: type of `self` must be `Self` or some type implementing `Receiver`
    = note: `NonNull` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `NonNull` in a newtype wrapper for which you implement `Receiver`
 
 error[E0307]: invalid `self` parameter type: `&NonNull<A>`
@@ -14,8 +14,8 @@ error[E0307]: invalid `self` parameter type: `&NonNull<A>`
 LL |     fn n(self: &std::ptr::NonNull<Self>) {}
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: type of `self` must be `Self` or some type implementing `Receiver`
    = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+   = note: type of `self` must be `Self` or some type implementing `Receiver`
    = note: `NonNull` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `NonNull` in a newtype wrapper for which you implement `Receiver`
 
 error: aborting due to 2 previous errors

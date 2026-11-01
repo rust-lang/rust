@@ -5,12 +5,12 @@ LL |     let dangling = 16_usize as *const u8;
    |                    ^^^^^^^^^^^^^^^^^^^^^
    |
    = help: if conforming to strict provenance is not possible, use `std::ptr::with_exposed_provenance()`
-   = note: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html#provenance>
 help: use `.with_addr()` to adjust the address of a valid pointer in the same allocation
    |
 LL -     let dangling = 16_usize as *const u8;
 LL +     let dangling = (...).with_addr(16_usize);
    |
+   = note: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html#provenance>
 note: the lint level is defined here
   --> $DIR/lint-strict-provenance-fuzzy-casts.rs:2:9
    |

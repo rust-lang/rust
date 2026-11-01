@@ -28,12 +28,12 @@ error[E0433]: cannot find type `FromIterator` in this scope
 LL |     let _v: Vec<_> = FromIterator::from_iter(&[1]);
    |                      ^^^^^^^^^^^^ use of undeclared type `FromIterator`
    |
-   = note: 'std::iter::FromIterator' is included in the prelude starting in Edition 2021
 help: a trait with a similar name exists
    |
 LL -     let _v: Vec<_> = FromIterator::from_iter(&[1]);
 LL +     let _v: Vec<_> = IntoIterator::from_iter(&[1]);
    |
+   = note: 'std::iter::FromIterator' is included in the prelude starting in Edition 2021
 help: consider importing this trait
    |
 LL + use std::iter::FromIterator;
@@ -54,12 +54,12 @@ help: trait `TryInto` which provides `try_into` is implemented but not in scope;
    |
 LL + use std::convert::TryInto;
    |
-   = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
 help: there is a method `into` with a similar name
    |
 LL -     let _i: i16 = 0_i32.try_into().unwrap();
 LL +     let _i: i16 = 0_i32.into().unwrap();
    |
+   = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
 
 error: aborting due to 4 previous errors
 

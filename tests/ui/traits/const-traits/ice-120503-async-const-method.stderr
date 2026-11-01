@@ -46,16 +46,16 @@ error[E0425]: cannot find function `main8` in this scope
 LL |         main8().await;
    |         ^^^^^ not found in this scope
    |
-note: similarly named function `main` defined here
-  --> $DIR/ice-120503-async-const-method.rs:16:1
-   |
-LL | fn main() {}
-   | ^^^^^^^^^
 help: a function with a similar name exists
    |
 LL -         main8().await;
 LL +         main().await;
    |
+note: similarly named function `main` defined here
+  --> $DIR/ice-120503-async-const-method.rs:16:1
+   |
+LL | fn main() {}
+   | ^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

@@ -32,7 +32,10 @@ use crate::emitter::{
 };
 use crate::formatting::{format_diag_message, format_diag_messages};
 use crate::timings::{TimingRecord, TimingSection};
-use crate::{CodeSuggestion, MultiSpan, SpanLabel, Subdiag, Suggestions, TerminalUrl};
+use crate::{
+    CodeSuggestion, MultiSpan, SpanLabel, Subdiag, Suggestions, TerminalUrl,
+    place_notes_after_next_help,
+};
 
 #[cfg(test)]
 mod tests;
@@ -347,6 +350,8 @@ impl Diagnostic {
                 Diagnostic::from_sub_diagnostic(&diag.emitted_at_sub_diag(), &diag.args, je),
             );
         }
+        let children =
+            place_notes_after_next_help(children, |c| c.level == "note", |c| c.level == "help");
         let buf = BufWriter(Arc::new(Mutex::new(Vec::new())));
         let dst: Destination = AutoStream::new(
             Box::new(buf.clone()),

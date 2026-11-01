@@ -7,12 +7,12 @@ LL | struct GenericAssocMethod<T>(T);
 LL |     x.default_hello();
    |       ^^^^^^^^^^^^^ this is an associated function, not a method
    |
-   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 help: use associated function syntax instead
    |
 LL -     x.default_hello();
 LL +     GenericAssocMethod::<_>::default_hello();
    |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in an impl for the type `GenericAssocMethod<T>`
   --> $DIR/suggest-assoc-fn-call-with-turbofish-placeholder.rs:4:5
    |

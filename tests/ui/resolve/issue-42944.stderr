@@ -16,12 +16,12 @@ error[E0423]: cannot initialize a tuple struct which contains private fields
 LL |         Bx(());
    |         ^^
    |
-   = note: a struct named `Bx` exists in another namespace
 help: consider making the field publicly accessible
    |
 LL -     pub struct Bx(pub(in crate::foo) ());
 LL +     pub struct Bx(pub ());
    |
+   = note: a struct named `Bx` exists in another namespace
 note: constructor is not visible here due to private fields
   --> $DIR/issue-42944.rs:3:19
    |

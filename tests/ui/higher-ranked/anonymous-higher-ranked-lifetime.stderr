@@ -7,12 +7,12 @@ LL |     f1(|_: (), _: ()| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'a, 'b> fn(&'a (), &'b ()) -> _`
-              found closure signature `fn((), ()) -> _`
 help: consider adjusting the signature so it borrows its arguments
    |
 LL |     f1(|_: &(), _: &()| {});
    |            +       +
+   = note: expected closure signature `for<'a, 'b> fn(&'a (), &'b ()) -> _`
+              found closure signature `fn((), ()) -> _`
 note: required by a bound in `f1`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:22:25
    |
@@ -28,12 +28,12 @@ LL |     f2(|_: (), _: ()| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'a, 'b> fn(&'a (), &'b ()) -> _`
-              found closure signature `fn((), ()) -> _`
 help: consider adjusting the signature so it borrows its arguments
    |
 LL |     f2(|_: &(), _: &()| {});
    |            +       +
+   = note: expected closure signature `for<'a, 'b> fn(&'a (), &'b ()) -> _`
+              found closure signature `fn((), ()) -> _`
 note: required by a bound in `f2`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:23:25
    |
@@ -49,12 +49,12 @@ LL |     f3(|_: (), _: ()| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'a> fn(&(), &'a ()) -> _`
-              found closure signature `fn((), ()) -> _`
 help: consider adjusting the signature so it borrows its arguments
    |
 LL |     f3(|_: &(), _: &()| {});
    |            +       +
+   = note: expected closure signature `for<'a> fn(&(), &'a ()) -> _`
+              found closure signature `fn((), ()) -> _`
 note: required by a bound in `f3`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:24:29
    |
@@ -70,12 +70,12 @@ LL |     f4(|_: (), _: ()| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'a, 'r> fn(&'a (), &'r ()) -> _`
-              found closure signature `fn((), ()) -> _`
 help: consider adjusting the signature so it borrows its arguments
    |
 LL |     f4(|_: &(), _: &()| {});
    |            +       +
+   = note: expected closure signature `for<'a, 'r> fn(&'a (), &'r ()) -> _`
+              found closure signature `fn((), ()) -> _`
 note: required by a bound in `f4`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:25:25
    |
@@ -91,12 +91,12 @@ LL |     f5(|_: (), _: ()| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'r> fn(&'r (), &'r ()) -> _`
-              found closure signature `fn((), ()) -> _`
 help: consider adjusting the signature so it borrows its arguments
    |
 LL |     f5(|_: &(), _: &()| {});
    |            +       +
+   = note: expected closure signature `for<'r> fn(&'r (), &'r ()) -> _`
+              found closure signature `fn((), ()) -> _`
 note: required by a bound in `f5`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:26:25
    |
@@ -112,12 +112,12 @@ LL |     g1(|_: (), _: ()| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'a> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>) -> _`
-              found closure signature `fn((), ()) -> _`
 help: consider adjusting the signature so it borrows its argument
    |
 LL |     g1(|_: &(), _: ()| {});
    |            +
+   = note: expected closure signature `for<'a> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>) -> _`
+              found closure signature `fn((), ()) -> _`
 note: required by a bound in `g1`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:29:25
    |
@@ -133,12 +133,12 @@ LL |     g2(|_: (), _: ()| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'a> fn(&'a (), for<'a> fn(&'a ())) -> _`
-              found closure signature `fn((), ()) -> _`
 help: consider adjusting the signature so it borrows its argument
    |
 LL |     g2(|_: &(), _: ()| {});
    |            +
+   = note: expected closure signature `for<'a> fn(&'a (), for<'a> fn(&'a ())) -> _`
+              found closure signature `fn((), ()) -> _`
 note: required by a bound in `g2`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:30:25
    |
@@ -154,12 +154,12 @@ LL |     g3(|_: (), _: ()| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'s> fn(&'s (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>) -> _`
-              found closure signature `fn((), ()) -> _`
 help: consider adjusting the signature so it borrows its argument
    |
 LL |     g3(|_: &(), _: ()| {});
    |            +
+   = note: expected closure signature `for<'s> fn(&'s (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>) -> _`
+              found closure signature `fn((), ()) -> _`
 note: required by a bound in `g3`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:31:25
    |
@@ -175,12 +175,12 @@ LL |     g4(|_: (), _: ()| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'a> fn(&'a (), for<'r> fn(&'r ())) -> _`
-              found closure signature `fn((), ()) -> _`
 help: consider adjusting the signature so it borrows its argument
    |
 LL |     g4(|_: &(), _: ()| {});
    |            +
+   = note: expected closure signature `for<'a> fn(&'a (), for<'r> fn(&'r ())) -> _`
+              found closure signature `fn((), ()) -> _`
 note: required by a bound in `g4`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:32:25
    |
@@ -196,12 +196,12 @@ LL |     h1(|_: (), _: (), _: (), _: ()| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'a, 'b> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'b (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
-              found closure signature `fn((), (), (), ()) -> _`
 help: consider adjusting the signature so it borrows its arguments
    |
 LL |     h1(|_: &(), _: (), _: &(), _: ()| {});
    |            +              +
+   = note: expected closure signature `for<'a, 'b> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'b (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
+              found closure signature `fn((), (), (), ()) -> _`
 note: required by a bound in `h1`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:35:25
    |
@@ -217,12 +217,12 @@ LL |     h2(|_: (), _: (), _: (), _: ()| {});
    |     |  found signature defined here
    |     expected due to this
    |
-   = note: expected closure signature `for<'a, 't0> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'t0 (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
-              found closure signature `fn((), (), (), ()) -> _`
 help: consider adjusting the signature so it borrows its arguments
    |
 LL |     h2(|_: &(), _: (), _: &(), _: ()| {});
    |            +              +
+   = note: expected closure signature `for<'a, 't0> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'t0 (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
+              found closure signature `fn((), (), (), ()) -> _`
 note: required by a bound in `h2`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:36:25
    |

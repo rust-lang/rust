@@ -8,12 +8,12 @@ LL |         Option<usize>;
 LL |     x = 5;
    |         ^ expected `Option<usize>`, found integer
    |
-   = note: expected enum `Option<usize>`
-              found type `{integer}`
 help: try wrapping the expression in `Some`
    |
 LL |     x = Some(5);
    |         +++++ +
+   = note: expected enum `Option<usize>`
+              found type `{integer}`
 
 error: aborting due to 1 previous error
 

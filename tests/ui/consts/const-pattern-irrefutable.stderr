@@ -7,12 +7,12 @@ LL | const a: u8 = 2;
 LL |     let a = 4;
    |         ^ patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
    |
-   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 help: introduce a variable instead
    |
 LL |     let a_var = 4;
    |          ++++
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `u8`
 
 error[E0005]: refutable pattern in local binding
@@ -24,13 +24,13 @@ LL |     pub const b: u8 = 2;
 LL |     let c = 4;
    |         ^ patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
    |
-   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 help: introduce a variable instead
    |
 LL -     let c = 4;
 LL +     let b_var = 4;
    |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `u8`
 
 error[E0005]: refutable pattern in local binding
@@ -42,12 +42,12 @@ LL |     pub const d: (u8, u8) = (2, 1);
 LL |     let d = (4, 4);
    |         ^ patterns `(0_u8..=1_u8, _)` and `(3_u8..=u8::MAX, _)` not covered
    |
-   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 help: introduce a variable instead
    |
 LL |     let d_var = (4, 4);
    |          ++++
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `(u8, u8)`
 
 error[E0005]: refutable pattern in local binding
@@ -59,12 +59,12 @@ LL | const e: S = S {
 LL |     let e = S {
    |         ^ pattern `S { foo: 1_u8..=u8::MAX }` not covered
    |
-   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 help: introduce a variable instead
    |
 LL |     let e_var = S {
    |          ++++
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `S` defined here
   --> $DIR/const-pattern-irrefutable.rs:23:8
    |
@@ -81,13 +81,13 @@ LL | const g: u8 = 2;
 LL |     let r#g = 4;
    |         ^^^ patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
    |
-   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 help: introduce a variable instead
    |
 LL -     let r#g = 4;
 LL +     let g_var = 4;
    |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `u8`
 
 error[E0005]: refutable pattern in local binding
@@ -99,13 +99,13 @@ LL | const r#fn: u8 = 2;
 LL |     let r#fn = 4;
    |         ^^^^ patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
    |
-   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 help: introduce a variable instead
    |
 LL -     let r#fn = 4;
 LL +     let fn_var = 4;
    |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `u8`
 
 error: aborting due to 6 previous errors

@@ -4,12 +4,12 @@ error[E0308]: mismatched types
 LL |      Err(format!("error: {x}"))
    |          ^^^^^^^^^^^^^^^^^^^^^ expected `Box<dyn Error>`, found `String`
    |
-   = note: expected struct `Box<dyn std::error::Error>`
-              found struct `String`
 help: call `Into::into` on this expression to convert `String` into `Box<dyn std::error::Error>`
    |
 LL |      Err(format!("error: {x}").into())
    |                               +++++++
+   = note: expected struct `Box<dyn std::error::Error>`
+              found struct `String`
 
 error[E0308]: mismatched types
   --> $DIR/issue-110017-format-into-help-deletes-macro.rs:17:10
@@ -20,12 +20,12 @@ LL |          format!("error: {}", $x)
 LL |      Err(outer!(x))
    |          --------- in this macro invocation
    |
-   = note: expected struct `Box<dyn std::error::Error>`
-              found struct `String`
 help: call `Into::into` on this expression to convert `String` into `Box<dyn std::error::Error>`
    |
 LL |          format!("error: {}", $x).into()
    |                                  +++++++
+   = note: expected struct `Box<dyn std::error::Error>`
+              found struct `String`
    = note: this error originates in the macro `format` which comes from the expansion of the macro `outer` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
@@ -37,12 +37,12 @@ LL |              Err(format!("error: {x}"))
 LL |  entire_fn_outer!();
    |  ------------------ in this macro invocation
    |
-   = note: expected struct `Box<dyn std::error::Error>`
-              found struct `String`
 help: call `Into::into` on this expression to convert `String` into `Box<dyn std::error::Error>`
    |
 LL |              Err(format!("error: {x}").into())
    |                                       +++++++
+   = note: expected struct `Box<dyn std::error::Error>`
+              found struct `String`
    = note: this error originates in the macro `format` which comes from the expansion of the macro `entire_fn_outer` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
@@ -54,12 +54,12 @@ LL |         Err(format!("error: {}", $x))
 LL |     nontrivial!(x)
    |     -------------- in this macro invocation
    |
-   = note: expected struct `Box<dyn std::error::Error>`
-              found struct `String`
 help: call `Into::into` on this expression to convert `String` into `Box<dyn std::error::Error>`
    |
 LL |         Err(format!("error: {}", $x).into())
    |                                     +++++++
+   = note: expected struct `Box<dyn std::error::Error>`
+              found struct `String`
    = note: this error originates in the macro `format` which comes from the expansion of the macro `nontrivial` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors

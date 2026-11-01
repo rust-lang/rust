@@ -14,8 +14,8 @@ LL |         acc += cnt2;
 LL |     }
    |     - `line` dropped here while still borrowed
    |
-   = note: `v` is a collection that stores borrowed references, but `line` does not live long enough to be stored in it
    = help: buffer reuse with borrowed references requires unsafe code or restructuring
+   = note: `v` is a collection that stores borrowed references, but `line` does not live long enough to be stored in it
 
 error: aborting due to 1 previous error
 

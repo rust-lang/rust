@@ -4,13 +4,13 @@ error: usage of a legacy numeric constant
 LL |     std::f32::EPSILON;
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::legacy-numeric-constants` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::legacy_numeric_constants)]`
 help: use the associated constant instead
    |
 LL -     std::f32::EPSILON;
 LL +     f32::EPSILON;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::legacy_numeric_constants)]`
+   = note: `-D clippy::legacy-numeric-constants` implied by `-D warnings`
 
 error: usage of a legacy numeric constant
   --> tests/ui/legacy_numeric_constants.rs:31:5

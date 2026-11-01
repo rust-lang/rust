@@ -4,15 +4,15 @@ error: redundant pattern matching
 LL |     if let Ok(_) = m.lock() {}
    |            ^^^^^
    |
-   = note: this will change drop order of the result, as well as all temporaries
-   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
-   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 help: consider using `is_ok()`
    |
 LL -     if let Ok(_) = m.lock() {}
 LL +     if m.lock().is_ok() {}
    |
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
+   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_drop_order.rs:13:12
@@ -20,13 +20,13 @@ error: redundant pattern matching
 LL |     if let Err(_) = Err::<(), _>(m.lock().unwrap().0) {}
    |            ^^^^^^
    |
-   = note: this will change drop order of the result, as well as all temporaries
-   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 help: consider using `is_err()`
    |
 LL -     if let Err(_) = Err::<(), _>(m.lock().unwrap().0) {}
 LL +     if Err::<(), _>(m.lock().unwrap().0).is_err() {}
    |
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_drop_order.rs:17:16
@@ -34,13 +34,13 @@ error: redundant pattern matching
 LL |         if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {}
    |                ^^^^^
    |
-   = note: this will change drop order of the result, as well as all temporaries
-   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 help: consider using `is_ok()`
    |
 LL -         if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {}
 LL +         if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok() {}
    |
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_drop_order.rs:20:12
@@ -48,13 +48,13 @@ error: redundant pattern matching
 LL |     if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {
    |            ^^^^^
    |
-   = note: this will change drop order of the result, as well as all temporaries
-   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 help: consider using `is_ok()`
    |
 LL -     if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {
 LL +     if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok() {
    |
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_drop_order.rs:24:12
@@ -110,13 +110,13 @@ error: redundant pattern matching
 LL |     if let Some(_) = Some(m.lock()) {}
    |            ^^^^^^^
    |
-   = note: this will change drop order of the result, as well as all temporaries
-   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 help: consider using `is_some()`
    |
 LL -     if let Some(_) = Some(m.lock()) {}
 LL +     if Some(m.lock()).is_some() {}
    |
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_drop_order.rs:37:12
@@ -124,13 +124,13 @@ error: redundant pattern matching
 LL |     if let Some(_) = Some(m.lock().unwrap().0) {}
    |            ^^^^^^^
    |
-   = note: this will change drop order of the result, as well as all temporaries
-   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 help: consider using `is_some()`
    |
 LL -     if let Some(_) = Some(m.lock().unwrap().0) {}
 LL +     if Some(m.lock().unwrap().0).is_some() {}
    |
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_drop_order.rs:41:16
@@ -138,13 +138,13 @@ error: redundant pattern matching
 LL |         if let None = None::<std::sync::MutexGuard<()>> {}
    |                ^^^^
    |
-   = note: this will change drop order of the result, as well as all temporaries
-   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 help: consider using `is_none()`
    |
 LL -         if let None = None::<std::sync::MutexGuard<()>> {}
 LL +         if None::<std::sync::MutexGuard<()>>.is_none() {}
    |
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_drop_order.rs:44:12
@@ -152,13 +152,13 @@ error: redundant pattern matching
 LL |     if let None = None::<std::sync::MutexGuard<()>> {
    |            ^^^^
    |
-   = note: this will change drop order of the result, as well as all temporaries
-   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 help: consider using `is_none()`
    |
 LL -     if let None = None::<std::sync::MutexGuard<()>> {
 LL +     if None::<std::sync::MutexGuard<()>>.is_none() {
    |
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_drop_order.rs:49:12
@@ -202,13 +202,13 @@ error: redundant pattern matching
 LL |     if let Ready(_) = Ready(m.lock()) {}
    |            ^^^^^^^^
    |
-   = note: this will change drop order of the result, as well as all temporaries
-   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 help: consider using `is_ready()`
    |
 LL -     if let Ready(_) = Ready(m.lock()) {}
 LL +     if Ready(m.lock()).is_ready() {}
    |
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_drop_order.rs:60:12
@@ -216,13 +216,13 @@ error: redundant pattern matching
 LL |     if let Ready(_) = Ready(m.lock().unwrap().0) {}
    |            ^^^^^^^^
    |
-   = note: this will change drop order of the result, as well as all temporaries
-   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 help: consider using `is_ready()`
    |
 LL -     if let Ready(_) = Ready(m.lock().unwrap().0) {}
 LL +     if Ready(m.lock().unwrap().0).is_ready() {}
    |
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_drop_order.rs:64:16
@@ -230,13 +230,13 @@ error: redundant pattern matching
 LL |         if let Pending = Pending::<std::sync::MutexGuard<()>> {}
    |                ^^^^^^^
    |
-   = note: this will change drop order of the result, as well as all temporaries
-   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 help: consider using `is_pending()`
    |
 LL -         if let Pending = Pending::<std::sync::MutexGuard<()>> {}
 LL +         if Pending::<std::sync::MutexGuard<()>>.is_pending() {}
    |
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_drop_order.rs:67:12
@@ -244,13 +244,13 @@ error: redundant pattern matching
 LL |     if let Pending = Pending::<std::sync::MutexGuard<()>> {
    |            ^^^^^^^
    |
-   = note: this will change drop order of the result, as well as all temporaries
-   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 help: consider using `is_pending()`
    |
 LL -     if let Pending = Pending::<std::sync::MutexGuard<()>> {
 LL +     if Pending::<std::sync::MutexGuard<()>>.is_pending() {
    |
+   = note: this will change drop order of the result, as well as all temporaries
+   = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching
   --> tests/ui/redundant_pattern_matching_drop_order.rs:72:12

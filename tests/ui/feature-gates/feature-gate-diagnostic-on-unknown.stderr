@@ -12,8 +12,8 @@ error: unknown diagnostic attribute
 LL | #[diagnostic::on_unknown(message = "Tada")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this is an experimental diagnostic attribute
    = help: add `#![feature(diagnostic_on_unknown)]` to the crate attributes to enable
+   = note: this is an experimental diagnostic attribute
 note: the lint level is defined here
   --> $DIR/feature-gate-diagnostic-on-unknown.rs:1:9
    |

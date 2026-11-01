@@ -4,12 +4,12 @@ error[E0277]: `T` cannot be unpinned
 LL |     let &pin mut Foo(ref mut x) = foo_mut;
    |                      ^^^^^^^^^ the trait `Unpin` is not implemented for `T`
    |
-   = note: consider using the `pin!` macro
-           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn by_ref_non_pinned_non_unpin<T: std::marker::Unpin>(foo_mut: &pin mut Foo<T>, foo_const: &pin const Foo<T>) {
    |                                 ++++++++++++++++++++
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 
 error[E0277]: `T` cannot be unpinned
   --> $DIR/pin-pattern.rs:67:24
@@ -17,12 +17,12 @@ error[E0277]: `T` cannot be unpinned
 LL |     let &pin const Foo(ref x) = foo_const;
    |                        ^^^^^ the trait `Unpin` is not implemented for `T`
    |
-   = note: consider using the `pin!` macro
-           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn by_ref_non_pinned_non_unpin<T: std::marker::Unpin>(foo_mut: &pin mut Foo<T>, foo_const: &pin const Foo<T>) {
    |                                 ++++++++++++++++++++
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 
 error[E0277]: `T` cannot be unpinned
   --> $DIR/pin-pattern.rs:91:15
@@ -30,12 +30,12 @@ error[E0277]: `T` cannot be unpinned
 LL |     (&pin mut x,): &'a mut (&'a pin mut Foo<T>,),
    |               ^ within `Foo<T>`, the trait `Unpin` is not implemented for `T`
    |
-   = note: consider using the `pin!` macro
-           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn tuple_ref_pin_mut_pat_and_mut_of_tuple_pin_mut_ty<'a, T: std::marker::Unpin>(
    |                                                           ++++++++++++++++++++
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
 note: required because it appears within the type `Foo<T>`
   --> $DIR/pin-pattern.rs:11:15
    |
@@ -50,13 +50,13 @@ LL |     (&pin mut x,): &'a mut &'a pin mut (Foo<T>,),
    |      |
    |      expected `Foo<T>`, found `Pin<&mut _>`
    |
-   = note: expected struct `Foo<T>`
-              found struct `Pin<&mut _>`
 help: consider removing `&pin mut` from the pattern
    |
 LL -     (&pin mut x,): &'a mut &'a pin mut (Foo<T>,),
 LL +     (x,): &'a mut &'a pin mut (Foo<T>,),
    |
+   = note: expected struct `Foo<T>`
+              found struct `Pin<&mut _>`
 note: to declare a mutable binding use: `mut x`
   --> $DIR/pin-pattern.rs:97:6
    |
@@ -119,16 +119,16 @@ error: cannot explicitly dereference within an implicitly-borrowing pattern
 LL |     ((&pin mut x,),): &'a pin mut (&'a mut (&'a pin mut Foo<T>,),),
    |       ^^^^^^^^ reference pattern not allowed when implicitly borrowing
    |
+help: match on the reference with a reference pattern to avoid implicitly borrowing
+   |
+LL |     (&mut (&pin mut x,),): &'a pin mut (&'a mut (&'a pin mut Foo<T>,),),
+   |      ++++
    = note: for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
 note: matching on a reference type with a non-reference pattern implicitly borrows the contents
   --> $DIR/pin-pattern.rs:83:6
    |
 LL |     ((&pin mut x,),): &'a pin mut (&'a mut (&'a pin mut Foo<T>,),),
    |      ^^^^^^^^^^^^^ this non-reference pattern matches on a reference type `&mut _`
-help: match on the reference with a reference pattern to avoid implicitly borrowing
-   |
-LL |     (&mut (&pin mut x,),): &'a pin mut (&'a mut (&'a pin mut Foo<T>,),),
-   |      ++++
 
 error[E0507]: cannot move out of a mutable reference
   --> $DIR/pin-pattern.rs:83:5

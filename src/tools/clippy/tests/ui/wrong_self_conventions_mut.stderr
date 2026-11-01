@@ -5,8 +5,8 @@ LL |         pub fn to_many(&mut self) -> Option<&mut [T]> {
    |                        ^^^^^^^^^
    |
    = help: consider choosing a less ambiguous name
-   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::wrong_self_convention)]`
+   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
 
 error: methods with the following characteristics: (`to_*` and `*_mut`) usually take `self` by mutable reference
   --> tests/ui/wrong_self_conventions_mut.rs:23:28

@@ -4,8 +4,8 @@ error: use of bitwise operator instead of lazy operator between booleans
 LL |     if y & !x {
    |        ^^^^^^ help: try: `y && !x`
    |
-   = note: `-D clippy::needless-bitwise-bool` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_bitwise_bool)]`
+   = note: `-D clippy::needless-bitwise-bool` implied by `-D warnings`
 
 error: use of bitwise operator instead of lazy operator between booleans
   --> tests/ui/needless_bitwise_bool.rs:38:8

@@ -4,8 +4,8 @@ error: no need to put clippy lints behind a `clippy` cfg
 LL | #![cfg_attr(clippy, deny(clippy::non_minimal_cfg))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `#![deny(clippy::non_minimal_cfg)]`
    |
-   = note: `-D clippy::unnecessary-clippy-cfg` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_clippy_cfg)]`
+   = note: `-D clippy::unnecessary-clippy-cfg` implied by `-D warnings`
 
 error: no need to put clippy lints behind a `clippy` cfg
   --> tests/ui/unnecessary_clippy_cfg.rs:7:37

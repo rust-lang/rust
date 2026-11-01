@@ -8,8 +8,8 @@ help: the trait `FromIterator<(&_, fn() {foo})>` is not implemented for `Vec<(&s
       but trait `FromIterator<(&_, fn())>` is implemented for it
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    = help: for that trait implementation, expected `fn()`, found `fn() {foo}`
-   = note: fn items are distinct from fn pointers
    = help: consider casting the fn item to a fn pointer: `foo as fn()`
+   = note: fn items are distinct from fn pointers
 note: the method call chain might not have had the expected associated types
   --> $DIR/casting-fn-item-to-fn-pointer.rs:6:47
    |
@@ -30,8 +30,8 @@ help: the trait `FromIterator<fn() {foo}>` is not implemented for `Vec<fn()>`
       but trait `FromIterator<fn()>` is implemented for it
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    = help: for that trait implementation, expected `fn()`, found `fn() {foo}`
-   = note: fn items are distinct from fn pointers
    = help: consider casting the fn item to a fn pointer: `foo as fn()`
+   = note: fn items are distinct from fn pointers
 note: the method call chain might not have had the expected associated types
   --> $DIR/casting-fn-item-to-fn-pointer.rs:7:30
    |
@@ -50,10 +50,10 @@ LL |     let _: Vec<fn()> = Vec::from([foo]);
    |            |
    |            expected due to this
    |
+   = help: consider casting the fn item to a fn pointer: `foo as fn()`
    = note: expected struct `Vec<fn()>`
               found struct `Vec<fn() {foo}>`
    = note: fn items are distinct from fn pointers
-   = help: consider casting the fn item to a fn pointer: `foo as fn()`
 
 error: aborting due to 3 previous errors
 

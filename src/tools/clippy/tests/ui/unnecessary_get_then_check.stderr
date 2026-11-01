@@ -4,8 +4,8 @@ error: unnecessary use of `get("a").is_some()`
 LL |     let _ = s.get("a").is_some();
    |               ^^^^^^^^^^^^^^^^^^ help: replace it with: `contains("a")`
    |
-   = note: `-D clippy::unnecessary-get-then-check` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_get_then_check)]`
+   = note: `-D clippy::unnecessary-get-then-check` implied by `-D warnings`
 
 error: unnecessary use of `get("a").is_none()`
   --> tests/ui/unnecessary_get_then_check.rs:9:15

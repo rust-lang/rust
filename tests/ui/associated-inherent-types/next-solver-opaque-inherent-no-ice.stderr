@@ -10,8 +10,8 @@ error[E0658]: `impl Trait` in associated types is unstable
 LL |     type ImplTrait = impl Clone;
    |                      ^^^^^^^^^^
    |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(impl_trait_in_assoc_type)]` to the crate attributes to enable
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0601]: `main` function not found in crate `next_solver_opaque_inherent_no_ice`

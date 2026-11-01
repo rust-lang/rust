@@ -4,8 +4,8 @@ warning: function `foo` is never used
 LL | fn foo() -> &'static str {
    |    ^^^
    |
-   = note: `-W dead-code` implied by `-W unused`
    = help: to override `-W unused` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+   = note: `-W dead-code` implied by `-W unused`
 
 warning: 1 warning emitted
 

@@ -4,13 +4,13 @@ error: incorrect ordering of items (module item groupings specify another order)
 LL | use std::rc::Weak;
    |              ^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::arbitrary_source_item_ordering)]`
 note: should be placed before `SNAKE_CASE`
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:22:7
    |
 LL | const SNAKE_CASE: &str = "zzzzzzzz";
    |       ^^^^^^^^^^
    = note: `-D clippy::arbitrary-source-item-ordering` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::arbitrary_source_item_ordering)]`
 
 error: incorrect ordering of items (module item groupings specify another order)
   --> tests/ui-toml/arbitrary_source_item_ordering/ordering_mixed.rs:164:7

@@ -7,7 +7,6 @@ LL | |     #[cfg(true)]
 LL | |     Foo: Trait,
    | |_______________^
    |
-   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
 help: move it to the end of the type declaration
    |
 LL + 
@@ -15,6 +14,7 @@ LL | = Foo
 LL | where
 LL ~     (): Sized, Foo: Trait;
    |
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
 
 error: where clauses are not allowed before the type for type aliases
   --> $DIR/cfg-attr-issue-138010-2.rs:19:1

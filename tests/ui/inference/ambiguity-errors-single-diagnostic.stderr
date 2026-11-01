@@ -10,7 +10,6 @@ help: consider specifying a concrete type for the type parameter `T`
    |
 LL |     as_input::</* Type */>(Default::default());
    |             ++++++++++++++
-   = note: the type must implement `Trait`
 help: the following types implement trait `Trait`
   --> $DIR/ambiguity-errors-single-diagnostic.rs:8:1
    |
@@ -19,6 +18,7 @@ LL | impl Trait for String {}
 LL | struct NotDefault;
 LL | impl Trait for NotDefault {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ `NotDefault`
+   = note: the type must implement `Trait`
    = note: the type must also implement `Default`
 note: required by a bound in `as_input`
   --> $DIR/ambiguity-errors-single-diagnostic.rs:12:16
@@ -38,7 +38,6 @@ help: consider specifying a concrete type for the type parameter `T`
    |
 LL |     constrained::</* Type */>(Default::default());
    |                ++++++++++++++
-   = note: the type must implement `Trait`
 help: the following types implement trait `Trait`
   --> $DIR/ambiguity-errors-single-diagnostic.rs:8:1
    |
@@ -47,6 +46,7 @@ LL | impl Trait for String {}
 LL | struct NotDefault;
 LL | impl Trait for NotDefault {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ `NotDefault`
+   = note: the type must implement `Trait`
    = note: the type must also implement `Clone`
    = note: the type must also implement `Default`
 note: required by a bound in `constrained`

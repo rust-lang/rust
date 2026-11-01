@@ -4,13 +4,13 @@ error: this `map_or` can be simplified
 LL |     let _ = Some(5).map_or(false, |n| n == 5);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::unnecessary-map-or` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
 help: use a standard comparison instead
    |
 LL -     let _ = Some(5).map_or(false, |n| n == 5);
 LL +     let _ = Some(5) == Some(5);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
+   = note: `-D clippy::unnecessary-map-or` implied by `-D warnings`
 
 error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:13:13

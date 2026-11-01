@@ -9,8 +9,8 @@ LL | |     }
    | |_____^
    |
    = help: implement trait `Display` for type `A` instead
-   = note: `-D clippy::inherent-to-string` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::inherent_to_string)]`
+   = note: `-D clippy::inherent-to-string` implied by `-D warnings`
 
 error: type `C` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`
   --> tests/ui/inherent_to_string.rs:48:5

@@ -4,12 +4,12 @@ error: the `dbg!` macro is intended as a debugging tool
 LL |     dbg!();
    |     ^^^^^^
    |
-   = note: `-D clippy::dbg-macro` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::dbg_macro)]`
 help: remove the invocation before committing it to a version control system
    |
 LL -     dbg!();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::dbg_macro)]`
+   = note: `-D clippy::dbg-macro` implied by `-D warnings`
 
 error: the `dbg!` macro is intended as a debugging tool
   --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:9:5

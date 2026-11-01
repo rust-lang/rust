@@ -25,8 +25,8 @@ error[E0658]: use of unstable library feature `transmutability`
 LL |     use std::mem::{Assume, TransmuteFrom};
    |                    ^^^^^^
    |
-   = note: see issue #99571 <https://github.com/rust-lang/rust/issues/99571> for more information
    = help: add `#![feature(transmutability)]` to the crate attributes to enable
+   = note: see issue #99571 <https://github.com/rust-lang/rust/issues/99571> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `transmutability`
@@ -35,8 +35,8 @@ error[E0658]: use of unstable library feature `transmutability`
 LL |     use std::mem::{Assume, TransmuteFrom};
    |                            ^^^^^^^^^^^^^
    |
-   = note: see issue #99571 <https://github.com/rust-lang/rust/issues/99571> for more information
    = help: add `#![feature(transmutability)]` to the crate attributes to enable
+   = note: see issue #99571 <https://github.com/rust-lang/rust/issues/99571> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `transmutability`
@@ -45,8 +45,8 @@ error[E0658]: use of unstable library feature `transmutability`
 LL |         Dst: TransmuteFrom<Src>,
    |              ^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #99571 <https://github.com/rust-lang/rust/issues/99571> for more information
    = help: add `#![feature(transmutability)]` to the crate attributes to enable
+   = note: see issue #99571 <https://github.com/rust-lang/rust/issues/99571> for more information
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `transmutability`

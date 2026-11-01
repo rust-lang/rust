@@ -4,13 +4,13 @@ error: you are deriving `Ord` but have implemented `PartialOrd` explicitly
 LL | #[derive(Ord, PartialEq, Eq)]
    |          ^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::derive_ord_xor_partial_ord)]`
 note: `PartialOrd` implemented here
   --> tests/ui/derive_ord_xor_partial_ord.rs:26:1
    |
 LL | impl PartialOrd for DeriveOrd {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::derive-ord-xor-partial-ord` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::derive_ord_xor_partial_ord)]`
 
 error: you are deriving `Ord` but have implemented `PartialOrd` explicitly
   --> tests/ui/derive_ord_xor_partial_ord.rs:32:10

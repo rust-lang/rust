@@ -9,12 +9,12 @@ LL |     let z = call_it(3, f);
    |             |
    |             required by a bound introduced by this call
    |
-   = note: expected closure signature `fn(isize, _) -> _`
-              found closure signature `fn(usize, _) -> _`
 help: consider wrapping the function in a closure
    |
 LL |     let z = call_it(3, |arg0: isize, arg1: isize| f(/* usize */, arg1));
    |                        ++++++++++++++++++++++++++  +++++++++++++++++++
+   = note: expected closure signature `fn(isize, _) -> _`
+              found closure signature `fn(usize, _) -> _`
 note: required by a bound in `call_it`
   --> $DIR/unboxed-closures-vtable-mismatch.rs:7:15
    |

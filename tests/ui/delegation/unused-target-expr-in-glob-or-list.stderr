@@ -354,16 +354,16 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 LL |     reuse to_reuse::{value, mut_ref, r#ref} { () }
    |                      ^^^^^                  ------ unexpected argument of type `()`
    |
-note: function defined here
-  --> $DIR/unused-target-expr-in-glob-or-list.rs:149:16
-   |
-LL |         pub fn value() -> i32 { 1 }
-   |                ^^^^^
 help: remove the extra argument
    |
 LL -     reuse to_reuse::{value, mut_ref, r#ref} { () }
 LL +     reuse to_reuse::{valu{ () }
    |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:149:16
+   |
+LL |         pub fn value() -> i32 { 1 }
+   |                ^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/unused-target-expr-in-glob-or-list.rs:154:22
@@ -387,16 +387,16 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 LL |     reuse to_reuse::{value, mut_ref, r#ref} { () }
    |                             ^^^^^^^         ------ unexpected argument of type `()`
    |
-note: function defined here
-  --> $DIR/unused-target-expr-in-glob-or-list.rs:150:16
-   |
-LL |         pub fn mut_ref() -> i32 { 2 }
-   |                ^^^^^^^
 help: remove the extra argument
    |
 LL -     reuse to_reuse::{value, mut_ref, r#ref} { () }
 LL +     reuse to_reuse::{value, mut_re{ () }
    |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:150:16
+   |
+LL |         pub fn mut_ref() -> i32 { 2 }
+   |                ^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/unused-target-expr-in-glob-or-list.rs:154:29
@@ -420,16 +420,16 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 LL |     reuse to_reuse::{value, mut_ref, r#ref} { () }
    |                                      ^^^^^  ------ unexpected argument of type `()`
    |
-note: function defined here
-  --> $DIR/unused-target-expr-in-glob-or-list.rs:151:16
-   |
-LL |         pub fn r#ref() -> i32 { 3 }
-   |                ^^^^^
 help: remove the extra argument
    |
 LL -     reuse to_reuse::{value, mut_ref, r#ref} { () }
 LL +     reuse to_reuse::{value, mut_ref, r#re{ () }
    |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:151:16
+   |
+LL |         pub fn r#ref() -> i32 { 3 }
+   |                ^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/unused-target-expr-in-glob-or-list.rs:154:38
@@ -453,16 +453,16 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 LL |     reuse to_reuse::{value as value2} { }
    |                      ^^^^^            --- unexpected argument of type `()`
    |
-note: function defined here
-  --> $DIR/unused-target-expr-in-glob-or-list.rs:149:16
-   |
-LL |         pub fn value() -> i32 { 1 }
-   |                ^^^^^
 help: remove the extra argument
    |
 LL -     reuse to_reuse::{value as value2} { }
 LL +     reuse to_reuse::{valu{ }
    |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:149:16
+   |
+LL |         pub fn value() -> i32 { 1 }
+   |                ^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/unused-target-expr-in-glob-or-list.rs:165:22
@@ -486,16 +486,16 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 LL |         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
    |                          ^^^^^                  --------- unexpected argument of type `{integer}`
    |
-note: function defined here
-  --> $DIR/unused-target-expr-in-glob-or-list.rs:179:16
-   |
-LL |         pub fn value() -> i32 { 1 }
-   |                ^^^^^
 help: remove the extra argument
    |
 LL -         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
 LL +         reuse to_reuse::{valu{ 1 + 1 }
    |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:179:16
+   |
+LL |         pub fn value() -> i32 { 1 }
+   |                ^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/unused-target-expr-in-glob-or-list.rs:195:26
@@ -519,16 +519,16 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 LL |         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
    |                                 ^^^^^^^         --------- unexpected argument of type `{integer}`
    |
-note: function defined here
-  --> $DIR/unused-target-expr-in-glob-or-list.rs:180:16
-   |
-LL |         pub fn mut_ref() -> i32 { 2 }
-   |                ^^^^^^^
 help: remove the extra argument
    |
 LL -         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
 LL +         reuse to_reuse::{value, mut_re{ 1 + 1 }
    |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:180:16
+   |
+LL |         pub fn mut_ref() -> i32 { 2 }
+   |                ^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/unused-target-expr-in-glob-or-list.rs:195:33
@@ -552,16 +552,16 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 LL |         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
    |                                          ^^^^^  --------- unexpected argument of type `{integer}`
    |
-note: function defined here
-  --> $DIR/unused-target-expr-in-glob-or-list.rs:181:16
-   |
-LL |         pub fn r#ref() -> i32 { 3 }
-   |                ^^^^^
 help: remove the extra argument
    |
 LL -         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
 LL +         reuse to_reuse::{value, mut_ref, r#re{ 1 + 1 }
    |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:181:16
+   |
+LL |         pub fn r#ref() -> i32 { 3 }
+   |                ^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/unused-target-expr-in-glob-or-list.rs:195:42

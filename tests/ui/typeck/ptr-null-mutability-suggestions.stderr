@@ -6,13 +6,13 @@ LL |     expecting_null_mut(ptr::null());
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected raw pointer `*mut u8`
-              found raw pointer `*const _`
 help: consider using `core::ptr::null_mut` instead
    |
 LL -     expecting_null_mut(ptr::null());
 LL +     expecting_null_mut(core::ptr::null_mut());
    |
+   = note: expected raw pointer `*mut u8`
+              found raw pointer `*const _`
 note: function defined here
   --> $DIR/ptr-null-mutability-suggestions.rs:6:4
    |

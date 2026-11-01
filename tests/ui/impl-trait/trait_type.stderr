@@ -18,11 +18,11 @@ error[E0050]: method `fmt` has 1 parameter but the declaration in trait `std::fm
 LL |    fn fmt(&self) -> () { }
    |           ^^^^^ expected 2 parameters, found 1
    |
-   = note: `fmt` from trait: `fn(&Self, &mut Formatter<'_>) -> Result<(), std::fmt::Error>`
 help: add the missing parameter from the trait
    |
 LL |    fn fmt(&self, f: &mut Formatter<'_>) -> () { }
    |                +++++++++++++++++++++++
+   = note: `fmt` from trait: `fn(&Self, &mut Formatter<'_>) -> Result<(), std::fmt::Error>`
 
 error[E0186]: method `fmt` has a `&self` declaration in the trait, but not in the impl
   --> $DIR/trait_type.rs:17:4

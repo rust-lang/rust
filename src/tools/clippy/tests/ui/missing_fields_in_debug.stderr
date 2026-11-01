@@ -6,15 +6,15 @@ LL | / impl fmt::Debug for NamedStruct1Ignored {
 LL | | }
    | |_^
    |
+   = help: consider including all fields in this `Debug` impl
 note: this field is unused
   --> tests/ui/missing_fields_in_debug.rs:10:5
    |
 LL |     hidden: u32,
    |     ^^^^^^^^^^^
-   = help: consider including all fields in this `Debug` impl
    = help: consider calling `.finish_non_exhaustive()` if you intend to ignore fields
-   = note: `-D clippy::missing-fields-in-debug` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::missing_fields_in_debug)]`
+   = note: `-D clippy::missing-fields-in-debug` implied by `-D warnings`
 
 error: manual `Debug` impl does not include all fields
   --> tests/ui/missing_fields_in_debug.rs:33:1
@@ -24,6 +24,7 @@ LL | / impl fmt::Debug for NamedStructMultipleIgnored {
 LL | | }
    | |_^
    |
+   = help: consider including all fields in this `Debug` impl
 note: this field is unused
   --> tests/ui/missing_fields_in_debug.rs:27:5
    |
@@ -39,7 +40,6 @@ note: this field is unused
    |
 LL |     hidden4: ((((u8), u16), u32), u64),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: consider including all fields in this `Debug` impl
    = help: consider calling `.finish_non_exhaustive()` if you intend to ignore fields
 
 error: manual `Debug` impl does not include all fields
@@ -53,12 +53,12 @@ LL | |     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
 LL | | }
    | |_^
    |
+   = help: consider including all fields in this `Debug` impl
 note: this field is unused
   --> tests/ui/missing_fields_in_debug.rs:92:5
    |
 LL |     b: String,
    |     ^^^^^^^^^
-   = help: consider including all fields in this `Debug` impl
    = help: consider calling `.finish_non_exhaustive()` if you intend to ignore fields
 
 error: aborting due to 3 previous errors

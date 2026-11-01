@@ -9,6 +9,7 @@ help: consider annotating `NonClone` with `#[derive(Clone)]`
 LL + #[derive(Clone)]
 LL | struct NonClone;
    |
+   = help: consider manually implementing `Clone` to avoid undesired bounds caused by "imperfect derives"
 note: required for `AssocStruct<NonClone>` to implement `Clone`
   --> $DIR/imperfect-derive-advanced.rs:11:8
    |
@@ -16,7 +17,6 @@ LL | #[derive(Clone)]
    |          ----- in this derive macro expansion
 LL | struct AssocStruct<T: Trait> {
    |        ^^^^^^^^^^^ - type parameter would need to implement `Clone`
-   = help: consider manually implementing `Clone` to avoid undesired bounds caused by "imperfect derives"
    = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
 note: required by a bound in `require_clone`
   --> $DIR/imperfect-derive-advanced.rs:31:21
@@ -35,6 +35,7 @@ help: consider annotating `NonClone` with `#[derive(Clone)]`
 LL + #[derive(Clone)]
 LL | struct NonClone;
    |
+   = help: consider manually implementing `Clone` to avoid undesired bounds caused by "imperfect derives"
 note: required for `RcStruct<NonClone>` to implement `Clone`
   --> $DIR/imperfect-derive-advanced.rs:21:8
    |
@@ -42,7 +43,6 @@ LL | #[derive(Clone)]
    |          ----- in this derive macro expansion
 LL | struct RcStruct<T> {
    |        ^^^^^^^^ - type parameter would need to implement `Clone`
-   = help: consider manually implementing `Clone` to avoid undesired bounds caused by "imperfect derives"
    = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
 note: required by a bound in `require_clone`
   --> $DIR/imperfect-derive-advanced.rs:31:21
@@ -61,6 +61,7 @@ help: consider annotating `NonClone` with `#[derive(Clone)]`
 LL + #[derive(Clone)]
 LL | struct NonClone;
    |
+   = help: consider manually implementing `Clone` to avoid undesired bounds caused by "imperfect derives"
 note: required for `List<NonClone>` to implement `Clone`
   --> $DIR/imperfect-derive-advanced.rs:26:8
    |
@@ -68,7 +69,6 @@ LL | #[derive(Clone)]
    |          ----- in this derive macro expansion
 LL | struct List<T> {
    |        ^^^^ - type parameter would need to implement `Clone`
-   = help: consider manually implementing `Clone` to avoid undesired bounds caused by "imperfect derives"
    = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
 note: required by a bound in `require_clone`
   --> $DIR/imperfect-derive-advanced.rs:31:21

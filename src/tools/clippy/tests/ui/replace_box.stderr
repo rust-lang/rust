@@ -4,9 +4,9 @@ error: creating a new box
 LL |     *b = Box::new(T::default());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace existing content with inner value instead: `**b = T::default()`
    |
+   = help: to override `-D warnings` add `#[allow(clippy::replace_box)]`
    = note: this creates a needless allocation
    = note: `-D clippy::replace-box` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::replace_box)]`
 
 error: creating a new box
   --> tests/ui/replace_box.rs:9:5

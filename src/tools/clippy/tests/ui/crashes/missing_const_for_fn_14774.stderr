@@ -6,12 +6,12 @@ LL | |         a + 10
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_fn)]`
 help: make the function `const`
    |
 LL |     const fn foo(a: usize) -> usize {
    |     +++++
+   = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_fn)]`
+   = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
 
 error: aborting due to 1 previous error
 

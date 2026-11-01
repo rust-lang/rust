@@ -4,8 +4,8 @@ error: casting function pointer `foo` to `i8`, which truncates the value
 LL |     let _ = foo as i8;
    |             ^^^^^^^^^ help: try: `foo as usize`
    |
-   = note: `-D clippy::fn-to-numeric-cast-with-truncation` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::fn_to_numeric_cast_with_truncation)]`
+   = note: `-D clippy::fn-to-numeric-cast-with-truncation` implied by `-D warnings`
 
 error: casting function pointer `foo` to `i16`, which truncates the value
   --> tests/ui/fn_to_numeric_cast.rs:15:13
@@ -25,8 +25,8 @@ error: casting function pointer `foo` to `i64`
 LL |     let _ = foo as i64;
    |             ^^^^^^^^^^ help: try: `foo as usize`
    |
-   = note: `-D clippy::fn-to-numeric-cast` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::fn_to_numeric_cast)]`
+   = note: `-D clippy::fn-to-numeric-cast` implied by `-D warnings`
 
 error: casting function pointer `foo` to `i128`
   --> tests/ui/fn_to_numeric_cast.rs:22:13

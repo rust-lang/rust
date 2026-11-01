@@ -11,12 +11,12 @@ LL +     use crate::m::TryIntoU32;
    |
 LL +     use std::convert::TryInto;
    |
-   = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
 help: there is a method `into` with a similar name
    |
 LL -         let _: u32 = 3u8.try_into().unwrap();
 LL +         let _: u32 = 3u8.into().unwrap();
    |
+   = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
 
 error: aborting due to 1 previous error
 

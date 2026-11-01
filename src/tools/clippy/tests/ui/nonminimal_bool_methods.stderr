@@ -4,8 +4,8 @@ error: this boolean expression can be simplified
 LL |     let _ = !a.is_some();
    |             ^^^^^^^^^^^^ help: try: `a.is_none()`
    |
-   = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::nonminimal_bool)]`
+   = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool_methods.rs:11:13

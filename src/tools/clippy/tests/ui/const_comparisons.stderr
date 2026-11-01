@@ -4,9 +4,9 @@ error: boolean expression will never evaluate to 'true'
 LL |     status_code <= 400 && status_code > 500;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::impossible_comparisons)]`
    = note: since `400` < `500`, the expression evaluates to false for any value of `status_code`
    = note: `-D clippy::impossible-comparisons` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::impossible_comparisons)]`
 
 error: boolean expression will never evaluate to 'true'
   --> tests/ui/const_comparisons.rs:49:5
@@ -126,13 +126,13 @@ error: right-hand side of `&&` operator has no effect
 LL |     status_code < 200 && status_code <= 299;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_comparisons)]`
 note: `if `status_code < 200` evaluates to true, status_code <= 299` will always evaluate to true as well
   --> tests/ui/const_comparisons.rs:108:23
    |
 LL |     status_code < 200 && status_code <= 299;
    |                       ^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::redundant-comparisons` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::redundant_comparisons)]`
 
 error: left-hand side of `&&` operator has no effect
   --> tests/ui/const_comparisons.rs:111:5

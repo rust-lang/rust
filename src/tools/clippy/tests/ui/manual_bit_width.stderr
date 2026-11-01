@@ -4,13 +4,13 @@ error: manual implementation of `bit_width`
 LL |     let _ = u8::BITS - w.leading_zeros();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::manual-bit-width` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::manual_bit_width)]`
 help: try
    |
 LL -     let _ = u8::BITS - w.leading_zeros();
 LL +     let _ = w.bit_width();
    |
+   = help: to override `-D warnings` add `#[allow(clippy::manual_bit_width)]`
+   = note: `-D clippy::manual-bit-width` implied by `-D warnings`
 
 error: manual implementation of `bit_width`
   --> tests/ui/manual_bit_width.rs:11:13

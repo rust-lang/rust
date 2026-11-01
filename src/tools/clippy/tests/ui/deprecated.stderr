@@ -4,8 +4,8 @@ error: lint `clippy::assign_ops` has been removed: compound operators are harmle
 LL | #![warn(clippy::assign_ops)]
    |         ^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D renamed-and-removed-lints` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(renamed_and_removed_lints)]`
+   = note: `-D renamed-and-removed-lints` implied by `-D warnings`
 
 error: lint `clippy::extend_from_slice` has been removed: `Vec::extend_from_slice` is no longer faster than `Vec::extend` due to specialization
   --> tests/ui/deprecated.rs:6:9

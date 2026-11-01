@@ -4,8 +4,8 @@ error: this pattern is unneeded as the `..` pattern can match that element
 LL |     if let (0, .., _) = t {};
    |                  ^^^ help: remove it
    |
-   = note: `-D clippy::unneeded-wildcard-pattern` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unneeded_wildcard_pattern)]`
+   = note: `-D clippy::unneeded-wildcard-pattern` implied by `-D warnings`
 
 error: this pattern is unneeded as the `..` pattern can match that element
   --> tests/ui/unneeded_wildcard_pattern.rs:13:16

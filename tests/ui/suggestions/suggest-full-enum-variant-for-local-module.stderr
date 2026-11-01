@@ -6,12 +6,12 @@ LL |     let _: option::O<()> = ();
    |            |
    |            expected due to this
    |
-   = note:   expected enum `O<()>`
-           found unit type `()`
 help: try wrapping the expression in `option::O::Some`
    |
 LL |     let _: option::O<()> = option::O::Some(());
    |                            ++++++++++++++++  +
+   = note:   expected enum `O<()>`
+           found unit type `()`
 
 error: aborting due to 1 previous error
 

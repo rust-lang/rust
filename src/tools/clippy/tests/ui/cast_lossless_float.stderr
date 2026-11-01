@@ -5,13 +5,13 @@ LL |     let _ = x0 as f32;
    |             ^^^^^^^^^
    |
    = help: an `as` cast can become silently lossy if the types change in the future
-   = note: `-D clippy::cast-lossless` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
 help: use `f32::from` instead
    |
 LL -     let _ = x0 as f32;
 LL +     let _ = f32::from(x0);
    |
+   = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
+   = note: `-D clippy::cast-lossless` implied by `-D warnings`
 
 error: casts from `i8` to `f64` can be expressed infallibly using `From`
   --> tests/ui/cast_lossless_float.rs:13:13

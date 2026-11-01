@@ -410,12 +410,6 @@ LL | || }
    |  |_|
    |
    |
-note: associated function defined here
-  --> $DIR/target-expr-removal-defs-inside.rs:4:8
-   |
-LL | pub trait Trait: Sized {
-LL |     fn static_self() -> F { F }
-   |        ^^^^^^^^^^^
 help: remove the extra argument
    |
 LL - reuse impl Trait for S {
@@ -437,6 +431,12 @@ LL -     self.0
 LL - }
 LL + reuse impl Trait for S }
    |
+note: associated function defined here
+  --> $DIR/target-expr-removal-defs-inside.rs:4:8
+   |
+LL | pub trait Trait: Sized {
+LL |     fn static_self() -> F { F }
+   |        ^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/target-expr-removal-defs-inside.rs:16:1
@@ -503,12 +503,6 @@ LL | || }
    |  |_|
    |
    |
-note: associated function defined here
-  --> $DIR/target-expr-removal-defs-inside.rs:4:8
-   |
-LL | pub trait Trait: Sized {
-LL |     fn static_self() -> F { F }
-   |        ^^^^^^^^^^^
 help: remove the extra argument
    |
 LL - reuse impl Trait for S1 {
@@ -534,6 +528,12 @@ LL -     self.0
 LL - }
 LL + reuse impl Trait for S1 }
    |
+note: associated function defined here
+  --> $DIR/target-expr-removal-defs-inside.rs:4:8
+   |
+LL | pub trait Trait: Sized {
+LL |     fn static_self() -> F { F }
+   |        ^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/target-expr-removal-defs-inside.rs:35:1
@@ -600,12 +600,6 @@ LL | || }
    |  |_|
    |
    |
-note: associated function defined here
-  --> $DIR/target-expr-removal-defs-inside.rs:4:8
-   |
-LL | pub trait Trait: Sized {
-LL |     fn static_self() -> F { F }
-   |        ^^^^^^^^^^^
 help: remove the extra argument
    |
 LL - reuse impl Trait for S2 {
@@ -627,6 +621,12 @@ LL -     self.0
 LL - }
 LL + reuse impl Trait for S2 }
    |
+note: associated function defined here
+  --> $DIR/target-expr-removal-defs-inside.rs:4:8
+   |
+LL | pub trait Trait: Sized {
+LL |     fn static_self() -> F { F }
+   |        ^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/target-expr-removal-defs-inside.rs:58:1

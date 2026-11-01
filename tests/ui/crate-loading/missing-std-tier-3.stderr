@@ -4,8 +4,8 @@ error[E0463]: can't find crate for `core`
 LL | extern crate core;
    | ^^^^^^^^^^^^^^^^^^ can't find crate
    |
-   = note: the `m68k-unknown-linux-gnu` target may not be installed
    = help: consider building the standard library from source with `cargo build -Zbuild-std`
+   = note: the `m68k-unknown-linux-gnu` target may not be installed
 
 error: aborting due to 1 previous error
 

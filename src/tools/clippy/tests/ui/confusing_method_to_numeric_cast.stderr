@@ -4,13 +4,13 @@ error: casting function pointer `u16::max` to `usize`
 LL |     let _ = u16::max as usize;
    |             ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::confusing-method-to-numeric-cast` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::confusing_method_to_numeric_cast)]`
 help: did you mean to use the associated constant?
    |
 LL -     let _ = u16::max as usize;
 LL +     let _ = u16::MAX as usize;
    |
+   = help: to override `-D warnings` add `#[allow(clippy::confusing_method_to_numeric_cast)]`
+   = note: `-D clippy::confusing-method-to-numeric-cast` implied by `-D warnings`
 
 error: casting function pointer `u16::min` to `usize`
   --> tests/ui/confusing_method_to_numeric_cast.rs:7:13

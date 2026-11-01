@@ -26,12 +26,12 @@ LL |     test(bar);
    |     |
    |     required by a bound introduced by this call
    |
-   = note: expected function signature `fn(i32) -> _`
-              found function signature `fn(u32) -> _`
 help: consider wrapping the function in a closure
    |
 LL |     test(|arg0: i32| bar(/* u32 */));
    |          +++++++++++    +++++++++++
+   = note: expected function signature `fn(i32) -> _`
+              found function signature `fn(u32) -> _`
 note: required by a bound in `test`
   --> $DIR/foreign-safe-fn-arg-mismatch.rs:8:17
    |

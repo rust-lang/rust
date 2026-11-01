@@ -28,7 +28,7 @@ use crate::emitter::{
 use crate::formatting::{format_diag_message, format_diag_messages};
 use crate::{
     CodeSuggestion, DiagInner, DiagMessage, Emitter, ErrCode, Level, MultiSpan, Style, Subdiag,
-    Sublevel, SuggestionStyle, TerminalUrl,
+    Sublevel, SuggestionStyle, TerminalUrl, place_notes_after_next_help,
 };
 
 /// Generates diagnostics using annotate-snippet
@@ -270,6 +270,25 @@ impl AnnotateSnippetEmitter {
             items.push(SubItem::Child(c));
         }
         items.extend(suggestions.map(SubItem::Suggestion));
+        let items = place_notes_after_next_help(
+            items,
+            |item| {
+                matches!(
+                    item,
+                    SubItem::Child(Subdiag { level: Sublevel::Note | Sublevel::OnceNote, .. })
+                )
+            },
+            |item| {
+                matches!(
+                    item,
+                    SubItem::Suggestion(_)
+                        | SubItem::Child(Subdiag {
+                            level: Sublevel::Help | Sublevel::OnceHelp,
+                            ..
+                        })
+                )
+            },
+        );
 
         for item in items {
             match item {

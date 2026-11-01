@@ -147,8 +147,8 @@ error: cannot concatenate doubly nested array
 LL |         b"hi!",
    |         ^^^^^^
    |
-   = note: byte strings are treated as arrays of bytes
    = help: try flattening the array
+   = note: byte strings are treated as arrays of bytes
 
 error: cannot concatenate doubly nested array
   --> $DIR/concat-bytes-error.rs:62:9
