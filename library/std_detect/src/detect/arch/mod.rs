@@ -22,40 +22,40 @@ mod s390x;
 
 cfg_select! {
     any(target_arch = "x86", target_arch = "x86_64") => {
-        #[stable(feature = "simd_x86", since = "1.27.0")]
-        pub use x86::*;
+        pub use x86::__is_feature_detected;
+        pub(crate) use x86::Feature;
     }
     target_arch = "arm" => {
-        #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
-        pub use arm::*;
+        pub use arm::__is_feature_detected;
+        pub(crate) use arm::Feature;
     }
     any(target_arch = "aarch64", target_arch = "arm64ec") => {
-        #[stable(feature = "simd_aarch64", since = "1.60.0")]
-        pub use aarch64::*;
+        pub use aarch64::__is_feature_detected;
+        pub(crate) use aarch64::Feature;
     }
     any(target_arch = "riscv32", target_arch = "riscv64") => {
-        #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")]
-        pub use riscv::*;
+        pub use riscv::__is_feature_detected;
+        pub(crate) use riscv::Feature;
     }
     any(target_arch = "powerpc", target_arch = "powerpc64") => {
-        #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
-        pub use powerpc::*;
+        pub use powerpc::__is_feature_detected;
+        pub(crate) use powerpc::Feature;
     }
     target_arch = "mips" => {
-        #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
-        pub use mips::*;
+        pub use mips::__is_feature_detected;
+        pub(crate) use mips::Feature;
     }
     target_arch = "mips64" => {
-        #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
-        pub use mips64::*;
+        pub use mips64::__is_feature_detected;
+        pub(crate) use mips64::Feature;
     }
     any(target_arch = "loongarch32", target_arch = "loongarch64") => {
-        #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")]
-        pub use loongarch::*;
+        pub use loongarch::__is_feature_detected;
+        pub(crate) use loongarch::Feature;
     }
     target_arch = "s390x" => {
-        #[stable(feature = "stdarch_s390x_feature_detection", since = "1.93.0")]
-        pub use s390x::*;
+        pub use s390x::__is_feature_detected;
+        pub(crate) use s390x::Feature;
     }
     _ => {
         // Unimplemented architecture:
@@ -64,10 +64,11 @@ cfg_select! {
             Null,
         }
         #[doc(hidden)]
-        #[unstable(feature = "stdarch_internal", issue = "none")]
         pub mod __is_feature_detected {}
 
         impl Feature {
+            #[doc(hidden)]
+            pub(crate) const ALL: &[Self] = &[];
             #[doc(hidden)]
             pub(crate) fn from_str(_s: &str) -> Result<Feature, ()> {
                 Err(())
