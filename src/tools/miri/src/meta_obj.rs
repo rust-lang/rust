@@ -36,6 +36,12 @@ impl dyn MetaObj {
         let x: &mut dyn Any = self;
         x.downcast_mut()
     }
+
+    #[inline(always)]
+    pub fn downcast<T: Any>(self: Box<Self>) -> Option<Box<T>> {
+        let x: Box<dyn Any> = self;
+        x.downcast().ok()
+    }
 }
 
 impl fmt::Debug for dyn MetaObj {
@@ -71,6 +77,14 @@ impl<'tcx> AllocExtra<'tcx> {
             }
         };
         self.meta_objs.insert_at_pos(pos, range, obj);
+    }
+
+    fn remove_meta(&mut self, range: AllocRange) -> Option<Box<dyn MetaObj>> {
+        use data_structures::range_object_map::AccessType;
+        match self.meta_objs.access_type(range) {
+            AccessType::PerfectlyOverlapping(pos) => Some(self.meta_objs.remove_from_pos(pos)),
+            _ => None,
+        }
     }
 }
 
@@ -134,8 +148,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         'tcx: 'a,
     {
         let ecx = self.eval_context_mut();
-        // Sadly, without Polonius, we cannot reuse `get_meta`, and we do some double-lookups.
         let (alloc_id, offset, ..) = ecx.ptr_get_alloc_id(place.ptr(), 0)?;
+        // Sadly, without Polonius, we cannot reuse `get_meta`, and we do some double-lookups.
         let alloc_extra = ecx.get_alloc_extra(alloc_id)?;
         if alloc_extra.get_meta::<T>(offset).is_none() {
             // No object yet. Create one.
@@ -145,5 +159,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Now there is an object.
         let (alloc_extra, _machine) = ecx.get_alloc_extra_mut(alloc_id).unwrap();
         interp_ok(alloc_extra.get_meta_mut(offset).unwrap())
+    }
+
+    fn remove_meta<'a, T: MetaObj>(
+        &'a mut self,
+        place: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx, Option<Box<T>>> {
+        let ecx = self.eval_context_mut();
+        let (alloc_id, offset, ..) = ecx.ptr_get_alloc_id(place.ptr(), 0)?;
+        let (alloc_extra, _machine) = ecx.get_alloc_extra_mut(alloc_id).unwrap();
+
+        interp_ok(
+            alloc_extra
+                .remove_meta(AllocRange { start: offset, size: place.layout.size })
+                .and_then(|obj| obj.downcast()),
+        )
     }
 }

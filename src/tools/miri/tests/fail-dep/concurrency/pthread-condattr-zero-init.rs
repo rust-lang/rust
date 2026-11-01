@@ -7,6 +7,6 @@ fn main() {
         let condattr: libc::pthread_condattr_t = mem::zeroed();
         let mut cond: libc::pthread_cond_t = mem::zeroed();
         assert_eq!(libc::pthread_cond_init(&mut cond as *mut _, &condattr as *const _), 0);
-        //~^ERROR: not initialized
+        //~^ERROR: has not been initialized
     }
 }

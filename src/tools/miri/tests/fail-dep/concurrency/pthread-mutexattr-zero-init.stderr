@@ -1,4 +1,4 @@
-error: Undefined Behavior: this `pthread_mutexattr_t` is not initialized
+error: Undefined Behavior: `pthread_mutexattr_t` has not been initialized or has been tampered with
   --> tests/fail-dep/concurrency/pthread-mutexattr-zero-init.rs:LL:CC
    |
 LL |         assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mutexattr as *const _), 0);

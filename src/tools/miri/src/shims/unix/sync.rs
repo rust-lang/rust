@@ -32,82 +32,11 @@ fn is_initializer<'tcx>(
 }
 
 // # pthread_mutexattr_t
-// We store some data directly inside the type, ignoring the platform layout:
-// - kind: i32
-// We store the `kind` bit-inverted so that 0 is not a valid representation.
 
-#[inline]
-fn mutexattr_kind_field<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-    attr_ptr: &OpTy<'tcx>,
-) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    let offset = match &ecx.tcx.sess.target.os {
-        Os::Linux
-        | Os::Illumos
-        | Os::Solaris
-        | Os::MacOs
-        | Os::FreeBsd
-        | Os::Android
-        | Os::NetBsd => 0,
-        os => throw_unsup_format!("`pthread_mutexattr` is not supported on {os}"),
-    };
-    let attr = ecx.deref_pointer(attr_ptr)?;
-    attr.offset(Size::from_bytes(offset), ecx.machine.layouts.i32, ecx)
+struct PthreadMutexAttr {
+    /// `None` represents that the kind has not yet been explicitly set.
+    kind: Option<MutexKind>,
 }
-
-fn mutexattr_get_kind<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-    attr_ptr: &OpTy<'tcx>,
-) -> InterpResult<'tcx, i32> {
-    let kind_field = mutexattr_kind_field(ecx, attr_ptr)?;
-    let kind = ecx.read_scalar(&kind_field)?.to_i32()?;
-    if kind == 0 {
-        throw_ub_format!("this `pthread_mutexattr_t` is not initialized");
-    }
-    // Undo the bit-inversion we did when storing this.
-    interp_ok(!kind)
-}
-
-fn mutexattr_set_kind<'tcx>(
-    ecx: &mut MiriInterpCx<'tcx>,
-    attr_ptr: &OpTy<'tcx>,
-    kind: i32,
-) -> InterpResult<'tcx, ()> {
-    let kind = !kind; // we store the kind bit-inverted
-    assert!(kind != 0); // 0 indicates "uninitialized"
-    let kind_field = mutexattr_kind_field(ecx, attr_ptr)?;
-    ecx.write_int(kind, &kind_field)
-}
-
-/// To differentiate "the mutex kind has not been changed" from
-/// "the mutex kind has been set to PTHREAD_MUTEX_DEFAULT and that is
-/// equal to some other mutex kind", we make the default value of this
-/// field *not* PTHREAD_MUTEX_DEFAULT but this special flag.
-const PTHREAD_MUTEX_KIND_UNCHANGED: i32 = 0x8000000;
-
-/// Translates the mutex kind from what is stored in pthread_mutexattr_t to our enum.
-fn mutexattr_translate_kind<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-    kind: i32,
-) -> InterpResult<'tcx, MutexKind> {
-    interp_ok(if kind == (ecx.eval_libc_i32("PTHREAD_MUTEX_NORMAL")) {
-        MutexKind::Normal
-    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK") {
-        MutexKind::ErrorCheck
-    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE") {
-        MutexKind::Recursive
-    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")
-        || kind == PTHREAD_MUTEX_KIND_UNCHANGED
-    {
-        // We check this *last* since PTHREAD_MUTEX_DEFAULT may be numerically equal to one of the
-        // others, and we want an explicit `mutexattr_settype` to work as expected.
-        MutexKind::Default
-    } else {
-        throw_unsup_format!("unsupported type of mutex: {kind}");
-    })
-}
-
-// # pthread_mutex_t
 
 /// The mutex kind.
 #[derive(Debug, Clone, Copy)]
@@ -117,6 +46,67 @@ enum MutexKind {
     Recursive,
     ErrorCheck,
 }
+
+impl MetaObj for PthreadMutexAttr {
+    fn opaque(&self) -> bool {
+        true
+    }
+}
+
+fn mutexattr_create<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    mutexattr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx> {
+    let mutexattr = ecx.deref_pointer(mutexattr_ptr)?;
+    let data = PthreadMutexAttr { kind: None };
+    ecx.insert_meta(&mutexattr, Box::new(data))?;
+    interp_ok(())
+}
+
+fn mutexattr_destroy<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    mutexattr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx> {
+    let mutexattr = ecx.deref_pointer(mutexattr_ptr)?;
+    ecx.remove_meta::<PthreadMutexAttr>(&mutexattr)?.ok_or_else(|| {
+        err_ub_format!("`pthread_mutexattr_t` has not been initialized or has been tampered with")
+    })?;
+    interp_ok(())
+}
+
+/// Returns the mutex attribute data stored at the address that `mutexattr_ptr` points to.
+/// Will raise an error if the mutex has been moved since its first use.
+fn mutexattr_get_data<'tcx, 'a>(
+    ecx: &'a mut MiriInterpCx<'tcx>,
+    mutexattr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx, &'a mut PthreadMutexAttr>
+where
+    'tcx: 'a,
+{
+    let mutexattr = ecx.deref_pointer(mutexattr_ptr)?;
+    ecx.get_or_insert_meta(&mutexattr, |_ecx| {
+        throw_ub_format!("`pthread_mutexattr_t` has not been initialized or has been tampered with")
+    })
+}
+
+/// Translates the mutex kind from what is stored in pthread_mutexattr_t to our enum.
+fn mutexattr_translate_kind<'tcx>(ecx: &MiriInterpCx<'tcx>, kind: i32) -> Option<MutexKind> {
+    Some(if kind == (ecx.eval_libc_i32("PTHREAD_MUTEX_NORMAL")) {
+        MutexKind::Normal
+    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK") {
+        MutexKind::ErrorCheck
+    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE") {
+        MutexKind::Recursive
+    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT") {
+        // We check this *last* since PTHREAD_MUTEX_DEFAULT may be numerically equal to one of the
+        // others, and we want an explicit `mutexattr_settype` to work as expected.
+        MutexKind::Default
+    } else {
+        return None;
+    })
+}
+
+// # pthread_mutex_t
 
 #[derive(Debug, Clone)]
 struct PthreadMutex {
@@ -256,46 +246,51 @@ where
 }
 
 // # pthread_condattr_t
-// We store some data directly inside the type, ignoring the platform layout:
-// - clock: i32
-// We store the `clock` bit-inverted so that 0 is not a valid representation.
 
-#[inline]
-fn condattr_clock_field<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-    attr_ptr: &OpTy<'tcx>,
-) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    let offset = match &ecx.tcx.sess.target.os {
-        Os::Linux | Os::Illumos | Os::Solaris | Os::FreeBsd | Os::Android => 0,
-        // macOS does not have a clock attribute.
-        os => throw_unsup_format!("`pthread_condattr` clock field is not supported on {os}"),
-    };
-    let attr = ecx.deref_pointer(attr_ptr)?;
-    attr.offset(Size::from_bytes(offset), ecx.machine.layouts.i32, ecx)
+struct PthreadCondAttr {
+    clock: TimeoutClock,
 }
 
-fn condattr_get_clock_id<'tcx>(
-    ecx: &MiriInterpCx<'tcx>,
-    attr_ptr: &OpTy<'tcx>,
-) -> InterpResult<'tcx, i32> {
-    let clock_field = condattr_clock_field(ecx, attr_ptr)?;
-    let clock_id = ecx.read_scalar(&clock_field)?.to_i32()?;
-    if clock_id == 0 {
-        throw_ub_format!("this `pthread_condattr_t` is not initialized");
+impl MetaObj for PthreadCondAttr {
+    fn opaque(&self) -> bool {
+        true
     }
-    // Undo the bit-inversion we did when storing this.
-    interp_ok(!clock_id)
 }
 
-fn condattr_set_clock_id<'tcx>(
+fn condattr_create<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    attr_ptr: &OpTy<'tcx>,
-    clock_id: i32,
-) -> InterpResult<'tcx, ()> {
-    let clock_id = !clock_id; // we store the clock_id bit-inverted
-    assert!(clock_id != 0); // 0 indicates "uninitialized"
-    let clock_field = condattr_clock_field(ecx, attr_ptr)?;
-    ecx.write_int(clock_id, &clock_field)
+    condattr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx> {
+    let condattr = ecx.deref_pointer(condattr_ptr)?;
+    let data = PthreadCondAttr { clock: TimeoutClock::RealTime };
+    ecx.insert_meta(&condattr, Box::new(data))?;
+    interp_ok(())
+}
+
+fn condattr_destroy<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    condattr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx> {
+    let condattr = ecx.deref_pointer(condattr_ptr)?;
+    ecx.remove_meta::<PthreadCondAttr>(&condattr)?.ok_or_else(|| {
+        err_ub_format!("`pthread_condattr_t` has not been initialized or has been tampered with")
+    })?;
+    interp_ok(())
+}
+
+/// Returns the mutex attribute data stored at the address that `condattr_ptr` points to.
+/// Will raise an error if the mutex has been moved since its first use.
+fn condattr_get_data<'tcx, 'a>(
+    ecx: &'a mut MiriInterpCx<'tcx>,
+    condattr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx, &'a mut PthreadCondAttr>
+where
+    'tcx: 'a,
+{
+    let condattr = ecx.deref_pointer(condattr_ptr)?;
+    ecx.get_or_insert_meta(&condattr, |_ecx| {
+        throw_ub_format!("`pthread_condattr_t` has not been initialized or has been tampered with")
+    })
 }
 
 // # pthread_cond_t
@@ -418,10 +413,7 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn pthread_mutexattr_init(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
-
-        mutexattr_set_kind(this, attr_op, PTHREAD_MUTEX_KIND_UNCHANGED)?;
-
-        interp_ok(())
+        mutexattr_create(this, attr_op)
     }
 
     fn pthread_mutexattr_settype(
@@ -431,47 +423,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        // Let's get the old value, to ensure that this is initialized.
-        mutexattr_get_kind(this, attr_op)?;
-
         let kind = this.read_scalar(kind_op)?.to_i32()?;
-        if kind == this.eval_libc_i32("PTHREAD_MUTEX_NORMAL")
-            || kind == this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")
-            || kind == this.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK")
-            || kind == this.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE")
-        {
-            // Make sure we do not mix this up with the "unchanged" kind.
-            assert_ne!(kind, PTHREAD_MUTEX_KIND_UNCHANGED);
-            mutexattr_set_kind(this, attr_op, kind)?;
-        } else {
+        let Some(kind) = mutexattr_translate_kind(this, kind) else {
             let einval = this.eval_libc_i32("EINVAL");
             return interp_ok(Scalar::from_i32(einval));
-        }
+        };
+
+        let mutexattr = mutexattr_get_data(this, attr_op)?;
+        mutexattr.kind = Some(kind);
 
         interp_ok(Scalar::from_i32(0))
     }
 
     fn pthread_mutexattr_destroy(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
-
-        // Destroying an uninit pthread_mutexattr is UB, so check to make sure it's not uninit.
-        mutexattr_get_kind(this, attr_op)?;
-
-        // To catch double-destroys, we de-initialize the mutexattr.
-        // This is technically not right and might lead to false positives. For example, the below
-        // code is *likely* sound, even assuming uninit numbers are UB, but Miri complains.
-        //
-        // let mut x: MaybeUninit<libc::pthread_mutexattr_t> = MaybeUninit::zeroed();
-        // libc::pthread_mutexattr_init(x.as_mut_ptr());
-        // libc::pthread_mutexattr_destroy(x.as_mut_ptr());
-        // x.assume_init();
-        //
-        // However, the way libstd uses the pthread APIs works in our favor here, so we can get away with this.
-        // This can always be revisited to have some external state to catch double-destroys
-        // but not complain about the above code. See https://github.com/rust-lang/miri/pull/1933
-        this.write_uninit(&this.deref_pointer(attr_op)?)?;
-
-        interp_ok(())
+        mutexattr_destroy(this, attr_op)
     }
 
     fn pthread_mutex_init(
@@ -485,7 +451,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let kind = if this.ptr_is_null(attr)? {
             MutexKind::Default
         } else {
-            mutexattr_translate_kind(this, mutexattr_get_kind(this, attr_op)?)?
+            let mutexattr = mutexattr_get_data(this, attr_op)?;
+            mutexattr.kind.unwrap_or(MutexKind::Default)
         };
 
         mutex_create(this, mutex_op, kind)?;
@@ -723,17 +690,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn pthread_condattr_init(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
-
-        // no clock attribute on macOS
-        if this.tcx.sess.target.os != Os::MacOs {
-            // The default value of the clock attribute shall refer to the system
-            // clock.
-            // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_condattr_setclock.html
-            let default_clock_id = this.eval_libc_i32("CLOCK_REALTIME");
-            condattr_set_clock_id(this, attr_op, default_clock_id)?;
-        }
-
-        interp_ok(())
+        condattr_create(this, attr_op)
     }
 
     fn pthread_condattr_setclock(
@@ -744,16 +701,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let clock_id = this.read_scalar(clock_id_op)?.to_i32()?;
-
-        // Make sure it is initialized.
-        condattr_get_clock_id(this, attr_op)?;
-
-        if this.parse_clockid(clock_id).is_some() {
-            condattr_set_clock_id(this, attr_op, clock_id)?;
-        } else {
+        let Some(clock) = this.parse_clockid(clock_id) else {
             let einval = this.eval_libc_i32("EINVAL");
             return interp_ok(Scalar::from_i32(einval));
-        }
+        };
+
+        let condattr = condattr_get_data(this, attr_op)?;
+        condattr.clock = clock;
 
         interp_ok(Scalar::from_i32(0))
     }
@@ -765,26 +719,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
 
-        let clock_id = condattr_get_clock_id(this, attr_op)?;
-        this.write_int(clock_id, &this.deref_pointer(clk_id_op)?)?;
+        let clock_id_dest = this.deref_pointer(clk_id_op)?;
+        let condattr = condattr_get_data(this, attr_op)?;
+
+        let clock_id = match condattr.clock {
+            TimeoutClock::Monotonic => this.eval_libc_i32("CLOCK_MONOTONIC"),
+            TimeoutClock::RealTime => this.eval_libc_i32("CLOCK_REALTIME"),
+        };
+        this.write_int(clock_id, &clock_id_dest)?;
 
         interp_ok(())
     }
 
     fn pthread_condattr_destroy(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
-
-        // Destroying an uninit pthread_condattr is UB, so check to make sure it's not uninit.
-        // There's no clock attribute on macOS.
-        if this.tcx.sess.target.os != Os::MacOs {
-            condattr_get_clock_id(this, attr_op)?;
-        }
-
-        // De-init the entire thing.
-        // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        this.write_uninit(&this.deref_pointer(attr_op)?)?;
-
-        interp_ok(())
+        condattr_destroy(this, attr_op)
     }
 
     fn pthread_cond_init(
@@ -796,14 +745,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let attr = this.read_pointer(attr_op)?;
         // Default clock if `attr` is null, and on macOS where there is no clock attribute.
-        let clock_id = if this.ptr_is_null(attr)? || this.tcx.sess.target.os == Os::MacOs {
-            this.eval_libc_i32("CLOCK_REALTIME")
+        let clock = if this.ptr_is_null(attr)? {
+            TimeoutClock::RealTime
         } else {
-            condattr_get_clock_id(this, attr_op)?
-        };
-        let Some(clock) = this.parse_clockid(clock_id) else {
-            // This is UB since this situation cannot arise when using pthread_condattr_setclock.
-            throw_ub_format!("pthread_cond_init: invalid attributes (unsupported clock)")
+            let condattr = condattr_get_data(this, attr_op)?;
+            condattr.clock
         };
 
         cond_create(this, cond_op, clock)?;
