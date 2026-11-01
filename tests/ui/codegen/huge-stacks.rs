@@ -2,6 +2,7 @@
 //@[optimized]compile-flags: -O
 //@ run-pass
 //@ only-64bit
+//@ ignore-emscripten thread support requires -lpthread
 
 // Regression test for https://github.com/rust-lang/rust/issues/83060
 // Verifies a program is not miscompiled if it includes a 4GB array on the stack
