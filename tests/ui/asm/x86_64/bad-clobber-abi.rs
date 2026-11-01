@@ -35,3 +35,6 @@ fn main() {
         //~^ ERROR `win64` ABI specified multiple times
     }
 }
+
+//@ reference: asm.abi-clobbers.many
+//@ reference: asm.abi-clobbers.supported-abis

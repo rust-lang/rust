@@ -17,3 +17,5 @@ fn _g(p: *mut [u8]) {
 }
 
 fn main() {}
+
+//@ reference: asm.register-operands.allowed-types

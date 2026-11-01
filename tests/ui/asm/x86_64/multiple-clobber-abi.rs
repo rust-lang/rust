@@ -31,3 +31,7 @@ fn main() {
     }
     assert_eq!((x, y), (8, 12));
 }
+
+//@ reference: asm.abi-clobbers.explicit-have-precedence
+//@ reference: asm.abi-clobbers.intro
+//@ reference: asm.abi-clobbers.many

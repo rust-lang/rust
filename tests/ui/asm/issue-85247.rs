@@ -22,3 +22,5 @@ fn main() {
         //[rwpi]~^ ERROR cannot use register `r9`
     }
 }
+
+//@ reference: asm.register-names.not-for-io
