@@ -264,7 +264,7 @@ unsafe extern "system" fn cleanup(_ptr: *const c_void) {
 
     unsafe {
         #[cfg(target_thread_local)]
-        super::super::destructors::run();
+        super::super::native::destructors::run();
         #[cfg(not(target_thread_local))]
         super::super::key::run_dtors();
     }

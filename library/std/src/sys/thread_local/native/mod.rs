@@ -32,6 +32,7 @@
 use crate::cell::Cell;
 use crate::ptr;
 
+pub(crate) mod destructors;
 mod eager;
 mod lazy;
 

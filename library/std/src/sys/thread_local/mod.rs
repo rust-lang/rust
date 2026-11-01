@@ -46,7 +46,7 @@ cfg_select! {
         pub(crate) use no_threads::{LocalPointer, local_pointer};
     }
     target_thread_local => {
-        mod native;
+        pub(crate) mod native;
         pub use native::{EagerStorage, LazyStorage, thread_local_inner};
         pub(crate) use native::{LocalPointer, local_pointer};
     }
@@ -57,18 +57,10 @@ cfg_select! {
     }
 }
 
-/// The native TLS implementation needs a way to register destructors for its data.
-/// This module contains platform-specific implementations of that register.
-///
-/// It turns out however that most platforms don't have a way to register a
-/// destructor for each variable. On these platforms, we keep track of the
-/// destructors ourselves and register (through the [`guard`] module) only a
-/// single callback that runs all of the destructors in the list.
-#[cfg(all(
-    target_thread_local,
-    not(all(target_family = "wasm", not(target_feature = "atomics"), not(target_os = "wasi")))
-))]
-pub(crate) mod destructors {
+/// This module provides a way to schedule the execution of the destructor list
+/// and the [runtime cleanup](crate::rt::thread_cleanup) function. Calling `enable`
+/// sets up the current thread to ensure that these functions are called at the right times.
+pub(crate) mod guard {
     cfg_select! {
         any(
             target_os = "linux",
@@ -77,26 +69,12 @@ pub(crate) mod destructors {
             target_os = "redox",
             target_os = "hurd",
             target_os = "netbsd",
-            target_os = "dragonfly"
+            target_os = "dragonfly",
         ) => {
             mod linux_like;
-            mod list;
-            pub(super) use linux_like::register;
-            pub(super) use list::run;
+            mod key;
+            pub(crate) use linux_like::enable;
         }
-        _ => {
-            mod list;
-            pub(super) use list::register;
-            pub(crate) use list::run;
-        }
-    }
-}
-
-/// This module provides a way to schedule the execution of the destructor list
-/// and the [runtime cleanup](crate::rt::thread_cleanup) function. Calling `enable`
-/// sets up the current thread to ensure that these functions are called at the right times.
-pub(crate) mod guard {
-    cfg_select! {
         all(target_thread_local, target_vendor = "apple") => {
             mod apple;
             pub(crate) use apple::enable;
@@ -125,7 +103,7 @@ pub(crate) mod guard {
                 // iterate the destructor list with these functions:
                 #[cfg(all(target_family = "wasm", target_feature = "atomics"))]
                 #[allow(unused)]
-                use super::destructors::run;
+                use self::native::destructors::run;
                 #[allow(unused)]
                 use crate::rt::thread_cleanup;
             }

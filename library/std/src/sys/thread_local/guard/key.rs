@@ -5,8 +5,8 @@
 #[cfg(target_thread_local)]
 pub fn enable() {
     use crate::ptr;
-    use crate::sys::thread_local::destructors;
     use crate::sys::thread_local::key::{LazyKey, set};
+    use crate::sys::thread_local::native::destructors;
 
     static DTORS: LazyKey = LazyKey::new(Some(run));
 
