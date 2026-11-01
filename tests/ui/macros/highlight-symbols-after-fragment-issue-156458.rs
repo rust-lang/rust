@@ -1,4 +1,4 @@
-// Make sure accepted characters in the macro syntax warning message is highlighted in magenta.
+// Make sure accepted characters in the macro syntax warning message is highlighted in bright cyan.
 
 //@ compile-flags: --error-format=human --color=always
 //@ edition:2018
@@ -9,4 +9,4 @@ macro_rules! m {
 
 fn main() {}
 
-//~? RAW [1m[35m`=>`[0m, [1m[35m`,`[0m or [1m[35m`;`[0m
+//~? RAW [1m[96m`=>`[0m, [1m[96m`,`[0m or [1m[96m`;`[0m
