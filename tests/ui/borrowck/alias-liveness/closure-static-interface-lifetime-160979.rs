@@ -2,8 +2,6 @@
 //@ revisions: nll polonius
 //@ [nll] compile-flags: -Zpolonius=off
 //@ [polonius] compile-flags: -Zpolonius=next
-//@ [polonius] check-pass
-//@ [polonius] known-bug: #160979
 
 // Lifetimes in the bounds of an opaque type must be considered live, even
 // if they don't appear in the outlives bounds, because they can be "recreated"
@@ -35,7 +33,7 @@ fn leak_it<T: 'static>(val: T) -> &'static T {
 fn return_value_with_dangling_lifetime() {
     let s = String::from("");
     let cm = ClosureMaker { some_string: &s };
-    //[nll]~^ ERROR `s` does not live long enough
+    //~^ ERROR `s` does not live long enough
     let val = cm.make_closure_simple()();
     // requires `&'a Lifetimed<'a>: 'static`
     let _leaked = leak_it(val);

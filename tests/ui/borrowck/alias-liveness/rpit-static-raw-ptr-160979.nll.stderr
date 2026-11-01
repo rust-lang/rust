@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/rpit-static-raw-ptr-160979.rs:40:49
+  --> $DIR/rpit-static-raw-ptr-160979.rs:38:49
    |
 LL |     let x: Box<Payload> = Box::new(Box::new(1));
    |         - binding `x` declared here
@@ -12,7 +12,7 @@ LL | }
    | - `x` dropped here while still borrowed
 
 error[E0505]: cannot move out of `x` because it is borrowed
-  --> $DIR/rpit-static-raw-ptr-160979.rs:42:10
+  --> $DIR/rpit-static-raw-ptr-160979.rs:40:10
    |
 LL |     let x: Box<Payload> = Box::new(Box::new(1));
    |         - binding `x` declared here

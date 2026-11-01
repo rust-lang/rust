@@ -3,8 +3,6 @@
 //@ revisions: nll polonius
 //@ [nll] compile-flags: -Zpolonius=off
 //@ [polonius] compile-flags: -Zpolonius=next
-//@ [polonius] check-pass
-//@ [polonius] known-bug: #153215
 
 // Data available through an associated type can end up in the hidden type of an
 // opaque. We currently don't treat any generics as live, although we *should*.
@@ -47,7 +45,7 @@ fn dangle_one_bound() -> &'static [i32; 3] {
     let long = Rc::new(RefCell::new(&[4, 5, 6] as &'static [i32; 3]));
     let x = [1, 2, 3];
     let short = Rc::new(RefCell::new(&x));
-    //[nll]~^ ERROR `x` does not live long enough
+    //~^ ERROR `x` does not live long enough
     hide_one_bound(long.clone()).swap(hide_one_bound(short));
     let res: &'static [i32; 3] = *long.borrow();
     res
@@ -76,7 +74,7 @@ fn dangle_item_bound() -> &'static [i32; 3] {
     let long = Rc::new(RefCell::new(&[4, 5, 6] as &'static [i32; 3]));
     let x = [1, 2, 3];
     let short = Rc::new(RefCell::new(&x));
-    //[nll]~^ ERROR `x` does not live long enough
+    //~^ ERROR `x` does not live long enough
     hide_item_bound(long.clone()).swap(hide_item_bound(short));
     let res: &'static [i32; 3] = *long.borrow();
     res

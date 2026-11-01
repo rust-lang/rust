@@ -1,0 +1,57 @@
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/cycles.rs:21:10
+   |
+LL |     let s = String::from("hi");
+   |         - binding `s` declared here
+LL |     let keep = make_sym::<'_, T>(&s);
+   |                                  -- borrow of `s` occurs here
+LL |     drop(s);
+   |          ^ move out of `s` occurs here
+LL |
+LL |     drop(keep);
+   |          ---- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let keep = make_sym::<'_, T>(&s.clone());
+   |                                    ++++++++
+
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/cycles.rs:39:10
+   |
+LL |     let s = String::from("hi");
+   |         - binding `s` declared here
+LL |     let a = make_mirrored::<T>(x, &s);
+   |                                   -- borrow of `s` occurs here
+LL |     drop(s);
+   |          ^ move out of `s` occurs here
+LL |
+LL |     drop(a);
+   |          - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let a = make_mirrored::<T>(x, &s.clone());
+   |                                     ++++++++
+
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/cycles.rs:60:10
+   |
+LL |     let s = String::from("hi");
+   |         - binding `s` declared here
+LL |     let a = make_rotating::<T>(x, &s, o);
+   |                                   -- borrow of `s` occurs here
+LL |     drop(s);
+   |          ^ move out of `s` occurs here
+LL |
+LL |     drop(a);
+   |          - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let a = make_rotating::<T>(x, &s.clone(), o);
+   |                                     ++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0505`.

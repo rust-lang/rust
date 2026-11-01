@@ -1,0 +1,27 @@
+error[E0597]: `v` does not live long enough
+  --> $DIR/assoc-type-bound-is-not-an-alias-bound.rs:28:24
+   |
+LL |         let v: Vec<u8> = vec![42];
+   |             - binding `v` declared here
+LL |         escaped = make(&v);
+   |                        ^^ borrowed value does not live long enough
+LL |
+LL |     }
+   |     - `v` dropped here while still borrowed
+...
+LL |     println!("escaped = {}, reused = {reused:?}", escaped.first());
+   |                                                   ------- borrow later used here
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/assoc-type-bound-is-not-an-alias-bound.rs:28:19
+   |
+LL |         escaped = make(&v);
+   |                   ^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn make<'x>(r: &'x [u8]) -> impl Foo<Out: 'static> + use<> {
+   |                                                    +++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

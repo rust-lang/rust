@@ -288,6 +288,7 @@ pub(crate) fn make_all_regions_live<'tcx>(
     value.visit_with(&mut FreeRegionsVisitor {
         tcx: infcx.tcx,
         param_env: infcx.param_env,
+        seen: Default::default(),
         op: |r| liveness.add_points(universal_regions.to_region_vid(r), live_at),
     });
 }

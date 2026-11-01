@@ -17,5 +17,24 @@ LL - fn demo<'not_static>(s: &'not_static str) -> Pin<Box<impl Coroutine<&'not_s
 LL + fn demo<'not_static>(s: &'static str) -> Pin<Box<impl Coroutine<&'not_static str> + 'static>> {
    |
 
-error: aborting due to 1 previous error
+error[E0505]: cannot move out of `local` because it is borrowed
+  --> $DIR/resume-arg-outlives.rs:24:10
+   |
+LL |     let local = String::from("...");
+   |         ----- binding `local` declared here
+LL |     let mut coro = demo(&local);
+   |                         ------ borrow of `local` occurs here
+LL |     drop(local);
+   |          ^^^^^ move out of `local` occurs here
+...
+LL |     coro.as_mut().resume("");
+   |     ---- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let mut coro = demo(&local.clone());
+   |                               ++++++++
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0505`.
