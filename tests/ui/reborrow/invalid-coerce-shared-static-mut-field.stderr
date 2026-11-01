@@ -1,5 +1,19 @@
+error[E0277]: the trait bound `&'static mut u8: Copy` is not satisfied
+  --> $DIR/invalid-coerce-shared-static-mut-field.rs:11:5
+   |
+LL |     a: &'static mut u8,
+   |     ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&'static mut u8`
+   |
+help: the trait `Copy` is implemented for `u8`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+  ::: $SRC_DIR/core/src/marker.rs:LL:COL
+   |
+   = note: in this macro invocation
+   = note: `Copy` is implemented for `&'static u8`, but not for `&'static mut u8`
+   = note: this error originates in the macro `marker_impls` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
-  --> $DIR/invalid-coerce-shared-static-mut-field.rs:20:5
+  --> $DIR/invalid-coerce-shared-static-mut-field.rs:21:5
    |
 LL |     a: &'static mut u8,
    |     ------------------ source field `a` has type `&'static mut u8`
@@ -10,5 +24,6 @@ LL |     a: &'a u8,
 LL | impl<'a> CoerceShared<ReorderRef<'a>> for ReorderMut<'a> {}
    | ----------------------------------------------------------- required by this `CoerceShared` implementation
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0277`.
