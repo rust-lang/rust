@@ -781,20 +781,20 @@ impl TargetDataLayout {
 
     /// Get the pointer alignment in the default data address space.
     #[inline]
-    pub fn pointer_align(&self) -> AbiAlign {
-        AbiAlign::new(self.default_address_space_pointer_spec.pointer_align)
+    pub fn pointer_align(&self) -> Align {
+        self.default_address_space_pointer_spec.pointer_align
     }
 
     /// Get the pointer alignment in a specific address space.
     #[inline]
-    pub fn pointer_align_in(&self, c: AddressSpace) -> AbiAlign {
-        AbiAlign::new(if c == self.default_address_space {
+    pub fn pointer_align_in(&self, c: AddressSpace) -> Align {
+        if c == self.default_address_space {
             self.default_address_space_pointer_spec.pointer_align
         } else if let Some(e) = self.address_space_info.iter().find(|(a, _)| a == &c) {
             e.1.pointer_align
         } else {
             panic!("Use of unknown address space {c:?}");
-        })
+        }
     }
 }
 
@@ -1574,7 +1574,7 @@ impl Primitive {
         match self {
             Int(i, _) => i.align(dl),
             Float(f) => f.align(dl),
-            Pointer(a) => dl.pointer_align_in(a),
+            Pointer(a) => AbiAlign::new(dl.pointer_align_in(a)),
         }
     }
 }

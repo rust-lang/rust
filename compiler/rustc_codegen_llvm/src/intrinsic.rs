@@ -1398,7 +1398,7 @@ fn codegen_msvc_try<'ll, 'tcx>(
         //
         // More information can be found in libstd's seh.rs implementation.
         let ptr_size = bx.tcx().data_layout.pointer_size();
-        let ptr_align = bx.tcx().data_layout.pointer_align().abi;
+        let ptr_align = bx.tcx().data_layout.pointer_align();
         let slot = bx.alloca(ptr_size, ptr_align);
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.invoke(

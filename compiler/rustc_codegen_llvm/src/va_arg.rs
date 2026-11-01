@@ -51,7 +51,7 @@ fn emit_direct_ptr_va_arg<'ll, 'tcx>(
     let va_list_ty = bx.type_ptr();
     let va_list_addr = list.immediate();
 
-    let ptr_align_abi = bx.tcx().data_layout.pointer_align().abi;
+    let ptr_align_abi = bx.tcx().data_layout.pointer_align();
     let ptr = bx.load(va_list_ty, va_list_addr, ptr_align_abi);
 
     let (addr, addr_align) = if allow_higher_align && align > slot_size {
@@ -171,7 +171,7 @@ fn emit_ptr_va_arg<'ll, 'tcx>(
         (
             bx.cx.layout_of(Ty::new_imm_ptr(bx.cx.tcx, layout.ty)).llvm_type(bx.cx),
             bx.cx.data_layout().pointer_size(),
-            bx.cx.data_layout().pointer_align().abi,
+            bx.cx.data_layout().pointer_align(),
         )
     } else {
         (layout.llvm_type(bx.cx), layout.size, get_param_type_alignment(bx, layout))
@@ -264,7 +264,7 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
 
     bx.switch_to_block(in_reg);
     let top_type = bx.type_ptr();
-    let top = bx.load(top_type, reg_top, dl.pointer_align().abi);
+    let top = bx.load(top_type, reg_top, dl.pointer_align());
 
     // reg_value = *(@top + reg_off_v);
     let mut reg_addr = bx.ptradd(top, reg_off_v);
@@ -361,7 +361,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     let reg_incr = layout.size.bytes().div_ceil(u64::from(reg_size)) as u8;
     let use_regs = bx.icmp(IntPredicate::IntULE, num_regs, bx.const_u8(max_regs - reg_incr));
 
-    let ptr_align_abi = bx.tcx().data_layout.pointer_align().abi;
+    let ptr_align_abi = bx.tcx().data_layout.pointer_align();
 
     let in_reg = bx.append_sibling_block("va_arg.in_reg");
     let in_mem = bx.append_sibling_block("va_arg.in_mem");
@@ -469,7 +469,7 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     let in_reg = bx.append_sibling_block("va_arg.in_reg");
     let in_mem = bx.append_sibling_block("va_arg.in_mem");
     let end = bx.append_sibling_block("va_arg.end");
-    let ptr_align_abi = dl.pointer_align().abi;
+    let ptr_align_abi = dl.pointer_align();
 
     // FIXME: vector ABI not yet supported.
     let target_ty_size = layout.size.bytes();
@@ -675,7 +675,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
     // loads than necessary. Can we clean this up?
     let reg_save_area_ptr =
         bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(2 * unsigned_int_offset + ptr_offset));
-    let reg_save_area_v = bx.load(bx.type_ptr(), reg_save_area_ptr, dl.pointer_align().abi);
+    let reg_save_area_v = bx.load(bx.type_ptr(), reg_save_area_ptr, dl.pointer_align());
 
     let reg_addr = match layout.layout.backend_repr() {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
@@ -814,7 +814,7 @@ fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
     layout: TyAndLayout<'tcx>,
 ) -> &'ll Value {
     let dl = bx.cx.data_layout();
-    let ptr_align_abi = dl.data_layout().pointer_align().abi;
+    let ptr_align_abi = dl.data_layout().pointer_align();
 
     let overflow_arg_area_ptr = bx.inbounds_ptradd(va_list_addr, bx.const_usize(8));
 
@@ -864,7 +864,7 @@ fn emit_hexagon_va_arg_musl<'ll, 'tcx>(
     // All variadic arguments are passed on the stack, but the musl implementation
     //  uses a register save area for compatibility.
     let va_list_addr = list.immediate();
-    let ptr_align_abi = bx.tcx().data_layout.pointer_align().abi;
+    let ptr_align_abi = bx.tcx().data_layout.pointer_align();
     let ptr_size = bx.tcx().data_layout.pointer_size().bytes();
 
     // Check if argument fits in register save area
@@ -936,7 +936,7 @@ fn emit_hexagon_va_arg_bare_metal<'ll, 'tcx>(
     //
     // va_list is a simple pointer (char *)
     let va_list_addr = list.immediate();
-    let ptr_align_abi = bx.tcx().data_layout.pointer_align().abi;
+    let ptr_align_abi = bx.tcx().data_layout.pointer_align();
 
     // Load current pointer from va_list
     let current_ptr = bx.load(bx.type_ptr(), va_list_addr, ptr_align_abi);
@@ -989,7 +989,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     let from_stack = bx.append_sibling_block("va_arg.from_stack");
     let from_regsave = bx.append_sibling_block("va_arg.from_regsave");
     let end = bx.append_sibling_block("va_arg.end");
-    let ptr_align_abi = bx.tcx().data_layout.pointer_align().abi;
+    let ptr_align_abi = bx.tcx().data_layout.pointer_align();
 
     // (*va).va_ndx
     let va_reg_offset = 4;
