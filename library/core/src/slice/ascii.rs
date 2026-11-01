@@ -39,6 +39,23 @@ impl [u8] {
         }
     }
 
+    /// If this slice [`is_ascii`](Self::is_ascii), returns it as a mutable slice of
+    /// [ASCII characters](ascii::Char), otherwise returns `None`.
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[must_use]
+    #[inline]
+    pub const fn as_ascii_mut(&mut self) -> Option<&mut [ascii::Char]> {
+        if self.is_ascii() {
+            // SAFETY: Just checked that it's ASCII and since every
+            // ascii character has the same size, this mutable slice is safe
+            // to access and it is sound to let the caller write into the
+            // returned slice because any written ascii character is a valid u8.
+            Some(unsafe { self.as_ascii_mut_unchecked() })
+        } else {
+            None
+        }
+    }
+
     /// Converts this slice of bytes into a slice of ASCII characters,
     /// without checking whether they're valid.
     ///
@@ -53,6 +70,22 @@ impl [u8] {
         let ascii_ptr = byte_ptr as *const [ascii::Char];
         // SAFETY: The caller promised all the bytes are ASCII
         unsafe { &*ascii_ptr }
+    }
+
+    /// Converts this slice of bytes into a mutable slice of ASCII characters,
+    /// without checking whether they're valid.
+    ///
+    /// # Safety
+    ///
+    /// Every byte in the slice must be in `0..=127`, or else this is undefined behavior.
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[must_use]
+    #[inline]
+    pub const unsafe fn as_ascii_mut_unchecked(&mut self) -> &mut [ascii::Char] {
+        let byte_ptr: *mut [u8] = self;
+        let ascii_ptr = byte_ptr as *mut [ascii::Char];
+        // SAFETY: The caller promised all the bytes are ASCII.
+        unsafe { &mut *ascii_ptr }
     }
 
     /// Checks that two slices are an ASCII case-insensitive match.

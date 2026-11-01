@@ -2813,6 +2813,21 @@ impl str {
         self.as_bytes().as_ascii()
     }
 
+    /// If this string slice [`is_ascii`](Self::is_ascii), returns it as a mutable slice
+    /// of [ASCII characters](`ascii::Char`), otherwise returns `None`.
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[must_use]
+    #[inline]
+    pub const fn as_ascii_mut(&mut self) -> Option<&mut [ascii::Char]> {
+        // SAFETY: Every ascii character is an valid u8 and has the same size and
+        // therefore it is safe to access and modify the slice. In terms of non-ascii
+        // characters, like ä, are handled by a check in `slice::as_ascii_mut`, that
+        // checks, if every u8 is an valid ascii character. Non-ascii characters
+        // consist of multiple u8 bytes and some operations like reversing would
+        // result in undefined behaviour.
+        unsafe { self.as_bytes_mut().as_ascii_mut() }
+    }
+
     /// Converts this string slice into a slice of [ASCII characters](ascii::Char),
     /// without checking whether they are valid.
     ///
@@ -2832,6 +2847,27 @@ impl str {
         // SAFETY: the caller promised that every byte of this string slice
         // is ASCII.
         unsafe { self.as_bytes().as_ascii_unchecked() }
+    }
+
+    /// If this string slice [`is_ascii`](Self::is_ascii), returns it as a mutable slice
+    /// of [ASCII characters](`ascii::Char`), otherwise returns `None`.
+    ///
+    /// # Safety
+    ///
+    /// Every character in this string must be ASCII, or this is undefined behavior.
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[must_use]
+    #[inline]
+    pub const unsafe fn as_ascii_mut_unchecked(&mut self) -> &mut [ascii::Char] {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "as_ascii_mut_unchecked requires that the string is valid ASCII",
+            (it: &str = self) => it.is_ascii()
+        );
+
+        // SAFETY: the caller promised that every byte of this string slice
+        // is ASCII.
+        unsafe { self.as_bytes_mut().as_ascii_mut_unchecked() }
     }
 
     /// Checks that two strings are an ASCII case-insensitive match.
