@@ -5,7 +5,7 @@ struct P<Q>(Q);
 impl<Q> P<Q> {
     fn foo(&self) {
         self.partial_cmp(())
-        //~^ ERROR the method `partial_cmp` exists for reference `&P<Q>`, but its trait bounds were not satisfied
+        //~^ ERROR `&P<Q>` is not an iterator
     }
 }
 
