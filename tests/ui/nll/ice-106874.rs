@@ -16,6 +16,10 @@ pub fn func<V, F: Fn(&mut V)>(f: F) -> A<impl X> {
     //~| ERROR implementation of `FnOnce` is not general enough
     //~| ERROR higher-ranked subtype error
     //~| ERROR higher-ranked subtype error
+    //~| ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR implementation of `Fn` is not general enough
+    //~| ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR implementation of `Fn` is not general enough
 }
 
 trait X {}

@@ -17,6 +17,7 @@ where
     v.t(|| {});
     //~^ ERROR: implementation of `Trait` is not general enough
     //~| ERROR: implementation of `Trait` is not general enough
+    //~| ERROR: implementation of `Trait` is not general enough
     //~| ERROR: higher-ranked lifetime error
 }
 

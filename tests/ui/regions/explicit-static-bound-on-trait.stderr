@@ -26,7 +26,22 @@ help: consider adding an explicit lifetime bound
 LL |     fn new<T: 'a + 'static>(value: T) -> Self {
    |                  +++++++++
 
-error: aborting due to 2 previous errors
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/explicit-static-bound-on-trait.rs:8:23
+   |
+LL |         Self { value: Box::new(value) }
+   |                       ^^^^^^^^^^^^^^^
+   |                       |
+   |                       the parameter type `T` must be valid for the static lifetime...
+   |                       ...so that the type `T` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL |     fn new<T: 'a + 'static>(value: T) -> Self {
+   |                  +++++++++
+
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0310, E0478.
 For more information about an error, try `rustc --explain E0310`.

@@ -13,6 +13,11 @@ fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
     //~| ERROR lifetime may not live long enough
     //~| ERROR cannot return value referencing local data `*v` [E0515]
     //~| ERROR the parameter type `U` may not live long enough [E0310]
+    //~| ERROR the parameter type `U` may not live long enough [E0310]
+    //~| ERROR the parameter type `U` may not live long enough [E0310]
+    //~| ERROR the parameter type `U` may not live long enough [E0310]
+    //~| ERROR the parameter type `U` may not live long enough [E0310]
+    //~| ERROR the parameter type `U` may not live long enough [E0310]
 
 }
 

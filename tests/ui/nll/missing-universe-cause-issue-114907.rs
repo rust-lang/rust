@@ -37,4 +37,6 @@ fn main() {
     //~| ERROR implementation of `FnOnce` is not general enough
     //~| ERROR higher-ranked subtype error
     //~| ERROR higher-ranked subtype error
+    //~| ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR implementation of `FnOnce` is not general enough
 }

@@ -6,6 +6,7 @@ where
 {
     || {};
     //~^ ERROR higher-ranked lifetime error
+    //~| ERROR higher-ranked lifetime error
 }
 
 fn main() {}
