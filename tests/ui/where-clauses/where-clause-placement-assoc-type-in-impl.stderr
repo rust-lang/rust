@@ -39,7 +39,20 @@ LL +     type Assoc3 = () where;
    |
 
 warning: where clause not allowed here
-  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:30:17
+  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:25:17
+   |
+LL |     type Assoc4 where i32: Copy = () where;
+   |                 ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
+help: move it to the end of the type declaration
+   |
+LL -     type Assoc4 where i32: Copy = () where;
+LL +     type Assoc4 = () where i32: Copy;
+   |
+
+warning: where clause not allowed here
+  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:33:17
    |
 LL |     type Assoc2 where u32: Copy, i32: Copy = ();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -52,12 +65,12 @@ LL +     type Assoc2 = () where u32: Copy, i32: Copy;
    |
 
 warning: where clause not allowed here
-  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:32:17
+  --> $DIR/where-clause-placement-assoc-type-in-impl.rs:35:17
    |
 LL |     type Assoc3 where = () where;
    |                 ^^^^^ help: remove this `where`
    |
    = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
 
-warning: 5 warnings emitted
+warning: 6 warnings emitted
 

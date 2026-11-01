@@ -17,6 +17,7 @@ use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
 use super::diagnostics::ConsumeClosingDelim;
+use super::generics::RecoverDupeWhereClause;
 use super::{
     AllowConstBlockItems, AttrWrapper, ExpTokenPair, FnContext, FnParseMode, FollowedByType,
     ForceCollect, IsDotDotDot, Parser, PathStyle, Recovered, Trailing, UsePreAttrPos,
@@ -277,18 +278,7 @@ impl<'a> Parser<'a> {
                 self.psess.gated_spans.gate(sym::min_specialization, span);
                 self.psess.gated_spans.ungate_last(sym::specialization, span);
             }
-            let (ident, sig, generics, contract, body) =
-                self.parse_fn(attrs, fn_parse_mode, lo, vis, case)?;
-            ItemKind::Fn(Box::new(Fn {
-                defaultness,
-                ident,
-                sig,
-                generics,
-                contract,
-                body,
-                define_opaque: None,
-                eii_impl: None,
-            }))
+            self.parse_fn(attrs, fn_parse_mode, lo, vis, defaultness, case)?
         } else if self.eat_keyword_case(exp!(Extern), case) {
             if self.eat_keyword_case(exp!(Crate), case) {
                 // EXTERN CRATE
@@ -325,15 +315,7 @@ impl<'a> Parser<'a> {
             // CONST ITEM
             self.recover_const_mut(const_span);
             self.recover_missing_kw_before_item()?;
-            let (ident, generics, ty, body) = self.parse_const_item(const_span)?;
-            ItemKind::Const(Box::new(ConstItem {
-                defaultness: def_(),
-                ident,
-                generics,
-                ty,
-                body,
-                define_opaque: None,
-            }))
+            self.parse_const_item(const_span, def_())?
         } else if let Some(kind) = self.is_reuse_item() {
             self.parse_item_delegation(attrs, def_(), kind)?
         } else if self.check_keyword_case(exp!(Mod), case)
@@ -772,7 +754,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        generics.where_clause = self.parse_where_clause()?;
+        generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
 
         let impl_items = if is_reuse {
             Default::default()
@@ -1200,7 +1182,7 @@ impl<'a> Parser<'a> {
             }
 
             let bounds = self.parse_generic_bounds()?;
-            generics.where_clause = self.parse_where_clause()?;
+            generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
             self.expect_semi()?;
 
             let whole_span = lo.to(self.prev_token.span);
@@ -1220,7 +1202,7 @@ impl<'a> Parser<'a> {
             Ok(ItemKind::TraitAlias(Box::new(TraitAlias { constness, ident, generics, bounds })))
         } else {
             // It's a normal trait.
-            generics.where_clause = self.parse_where_clause()?;
+            generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
             let items = self.parse_item_list(attrs, |p| p.parse_trait_item(ForceCollect::No))?;
             Ok(ItemKind::Trait(Box::new(Trait {
                 impl_restriction,
@@ -1313,14 +1295,16 @@ impl<'a> Parser<'a> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
-        // Parse optional colon and param bounds.
         let bounds =
             if self.eat(exp!(Colon)) { self.parse_generic_bounds()? } else { ThinVec::new() };
-        generics.where_clause = self.parse_where_clause()?;
+
+        // As a consequence of type aliases being allowed to have two where clauses &
+        // an optional body, we *must not* artificially reject duplicate where clauses!
+        generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::No)?;
 
         let ty = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };
 
-        let after_where_clause = self.parse_where_clause()?;
+        let after_where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
 
         self.expect_semi()?;
 
@@ -1774,20 +1758,17 @@ impl<'a> Parser<'a> {
 
     /// Parse a constant item with the prefix `"const"` already parsed.
     ///
-    /// If `const_arg` is true, any expression assigned to the const will be parsed
-    /// as a const_arg instead of a body expression.
-    ///
     /// ```ebnf
     /// Const = "const" ($ident | "_") Generics ":" $ty (= $expr)? WhereClause ";" ;
     /// ```
     fn parse_const_item(
         &mut self,
         const_span: Span,
-    ) -> PResult<'a, (Ident, Generics, Box<Ty>, Option<Box<Expr>>)> {
+        defaultness: Defaultness,
+    ) -> PResult<'a, ItemKind> {
         let ident = self.parse_ident_or_underscore()?;
 
         let mut generics = self.parse_generics()?;
-
         // Check the span for emptiness instead of the list of parameters in order to correctly
         // recognize and subsequently flag empty parameter lists (`<>`) as unstable.
         if !generics.span.is_empty() {
@@ -1795,7 +1776,6 @@ impl<'a> Parser<'a> {
         }
 
         // Parse the type of a constant item. That is, the `":" $ty` fragment.
-        // FIXME: This could maybe benefit from `.may_recover()`?
         let ty = match (
             self.eat(exp!(Colon)),
             self.check(exp!(Eq)) | self.check(exp!(Semi)) | self.check_keyword(exp!(Where)),
@@ -1806,71 +1786,69 @@ impl<'a> Parser<'a> {
         };
 
         // Proactively parse a where-clause to be able to provide a good error message in case we
-        // encounter the item body following it.
-        let before_where_clause =
-            if self.may_recover() { self.parse_where_clause()? } else { WhereClause::default() };
+        // encounter the item body following it. We rely on the "duplicate where clause" parse
+        // error recovery code to reject duplicate where clauses when there's no body.
+        let mut before_where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
 
-        let rhs = if self.eat(exp!(Eq)) { Some(self.parse_expr()?) } else { None };
+        let body = if self.eat(exp!(Eq)) { Some(self.parse_expr()?) } else { None };
 
-        let after_where_clause = self.parse_where_clause()?;
+        let after_where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
 
         // Provide a nice error message if the user placed a where-clause before the item body.
         // Users may be tempted to write such code if they are still used to the deprecated
         // where-clause location on type aliases and associated types. See also #89122.
         if before_where_clause.has_where_token
-            && let Some(rhs) = &rhs
+            && let Some(body) = &body
         {
-            self.dcx().emit_err(diagnostics::WhereClauseBeforeConstBody {
+            self.dcx().emit_err(diagnostics::WhereClauseBeforeConstItemBody {
                 span: before_where_clause.span,
                 name: ident.span,
-                body: rhs.span,
+                body: body.span,
                 sugg: if !after_where_clause.has_where_token {
-                    self.psess.source_map().span_to_snippet(rhs.span).ok().map(|body_s| {
+                    self.psess.source_map().span_to_snippet(body.span).ok().map(|body_s| {
                         diagnostics::WhereClauseBeforeConstBodySugg {
                             left: before_where_clause.span.shrink_to_lo(),
                             snippet: body_s,
-                            right: before_where_clause.span.shrink_to_hi().to(rhs.span),
+                            right: before_where_clause.span.shrink_to_hi().to(body.span),
                         }
                     })
                 } else {
-                    // FIXME(generic_const_items): Provide a structured suggestion to merge the first
-                    // where-clause into the second one.
+                    // FIXME(generic_const_items): Provide a structured suggestion to merge the
+                    // first where-clause into the second one.
                     None
                 },
             });
         }
 
-        // Merge the predicates of both where-clauses since either one can be relevant.
-        // If we didn't parse a body (which is valid for associated consts in traits) and we were
-        // allowed to recover, `before_where_clause` contains the predicates, otherwise they are
-        // in `after_where_clause`. Further, both of them might contain predicates iff two
-        // where-clauses were provided which is syntactically ill-formed but we want to recover from
-        // it and treat them as one large where-clause.
-        let mut predicates = before_where_clause.predicates;
-        predicates.extend(after_where_clause.predicates);
-        let where_clause = WhereClause {
-            has_where_token: before_where_clause.has_where_token
-                || after_where_clause.has_where_token,
-            predicates,
-            span: if after_where_clause.has_where_token {
-                after_where_clause.span
-            } else {
-                before_where_clause.span
-            },
+        // Merge the predicates of both where-clauses since either one can be relevant. If we didn't
+        // parse a body, `before_where_clause` will contain *the* predicates, otherwise they are in
+        // `after_where_clause`.
+        before_where_clause.has_where_token |= after_where_clause.has_where_token;
+        before_where_clause.predicates.extend(after_where_clause.predicates);
+        if after_where_clause.has_where_token {
+            before_where_clause.span = after_where_clause.span;
+        }
+        generics.where_clause = before_where_clause;
+
+        if generics.where_clause.has_where_token {
+            self.psess.gated_spans.gate(sym::generic_const_items, generics.where_clause.span);
+        }
+
+        let body = if let body @ Some(_) = self.try_recover_const_missing_semi(&body, const_span) {
+            body
+        } else {
+            self.expect_semi()?;
+            body
         };
 
-        if where_clause.has_where_token {
-            self.psess.gated_spans.gate(sym::generic_const_items, where_clause.span);
-        }
-
-        generics.where_clause = where_clause;
-
-        if let Some(rhs) = self.try_recover_const_missing_semi(&rhs, const_span) {
-            return Ok((ident, generics, ty, Some(rhs)));
-        }
-        self.expect_semi()?;
-
-        Ok((ident, generics, ty, rhs))
+        Ok(ItemKind::Const(Box::new(ConstItem {
+            defaultness,
+            ident,
+            generics,
+            ty,
+            body,
+            define_opaque: None,
+        })))
     }
 
     /// We were supposed to parse `":" $ty` but the `:` or the type was missing.
@@ -1918,7 +1896,7 @@ impl<'a> Parser<'a> {
         let prev_span = self.prev_token.span;
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
-        generics.where_clause = self.parse_where_clause()?;
+        generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
 
         // Possibly recover `enum Foo;` instead of `enum Foo {}`
         let (variants, _) = if self.token == TokenKind::Semi {
@@ -2108,7 +2086,7 @@ impl<'a> Parser<'a> {
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenParen {
             let body = VariantData::Tuple(self.parse_tuple_struct_body()?, DUMMY_NODE_ID);
-            generics.where_clause = self.parse_where_clause()?;
+            generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
             self.expect_semi()?;
             body
         } else {
@@ -2126,7 +2104,7 @@ impl<'a> Parser<'a> {
         let mut generics = self.parse_generics()?;
 
         let vdata = if self.token.is_keyword(kw::Where) {
-            generics.where_clause = self.parse_where_clause()?;
+            generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
             let (fields, recovered) = self.parse_record_struct_body(
                 "union",
                 ident.span,
@@ -2535,6 +2513,7 @@ impl<'a> Parser<'a> {
                     fn_parse_mode,
                     lo,
                     &inherited_vis,
+                    Defaultness::Implicit,
                     Case::Insensitive,
                 ) {
                     Ok(_) => self
@@ -2721,7 +2700,7 @@ impl<'a> Parser<'a> {
     pub fn parse_test_binder_constraints(&mut self) -> PResult<'a, Box<TestBinderConstraints>> {
         self.expect_keyword(exp!(Impl))?;
         let mut generics = self.parse_generics()?;
-        generics.where_clause = self.parse_where_clause()?;
+        generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
         let body = self.parse_test_binder_body()?;
         Ok(Box::new(TestBinderConstraints { generics, body: Box::new(body) }))
     }
@@ -2738,7 +2717,9 @@ impl<'a> Parser<'a> {
                 Some((Ident { name: sym::predicates, .. }, IdentKind::Normal)) => {
                     let span = this.token.span;
                     this.bump();
-                    predicates.extend(this.parse_where_clause_predicates(None, span)?.0);
+                    let (preds, _) =
+                        this.parse_where_clause_predicates(None, span, RecoverDupeWhereClause::No)?;
+                    predicates.extend(preds);
                 }
                 Some((Ident { name: sym::forall, .. }, IdentKind::Normal)) => {
                     foralls.push(this.parse_test_binder_forall()?)
@@ -2769,7 +2750,7 @@ impl<'a> Parser<'a> {
         self.bump();
 
         let mut generics = self.parse_generics()?;
-        generics.where_clause = self.parse_where_clause()?;
+        generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
 
         let body = self.parse_test_binder_body()?;
 

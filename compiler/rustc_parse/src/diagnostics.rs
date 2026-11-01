@@ -2624,7 +2624,7 @@ pub(crate) struct MultipleWhereClauses {
         code = ",",
         applicability = "maybe-incorrect"
     )]
-    pub between: Span,
+    pub between: Option<Span>,
 }
 
 #[derive(Diagnostic)]
@@ -4103,7 +4103,7 @@ pub(crate) struct StaticWithGenerics {
 
 #[derive(Diagnostic)]
 #[diag("where clauses are not allowed before const item bodies")]
-pub(crate) struct WhereClauseBeforeConstBody {
+pub(crate) struct WhereClauseBeforeConstItemBody {
     #[primary_span]
     #[label("unexpected where clause")]
     pub span: Span,
