@@ -116,11 +116,6 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 continue;
             }
 
-            // `{ arg = &cloned; clone(move arg); }` or `{ arg = &cloned; to_path_buf(arg); }`
-            let Some((cloned, cannot_move_out)) = find_stmt_assigns_to(cx, mir, arg, from_borrow, bb) else {
-                continue;
-            };
-
             let loc = mir::Location {
                 block: bb,
                 statement_index: bbdata.statements.len(),
@@ -128,6 +123,11 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
 
             // `Local` to be cloned, and a local of `clone` call's destination
             let (local, ret_local) = if from_borrow {
+                // `{ arg = &cloned; clone(move arg); }` or `{ arg = &cloned; to_path_buf(arg); }`
+                let Some((cloned, cannot_move_out)) = find_stmt_assigns_to(cx, mir, arg, from_borrow, bb) else {
+                    continue;
+                };
+
                 // `res = clone(arg)` can be turned into `res = move arg;`
                 // if `arg` is the only borrow of `cloned` at this point.
 
@@ -149,7 +149,6 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 // receiver of the `deref()` call
                 let (pred_arg, deref_clone_ret) = if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, res)) =
                     is_call_with_ref_arg(cx, mir, &pred_terminator.kind)
-                    && res == cloned
                     && cx.tcx.is_diagnostic_item(sym::deref_method, pred_fn_def_id)
                     && let ty::Adt(pred_arg_def, _) = pred_arg_ty.kind()
                     && let Some(pred_arg_name) = cx.tcx.get_diagnostic_name(pred_arg_def.did())
@@ -178,7 +177,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 // StorageDead(pred_arg);
                 // res = to_path_buf(cloned);
                 // ```
-                if cannot_move_out || !possible_borrower.only_borrowers(&[arg, cloned], local, loc) {
+                if cannot_move_out || !possible_borrower.only_borrowers(&[arg, deref_clone_ret], local, loc) {
                     continue;
                 }
 

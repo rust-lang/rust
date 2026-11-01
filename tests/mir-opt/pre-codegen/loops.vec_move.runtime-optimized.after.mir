@@ -24,13 +24,13 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         let mut _9: *mut impl Sized;
         let mut _10: *const impl Sized;
         let mut _11: usize;
-        let _28: &std::vec::Vec<impl Sized>;
+        let mut _28: &std::vec::Vec<impl Sized>;
         let mut _29: &std::mem::ManuallyDrop<std::vec::Vec<impl Sized>>;
         let mut _30: &alloc::raw_vec::RawVec<impl Sized>;
         let mut _31: &std::mem::ManuallyDrop<std::vec::Vec<impl Sized>>;
-        let _32: &std::vec::Vec<impl Sized>;
+        let mut _32: &std::vec::Vec<impl Sized>;
         let mut _33: &std::mem::ManuallyDrop<std::vec::Vec<impl Sized>>;
-        let _34: &std::vec::Vec<impl Sized>;
+        let mut _34: &std::vec::Vec<impl Sized>;
         let mut _35: &std::mem::ManuallyDrop<std::vec::Vec<impl Sized>>;
         let mut _36: &alloc::raw_vec::RawVec<impl Sized>;
         let mut _37: &std::mem::ManuallyDrop<std::vec::Vec<impl Sized>>;
