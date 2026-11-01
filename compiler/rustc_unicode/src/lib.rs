@@ -30,10 +30,9 @@ reexport_and_check!(
     unicode_normalization,
     unicode_properties,
     // FIXME: Update to version supporting Unicode 17
-    // unicode_script,
     // unicode_security,
+    unicode_script,
     unicode_width,
     // tidy-alphabetical-end
 );
-pub use unicode_script;
 pub use unicode_security;

@@ -8,7 +8,7 @@ edition = "2024"
 unicode-ident = "=1.0.24"
 unicode-normalization = "=0.1.25"
 unicode-properties = { version = "=0.1.4", default-features = false, features = ["emoji"] }
-unicode-script = "=0.5.7"
+unicode-script = "=0.5.8"
 unicode-security = "=0.1.2"
 unicode-width = "=0.2.2"
 # tidy-alphabetical-end
