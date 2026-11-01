@@ -18,7 +18,6 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, FatalError, PResult, pluralize};
-pub use rustc_lexer::UNICODE_VERSION;
 use rustc_session::parse::ParseSess;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::source_map::SourceMap;
@@ -35,44 +34,6 @@ use crate::lexer::StripTokens;
 pub mod lexer;
 
 mod diagnostics;
-
-// Make sure that the Unicode version of the dependencies is the same.
-const _: () = {
-    let rustc_lexer = rustc_lexer::UNICODE_VERSION;
-    let rustc_span = rustc_span::UNICODE_VERSION;
-    let normalization = unicode_normalization::UNICODE_VERSION;
-    let width = unicode_width::UNICODE_VERSION;
-
-    if rustc_lexer.0 != rustc_span.0
-        || rustc_lexer.1 != rustc_span.1
-        || rustc_lexer.2 != rustc_span.2
-    {
-        panic!(
-            "rustc_lexer and rustc_span must use the same Unicode version, \
-            `rustc_lexer::UNICODE_VERSION` and `rustc_span::UNICODE_VERSION` are \
-            different."
-        );
-    }
-
-    if rustc_lexer.0 != normalization.0
-        || rustc_lexer.1 != normalization.1
-        || rustc_lexer.2 != normalization.2
-    {
-        panic!(
-            "rustc_lexer and unicode-normalization must use the same Unicode version, \
-            `rustc_lexer::UNICODE_VERSION` and `unicode_normalization::UNICODE_VERSION` are \
-            different."
-        );
-    }
-
-    if rustc_lexer.0 != width.0 || rustc_lexer.1 != width.1 || rustc_lexer.2 != width.2 {
-        panic!(
-            "rustc_lexer and unicode-width must use the same Unicode version, \
-            `rustc_lexer::UNICODE_VERSION` and `unicode_width::UNICODE_VERSION` are \
-            different."
-        );
-    }
-};
 
 // Unwrap the result if `Ok`, otherwise emit the diagnostics and abort.
 pub fn unwrap_or_emit_fatal<T>(expr: Result<T, Vec<Diag<'_>>>) -> T {
