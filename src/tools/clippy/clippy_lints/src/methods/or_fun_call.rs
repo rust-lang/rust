@@ -6,16 +6,15 @@ use clippy_utils::higher::VecArgs;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::ty::{expr_type_is_certain, implements_trait};
+use clippy_utils::ty::expr_type_is_certain;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
-    contains_return, is_default_equivalent, is_default_equivalent_call, last_path_segment, peel_blocks, sym,
+    contains_return, is_default_equivalent, is_default_equivalent_call, peel_blocks, sym,
 };
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_middle::ty;
 use rustc_span::{Span, Symbol};
 
 use super::{OR_FUN_CALL, UNWRAP_OR_DEFAULT};
@@ -157,33 +156,6 @@ fn check_unwrap_or_default(
         return false;
     }
 
-    let is_new = |fun: &hir::Expr<'_>| {
-        if let hir::ExprKind::Path(ref qpath) = fun.kind {
-            let path = last_path_segment(qpath).ident.name;
-            matches!(path, sym::new)
-        } else {
-            false
-        }
-    };
-
-    let output_type_implements_default = |fun| {
-        let fun_ty = cx.typeck_results().expr_ty(fun);
-        if let ty::FnDef(def_id, args) = *fun_ty.kind() {
-            let output_ty = cx
-                .tcx
-                .fn_sig(def_id)
-                .instantiate(cx.tcx, args.no_bound_vars().unwrap())
-                .skip_norm_wip()
-                .skip_binder()
-                .output();
-            cx.tcx
-                .get_diagnostic_item(sym::Default)
-                .is_some_and(|default_trait_id| implements_trait(cx, output_ty, default_trait_id, &[]))
-        } else {
-            false
-        }
-    };
-
     let Some(suggested_method_def_id) = receiver_ty.ty_adt_def().and_then(|adt_def| {
         cx.tcx
             .inherent_impls(adt_def.did())
@@ -215,13 +187,11 @@ fn check_unwrap_or_default(
         return false;
     }
 
-    // needs to target Default::default in particular or be *::new and have a Default impl
-    // available
-    if (is_new(fun) && output_type_implements_default(fun))
-        || match call_expr {
-            Some(call_expr) => is_default_equivalent(cx, call_expr),
-            None => is_default_equivalent_call(cx, fun, None) || closure_body_returns_empty_to_string(cx, fun),
-        }
+    // needs to target Default::default in particular or a default-equivalent call/constructor
+    if match call_expr {
+        Some(call_expr) => is_default_equivalent(cx, call_expr),
+        None => is_default_equivalent_call(cx, fun, None) || closure_body_returns_empty_to_string(cx, fun),
+    }
     {
         span_lint_and_sugg(
             cx,

@@ -583,13 +583,27 @@ pub fn is_default_equivalent_call(
 
     // Get the type of the whole method call expression, find the exact method definition, look at
     // its body and check if it is similar to the corresponding `Default::default()` body.
-    let Some(e) = whole_call_expr else { return false };
     let Some(default_fn_def_id) = cx.tcx.get_diagnostic_item(sym::default_fn) else {
         return false;
     };
-    let Some(ty) = cx.tcx.typeck(e.hir_id.owner.def_id).expr_ty_adjusted_opt(e) else {
-        return false;
-    };
+    let ty = whole_call_expr
+        .and_then(|e| cx.tcx.typeck(e.hir_id.owner.def_id).expr_ty_adjusted_opt(e))
+        .or_else(|| {
+            let func_ty = cx.typeck_results().expr_ty(repl_func);
+            if let rustc_ty::FnDef(def_id, args) = *func_ty.kind() {
+                Some(
+                    cx.tcx
+                        .fn_sig(def_id)
+                        .instantiate(cx.tcx, args.no_bound_vars()?)
+                        .skip_norm_wip()
+                        .skip_binder()
+                        .output(),
+                )
+            } else {
+                None
+            }
+        });
+    let Some(ty) = ty else { return false };
     let args = rustc_ty::GenericArgs::for_item(cx.tcx, default_fn_def_id, |param, _| {
         if let rustc_ty::GenericParamDefKind::Lifetime = param.kind {
             cx.tcx.lifetimes.re_erased.into()

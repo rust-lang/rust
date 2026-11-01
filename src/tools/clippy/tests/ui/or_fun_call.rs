@@ -490,4 +490,22 @@ fn above_msrv(opt: Option<i32>, res: Result<i32, ()>) {
     let _ = res.unwrap_or(Default::default());
     //~^ unwrap_or_default
 }
+
+mod issue17929 {
+    #[derive(Default)]
+    pub struct S(pub usize);
+
+    impl S {
+        fn new() -> S {
+            S(42)
+        }
+    }
+
+    fn test() {
+        // S::new() returns S(42), which is NOT equivalent to S::default() (S(0)).
+        // This must not be suggested to be replaced with unwrap_or_default().
+        let _ = Some(S(1)).unwrap_or_else(S::new);
+    }
+}
+
 fn main() {}
