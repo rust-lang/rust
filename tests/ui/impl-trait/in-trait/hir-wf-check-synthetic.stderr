@@ -1,0 +1,65 @@
+error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
+  --> $DIR/hir-wf-check-synthetic.rs:9:17
+   |
+LL |     fn foo() -> impl Sized
+   |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
+   |
+   = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
+
+error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
+  --> $DIR/hir-wf-check-synthetic.rs:9:17
+   |
+LL |     fn foo() -> impl Sized
+   |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
+   |
+   = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
+  --> $DIR/hir-wf-check-synthetic.rs:9:5
+   |
+LL | /     fn foo() -> impl Sized
+...  |
+LL | |     where
+LL | |         for<'a> <() as FnOnce<&'a i32>>::Output: Tr,
+   | |____________________________________________________^ expected an `FnOnce<&'a i32>` closure, found `()`
+   |
+   = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
+
+error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
+  --> $DIR/hir-wf-check-synthetic.rs:9:17
+   |
+LL |     fn foo() -> impl Sized
+   |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
+   |
+   = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
+
+error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
+  --> $DIR/hir-wf-check-synthetic.rs:9:22
+   |
+LL |     fn foo() -> impl Sized
+   |                      ^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
+   |
+   = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
+
+error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
+  --> $DIR/hir-wf-check-synthetic.rs:9:17
+   |
+LL |     fn foo() -> impl Sized
+   |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
+   |
+   = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
+  --> $DIR/hir-wf-check-synthetic.rs:9:17
+   |
+LL |     fn foo() -> impl Sized
+   |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
+   |
+   = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
