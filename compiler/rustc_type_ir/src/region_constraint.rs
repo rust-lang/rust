@@ -501,7 +501,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug> std::fmt::Debug for And<I, S> {
     }
 }
 
-#[derive_where(Clone, Hash, PartialEq; I: Interner, S)]
+#[derive_where(Clone, Hash, PartialEq, Eq; I: Interner, S)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 /// An `And` and an `Or` constraint both in canonical forms, with two additional constraints:

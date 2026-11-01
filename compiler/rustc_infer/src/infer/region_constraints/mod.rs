@@ -21,6 +21,9 @@ use crate::infer::unify_key::{RegionVariableValue, RegionVidKey};
 
 mod leak_check;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Clone, Default)]
 pub struct RegionConstraintStorage<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
@@ -464,6 +467,11 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
     pub fn solver_data(&self) -> &SolverRegionConstraintData<'tcx> {
         &self.storage.solver_data
+    }
+
+    pub fn take_and_reset_solver_data(&mut self) -> SolverRegionConstraint<'tcx> {
+        assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&self.undo_log));
+        mem::take(&mut self.storage.solver_data).0
     }
 
     pub fn overwrite_solver_constraint(&mut self, constraint: SolverRegionConstraint<'tcx>) {

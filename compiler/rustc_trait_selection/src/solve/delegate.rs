@@ -382,6 +382,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 region_obligations,
                 region_constraints,
                 region_assumptions,
+                None,
             )
         });
 
