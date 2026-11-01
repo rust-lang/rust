@@ -1,4 +1,6 @@
-use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Os, Target, TargetMetadata, TargetOptions, cvs};
+use crate::spec::{
+    Arch, Cc, LinkerFlavor, Lld, Os, PanicStrategy, Target, TargetMetadata, TargetOptions, cvs,
+};
 
 pub(crate) fn target() -> Target {
     let mut base = TargetOptions::default();
@@ -29,7 +31,10 @@ pub(crate) fn target() -> Target {
             exe_suffix: ".elf".into(),
             dynamic_linking: true,
             executables: true,
-            families: cvs!["unix"],
+            families: cvs![],
+            // The SDK's `libc_eh.a` unwinder lacks the `_Unwind_GetIPInfo`
+            // that `eh_personality` requires.
+            panic_strategy: PanicStrategy::Abort,
             has_thread_local: true,
             has_rpath: false,
             crt_static_default: false,

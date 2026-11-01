@@ -19,7 +19,7 @@ cfg_select! {
         mod uefi;
         pub use uefi::*;
     }
-    any(target_family = "unix", target_os = "wasi", target_os = "teeos") => {
+    any(target_family = "unix", target_os = "wasi", target_os = "teeos", target_os = "qurt",) => {
         mod unix;
         pub use unix::*;
     }

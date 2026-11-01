@@ -13,14 +13,14 @@ mod raw;
 mod owned;
 
 // Implementations for `AsRawFd` etc. for network types.
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 mod net;
 
 // Implementation of stdio file descriptor constants.
 mod stdio;
 
 #[cfg(test)]
-#[cfg(not(target_os = "l4re"))]
+#[cfg(not(any(target_os = "l4re", target_os = "qurt")))]
 mod tests;
 
 // Export the types and traits for the public API.

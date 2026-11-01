@@ -11,6 +11,7 @@ cfg_select! {
         target_os = "android",
         target_os = "hurd",
         target_os = "l4re",
+        target_os = "qurt",
     )) => {
         use libc::{
             dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
@@ -32,6 +33,13 @@ cfg_select! {
             lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
         };
     }
+    target_os = "qurt" => {
+        // QuRT doesn't have lstat - use stat instead
+        use libc::{
+            dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
+            off_t as off64_t, open as open64, stat as stat64, stat as lstat64,
+        };
+    }
     _ => {
         use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
     }
@@ -45,8 +53,10 @@ use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt::{self, Write as _};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
-use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
-#[cfg(not(target_os = "wasi"))]
+use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
+#[cfg(target_os = "qurt")]
+use crate::os::qurt::prelude::*;
+#[cfg(not(any(target_os = "qurt", target_os = "wasi")))]
 pub use crate::os::unix::fs::dirs::{ExtraHomeDirs, ExtraMediaDirs};
 #[cfg(target_family = "unix")]
 use crate::os::unix::prelude::*;
@@ -56,7 +66,7 @@ use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::exists;
-#[cfg(target_os = "wasi")]
+#[cfg(any(target_os = "qurt", target_os = "wasi"))]
 pub use crate::sys::fs::common::{ExtraHomeDirs, ExtraMediaDirs};
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::time::SystemTime;
@@ -65,6 +75,7 @@ use crate::sys::weak::syscall;
 #[cfg(target_os = "android")]
 use crate::sys::weak::weak;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, cvt, cvt_r};
+#[cfg_attr(target_os = "qurt", allow(unused_imports))]
 use crate::{mem, ptr};
 
 // Used by rustc for checking the definitions of other function with the same symbol names
@@ -269,6 +280,7 @@ cfg_select! {
         target_os = "redox",
         target_os = "espidf",
         target_os = "horizon",
+        target_os = "qurt",
         target_os = "vita",
         target_os = "nto",
         target_os = "qnx",
@@ -394,6 +406,7 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
 
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
+    #[cfg(not(target_os = "qurt"))]
     entry: dirent64_min,
     // We need to store an owned copy of the entry name on platforms that use
     // readdir() (not readdir_r()), because a) struct dirent may use a flexible
@@ -404,6 +417,7 @@ pub struct DirEntry {
 // Define a minimal subset of fields we need from `dirent64`, especially since
 // we're not using the immediate `d_name` on these targets. Keeping this as an
 // `entry` field in `DirEntry` helps reduce the `cfg` boilerplate elsewhere.
+#[cfg(not(target_os = "qurt"))]
 struct dirent64_min {
     d_ino: u64,
     #[cfg(not(any(
@@ -414,6 +428,7 @@ struct dirent64_min {
         target_os = "aix",
         target_os = "nto",
         target_os = "qnx",
+        target_os = "qurt",
         target_os = "vita",
     )))]
     d_type: u8,
@@ -572,6 +587,7 @@ impl FileAttr {
         target_os = "horizon",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "qurt",
         target_os = "rtems",
         target_os = "nuttx",
     )))]
@@ -589,6 +605,7 @@ impl FileAttr {
     #[cfg(any(
         all(target_os = "vxworks", vxworks_lt_25_09),
         target_os = "espidf",
+        target_os = "qurt",
         target_os = "vita",
         target_os = "rtems",
     ))]
@@ -612,6 +629,7 @@ impl FileAttr {
         target_os = "horizon",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "qurt",
         target_os = "rtems",
         target_os = "nuttx",
     )))]
@@ -629,6 +647,7 @@ impl FileAttr {
     #[cfg(any(
         all(target_os = "vxworks", vxworks_lt_25_09),
         target_os = "espidf",
+        target_os = "qurt",
         target_os = "vita",
         target_os = "rtems"
     ))]
@@ -726,7 +745,7 @@ impl FilePermissions {
             self.mode |= 0o222;
         }
     }
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
     pub fn mode(&self) -> u32 {
         self.mode as u32
     }
@@ -857,7 +876,6 @@ impl Iterator for ReadDir {
                     any(
                         target_os = "espidf", // readdir truly isn't thread-safe.
                         target_os = "lynxos178",
-                        target_os = "qurt",
                         target_os = "rtems",
                         target_os = "vxworks",
                     ) => {
@@ -944,6 +962,7 @@ impl Iterator for ReadDir {
                 // When loading from a field, we can skip the `&raw const`; `(*entry_ptr).d_ino` as
                 // a value expression will do the right thing: `byte_offset` to the field and then
                 // only access those bytes.
+                #[cfg(not(target_os = "qurt"))]
                 let entry = dirent64_min {
                     #[cfg(any(
                         target_os = "dragonfly",
@@ -972,11 +991,13 @@ impl Iterator for ReadDir {
                         target_os = "nto",
                         target_os = "qnx",
                         target_os = "vita",
+                        target_os = "qurt",
                     )))]
                     d_type: (*entry_ptr).d_type as u8,
                 };
 
                 return Some(Ok(DirEntry {
+                    #[cfg(not(target_os = "qurt"))]
                     entry,
                     name: name.to_owned(),
                     dir: Arc::clone(&self.inner),
@@ -995,6 +1016,7 @@ impl Iterator for ReadDir {
 /// So we check file flags instead which live on the file descriptor and not the underlying file.
 /// The downside is that it costs an extra syscall, so we only do it for debug.
 #[inline]
+#[cfg_attr(target_os = "qurt", allow(dead_code))]
 pub(crate) fn debug_assert_fd_is_open(fd: RawFd) {
     use crate::sys::io::errno;
 
@@ -1013,6 +1035,7 @@ impl Drop for DirStream {
             target_os = "redox",
             target_os = "nto",
             target_os = "qnx",
+            target_os = "qurt",
             target_os = "vita",
             target_os = "espidf",
             target_os = "horizon",
@@ -1084,6 +1107,7 @@ impl DirEntry {
             target_os = "aix",
             target_os = "nto",
             target_os = "qnx",
+            target_os = "qurt",
             target_os = "vita",
             target_os = "l4re",
         )))]
@@ -1102,6 +1126,7 @@ impl DirEntry {
         self.metadata().map(|m| m.file_type())
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino
     }
@@ -1146,10 +1171,11 @@ impl OpenOptions {
         self.create_new = create_new;
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn custom_flags(&mut self, flags: i32) {
         self.custom_flags = flags;
     }
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
     pub fn mode(&mut self, mode: u32) {
         self.mode = mode as mode_t;
     }
@@ -1264,6 +1290,7 @@ impl File {
         Ok(FileAttr::from_stat64(stat))
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn fsync(&self) -> io::Result<()> {
         cvt_r(|| unsafe { os_fsync(self.as_raw_fd()) })?;
         return Ok(());
@@ -1278,6 +1305,12 @@ impl File {
         }
     }
 
+    #[cfg(target_os = "qurt")]
+    pub fn fsync(&self) -> io::Result<()> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "fsync not supported on QuRT"))
+    }
+
+    #[cfg(not(target_os = "qurt"))]
     pub fn datasync(&self) -> io::Result<()> {
         cvt_r(|| unsafe { os_datasync(self.as_raw_fd()) })?;
         return Ok(());
@@ -1319,6 +1352,11 @@ impl File {
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fsync(fd)
         }
+    }
+
+    #[cfg(target_os = "qurt")]
+    pub fn datasync(&self) -> io::Result<()> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "datasync not supported on QuRT"))
     }
 
     pub fn lock(&self) -> io::Result<()> {
@@ -1484,6 +1522,7 @@ impl File {
         self.0.is_read_vectored()
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.0.read_at(buf, offset)
     }
@@ -1492,10 +1531,12 @@ impl File {
         self.0.read_buf(cursor)
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn read_buf_at(&self, cursor: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         self.0.read_buf_at(cursor, offset)
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         self.0.read_vectored_at(bufs, offset)
     }
@@ -1513,10 +1554,12 @@ impl File {
         self.0.is_write_vectored()
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         self.0.write_at(buf, offset)
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         self.0.write_vectored_at(bufs, offset)
     }
@@ -1555,9 +1598,15 @@ impl File {
         self.0.duplicate().map(File)
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
         cvt_r(|| unsafe { libc::fchmod(self.as_raw_fd(), perm.mode) })?;
         Ok(())
+    }
+
+    #[cfg(target_os = "qurt")]
+    pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "fchmod not supported on QuRT"))
     }
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
@@ -1567,10 +1616,11 @@ impl File {
                 target_os = "espidf",
                 target_os = "horizon",
                 target_os = "nuttx",
-                target_os = "l4re"
+                target_os = "l4re",
+                target_os = "qurt"
             ) => {
                 // Redox doesn't appear to support `UTIME_OMIT`.
-                // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
+                // ESP-IDF, HorizonOS, and QuRT do not support `futimens` at all and the behavior for those OS is therefore
                 // the same as for Redox.
                 let _ = times;
                 Err(io::const_error!(
@@ -1655,6 +1705,7 @@ impl File {
     target_os = "espidf",
     target_os = "horizon",
     target_os = "nuttx",
+    target_os = "qurt",
 )))]
 fn file_time_to_timespec(time: Option<SystemTime>) -> io::Result<libc::timespec> {
     match time {
@@ -1732,7 +1783,7 @@ impl DirBuilder {
         run_path_with_cstr(p, &|p| cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }).map(|_| ()))
     }
 
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
     pub fn set_mode(&mut self, mode: u32) {
         self.mode = mode as mode_t;
     }
@@ -1944,8 +1995,14 @@ pub fn rename_noreplace(old: &CStr, new: &CStr) -> io::Result<()> {
     link_then_unlink(old, new)
 }
 
+#[cfg(not(target_os = "qurt"))]
 pub fn set_perm(p: &CStr, perm: FilePermissions) -> io::Result<()> {
     cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }).map(|_| ())
+}
+
+#[cfg(target_os = "qurt")]
+pub fn set_perm(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
+    Err(io::const_error!(io::ErrorKind::Unsupported, "chmod not supported on QuRT"))
 }
 
 #[cfg(target_os = "vxworks")]
@@ -1955,7 +2012,12 @@ pub fn set_perm_nofollow(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
     Err(crate::io::ErrorKind::Unsupported.into())
 }
 
-#[cfg(not(target_os = "vxworks"))]
+#[cfg(target_os = "qurt")]
+pub fn set_perm_nofollow(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
+    Err(io::const_error!(io::ErrorKind::Unsupported, "fchmodat not supported on QuRT"))
+}
+
+#[cfg(not(any(target_os = "qurt", target_os = "vxworks")))]
 pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
     /// Helper function for fallback open with `O_NOFOLLOW` + `fchmod` behavior. This will
     /// successfully change the permissions of non-symlinks and fail when there's a symlink.
@@ -2039,6 +2101,7 @@ pub fn rmdir(p: &CStr) -> io::Result<()> {
     cvt(unsafe { libc::rmdir(p.as_ptr()) }).map(|_| ())
 }
 
+#[cfg(not(target_os = "qurt"))]
 pub fn readlink(c_path: &CStr) -> io::Result<PathBuf> {
     let p = c_path.as_ptr();
 
@@ -2065,12 +2128,27 @@ pub fn readlink(c_path: &CStr) -> io::Result<PathBuf> {
     }
 }
 
+#[cfg(target_os = "qurt")]
+pub fn readlink(_c_path: &CStr) -> io::Result<PathBuf> {
+    Err(io::const_error!(io::ErrorKind::Unsupported, "readlink not supported on QuRT"))
+}
+
+#[cfg(not(target_os = "qurt"))]
 pub fn symlink(original: &CStr, link: &CStr) -> io::Result<()> {
     cvt(unsafe { libc::symlink(original.as_ptr(), link.as_ptr()) }).map(|_| ())
 }
 
+#[cfg(target_os = "qurt")]
+pub fn symlink(_original: &CStr, _link: &CStr) -> io::Result<()> {
+    Err(io::const_error!(io::ErrorKind::Unsupported, "symlink not supported on QuRT"))
+}
+
 pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
     cfg_select! {
+        target_os = "qurt" => {
+            let _ = (original, link);
+            Err(io::const_error!(io::ErrorKind::Unsupported, "link not supported on QuRT"))
+        }
         any(
             // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead.
             // POSIX leaves it implementation-defined whether `link` follows
@@ -2086,6 +2164,7 @@ pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
             target_env = "nto70",
         ) => {
             cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
+            Ok(())
         }
         _ => {
             // Where we can, use `linkat` instead of `link`; see the comment above
@@ -2093,9 +2172,9 @@ pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
             cvt(unsafe {
                 libc::linkat(libc::AT_FDCWD, original.as_ptr(), libc::AT_FDCWD, link.as_ptr(), 0)
             })?;
+            Ok(())
         }
     }
-    Ok(())
 }
 
 pub fn stat(p: &CStr) -> io::Result<FileAttr> {
@@ -2132,6 +2211,7 @@ pub fn lstat(p: &CStr) -> io::Result<FileAttr> {
     Ok(FileAttr::from_stat64(stat))
 }
 
+#[cfg(not(target_os = "qurt"))]
 pub fn canonicalize(path: &CStr) -> io::Result<PathBuf> {
     let r = unsafe { libc::realpath(path.as_ptr(), ptr::null_mut()) };
     if r.is_null() {
@@ -2142,6 +2222,11 @@ pub fn canonicalize(path: &CStr) -> io::Result<PathBuf> {
         libc::free(r as *mut _);
         buf
     })))
+}
+
+#[cfg(target_os = "qurt")]
+pub fn canonicalize(_path: &CStr) -> io::Result<PathBuf> {
+    Err(io::const_error!(io::ErrorKind::Unsupported, "realpath not supported on QuRT"))
 }
 
 fn link_then_unlink(old: &CStr, new: &CStr) -> io::Result<()> {
@@ -2169,7 +2254,8 @@ fn set_times_impl(p: &CStr, times: FileTimes, follow_symlinks: bool) -> io::Resu
             target_os = "horizon",
             target_os = "nuttx",
             target_os = "vita",
-            target_os = "rtems"
+            target_os = "rtems",
+            target_os = "qurt"
         ) => {
             let _ = (p, times, follow_symlinks);
             Err(io::const_error!(io::ErrorKind::Unsupported, "setting file times not supported"))
@@ -2266,7 +2352,7 @@ pub fn set_times_nofollow(p: &CStr, times: FileTimes) -> io::Result<()> {
     set_times_impl(p, times, false)
 }
 
-#[cfg(any(target_os = "espidf", target_os = "wasi"))]
+#[cfg(any(target_os = "espidf", target_os = "qurt", target_os = "wasi"))]
 fn open_to_and_set_permissions(
     to: &Path,
     _reader_metadata: &crate::fs::Metadata,
@@ -2277,7 +2363,7 @@ fn open_to_and_set_permissions(
     Ok((writer, writer_metadata))
 }
 
-#[cfg(not(any(target_os = "espidf", target_os = "wasi")))]
+#[cfg(not(any(target_os = "espidf", target_os = "qurt", target_os = "wasi")))]
 fn open_to_and_set_permissions(
     to: &Path,
     reader_metadata: &crate::fs::Metadata,
@@ -2425,7 +2511,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     Ok(bytes_copied as u64)
 }
 
-#[cfg(not(target_os = "wasi"))]
+#[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
 pub fn chown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::chown(path.as_ptr(), uid as libc::uid_t, gid as libc::gid_t) })
@@ -2433,13 +2519,13 @@ pub fn chown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     })
 }
 
-#[cfg(not(target_os = "wasi"))]
+#[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
 pub fn fchown(fd: c_int, uid: u32, gid: u32) -> io::Result<()> {
     cvt(unsafe { libc::fchown(fd, uid as libc::uid_t, gid as libc::gid_t) })?;
     Ok(())
 }
 
-#[cfg(not(any(target_os = "vxworks", target_os = "wasi")))]
+#[cfg(not(any(target_os = "vxworks", target_os = "wasi", target_os = "qurt")))]
 pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::lchown(path.as_ptr(), uid as libc::uid_t, gid as libc::gid_t) })
@@ -2448,23 +2534,26 @@ pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
 }
 
 #[cfg(target_os = "vxworks")]
-pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
-    let (_, _, _) = (path, uid, gid);
+pub fn lchown(_path: &Path, _uid: u32, _gid: u32) -> io::Result<()> {
     Err(io::const_error!(io::ErrorKind::Unsupported, "lchown not supported by vxworks"))
 }
 
-#[cfg(not(any(target_os = "fuchsia", target_os = "vxworks", target_os = "wasi")))]
+#[cfg(not(any(
+    target_os = "fuchsia",
+    target_os = "vxworks",
+    target_os = "wasi",
+    target_os = "qurt"
+)))]
 pub fn chroot(dir: &Path) -> io::Result<()> {
     run_path_with_cstr(dir, &|dir| cvt(unsafe { libc::chroot(dir.as_ptr()) }).map(|_| ()))
 }
 
 #[cfg(target_os = "vxworks")]
-pub fn chroot(dir: &Path) -> io::Result<()> {
-    let _ = dir;
+pub fn chroot(_dir: &Path) -> io::Result<()> {
     Err(io::const_error!(io::ErrorKind::Unsupported, "chroot not supported by vxworks"))
 }
 
-#[cfg(not(target_os = "wasi"))]
+#[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
 pub fn mkfifo(path: &Path, mode: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::mkfifo(path.as_ptr(), mode.try_into().unwrap()) }).map(|_| ())
@@ -2473,11 +2562,12 @@ pub fn mkfifo(path: &Path, mode: u32) -> io::Result<()> {
 
 pub use remove_dir_impl::remove_dir_all;
 
-// Fallback for REDOX, ESP-ID, Horizon, Vita, Vxworks and Miri
+// Fallback for REDOX, ESP-ID, Horizon, QuRT, Vita, Vxworks and Miri
 #[cfg(any(
     target_os = "redox",
     target_os = "espidf",
     target_os = "horizon",
+    target_os = "qurt",
     target_os = "vita",
     target_os = "nto",
     target_os = "qnx",
@@ -2494,6 +2584,7 @@ mod remove_dir_impl {
     target_os = "redox",
     target_os = "espidf",
     target_os = "horizon",
+    target_os = "qurt",
     target_os = "vita",
     target_os = "nto",
     target_os = "qnx",
