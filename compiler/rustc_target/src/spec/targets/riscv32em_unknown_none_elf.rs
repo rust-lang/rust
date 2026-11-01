@@ -27,7 +27,7 @@ pub(crate) fn target() -> Target {
             llvm_abiname: LlvmAbi::Ilp32e,
             max_atomic_width: Some(32),
             atomic_cas: false,
-            features: "+e,+m,+forced-atomics".into(),
+            features: "+e,+m,+forced-atomics,+relax".into(),
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
             emit_debug_gdb_scripts: false,
