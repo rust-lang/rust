@@ -12,6 +12,7 @@ use crate::{
     ItemContainerId, MacroId, ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
     attrs::AttrFlags,
     nameres::{DefMap, assoc::TraitItems, crate_def_map, crate_local_def_map},
+    unstable_features::UnstableFeatures,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -36,16 +37,16 @@ impl_from!(
 /// Salsa query. This will look for lang items in a specific crate.
 #[salsa::tracked(returns(as_deref))]
 pub fn crate_lang_items(db: &dyn SourceDatabase, krate: Crate) -> Option<Box<LangItems>> {
-    let _p = tracing::info_span!("crate_lang_items_query").entered();
-
-    let mut lang_items = LangItems::default();
-
-    let crate_def_map = crate_def_map(db, krate);
-
-    if !crate_def_map.features().lang_items {
+    if !UnstableFeatures::query(db, krate).lang_items {
+        // First query this, *before* querying the def map, to not create a dependency edge.
         return None;
     }
 
+    let mut lang_items = LangItems::default();
+
+    let _p = tracing::info_span!("crate_lang_items_query", ?krate).entered();
+
+    let crate_def_map = crate_def_map(db, krate);
     for (_, module_data) in crate_def_map.modules() {
         for impl_def in module_data.scope.inherent_impls() {
             lang_items.collect_lang_item(db, impl_def);
@@ -110,11 +111,27 @@ pub fn crate_lang_items(db: &dyn SourceDatabase, krate: Crate) -> Option<Box<Lan
     if lang_items.is_empty() { None } else { Some(Box::new(lang_items)) }
 }
 
+// A firewall query, so that changing crate code for non-`feature(lang_items)` crate will not require recomputing
+// the more expensive `lang_items()` query.
+#[salsa::tracked(returns(deref))]
+fn crate_extern_prelude(db: &dyn SourceDatabase, start_crate: Crate) -> Box<[Crate]> {
+    crate_local_def_map(db, start_crate)
+        .local(db)
+        .extern_prelude()
+        .map(|(_, (module, _))| module.krate(db))
+        .filter(|&krate| {
+            // Some crates declares themselves as extern crate like `extern crate self as core`.
+            // Ignore these to prevent cycles.
+            krate != start_crate
+        })
+        .collect()
+}
+
 /// Salsa query. Look for a lang items, starting from the specified crate and recursively
 /// traversing its dependencies.
 #[salsa::tracked(returns(ref))]
 pub fn lang_items(db: &dyn SourceDatabase, start_crate: Crate) -> LangItems {
-    let _p = tracing::info_span!("lang_items_query").entered();
+    let _p = tracing::debug_span!("lang_items_query", ?start_crate).entered();
 
     let mut result = crate_lang_items(db, start_crate).cloned().unwrap_or_default();
 
@@ -125,13 +142,8 @@ pub fn lang_items(db: &dyn SourceDatabase, start_crate: Crate) -> LangItems {
     // while nameres.
     //
     // See https://github.com/rust-lang/rust-analyzer/pull/20475 for details.
-    for (_, (module, _)) in crate_local_def_map(db, start_crate).local(db).extern_prelude() {
-        // Some crates declares themselves as extern crate like `extern crate self as core`.
-        // Ignore these to prevent cycles.
-        let krate = module.krate(db);
-        if krate != start_crate {
-            result.merge_prefer_self(lang_items(db, krate));
-        }
+    for &krate in crate_extern_prelude(db, start_crate) {
+        result.merge_prefer_self(lang_items(db, krate));
     }
 
     result
@@ -142,8 +154,8 @@ impl LangItems {
     where
         T: Into<AttrDefId> + Into<LangItemTarget> + Copy,
     {
-        let _p = tracing::info_span!("collect_lang_item").entered();
         if let Some(lang_item) = AttrFlags::lang_item(db, item.into()) {
+            tracing::trace!("found lang item `{lang_item}`");
             self.assign_lang_item(lang_item, item.into());
         }
     }
