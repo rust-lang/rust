@@ -365,7 +365,7 @@ fn execute_pipeline(
                 stage.section("Build PGO optimized LLVM", |stage| {
                     Bootstrap::build(env)
                         .with_llvm_bolt_ldflags()
-                        .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
+                        .llvm_pgo_optimize(llvm_pgo_profile.as_ref())?
                         .avoid_rustc_rebuild()
                         .run(stage)
                 })?;
@@ -449,7 +449,7 @@ fn execute_pipeline(
     };
 
     let mut dist = Bootstrap::dist(env, &dist_args)
-        .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
+        .llvm_pgo_optimize(llvm_pgo_profile.as_ref())?
         .rustc_pgo_optimize(&rustc_pgo_profile)
         .cargo_pgo_optimize(&rustc_pgo_profile)
         .rustdoc_pgo_optimize(&rustdoc_pgo_profile);
