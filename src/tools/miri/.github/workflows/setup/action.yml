@@ -43,7 +43,7 @@ runs:
 
       - name: Install "master" toolchain
         run: |
-          if [[ "${GH_EVENT_NAME}" == 'schedule' ]]; then
+          if [[ "${GH_EVENT_NAME}" == 'schedule' || "${GH_EVENT_NAME}" == "workflow_dispatch" ]]; then
             echo "Building against latest rustc git version"
             git ls-remote https://github.com/rust-lang/rust/ HEAD | cut -f 1 > rust-version
           fi
