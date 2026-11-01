@@ -360,30 +360,9 @@ class TestEnvironment:
     def home_dir(self):
         return self.tmp_dir().joinpath("user-home")
 
-    def start_ffx_isolation(self):
-        # Most of this is translated directly from ffx's isolate library
-        os.mkdir(self.ffx_isolate_dir)
-        os.mkdir(self.home_dir)
-
+    def setup_ffx_environment(self):
         ffx_path = self.tool_path("ffx")
         ffx_env = self.ffx_cmd_env()
-
-        # Start ffx daemon
-        # We want this to be a long-running process that persists after the script finishes
-        # pylint: disable=consider-using-with
-        with open(
-            self.ffx_daemon_log_path, "w", encoding="utf-8"
-        ) as ffx_daemon_log_file:
-            subprocess.Popen(
-                [
-                    ffx_path,
-                    "daemon",
-                    "start",
-                ],
-                env=ffx_env,
-                stdout=ffx_daemon_log_file,
-                stderr=ffx_daemon_log_file,
-            )
 
         # Disable analytics
         check_call_with_logging(
@@ -430,18 +409,6 @@ class TestEnvironment:
             "TEMPDIR": self.tmp_dir(),
         }
 
-    def stop_ffx_isolation(self):
-        check_call_with_logging(
-            [
-                self.tool_path("ffx"),
-                "daemon",
-                "stop",
-            ],
-            env=self.ffx_cmd_env(),
-            stdout_handler=self.subprocess_logger.debug,
-            stderr_handler=self.subprocess_logger.debug,
-        )
-
     def start(self):
         """Sets up the testing environment and prepares to run tests.
 
@@ -464,12 +431,15 @@ class TestEnvironment:
         self.setup_logging(log_to_file=True)
         os.mkdir(self.output_dir)
 
+        # Write to file
+        self.write_to_file()
+
         ffx_path = self.tool_path("ffx")
         ffx_env = self.ffx_cmd_env()
 
-        # Start ffx isolation
-        self.env_logger.info("Starting ffx isolation...")
-        self.start_ffx_isolation()
+        # Setting up ffx environment.
+        self.env_logger.info("Setting up ffx environment...")
+        self.setup_ffx_environment()
 
         # Stop any running emulators (there shouldn't be any)
         check_call_with_logging(
@@ -609,9 +579,6 @@ class TestEnvironment:
             stdout_handler=self.subprocess_logger.debug,
             stderr_handler=self.subprocess_logger.debug,
         )
-
-        # Write to file
-        self.write_to_file()
 
         self.env_logger.info("Success! Your environment is ready to run tests.")
 
@@ -998,10 +965,6 @@ class TestEnvironment:
             stdout_handler=self.subprocess_logger.debug,
             stderr_handler=self.subprocess_logger.debug,
         )
-
-        # Stop ffx isolation
-        self.env_logger.info("Stopping ffx isolation...")
-        self.stop_ffx_isolation()
 
     def cleanup(self):
         # Remove temporary files
