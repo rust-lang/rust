@@ -1164,41 +1164,6 @@ pub(crate) struct ReplaceCommaWithSemicolon {
 }
 
 #[derive(Diagnostic)]
-#[diag("trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait")]
-pub(crate) struct SupertraitItemShadowing {
-    pub item: Symbol,
-    pub subtrait: Symbol,
-    #[subdiagnostic]
-    pub shadower: SupertraitItemShadower,
-    #[subdiagnostic]
-    pub shadowee: SupertraitItemShadowee,
-}
-
-#[derive(Subdiagnostic)]
-#[note("item from `{$subtrait}` shadows a supertrait item")]
-pub(crate) struct SupertraitItemShadower {
-    pub subtrait: Symbol,
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum SupertraitItemShadowee {
-    #[note("item from `{$supertrait}` is shadowed by a subtrait item")]
-    Labeled {
-        #[primary_span]
-        span: Span,
-        supertrait: Symbol,
-    },
-    #[note("items from several supertraits are shadowed: {$traits}")]
-    Several {
-        #[primary_span]
-        spans: MultiSpan,
-        traits: DiagSymbolList,
-    },
-}
-
-#[derive(Diagnostic)]
 #[diag("type `{$ty}` cannot be used with this register class in stable")]
 pub(crate) struct RegisterTypeUnstable<'a> {
     #[primary_span]

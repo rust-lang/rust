@@ -57,5 +57,7 @@ fn main() {
 
 fn check<T: C>() {
     assert_eq!(size_of::<T::Assoc>(), 4);
+    //~^ WARN trait item `Assoc` from `C` shadows identically named item from supertrait
     assert_eq!(T::CONST, 3);
+    //~^ WARN trait item `CONST` from `C` shadows identically named item from supertrait
 }

@@ -27,7 +27,6 @@ use rustc_abi::FIRST_VARIANT;
 use rustc_ast::LitKind;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -39,7 +38,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::DynCompatibilityViolation;
-use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
+use rustc_lint_defs::builtin::{
+    AMBIGUOUS_ASSOCIATED_ITEMS, RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
+};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
@@ -62,6 +63,57 @@ use crate::hir_ty_lowering::errors::{
 };
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
+
+/// Lints if an associated item was resolved by shadowing supertrait items with
+/// the same name.
+pub fn lint_shadowed_supertrait_item_usage(
+    tcx: TyCtxt<'_>,
+    hir_id: HirId,
+    ident: Ident,
+    selected: ty::AssocItem,
+    shadowed: &[ty::AssocItem],
+) {
+    if shadowed.is_empty() {
+        return;
+    }
+
+    // Deduplicate multiple instances of the same trait with different generic arguments.
+    let mut seen = FxHashSet::default();
+    let shadowed: Vec<_> = shadowed.iter().filter(|item| seen.insert(item.def_id)).collect();
+
+    let shadower_span = tcx.def_span(selected.def_id);
+    let subtrait = tcx.item_name(selected.trait_container(tcx).unwrap());
+    let shadower = diagnostics::SupertraitItemUsageShadower { span: shadower_span, subtrait };
+
+    let shadowee = if let [shadowee] = &shadowed[..] {
+        let shadowee_span = tcx.def_span(shadowee.def_id);
+        let supertrait = tcx.item_name(shadowee.trait_container(tcx).unwrap());
+        diagnostics::SupertraitItemUsageShadowee::Labeled { span: shadowee_span, supertrait }
+    } else {
+        let (traits, spans): (Vec<_>, Vec<_>) = shadowed
+            .iter()
+            .map(|item| {
+                (tcx.item_name(item.trait_container(tcx).unwrap()), tcx.def_span(item.def_id))
+            })
+            .unzip();
+        diagnostics::SupertraitItemUsageShadowee::Several {
+            traits: traits.into(),
+            spans: spans.into(),
+        }
+    };
+
+    tcx.emit_node_span_lint(
+        RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
+        hir_id,
+        ident.span,
+        diagnostics::SupertraitItemShadowingUsage {
+            shadower,
+            shadowee,
+            item: ident.name,
+            subtrait,
+        },
+    );
+}
 
 /// The context in which an implied bound is being added to a item being lowered (i.e. a sizedness
 /// trait or a default trait)
@@ -1254,6 +1306,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         ty_param_span: Span,
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
+        hir_id: HirId,
         span: Span,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed> {
         debug!(?ty_param_def_id, ?assoc_ident, ?span);
@@ -1273,77 +1326,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             AssocItemQSelf::TyParam(ty_param_def_id, ty_param_span),
             assoc_tag,
             assoc_ident,
+            hir_id,
             span,
             None,
         )
-    }
-
-    /// When there are multiple traits which contain an identically named
-    /// associated item, this function eliminates any traits which are a
-    /// supertrait of another candidate trait.
-    ///
-    /// This is the type-level analogue of
-    /// `rustc_hir_typeck::method::probe::ProbeContext::collapse_candidates_to_subtrait_pick`;
-    /// keep both implementations in sync.
-    ///
-    /// This implements RFC #3624.
-    fn collapse_candidates_to_subtrait_pick(
-        &self,
-        matching_candidates: &[ty::PolyTraitRef<'tcx>],
-    ) -> Option<ty::PolyTraitRef<'tcx>> {
-        if !self.tcx().features().supertrait_item_shadowing() {
-            return None;
-        }
-
-        let mut child_trait = matching_candidates[0];
-        let mut supertraits: SsoHashSet<_> =
-            traits::supertrait_def_ids(self.tcx(), child_trait.def_id()).collect();
-
-        let mut remaining_candidates: Vec<_> = matching_candidates[1..].iter().copied().collect();
-        while !remaining_candidates.is_empty() {
-            let mut made_progress = false;
-            let mut next_round = vec![];
-
-            for remaining_trait in remaining_candidates {
-                if supertraits.contains(&remaining_trait.def_id()) {
-                    made_progress = true;
-                    continue;
-                }
-
-                // This candidate is not a supertrait of the `child_trait`.
-                // Check if it's a subtrait of the `child_trait`, instead.
-                // If it is, then it must have been a subtrait of every
-                // other pick we've eliminated at this point. It will
-                // take over at this point.
-                let remaining_trait_supertraits: SsoHashSet<_> =
-                    traits::supertrait_def_ids(self.tcx(), remaining_trait.def_id()).collect();
-                if remaining_trait_supertraits.contains(&child_trait.def_id()) {
-                    child_trait = remaining_trait;
-                    supertraits = remaining_trait_supertraits;
-                    made_progress = true;
-                    continue;
-                }
-
-                // Neither `child_trait` or the current candidate are
-                // supertraits of each other.
-                // Don't bail here, since we may be comparing two supertraits
-                // of a common subtrait. These two supertraits won't be related
-                // at all, but we will pick them up next round when we find their
-                // child as we continue iterating in this round.
-                next_round.push(remaining_trait);
-            }
-
-            if made_progress {
-                // If we've made progress, iterate again.
-                remaining_candidates = next_round;
-            } else {
-                // Otherwise, we must have at least two candidates which
-                // are not related to each other at all.
-                return None;
-            }
-        }
-
-        Some(child_trait)
     }
 
     /// Search for a single trait bound whose trait defines the associated item given by
@@ -1358,14 +1344,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         qself: AssocItemQSelf,
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
+        hir_id: HirId,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'_>>,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed>
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
-        let mut matching_candidates = all_candidates().filter(|r| {
-            self.probe_trait_that_defines_assoc_item(r.def_id(), assoc_tag, assoc_ident)
+        let mut matching_candidates = all_candidates().filter_map(|bound| {
+            let item = self.tcx().associated_items(bound.def_id()).find_by_ident_and_kind(
+                self.tcx(),
+                assoc_ident,
+                assoc_tag,
+                bound.def_id(),
+            )?;
+            Some((bound, *item))
         });
 
         let Some(bound1) = matching_candidates.next() else {
@@ -1380,11 +1373,30 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         if let Some(bound2) = matching_candidates.next() {
-            let all_matching_candidates: Vec<_> =
+            let mut all_matching_candidates: Vec<_> =
                 [bound1, bound2].into_iter().chain(matching_candidates).collect();
-            if let Some(bound) = self.collapse_candidates_to_subtrait_pick(&all_matching_candidates)
-            {
-                return Ok(bound);
+            if self.tcx().features().supertrait_item_shadowing() {
+                let candidate_traits: Vec<_> =
+                    all_matching_candidates.iter().map(|(bound, _)| bound.def_id()).collect();
+                if let Some(selected) = ty::util::unique_subtrait(self.tcx(), &candidate_traits) {
+                    let shadowed_items: Vec<_> = all_matching_candidates
+                        .extract_if(.., |(bound, _)| bound.def_id() != selected)
+                        .map(|(_, item)| item)
+                        .collect();
+
+                    // Shadowing selects a trait, but cannot disambiguate
+                    // different instantiations of that trait.
+                    if let [(bound, selected_item)] = all_matching_candidates[..] {
+                        lint_shadowed_supertrait_item_usage(
+                            self.tcx(),
+                            hir_id,
+                            assoc_ident,
+                            selected_item,
+                            &shadowed_items,
+                        );
+                        return Ok(bound);
+                    }
+                }
             }
 
             return Err(self.report_ambiguous_assoc_item(
@@ -1397,7 +1409,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ));
         }
 
-        Ok(bound1)
+        Ok(bound1.0)
     }
 
     /// Lower a [type-relative](hir::QPath::TypeRelative) path in type position to a type.
@@ -1660,6 +1672,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     AssocItemQSelf::SelfTyAlias,
                     assoc_tag,
                     segment.ident,
+                    qpath_hir_id,
                     span,
                     None,
                 )?
@@ -1672,6 +1685,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 hir_self_ty.span,
                 assoc_tag,
                 segment.ident,
+                qpath_hir_id,
                 span,
             )?,
             _ => {
