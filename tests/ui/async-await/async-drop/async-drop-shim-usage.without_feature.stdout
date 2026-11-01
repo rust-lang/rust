@@ -1,0 +1,113 @@
+print-type-size type: `{async fn body of has_drop_inside_dep::with_has_has_drop()}`: 40 bytes, alignment: 8 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 0 bytes
+print-type-size     variant `Suspend0`: 32 bytes
+print-type-size         local `..coroutine_field2`: 32 bytes, offset: 0 bytes, alignment: 8 bytes, type: {async fn body of async_drop_in_place<HasHasDrop>()}
+print-type-size         padding: 1 bytes
+print-type-size         local `._has_has_drop`: 0 bytes, alignment: 1 bytes
+print-type-size     variant `Suspend1`: 32 bytes
+print-type-size         local `..coroutine_field2`: 32 bytes, offset: 0 bytes, alignment: 8 bytes, type: {async fn body of async_drop_in_place<HasHasDrop>()}
+print-type-size         padding: 1 bytes
+print-type-size         local `..coroutine_field0`: 0 bytes, alignment: 1 bytes, type: ()
+print-type-size         local `._has_has_drop`: 0 bytes
+print-type-size     variant `Returned`: 0 bytes
+print-type-size     variant `Panicked`: 0 bytes
+print-type-size     end padding: 7 bytes
+print-type-size type: `std::mem::ManuallyDrop<{async fn body of std::future::async_drop_in_place<has_drop_inside_dep::HasHasDrop>()}>`: 32 bytes, alignment: 8 bytes
+print-type-size     field `.value`: 32 bytes
+print-type-size type: `std::mem::MaybeUninit<{async fn body of std::future::async_drop_in_place<has_drop_inside_dep::HasHasDrop>()}>`: 32 bytes, alignment: 8 bytes
+print-type-size     variant `MaybeUninit`: 32 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 32 bytes
+print-type-size type: `{async fn body of std::future::async_drop_in_place<has_drop_inside_dep::HasHasDrop>()}`: 32 bytes, alignment: 8 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 8 bytes
+print-type-size         upvar `._to_drop`: 8 bytes, offset: 0 bytes, alignment: 8 bytes
+print-type-size     variant `Suspend0`: 24 bytes
+print-type-size         upvar `._to_drop`: 8 bytes, offset: 0 bytes, alignment: 8 bytes
+print-type-size         local `..coroutine_field0`: 16 bytes, type: {async fn body of async_drop_in_place<HasDrop>()}
+print-type-size     variant `Suspend1`: 24 bytes
+print-type-size         upvar `._to_drop`: 8 bytes, offset: 0 bytes, alignment: 8 bytes
+print-type-size         local `..coroutine_field0`: 16 bytes, type: {async fn body of async_drop_in_place<HasDrop>()}
+print-type-size     variant `Returned`: 8 bytes
+print-type-size         upvar `._to_drop`: 8 bytes, offset: 0 bytes, alignment: 8 bytes
+print-type-size     variant `Panicked`: 8 bytes
+print-type-size         upvar `._to_drop`: 8 bytes, offset: 0 bytes, alignment: 8 bytes
+print-type-size     end padding: 7 bytes
+print-type-size type: `{async fn body of has_drop_inside_dep::with_has_drop()}`: 24 bytes, alignment: 8 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 0 bytes
+print-type-size     variant `Suspend0`: 16 bytes
+print-type-size         local `..coroutine_field2`: 16 bytes, offset: 0 bytes, alignment: 8 bytes, type: {async fn body of async_drop_in_place<HasDrop>()}
+print-type-size         padding: 1 bytes
+print-type-size         local `._has_drop`: 0 bytes, alignment: 1 bytes
+print-type-size     variant `Suspend1`: 16 bytes
+print-type-size         local `..coroutine_field2`: 16 bytes, offset: 0 bytes, alignment: 8 bytes, type: {async fn body of async_drop_in_place<HasDrop>()}
+print-type-size         padding: 1 bytes
+print-type-size         local `..coroutine_field0`: 0 bytes, alignment: 1 bytes, type: ()
+print-type-size         local `._has_drop`: 0 bytes
+print-type-size     variant `Returned`: 0 bytes
+print-type-size     variant `Panicked`: 0 bytes
+print-type-size     end padding: 7 bytes
+print-type-size type: `std::mem::ManuallyDrop<{async fn body of std::future::async_drop_in_place<has_drop_inside_dep::HasDrop>()}>`: 16 bytes, alignment: 8 bytes
+print-type-size     field `.value`: 16 bytes
+print-type-size type: `std::mem::MaybeUninit<{async fn body of std::future::async_drop_in_place<has_drop_inside_dep::HasDrop>()}>`: 16 bytes, alignment: 8 bytes
+print-type-size     variant `MaybeUninit`: 16 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 16 bytes
+print-type-size type: `{async fn body of std::future::async_drop_in_place<has_drop_inside_dep::HasDrop>()}`: 16 bytes, alignment: 8 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 8 bytes
+print-type-size         upvar `._to_drop`: 8 bytes, offset: 0 bytes, alignment: 8 bytes
+print-type-size     variant `Returned`: 8 bytes
+print-type-size         upvar `._to_drop`: 8 bytes, offset: 0 bytes, alignment: 8 bytes
+print-type-size     variant `Panicked`: 8 bytes
+print-type-size         upvar `._to_drop`: 8 bytes, offset: 0 bytes, alignment: 8 bytes
+print-type-size     end padding: 7 bytes
+print-type-size type: `std::ptr::DynMetadata<dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `._vtable_ptr`: 8 bytes
+print-type-size     field `._phantom`: 0 bytes
+print-type-size type: `std::ptr::NonNull<std::ptr::metadata::VTable>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.pointer`: 8 bytes
+print-type-size type: `{closure@std::rt::lang_start<()>::{closure#0}}`: 8 bytes, alignment: 8 bytes
+print-type-size     end padding: 8 bytes
+print-type-size type: `unwind::types::_Unwind_Reason_Code`: 4 bytes, alignment: 4 bytes
+print-type-size     discriminant: 4 bytes
+print-type-size     variant `_URC_NO_REASON`: 0 bytes
+print-type-size     variant `_URC_FOREIGN_EXCEPTION_CAUGHT`: 0 bytes
+print-type-size     variant `_URC_FATAL_PHASE2_ERROR`: 0 bytes
+print-type-size     variant `_URC_FATAL_PHASE1_ERROR`: 0 bytes
+print-type-size     variant `_URC_NORMAL_STOP`: 0 bytes
+print-type-size     variant `_URC_END_OF_STACK`: 0 bytes
+print-type-size     variant `_URC_HANDLER_FOUND`: 0 bytes
+print-type-size     variant `_URC_INSTALL_CONTEXT`: 0 bytes
+print-type-size     variant `_URC_CONTINUE_UNWIND`: 0 bytes
+print-type-size     variant `_URC_FAILURE`: 0 bytes
+print-type-size type: `std::process::ExitCode`: 1 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 1 bytes
+print-type-size type: `std::sys::process::unix::common::ExitCode`: 1 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 1 bytes
+print-type-size type: `has_drop_inside_dep::HasDrop`: 0 bytes, alignment: 1 bytes
+print-type-size     field `._is_drop`: 0 bytes
+print-type-size type: `has_drop_inside_dep::HasHasDrop`: 0 bytes, alignment: 1 bytes
+print-type-size     field `._has_drop`: 0 bytes
+print-type-size type: `has_drop_inside_dep::IsDrop`: 0 bytes, alignment: 1 bytes
+print-type-size type: `std::marker::PhantomData<dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe>`: 0 bytes, alignment: 1 bytes
+print-type-size type: `std::mem::ManuallyDrop<()>`: 0 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 0 bytes
+print-type-size type: `std::mem::ManuallyDrop<has_drop_inside_dep::HasDrop>`: 0 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 0 bytes
+print-type-size type: `std::mem::ManuallyDrop<has_drop_inside_dep::HasHasDrop>`: 0 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 0 bytes
+print-type-size type: `std::mem::MaybeUninit<()>`: 0 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 0 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 0 bytes
+print-type-size type: `std::mem::MaybeUninit<has_drop_inside_dep::HasDrop>`: 0 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 0 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 0 bytes
+print-type-size type: `std::mem::MaybeUninit<has_drop_inside_dep::HasHasDrop>`: 0 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 0 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 0 bytes
