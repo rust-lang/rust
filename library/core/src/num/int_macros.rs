@@ -1331,8 +1331,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(disjoint_bitor)]
-        ///
         /// assert_eq!(
         ///     // SAFETY: `1` and `-2` have no ones in common.
         #[doc = concat!("    unsafe { 1_", stringify!($SelfT), ".unchecked_disjoint_bitor(-2) },")]
@@ -1346,8 +1344,9 @@ macro_rules! int_impl {
         /// bits, i.e. `lhs & rhs` must be zero.
         ///
         /// Notably, this prevents both values from being negative.
-        #[unstable(feature = "disjoint_bitor", issue = "135758")]
-        #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
+        #[stable(feature = "disjoint_bitor", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "disjoint_bitor", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_allow_const_fn_unstable(const_trait_impl)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
