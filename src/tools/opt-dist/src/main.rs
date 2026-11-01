@@ -264,7 +264,7 @@ fn execute_pipeline(
                         builder.with_cranelift().cranelift_pgo_instrument(&rustc_profile_dir_root);
                 }
 
-                if env.supports_shared_llvm() {
+                if env.link_llvm_dynamically() {
                     // This first LLVM that we build will be thrown away after this stage, and it
                     // doesn't really need LTO. Without LTO, it builds in ~1 minute thanks to sccache,
                     // with LTO it takes almost 10 minutes. It makes the followup Rustc PGO
@@ -321,7 +321,6 @@ fn execute_pipeline(
         })?;
 
     // Stage 2: Gather LLVM PGO profiles
-    // Here we build a PGO instrumented LLVM, reusing the previously PGO optimized rustc.
     // Then we use the instrumented LLVM to gather LLVM PGO profiles.
     let llvm_pgo_profile = if env.build_llvm() {
         timer.section("Stage 2 (LLVM PGO)", |stage| {
@@ -331,10 +330,13 @@ fn execute_pipeline(
             let llvm_profile_dir_root = env.artifact_dir().join("llvm-pgo");
 
             stage.section("Build PGO instrumented LLVM", |section| {
-                Bootstrap::build(env)
-                    .llvm_pgo_instrument(&llvm_profile_dir_root)
-                    .avoid_rustc_rebuild()
-                    .run(section)
+                let builder = Bootstrap::build(env).llvm_pgo_instrument(&llvm_profile_dir_root);
+                let builder = if env.link_llvm_dynamically() {
+                    builder.avoid_rustc_rebuild()
+                } else {
+                    builder.rustc_pgo_optimize(&rustc_pgo_profile).rustc_rebuild()
+                };
+                builder.run(section)
             })?;
 
             let profile = stage.section("Gather profiles", |_| {
@@ -461,7 +463,7 @@ fn execute_pipeline(
     }
 
     // if LLVM is not built we'll have PGO optimized rustc
-    dist = if env.supports_shared_llvm() || !env.build_llvm() {
+    dist = if env.link_llvm_dynamically() || !env.build_llvm() {
         dist.avoid_rustc_rebuild()
     } else {
         dist.rustc_rebuild()
