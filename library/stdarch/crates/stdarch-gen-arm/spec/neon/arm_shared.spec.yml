@@ -11845,7 +11845,7 @@ intrinsics:
           arguments:
             - "ptr: {type[0]}"
           links:
-            - link: "llvm.aarch64.neon.ld4r.{neon_type[2]}.p0.p0"
+            - link: "llvm.aarch64.neon.ld4r.{neon_type[2]}.p0"
               arch: aarch64,arm64ec
       - FnCall: ["_vld4{neon_type[1].dup_nox}", ['a as _']]
 
