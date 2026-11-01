@@ -281,7 +281,7 @@ impl<'a> Converter<'a> {
 
                 rustc_lexer::TokenKind::Lifetime { starts_with_number } => {
                     if *starts_with_number {
-                        errors.push("Lifetime name cannot start with a number".into());
+                        errors.push("Lifetime name contains invalid characters".into());
                     }
                     LIFETIME_IDENT
                 }
