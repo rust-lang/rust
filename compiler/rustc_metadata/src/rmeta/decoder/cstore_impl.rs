@@ -26,6 +26,7 @@ use rustc_span::{Span, Symbol, bug, kw};
 use super::{Decodable, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
 use crate::rmeta::AttrFlags;
+use crate::rmeta::decoder::MetaBlob;
 use crate::rmeta::table::IsDefault;
 use crate::{eii, foreign_modules, native_libs};
 
@@ -625,15 +626,15 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     };
     provide_extern(&mut providers.extern_queries);
 
-    providers.extern_queries.experimental_comptime_fetch_file = |tcx, (cnum, key)| {
-        let key = key.as_str();
+    providers.extern_queries.experimental_comptime_fetch_file = |tcx, (cnum, path)| {
         let cstore = CStore::from_tcx(tcx);
         let crate_data = cstore.get_crate_data(cnum);
         crate_data
             .root
-            .decode_comptime_files(&crate_data.blob)
-            .find(|(path, _)| key == path)
-            .map(|(_, data)| &*tcx.arena.alloc_slice(data.as_ref()))
+            .comptime_files
+            .get(&path)
+            .map(|lv| lv.decode(crate_data.blob()))
+            .map(|v| &*tcx.arena.alloc_slice(&v))
     };
 }
 

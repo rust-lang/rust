@@ -7,7 +7,7 @@ use rustc_ast::Mutability;
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_lint_defs::builtin::LONG_RUNNING_CONST_EVAL;
 use rustc_middle::mir::AssertMessage;
@@ -603,7 +603,13 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let path = ecx.read_str(&arg_place)?;
                 let path_sym = Symbol::intern(path);
 
-                let krate = LOCAL_CRATE; // somehow fetch crate of the object
+                let krate = ecx
+                    .stack()
+                    .first()
+                    .expect("should have a call frame if we are here")
+                    .instance()
+                    .def_id()
+                    .krate;
 
                 let content = ecx.tcx.experimental_comptime_fetch_file((krate, path_sym));
                 let variant_index = if let Some(value) = content {

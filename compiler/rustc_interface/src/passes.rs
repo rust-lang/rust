@@ -621,7 +621,6 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
         // Account for explicitly marked-to-track files
         // (e.g. accessed in proc macros).
         let file_depinfo = sess.file_depinfo.borrow();
-        tracing::error!("{:?}", *file_depinfo);
 
         let normalize_path = |path: PathBuf| escape_dep_filename(&path.to_string_lossy());
 

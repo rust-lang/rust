@@ -1029,13 +1029,6 @@ impl CrateRoot {
     ) -> impl ExactSizeIterator<Item = DeniedPartialMitigation> {
         self.denied_partial_mitigations.decode(metadata)
     }
-
-    pub(crate) fn decode_comptime_files<'a>(
-        &self,
-        metadata: &'a MetadataBlob,
-    ) -> impl ExactSizeIterator<Item = (String, Vec<u8>)> {
-        self.comptime_files.decode(metadata)
-    }
 }
 
 impl CrateMetadata {

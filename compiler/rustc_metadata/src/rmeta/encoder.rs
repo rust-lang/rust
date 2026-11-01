@@ -771,16 +771,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let denied_partial_mitigations = stat!("denied-partial-mitigations", || self
             .encode_enabled_denied_partial_mitigations());
 
-        let mut comptime_files = Vec::new();
-        for raw_path in &tcx.sess.opts.unstable_opts.experimental_comptime_files {
-            let path = Symbol::intern(raw_path);
-            if let Some(file_data) = tcx.experimental_comptime_fetch_file((LOCAL_CRATE, path)) {
-                comptime_files.push((raw_path.clone(), file_data.to_vec()));
-            }
-        }
-
-        // Should I somehow sort by filename here in case this does *anything* with the parallel frontend stuff or something?
-        let comptime_files = self.lazy_array(comptime_files);
+        let comptime_files = stat!("comptime-files", || self.encode_comptime_files(tcx));
 
         let root = stat!("crate-root", || {
             let attrs = tcx.hir_krate_attrs();
@@ -2476,6 +2467,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ));
         }
         LazyArray::default()
+    }
+
+    fn encode_comptime_files(&mut self, tcx: TyCtxt<'_>) -> IndexMap<Symbol, LazyValue<Vec<u8>>> {
+        let mut comptime_files = IndexMap::default();
+        for raw_path in &tcx.sess.opts.unstable_opts.experimental_comptime_files {
+            let path = Symbol::intern(raw_path);
+            if let Some(file_data) = tcx.experimental_comptime_fetch_file((LOCAL_CRATE, path)) {
+                comptime_files.insert_full(path, self.lazy(file_data.to_vec()));
+            }
+        }
+
+        comptime_files
     }
 }
 
