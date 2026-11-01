@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use parking_lot::{Condvar, Mutex};
 use rustc_data_structures::hash_table::Entry;
+use rustc_data_structures::sync::collect;
 use rustc_data_structures::{defer, outline, sharded, sync};
 use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{
@@ -198,6 +199,9 @@ fn latch_wait_on<'tcx>(
     // remove it from the `waiters` list before resuming this thread.
     waiters.push(Arc::clone(&waiter));
 
+    // Release this thread from memory reclamation.
+    collect::release();
+
     // Awaits the caller on this latch by blocking the current thread. If this detects a deadlock
     // and the deadlock handler wants to resume this thread we have to be in the `wait` call. This
     // is ensured by the deadlock handler getting the waiters lock.
@@ -330,6 +334,10 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
             // Tell the guard to insert `value` in the cache and remove the status entry from
             // `query.state`.
             job_guard.complete(&query.cache, value, dep_node_index);
+
+            // Periodic memory reclamation trigger.
+            // We do this after `complete` since the default caches may have memory to free due to table expansion.
+            collect::collect();
 
             (value, Some(dep_node_index))
         }
