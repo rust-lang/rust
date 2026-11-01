@@ -412,6 +412,135 @@ exclude_labels = [
     "T-*",
 ]
 
+[autolabel."T-testing-devex"]
+trigger_files = [
+    "library/test",
+]
+exclude_labels = [
+    "T-*",
+]
+
+[autolabel."A-libtest"]
+trigger_files = [
+    "library/test",
+]
+
+[autolabel."A-allocators"]
+trigger_files = [
+    "library/{core,alloc,std}/src/alloc{.rs,}",
+]
+
+[autolabel."A-array"]
+trigger_files = [
+    "library/{core,alloc,std}/src/array{.rs,}",
+]
+
+[autolabel."A-atomic"]
+trigger_files = [
+    "library/{core,alloc,std}/src/sync/atomic{.rs,}",
+]
+
+[autolabel."A-backtrace"]
+trigger_files = [
+    "library/backtrace",
+    "library/{core,alloc,std}/src/backtrace{.rs,}",
+]
+
+[autolabel."A-box"]
+trigger_files = [
+    "library/{core,alloc,std}/src/boxed{.rs,}",
+]
+
+[autolabel."A-collections"]
+trigger_files = [
+    "library/{core,alloc,std}/src/collections{.rs,}",
+]
+
+[autolabel."A-env"]
+trigger_files = [
+    "library/{core,alloc,std}/src/env{.rs,}",
+]
+
+[autolabel."A-filesystem"]
+trigger_files = [
+    "library/{core,alloc,std}/src/fs{.rs,}",
+]
+
+[autolabel."A-fmt"]
+trigger_files = [
+    "library/{core,alloc,std}/src/fmt{.rs,}",
+]
+
+[autolabel."A-io"]
+trigger_files = [
+    "library/{core,alloc,std}/src/io{.rs,}",
+]
+
+[autolabel."A-iterators"]
+trigger_files = [
+    "library/{core,alloc,std}/src/iter{.rs,}",
+]
+
+[autolabel."A-networking"]
+trigger_files = [
+    "library/{core,alloc,std}/src/net{.rs,}",
+]
+
+[autolabel."A-option-result"]
+trigger_files = [
+    "library/{core,alloc,std}/src/option{.rs,}",
+    "library/{core,alloc,std}/src/result{.rs,}",
+]
+
+[autolabel."A-path"]
+trigger_files = [
+    "library/{core,alloc,std}/src/path{.rs,}",
+]
+
+[autolabel."A-panic"]
+trigger_files = [
+    "library/{core,alloc,std}/src/panic{.rs,}",
+    "library/{core,alloc,std}/src/panicking{.rs,}",
+]
+
+[autolabel."A-process"]
+trigger_files = [
+    "library/{core,alloc,std}/src/process{.rs,}",
+]
+
+[autolabel."A-raw-pointers"]
+trigger_files = [
+    "library/{core,alloc,std}/src/ptr{.rs,}",
+]
+
+[autolabel."A-random"]
+trigger_files = [
+    "library/{core,alloc,std}/src/random{.rs,}",
+]
+
+[autolabel."A-slice"]
+trigger_files = [
+    "library/{core,alloc,std}/src/slice{.rs,}",
+]
+
+[autolabel."A-str"]
+trigger_files = [
+    "library/{core,alloc,std}/src/str{.rs,}",
+    "library/{core,alloc,std}/src/string{.rs,}",
+]
+
+[autolabel."A-thread"]
+trigger_files = [
+    "library/{core,alloc,std}/src/thread{.rs,}",
+    "library/std/src/sys/thread",
+    "library/std/src/sys/thread_local",
+]
+
+[autolabel."A-time"]
+trigger_files = [
+    "library/{core,alloc,std}/src/time{.rs,}",
+]
+
 [autolabel."O-android"]
 trigger_files = [
     "library/std/src/os/android"
