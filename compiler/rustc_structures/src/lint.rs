@@ -19,24 +19,22 @@ pub struct LintName {
 }
 
 impl LintName {
-    pub fn new(segments: impl Iterator<Item = Symbol>) -> LintName {
-        let segments = segments.collect::<Vec<_>>();
-        let (tool, name) = match &*segments {
-            [] => unreachable!(),
-            [lint_name] => (None, *lint_name),
-            [tool, lint_name] => (Some(*tool), *lint_name),
+    pub fn new(mut segments: impl Iterator<Item = Symbol>) -> LintName {
+        match (segments.next(), segments.next(), segments.next()) {
+            (Some(name), None, _) => LintName { tool: None, name },
+            (Some(tool), Some(name), None) => LintName { tool: Some(tool), name },
             // Not reachable for any builtin lints,
             // but reachable using `register_tool`.
-            [tool, lint_name, rest @ ..] => {
-                let mut lint_name = String::from(lint_name.as_str());
-                for seg in rest {
+            (Some(tool), Some(lint_name), Some(rest)) => {
+                let mut lint_name = format!("{lint_name}::{rest}");
+                for seg in segments {
                     lint_name.push_str("::");
                     lint_name.push_str(seg.as_str());
                 }
-                (Some(*tool), Symbol::intern(&lint_name))
+                LintName { tool: Some(tool), name: Symbol::intern(&lint_name) }
             }
-        };
-        LintName { tool, name }
+            _ => unreachable!(),
+        }
     }
 
     /// `lint` must not be empty.
