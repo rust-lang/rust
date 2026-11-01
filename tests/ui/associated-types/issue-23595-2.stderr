@@ -4,7 +4,7 @@ error[E0220]: associated type `anything_here_kills_it` not found for `Self`
 LL |     type B = C<Self::anything_here_kills_it>;
    |                      ^^^^^^^^^^^^^^^^^^^^^^
    |
-help: `Self` has the following associated type
+help: `Self` has associated type `B`
    |
 LL -     type B = C<Self::anything_here_kills_it>;
 LL +     type B = C<Self::B>;
