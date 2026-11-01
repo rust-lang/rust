@@ -112,6 +112,7 @@
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(slice_shift)]
+#![feature(slice_split_off_chunk)]
 #![feature(sliceindex_wrappers)]
 #![feature(splat)]
 #![feature(split_array)]
