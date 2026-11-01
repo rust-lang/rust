@@ -35,12 +35,10 @@ LL | impl Marker2 for dyn Object {}
    = note: a trait object implements `Marker2` if and only if `Marker2` is one of the trait object's trait bounds
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:22:1
+  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:22:22
    |
 LL | unsafe impl Send for dyn Marker2 {}
-   | ^^^^^^^^^^^^^^^^^^^^^-----------
-   |                      |
-   |                      `dyn Marker2` is not defined in the current crate
+   |                      ^^^^^^^^^^^ `dyn Marker2` is not defined in the current crate
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules

@@ -9,24 +9,20 @@ LL | impl Copy for &'static NotSync {}
              where T: ?Sized;
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-copy.rs:33:1
+  --> $DIR/coherence-impls-copy.rs:33:15
    |
 LL | impl Copy for &'static [NotSync] {}
-   | ^^^^^^^^^^^^^^------------------
-   |               |
-   |               this is not defined in the current crate because slices are always foreign
+   |               ^^^^^^^^^^^^^^^^^^ this is not defined in the current crate because slices are always foreign
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for primitive types
-  --> $DIR/coherence-impls-copy.rs:5:1
+  --> $DIR/coherence-impls-copy.rs:5:15
    |
 LL | impl Copy for i32 {}
-   | ^^^^^^^^^^^^^^---
-   |               |
-   |               `i32` is not defined in the current crate
+   |               ^^^ `i32` is not defined in the current crate
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
@@ -39,12 +35,10 @@ LL | impl Copy for &'static mut MyType {}
    |               ^^^^^^^^^^^^^^^^^^^ type is not a structure or enumeration
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-copy.rs:25:1
+  --> $DIR/coherence-impls-copy.rs:25:15
    |
 LL | impl Copy for (MyType, MyType) {}
-   | ^^^^^^^^^^^^^^----------------
-   |               |
-   |               this is not defined in the current crate because tuples are always foreign
+   |               ^^^^^^^^^^^^^^^^ this is not defined in the current crate because tuples are always foreign
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
@@ -57,12 +51,10 @@ LL | impl Copy for (MyType, MyType) {}
    |               ^^^^^^^^^^^^^^^^ type is not a structure or enumeration
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-copy.rs:30:1
+  --> $DIR/coherence-impls-copy.rs:30:15
    |
 LL | impl Copy for [MyType] {}
-   | ^^^^^^^^^^^^^^--------
-   |               |
-   |               this is not defined in the current crate because slices are always foreign
+   |               ^^^^^^^^ this is not defined in the current crate because slices are always foreign
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules

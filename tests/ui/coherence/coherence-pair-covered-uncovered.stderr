@@ -1,10 +1,8 @@
 error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
-  --> $DIR/coherence-pair-covered-uncovered.rs:8:1
+  --> $DIR/coherence-pair-covered-uncovered.rs:8:22
    |
 LL | impl<T,U> Remote for Pair<T,Local<U>> { }
-   | ^^^^^^^^^^^^^^^^^^^^^----------------
-   |                      |
-   |                      `Pair` is not defined in the current crate
+   |                      ^^^^^^^^^^^^^^^^ `Pair` is not defined in the current crate
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules

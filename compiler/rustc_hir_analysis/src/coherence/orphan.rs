@@ -390,7 +390,7 @@ fn emit_orphan_check_error<'tcx>(
             let impl_ = item.expect_impl();
             let of_trait = impl_.of_trait.unwrap();
 
-            let span = tcx.def_span(impl_def_id);
+            let span = impl_.self_ty.span;
             let mut diag = tcx.dcx().create_err(match trait_ref.self_ty().kind() {
                 ty::Adt(..) => diagnostics::OnlyCurrentTraits::Outside { span, note: () },
                 _ if trait_ref.self_ty().is_primitive() => {
