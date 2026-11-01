@@ -122,7 +122,7 @@ pub(crate) enum AssocItemNotFoundLabel<'a> {
 #[derive(Subdiagnostic)]
 pub(crate) enum AssocItemNotFoundSugg<'a> {
     #[suggestion(
-        "there is an associated {$assoc_kind} with a similar name",
+        "there is an associated {$assoc_kind} with similar name `{$suggested_name}`",
         code = "{suggested_name}",
         style = "verbose",
         applicability = "maybe-incorrect"
@@ -168,7 +168,7 @@ pub(crate) enum AssocItemNotFoundSugg<'a> {
         applicability: Applicability,
     },
     #[suggestion(
-        "`{$qself}` has the following associated {$assoc_kind}",
+        "`{$qself}` has associated {$assoc_kind} `{$suggested_name}`",
         code = "{suggested_name}",
         style = "verbose",
         applicability = "maybe-incorrect"

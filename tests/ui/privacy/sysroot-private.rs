@@ -21,7 +21,7 @@ trait Trait { type Bar; }
 // present in diagnostics (it is a dependency of the compiler).
 type AssociatedTy = dyn Trait<ExpressionStack = i32, Bar = i32>;
 //~^ ERROR associated type `ExpressionStack` not found
-//[default]~| HELP `Trait` has the following associated type
+//[default]~| HELP `Trait` has associated type `Bar`
 //[default]~| SUGGESTION Bar
 //[rustc_private_enabled]~| NOTE there is an associated type `ExpressionStack` in the trait `gimli::read::op::EvaluationStorage`
 

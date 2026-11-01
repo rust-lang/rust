@@ -4,7 +4,7 @@ error[E0220]: associated constant `Z` not found for `Foo`
 LL | fn foo1<F: Foo<Z = 3>>() {}
    |                ^
    |
-help: there is an associated constant with a similar name
+help: there is an associated constant with similar name `N`
    |
 LL - fn foo1<F: Foo<Z = 3>>() {}
 LL + fn foo1<F: Foo<N = 3>>() {}
@@ -22,7 +22,7 @@ error[E0220]: associated constant `Z` not found for `Foo`
 LL | fn foo3<F: Foo<Z = 5>>() {}
    |                ^
    |
-help: there is an associated constant with a similar name
+help: there is an associated constant with similar name `N`
    |
 LL - fn foo3<F: Foo<Z = 5>>() {}
 LL + fn foo3<F: Foo<N = 5>>() {}
