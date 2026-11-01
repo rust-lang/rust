@@ -608,26 +608,33 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .ok()
                 .is_some_and(|s| s.trim_end().ends_with('<'));
 
-        let is_global = poly_trait_ref.trait_ref.path.is_global();
+        let trait_path = poly_trait_ref.trait_ref.path;
+        let needs_parens = span.edition().is_rust_2015()
+            && trait_path.is_global()
+            && trait_path.span.lo() == span.lo();
 
         let mut sugg = vec![(
             span.shrink_to_lo(),
             format!(
                 "{}dyn {}",
                 if needs_bracket { "<" } else { "" },
-                if is_global { "(" } else { "" },
+                if needs_parens { "(" } else { "" },
             ),
         )];
 
-        if is_global || needs_bracket {
-            sugg.push((
-                span.shrink_to_hi(),
-                format!(
-                    "{}{}",
-                    if is_global { ")" } else { "" },
-                    if needs_bracket { ">" } else { "" },
-                ),
-            ));
+        let mut closing = String::new();
+        if needs_parens {
+            if trait_path.span.hi() == span.hi() {
+                closing.push(')');
+            } else {
+                sugg.push((trait_path.span.shrink_to_hi(), ")".to_string()));
+            }
+        }
+        if needs_bracket {
+            closing.push('>');
+        }
+        if !closing.is_empty() {
+            sugg.push((span.shrink_to_hi(), closing));
         }
 
         if span.edition().at_least_rust_2021() {
