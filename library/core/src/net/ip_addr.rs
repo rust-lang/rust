@@ -102,7 +102,11 @@ impl Hash for Ipv4Addr {
 /// Both types of addresses are not assigned any special meaning by this implementation,
 /// other than what the relevant standards prescribe. This means that an address like `::ffff:127.0.0.1`,
 /// while representing an IPv4 loopback address, is not itself an IPv6 loopback address; only `::1` is.
-/// To handle these so called "IPv4-in-IPv6" addresses, they have to first be converted to their canonical IPv4 address.
+/// Consequently, helper methods such as [`Ipv6Addr::is_loopback`] and [`Ipv6Addr::is_unspecified`]
+/// do not treat IPv4-mapped addresses as loopback or unspecified addresses.
+///
+/// To handle these so called "IPv4-in-IPv6" addresses, convert them to their canonical representation
+/// using [`Ipv6Addr::to_canonical`] (or [`IpAddr::to_canonical`]) before performing such checks.
 ///
 /// ### IPv4-Compatible IPv6 Addresses
 ///
@@ -136,9 +140,10 @@ impl Hash for Ipv4Addr {
 /// So `::ffff:a.b.c.d` would be an IPv4-mapped IPv6 address representing the IPv4 address `a.b.c.d`.
 ///
 /// To convert from an IPv4 address to an IPv4-mapped IPv6 address, use [`Ipv4Addr::to_ipv6_mapped`].
-/// Use [`Ipv6Addr::to_ipv4`] to convert an IPv4-mapped IPv6 address to the canonical IPv4 address.
-/// Note that this will also convert the IPv6 loopback address `::1` to `0.0.0.1`. Use
-/// [`Ipv6Addr::to_ipv4_mapped`] to avoid this.
+/// Use [`Ipv6Addr::to_canonical`] to convert an IPv4-mapped IPv6 address to its canonical [`IpAddr::V4`]
+/// form (preserving native IPv6 addresses as [`IpAddr::V6`]).
+/// Alternatively, [`Ipv6Addr::to_ipv4_mapped`] extracts the inner [`Ipv4Addr`] if mapped,
+/// while [`Ipv6Addr::to_ipv4`] converts any lower 32 bits (and will also map `::1` to `0.0.0.1`).
 ///
 /// [IETF RFC 4291 Section 2.5.5.2]: https://datatracker.ietf.org/doc/html/rfc4291#section-2.5.5.2
 ///
@@ -286,6 +291,10 @@ impl IpAddr {
     /// See the documentation for [`Ipv4Addr::is_unspecified()`] and
     /// [`Ipv6Addr::is_unspecified()`] for more details.
     ///
+    /// Note that an [`IpAddr::V6`] containing an IPv4-mapped address (such as
+    /// `::ffff:0.0.0.0`) will return `false`. Use [`to_canonical()`](Self::to_canonical)
+    /// to handle IPv4-mapped addresses.
+    ///
     /// # Examples
     ///
     /// ```
@@ -339,6 +348,10 @@ impl IpAddr {
     /// See the documentation for [`Ipv4Addr::is_loopback()`] and
     /// [`Ipv6Addr::is_loopback()`] for more details.
     ///
+    /// Note that an [`IpAddr::V6`] containing an IPv4-mapped loopback address
+    /// (such as `::ffff:127.0.0.1`) will return `false`. Use
+    /// [`to_canonical()`](Self::to_canonical) to handle IPv4-mapped addresses.
+    ///
     /// # Examples
     ///
     /// ```
@@ -346,6 +359,10 @@ impl IpAddr {
     ///
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)).is_loopback(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1)).is_loopback(), true);
+    ///
+    /// let mapped = IpAddr::V6(Ipv4Addr::LOCALHOST.to_ipv6_mapped());
+    /// assert_eq!(mapped.is_loopback(), false);
+    /// assert_eq!(mapped.to_canonical().is_loopback(), true);
     /// ```
     #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
@@ -1573,6 +1590,11 @@ impl Ipv6Addr {
     ///
     /// This property is defined in [IETF RFC 4291].
     ///
+    /// Note that IPv4-mapped IPv6 addresses (such as `::ffff:0.0.0.0`) are not
+    /// considered unspecified by this method. If you need to check whether an address
+    /// represents an unspecified address regardless of representation, use
+    /// [`to_canonical()`](Self::to_canonical) before checking.
+    ///
     /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
     ///
     /// # Examples
@@ -1596,16 +1618,25 @@ impl Ipv6Addr {
     ///
     /// Contrary to IPv4, in IPv6 there is only one loopback address.
     ///
+    /// Note that IPv4-mapped IPv6 addresses (such as `::ffff:127.0.0.1`) are not
+    /// considered loopback addresses by this method. If you need to check whether an
+    /// address represents a loopback address regardless of representation, use
+    /// [`to_canonical()`](Self::to_canonical) before checking.
+    ///
     /// [loopback address]: Ipv6Addr::LOCALHOST
     /// [IETF RFC 4291 section 2.5.3]: https://tools.ietf.org/html/rfc4291#section-2.5.3
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::net::Ipv6Addr;
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
     ///
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_loopback(), false);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1).is_loopback(), true);
+    ///
+    /// let mapped = Ipv4Addr::LOCALHOST.to_ipv6_mapped();
+    /// assert_eq!(mapped.is_loopback(), false);
+    /// assert_eq!(mapped.to_canonical().is_loopback(), true);
     /// ```
     #[rustc_const_stable(feature = "const_ip_50", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
