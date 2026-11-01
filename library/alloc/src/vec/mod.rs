@@ -2533,6 +2533,90 @@ impl<T, A: Allocator> Vec<T, A> {
         mem::forget(g);
     }
 
+    /// Retains only the elements specified by the predicate, passing a mutable reference to it.
+    ///
+    /// In other words, remove all elements `e` such that `f(&mut e)` returns `false`.
+    /// This method does not maintain the relative order of the retained elements. If order matters,
+    /// consider using [`Vec::retain_mut`] instead. However, if no items are removed, then all items
+    /// are left in their original positions.
+    ///
+    /// [`Vec::retain_mut`]: crate::vec::Vec::retain_mut
+    ///
+    /// Time complexity: *O*(*n*)
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(retain_unstable)]
+    /// let mut vec = vec![4, 3, 2, 1];
+    /// vec.retain_unstable(|x| if *x <= 3 {
+    ///     *x += 1;
+    ///     true
+    /// } else {
+    ///     false
+    /// });
+    ///
+    /// vec.sort(); // it might be in any order, so normalize before asserting
+    /// assert_eq!(vec, [2, 3, 4]);
+    /// ```
+    #[unstable(feature = "retain_unstable", issue = "164152")]
+    pub fn retain_unstable<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut T) -> bool,
+    {
+        // Currently this does the following:
+        // 1) Search backward until you find an element you want to remove
+        // 2) Swap this element with an element that was kept in the back
+        //    (or if there are no remaining elements, simply truncate the vec)
+        // 3) Repeat from 1) until there's no element to iterate through
+
+        let original_len = self.len();
+
+        if original_len == 0 {
+            // Empty case: explicit return allows better optimization, vs letting compiler infer it
+            return;
+        }
+
+        let mut read_back = original_len;
+        let mut hole = loop {
+            if read_back == 0 {
+                // All elements are kept
+                return;
+            }
+            // SAFETY: read_back - 1 < original_len
+            let cur = unsafe { &mut *self.as_mut_ptr().add(read_back - 1) };
+            if hint::unlikely(!f(cur)) {
+                break cur;
+            }
+            read_back -= 1;
+        };
+
+        if read_back < self.len {
+            let swap = self.pop().unwrap();
+            *hole = swap;
+        } else {
+            self.truncate(self.len - 1);
+        }
+        read_back -= 1;
+
+        while read_back > 0 {
+            // SAFETY: read_back - 1 is always less than current length of
+            // the vector and the loop condition, read_back > 0, prevents
+            // read_back from underflowing
+            hole = unsafe { &mut *self.as_mut_ptr().add(read_back - 1) };
+            if !f(hole) {
+                if read_back < self.len {
+                    let swap = self.pop().unwrap();
+                    *hole = swap;
+                } else {
+                    self.truncate(self.len - 1);
+                }
+            }
+            read_back -= 1;
+        }
+    }
+
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
     /// key.
     ///
