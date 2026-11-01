@@ -837,7 +837,7 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
 
 /// Replaces `dest` with the default value of `T`, returning the previous `dest` value.
 ///
-/// * If you want to replace the values of two variables, see [`swap`].
+/// * If you want to switch the values of two variables, see [`swap`].
 /// * If you want to replace with a passed value instead of the default value, see [`replace`].
 ///
 /// # Examples
