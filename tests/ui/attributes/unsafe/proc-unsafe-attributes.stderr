@@ -25,11 +25,13 @@ help: escape `unsafe` to use it as an identifier
 LL | #[unsafe(allow(r#unsafe(dead_code)))]
    |                ++
 
-error[E0452]: malformed lint attribute input
+error: malformed `allow` attribute input
   --> $DIR/proc-unsafe-attributes.rs:29:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
-   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
+   |                ^^^^^^^^^^^^^^^^^ not the name of a lint
+   |
+   = help: for example, write `#[allow(dead_code)]` for `dead_code`
 
 error: the `proc_macro` attribute is only usable with crates of the `proc-macro` crate type
   --> $DIR/proc-unsafe-attributes.rs:1:10
@@ -85,12 +87,13 @@ help: escape `unsafe` to use it as an identifier
 LL | #[unsafe(allow(r#unsafe(dead_code)))]
    |                ++
 
-error[E0452]: malformed lint attribute input
+error: malformed `allow` attribute input
   --> $DIR/proc-unsafe-attributes.rs:29:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
-   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
+   |                ^^^^^^^^^^^^^^^^^ not the name of a lint
    |
+   = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `proc_macro` is not an unsafe attribute
@@ -176,15 +179,15 @@ help: escape `unsafe` to use it as an identifier
 LL | #[unsafe(allow(r#unsafe(dead_code)))]
    |                ++
 
-error[E0452]: malformed lint attribute input
+error: malformed `allow` attribute input
   --> $DIR/proc-unsafe-attributes.rs:29:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
-   |                ^^^^^^^^^^^^^^^^^ bad attribute argument
+   |                ^^^^^^^^^^^^^^^^^ not the name of a lint
    |
+   = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 21 previous errors
 
-Some errors have detailed explanations: E0452, E0565.
-For more information about an error, try `rustc --explain E0452`.
+For more information about this error, try `rustc --explain E0565`.

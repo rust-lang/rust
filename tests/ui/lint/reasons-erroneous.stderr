@@ -29,23 +29,29 @@ LL | #![warn(anonymous_parameters, reason = b"consider these, for we have condem
    |
    = note: expected a normal string literal, not a byte string literal
 
-error[E0452]: malformed lint attribute input
+error: malformed `warn` attribute input
   --> $DIR/reasons-erroneous.rs:10:29
    |
 LL | #![warn(bare_trait_objects, reasons = "leaders to no sure land, guides their bearings lost")]
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bad attribute argument
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not the name of a lint
+   |
+   = help: for example, write `#[warn(dead_code)]` for `dead_code`
 
-error[E0452]: malformed lint attribute input
+error: malformed `warn` attribute input
   --> $DIR/reasons-erroneous.rs:13:22
    |
 LL | #![warn(unsafe_code, blerp = "or in league with robbers have reversed the signposts")]
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bad attribute argument
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not the name of a lint
+   |
+   = help: for example, write `#[warn(dead_code)]` for `dead_code`
 
-error[E0452]: malformed lint attribute input
+error: malformed `warn` attribute input
   --> $DIR/reasons-erroneous.rs:16:36
    |
 LL | #![warn(elided_lifetimes_in_paths, reason("disrespectful to ancestors", "irresponsible to heirs"))]
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bad attribute argument
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not the name of a lint
+   |
+   = help: for example, write `#[warn(dead_code)]` for `dead_code`
 
 error[E0452]: malformed lint attribute input
   --> $DIR/reasons-erroneous.rs:19:44

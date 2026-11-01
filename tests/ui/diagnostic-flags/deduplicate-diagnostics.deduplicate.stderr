@@ -1,4 +1,4 @@
-error: expected a lint, found literal
+error: malformed `deny` attribute input
   --> $DIR/deduplicate-diagnostics.rs:10:8
    |
 LL | #[deny("literal")]
