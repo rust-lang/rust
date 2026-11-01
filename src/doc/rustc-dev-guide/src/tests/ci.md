@@ -3,19 +3,19 @@
 The primary goal of our CI system is to ensure that the `main` branch of
 `rust-lang/rust` is always in a valid state by passing our test suite.
 
-From a high-level point of view, when you open a pull request at
-`rust-lang/rust`, the following will happen:
+From a high-level point of view, when you open a pull request at `rust-lang/rust`,
+the following will happen:
 
 - A small [subset](#pull-request-builds) of tests and checks are run after each push to the PR.
   This should help catch common errors.
 - When the PR is approved, the [bors] bot enqueues the PR into a [merge queue].
-- Once the PR gets to the front of the queue, bors will create a merge commit
-  and run the [full test suite](#auto-builds) on it.
+- Once the PR gets to the front of the queue,
+  bors will create a merge commit and run the [full test suite](#auto-builds) on it.
   The merge commit either contains only one specific PR or it can be a ["rollup"](#rollups) which
   combines multiple PRs together, to reduce CI costs and merge delays.
 - Once the whole test suite finishes, two things can happen.
-  Either CI fails with an error that needs to be addressed by the developer, or CI succeeds and
-  the merge commit is then pushed to the `main` branch.
+  Either CI fails with an error that needs to be addressed by the developer,
+  or CI succeeds and the merge commit is then pushed to the `main` branch.
 
 If you want to modify what gets executed on CI, see [Modifying CI jobs](#modifying-ci-jobs).
 
@@ -23,13 +23,13 @@ If you want to modify what gets executed on CI, see [Modifying CI jobs](#modifyi
 
 <!-- date-check: Oct 2024 -->
 
-Our CI is primarily executed on [GitHub Actions], with a single workflow defined
-in [`.github/workflows/ci.yml`], which contains a bunch of steps that are
-unified for all CI jobs that we execute.
+Our CI is primarily executed on [GitHub Actions],
+with a single workflow defined in [`.github/workflows/ci.yml`],
+which contains a bunch of steps that are unified for all CI jobs that we execute.
 When a commit is pushed to a corresponding branch or a PR, the workflow executes the
 [`src/ci/citool`] crate, which dynamically generates the specific CI jobs that should be executed.
-This script uses the [`jobs.yml`] file as an
-input, which contains a declarative configuration of all our CI jobs.
+This script uses the [`jobs.yml`] file as an input,
+which contains a declarative configuration of all our CI jobs.
 
 > Almost all build steps shell out to separate scripts. This keeps the CI fairly
 > platform independent (i.e., we are not overly reliant on GitHub Actions).
@@ -48,14 +48,14 @@ There are two broad categories of jobs that are executed, `dist` and non-`dist` 
   The same builds are also used
   for actual releases: our release process basically consists of copying those
   artifacts from `rust-lang-ci2` to the production endpoint and signing them.
-- Non-dist jobs run our full test suite on the platform, and the test suite of
-  all the tools we ship through rustup;
+- Non-dist jobs run our full test suite on the platform,
+  and the test suite of all the tools we ship through rustup;
   The amount of stuff we test depends on
-  the platform (for example some tests are run only on Tier 1 platforms), and
-  some quicker platforms are grouped together on the same builder to avoid wasting CI resources.
+  the platform (for example some tests are run only on Tier 1 platforms),
+  and some quicker platforms are grouped together on the same builder to avoid wasting CI resources.
 
-Based on an input event (usually a push to a branch), we execute one of three
-kinds of builds (sets of jobs).
+Based on an input event (usually a push to a branch),
+we execute one of three kinds of builds (sets of jobs).
 
 1. PR builds
 2. Auto builds
@@ -66,29 +66,29 @@ kinds of builds (sets of jobs).
 ### Pull Request builds
 
 After each push to a pull request, a set of `pr` jobs are executed.
-Currently, these execute the `test-x86_64-gnu-llvm-X`, `test-x86_64-gnu-tools`, `test-pr-check-1`, `test-pr-check-2`
-and `test-tidy` jobs, all running on Linux.
+Currently, these execute the `test-x86_64-gnu-llvm-X`, `test-x86_64-gnu-tools`, `test-pr-check-1`,
+`test-pr-check-2` and `test-tidy` jobs, all running on Linux.
 These execute a relatively short
 (~40 minutes) and lightweight test suite that should catch common issues.
-More specifically, they run a set of lints, they try to perform a cross-compile check
-build to Windows mingw (without producing any artifacts), and they test the
-compiler using a *system* version of LLVM.
-Unfortunately, it would take too many
-resources to run the full test suite for each commit on every PR.
+More specifically, they run a set of lints,
+they try to perform a cross-compile check build to Windows mingw (without producing any artifacts),
+and they test the compiler using a *system* version of LLVM.
+Unfortunately,
+it would take too many resources to run the full test suite for each commit on every PR.
 
 > **Note on doc comments**
 >
-> Note that PR CI as of Oct 2024 <!-- datecheck --> by default does not try to
-> run `./x doc xxx`. This means that if you have any broken intradoc links that
-> would lead to `./x doc xxx` failing, it will happen very late into the full
-> merge queue CI pipeline.
+> Note that PR CI as of Oct 2024 <!-- datecheck --> by default does not try to run `./x doc xxx`.
+> This means that if you have any broken intradoc links that
+> would lead to `./x doc xxx` failing,
+> it will happen very late into the full merge queue CI pipeline.
 >
 > Thus, it is a good idea to run `./x doc xxx` locally for any doc comment
 > changes to help catch these early.
 
 PR jobs are defined in the `pr` section of [`jobs.yml`].
-Their results can be observed
-directly on the PR, in the "CI checks" section at the bottom of the PR page.
+Their results can be observed directly on the PR,
+in the "CI checks" section at the bottom of the PR page.
 
 ### Auto builds
 
@@ -110,12 +110,12 @@ At any given time, at most a single `auto` build is being executed.
 Find out more in [Merging PRs serially with bors](#merging-prs-serially-with-bors).
 
 Normally, when an auto job fails, the whole CI workflow immediately ends.
-However, it can be useful to
-create auto jobs that are "non-blocking", or optional, to test them on CI for some time before blocking
-merges on them.
+However, it can be useful to create auto jobs that are "non-blocking",
+or optional, to test them on CI for some time before blocking merges on them.
 This can be useful if those jobs can be flaky.
 
-To do that, prefix such a job with `optional-`, and set `continue_on_error: true` for it in [`jobs.yml`].
+To do that, prefix such a job with `optional-`,
+and set `continue_on_error: true` for it in [`jobs.yml`].
 
 [platform tiers]: https://forge.rust-lang.org/release/platform-support.html#rust-platform-support
 [auto]: https://github.com/rust-lang/rust/tree/automation/bors/auto
@@ -135,20 +135,20 @@ There are several use-cases for try builds:
   try build that runs the [dist-x86_64-linux] CI job, which builds an optimized
   version of the compiler on Linux (this job is currently executed by default
   when you start a try build).
-  To create a try build and schedule it for a
-  performance benchmark, you can use the `@bors try @rust-timer queue` command combination.
+  To create a try build and schedule it for a performance benchmark,
+  you can use the `@bors try @rust-timer queue` command combination.
 - Check the impact of the PR across the Rust ecosystem, using a [Crater](crater.md) run.
-  Again, a working compiler build is needed for this, which can be produced by
-  the [dist-x86_64-linux] CI job.
+  Again, a working compiler build is needed for this,
+  which can be produced by the [dist-x86_64-linux] CI job.
 - Run a specific CI job (e.g. Windows tests) on a PR, to quickly test if it
   passes the test suite executed by that job.
 
-By default, if you send a comment with `@bors try`, the jobs defined in the `try` section of
-[`jobs.yml`] will be executed.
+By default, if you send a comment with `@bors try`,
+the jobs defined in the `try` section of [`jobs.yml`] will be executed.
 We call this mode a "fast try build".
 Such a try build will not execute any tests, and it will allow compilation warnings.
-It is useful when you want to
-get an optimized toolchain as fast as possible, for a Crater run or performance benchmarks,
+It is useful when you want to get an optimized toolchain as fast as possible,
+for a Crater run or performance benchmarks,
 even if it might not be working fully correctly.
 
 The CI job executed in fast try builds has a special suffix (`-quick`),
@@ -157,13 +157,14 @@ If you want to do the full build instead,
 specify its job name in a job pattern (explained below).
 
 If you want to run custom CI jobs in a try build and make sure that they pass all tests and do
-not produce any compilation warnings, you can select CI jobs to be executed by specifying a *job pattern*,
+not produce any compilation warnings,
+you can select CI jobs to be executed by specifying a *job pattern*,
 which can be used in one of two ways:
 - You can add a set of `try-job: <job pattern>` directives to the PR description (described below) and then
   simply run `@bors try`.
   CI will read these directives and run the jobs that you have specified.
-  This is
-  useful if you want to rerun the same set of try jobs multiple times, after incrementally modifying a PR.
+  This is useful if you want to rerun the same set of try jobs multiple times,
+  after incrementally modifying a PR.
 - You can specify the job pattern using the `jobs` parameter of the try command: `@bors try jobs=<job pattern>`.
   This is useful for one-off try builds with specific jobs.
   Note that the `jobs` parameter has a higher priority than the PR description directives.
@@ -172,10 +173,10 @@ which can be used in one of two ways:
 Each job pattern can either be an exact name of a job or a glob pattern that matches multiple jobs,
 for example `*msvc*` or `*-alt`.
 You can start at most 20 jobs in a single try build.
-When using
-glob patterns in the PR description, you can optionally wrap them in backticks (`` ` ``) to avoid GitHub rendering
-the pattern as Markdown if it contains e.g. an asterisk. Note that this escaping will not work when using
-the `@bors jobs=` parameter.
+When using glob patterns in the PR description,
+you can optionally wrap them in backticks (`` ` ``) to avoid GitHub rendering
+the pattern as Markdown if it contains e.g. an asterisk.
+Note that this escaping will not work when using the `@bors jobs=` parameter.
 
 The job pattern needs to match one or more jobs defined in the `auto` or `optional` sections
 of [`jobs.yml`]:
@@ -221,34 +222,34 @@ their results can be seen on [the GitHub Actions workflows page],
 although usually you will be notified of the result by a comment made by bors on
 the corresponding PR.
 
-Multiple try builds can execute concurrently across different PRs, but there can be at most
-a single try build running on a single PR at any given time.
+Multiple try builds can execute concurrently across different PRs,
+but there can be at most a single try build running on a single PR at any given time.
 
 [rustc-perf]: https://github.com/rust-lang/rustc-perf
 [try]: https://github.com/rust-lang/rust/tree/automation/bors/try
 
 ### Modifying CI jobs
 
-If you want to modify what gets executed on our CI, you can simply modify the
-`pr`, `auto` or `try` sections of the [`jobs.yml`] file.
+If you want to modify what gets executed on our CI, you can simply modify the `pr`,
+`auto` or `try` sections of the [`jobs.yml`] file.
 
-You can also modify what gets executed temporarily, for example to test a
-particular platform or configuration that is challenging to test locally (for
+You can also modify what gets executed temporarily,
+for example to test a particular platform or configuration that is challenging to test locally (for
 example, if a Windows build fails, but you don't have access to a Windows machine).
 Don't hesitate to use CI resources in such situations.
 
 You can perform an arbitrary CI job in two ways:
-- Use the [try build](#try-builds) functionality, and specify the CI jobs that
-  you want to be executed in try builds in your PR description.
+- Use the [try build](#try-builds) functionality,
+  and specify the CI jobs that you want to be executed in try builds in your PR description.
 - Modify the [`pr`](#pull-request-builds) section of `jobs.yml` to specify which
   CI jobs should be executed after each push to your PR.
   This might be faster than repeatedly starting try builds.
 
-To modify the jobs executed after each push to a PR, you can simply copy one of
-the job definitions from the `auto` section to the `pr` section.
+To modify the jobs executed after each push to a PR,
+you can simply copy one of the job definitions from the `auto` section to the `pr` section.
 For example, the `x86_64-msvc` job is responsible for running the 64-bit MSVC tests.
-You can copy it to the `pr` section to cause it to be executed after a commit is pushed
-to your PR, like this:
+You can copy it to the `pr` section to cause it to be executed after a commit is pushed to your PR,
+like this:
 
 ```yaml
 pr:
@@ -276,41 +277,40 @@ A good practice is to prefix `[WIP]` in PR title while still running try jobs
 and `[DO NOT MERGE]` in the commit that modifies the CI jobs for testing purposes.
 </div>
 
-Although you are welcome to use CI, just be conscious that this is a shared
-resource with limited concurrency.
+Although you are welcome to use CI,
+just be conscious that this is a shared resource with limited concurrency.
 Try not to enable too many jobs at once;
 one or two should be sufficient in most cases.
 
 ## Merging PRs serially with bors
 
-CI services usually test the last commit of a branch merged with the last commit
-in `main`, and while that’s great to check if the feature works in isolation,
+CI services usually test the last commit of a branch merged with the last commit in `main`,
+and while that’s great to check if the feature works in isolation,
 it doesn’t provide any guarantee the code is going to work once it’s merged.
-Breakages like these usually happen when another, incompatible PR is merged
-after the build happened.
+Breakages like these usually happen when another,
+incompatible PR is merged after the build happened.
 
 To ensure a `main` branch that works all the time, we forbid manual merges.
 Instead, all PRs have to be approved through our bot, [bors].
 All the approved PRs are put in a [merge queue]
 (sorted by priority and creation date) and are automatically tested one at the time.
-If all the builders are green, the PR is merged, otherwise the failure is
-recorded and the PR will have to be re-approved again.
+If all the builders are green, the PR is merged,
+otherwise the failure is recorded and the PR will have to be re-approved again.
 
 Bors doesn’t interact with CI services directly, but it works by pushing the
 merge commit it wants to test to specific branches (like `automation/bors/auto` or `automation/bors/try`),
 which are configured to execute CI checks.
 Bors then detects the outcome of the build by listening for either Commit Statuses or Check Runs.
-Since the merge commit is
-based on the latest `main` and only one can be tested at the same time, when
-the results are green, `main` is fast-forwarded to that merge commit.
+Since the merge commit is based on the latest `main` and only one can be tested at the same time,
+when the results are green, `main` is fast-forwarded to that merge commit.
 
-Unfortunately, testing a single PR at a time, combined with our long CI (~2
-hours for a full run), means we can’t merge a lot of PRs in a single day, and a
-single failure greatly impacts our throughput.
+Unfortunately, testing a single PR at a time, combined with our long CI (~2 hours for a full run),
+means we can’t merge a lot of PRs in a single day,
+and a single failure greatly impacts our throughput.
 The maximum number of PRs we can merge in a day is around ~10.
 
-The long CI run times, and requirement for a large builder pool, is largely due
-to the fact that full release artifacts are built in the `dist-` builders.
+The long CI run times, and requirement for a large builder pool,
+is largely due to the fact that full release artifacts are built in the `dist-` builders.
 This is worth it because these release artifacts:
 
 - Allow perf testing even at a later date.
@@ -320,18 +320,18 @@ This is worth it because these release artifacts:
 ### Rollups
 
 Some PRs don’t need the full test suite to be executed: trivial changes like
-typo fixes or README improvements *shouldn’t* break the build, and testing every
-single one of them for 2+ hours would be wasteful.
-To solve this, we regularly create a "rollup", a PR where we merge several pending trivial PRs so
-they can be tested together.
+typo fixes or README improvements *shouldn’t* break the build,
+and testing every single one of them for 2+ hours would be wasteful.
+To solve this, we regularly create a "rollup",
+a PR where we merge several pending trivial PRs so they can be tested together.
 Rollups are created manually by a team member using
 the "create a rollup" button on the [merge queue].
 The team member uses their judgment to decide if a PR is risky or not.
 
 ## Docker
 
-All CI jobs, except those on macOS and Windows, are executed inside that
-platform’s custom [Docker container].
+All CI jobs, except those on macOS and Windows,
+are executed inside that platform’s custom [Docker container].
 This has a lot of advantages for us:
 
 - The build environment is consistent regardless of the changes of the
@@ -352,8 +352,8 @@ The Docker images prefixed with `dist-` are used for building artifacts while
 those without that prefix run tests and checks.
 
 We also run tests for less common architectures (mainly Tier 2 and Tier 3 platforms) in CI.
-Since those platforms are not x86, we either run everything
-inside QEMU, or we just cross-compile if we don’t want to run the tests for that platform.
+Since those platforms are not x86, we either run everything inside QEMU,
+or we just cross-compile if we don’t want to run the tests for that platform.
 
 These builders are running on a special pool of builders set up and maintained for us by GitHub.
 
@@ -366,20 +366,20 @@ Our CI workflow uses various caching mechanisms, mainly for two things:
 ### Docker images caching
 
 The Docker images we use to run most of the Linux-based builders take a *long* time to fully build.
-To speed up the build, we cache them using [Docker registry
-caching], with the intermediate artifacts being stored on [ghcr.io].
+To speed up the build, we cache them using [Docker registry caching],
+with the intermediate artifacts being stored on [ghcr.io].
 We also push the built Docker images to ghcr, so that they can be reused by other tools
 (rustup) or by developers running the Docker build locally (to speed up their build).
 
-Since we test multiple, diverged branches (`main`, `beta` and `stable`), we
-can’t rely on a single cache for the images, otherwise builds on a branch would
-override the cache for the others.
-Instead, we store the images under different
-tags, identifying them with a custom hash made from the contents of all the
+Since we test multiple, diverged branches (`main`, `beta`, and `stable`),
+we can’t rely on a single cache for the images,
+otherwise builds on a branch would override the cache for the others.
+Instead, we store the images under different tags,
+identifying them with a custom hash made from the contents of all the
 Dockerfiles and related scripts.
 
-The CI calculates a hash key, so that the cache of a Docker image is
-invalidated if one of the following changes:
+The CI calculates a hash key,
+so that the cache of a Docker image is invalidated if one of the following changes:
 
 - Dockerfile
 - Files copied into the Docker image in the Dockerfile
@@ -390,10 +390,10 @@ invalidated if one of the following changes:
 
 ### LLVM caching with Sccache
 
-We build some C/C++ stuff in various CI jobs, and we rely on [Sccache] to cache
-the intermediate LLVM artifacts.
-Sccache is a distributed ccache developed by
-Mozilla, which can use an object storage bucket as the storage backend.
+We build some C/C++ stuff in various CI jobs,
+and we rely on [Sccache] to cache the intermediate LLVM artifacts.
+Sccache is a distributed ccache developed by Mozilla,
+which can use an object storage bucket as the storage backend.
 
 With Sccache there's no need to calculate the hash key ourselves.
 Sccache invalidates the cache automatically when it detects changes to relevant inputs,
@@ -402,8 +402,8 @@ So we just pass the Sccache wrapper on top of Cargo and Sccache does the rest.
 
 We store the persistent artifacts on the S3 bucket, `rust-lang-ci-sccache2`.
 So when the CI runs, if Sccache sees that LLVM is being compiled with the same C/C++
-compiler and the LLVM source code is the same, Sccache retrieves the individual
-compiled translation units from S3.
+compiler and the LLVM source code is the same,
+Sccache retrieves the individual compiled translation units from S3.
 
 [sccache]: https://github.com/mozilla/sccache
 
@@ -413,8 +413,8 @@ During the years, we developed some custom tooling to improve our CI experience.
 
 ### Rust Log Analyzer to show the error message in PRs
 
-The build logs for `rust-lang/rust` are huge, and it’s not practical to find
-what caused the build to fail by looking at the logs.
+The build logs for `rust-lang/rust` are huge,
+and it’s not practical to find what caused the build to fail by looking at the logs.
 We therefore developed a bot called [Rust Log Analyzer][rla] (RLA) that
 receives the build logs on failure, and extracts the error message automatically,
 posting it on the PR thread.
@@ -428,26 +428,25 @@ good at identifying the relevant lines, even if it’s an error we've never seen
 
 ### Toolstate to support allowed failures
 
-The `rust-lang/rust` repo doesn’t only test the compiler on its CI, but also a
-variety of tools and documentation.
+The `rust-lang/rust` repo doesn’t only test the compiler on its CI,
+but also a variety of tools and documentation.
 Some documentation is pulled in via git submodules.
 If we blocked merging rustc PRs on the documentation being fixed, we
 would be stuck in a chicken-and-egg problem, because the documentation's CI
 would not pass since updating it would need the not-yet-merged version of rustc
 to test against (and we usually require CI to be passing).
 
-To avoid the problem, submodules are allowed to fail, and their status is
-recorded in [rust-toolstate].
-When a submodule breaks, a bot automatically pings
-the maintainers so they know about the breakage, and it records the failure on
-the toolstate repository.
-The release process will then ignore broken tools on
-nightly, removing them from the shipped nightlies.
+To avoid the problem, submodules are allowed to fail,
+and their status is recorded in [rust-toolstate].
+When a submodule breaks, a bot automatically pings the maintainers so they know about the breakage,
+and it records the failure on the toolstate repository.
+The release process will then ignore broken tools on nightly,
+removing them from the shipped nightlies.
 
 While tool failures are allowed most of the time, they’re automatically
 forbidden a week before a release: we don’t care if tools are broken on nightly
-but they must work on beta and stable, so they also need to work on nightly a
-few days before we promote nightly to beta.
+but they must work on beta and stable,
+so they also need to work on nightly a few days before we promote nightly to beta.
 
 More information is available in the [toolstate documentation].
 
@@ -473,8 +472,8 @@ To learn more about the dashboard, see the [Datadog CI docs].
 
 ## Determining the CI configuration
 
-If you want to determine which `bootstrap.toml` settings are used in CI for a
-particular job, it is probably easiest to just look at the build log.
+If you want to determine which `bootstrap.toml` settings are used in CI for a particular job,
+it is probably easiest to just look at the build log.
 To do this:
 
 1. Go to [the Rust CI successful workflow runs page][workflow runs]

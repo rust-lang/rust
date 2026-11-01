@@ -9,42 +9,35 @@ LL |     let _ = produces_string().and_then(takes_str_but_too_many_refs);
    |                               |
    |                               required by a bound introduced by this call
    |
-   = note: expected function signature `fn(String) -> _`
-              found function signature `fn(&&str) -> _`
+   = note: expected function signature `fn(&_) -> _`
+              found function signature `fn(&&_) -> _`
 note: required by a bound in `Option::<T>::and_then`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: consider wrapping the function in a closure
    |
-LL |     let _ = produces_string().and_then(|arg0: String| takes_str_but_too_many_refs(/* &&str */));
-   |                                        ++++++++++++++                            +++++++++++++
-
-error[E0277]: expected `FnOnce(String)` signature, found `for<'a> extern "C" fn(&'a str) -> Option<()> {takes_str_but_wrong_abi}`
-  --> $DIR/suggest-option-asderef-unfixable.rs:26:40
+LL |     let _ = produces_string().and_then(|arg0: &str| takes_str_but_too_many_refs(&arg0));
+   |                                        ++++++++++++                            +++++++
+help: consider adjusting the signature so it does not borrow its argument
    |
-LL |     let _ = produces_string().and_then(takes_str_but_wrong_abi);
-   |                               -------- ^^^^^^^^^^^^^^^^^^^^^^^ expected `FnOnce(String)` signature, found `for<'a> extern "C" fn(&'a str) -> Option<()> {takes_str_but_wrong_abi}`
-   |                               |
-   |                               required by a bound introduced by this call
+LL - fn takes_str_but_too_many_refs(_: &&str) -> Option<()> {
+LL + fn takes_str_but_too_many_refs(_: &str) -> Option<()> {
    |
-   = help: the trait `FnOnce(String)` is not implemented for fn item `for<'a> extern "C" fn(&'a str) -> Option<()> {takes_str_but_wrong_abi}`
-note: required by a bound in `Option::<T>::and_then`
-  --> $SRC_DIR/core/src/option.rs:LL:COL
 
-error[E0277]: expected `FnOnce(String)` signature, found `for<'a> unsafe fn(&'a str) -> Option<()> {takes_str_but_unsafe}`
-  --> $DIR/suggest-option-asderef-unfixable.rs:28:40
+error[E0277]: expected `FnOnce(&str)` signature, found `for<'a> unsafe fn(&'a str) -> Option<()> {takes_str_but_unsafe}`
+  --> $DIR/suggest-option-asderef-unfixable.rs:27:40
    |
 LL |     let _ = produces_string().and_then(takes_str_but_unsafe);
    |                               -------- ^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
    |                               |
    |                               required by a bound introduced by this call
    |
-   = help: the trait `FnOnce(String)` is not implemented for fn item `for<'a> unsafe fn(&'a str) -> Option<()> {takes_str_but_unsafe}`
+   = help: the trait `FnOnce(&str)` is not implemented for fn item `for<'a> unsafe fn(&'a str) -> Option<()> {takes_str_but_unsafe}`
    = note: unsafe function cannot be called generically without an unsafe block
 note: required by a bound in `Option::<T>::and_then`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0593]: function is expected to take 1 argument, but it takes 0 arguments
-  --> $DIR/suggest-option-asderef-unfixable.rs:30:40
+  --> $DIR/suggest-option-asderef-unfixable.rs:29:40
    |
 LL | fn no_args() -> Option<()> {
    | -------------------------- takes 0 arguments
@@ -58,7 +51,7 @@ note: required by a bound in `Option::<T>::and_then`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0631]: type mismatch in function arguments
-  --> $DIR/suggest-option-asderef-unfixable.rs:32:45
+  --> $DIR/suggest-option-asderef-unfixable.rs:31:45
    |
 LL | fn takes_str_but_too_many_refs(_: &&str) -> Option<()> {
    | ------------------------------------------------------ found signature defined here
@@ -77,7 +70,7 @@ help: consider wrapping the function in a closure
 LL |     let _ = Some(TypeWithoutDeref).and_then(|arg0: TypeWithoutDeref| takes_str_but_too_many_refs(/* &&str */));
    |                                             ++++++++++++++++++++++++                            +++++++++++++
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0277, E0593, E0631.
 For more information about an error, try `rustc --explain E0277`.

@@ -827,3 +827,6 @@ pub mod notable {
 pub macro decl_macro {
     () => { "bar" }
 }
+
+/// Some text before the code so the width isn't too small `Color::srgba_u8`, `blob`.
+pub mod inline_code {}
