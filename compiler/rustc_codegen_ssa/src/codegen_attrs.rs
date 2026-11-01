@@ -13,8 +13,8 @@ use rustc_middle::middle::codegen_fn_attrs::{
 };
 use rustc_middle::mono::Visibility;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self as ty, TyCtxt};
-use rustc_span::{Span, bug};
+use rustc_middle::ty::{self as ty, Instance, TyCtxt};
+use rustc_span::{Span, Symbol, bug};
 use rustc_target::spec::Os;
 
 use crate::diagnostics;
@@ -91,8 +91,19 @@ fn process_builtin_attrs(
             AttributeKind::LinkSection { name } => codegen_fn_attrs.link_section = Some(*name),
             AttributeKind::NoMangle(attr_span) => {
                 interesting_spans.no_mangle = Some(*attr_span);
-                if tcx.opt_item_name(did.to_def_id()).is_some() {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+                if let Some(name) = tcx.opt_item_name(did.to_def_id()) {
+                    // Don't override #[export_name].
+
+                    // Also don't override #[link_name]. All places where #[link_name] is allowed
+                    // shouldn't allow #[no_mangle], so #[link_name] shouldn't be a concern here,
+                    // however currently #[no_mangle] is currently merely a warning on foreign
+                    // items rather than a hard error, so we still need to take #[no_mangle] +
+                    // #[link_name] into account.
+                    // FIXME remove this comment once #[no_mangle] on foreign items is a hard error.
+
+                    if codegen_fn_attrs.symbol_name.is_none() {
+                        codegen_fn_attrs.symbol_name = Some(name);
+                    }
                 } else {
                     tcx.dcx()
                         .span_delayed_bug(*attr_span, "no_mangle should be on a named function");
@@ -241,11 +252,17 @@ fn process_builtin_attrs(
                     continue;
                 }
 
-                codegen_fn_attrs.foreign_item_symbol_aliases.push((
-                    foreign_item,
-                    if i.is_default { Linkage::WeakAny } else { Linkage::External },
-                    Visibility::Default,
-                ));
+                if !i.is_default {
+                    // FIXME is tcx.symbol_name() here safe or should we move this to
+                    // rustc_symbol_mangling?
+                    codegen_fn_attrs.symbol_name = Some(Symbol::intern(
+                        tcx.symbol_name(Instance::mono(tcx, foreign_item)).name,
+                    ));
+                } else {
+                    assert!(codegen_fn_attrs.foreign_item_symbol_alias.is_none());
+                    codegen_fn_attrs.foreign_item_symbol_alias =
+                        Some((foreign_item, Linkage::WeakAny, Visibility::Default));
+                }
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
 
                 // If the declaration is `#[track_caller]`, derive it onto the implementation
@@ -369,6 +386,8 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
     }
 
     // Foreign items by default use no mangling for their symbol name.
+    // Usually, `symbol_name` is controlled by `#[link_name]`/`#[export_name]`. Here we additionally
+    // set `symbol_name` on most foreign items so that their their symbol name does not get mangled.
     if tcx.is_foreign_item(did) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::FOREIGN_ITEM;
 
@@ -384,8 +403,13 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             //   Implementing an EII does the appropriate name resolution to make sure the implementations
             //   get the same symbol name as the *mangled* foreign item they refer to so that's all good.
         } else if codegen_fn_attrs.symbol_name.is_some() {
-            // * This can be overridden with the `#[link_name]` attribute
+            // * If the name is already set by `#[link_name]`, we don't overwrite it.
+        } else if codegen_fn_attrs.link_ordinal.is_some() {
+            // * `#[link_ordinal]` and `#[link_name]` are incompatible with each other, so
+            //   disable the implicit `#[link_name]` for foreign items below to avoid an
+            //   error.
         } else {
+            // This effectively adds an implicit `#[link_name = "<item name>"]`.
             // NOTE: there's one more exception that we cannot apply here. On wasm,
             // some items cannot be `no_mangle`.
             // However, we don't have enough information here to determine that.
@@ -393,7 +417,7 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             // import will *still* be mangled despite this.
             //
             // if none of the exceptions apply; apply no_mangle
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+            codegen_fn_attrs.symbol_name = Some(tcx.item_name(did));
         }
     }
 }
@@ -492,22 +516,24 @@ fn handle_lang_items(
     // strippable by the linker.
     //
     // Additionally weak lang items have predetermined symbol names.
-    if let Some(lang_item) = lang_item
+    let link_name_override = if let Some(lang_item) = lang_item
         && let Some(link_name) = lang_item.link_name()
     {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
-        codegen_fn_attrs.symbol_name = Some(link_name);
-    }
+        Some(link_name)
+    } else {
+        None
+    };
 
-    // error when using no_mangle on a lang item item
+    // error when using no_mangle, or export_name on a lang item item
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-        && codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
+        && codegen_fn_attrs.symbol_name.is_some()
     {
         let mut err = tcx
             .dcx()
             .struct_span_err(
                 interesting_spans.no_mangle.unwrap_or_default(),
-                "`#[no_mangle]` cannot be used on internal language items",
+                "`#[no_mangle]` and `#[export_name]` cannot be used on internal language items",
             )
             .with_note("Rustc requires this item to have a specific mangled name.")
             .with_span_label(tcx.def_span(did), "should be the internal language item");
@@ -522,6 +548,10 @@ fn handle_lang_items(
                 ))
         }
         err.emit();
+    }
+
+    if let Some(link_name_override) = link_name_override {
+        codegen_fn_attrs.symbol_name = Some(link_name_override);
     }
 }
 
