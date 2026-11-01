@@ -2,10 +2,10 @@ use std::ops::ControlFlow;
 
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_infer::infer::InferCtxt;
-use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
+use rustc_infer::traits::solve::{CandidateSource, Goal, GoalSource, MaybeCause};
 use rustc_infer::traits::{
     self, MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
-    PredicateObligation, SelectionError,
+    PredicateObligation, SelectionError, SignatureMismatchData,
 };
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -17,7 +17,7 @@ use tracing::{instrument, trace};
 use crate::solve::delegate::SolverDelegate;
 use crate::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
 use crate::solve::{Certainty, deeply_normalize_for_diagnostics};
-use crate::traits::{FulfillmentError, FulfillmentErrorCode, wf};
+use crate::traits::{FulfillmentError, FulfillmentErrorCode, ObligationCtxt, wf};
 
 pub(super) fn fulfillment_error_for_no_solution<'tcx>(
     infcx: &InferCtxt<'tcx>,
@@ -51,6 +51,12 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
                 ct_ty,
                 expected_ty,
             })
+        }
+        ty::PredicateKind::Clause(ty::ClauseKind::Trait(clause))
+            if let Some(err) =
+                selection_error_for_signature_mismatch(infcx, &obligation, clause) =>
+        {
+            FulfillmentErrorCode::Select(err)
         }
         ty::PredicateKind::Subtype(pred) => {
             let (a, b) = infcx.enter_forall_and_leak_universe(
@@ -145,6 +151,58 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
         code,
         root_obligation,
     }
+}
+
+fn selection_error_for_signature_mismatch<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    obligation: &PredicateObligation<'tcx>,
+    clause: ty::TraitClause<'tcx>,
+) -> Option<SelectionError<'tcx>> {
+    if !matches!(clause.polarity, ty::ClausePolarity::Positive)
+        || !matches!(
+            clause.self_ty().kind(),
+            ty::FnDef(..) | ty::FnPtr(..) | ty::Closure(..) | ty::CoroutineClosure(..)
+        )
+        || !infcx.tcx.is_callable_trait(clause.def_id())
+    {
+        return None;
+    }
+
+    let expected_trait_ref =
+        infcx.enter_forall_and_leak_universe(obligation.predicate.kind().rebind(clause)).trait_ref;
+
+    let Ok(found_trait_ref) = infcx.fudge_inference_if_ok(|| {
+        let args = infcx.next_ty_var(obligation.cause.span);
+        let trait_ref =
+            ty::TraitRef::new(infcx.tcx, clause.def_id(), [expected_trait_ref.self_ty(), args]);
+
+        <&SolverDelegate<'tcx>>::from(infcx)
+            .evaluate_root_goal(
+                Goal::new(infcx.tcx, obligation.param_env, trait_ref),
+                obligation.cause.span,
+                None,
+            )
+            .map(|_| trait_ref)
+    }) else {
+        return None;
+    };
+
+    let Err(terr) = infcx.probe(|_| {
+        ObligationCtxt::new(infcx).eq(
+            &obligation.cause,
+            obligation.param_env,
+            expected_trait_ref,
+            found_trait_ref,
+        )
+    }) else {
+        return None;
+    };
+
+    Some(SelectionError::SignatureMismatch(Box::new(SignatureMismatchData {
+        found_trait_ref,
+        expected_trait_ref,
+        terr,
+    })))
 }
 
 #[instrument(level = "debug", skip(infcx), ret)]
@@ -394,7 +452,8 @@ impl<'tcx> BestObligation<'tcx> {
         &mut self,
         goal: &inspect::InspectGoal<'_, 'tcx>,
     ) -> ControlFlow<PredicateObligation<'tcx>> {
-        let pred_kind = goal.goal().predicate.kind();
+        let goal_pred = goal.goal().predicate;
+        let pred_kind = goal_pred.kind();
 
         match pred_kind.no_bound_vars() {
             Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))) => {
@@ -405,6 +464,11 @@ impl<'tcx> BestObligation<'tcx> {
             {
                 self.detect_error_in_self_ty_normalization(goal, pred.projection_term.self_ty())?;
                 self.detect_non_well_formed_assoc_item(goal, pred.projection_term)?;
+            }
+            None if let Some(projection_clause) = goal_pred.as_projection_clause()
+                && projection_clause.skip_binder().projection_term.kind.is_trait_projection() =>
+            {
+                self.detect_trait_error_in_higher_ranked_projection(goal)?;
             }
             Some(_) | None => {}
         }
