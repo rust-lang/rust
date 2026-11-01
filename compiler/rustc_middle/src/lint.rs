@@ -5,13 +5,12 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, Diagnostic, EmissionOverride, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_lint_defs::{
-    EditionFcw, FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId,
+    EditionFcw, FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId, LintName,
     StableLintExpectationId, UnstableLintExpectationId, builtin,
 };
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, ExpnKind, Span, Symbol, kw, sym};
-use rustc_structures::LintName;
 use tracing::instrument;
 
 use crate::ty::TyCtxt;

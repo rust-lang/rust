@@ -3714,6 +3714,7 @@ dependencies = [
  "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_error_messages",
+ "rustc_lint_defs",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",

@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_lint::{LateContext, unerased_lint_store};
 use rustc_span::{BytePos, Pos as _, SourceFile, Span, SyntaxContext};
-use rustc_structures::LintName;
+use rustc_lint_defs::LintName;
 use std::ops::Range;
 use std::path::Path;
 use toml::Spanned;
