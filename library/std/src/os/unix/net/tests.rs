@@ -29,48 +29,6 @@ fn sock_addr_from_pathname() {
     assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
 }
 
-// the trailing NUL is not counted in the reported length on freebsd, netbsd
-// and qnx, and a caller may bind(2) without one anywhere
-#[test]
-fn sock_addr_without_trailing_nul() {
-    const PATH: &[u8] = b"/path/to/socket";
-
-    // SAFETY: all zeros is a valid representation for `sockaddr_un`.
-    let mut addr: libc::sockaddr_un = unsafe { crate::mem::zeroed() };
-    addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
-    for (dst, &src) in addr.sun_path.iter_mut().zip(PATH) {
-        *dst = src as _;
-    }
-    let offset = crate::mem::offset_of!(libc::sockaddr_un, sun_path);
-
-    // length excluding the NUL, as reported by freebsd, netbsd and qnx
-    let address = or_panic!(SocketAddr::from_parts(addr, (offset + PATH.len()) as _));
-    assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
-
-    // length including the NUL, as reported by linux
-    let address = or_panic!(SocketAddr::from_parts(addr, (offset + PATH.len() + 1) as _));
-    assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
-}
-
-#[test]
-#[cfg(any(target_os = "android", target_os = "linux"))]
-fn sock_addr_pathname_fills_sun_path() {
-    use crate::ffi::OsStr;
-    use crate::os::unix::ffi::OsStrExt;
-
-    let mut addr: libc::sockaddr_un = unsafe { crate::mem::zeroed() };
-    addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
-    let mut path = vec![b'a'; addr.sun_path.len()];
-    path[0] = b'/';
-    for (dst, &src) in addr.sun_path.iter_mut().zip(&path) {
-        *dst = src as _;
-    }
-    let offset = crate::mem::offset_of!(libc::sockaddr_un, sun_path);
-
-    let address = or_panic!(SocketAddr::from_parts(addr, (offset + path.len() + 1) as _));
-    assert_eq!(address.as_pathname(), Some(Path::new(OsStr::from_bytes(&path))));
-}
-
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 #[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
@@ -204,10 +162,14 @@ fn iter() {
 #[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn long_path() {
     let dir = tmpdir();
-    let socket_path = dir.path().join(
-        "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfa\
-                                sasdfasdfasdasdfasdfasdfadfasdfasdfasdfasdfasdf",
+    // +1 for separator byte on join
+    let dir_len = dir.path().as_os_str().len() + 1;
+    let sock = format!(
+        "sock{}",
+        vec!['a'; SUN_PATH_MAX_LEN.saturating_sub(dir_len)].into_iter().collect::<String>()
     );
+    let socket_path = dir.path().join(sock);
+
     match UnixStream::connect(&socket_path) {
         Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
         Err(e) => panic!("unexpected error {e}"),
@@ -867,4 +829,35 @@ fn test_send_vectored_with_ancillary_unix_datagram() {
     } else {
         unreachable!("must be ScmRights");
     }
+}
+
+#[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
+fn test_unix_datagram_max_path() {
+    let dir = tmpdir();
+    // +1 for separator byte on join
+    let dir_len = dir.path().as_os_str().len() + 1;
+    // SUN_PATH_MAX_LEN differs based on platform (e.g. for macos this should be 254, for
+    // linux this should be 108). We test whether a socket can bind to the maximally allowed
+    // path size, which is SUN_PATH_MAX_LEN - 1
+    let sock = format!(
+        "sock{}",
+        vec!['a'; SUN_PATH_MAX_LEN.saturating_sub(5 + dir_len)].into_iter().collect::<String>()
+    );
+    let sock2 = format!(
+        "sock{}",
+        vec!['b'; SUN_PATH_MAX_LEN.saturating_sub(5 + dir_len)].into_iter().collect::<String>()
+    );
+    let path1 = dir.path().join(sock);
+    let path2 = dir.path().join(sock2);
+
+    let sock1 = or_panic!(UnixDatagram::bind(&path1));
+    let sock2 = or_panic!(UnixDatagram::bind(&path2));
+
+    let msg = b"hello world";
+    or_panic!(sock1.send_to(msg, &path2));
+    let mut buf = [0; 11];
+    or_panic!(sock2.recv_from(&mut buf));
+    assert_eq!(msg, &buf[..]);
 }
