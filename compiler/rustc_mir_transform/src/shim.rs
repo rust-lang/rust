@@ -402,6 +402,8 @@ fn new_body<'tcx>(
     );
     // Shims do not directly mention any consts.
     body.set_required_consts(Vec::new());
+    // We don't do any analysis on shims.
+    body.typing_mode = BodyTypingMode::PostAnalysis;
     body
 }
 
