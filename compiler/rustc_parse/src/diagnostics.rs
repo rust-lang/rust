@@ -3249,9 +3249,7 @@ pub(crate) struct DotDotDotRestPattern {
         applicability = "machine-applicable"
     )]
     pub suggestion: Option<Span>,
-    #[note(
-        "only `extern \"C\"` and `extern \"C-unwind\"` functions may have a C variable argument list"
-    )]
+    #[note("`...` is only allowed as the type of function parameters")]
     pub var_args: Option<()>,
 }
 
@@ -3631,17 +3629,8 @@ pub(crate) struct FnPointerCannotBeAsync {
 }
 
 #[derive(Diagnostic)]
-#[diag("C-variadic type `...` may not be nested inside another type", code = E0743)]
-pub(crate) struct NestedCVariadicType {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("unexpected `...`")]
-#[note(
-    "only `extern \"C\"` and `extern \"C-unwind\"` functions may have a C variable argument list"
-)]
+#[diag("C-variadic type `...` is not allowed in this context", code = E0743)]
+#[note("`...` is only allowed as the type of function parameters")]
 pub(crate) struct InvalidCVariadicType {
     #[primary_span]
     pub span: Span,

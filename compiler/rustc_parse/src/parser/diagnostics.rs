@@ -33,12 +33,11 @@ use crate::diagnostics::{
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
     IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, MisspelledKw,
-    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
-    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt,
-    SuggEscapeIdentifier, SuggRemoveComma, SuggestBindTypeParameter, SuggestIntroduceTypeParameter,
-    TernaryOperator, TernaryOperatorSuggestion, UnexpectedConstInGenericParam,
-    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
-    UseEqInstead, WrapType,
+    PatternMethodParamWithoutBody, SelfParamNotFirst, StructLiteralBodyWithoutPath,
+    StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
+    SuggestBindTypeParameter, SuggestIntroduceTypeParameter, TernaryOperator,
+    TernaryOperatorSuggestion, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
 use crate::exp;
 use crate::parser::attr::InnerAttrPolicy;
@@ -1480,29 +1479,13 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // XXX move
     pub(super) fn maybe_report_ambiguous_plus(&mut self, impl_dyn_multi: bool, ty: &Ty) {
         if impl_dyn_multi {
             self.dcx().emit_err(AmbiguousPlus {
                 span: ty.span,
                 suggestion: AddParen { lo: ty.span.shrink_to_lo(), hi: ty.span.shrink_to_hi() },
             });
-        }
-    }
-
-    /// Swift lets users write `Ty?` to mean `Option<Ty>`. Parse the construct and recover from it.
-    pub(super) fn maybe_recover_from_question_mark(&mut self, ty: Box<Ty>) -> Box<Ty> {
-        if self.token == token::Question {
-            self.bump();
-            let guar = self.dcx().emit_err(QuestionMarkInType {
-                span: self.prev_token.span,
-                sugg: QuestionMarkInTypeSugg {
-                    left: ty.span.shrink_to_lo(),
-                    right: self.prev_token.span,
-                },
-            });
-            self.mk_ty(ty.span.to(self.prev_token.span), TyKind::Err(guar))
-        } else {
-            ty
         }
     }
 
@@ -1581,6 +1564,25 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(BadTypePlus { span: ty.span, sub });
 
         Ok(())
+    }
+
+    /// If the next tokens are ill-formed `$ty::` recover them as `<$ty>::`.
+    pub(super) fn maybe_recover_from_bad_interpolated_ty_qpath<T: RecoverQPath>(
+        &mut self,
+    ) -> Option<PResult<'a, T>> {
+        if self.may_recover()
+            && let Some(mv_kind @ token::MetaVarKind::Ty { .. }) = self.token.is_metavar_seq()
+            && self.check_noexpect_past_close_delim(&token::PathSep)
+        {
+            // Reparse the type, then move to recovery.
+            let ty = self
+                .eat_metavar_seq(mv_kind, |this| this.parse_ty_no_question_mark_recover())
+                .expect("metavar seq ty");
+
+            return Some(self.maybe_recover_from_bad_qpath_stage_2(self.prev_token.span, ty));
+        }
+
+        None
     }
 
     /// Tries to recover from associated item paths like `[T]::AssocItem` / `(T, U)::AssocItem`.

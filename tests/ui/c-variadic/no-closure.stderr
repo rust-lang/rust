@@ -1,10 +1,10 @@
-error: unexpected `...`
+error[E0743]: C-variadic type `...` is not allowed in this context
   --> $DIR/no-closure.rs:5:35
    |
 LL | const F: extern "C" fn(...) = |_: ...| {};
    |                                   ^^^
    |
-   = note: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+   = note: `...` is only allowed as the type of function parameters
 
 error: unexpected `...`
   --> $DIR/no-closure.rs:10:14
@@ -12,15 +12,16 @@ error: unexpected `...`
 LL |     let f = |...| {};
    |              ^^^ not a valid pattern
    |
-   = note: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+   = note: `...` is only allowed as the type of function parameters
 
-error: unexpected `...`
+error[E0743]: C-variadic type `...` is not allowed in this context
   --> $DIR/no-closure.rs:15:17
    |
 LL |     let f = |_: ...| {};
    |                 ^^^
    |
-   = note: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+   = note: `...` is only allowed as the type of function parameters
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0743`.
