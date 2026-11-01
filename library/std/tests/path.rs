@@ -115,6 +115,99 @@ macro_rules! t (
     );
 );
 
+/// `Components::eq` has a fast path that must never disagree with `Ord`,
+/// no matter how much of either iterator has already been consumed.
+/// Regression test for #164472.
+#[test]
+fn components_eq_ord_consistent_when_partially_consumed() {
+    use std::cmp::Ordering;
+
+    let paths = [
+        "",
+        "foo",
+        "/",
+        "/foo",
+        "foo/bar",
+        "C:",
+        "C:foo",
+        r"C:\",
+        r"C:\foo",
+        "D:",
+        r"D:\foo",
+        r"\\server\share",
+        r"\\server\share\foo",
+        r"\\other\share",
+        r"\\?\C:\",
+        r"\\?\C:\foo",
+        r"\\?\UNC\server\share\foo",
+        r"\\.\COM1",
+        r"\\?\foo",
+    ];
+
+    // Every state reachable from each path by calling `next()` zero or more times.
+    let mut states = Vec::new();
+    for p in paths {
+        let mut c = Path::new(p).components();
+        for consumed in 0.. {
+            states.push((format!("{p:?} after {consumed} next()"), c.clone()));
+            if c.next().is_none() {
+                break;
+            }
+        }
+    }
+
+    for (la, a) in &states {
+        for (lb, b) in &states {
+            let ord = Ord::cmp(a, b);
+            assert_eq!(
+                a == b,
+                ord == Ordering::Equal,
+                "eq/cmp disagree: {la} vs {lb} (cmp = {ord:?})"
+            );
+            assert_eq!(PartialOrd::partial_cmp(a, b), Some(ord), "{la} vs {lb}");
+            assert_eq!(Ord::cmp(b, a), ord.reverse(), "{la} vs {lb}");
+        }
+    }
+}
+
+#[test]
+#[cfg(windows)]
+fn components_eq_distinguishes_consumed_prefixes() {
+    use std::cmp::Ordering;
+
+    let mut drive = Path::new("C:").components();
+    let mut unc = Path::new(r"\\server\share").components();
+    assert!(matches!(drive.next(), Some(Component::Prefix(_))));
+    assert!(matches!(unc.next(), Some(Component::Prefix(_))));
+
+    // After the prefix is consumed, `path` is empty for both, but the prefix
+    // still determines the remaining components (UNC has an implicit root).
+    assert_ne!(drive, unc);
+    assert_eq!(Ord::cmp(&drive, &unc), Ordering::Less);
+    assert_eq!(Ord::cmp(&unc, &drive), Ordering::Greater);
+
+    // Positive control: identical partially consumed iterators stay equal.
+    let mut a = Path::new(r"C:\foo").components();
+    a.next();
+    let b = a.clone();
+    assert_eq!(a, b);
+    assert_eq!(Ord::cmp(&a, &b), Ordering::Equal);
+}
+
+#[test]
+#[cfg(windows)]
+fn test_eq_ord_consistency_partially_consumed_prefix() {
+    use core::cmp::Ordering;
+
+    let mut drive = Path::new("C:").components();
+    assert!(matches!(drive.next(), Some(Component::Prefix(_))));
+    let mut unc = Path::new(r"\\server\share").components();
+    assert!(matches!(unc.next(), Some(Component::Prefix(_))));
+
+    assert_ne!(drive, unc);
+    assert_eq!(drive.cmp(&unc), Ordering::Less);
+}
+
 #[test]
 fn into() {
     use std::borrow::Cow;

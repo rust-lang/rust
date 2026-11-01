@@ -1030,13 +1030,16 @@ impl<'a> PartialEq for Components<'a> {
         let Components { path: _, front: _, back: _, has_physical_root: _, prefix: _ } = self;
 
         // Fast path for exact matches, e.g. for hashmap lookups.
-        // Don't explicitly compare the prefix or has_physical_root fields since they'll
-        // either be covered by the `path` buffer or are only relevant for `prefix_verbatim()`.
+        // `path` only covers the prefix while it is unconsumed: `next()` advances `path`
+        // past the prefix, so it is compared explicitly (it determines the remaining
+        // components, e.g. UNC prefixes have an implicit root and drive prefixes don't).
+        // `has_physical_root` needs no comparison: while it matters (`front <= StartDir`)
+        // it is fully determined by `path`, and it is never consulted afterwards.
         if self.path.len() == other.path.len()
             && self.front == other.front
             && self.back == State::Body
             && other.back == State::Body
-            && self.prefix_verbatim() == other.prefix_verbatim()
+            && (!HAS_PREFIXES && self.prefix == other.prefix)
         {
             // possible future improvement: this could bail out earlier if there were a
             // reverse memcmp/bcmp comparing back to front
