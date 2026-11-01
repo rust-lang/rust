@@ -113,6 +113,7 @@ LL -     #[pin_v2]
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:83:17
    |
+LL |     impl Drop for Foo {
 LL |         fn drop(&pin const self) {}
    |                 ^^^^^^^^^^^^^^^ expected `&mut drop_pin_const_wrong_type::Foo`, found `Pin<&drop_pin_const_wrong_type::Foo>`
    |
@@ -127,6 +128,7 @@ LL +         fn drop(&mut self) {}
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:87:17
    |
+LL |     impl Drop for Bar {
 LL |         fn drop(&pin const self) {}
    |                 ^^^^^^^^^^^^^^^ expected `&mut drop_pin_const_wrong_type::Bar`, found `Pin<&drop_pin_const_wrong_type::Bar>`
    |
@@ -163,6 +165,7 @@ LL -     #[pin_v2]
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:99:21
    |
+LL |     impl Drop for Foo {
 LL |         fn drop<'a>(&'a pin mut self) {}
    |                     ^^^^^^^^^^^^^^^^ expected `&mut drop_with_lifetime_wrong_type::Foo`, found `Pin<&mut Foo>`
    |
@@ -177,6 +180,7 @@ LL +         fn drop<'a>(&mut self) {}
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:104:21
    |
+LL |     impl Drop for Bar {
 LL |         fn drop<'a>(&'a pin mut self) {}
    |                     ^^^^^^^^^^^^^^^^ expected `&mut drop_with_lifetime_wrong_type::Bar`, found `Pin<&mut Bar>`
    |
@@ -213,6 +217,7 @@ LL -     #[pin_v2]
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:118:23
    |
+LL |     impl Drop for Foo {
 LL |         fn drop(self: Pin<&mut Self>) {}
    |                       ^^^^^^^^^^^^^^ expected `&mut drop_explicit_pin_wrong_type::Foo`, found `Pin<&mut Foo>`
    |
@@ -227,6 +232,7 @@ LL +         fn drop(&mut self) {}
 error[E0053]: method `drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:123:23
    |
+LL |     impl Drop for Bar {
 LL |         fn drop(self: Pin<&mut Self>) {}
    |                       ^^^^^^^^^^^^^^ expected `&mut drop_explicit_pin_wrong_type::Bar`, found `Pin<&mut Bar>`
    |
@@ -241,6 +247,7 @@ LL +         fn drop(&mut self) {}
 error[E0053]: method `pin_drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:135:21
    |
+LL |     impl Drop for Foo {
 LL |         fn pin_drop(&mut self) {}
    |                     ^^^^^^^^^ expected `Pin<&mut pin_drop_wrong_type::Foo>`, found `&mut pin_drop_wrong_type::Foo`
    |
@@ -255,6 +262,7 @@ LL +         fn pin_drop(self: Pin<&mut pin_drop_wrong_type::Foo>) {}
 error[E0053]: method `pin_drop` has an incompatible type for trait
   --> $DIR/pinned-drop-check.rs:139:21
    |
+LL |     impl Drop for Bar {
 LL |         fn pin_drop(&mut self) {}
    |                     ^^^^^^^^^ expected `Pin<&mut pin_drop_wrong_type::Bar>`, found `&mut pin_drop_wrong_type::Bar`
    |

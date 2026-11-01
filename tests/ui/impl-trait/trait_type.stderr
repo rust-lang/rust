@@ -1,6 +1,7 @@
 error[E0053]: method `fmt` has an incompatible type for trait
   --> $DIR/trait_type.rs:7:21
    |
+LL | impl std::fmt::Display for MyType {
 LL |    fn fmt(&self, x: &str) -> () { }
    |                     ^^^^ types differ in mutability
    |
