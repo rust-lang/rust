@@ -1149,7 +1149,7 @@ fn test_fstat() {
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
-    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
     assert_eq!(stat.st_size, 5);
 
     // Ensure fstat64 also works.

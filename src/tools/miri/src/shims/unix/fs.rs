@@ -2375,7 +2375,7 @@ impl FileMetadata {
             }
             _ => {
                 // Emulate "everyone can read" or "everyone can read and write".
-                mode |= if metadata.permissions().readonly() { 0o111 } else { 0o333 };
+                mode |= if metadata.permissions().readonly() { 0o444 } else { 0o666 };
 
                 interp_ok(Ok(FileMetadata {
                     mode,
