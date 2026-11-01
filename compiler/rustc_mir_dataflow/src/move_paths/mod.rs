@@ -201,6 +201,11 @@ pub struct MoveData<'tcx> {
 
 pub trait HasMoveData<'tcx> {
     fn move_data(&self) -> &MoveData<'tcx>;
+
+    /// Maps a domain index to its move path. Override if the domain uses other indices.
+    fn original_move_path(&self, path: MovePathIndex) -> MovePathIndex {
+        path
+    }
 }
 
 #[derive(Debug)]

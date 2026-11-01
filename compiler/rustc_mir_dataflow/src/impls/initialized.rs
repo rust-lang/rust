@@ -2,6 +2,7 @@ use std::assert_matches;
 
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_index::IndexVec;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_middle::mir::{
     self, BasicBlock, Body, CallReturnPlaces, Local, Location, StatementKind, TerminatorEdges,
@@ -140,8 +141,16 @@ pub struct MaybeInitializedPlaces<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
+    tracked: Option<TrackedMovePaths>,
     exclude_inactive_in_otherwise: bool,
     skip_unreachable_unwind: bool,
+}
+
+/// A subset of the move paths. `to_tracked` maps a move path to its domain index, and
+/// `to_original` maps a domain index back to its move path.
+struct TrackedMovePaths {
+    to_tracked: IndexVec<MovePathIndex, Option<MovePathIndex>>,
+    to_original: IndexVec<MovePathIndex, MovePathIndex>,
 }
 
 impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
@@ -150,9 +159,39 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
             tcx,
             body,
             move_data,
+            tracked: None,
             exclude_inactive_in_otherwise: false,
             skip_unreachable_unwind: false,
         }
+    }
+
+    /// Tracks only the move paths in `selected`. The domain then uses its own indices, so use
+    /// `contains_move_path` to read a state.
+    pub fn restrict_to_move_paths(mut self, selected: &DenseBitSet<MovePathIndex>) -> Self {
+        assert_eq!(selected.domain_size(), self.move_data.move_paths.len());
+        let mut to_tracked = IndexVec::from_elem(None, &self.move_data.move_paths);
+        let mut to_original = IndexVec::new();
+        for path in selected.iter() {
+            to_tracked[path] = Some(to_original.push(path));
+        }
+        self.tracked = Some(TrackedMovePaths { to_tracked, to_original });
+        self
+    }
+
+    fn domain_size(&self) -> usize {
+        self.tracked.as_ref().map_or(self.move_data.move_paths.len(), |t| t.to_original.len())
+    }
+
+    fn tracked_path(&self, path: MovePathIndex) -> Option<MovePathIndex> {
+        self.tracked.as_ref().map_or(Some(path), |t| t.to_tracked[path])
+    }
+
+    pub fn contains_move_path(
+        &self,
+        state: &<Self as Analysis<'tcx>>::Domain,
+        path: MovePathIndex,
+    ) -> bool {
+        state.contains(self.tracked_path(path).expect("queried move path was not selected"))
     }
 }
 
@@ -177,7 +216,7 @@ impl<'tcx> MaybeInitializedPlaces<'_, 'tcx> {
         if let LookupResult::Exact(path) = self.move_data().rev_lookup.find(place.as_ref()) {
             let mut maybe_live = false;
             on_all_children_bits(self.move_data(), path, |child| {
-                maybe_live |= state.contains(child);
+                maybe_live |= self.tracked_path(child).is_none_or(|child| state.contains(child));
             });
             !maybe_live
         } else {
@@ -186,13 +225,16 @@ impl<'tcx> MaybeInitializedPlaces<'_, 'tcx> {
     }
 
     fn update_bits(
+        &self,
         state: &mut <Self as Analysis<'tcx>>::Domain,
         path: MovePathIndex,
         dfstate: DropFlagState,
     ) {
-        match dfstate {
-            DropFlagState::Absent => state.kill(path),
-            DropFlagState::Present => state.gen_(path),
+        if let Some(path) = self.tracked_path(path) {
+            match dfstate {
+                DropFlagState::Absent => state.kill(path),
+                DropFlagState::Present => state.gen_(path),
+            }
         }
     }
 }
@@ -200,6 +242,10 @@ impl<'tcx> MaybeInitializedPlaces<'_, 'tcx> {
 impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> {
         self.move_data
+    }
+
+    fn original_move_path(&self, path: MovePathIndex) -> MovePathIndex {
+        self.tracked.as_ref().map_or(path, |t| t.to_original[path])
     }
 }
 
@@ -218,11 +264,12 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
-        *state =
-            MaybeReachable::Reachable(MixedBitSet::new_empty(self.move_data().move_paths.len()));
+        *state = MaybeReachable::Reachable(MixedBitSet::new_empty(self.domain_size()));
         drop_flag_effects_for_function_entry(self.body, self.move_data, |path, s| {
             debug_assert!(s == DropFlagState::Present);
-            state.gen_(path);
+            if let Some(path) = self.tracked_path(path) {
+                state.gen_(path);
+            }
         });
     }
 
@@ -233,7 +280,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         location: Location,
     ) {
         drop_flag_effects_for_location(self.body, self.move_data, location, |path, s| {
-            Self::update_bits(state, path, s)
+            self.update_bits(state, path, s)
         });
 
         // Mark all places as "maybe init" if they are mutably borrowed. See #90752.
@@ -245,7 +292,9 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             && let LookupResult::Exact(mpi) = self.move_data().rev_lookup.find(place.as_ref())
         {
             on_all_children_bits(self.move_data(), mpi, |child| {
-                state.gen_(child);
+                if let Some(child) = self.tracked_path(child) {
+                    state.gen_(child);
+                }
             })
         }
     }
@@ -278,7 +327,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         location: Location,
     ) {
         drop_flag_effects_for_location(self.body, self.move_data, location, |path, s| {
-            Self::update_bits(state, path, s)
+            self.update_bits(state, path, s)
         });
     }
 
@@ -295,7 +344,9 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
                 self.move_data(),
                 self.move_data().rev_lookup.find(place.as_ref()),
                 |mpi| {
-                    state.gen_(mpi);
+                    if let Some(mpi) = self.tracked_path(mpi) {
+                        state.gen_(mpi);
+                    }
                 },
             );
         });
@@ -336,7 +387,11 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             self.move_data,
             data.enum_place,
             &inactive_variants,
-            |mpi| state.kill(mpi),
+            |mpi| {
+                if let Some(mpi) = self.tracked_path(mpi) {
+                    state.kill(mpi);
+                }
+            },
         );
     }
 }
