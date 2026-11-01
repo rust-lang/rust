@@ -113,8 +113,11 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
         None
     };
 
-    let output_obj_file =
-        Some(tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, mod_name));
+    let output_obj_file = if matches!(tcx.crate_types(), [rustc_structures::CrateType::Rlib]) {
+        Some(format!("{mod_name}.rcgu.o").into())
+    } else {
+        Some(tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, mod_name))
+    };
     let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
 
     target_machine_factory(tcx.sess, tcx.backend_optimization_level(()))(tcx.dcx(), config)

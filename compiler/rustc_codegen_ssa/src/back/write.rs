@@ -302,8 +302,11 @@ impl TargetMachineFactoryConfig {
             None
         };
 
-        let output_obj_file =
-            Some(cgcx.output_filenames.temp_path_for_cgu(OutputType::Object, module_name));
+        let output_obj_file = if matches!(cgcx.crate_types.as_slice(), [CrateType::Rlib]) {
+            Some(format!("{module_name}.rcgu.o").into())
+        } else {
+            Some(cgcx.output_filenames.temp_path_for_cgu(OutputType::Object, module_name))
+        };
         TargetMachineFactoryConfig { split_dwarf_file, output_obj_file }
     }
 }
