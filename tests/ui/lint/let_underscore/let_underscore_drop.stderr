@@ -1,5 +1,5 @@
 warning: non-binding let on a type that has a destructor
-  --> $DIR/let_underscore_drop.rs:13:5
+  --> $DIR/let_underscore_drop.rs:17:5
    |
 LL |     let _ = NontrivialDrop;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,5 +19,69 @@ LL -     let _ = NontrivialDrop;
 LL +     drop(NontrivialDrop);
    |
 
-warning: 1 warning emitted
+warning: non-binding let on a type that has a destructor
+  --> $DIR/let_underscore_drop.rs:19:5
+   |
+LL |     let _ = *&NontrivialDrop;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused = *&NontrivialDrop;
+   |          ++++++
+help: consider immediately dropping the value
+   |
+LL -     let _ = *&NontrivialDrop;
+LL +     drop(*&NontrivialDrop);
+   |
+
+warning: non-binding let on a type that has a destructor
+  --> $DIR/let_underscore_drop.rs:21:5
+   |
+LL |     let _ = *identity(&NontrivialDrop);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused = *identity(&NontrivialDrop);
+   |          ++++++
+help: consider immediately dropping the value
+   |
+LL -     let _ = *identity(&NontrivialDrop);
+LL +     drop(*identity(&NontrivialDrop));
+   |
+
+warning: non-binding let on a type that has a destructor
+  --> $DIR/let_underscore_drop.rs:25:5
+   |
+LL |     let _ = *identity(&d);
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused = *identity(&d);
+   |          ++++++
+help: consider immediately dropping the value
+   |
+LL -     let _ = *identity(&d);
+LL +     drop(*identity(&d));
+   |
+
+warning: non-binding let on a type that has a destructor
+  --> $DIR/let_underscore_drop.rs:30:5
+   |
+LL |     let _: Box<dyn Send> = boxed;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused: Box<dyn Send> = boxed;
+   |          ++++++
+help: consider immediately dropping the value
+   |
+LL -     let _: Box<dyn Send> = boxed;
+LL +     drop(boxed);
+   |
+
+warning: 5 warnings emitted
 
