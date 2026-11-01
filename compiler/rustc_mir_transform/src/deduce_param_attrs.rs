@@ -12,6 +12,7 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::deduced_param_attrs::{DeducedParamAttrs, UsageSummary};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -205,6 +206,20 @@ pub(super) fn deduced_param_attrs<'tcx>(
 
     // Don't deduce any attributes for functions that have no MIR.
     if !tcx.is_mir_available(def_id) {
+        return &[];
+    }
+
+    let codegen_attrs = tcx.codegen_fn_attrs(def_id);
+    // Don't deduce any attributes for functions whose body can be swapped at link-time.
+    if codegen_attrs.flags.contains(CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM)
+        || codegen_attrs.linkage.map_or(false, |linkage| !linkage.is_definition_exact())
+    {
+        return &[];
+    }
+
+    // The bodies of #[naked] functions might do things like jump directly to an implementation with
+    // the same signature, and thus rely on the ABI of the naked function not being altered.
+    if codegen_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         return &[];
     }
 
