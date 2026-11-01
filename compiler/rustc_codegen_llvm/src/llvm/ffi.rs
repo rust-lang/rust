@@ -20,6 +20,7 @@ use std::ptr;
 use bitflags::bitflags;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
 
+pub(crate) use self::branded::{Context, ContextRaw, Module, ModuleRaw, wrap_llcx, wrap_llmod};
 use super::RustString;
 use super::debuginfo::{
     DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIFile, DIFlags, DILocation, DISPFlags,
@@ -28,6 +29,8 @@ use super::debuginfo::{
 use crate::llvm;
 use crate::llvm::MetadataKindId;
 use crate::macros::TryFromU32;
+
+mod branded;
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
@@ -701,18 +704,7 @@ struct InvariantOpaque<'a> {
 
 // Opaque pointer types
 
-/// Corresponds to `LLVMContextRef`.
-#[derive(Clone, Copy)]
-#[repr(transparent)]
-pub(crate) struct Context<'ll> {
-    pub(crate) llcx_raw: ptr::NonNull<ContextRaw>,
-    pub(crate) _invariant_ll: PhantomData<fn(&'ll ()) -> &'ll ()>,
-}
-
 unsafe extern "C" {
-    /// Pointee of the raw pointer that is wrapped by a lifetime-branded [`Context`].
-    pub(crate) type ContextRaw;
-    pub(crate) type Module;
     pub(crate) type Type;
     pub(crate) type Value;
     pub(crate) type ConstantInt;
@@ -918,12 +910,12 @@ unsafe extern "C" {
     pub(crate) fn LLVMModuleCreateWithNameInContext<'ll>(
         ModuleID: *const c_char,
         C: Context<'ll>,
-    ) -> *const Module;
-    pub(crate) safe fn LLVMCloneModule(M: &Module) -> &Module;
+    ) -> Module<'ll>;
+    pub(crate) safe fn LLVMCloneModule<'ll>(M: Module<'ll>) -> Module<'ll>;
 
     /// Data layout. See Module::getDataLayout.
-    pub(crate) fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
-    pub(crate) fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
+    pub(crate) fn LLVMGetDataLayoutStr<'ll>(M: Module<'ll>) -> *const c_char;
+    pub(crate) fn LLVMSetDataLayout<'ll>(M: Module<'ll>, Triple: *const c_char);
 
     /// Create the specified uniqued inline asm string. See `InlineAsm::get()`.
     pub(crate) fn LLVMGetInlineAsm<'ll>(
@@ -1036,10 +1028,10 @@ unsafe extern "C" {
         Vals: *const &'ll Metadata,
         Count: size_t,
     ) -> &'ll Metadata;
-    pub(crate) fn LLVMAddNamedMetadataOperand<'a>(
-        M: &'a Module,
+    pub(crate) fn LLVMAddNamedMetadataOperand<'ll>(
+        M: Module<'ll>,
         Name: *const c_char,
-        Val: &'a Value,
+        Val: &'ll Value,
     );
     pub(crate) fn LLVMReplaceMDNodeOperandWith(Val: &Value, index: u32, replacement: &Metadata);
 
@@ -1107,9 +1099,16 @@ unsafe extern "C" {
 
     // Operations on global variables
     pub(crate) safe fn LLVMIsAGlobalVariable(GlobalVar: &Value) -> Option<&Value>;
-    pub(crate) fn LLVMAddGlobal<'a>(M: &'a Module, Ty: &'a Type, Name: *const c_char) -> &'a Value;
-    pub(crate) fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> Option<&Value>;
-    pub(crate) fn LLVMGetFirstGlobal(M: &Module) -> Option<&Value>;
+    pub(crate) fn LLVMAddGlobal<'ll>(
+        M: Module<'ll>,
+        Ty: &'ll Type,
+        Name: *const c_char,
+    ) -> &'ll Value;
+    pub(crate) fn LLVMGetNamedGlobal<'ll>(
+        M: Module<'ll>,
+        Name: *const c_char,
+    ) -> Option<&'ll Value>;
+    pub(crate) fn LLVMGetFirstGlobal<'ll>(M: Module<'ll>) -> Option<&'ll Value>;
     pub(crate) fn LLVMGetNextGlobal(GlobalVar: &Value) -> Option<&Value>;
     pub(crate) fn LLVMDeleteGlobal(GlobalVar: &Value);
     pub(crate) safe fn LLVMGetInitializer(GlobalVar: &Value) -> Option<&Value>;
@@ -1124,13 +1123,13 @@ unsafe extern "C" {
 
     // Operations on global aliases
     pub(crate) fn LLVMAddAlias2<'ll>(
-        M: &'ll Module,
+        M: Module<'ll>,
         ValueTy: &Type,
         AddressSpace: c_uint,
         Aliasee: &Value,
         Name: *const c_char,
     ) -> &'ll Value;
-    pub(crate) fn LLVMGetFirstGlobalAlias(M: &Module) -> Option<&Value>;
+    pub(crate) fn LLVMGetFirstGlobalAlias<'ll>(M: Module<'ll>) -> Option<&'ll Value>;
     pub(crate) fn LLVMGetNextGlobalAlias(GlobalAlias: &Value) -> Option<&Value>;
 
     // Operations on attributes
@@ -1144,18 +1143,18 @@ unsafe extern "C" {
 
     // Operations on functions
     pub(crate) fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
-    pub(crate) fn LLVMAddFunction<'a>(
-        Mod: &'a Module,
+    pub(crate) fn LLVMAddFunction<'ll>(
+        Mod: Module<'ll>,
         Name: *const c_char,
-        FunctionTy: &'a Type,
-    ) -> &'a Value;
+        FunctionTy: &'ll Type,
+    ) -> &'ll Value;
     pub(crate) fn LLVMDeleteFunction(Fn: &Value);
-    pub(crate) fn LLVMGetOrInsertFunction<'a>(
-        M: &'a Module,
+    pub(crate) fn LLVMGetOrInsertFunction<'ll>(
+        M: Module<'ll>,
         Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
-        FunctionTy: &'a Type,
-    ) -> &'a Value;
+        FunctionTy: &'ll Type,
+    ) -> &'ll Value;
 
     // Operations about llvm intrinsics
     pub(crate) fn LLVMLookupIntrinsicID(
@@ -1163,12 +1162,12 @@ unsafe extern "C" {
         NameLen: size_t,
     ) -> c_uint;
     pub(crate) fn LLVMIntrinsicIsOverloaded(ID: NonZero<c_uint>) -> Bool;
-    pub(crate) fn LLVMGetIntrinsicDeclaration<'a>(
-        Mod: &'a Module,
+    pub(crate) fn LLVMGetIntrinsicDeclaration<'ll>(
+        Mod: Module<'ll>,
         ID: NonZero<c_uint>,
-        ParamTypes: *const &'a Type,
+        ParamTypes: *const &'ll Type,
         ParamCount: size_t,
-    ) -> &'a Value;
+    ) -> &'ll Value;
     pub(crate) fn LLVMRustUpgradeIntrinsicFunction<'a>(
         Fn: &'a Value,
         NewFn: &mut Option<&'a Value>,
@@ -1209,7 +1208,7 @@ unsafe extern "C" {
     );
 
     // Instruction builders
-    pub(crate) fn LLVMCreateBuilderForModule<'ll>(M: &'ll Module) -> ptr::NonNull<Builder<'ll>>;
+    pub(crate) fn LLVMCreateBuilderForModule<'ll>(M: Module<'ll>) -> ptr::NonNull<Builder<'ll>>;
     pub(crate) fn LLVMPositionBuilderAtEnd<'a>(Builder: &Builder<'a>, Block: &'a BasicBlock);
     pub(crate) fn LLVMGetInsertBlock<'a>(Builder: &Builder<'a>) -> &'a BasicBlock;
     pub(crate) fn LLVMDisposeBuilder<'ll>(Builder: ptr::NonNull<Builder<'ll>>);
@@ -1667,7 +1666,7 @@ unsafe extern "C" {
     ) -> &'a Value;
 
     /// Writes a module to the specified path. Returns 0 on success.
-    pub(crate) fn LLVMWriteBitcodeToFile(M: &Module, Path: *const c_char) -> c_int;
+    pub(crate) fn LLVMWriteBitcodeToFile<'ll>(M: Module<'ll>, Path: *const c_char) -> c_int;
 
     pub(crate) fn LLVMGetHostCPUFeatures() -> *mut c_char;
 
@@ -1693,7 +1692,7 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&ConstantInt>;
 
-    pub(crate) fn LLVMGetOrInsertComdat(M: &Module, Name: *const c_char) -> &Comdat;
+    pub(crate) fn LLVMGetOrInsertComdat<'ll>(M: Module<'ll>, Name: *const c_char) -> &'ll Comdat;
     pub(crate) fn LLVMSetComdat(V: &Value, C: &Comdat);
 
     pub(crate) fn LLVMCreateOperandBundle(
@@ -1748,7 +1747,7 @@ unsafe extern "C" {
 // that they really are nullable on the C/C++ side. LLVM doesn't appear to
 // actually document which ones are nullable.
 unsafe extern "C" {
-    pub(crate) fn LLVMCreateDIBuilder<'ll>(M: &'ll Module) -> *mut DIBuilder<'ll>;
+    pub(crate) fn LLVMCreateDIBuilder<'ll>(M: Module<'ll>) -> *mut DIBuilder<'ll>;
     pub(crate) fn LLVMDisposeDIBuilder<'ll>(Builder: ptr::NonNull<DIBuilder<'ll>>);
 
     pub(crate) fn LLVMDIBuilderFinalize<'ll>(Builder: &DIBuilder<'ll>);
@@ -2012,24 +2011,24 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustSetDSOLocal(Global: &Value, is_dso_local: bool);
 
     // Operations on global variables
-    pub(crate) fn LLVMRustGetOrInsertGlobal<'a>(
-        M: &'a Module,
+    pub(crate) fn LLVMRustGetOrInsertGlobal<'ll>(
+        M: Module<'ll>,
         Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
-        T: &'a Type,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustGetOrInsertGlobalInAddrspace<'a>(
-        M: &'a Module,
+        T: &'ll Type,
+    ) -> &'ll Value;
+    pub(crate) fn LLVMRustGetOrInsertGlobalInAddrspace<'ll>(
+        M: Module<'ll>,
         Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
-        T: &'a Type,
+        T: &'ll Type,
         AddressSpace: c_uint,
-    ) -> &'a Value;
-    pub(crate) fn LLVMRustGetNamedValue(
-        M: &Module,
+    ) -> &'ll Value;
+    pub(crate) fn LLVMRustGetNamedValue<'ll>(
+        M: Module<'ll>,
         Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
-    ) -> Option<&Value>;
+    ) -> Option<&'ll Value>;
 
     // Operations on attributes
     pub(crate) fn LLVMRustCreateAttrNoValue<'ll>(
@@ -2157,8 +2156,8 @@ unsafe extern "C" {
     ) -> bool;
 
     /// Append inline assembly to a module. See `Module::appendModuleInlineAsm`.
-    pub(crate) fn LLVMRustAppendModuleInlineAsm(
-        M: &Module,
+    pub(crate) fn LLVMRustAppendModuleInlineAsm<'ll>(
+        M: Module<'ll>,
         Asm: *const c_uchar, // See "PTR_LEN_STR".
         AsmLen: size_t,
         TargetFeatures: *const c_uchar, // See "PTR_LEN_STR".
@@ -2202,12 +2201,12 @@ unsafe extern "C" {
         NumBytes: size_t,
     ) -> u64;
 
-    pub(crate) safe fn LLVMRustCoverageWriteCovmapSectionNameToString(
-        M: &Module,
+    pub(crate) safe fn LLVMRustCoverageWriteCovmapSectionNameToString<'ll>(
+        M: Module<'ll>,
         OutStr: &RustString,
     );
-    pub(crate) safe fn LLVMRustCoverageWriteCovfunSectionNameToString(
-        M: &Module,
+    pub(crate) safe fn LLVMRustCoverageWriteCovfunSectionNameToString<'ll>(
+        M: Module<'ll>,
         OutStr: &RustString,
     );
     pub(crate) safe fn LLVMRustCoverageWriteCovmapVarNameToString(OutStr: &RustString);
@@ -2226,16 +2225,16 @@ unsafe extern "C" {
     ///
     /// In order for Rust-C LTO to work, module flags must be compatible with Clang. What
     /// "compatible" means depends on the merge behaviors involved.
-    pub(crate) fn LLVMRustAddModuleFlagU32(
-        M: &Module,
+    pub(crate) fn LLVMRustAddModuleFlagU32<'ll>(
+        M: Module<'ll>,
         MergeBehavior: ModuleFlagMergeBehavior,
         Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
         Value: u32,
     );
 
-    pub(crate) fn LLVMRustAddModuleFlagString(
-        M: &Module,
+    pub(crate) fn LLVMRustAddModuleFlagString<'ll>(
+        M: Module<'ll>,
         MergeBehavior: ModuleFlagMergeBehavior,
         Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
@@ -2465,18 +2464,18 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustDisposeMCSubtargetInfo(MCInfo: ptr::NonNull<MCSubtargetInfo>);
 
-    pub(crate) fn LLVMRustWriteOutputFile<'a>(
-        T: &'a TargetMachine,
-        M: &'a Module,
+    pub(crate) fn LLVMRustWriteOutputFile<'ll>(
+        T: &'ll TargetMachine,
+        M: Module<'ll>,
         Output: *const c_char,
         DwoOutput: *const c_char,
         FileType: FileType,
         VerifyIR: bool,
         DisableSimplifyLibCalls: bool,
     ) -> LLVMRustResult;
-    pub(crate) fn LLVMRustOptimize<'a>(
-        M: &'a Module,
-        TM: &'a TargetMachine,
+    pub(crate) fn LLVMRustOptimize<'ll>(
+        M: Module<'ll>,
+        TM: &'ll TargetMachine,
         OptLevel: PassBuilderOptLevel,
         OptStage: OptStage,
         IsLinkerPluginLTO: bool,
@@ -2512,15 +2511,19 @@ unsafe extern "C" {
         LLVMPlugins: *const c_uchar, // See "PTR_LEN_STR".
         LLVMPluginsLen: size_t,
     ) -> LLVMRustResult;
-    pub(crate) fn LLVMRustPrintModule(
-        M: &Module,
+    pub(crate) fn LLVMRustPrintModule<'ll>(
+        M: Module<'ll>,
         Output: *const c_char,
         Demangle: extern "C" fn(*const c_char, size_t, *mut c_char, size_t) -> size_t,
     ) -> LLVMRustResult;
     pub(crate) fn LLVMRustSetLLVMOptions(Argc: c_int, Argv: *const *const c_char);
     pub(crate) fn LLVMRustPrintPasses();
-    pub(crate) fn LLVMRustSetNormalizedTarget(M: &Module, triple: *const c_char);
-    pub(crate) fn LLVMRustRunRestrictionPass(M: &Module, syms: *const *const c_char, len: size_t);
+    pub(crate) fn LLVMRustSetNormalizedTarget<'ll>(M: Module<'ll>, triple: *const c_char);
+    pub(crate) fn LLVMRustRunRestrictionPass<'ll>(
+        M: Module<'ll>,
+        syms: *const *const c_char,
+        len: size_t,
+    );
 
     pub(crate) fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
 
@@ -2559,38 +2562,47 @@ unsafe extern "C" {
         num_ranges: &mut usize,
     ) -> bool;
 
-    pub(crate) fn LLVMRustSetDataLayoutFromTargetMachine<'a>(M: &'a Module, TM: &'a TargetMachine);
+    pub(crate) fn LLVMRustSetDataLayoutFromTargetMachine<'ll>(M: Module<'ll>, TM: &TargetMachine);
 
     pub(crate) fn LLVMRustPositionBuilderPastAllocas<'a>(B: &Builder<'a>, Fn: &'a Value);
     pub(crate) fn LLVMRustPositionBuilderAtStart<'a>(B: &Builder<'a>, BB: &'a BasicBlock);
 
-    pub(crate) fn LLVMRustSetModulePICLevel(M: &Module);
-    pub(crate) fn LLVMRustSetModulePIELevel(M: &Module);
-    pub(crate) fn LLVMRustSetModuleCodeModel(M: &Module, Model: CodeModel);
-    pub(crate) fn LLVMRustSetModuleLargeDataThreshold(M: &Module, Threshold: u64);
+    pub(crate) fn LLVMRustSetModulePICLevel<'ll>(M: Module<'ll>);
+    pub(crate) fn LLVMRustSetModulePIELevel<'ll>(M: Module<'ll>);
+    pub(crate) fn LLVMRustSetModuleCodeModel<'ll>(M: Module<'ll>, Model: CodeModel);
+    pub(crate) fn LLVMRustSetModuleLargeDataThreshold<'ll>(M: Module<'ll>, Threshold: u64);
     pub(crate) fn LLVMRustBufferPtr(p: &Buffer) -> *const u8;
     pub(crate) fn LLVMRustBufferLen(p: &Buffer) -> usize;
     pub(crate) fn LLVMRustBufferFree(p: &'static mut Buffer);
-    pub(crate) fn LLVMRustModuleCost(M: &Module) -> u64;
-    pub(crate) fn LLVMRustModuleInstructionStats(M: &Module) -> u64;
+    pub(crate) fn LLVMRustModuleCost<'ll>(M: Module<'ll>) -> u64;
+    pub(crate) fn LLVMRustModuleInstructionStats<'ll>(M: Module<'ll>) -> u64;
 
-    pub(crate) fn LLVMRustModuleSerialize(M: &Module, is_thin: bool) -> &'static mut Buffer;
+    pub(crate) fn LLVMRustModuleSerialize<'ll>(
+        M: Module<'ll>,
+        is_thin: bool,
+    ) -> &'static mut Buffer;
     pub(crate) fn LLVMRustCreateThinLTOData(
         Modules: *const ThinLTOModule,
         NumModules: size_t,
         PreservedSymbols: *const *const c_char,
         PreservedSymbolsLen: size_t,
     ) -> Option<&'static mut ThinLTOData>;
-    pub(crate) fn LLVMRustPrepareThinLTORename(
+    pub(crate) fn LLVMRustPrepareThinLTORename<'ll>(
         Data: &ThinLTOData,
-        Module: &Module,
+        Module: Module<'ll>,
         Target: &TargetMachine,
     );
-    pub(crate) fn LLVMRustPrepareThinLTOResolveWeak(Data: &ThinLTOData, Module: &Module) -> bool;
-    pub(crate) fn LLVMRustPrepareThinLTOInternalize(Data: &ThinLTOData, Module: &Module) -> bool;
-    pub(crate) fn LLVMRustPrepareThinLTOImport(
+    pub(crate) fn LLVMRustPrepareThinLTOResolveWeak<'ll>(
         Data: &ThinLTOData,
-        Module: &Module,
+        Module: Module<'ll>,
+    ) -> bool;
+    pub(crate) fn LLVMRustPrepareThinLTOInternalize<'ll>(
+        Data: &ThinLTOData,
+        Module: Module<'ll>,
+    ) -> bool;
+    pub(crate) fn LLVMRustPrepareThinLTOImport<'ll>(
+        Data: &ThinLTOData,
+        Module: Module<'ll>,
         Target: &TargetMachine,
     ) -> bool;
     pub(crate) fn LLVMRustFreeThinLTOData(Data: &'static mut ThinLTOData);
@@ -2599,9 +2611,9 @@ unsafe extern "C" {
         Data: *const u8,
         len: usize,
         Identifier: *const c_char,
-    ) -> Option<&'ll Module>;
+    ) -> Option<Module<'ll>>;
 
-    pub(crate) fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
+    pub(crate) fn LLVMRustLinkerNew<'ll>(M: Module<'ll>) -> &'ll mut Linker<'ll>;
     pub(crate) fn LLVMRustLinkerAdd(
         linker: &Linker<'_>,
         bytecode: *const c_uchar, // See "PTR_LEN_STR".
