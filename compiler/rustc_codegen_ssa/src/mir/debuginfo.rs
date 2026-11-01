@@ -300,8 +300,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn debug_poison_to_local(&self, bx: &mut Bx, local: mir::Local) {
         let ty = self.monomorphize(self.mir.local_decls[local].ty);
         let layout = bx.cx().layout_of(ty);
-        let to_backend_ty = bx.cx().immediate_backend_type(layout);
-        let place_ref = PlaceRef::new_sized(bx.cx().const_poison(to_backend_ty), layout);
+        let place_ref = PlaceRef::new_sized(bx.cx().const_poison(bx.cx().type_ptr()), layout);
         self.debug_new_val_to_local(bx, local, place_ref, &[]);
     }
 
