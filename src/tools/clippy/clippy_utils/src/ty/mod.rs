@@ -1324,7 +1324,7 @@ impl<'tcx> InteriorMut<'tcx> {
             ty::Tuple(fields) => fields
                 .iter()
                 .find_map(|ty| self.interior_mut_ty_chain_inner(cx, ty, depth)),
-            ty::Adt(def, _) if def.is_unsafe_cell() => Some(ty::List::empty()),
+            _ if ty.is_like_unsafe_cell() => Some(ty::List::empty()),
             ty::Adt(def, args) => {
                 let is_std_collection = matches!(
                     cx.tcx.get_diagnostic_name(def.did()),

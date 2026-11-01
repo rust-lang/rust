@@ -828,7 +828,7 @@ fn ty_is_known_nonnull<'tcx>(
             }
 
             // `UnsafeCell` and `UnsafePinned` have their niche hidden.
-            if def.is_unsafe_cell() || def.is_unsafe_pinned() {
+            if ty.is_like_unsafe_cell() || ty.is_like_unsafe_pinned() {
                 return false;
             }
 
