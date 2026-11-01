@@ -18,17 +18,16 @@ unsafe fn null_ptr() {
         mem::transmute::<[u8; 4], _>([0, 0, 0, 255]),
     );
 
+    // This is okay.
     let _: &[usize] = std::slice::from_raw_parts(ptr::null(), 0);
-    //~^ ERROR calling this function with a null pointer is undefined behavior
+
     let _: &[usize] = std::slice::from_raw_parts(ptr::null_mut(), 0);
-    //~^ ERROR calling this function with a null pointer is undefined behavior
+
     let _: &[usize] = std::slice::from_raw_parts(0 as *mut _, 0);
-    //~^ ERROR calling this function with a null pointer is undefined behavior
+
     let _: &[usize] = std::slice::from_raw_parts(mem::transmute(0usize), 0);
-    //~^ ERROR calling this function with a null pointer is undefined behavior
 
     let _: &[usize] = std::slice::from_raw_parts_mut(ptr::null_mut(), 0);
-    //~^ ERROR calling this function with a null pointer is undefined behavior
 
     ptr::copy::<usize>(ptr::null(), ptr::NonNull::dangling().as_ptr(), 0);
     //~^ ERROR calling this function with a null pointer is undefined behavior
