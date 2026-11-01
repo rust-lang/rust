@@ -78,7 +78,7 @@ impl LintParser {
                                     LintName { tool: tool.map(|tool| tool.name), name: lint_name };
 
                                 let lint_name_normalized = if let Some((_lint_ids, new_lint_name)) =
-                                    Self::check_lint_name(
+                                    LintParser::check_lint_name(
                                         lint_name,
                                         tool.map(|tool| tool.span),
                                         p.span(),
@@ -97,7 +97,6 @@ impl LintParser {
                                     attr_id,
                                     reason,
                                     attr_span,
-                                    tool_span: tool.map(|tool| tool.span),
                                 })
                             }
                             // We've found a `reason = "reason"` but we're not the last element.

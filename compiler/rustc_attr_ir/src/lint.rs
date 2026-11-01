@@ -66,5 +66,4 @@ pub struct LintCheck {
     /// #[deny(foo::bar::baz)]
     ///        ^^^^^^^^^^^^^
     pub lint_span: Span,
-    pub tool_span: Option<Span>,
 }
