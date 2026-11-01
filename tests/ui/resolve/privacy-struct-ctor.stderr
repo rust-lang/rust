@@ -33,9 +33,13 @@ LL | |     }
    | |_____- `S2` defined here
 ...
 LL |       S2;
-   |       ^^ help: use struct literal syntax instead: `S2 { s: val }`
+   |       ^^
    |
    = note: a struct named `S2` exists in another namespace
+help: use struct literal syntax instead
+   |
+LL |     S2 { s: val };
+   |        ++++++++++
 
 error[E0423]: cannot find value `S` in crate `xcrate`
   --> $DIR/privacy-struct-ctor.rs:44:13
