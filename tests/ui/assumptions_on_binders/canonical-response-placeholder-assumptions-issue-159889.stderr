@@ -1,15 +1,9 @@
-error: item does not constrain `Foo::{opaque#0}`
-  --> $DIR/canonical-response-placeholder-assumptions-issue-159889.rs:21:4
+error[E0282]: type annotations needed
+  --> $DIR/canonical-response-placeholder-assumptions-issue-159889.rs:21:13
    |
 LL | fn foo() -> Foo {}
-   |    ^^^
-   |
-   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
-note: this opaque type is supposed to be constrained
-  --> $DIR/canonical-response-placeholder-assumptions-issue-159889.rs:13:12
-   |
-LL | type Foo = impl for<'a> Trait<Assoc<'a> = FooAssoc<'a>>;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^ cannot infer type
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0282`.
