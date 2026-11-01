@@ -632,6 +632,7 @@ pub fn rustc_peek<T>(_: T) -> T;
 /// The stabilized version of this intrinsic is [`core::process::crash`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
+#[rustc_intrinsic_const_stable_indirect]
 pub const fn abort_immediate() -> !;
 
 /// Informs the optimizer that this point in the code is not reachable,
