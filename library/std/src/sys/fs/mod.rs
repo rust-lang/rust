@@ -2,6 +2,7 @@
 
 use crate::io;
 use crate::path::{Path, PathBuf};
+use crate::sys::path::with_native_path;
 
 pub mod common;
 
@@ -17,15 +18,11 @@ cfg_select! {
         pub(crate) use unix::debug_assert_fd_is_open;
         #[cfg(not(target_os = "wasi"))]
         pub use unix::{chown, fchown, lchown, mkfifo};
-
-        use crate::sys::helpers::run_path_with_cstr as with_native_path;
     }
     target_os = "windows" => {
         mod windows;
         use windows as imp;
         pub use windows::{junction_point, symlink_inner};
-
-        use crate::sys::path::with_native_path;
     }
     target_os = "hermit" => {
         mod hermit;
@@ -51,13 +48,6 @@ cfg_select! {
         mod unsupported;
         use unsupported as imp;
     }
-}
-
-// FIXME: Replace this with platform-specific path conversion functions.
-#[cfg(not(any(target_family = "unix", target_os = "windows", target_os = "wasi")))]
-#[inline]
-pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> io::Result<T> {
-    f(path)
 }
 
 pub use imp::{
@@ -143,10 +133,6 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 }
 
 pub fn exists(path: &Path) -> io::Result<bool> {
-    // FIXME: use with_native_path on all platforms
-    #[cfg(not(windows))]
-    return imp::exists(path);
-    #[cfg(windows)]
     with_native_path(path, &imp::exists)
 }
 
