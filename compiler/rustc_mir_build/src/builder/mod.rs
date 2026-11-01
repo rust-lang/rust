@@ -65,6 +65,12 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
 /// This is the implementation of hook `build_mir_inner_impl`, which should only
 /// be called by the query `mir_built`.
 pub(crate) fn build_mir_inner_impl<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
+    if matches!(tcx.def_kind(def), DefKind::Const | DefKind::AssocConst)
+        && tcx.const_of_item(def).is_some()
+    {
+        return mir_for_direct_const(tcx, def);
+    }
+
     tcx.ensure_done().thir_abstract_const(def);
     if let Err(e) = tcx.ensure_result().check_match(def) {
         return construct_error(tcx, def, e);
@@ -763,6 +769,84 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
         span,
         coroutine,
         Some(guar),
+    )
+}
+
+/// A Const::Unevaluated/mir::UnevaluatedConst to a `gca!` const refers to synthesized MIR that
+/// simply returns a Const::Ty of itself. Evaluation of the Const::Ty then calls typesystem
+/// normalization, which eventually calls const_of_item (among other checks) which is the "actual"
+/// value of the const. It then performs a valtree to const val conversion.
+///
+/// This function produces that synthesized MIR.
+fn mir_for_direct_const<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Body<'tcx> {
+    let span = tcx.def_span(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+    let source_scope = SourceScopeData {
+        span,
+        parent_scope: None,
+        inlined: None,
+        inlined_parent_scope: None,
+        local_data: ClearCrossCrate::Set(SourceScopeLocalData { lint_root: hir_id }),
+    };
+    let source_scopes = IndexVec::from_elem_n(source_scope, 1);
+    let output = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
+    let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
+    let local_decls = IndexVec::from_elem_n(LocalDecl::with_source_info(output, source_info), 1);
+    let user_type_annotations = IndexVec::new();
+    let arg_count = 0;
+    let var_debug_info = vec![];
+    let coroutine = None;
+    let tainted_by_errors = None;
+
+    let alias_const = match tcx.def_kind(def_id) {
+        DefKind::Const => {
+            let args = ty::GenericArgs::identity_for_item(tcx, def_id);
+            let kind = ty::AliasConstKind::Free { def_id: def_id.into() };
+            ty::AliasConst::new(tcx, kind, args)
+        }
+        DefKind::AssocConst => {
+            if let Some(trait_item_def_id) = tcx.trait_item_of(def_id) {
+                // HACK(khyperia): The trait solver does not support Projection aliases to impl item
+                // def_ids. So, instead, unresolve the impl back to the trait item's def_id, and
+                // construct a Self arg that will resolve us back to the same impl.
+                //
+                // (Adding support to the trait solver for this would not be overly difficult, it's
+                // merely that this is the lesser hack and is more maintainable)
+                let impl_args = ty::GenericArgs::identity_for_item(tcx, def_id);
+                let parent = tcx.parent(def_id.into());
+                let trait_ref = tcx.impl_trait_ref(parent).instantiate_identity().skip_norm_wip();
+                let args = impl_args.rebase_onto(tcx, parent, trait_ref.args);
+                let kind = ty::AliasConstKind::Projection { def_id: trait_item_def_id };
+                ty::AliasConst::new(tcx, kind, args)
+            } else {
+                let args = ty::GenericArgs::identity_for_item(tcx, def_id);
+                let kind = ty::AliasConstKind::InherentImpl { def_id: def_id.into() };
+                ty::AliasConst::new(tcx, kind, args)
+            }
+        }
+        def_kind => span_bug!(tcx.def_span(def_id), "unexpected def_kind {def_kind:?}"),
+    };
+    let ty_const = ty::Const::new_alias(tcx, ty::IsRigid::No, alias_const);
+    let const_ = Const::Ty(output, ty_const);
+    let value = ConstOperand { span, user_ty: None, const_ };
+    let rvalue = Rvalue::Use(Operand::Constant(Box::new(value)), WithRetag::Yes);
+    let statement_kind = StatementKind::Assign(Box::new((Place::return_place(), rvalue)));
+    let statement = Statement::new(source_info, statement_kind);
+    let terminator = Some(Terminator { source_info, kind: TerminatorKind::Return });
+    let block = BasicBlockData::new_stmts(vec![statement], terminator, false);
+    let basic_blocks = IndexVec::from_elem_n(block, 1);
+
+    Body::new(
+        MirSource::item(def_id.to_def_id()),
+        basic_blocks,
+        source_scopes,
+        local_decls,
+        user_type_annotations,
+        arg_count,
+        var_debug_info,
+        span,
+        coroutine,
+        tainted_by_errors,
     )
 }
 

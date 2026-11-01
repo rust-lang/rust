@@ -575,7 +575,9 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     }
 
     let root = tcx.typeck_root_def_id_local(def);
-    if let Err(e) = tcx.check_transmutes(root) {
+    if !tcx.is_synthetic_mir(root)
+        && let Err(e) = tcx.check_transmutes(root)
+    {
         body.tainted_by_errors = Some(e);
     }
 
