@@ -173,6 +173,7 @@ where
 {
     type Item = <I::Item as Try>::Output;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.try_for_each(ControlFlow::Break).break_value()
     }
