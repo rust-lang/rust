@@ -19,7 +19,7 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::{Pat, PatKind};
 use rustc_lint_defs::{
-    CheckLintNameResult, FutureIncompatibleInfo, Lint, LintExpectationId, LintId,
+    CheckLintNameResult, FutureIncompatibleInfo, Lint, LintExpectationId, LintId, LintName,
     StableLintExpectationId, UnstableLintExpectationId,
 };
 use rustc_middle::lint::{LevelSpec, StableLevelSpec, UnstableLevelSpec};
@@ -30,7 +30,6 @@ use rustc_middle::ty::{self, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode,
 use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::{Ident, Span, Symbol, bug, sym};
-use rustc_structures::LintName;
 use tracing::debug;
 
 use self::TargetLint::*;

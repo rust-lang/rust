@@ -5,6 +5,7 @@
 use std::borrow::Cow;
 use std::fmt::Display;
 
+pub use lint_name::LintName;
 use rustc_ast::attr::version::RustcVersion;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
@@ -13,12 +14,12 @@ use rustc_hir_id::HirId;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::edition::Edition;
 use rustc_span::{AttrId, Ident, Symbol, sym};
-use rustc_structures::LintName;
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
 
 pub mod builtin;
+mod lint_name;
 
 #[macro_export]
 macro_rules! pluralize {
