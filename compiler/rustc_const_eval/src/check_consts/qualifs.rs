@@ -10,7 +10,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, AdtDef, Ty, TypingMode};
+use rustc_middle::ty::{self, AdtDef, AdtFlags, Ty, TypingMode};
 use rustc_span::bug;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use tracing::instrument;
@@ -99,7 +99,7 @@ impl Qualif for HasMutInterior {
         }
 
         // Avoid selecting for `UnsafeCell` either.
-        if ty.ty_adt_def().is_some_and(|adt| adt.is_unsafe_cell()) {
+        if ty.is_like_unsafe_cell() {
             return true;
         }
 
@@ -132,7 +132,8 @@ impl Qualif for HasMutInterior {
     fn is_structural_in_adt_value<'tcx>(_cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
-        !adt.is_unsafe_cell()
+        // (We cannot call `is_like_unsafe_cell` because that works on types, not ADTs.)
+        !adt.flags().contains(AdtFlags::IS_UNSAFE_CELL)
     }
 }
 

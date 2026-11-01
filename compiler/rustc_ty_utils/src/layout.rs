@@ -229,10 +229,10 @@ fn layout_of_uncached<'tcx>(
     };
     let scalar = |value: Primitive| tcx.mk_layout(LayoutData::scalar(cx, scalar_unit(value)));
 
-    let univariant = |tys: &[Ty<'tcx>], kind| {
+    let univariant = |tys: &[Ty<'tcx>], kind, niche_optimizations: NicheOptimizations| {
         let fields = tys.iter().map(|ty| cx.layout_of(*ty)).try_collect::<IndexVec<_, _>>()?;
         let repr = ReprOptions::default();
-        map_layout(cx.calc.layout_of_univariant(&fields, &repr, kind))
+        map_layout(cx.calc.layout_of_univariant(&fields, &repr, kind, niche_optimizations))
     };
     debug_assert!(!ty.has_non_region_infer());
 
@@ -602,17 +602,24 @@ fn layout_of_uncached<'tcx>(
             map_layout(layout)?
         }
 
-        ty::Closure(_, args) => univariant(args.as_closure().upvar_tys(), StructKind::AlwaysSized)?,
+        ty::Closure(_, args) => univariant(
+            args.as_closure().upvar_tys(),
+            StructKind::AlwaysSized,
+            NicheOptimizations::Enabled, // closures are not like UnsafeCell/UnsafePinned
+        )?,
 
-        ty::CoroutineClosure(_, args) => {
-            univariant(args.as_coroutine_closure().upvar_tys(), StructKind::AlwaysSized)?
-        }
+        ty::CoroutineClosure(_, args) => univariant(
+            args.as_coroutine_closure().upvar_tys(),
+            StructKind::AlwaysSized,
+            NicheOptimizations::Enabled, // closures are not like UnsafeCell/UnsafePinned
+        )?,
 
         ty::Tuple(tys) => {
             let kind =
                 if tys.len() == 0 { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };
 
-            univariant(tys, kind)?
+            // tuples are not like UnsafeCell/UnsafePinned
+            univariant(tys, kind, NicheOptimizations::Enabled)?
         }
 
         // Scalable vector types
@@ -710,7 +717,7 @@ fn layout_of_uncached<'tcx>(
             }
 
             // UnsafeCell and UnsafePinned both disable niche optimizations
-            let niche_optimizations = match def.is_unsafe_cell() || def.is_unsafe_pinned() {
+            let niche_optimizations = match ty.is_like_unsafe_cell() || ty.is_like_unsafe_pinned() {
                 true => NicheOptimizations::Disabled,
                 false => NicheOptimizations::Enabled,
             };

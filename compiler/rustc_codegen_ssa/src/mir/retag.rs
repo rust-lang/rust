@@ -368,12 +368,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> PerByteTracking<'a, 'tcx, Bx> for U
         ty.is_freeze(bx.tcx(), bx.cx().typing_env())
     }
 
-    fn contains(bx: &mut Bx, ty: Ty<'tcx>) -> bool {
-        let tcx = bx.tcx();
-        match ty.kind() {
-            ty::Adt(adt, _) => Some(adt.did()) == tcx.lang_items().unsafe_cell_type(),
-            _ => false,
-        }
+    fn contains(_bx: &mut Bx, ty: Ty<'tcx>) -> bool {
+        ty.is_like_unsafe_cell()
     }
 }
 

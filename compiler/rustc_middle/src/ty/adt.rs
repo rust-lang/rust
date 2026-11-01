@@ -513,18 +513,6 @@ impl<'tcx> AdtDef<'tcx> {
         self.flags().contains(AdtFlags::IS_BOX)
     }
 
-    /// Returns `true` if this is `UnsafeCell<T>`.
-    #[inline]
-    pub fn is_unsafe_cell(self) -> bool {
-        self.flags().contains(AdtFlags::IS_UNSAFE_CELL)
-    }
-
-    /// Returns `true` if this is `UnsafePinned<T>`.
-    #[inline]
-    pub fn is_unsafe_pinned(self) -> bool {
-        self.flags().contains(AdtFlags::IS_UNSAFE_PINNED)
-    }
-
     /// Returns `true` if this is `ManuallyDrop<T>`.
     #[inline]
     pub fn is_manually_drop(self) -> bool {

@@ -275,6 +275,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         fields: &IndexSlice<FieldIdx, F>,
         repr: &ReprOptions,
         kind: StructKind,
+        niche_optimizations: NicheOptimizations,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
     where
         FieldIdx: Idx,
@@ -282,17 +283,17 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     {
         let dl = self.cx.data_layout();
-        let layout = self.layout_of_univariant_biased(fields, repr, kind, NicheBias::Start);
+        let mut layout = self.layout_of_univariant_biased(fields, repr, kind, NicheBias::Start)?;
         // Enums prefer niches close to the beginning or the end of the variants so that other
         // (smaller) data-carrying variants can be packed into the space after/before the niche.
         // If the default field ordering does not give us a niche at the front then we do a second
         // run and bias niches to the right and then check which one is closer to one of the
         // struct's edges.
-        if let Ok(layout) = &layout
-            // Don't try to calculate an end-biased layout for unsizable structs,
-            // otherwise we could end up with different layouts for
-            // Foo<Type> and Foo<dyn Trait> which would break unsizing.
-            && !matches!(kind, StructKind::MaybeUnsized)
+        if
+        // Don't try to calculate an end-biased layout for unsizable structs,
+        // otherwise we could end up with different layouts for
+        // Foo<Type> and Foo<dyn Trait> which would break unsizing.
+        !matches!(kind, StructKind::MaybeUnsized)
             && let Some(niche) = layout.largest_niche
             && let head_space = niche.offset.bytes()
             && let niche_len = niche.value.size(dl).bytes()
@@ -329,15 +330,37 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 alt_tail_space,
                 layout.fields.count(),
                 prefer_alt_layout,
-                self.format_field_niches(layout, fields),
+                self.format_field_niches(&layout, fields),
                 self.format_field_niches(&alt_layout, fields),
             );
 
             if prefer_alt_layout {
-                return Ok(alt_layout);
+                layout = alt_layout;
             }
         }
-        layout
+
+        if niche_optimizations == NicheOptimizations::Disabled {
+            let hide_niches = |scalar: &mut _| match scalar {
+                Scalar::Initialized { value, valid_range } => {
+                    *valid_range = WrappingRange::full(value.size(dl))
+                }
+                // Already doesn't have any niches
+                Scalar::Union { .. } => {}
+            };
+            match &mut layout.backend_repr {
+                BackendRepr::Scalar(scalar) => hide_niches(scalar),
+                BackendRepr::ScalarPair { a, b, b_offset: _ } => {
+                    hide_niches(a);
+                    hide_niches(b);
+                }
+                BackendRepr::SimdVector { element, .. }
+                | BackendRepr::SimdScalableVector { element, .. } => hide_niches(element),
+                BackendRepr::Memory { sized: _ } => {}
+            }
+            layout.largest_niche = None;
+        }
+
+        Ok(layout)
     }
 
     pub fn layout_of_struct_or_enum<'a, FieldIdx, VariantIdx, F>(
@@ -544,7 +567,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         VariantIdx: Idx,
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     {
-        let dl = self.cx.data_layout();
         let v = variant_idx;
         let kind = if is_enum || variants[v].is_empty() || always_sized {
             StructKind::AlwaysSized
@@ -552,30 +574,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             StructKind::MaybeUnsized
         };
 
-        let mut st = self.layout_of_univariant(&variants[v], repr, kind)?;
+        let mut st = self.layout_of_univariant(&variants[v], repr, kind, niche_optimizations)?;
         st.variants = Variants::Single { index: v };
-
-        if niche_optimizations == NicheOptimizations::Disabled {
-            let hide_niches = |scalar: &mut _| match scalar {
-                Scalar::Initialized { value, valid_range } => {
-                    *valid_range = WrappingRange::full(value.size(dl))
-                }
-                // Already doesn't have any niches
-                Scalar::Union { .. } => {}
-            };
-            match &mut st.backend_repr {
-                BackendRepr::Scalar(scalar) => hide_niches(scalar),
-                BackendRepr::ScalarPair { a, b, b_offset: _ } => {
-                    hide_niches(a);
-                    hide_niches(b);
-                }
-                BackendRepr::SimdVector { element, .. }
-                | BackendRepr::SimdScalableVector { element, .. } => hide_niches(element),
-                BackendRepr::Memory { sized: _ } => {}
-            }
-            st.largest_niche = None;
-            return Ok(st);
-        }
 
         Ok(st)
     }
@@ -620,7 +620,14 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let mut variant_layouts = variants
                 .iter()
                 .map(|v| {
-                    let st = self.layout_of_univariant(v, repr, StructKind::AlwaysSized).ok()?;
+                    let st = self
+                        .layout_of_univariant(
+                            v,
+                            repr,
+                            StructKind::AlwaysSized,
+                            NicheOptimizations::Enabled, // no enum is like UnsafeCell/UnsafePinned
+                        )
+                        .ok()?;
 
                     variants_info.push(VariantLayoutInfo { align_abi: st.align.abi });
 
@@ -827,6 +834,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     field_layouts,
                     repr,
                     StructKind::Prefixed(min_ity.size(), prefix_align),
+                    NicheOptimizations::Enabled, // no enum is like UnsafeCell/UnsafePinned
                 )?;
                 // Find the first field we can't move later
                 // to make room for a larger discriminant.
