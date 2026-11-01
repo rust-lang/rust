@@ -16,13 +16,11 @@ use std::cell::Cell;
 use std::time::Duration;
 
 use rustc_abi::{Endian, FieldIdx, Size};
+use rustc_middle::ty::layout::TyAndLayout;
 
-use crate::concurrency::sync::{AccessKind, FutexRef, SyncObj};
+use crate::concurrency::sync::FutexRef;
+use crate::meta_obj::OPAQUE_OBJ_COOKIE;
 use crate::*;
-
-// The in-memory marker values we use to indicate whether objects have been initialized.
-const SYNC_UNINIT: u8 = 0;
-const SYNC_INIT: u8 = 1;
 
 #[derive(Clone)]
 enum MacOsUnfairLock {
@@ -36,19 +34,19 @@ enum MacOsUnfairLock {
     PermanentlyLockedByUnknown,
 }
 
-impl SyncObj for MacOsUnfairLock {
-    fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
+impl MetaObj for MacOsUnfairLock {
+    fn on_access<'tcx>(&self) -> InterpResult<'tcx> {
         if let MacOsUnfairLock::Active { mutex_ref } = self
             && !mutex_ref.queue_is_empty()
         {
             throw_ub_format!(
-                "{access_kind} of `os_unfair_lock` is forbidden while the queue is non-empty"
+                "accessing the memory backing a `os_unfair_lock` is forbidden while the queue is non-empty"
             );
         }
         interp_ok(())
     }
 
-    fn delete_on_write(&self) -> bool {
+    fn opaque(&self) -> bool {
         true
     }
 }
@@ -71,7 +69,11 @@ struct MacOsFutex {
     size: Cell<u64>,
 }
 
-impl SyncObj for MacOsFutex {}
+impl MetaObj for MacOsFutex {
+    fn opaque(&self) -> bool {
+        false
+    }
+}
 
 #[derive(Clone)]
 struct MacOsSemaphore {
@@ -79,26 +81,28 @@ struct MacOsSemaphore {
     init_value: u64,
 }
 
-// The offset into the semaphore where we are storing the "init" flag.
-const SEM_INIT_OFFSET: Size = Size::ZERO;
-
 // Constants from the dispatch semaphore API.
 const DISPATCH_TIME_NOW: u64 = 0;
 const DISPATCH_TIME_FOREVER: u64 = !0;
 
-impl SyncObj for MacOsSemaphore {
-    fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
+impl MetaObj for MacOsSemaphore {
+    fn on_access<'tcx>(&self) -> InterpResult<'tcx> {
         if !self.semaphore.queue_is_empty() {
             throw_ub_format!(
-                "{access_kind} of `os_unfair_lock` is forbidden while the queue is non-empty"
+                "accessing the memory behind a `dispatch_semaphore_t` is forbidden while the queue is non-empty"
             );
         }
         interp_ok(())
     }
 
-    fn delete_on_write(&self) -> bool {
+    fn opaque(&self) -> bool {
         true
     }
+}
+
+fn dispatch_semaphore_layout<'tcx>(ecx: &MiriInterpCx<'tcx>) -> TyAndLayout<'tcx> {
+    // We can pick anything here as long as we are consistent.
+    ecx.machine.layouts.usize
 }
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -106,7 +110,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn os_unfair_lock_get_data<'a>(
         &'a mut self,
         lock_ptr: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, &'a MacOsUnfairLock>
+    ) -> InterpResult<'tcx, &'a mut MacOsUnfairLock>
     where
         'tcx: 'a,
     {
@@ -116,22 +120,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         assert!(this.tcx.data_layout.endian == Endian::Little);
 
         let lock = this.deref_pointer(lock_ptr)?;
-        this.get_immovable_sync_with_static_init(
+        this.get_or_insert_meta(
             &lock,
-            Size::ZERO, // offset for init tracking
-            SYNC_UNINIT,
-            SYNC_INIT,
             |this| {
                 let field = this.project_field(&lock, FieldIdx::from_u32(0))?;
                 let val = this.read_scalar(&field)?.to_u32()?;
                 if val == 0 {
                     interp_ok(MacOsUnfairLock::Active { mutex_ref: MutexRef::new() })
-                } else if val == 1 {
-                    // This is a lock that got copied while it is initialized. We de-initialize
-                    // locks when they get released, so it got copied while locked. Unfortunately
-                    // that is something `std` needs to support (the guard could have been leaked).
-                    // On the plus side, we know nobody was queued for the lock while it got copied;
-                    // that would have been rejected by our `on_access`.
+                } else if val == u32::from_ne_bytes([OPAQUE_OBJ_COOKIE; 4]) {
+                    // This is a lock that got copied while it is initialized. We reset locks to 0
+                    // when they get released, so it got copied while locked. Unfortunately that is
+                    // something `std` needs to support (the guard could have been leaked). On the
+                    // plus side, we know nobody was queued for the lock while it got copied; that
+                    // would have been rejected by our `on_access`.
                     // The real implementation would apparently remember who held the old lock, and
                     // consider them to hold the copy as well -- but our copies don't preserve sync
                     // object metadata so we instead move the lock into a "permanently locked"
@@ -145,21 +146,16 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn dispatch_semaphore_get_data<'a>(
-        &'a mut self,
-        sem_ptr: &ImmTy<'tcx>,
+        &'a self,
+        sem_ptr: Pointer,
     ) -> InterpResult<'tcx, &'a MacOsSemaphore>
     where
         'tcx: 'a,
     {
-        let this = self.eval_context_mut();
-        let sem = this.deref_pointer(sem_ptr)?;
-        this.get_immovable_sync_with_static_init(
-            &sem,
-            SEM_INIT_OFFSET,
-            SYNC_UNINIT,
-            SYNC_INIT,
-            |_ecx| throw_ub_format!("`dispatch_semaphore_t` value has not been initialized with `dispatch_semaphore_create`"),
-        )
+        let ecx = self.eval_context_ref();
+        interp_ok(ecx.try_get_meta(
+            sem_ptr,
+        ).map_err(|_| err_ub_format!("`dispatch_semaphore_t` value has not been initialized with `dispatch_semaphore_create`"))?)
     }
 }
 
@@ -228,15 +224,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
         let layout = this.machine.layouts.uint(Size::from_bytes(size)).unwrap();
+        let futex_place = this.ptr_to_mplace(ptr, layout);
         let futex_val = this
-            .read_scalar_atomic(&this.ptr_to_mplace(ptr, layout), AtomicReadOrd::Acquire)?
+            .read_scalar_atomic(&futex_place, AtomicReadOrd::Acquire)?
             .to_bits(Size::from_bytes(size))?;
 
-        let futex = this
-            .get_sync_or_init(ptr, |_| {
-                MacOsFutex { futex: Default::default(), size: Cell::new(size) }
-            })
-            .unwrap();
+        let futex = this.get_or_insert_meta(&futex_place, |_| {
+            interp_ok(MacOsFutex { futex: Default::default(), size: Cell::new(size) })
+        })?;
 
         // Detect mismatches between the flags and sizes used on this address
         // by comparing it with the parameters used by the other waiters in
@@ -310,28 +305,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(());
         }
 
-        let Some(futex) = this.get_sync_or_init(ptr, |_| {
-            MacOsFutex { futex: Default::default(), size: Cell::new(size) }
-        }) else {
-            // No AllocId, or no live allocation at that AllocId. Return an
-            // error code. (That seems nicer than silently doing something
-            // non-intuitive.) This means that if an address gets reused by a
-            // new allocation, we'll use an independent futex queue for this...
-            // that seems acceptable.
-            this.set_errno_and_return_neg1(LibcError("ENOENT"), dest)?;
-            return interp_ok(());
+        let Ok(futex) = this.try_get_meta::<MacOsFutex>(ptr) else {
+            // Same behavior for dangling pointers and when no futex has been put here yet.
+            return this.set_errno_and_return_neg1(LibcError("ENOENT"), dest);
         };
 
         if futex.futex.waiters() == 0 {
-            this.set_errno_and_return_neg1(LibcError("ENOENT"), dest)?;
-            return interp_ok(());
+            return this.set_errno_and_return_neg1(LibcError("ENOENT"), dest);
         // If there are waiters in the queue, they have all used the parameters
         // stored in `futex` (we check this in `os_sync_wait_on_address` above).
         // Detect mismatches between "our" parameters and the parameters used by
         // the waiters and return an error in that case.
         } else if futex.size.get() != size {
-            this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
-            return interp_ok(());
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
         }
 
         let futex_ref = futex.futex.clone();
@@ -494,10 +480,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         // Create an allocation to hold the semaphore "state" (mostly meta state for us).
-        let alloc = this.allocate(this.machine.layouts.u8, MiriMemoryKind::Runtime.into())?;
+        let alloc =
+            this.allocate(dispatch_semaphore_layout(this), MiriMemoryKind::Runtime.into())?;
         // Initialize semaphore.
         let data = MacOsSemaphore { semaphore: SemaphoreRef::new(value), init_value: value };
-        this.init_immovable_sync(&alloc, SEM_INIT_OFFSET, SYNC_INIT, data)?;
+        this.insert_meta(&alloc, Box::new(data))?;
 
         this.write_pointer(alloc.ptr(), dest)?;
         interp_ok(())
@@ -511,7 +498,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let sem_ptr = this.read_immediate(sem_ptr)?;
+        let sem_ptr = this.read_pointer(sem_ptr)?;
         let timeout = this.read_scalar(timeout)?.to_u64()?;
 
         let deadline = if timeout == DISPATCH_TIME_FOREVER {
@@ -524,7 +511,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some(deadline.into())
         };
 
-        let data = this.dispatch_semaphore_get_data(&sem_ptr)?.clone();
+        let data = this.dispatch_semaphore_get_data(sem_ptr)?.clone();
         let dest = dest.clone();
         this.semaphore_decrement(
             data.semaphore,
@@ -552,9 +539,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let sem_ptr = this.read_immediate(sem_ptr)?;
+        let sem_ptr = this.read_pointer(sem_ptr)?;
 
-        let data = this.dispatch_semaphore_get_data(&sem_ptr)?.clone();
+        let data = this.dispatch_semaphore_get_data(sem_ptr)?.clone();
         let woke_thread = this.semaphore_increment(&data.semaphore)?;
 
         // The `dispatch_semaphore_signal` docs do not discuss the return value,
@@ -568,9 +555,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn dispatch_release(&mut self, sem_ptr: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let sem_ptr = this.read_immediate(sem_ptr)?;
+        let sem_ptr = this.read_pointer(sem_ptr)?;
 
-        let data = this.dispatch_semaphore_get_data(&sem_ptr)?.clone();
+        let data = this.dispatch_semaphore_get_data(sem_ptr)?.clone();
         // macOS aborts if the final value is below the initial value.
         if data.semaphore.value() < data.init_value {
             throw_machine_stop!(TerminationInfo::Abort(
@@ -579,8 +566,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         // Freeing the memory will also free the meta-object in `AllocExtra`.
-        let sem_ptr = sem_ptr.to_scalar().to_pointer(this);
-        this.deallocate_ptr(sem_ptr, None, MiriMemoryKind::Runtime.into())?;
+        let layout = dispatch_semaphore_layout(this);
+        this.deallocate_ptr(
+            sem_ptr,
+            Some((layout.size, layout.align.abi)),
+            MiriMemoryKind::Runtime.into(),
+        )?;
 
         interp_ok(())
     }

@@ -6,6 +6,6 @@ fn main() {
         let mutexattr: libc::pthread_mutexattr_t = mem::zeroed();
         let mut mutex: libc::pthread_mutex_t = mem::zeroed();
         assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mutexattr as *const _), 0);
-        //~^ERROR: not initialized
+        //~^ERROR: has not been initialized
     }
 }

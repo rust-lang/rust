@@ -335,6 +335,13 @@ fn test_condattr() {
 
         #[cfg(not(target_os = "macos"))] // setclock-getclock do not exist on macOS
         {
+            let mut check_clock_id = MaybeUninit::<libc::clockid_t>::uninit();
+            assert_eq!(
+                libc::pthread_condattr_getclock(attr.as_mut_ptr(), check_clock_id.as_mut_ptr()),
+                0
+            );
+            assert_eq!(check_clock_id.assume_init(), libc::CLOCK_REALTIME);
+
             let clock_id = libc::CLOCK_MONOTONIC;
             assert_eq!(libc::pthread_condattr_setclock(attr.as_mut_ptr(), clock_id), 0);
             let mut check_clock_id = MaybeUninit::<libc::clockid_t>::uninit();

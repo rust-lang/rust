@@ -1,4 +1,4 @@
-error: Undefined Behavior: this `pthread_condattr_t` is not initialized
+error: Undefined Behavior: `pthread_condattr_t` has not been initialized or has been tampered with
   --> tests/fail-dep/concurrency/pthread-condattr-zero-init.rs:LL:CC
    |
 LL |         assert_eq!(libc::pthread_cond_init(&mut cond as *mut _, &condattr as *const _), 0);

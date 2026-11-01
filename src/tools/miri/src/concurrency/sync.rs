@@ -1,63 +1,14 @@
-use std::any::Any;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
 use std::default::Default;
 use std::ops::Not;
 use std::rc::Rc;
-use std::{fmt, iter};
 
-use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashMap;
 
 use super::vector_clock::VClock;
 use crate::*;
-
-/// Indicates which kind of access is being performed.
-#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
-pub enum AccessKind {
-    Read,
-    Write,
-    Dealloc,
-}
-
-impl fmt::Display for AccessKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AccessKind::Read => write!(f, "read"),
-            AccessKind::Write => write!(f, "write"),
-            AccessKind::Dealloc => write!(f, "deallocation"),
-        }
-    }
-}
-
-/// A trait for the synchronization metadata that can be attached to a memory location.
-pub trait SyncObj: Any {
-    /// Determines whether reads/writes to this object's location are currently permitted.
-    fn on_access<'tcx>(&self, _access_kind: AccessKind) -> InterpResult<'tcx> {
-        interp_ok(())
-    }
-
-    /// Determines whether this object's metadata shall be deleted when a write to its
-    /// location occurs.
-    fn delete_on_write(&self) -> bool {
-        false
-    }
-}
-
-impl dyn SyncObj {
-    #[inline(always)]
-    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        let x: &dyn Any = self;
-        x.downcast_ref()
-    }
-}
-
-impl fmt::Debug for dyn SyncObj {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SyncObj").finish_non_exhaustive()
-    }
-}
 
 /// The mutex state.
 #[derive(Default, Debug)]
@@ -299,151 +250,12 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 }
 
-impl<'tcx> AllocExtra<'tcx> {
-    fn get_sync<T: 'static>(&self, offset: Size) -> Option<&T> {
-        self.sync_objs.get(&offset).and_then(|s| s.downcast_ref::<T>())
-    }
-}
-
 // Public interface to synchronization objects. Please note that in most
 // cases, the function calls are infallible and it is the client's (shim
 // implementation's) responsibility to detect and deal with erroneous
 // situations.
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// Get the synchronization object associated with the given pointer,
-    /// or initialize a new one.
-    ///
-    /// Return `None` if this pointer does not point to at least 1 byte of mutable memory.
-    fn get_sync_or_init<'a, T: SyncObj>(
-        &'a mut self,
-        ptr: Pointer,
-        new: impl FnOnce(&'a mut MiriMachine<'tcx>) -> T,
-    ) -> Option<&'a T>
-    where
-        'tcx: 'a,
-    {
-        let this = self.eval_context_mut();
-        if !this.ptr_try_get_alloc_id(ptr, 0).ok().is_some_and(|(alloc_id, offset, ..)| {
-            let info = this.get_alloc_info(alloc_id);
-            info.kind == AllocKind::LiveData && info.mutbl.is_mut() && offset < info.size
-        }) {
-            return None;
-        }
-        // This cannot fail now.
-        let (alloc, offset, _) = this.ptr_get_alloc_id(ptr, 0).unwrap();
-        let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc).unwrap();
-        // Due to borrow checker reasons, we have to do the lookup twice.
-        if alloc_extra.get_sync::<T>(offset).is_none() {
-            let new = new(machine);
-            alloc_extra.sync_objs.insert(offset, Box::new(new));
-        }
-        Some(alloc_extra.get_sync::<T>(offset).unwrap())
-    }
-
-    /// Helper for "immovable" synchronization objects: the expected protocol for these objects is
-    /// that they use a static initializer of `uninit_val`, and we set them to `init_val` upon
-    /// initialization. At that point we also register a synchronization object, which is expected
-    /// to have `delete_on_write() == true`. So in the future, if we still see the object, we know
-    /// the location must still contain `init_val`. If the object is copied somewhere, that will
-    /// show up as a non-`init_val` value without a synchronization object, which we can then use to
-    /// error.
-    ///
-    /// `new_meta_obj` gets invoked when there is not yet an initialization object.
-    /// It has to ensure that the in-memory representation indeed matches `uninit_val`.
-    ///
-    /// The point of storing an `init_val` is so that if this memory gets copied somewhere else,
-    /// it does not look like the static initializer (i.e., `uninit_val`) any more. For some
-    /// objects we could just entirely forbid reading their bytes to ensure they don't get copied,
-    /// but that does not work for objects without a destructor (Windows `InitOnce`, macOS
-    /// `os_unfair_lock`).
-    fn get_immovable_sync_with_static_init<'a, T: SyncObj>(
-        &'a mut self,
-        obj: &MPlaceTy<'tcx>,
-        init_offset: Size,
-        uninit_val: u8,
-        init_val: u8,
-        new_meta_obj: impl FnOnce(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, T>,
-    ) -> InterpResult<'tcx, &'a T>
-    where
-        'tcx: 'a,
-    {
-        assert!(init_val != uninit_val);
-        let this = self.eval_context_mut();
-        this.check_ptr_access(
-            obj.ptr(),
-            obj.layout.size,
-            CheckInAllocMsg::Dereferenceable("pointer"),
-        )?;
-        assert!(init_offset < obj.layout.size); // ensure our 1-byte flag fits
-        let init_field = obj.offset(init_offset, this.machine.layouts.u8, this)?;
-
-        let (alloc, offset, _) = this.ptr_get_alloc_id(init_field.ptr(), 0)?;
-        let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc)?;
-        // Due to borrow checker reasons, we have to do the lookup twice.
-        if alloc_extra.get_sync::<T>(offset).is_some() {
-            let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc).unwrap();
-            return interp_ok(alloc_extra.get_sync::<T>(offset).unwrap());
-        }
-
-        // There's no sync object there yet. Create one, and try a CAS for uninit_val to init_val.
-        let meta_obj = new_meta_obj(this)?;
-        let (old_init, success) = this.atomic_compare_exchange(
-            &init_field,
-            &ImmTy::from_scalar(Scalar::from_u8(uninit_val), this.machine.layouts.u8),
-            Scalar::from_u8(init_val),
-            AtomicRwOrd::Relaxed,
-            AtomicReadOrd::Relaxed,
-            /* can_fail_spuriously */ false,
-        )?;
-        if !success {
-            // This can happen for the macOS lock if it is already marked as initialized.
-            assert_eq!(
-                old_init.to_u8()?,
-                init_val,
-                "`new_meta_obj` should have ensured that this CAS succeeds"
-            );
-        }
-
-        let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc).unwrap();
-        assert!(meta_obj.delete_on_write());
-        alloc_extra.sync_objs.insert(offset, Box::new(meta_obj));
-        interp_ok(alloc_extra.get_sync::<T>(offset).unwrap())
-    }
-
-    /// Explicitly initializes an object that would usually be implicitly initialized with
-    /// `get_immovable_sync_with_static_init`.
-    fn init_immovable_sync<'a, T: SyncObj>(
-        &'a mut self,
-        obj: &MPlaceTy<'tcx>,
-        init_offset: Size,
-        init_val: u8,
-        new_meta_obj: T,
-    ) -> InterpResult<'tcx, Option<&'a T>>
-    where
-        'tcx: 'a,
-    {
-        let ecx = self.eval_context_mut();
-        ecx.check_ptr_access(
-            obj.ptr(),
-            obj.layout.size,
-            CheckInAllocMsg::Dereferenceable("pointer"),
-        )?;
-        assert!(init_offset < obj.layout.size); // ensure our 1-byte flag fits
-        let init_field = obj.offset(init_offset, ecx.machine.layouts.u8, ecx)?;
-
-        // Zero the entire object, and then store `init_val` directly.
-        ecx.write_bytes_ptr(obj.ptr(), iter::repeat_n(0, obj.layout.size.bytes_usize()))?;
-        ecx.write_scalar(Scalar::from_u8(init_val), &init_field)?;
-
-        // Create meta-level initialization object.
-        let (alloc, offset, _) = ecx.ptr_get_alloc_id(init_field.ptr(), 0)?;
-        let (alloc_extra, _machine) = ecx.get_alloc_extra_mut(alloc).unwrap();
-        assert!(new_meta_obj.delete_on_write());
-        alloc_extra.sync_objs.insert(offset, Box::new(new_meta_obj));
-        interp_ok(Some(alloc_extra.get_sync::<T>(offset).unwrap()))
-    }
-
     /// Lock by setting the mutex owner and increasing the lock count.
     fn mutex_lock(&self, mutex_ref: &MutexRef) -> InterpResult<'tcx> {
         let ecx = self.eval_context_ref();
