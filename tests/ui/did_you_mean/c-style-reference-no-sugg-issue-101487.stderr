@@ -1,0 +1,27 @@
+error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `=`, found `&`
+  --> $DIR/c-style-reference-no-sugg-issue-101487.rs:11:16
+   |
+LL |     let _c: u8 & u8;
+   |           -    ^ expected one of 7 possible tokens
+   |           |
+   |           while parsing the type for `_c`
+
+error: expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `=`, found `&`
+  --> $DIR/c-style-reference-no-sugg-issue-101487.rs:16:16
+   |
+LL |     let _c: u8 &mut;
+   |           -    ^ expected one of 7 possible tokens
+   |           |
+   |           while parsing the type for `_c`
+
+error: expected expression, found end of macro arguments
+  --> $DIR/c-style-reference-no-sugg-issue-101487.rs:23:11
+   |
+LL |     ($e:expr) => { $e };
+   |      ------- while parsing argument for this `expr` macro fragment
+...
+LL |     m!(x &);
+   |           ^ expected expression
+
+error: aborting due to 3 previous errors
+

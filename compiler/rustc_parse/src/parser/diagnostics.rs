@@ -7,7 +7,7 @@ use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode,
     Block, BlockCheckMode, Expr, ExprKind, GenericArg, GenericArgs, Generics, Item, ItemKind,
-    Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
+    Mutability, Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -27,9 +27,10 @@ use super::{
 };
 use crate::diagnostics::{
     AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AwaitSuggestion,
-    BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
-    ComparisonOperatorsCannotBeChainedSugg, DocCommentDoesNotDocumentAnything, DoubleColonInBound,
-    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, ExprParenthesesNeeded, FoundPathInGenerics,
+    BadQPathStage2, BadTypePlus, BadTypePlusSub, CStyleReference, CStyleReferenceSugg, ColonAsSemi,
+    ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
+    DocCommentDoesNotDocumentAnything, DoubleColonInBound, ExpectedIdentifier, ExpectedSemi,
+    ExpectedSemiSugg, ExprParenthesesNeeded, FoundPathInGenerics,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
     IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, MisspelledKw,
@@ -1501,6 +1502,28 @@ impl<'a> Parser<'a> {
                 },
             });
             self.mk_ty(ty.span.to(self.prev_token.span), TyKind::Err(guar))
+        } else {
+            ty
+        }
+    }
+
+    /// If a user writes `T&` instead of `&T`, this method
+    /// attempts to recover and provide a helpful error message.
+    pub(super) fn maybe_recover_from_c_style_reference(&mut self, ty: Box<Ty>) -> Box<Ty> {
+        if self.token == token::And
+            && self.may_recover()
+            && !self.look_ahead(1, |t| t.can_begin_type() || t.is_keyword(kw::Mut))
+        {
+            self.bump();
+
+            let ref_span = self.prev_token.span;
+
+            self.dcx().emit_err(CStyleReference {
+                span: ref_span,
+                sugg: CStyleReferenceSugg { remove: ref_span, insert: ty.span.shrink_to_lo() },
+            });
+
+            self.mk_ty(ty.span.to(ref_span), TyKind::Ref(None, ty, Mutability::Not))
         } else {
             ty
         }
