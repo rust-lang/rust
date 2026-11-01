@@ -366,8 +366,8 @@ macro_rules! carrying_carryless_mul_impl {
         /// ```
         /// #![feature(uint_carryless_mul)]
         ///
-        /// assert_eq!(0b1000_0000u8.carrying_carryless_mul(0b1000_0000, 0b0000), (0, 0b0100_0000));
-        /// assert_eq!(0b1000_0000u8.carrying_carryless_mul(0b1000_0000, 0b1111), (0b1111, 0b0100_0000));
+        /// assert_eq!(0b1000_0000_u8.carrying_carryless_mul(0b1000_0000, 0b0000), (0, 0b0100_0000));
+        /// assert_eq!(0b1000_0000_u8.carrying_carryless_mul(0b1000_0000, 0b1111), (0b1111, 0b0100_0000));
         #[doc = concat!("assert_eq!(",
             stringify!($SelfT), "::MAX.carrying_carryless_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
             "(!(", stringify!($SelfT), "::MAX / 3), ", stringify!($SelfT), "::MAX / 3));"
@@ -443,11 +443,11 @@ impl i32 {
         Min = -2147483648,
         Max = 2147483647,
         rot = 8,
-        rot_op     = "0x010000b3",
-        rot_result = "0x0000b301",
-        swap_op    = "0x12345678",
-        swapped    = "0x78563412",
-        reversed   = "0x1e6a2c48",
+        rot_op     = "0x0100_00b3",
+        rot_result = "0x0000_b301",
+        swap_op    = "0x1234_5678",
+        swapped    = "0x7856_3412",
+        reversed   = "0x1e6a_2c48",
         le_bytes = "[0x78, 0x56, 0x34, 0x12]",
         be_bytes = "[0x12, 0x34, 0x56, 0x78]",
         to_xe_bytes_doc = "",
@@ -468,11 +468,11 @@ impl i64 {
         Min = -9223372036854775808,
         Max = 9223372036854775807,
         rot = 12,
-        rot_op     = "0x0aa00000000006e1",
-        rot_result = "0x00000000006e10aa",
-        swap_op    = "0x1234567890123456",
-        swapped    = "0x5634129078563412",
-        reversed   = "0x6a2c48091e6a2c48",
+        rot_op     = "0x0aa0_0000_0000_06e1",
+        rot_result = "0x0000_0000_006e_10aa",
+        swap_op    = "0x1234_5678_9012_3456",
+        swapped    = "0x5634_1290_7856_3412",
+        reversed   = "0x6a2c_4809_1e6a_2c48",
         le_bytes = "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
         be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
         to_xe_bytes_doc = "",
@@ -493,11 +493,11 @@ impl i128 {
         Min = -170141183460469231731687303715884105728,
         Max = 170141183460469231731687303715884105727,
         rot = 16,
-        rot_op     = "0x13f40000000000000000000000004f76",
-        rot_result = "0x0000000000000000000000004f7613f4",
-        swap_op    = "0x12345678901234567890123456789012",
-        swapped    = "0x12907856341290785634129078563412",
-        reversed   = "0x48091e6a2c48091e6a2c48091e6a2c48",
+        rot_op     = "0x13f4_0000_0000_0000_0000_0000_0000_4f76",
+        rot_result = "0x0000_0000_0000_0000_0000_0000_4f76_13f4",
+        swap_op    = "0x1234_5678_9012_3456_7890_1234_5678_9012",
+        swapped    = "0x1290_7856_3412_9078_5634_1290_7856_3412",
+        reversed   = "0x4809_1e6a_2c48_091e_6a2c_4809_1e6a_2c48",
         le_bytes = "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
             0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
         be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
@@ -547,11 +547,11 @@ impl isize {
         Min = -2147483648,
         Max = 2147483647,
         rot = 8,
-        rot_op     = "0x010000b3",
-        rot_result = "0x0000b301",
-        swap_op    = "0x12345678",
-        swapped    = "0x78563412",
-        reversed   = "0x1e6a2c48",
+        rot_op     = "0x0100_00b3",
+        rot_result = "0x0000_b301",
+        swap_op    = "0x1234_5678",
+        swapped    = "0x7856_3412",
+        reversed   = "0x1e6a_2c48",
         le_bytes = "[0x78, 0x56, 0x34, 0x12]",
         be_bytes = "[0x12, 0x34, 0x56, 0x78]",
         to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
@@ -573,11 +573,11 @@ impl isize {
         Min = -9223372036854775808,
         Max = 9223372036854775807,
         rot = 12,
-        rot_op     = "0x0aa00000000006e1",
-        rot_result = "0x00000000006e10aa",
-        swap_op    = "0x1234567890123456",
-        swapped    = "0x5634129078563412",
-        reversed   = "0x6a2c48091e6a2c48",
+        rot_op     = "0x0aa0_0000_0000_06e1",
+        rot_result = "0x0000_0000_006e_10aa",
+        swap_op    = "0x1234_5678_9012_3456",
+        swapped    = "0x5634_1290_7856_3412",
+        reversed   = "0x6a2c_4809_1e6a_2c48",
         le_bytes = "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
         be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
         to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
@@ -626,8 +626,8 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// let ascii = 97u8;
-    /// let non_ascii = 150u8;
+    /// let ascii = 97_u8;
+    /// let non_ascii = 150_u8;
     ///
     /// assert!(ascii.is_ascii());
     /// assert!(!non_ascii.is_ascii());
@@ -679,7 +679,7 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// let lowercase_a = 97u8;
+    /// let lowercase_a = 97_u8;
     ///
     /// assert_eq!(65, lowercase_a.to_ascii_uppercase());
     /// ```
@@ -704,7 +704,7 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// let uppercase_a = 65u8;
+    /// let uppercase_a = 65_u8;
     ///
     /// assert_eq!(97, uppercase_a.to_ascii_lowercase());
     /// ```
@@ -732,8 +732,8 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// let lowercase_a = 97u8;
-    /// let uppercase_a = 65u8;
+    /// let lowercase_a = 97_u8;
+    /// let uppercase_a = 65_u8;
     ///
     /// assert!(lowercase_a.eq_ignore_ascii_case(&uppercase_a));
     /// ```
@@ -1277,10 +1277,10 @@ impl u16 {
     /// ```
     /// #![feature(utf16_extra)]
     ///
-    /// let low_non_surrogate = 0xA000u16;
-    /// let low_surrogate = 0xD800u16;
-    /// let high_surrogate = 0xDC00u16;
-    /// let high_non_surrogate = 0xE000u16;
+    /// let low_non_surrogate = 0xA000_u16;
+    /// let low_surrogate = 0xD800_u16;
+    /// let high_surrogate = 0xDC00_u16;
+    /// let high_non_surrogate = 0xE000_u16;
     ///
     /// assert!(!low_non_surrogate.is_utf16_surrogate());
     /// assert!(low_surrogate.is_utf16_surrogate());
@@ -1304,17 +1304,17 @@ impl u32 {
         BITS_MINUS_ONE = 31,
         MAX = 4294967295,
         rot = 8,
-        rot_op       = "0x010000b3",
-        rot_result   = "0x0000b301",
-        fsh_op       = "0x2fe78e45",
-        fshl_result  = "0x0000b32f",
-        fshr_result  = "0xb32fe78e",
-        clmul_lhs    = "0x56789012",
-        clmul_rhs    = "0xf52ecd34",
-        clmul_result = "0x9b980928",
-        swap_op      = "0x12345678",
-        swapped      = "0x78563412",
-        reversed     = "0x1e6a2c48",
+        rot_op       = "0x0100_00b3",
+        rot_result   = "0x0000_b301",
+        fsh_op       = "0x2fe7_8e45",
+        fshl_result  = "0x0000_b32f",
+        fshr_result  = "0xb32f_e78e",
+        clmul_lhs    = "0x5678_9012",
+        clmul_rhs    = "0xf52e_cd34",
+        clmul_result = "0x9b98_0928",
+        swap_op      = "0x1234_5678",
+        swapped      = "0x7856_3412",
+        reversed     = "0x1e6a_2c48",
         le_bytes = "[0x78, 0x56, 0x34, 0x12]",
         be_bytes = "[0x12, 0x34, 0x56, 0x78]",
         to_xe_bytes_doc = "",
@@ -1336,17 +1336,17 @@ impl u64 {
         BITS_MINUS_ONE = 63,
         MAX = 18446744073709551615,
         rot = 12,
-        rot_op       = "0x0aa00000000006e1",
-        rot_result   = "0x00000000006e10aa",
-        fsh_op       = "0x2fe78e45983acd98",
-        fshl_result  = "0x00000000006e12fe",
-        fshr_result  = "0x6e12fe78e45983ac",
-        clmul_lhs    = "0x7890123456789012",
-        clmul_rhs    = "0xdd358416f52ecd34",
-        clmul_result = "0x0a6299579b980928",
-        swap_op      = "0x1234567890123456",
-        swapped      = "0x5634129078563412",
-        reversed     = "0x6a2c48091e6a2c48",
+        rot_op       = "0x0aa0_0000_0000_06e1",
+        rot_result   = "0x0000_0000_006e_10aa",
+        fsh_op       = "0x2fe7_8e45_983a_cd98",
+        fshl_result  = "0x0000_0000_006e_12fe",
+        fshr_result  = "0x6e12_fe78_e459_83ac",
+        clmul_lhs    = "0x7890_1234_5678_9012",
+        clmul_rhs    = "0xdd35_8416_f52e_cd34",
+        clmul_result = "0x0a62_9957_9b98_0928",
+        swap_op      = "0x1234_5678_9012_3456",
+        swapped      = "0x5634_1290_7856_3412",
+        reversed     = "0x6a2c_4809_1e6a_2c48",
         le_bytes = "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
         be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
         to_xe_bytes_doc = "",
@@ -1368,17 +1368,17 @@ impl u128 {
         BITS_MINUS_ONE = 127,
         MAX = 340282366920938463463374607431768211455,
         rot = 16,
-        rot_op       = "0x13f40000000000000000000000004f76",
-        rot_result   = "0x0000000000000000000000004f7613f4",
-        fsh_op       = "0x02fe78e45983acd98039000008736273",
-        fshl_result  = "0x0000000000000000000000004f7602fe",
-        fshr_result  = "0x4f7602fe78e45983acd9803900000873",
-        clmul_lhs    = "0x12345678901234567890123456789012",
-        clmul_rhs    = "0x4317e40ab4ddcf05dd358416f52ecd34",
-        clmul_result = "0xb9cf660de35d0c170a6299579b980928",
-        swap_op      = "0x12345678901234567890123456789012",
-        swapped      = "0x12907856341290785634129078563412",
-        reversed     = "0x48091e6a2c48091e6a2c48091e6a2c48",
+        rot_op       = "0x13f4_0000_0000_0000_0000_0000_0000_4f76",
+        rot_result   = "0x0000_0000_0000_0000_0000_0000_4f76_13f4",
+        fsh_op       = "0x02fe_78e4_5983_acd9_8039_0000_0873_6273",
+        fshl_result  = "0x0000_0000_0000_0000_0000_0000_4f76_02fe",
+        fshr_result  = "0x4f76_02fe_78e4_5983_acd9_8039_0000_0873",
+        clmul_lhs    = "0x1234_5678_9012_3456_7890_1234_5678_9012",
+        clmul_rhs    = "0x4317_e40a_b4dd_cf05_dd35_8416_f52e_cd34",
+        clmul_result = "0xb9cf_660d_e35d_0c17_0a62_9957_9b98_0928",
+        swap_op      = "0x1234_5678_9012_3456_7890_1234_5678_9012",
+        swapped      = "0x1290_7856_3412_9078_5634_1290_7856_3412",
+        reversed     = "0x4809_1e6a_2c48_091e_6a2c_4809_1e6a_2c48",
         le_bytes = "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
             0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
         be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
@@ -1434,17 +1434,17 @@ impl usize {
         BITS_MINUS_ONE = 31,
         MAX = 4294967295,
         rot = 8,
-        rot_op       = "0x010000b3",
-        rot_result   = "0x0000b301",
-        fsh_op       = "0x2fe78e45",
-        fshl_result  = "0x0000b32f",
-        fshr_result  = "0xb32fe78e",
-        clmul_lhs    = "0x56789012",
-        clmul_rhs    = "0xf52ecd34",
-        clmul_result = "0x9b980928",
-        swap_op      = "0x12345678",
-        swapped      = "0x78563412",
-        reversed     = "0x1e6a2c48",
+        rot_op       = "0x0100_00b3",
+        rot_result   = "0x0000_b301",
+        fsh_op       = "0x2fe7_8e45",
+        fshl_result  = "0x0000_b32f",
+        fshr_result  = "0xb32f_e78e",
+        clmul_lhs    = "0x5678_9012",
+        clmul_rhs    = "0xf52e_cd34",
+        clmul_result = "0x9b98_0928",
+        swap_op      = "0x1234_5678",
+        swapped      = "0x7856_3412",
+        reversed     = "0x1e6a_2c48",
         le_bytes = "[0x78, 0x56, 0x34, 0x12]",
         be_bytes = "[0x12, 0x34, 0x56, 0x78]",
         to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
@@ -1466,17 +1466,17 @@ impl usize {
         BITS_MINUS_ONE = 63,
         MAX = 18446744073709551615,
         rot = 12,
-        rot_op       = "0x0aa00000000006e1",
-        rot_result   = "0x00000000006e10aa",
-        fsh_op       = "0x2fe78e45983acd98",
-        fshl_result  = "0x00000000006e12fe",
-        fshr_result  = "0x6e12fe78e45983ac",
-        clmul_lhs    = "0x7890123456789012",
-        clmul_rhs    = "0xdd358416f52ecd34",
-        clmul_result = "0xa6299579b980928",
-        swap_op      = "0x1234567890123456",
-        swapped      = "0x5634129078563412",
-        reversed     = "0x6a2c48091e6a2c48",
+        rot_op       = "0x0aa0_0000_0000_06e1",
+        rot_result   = "0x0000_0000_006e_10aa",
+        fsh_op       = "0x2fe7_8e45_983a_cd98",
+        fshl_result  = "0x0000_0000_006e_12fe",
+        fshr_result  = "0x6e12_fe78_e459_83ac",
+        clmul_lhs    = "0x7890_1234_5678_9012",
+        clmul_rhs    = "0xdd35_8416_f52e_cd34",
+        clmul_result = "0xa629_9579_b980_928",
+        swap_op      = "0x1234_5678_9012_3456",
+        swapped      = "0x5634_1290_7856_3412",
+        reversed     = "0x6a2c_4809_1e6a_2c48",
         le_bytes = "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
         be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
         to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
@@ -1520,7 +1520,7 @@ impl usize {
 ///
 /// let num = 12.4_f32;
 /// let inf = f32::INFINITY;
-/// let zero = 0f32;
+/// let zero = 0_f32;
 /// let sub: f32 = 1.1754942e-38;
 /// let nan = f32::NAN;
 ///
