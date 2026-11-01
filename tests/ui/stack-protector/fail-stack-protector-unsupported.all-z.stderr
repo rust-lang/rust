@@ -1,0 +1,4 @@
+error: `-C stack-protector=all` is not supported for target nvptx64-nvidia-cuda
+
+error: aborting due to 1 previous error
+
