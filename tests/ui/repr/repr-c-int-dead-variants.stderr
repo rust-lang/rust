@@ -46,7 +46,7 @@ error: layout_of(UnivariantU8) = Layout {
            repr_c: true,
            randomization_seed: $SEED,
        }
-  --> $DIR/repr-c-int-dead-variants.rs:15:1
+  --> $DIR/repr-c-int-dead-variants.rs:14:1
    |
 LL | enum UnivariantU8 {
    | ^^^^^^^^^^^^^^^^^
@@ -119,7 +119,7 @@ error: layout_of(TwoVariantsU8) = Layout {
            repr_c: true,
            randomization_seed: $SEED,
        }
-  --> $DIR/repr-c-int-dead-variants.rs:22:1
+  --> $DIR/repr-c-int-dead-variants.rs:21:1
    |
 LL | enum TwoVariantsU8 {
    | ^^^^^^^^^^^^^^^^^^
@@ -190,7 +190,7 @@ error: layout_of(DeadBranchHasOtherFieldU8) = Layout {
            repr_c: true,
            randomization_seed: $SEED,
        }
-  --> $DIR/repr-c-int-dead-variants.rs:34:1
+  --> $DIR/repr-c-int-dead-variants.rs:33:1
    |
 LL | enum DeadBranchHasOtherFieldU8 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -54,7 +54,7 @@ error: layout_of(Aligned1) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/issue-96185-overaligned-enum.rs:9:1
+  --> $DIR/issue-96185-overaligned-enum.rs:8:1
    |
 LL | pub enum Aligned1 {
    | ^^^^^^^^^^^^^^^^^
@@ -115,7 +115,7 @@ error: layout_of(Aligned2) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/issue-96185-overaligned-enum.rs:17:1
+  --> $DIR/issue-96185-overaligned-enum.rs:16:1
    |
 LL | pub enum Aligned2 {
    | ^^^^^^^^^^^^^^^^^

@@ -28,7 +28,7 @@ error: layout_of(NonZero<u32>) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/range_patterns.rs:11:1
+  --> $DIR/range_patterns.rs:10:1
    |
 LL | type X = std::num::NonZeroU32;
    | ^^^^^^
@@ -63,7 +63,7 @@ error: layout_of(pattern_type!(u32 is 1..)) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/range_patterns.rs:13:1
+  --> $DIR/range_patterns.rs:12:1
    |
 LL | type Y = pattern_type!(u32 is 1..);
    | ^^^^^^
@@ -130,7 +130,7 @@ error: layout_of(Option<pattern_type!(u32 is 1..)>) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/range_patterns.rs:15:1
+  --> $DIR/range_patterns.rs:14:1
    |
 LL | type Z = Option<pattern_type!(u32 is 1..)>;
    | ^^^^^^
@@ -197,7 +197,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/range_patterns.rs:17:1
+  --> $DIR/range_patterns.rs:16:1
    |
 LL | type A = Option<std::num::NonZeroU32>;
    | ^^^^^^
@@ -232,7 +232,7 @@ error: layout_of(NonZeroU32New) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/range_patterns.rs:19:1
+  --> $DIR/range_patterns.rs:18:1
    |
 LL | struct NonZeroU32New(pattern_type!(u32 is 1..));
    | ^^^^^^^^^^^^^^^^^^^^
@@ -240,19 +240,19 @@ LL | struct NonZeroU32New(pattern_type!(u32 is 1..));
 error: pattern type ranges cannot wrap: 1..=0
 
 error: the type has an unknown layout
-  --> $DIR/range_patterns.rs:22:1
+  --> $DIR/range_patterns.rs:21:1
    |
 LL | type EMPTY = pattern_type!(u32 is 1..1);
    | ^^^^^^^^^^
 
 error[E0080]: evaluation panicked: exclusive range end at minimum value of type
-  --> $DIR/range_patterns.rs:25:37
+  --> $DIR/range_patterns.rs:24:37
    |
 LL | type WRAP = pattern_type!(u32 is 1..0);
    |                                     ^ evaluation of `WRAP::{constant#1}` failed here
 
 error: the type has an unknown layout
-  --> $DIR/range_patterns.rs:25:1
+  --> $DIR/range_patterns.rs:24:1
    |
 LL | type WRAP = pattern_type!(u32 is 1..0);
    | ^^^^^^^^^
@@ -260,7 +260,7 @@ LL | type WRAP = pattern_type!(u32 is 1..0);
 error: pattern type ranges cannot wrap: 5..=1
 
 error: the type has an unknown layout
-  --> $DIR/range_patterns.rs:29:1
+  --> $DIR/range_patterns.rs:28:1
    |
 LL | type WRAP2 = pattern_type!(u32 is 5..2);
    | ^^^^^^^^^^
@@ -295,7 +295,7 @@ error: layout_of(pattern_type!(i8 is -10..=10)) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/range_patterns.rs:32:1
+  --> $DIR/range_patterns.rs:31:1
    |
 LL | type SIGN = pattern_type!(i8 is -10..=10);
    | ^^^^^^^^^
@@ -330,7 +330,7 @@ error: layout_of(pattern_type!(i8 is i8::MIN..=0)) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/range_patterns.rs:35:1
+  --> $DIR/range_patterns.rs:34:1
    |
 LL | type MIN = pattern_type!(i8 is -128..=0);
    | ^^^^^^^^
@@ -338,7 +338,7 @@ LL | type MIN = pattern_type!(i8 is -128..=0);
 error: pattern type ranges cannot wrap: 120..=-120
 
 error: the type has an unknown layout
-  --> $DIR/range_patterns.rs:38:1
+  --> $DIR/range_patterns.rs:37:1
    |
 LL | type SignedWrap = pattern_type!(i8 is 120..=-120);
    | ^^^^^^^^^^^^^^^

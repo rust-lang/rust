@@ -66,7 +66,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:14:1
+  --> $DIR/zero-sized-array-enum-niche.rs:13:1
    |
 LL | type AlignedResult = Result<[u32; 0], bool>;
    | ^^^^^^^^^^^^^^^^^^
@@ -153,7 +153,7 @@ error: layout_of(MultipleAlignments) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:22:1
+  --> $DIR/zero-sized-array-enum-niche.rs:21:1
    |
 LL | enum MultipleAlignments {
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -226,7 +226,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:38:1
+  --> $DIR/zero-sized-array-enum-niche.rs:37:1
    |
 LL | type NicheLosesToTagged = Result<[u32; 0], Packed<std::num::NonZero<u16>>>;
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -303,7 +303,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:45:1
+  --> $DIR/zero-sized-array-enum-niche.rs:44:1
    |
 LL | type NicheWinsOverTagged = Result<[u32; 0], Packed<U16IsZero>>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^
