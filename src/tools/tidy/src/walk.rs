@@ -15,6 +15,7 @@ pub fn filter_dirs(path: &Path) -> bool {
         "src/llvm-project",
         "library/backtrace",
         "library/compiler-builtins",
+        "library/hashbrown",
         "library/portable-simd",
         "library/stdarch",
         "src/tools/cargo",
