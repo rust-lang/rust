@@ -674,6 +674,33 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(len, ecx), dest)?;
             }
 
+            sym::type_id_env_var => {
+                let arg_place = ecx.deref_pointer(&args[0])?;
+                let key = ecx.read_str(&arg_place)?;
+                let value = std::env::var_os(&key);
+
+                let variant_index = if let Some(value) = value {
+                    let ptr = ecx.allocate_bytes_dedup(value.as_encoded_bytes())?;
+
+                    let (variant_idx, variant_place) =
+                        ecx.project_downcast_named(dest, sym::Some)?;
+                    let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
+                    ecx.write_immediate(
+                        Immediate::ScalarPair(
+                            Scalar::from_pointer(ptr, ecx),
+                            Scalar::from_target_usize(value.len() as u64, ecx),
+                        ),
+                        &field_place,
+                    )?;
+
+                    variant_idx
+                } else {
+                    ecx.project_downcast_named(dest, sym::None)?.0
+                };
+
+                ecx.write_discriminant(variant_index, dest)?;
+            }
+
             sym::type_id_fields => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variant_idx = ecx.read_target_usize(&args[1])? as usize;

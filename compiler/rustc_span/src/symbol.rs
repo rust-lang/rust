@@ -2211,6 +2211,7 @@ symbols! {
         type_id,
         type_id_array_len,
         type_id_element_ty,
+        type_id_env_var,
         type_id_eq,
         type_id_field_representing_type,
         type_id_fields,
