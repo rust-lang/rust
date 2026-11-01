@@ -234,6 +234,13 @@ mod autodiff {
 }
 
 #[derive(Diagnostic)]
+#[diag("offload_kernel must be applied to function")]
+pub(crate) struct OffloadKernelInvalidApplication {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("cannot concatenate {$lit_kind} literals")]
 pub(crate) struct ConcatBytesInvalid {
     #[primary_span]
