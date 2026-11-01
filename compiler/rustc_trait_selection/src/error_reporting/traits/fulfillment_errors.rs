@@ -43,7 +43,7 @@ use super::suggestions::get_explanation_based_on_obligation;
 use super::{ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate};
 use crate::diagnostics::{
     AssocTypeWithSameName, ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch,
-    CoroClosureNotFn,
+    CoroClosureNotFn, RefToFnOnce,
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
@@ -1073,17 +1073,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let self_ty = if is_ref_to_closure { peeled_self_ty } else { original_self_ty };
 
-        let (expected_kind, is_async) =
-            if let Some(expected_kind) = self.tcx.fn_trait_kind_from_def_id(trait_pred.def_id()) {
-                (expected_kind, false)
-            } else if let Some(expected_kind) =
-                self.tcx.async_fn_trait_kind_from_def_id(trait_pred.def_id())
-            {
-                (expected_kind, true)
-            } else {
-                return None;
-            };
-        let trait_prefix = if is_async { "Async" } else { "" };
+        let (asyncness, expected_kind) =
+            self.tcx.maybe_async_fn_trait_kind_from_def_id(trait_pred.def_id())?;
+
+        let trait_prefix = asyncness.as_prefix_str();
 
         let (closure_def_id, found_args, has_self_borrows) = match *self_ty.kind() {
             ty::Closure(def_id, args) => {
@@ -1117,12 +1110,37 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         if found_kind.is_none()
             && is_ref_to_closure
-            && !is_async
+            && !asyncness.is_async()
             && let Some(local_def_id) = closure_def_id.as_local()
             && let Some((inferred_kind, origin)) = (self.infer_closure_kind)(local_def_id)
         {
             found_kind = Some(inferred_kind);
             kind_origin = origin;
+        }
+
+        let (_, root_trait_pred) = obligation.cause.code().peel_derives_with_predicate();
+        let root_expected_kind = root_trait_pred
+            .and_then(|pred| self.tcx.maybe_async_fn_trait_kind_from_def_id(pred.def_id()))
+            .map(|(_, kind)| kind);
+
+        // Prevent confusing errors when `&FnOnce` was provided when `FnOnce` was expected
+        // in function arguments
+        if let ty::ClosureKind::Fn | ty::ClosureKind::FnMut = expected_kind
+            && let Some(ty::ClosureKind::FnOnce) = found_kind
+            && let Some(ty::ClosureKind::FnOnce) = root_expected_kind
+            && let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
+            && let arg = self.tcx.hir_expect_expr(*arg_hir_id)
+        {
+            let mut err = self.report_ref_to_fn_once_error(
+                closure_def_id,
+                trait_prefix,
+                kind_origin,
+                arg.span,
+            );
+
+            self.suggest_remove_ref_for_closure(&mut err, obligation);
+            self.note_obligation_cause(&mut err, obligation);
+            return Some(err.emit_err());
         }
 
         if let Some(found_kind) = found_kind
@@ -1136,7 +1154,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 trait_prefix,
                 kind_origin,
             );
-            self.suggest_change_mut_ref_for_closure(&mut err, &obligation);
+
+            self.suggest_change_mut_ref_for_closure(&mut err, obligation);
             self.note_obligation_cause(&mut err, &obligation);
             return Some(err.emit_err());
         }
@@ -3138,6 +3157,26 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
+    fn suggest_remove_ref_for_closure(
+        &self,
+        err: &mut Diag<'_>,
+        obligation: &PredicateObligation<'tcx>,
+    ) {
+        if let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
+            && let (_, Some(root_trait_pred)) =
+                obligation.cause.code().peel_derives_with_predicate()
+            && let Node::Expr(arg) = self.tcx.hir_node(*arg_hir_id)
+            && let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, _) = arg.kind
+        {
+            let mut obligation = obligation.clone();
+            // Error reporting may narrow the cause span to the borrow's operand.
+            // Use the whole argument so `suggest_remove_reference` can replace the borrow.
+            obligation.cause.span = arg.span;
+
+            self.suggest_remove_reference(&obligation, err, root_trait_pred);
+        }
+    }
+
     /// Register when multiple obligations come from the same statement and only emit one.
     ///
     /// This can significantly reduce the number of `_: Sized` failures on method chains.
@@ -3686,6 +3725,38 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
+    fn infer_closure_origin(
+        &self,
+        closure_def_id: DefId,
+    ) -> Option<(Span, rustc_middle::hir::place::Place<'tcx>)> {
+        let typeck_results = self.typeck_results.as_ref()?;
+        let local_def_id = closure_def_id.as_local()?;
+        let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
+        typeck_results.closure_kind_origins().get(hir_id).cloned()
+    }
+
+    fn report_ref_to_fn_once_error(
+        &self,
+        closure_def_id: DefId,
+        trait_prefix: &'static str,
+        kind_origin: Option<(Span, rustc_middle::hir::place::Place<'tcx>)>,
+        cause_span: Span,
+    ) -> Diag<'a> {
+        let origin = kind_origin.or_else(|| self.infer_closure_origin(closure_def_id));
+
+        let err = RefToFnOnce {
+            cause_span,
+            trait_prefix,
+            fn_once_label: origin.map(|(span, place)| ClosureFnOnceLabel {
+                span,
+                place: ty::place_to_string_for_capture(self.tcx, &place),
+                trait_prefix,
+            }),
+        };
+
+        self.dcx().create_err(err)
+    }
+
     fn report_closure_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -3709,12 +3780,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // Additional context information explaining why the closure only implements
         // a particular trait.
-        let origin = kind_origin.or_else(|| {
-            let typeck_results = self.typeck_results.as_ref()?;
-            let local_def_id = closure_def_id.as_local()?;
-            let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
-            typeck_results.closure_kind_origins().get(hir_id).cloned()
-        });
+        let origin = kind_origin.or_else(|| self.infer_closure_origin(closure_def_id));
 
         match (found_kind, origin) {
             (ty::ClosureKind::FnOnce, Some((span, place))) => {
@@ -3733,6 +3799,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             _ => {}
         }
+
         self.dcx().create_err(err)
     }
 
