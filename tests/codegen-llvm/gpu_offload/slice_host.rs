@@ -17,7 +17,7 @@
 // CHECK-DAG: @.offload_maptypes.[[K]].end = private unnamed_addr constant [2 x i64] [i64 2, i64 0]
 
 // CHECK:       define{{( dso_local)?}} void @main()
-// CHECK:       %.offload_sizes = alloca [2 x i64], align 8
+// CHECK:       %.offload_sizes = alloca [16 x i8], align 8
 // CHECK:  call void @llvm.memcpy.p0.p0.i64(ptr {{.*}} %.offload_sizes, ptr {{.*}} @.offload_sizes.[[K]], i64 16, i1 false)
 // CHECK:       store i64 16, ptr %.offload_sizes, align 8
 // CHECK:       call void @__tgt_target_data_begin_mapper(ptr nonnull @anon.[[ID]].1, i64 -1, i32 2, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull %.offload_sizes, ptr nonnull @.offload_maptypes.[[K]].begin, ptr null, ptr null)
