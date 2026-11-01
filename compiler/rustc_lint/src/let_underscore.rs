@@ -95,7 +95,43 @@ declare_lint! {
     "non-binding let on a synchronization lock"
 }
 
-declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK]);
+declare_lint! {
+    /// The `let_underscore_drop_guard` lint checks for statements which don't bind
+    /// a `DropGuard` to anything, causing its closure to run immediately instead
+    /// of at end of scope, which is typically incorrect.
+    ///
+    /// ### Example
+    /// ```rust,compile_fail
+    /// use std::mem::DropGuard;
+    ///
+    /// // The closure runs immediately instead of at the end of the scope,
+    /// // which is probably not intended.
+    /// let _ = DropGuard::new((), |_| {
+    ///     println!("cleaning up");
+    /// });
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Statements which assign an expression to an underscore causes the
+    /// expression to immediately drop instead of extending the expression's
+    /// lifetime to the end of the scope. This is usually unintended,
+    /// especially for types like `DropGuard`, which are typically used to
+    /// ensure running some cleanup code at the end of a scope.
+    ///
+    /// If you want to extend the expression's lifetime to the end of the scope,
+    /// assign an underscore-prefixed name (such as `_foo`) to the expression.
+    /// If you do actually want to drop the expression immediately, then
+    /// calling `std::mem::drop` on the expression is clearer and helps convey
+    /// intent.
+    pub LET_UNDERSCORE_DROP_GUARD,
+    Deny,
+    "non-binding let on a `DropGuard`"
+}
+
+declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_DROP_GUARD]);
 
 const SYNC_GUARD_SYMBOLS: [Symbol; 3] = [
     rustc_span::sym::MutexGuard,
@@ -144,6 +180,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     .any(|guard_symbol| cx.tcx.is_diagnostic_item(*guard_symbol, adt.did())),
                 _ => false,
             };
+            let is_drop_guard = matches!(ty.kind(), ty::Adt(adt, _) if cx.tcx.is_diagnostic_item(sym::DropGuard, adt.did()));
 
             let can_use_init = is_top_level.then_some(local.init).flatten();
 
@@ -160,6 +197,13 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     LET_UNDERSCORE_LOCK,
                     span,
                     NonBindingLet::SyncLock { sub, pat: pat.span },
+                );
+            } else if is_drop_guard {
+                let span = MultiSpan::from_span(pat.span);
+                cx.emit_span_lint(
+                    LET_UNDERSCORE_DROP_GUARD,
+                    span,
+                    NonBindingLet::DropGuard { sub, pat: pat.span },
                 );
             // Only emit let_underscore_drop for top-level `_` patterns.
             } else if can_use_init.is_some() {
