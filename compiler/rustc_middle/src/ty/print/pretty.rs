@@ -8,13 +8,14 @@ use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_crate_store::{ExternCrate, ExternCrateSource};
-use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModId};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_macros::{Lift, extension};
+use rustc_session::config::ExternLocation;
 use rustc_span::{Ident, RemapPathScopeComponents, Symbol, bug, kw, sym};
 use rustc_structures::Limit;
 use rustc_type_ir::{FieldInfo, Unnormalized, Upcast as _, elaborate};
@@ -2425,8 +2426,12 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
                 write!(self, "{}", kw::Crate)?;
                 self.empty_path = false;
             }
-        } else {
+        } else if cnum == LOCAL_CRATE && with_resolve_crate_name() {
+            // The local crate can't be renamed by `--export`, avoid the additional query.
             write!(self, "{}", self.tcx.crate_name(cnum))?;
+            self.empty_path = false;
+        } else {
+            write!(self, "{}", self.tcx.crate_name_with_rename(cnum))?;
             self.empty_path = false;
         }
         Ok(())
@@ -3616,8 +3621,25 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
     map
 }
 
+pub fn crate_name_with_rename(tcx: TyCtxt<'_>, cnum: CrateNum) -> Symbol {
+    // Map of the `--extern rename=/path/to/crate/liborig.rmeta` passed into the current call.
+    let mut map = FxHashMap::<_, _>::default();
+    for (name, ext) in tcx.sess.opts.externs.iter() {
+        if let ExternLocation::ExactPaths(files) = &ext.location {
+            for file in files {
+                map.insert(file.original().as_path(), name);
+            }
+        }
+    }
+    // If the `cnum` crate is included in an `--extern` flag, use the renamed name.
+    match tcx.crate_extern_paths(cnum).iter().filter_map(|file| map.get(file)).next() {
+        Some(name) => Symbol::intern(name),
+        None => tcx.crate_name(cnum),
+    }
+}
+
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { trimmed_def_paths, ..*providers };
+    *providers = Providers { trimmed_def_paths, crate_name_with_rename, ..*providers };
 }
 
 pub struct OpaqueFnEntry<'tcx> {

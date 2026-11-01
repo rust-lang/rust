@@ -64,5 +64,5 @@ fn uses_helper() {
     ) = 3u32;
     //~^ ERROR mismatched types [E0308]
     //~| NOTE expected `(ActuallyPub, DocHidden, _, _, _, _)`, found `u32`
-    //~| NOTE expected tuple `(doc_hidden_helper::ActuallyPub, doc_hidden_helper::DocHidden, doc_hidden_helper::pub_mod::ActuallyPubInPubMod, doc_hidden_helper::pub_mod::DocHiddenInPubMod, doc_hidden_helper::hidden_mod::ActuallyPubInHiddenMod, doc_hidden_helper::hidden_mod::DocHiddenInHiddenMod)`
+    //~| NOTE expected tuple `(helper::ActuallyPub, helper::DocHidden, helper::pub_mod::ActuallyPubInPubMod, helper::pub_mod::DocHiddenInPubMod, helper::hidden_mod::ActuallyPubInHiddenMod, helper::hidden_mod::DocHiddenInHiddenMod)`
 }
