@@ -2,7 +2,9 @@ error: the constant `N` is not of type `bool`
   --> $DIR/wf-mismatch-1.rs:12:34
    |
 LL | fn f<const N: i32>(_: impl Trait<CT = { N }>) {}
-   |                                  ^^^^^^^^^^ expected `bool`, found `i32`
+   |      ------------                ^^^^^^^^^^ expected `bool`, found `i32`
+   |      |
+   |      found this const parameter
    |
 note: required by a const generic parameter in `f`
   --> $DIR/wf-mismatch-1.rs:12:34

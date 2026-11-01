@@ -1,12 +1,17 @@
 error: the constant `N` is not of type `u32`
   --> $DIR/adt_expr_arg_tuple_expr_fail.rs:18:21
    |
+LL | fn generic_caller<T: Trait, const N: usize, const N2: u32>() {
+   |                             -------------- found this const parameter
 LL |     takes_tuple::<{ (N, N2) }>();
    |                     ^^^^^^^ expected `u32`, found `usize`
 
 error: the constant `N` is not of type `u32`
   --> $DIR/adt_expr_arg_tuple_expr_fail.rs:20:21
    |
+LL | fn generic_caller<T: Trait, const N: usize, const N2: u32>() {
+   |                             -------------- found this const parameter
+...
 LL |     takes_tuple::<{ (N, T::ASSOC) }>();
    |                     ^^^^^^^^^^^^^ expected `u32`, found `usize`
 
@@ -19,12 +24,18 @@ LL |     takes_tuple::<{ (N, T::ASSOC) }>();
 error: the constant `N` is not of type `u32`
   --> $DIR/adt_expr_arg_tuple_expr_fail.rs:24:28
    |
+LL | fn generic_caller<T: Trait, const N: usize, const N2: u32>() {
+   |                             -------------- found this const parameter
+...
 LL |     takes_nested_tuple::<{ (N, (N, N2)) }>();
    |                            ^^^^^^^^^^^^ expected `u32`, found `usize`
 
 error: the constant `N` is not of type `u32`
   --> $DIR/adt_expr_arg_tuple_expr_fail.rs:26:28
    |
+LL | fn generic_caller<T: Trait, const N: usize, const N2: u32>() {
+   |                             -------------- found this const parameter
+...
 LL |     takes_nested_tuple::<{ (N, (N, T::ASSOC)) }>();
    |                            ^^^^^^^^^^^^^^^^^^ expected `u32`, found `usize`
 

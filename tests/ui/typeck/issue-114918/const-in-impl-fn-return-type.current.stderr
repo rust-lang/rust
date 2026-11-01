@@ -8,7 +8,9 @@ error: the constant `N` is not of type `usize`
   --> $DIR/const-in-impl-fn-return-type.rs:12:32
    |
 LL |     fn func<const N: u32>() -> [(); N];
-   |                                ^^^^^^^ expected `usize`, found `u32`
+   |             ------------       ^^^^^^^ expected `usize`, found `u32`
+   |             |
+   |             found this const parameter
    |
    = note: the length of array `[(); N]` must be type `usize`
 

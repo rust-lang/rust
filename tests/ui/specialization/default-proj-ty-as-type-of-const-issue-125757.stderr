@@ -10,7 +10,9 @@ error: the constant `C` is not of type `<i32 as Trait>::Type`
   --> $DIR/default-proj-ty-as-type-of-const-issue-125757.rs:15:22
    |
 LL | impl<const C: usize> Wrapper<C> {}
-   |                      ^^^^^^^^^^ expected associated type, found `usize`
+   |      --------------  ^^^^^^^^^^ expected associated type, found `usize`
+   |      |
+   |      found this const parameter
    |
    = help: consider constraining the associated type `<i32 as Trait>::Type` to `usize`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html

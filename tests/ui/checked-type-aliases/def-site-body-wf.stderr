@@ -20,10 +20,10 @@ note: required by an implicit `Sized` bound in `Vec`
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 
 error[E0491]: in type `&'static &'a ()`, reference has a longer lifetime than the data it references
-  --> $DIR/def-site-body-wf.rs:11:1
+  --> $DIR/def-site-body-wf.rs:11:15
    |
 LL | type _C<'a> = &'static &'a ();
-   | ^^^^^^^^^^^
+   |               ^^^^^^^^^^^^^^^
    |
    = note: the pointer is valid for the static lifetime
 note: but the referenced data is only valid for the lifetime `'a` as defined here

@@ -2,7 +2,9 @@ error: the constant `N` is not of type `usize`
   --> $DIR/index_array_bad_type.rs:1:34
    |
 LL | struct Struct<const N: i128>(pub [u8; N]);
-   |                                  ^^^^^^^ expected `usize`, found `i128`
+   |               -------------      ^^^^^^^ expected `usize`, found `i128`
+   |               |
+   |               found this const parameter
    |
    = note: the length of array `[u8; N]` must be type `usize`
 

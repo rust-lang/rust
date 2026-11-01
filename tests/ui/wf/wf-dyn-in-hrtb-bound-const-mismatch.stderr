@@ -2,7 +2,9 @@ error: the constant `B` is not of type `usize`
   --> $DIR/wf-dyn-in-hrtb-bound-const-mismatch.rs:16:30
    |
 LL | fn nested<const B: bool>(_f: &dyn for<'a> Fn(&'a (), &'a dyn HasConst<'a, B>)) {}
-   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |           -------------      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |           |
+   |           found this const parameter
    |
 note: required by a const generic parameter in `HasConst`
   --> $DIR/wf-dyn-in-hrtb-bound-const-mismatch.rs:14:20

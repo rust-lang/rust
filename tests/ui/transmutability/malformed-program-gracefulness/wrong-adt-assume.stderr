@@ -1,6 +1,9 @@
 error: the constant `ASSUME` is not of type `Assume`
   --> $DIR/wrong-adt-assume.rs:14:9
    |
+LL | fn foo<const ASSUME: NotAssume>()
+   |        ----------------------- found this const parameter
+LL | where
 LL |     u8: TransmuteFrom<u8, ASSUME>,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Assume`, found `NotAssume`
    |

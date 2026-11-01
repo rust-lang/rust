@@ -2,7 +2,9 @@ error: the constant `N` is not of type `u32`
   --> $DIR/mismatched-types-with-generic-in-ace.rs:15:29
    |
 LL | fn bar<const N: u64, T: Foo<ASSOC<N> = { N }>>() {}
-   |                             ^^^^^^^^^^^^^^^^ expected `u32`, found `u64`
+   |        ------------         ^^^^^^^^^^^^^^^^ expected `u32`, found `u64`
+   |        |
+   |        found this const parameter
    |
 note: required by a const generic parameter in `Foo::ASSOC`
   --> $DIR/mismatched-types-with-generic-in-ace.rs:8:17
