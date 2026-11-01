@@ -82,6 +82,7 @@ expression: check compiletest --include-default-paths
     - Set({compiler/rustc_ty_walk})
     - Set({compiler/rustc_type_ir})
     - Set({compiler/rustc_type_ir_macros})
+    - Set({compiler/rustc_unicode})
     - Set({compiler/rustc_windows_rc})
 [Check] check::Rustdoc
     targets: [x86_64-unknown-linux-gnu]

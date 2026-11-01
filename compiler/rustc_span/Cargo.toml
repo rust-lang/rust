@@ -16,9 +16,9 @@ rustc_hashes = { path = "../rustc_hashes" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
+rustc_unicode = { path = "../rustc_unicode" }
 scoped-tls = "1.0"
 sha1 = "0.10.0"
 sha2 = "0.10.1"
 tracing = "0.1"
-unicode-width = "0.2.2"
 # tidy-alphabetical-end

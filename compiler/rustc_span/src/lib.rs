@@ -40,7 +40,6 @@ use rustc_serialize::opaque::mem_encoder::MemEncoder;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::debug;
-pub use unicode_width::UNICODE_VERSION;
 
 mod caching_source_map_view;
 pub mod source_map;
@@ -90,6 +89,7 @@ use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::{Hash64, Hash128};
+use rustc_unicode::unicode_width;
 use sha1::Sha1;
 use sha2::Sha256;
 use span_encoding::InlineCtxt;
