@@ -2965,6 +2965,20 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         mul,
         1.0
     );
+    arith_red!(
+        simd_reduce_add_algebraic: vector_reduce_add,
+        vector_reduce_fadd_algebraic,
+        false,
+        add,
+        -0.0
+    );
+    arith_red!(
+        simd_reduce_mul_algebraic: vector_reduce_mul,
+        vector_reduce_fmul_algebraic,
+        false,
+        mul,
+        1.0
+    );
 
     macro_rules! minmax_red {
         ($name:ident: $int_red:ident) => {
@@ -3291,6 +3305,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         simd_xor: Uint, Int => xor;
         simd_maximum_number_nsz: Float => maximum_number_nsz;
         simd_minimum_number_nsz: Float => minimum_number_nsz;
+        simd_add_algebraic: Float => fadd_algebraic;
+        simd_sub_algebraic: Float => fsub_algebraic;
+        simd_mul_algebraic: Float => fmul_algebraic;
+        simd_div_algebraic: Float => fdiv_algebraic;
+        simd_rem_algebraic: Float => frem_algebraic;
 
     }
     macro_rules! arith_unary {
