@@ -99,7 +99,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
         let size = layout.backend_repr.scalar_size(cx);
         if let Some(align) = align {
             assert_eq!(
-                layout.layout.align().abi,
+                layout.layout.align(),
                 align,
                 "alignment mismatch between ABI and layout in {layout:#?}"
             );

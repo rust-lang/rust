@@ -7,8 +7,8 @@ use rustc_macros::StableHash;
 
 use crate::layout::{FieldIdx, VariantIdx};
 use crate::{
-    AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche, Numeric,
-    PointeeInfo, Primitive, Size, Variants,
+    Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche, Numeric, PointeeInfo,
+    Primitive, Size, Variants,
 };
 
 // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
@@ -48,8 +48,8 @@ impl<'a> Layout<'a> {
         self.0.0.largest_niche
     }
 
-    pub fn align(self) -> AbiAlign {
-        self.0.0.align
+    pub fn align(self) -> Align {
+        self.0.0.align.abi
     }
 
     pub fn size(self) -> Size {

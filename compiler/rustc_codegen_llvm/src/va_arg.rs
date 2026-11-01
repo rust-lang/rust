@@ -692,8 +692,8 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
             let ty_lo = bx.cx().scalar_pair_element_backend_type(layout, 0, false);
             let ty_hi = bx.cx().scalar_pair_element_backend_type(layout, 1, false);
 
-            let align_lo = layout.field(bx.cx, 0).layout.align().abi;
-            let align_hi = layout.field(bx.cx, 1).layout.align().abi;
+            let align_lo = layout.field(bx.cx, 0).layout.align();
+            let align_hi = layout.field(bx.cx, 1).layout.align();
 
             match (scalar1.primitive(), scalar2.primitive()) {
                 (Primitive::Float(_), Primitive::Float(_)) => {
@@ -706,7 +706,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
                     let reg_lo_addr = bx.inbounds_ptradd(reg_save_area_v, fp_offset_v);
                     let reg_hi_addr = bx.inbounds_ptradd(reg_lo_addr, bx.const_i32(16));
 
-                    let align = layout.layout.align().abi;
+                    let align = layout.layout.align();
                     let tmp = bx.alloca(layout.size, layout.align.abi);
 
                     let reg_lo = bx.load(ty_lo, reg_lo_addr, align_lo);

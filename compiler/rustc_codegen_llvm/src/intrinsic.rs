@@ -596,8 +596,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     self.const_bool(true)
                 } else if use_integer_compare {
                     let integer_ty = self.type_ix(layout.size().bits());
-                    let a_val = self.load(integer_ty, a, layout.align().abi);
-                    let b_val = self.load(integer_ty, b, layout.align().abi);
+                    let a_val = self.load(integer_ty, a, layout.align());
+                    let b_val = self.load(integer_ty, b, layout.align());
                     self.icmp(IntPredicate::IntEQ, a_val, b_val)
                 } else {
                     let n = self.const_usize(layout.size().bytes());
