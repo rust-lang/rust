@@ -725,7 +725,12 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {
-        Self::from_utf16_units(v.iter().cloned(), v.len())
+        let mut out = Vec::with_capacity(v.len());
+        match crate::utf16_decode::decode_utf16_into(v, &mut out, |_| Err(())) {
+            // SAFETY: Lone surrogates return `Err`; successful output is UTF-8.
+            Ok(()) => Ok(unsafe { String::from_utf8_unchecked(out) }),
+            Err(()) => Err(FromUtf16Error { kind: FromUtf16ErrorKind::LoneSurrogate }),
+        }
     }
 
     /// Decodes an iterator of UTF-16 code units into a `String`, returning
@@ -776,9 +781,12 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16_lossy(v: &[u16]) -> String {
-        char::decode_utf16(v.iter().cloned())
-            .map(|r| r.unwrap_or(char::REPLACEMENT_CHARACTER))
-            .collect()
+        let mut out = Vec::with_capacity(v.len());
+        let _ = crate::utf16_decode::decode_utf16_into(v, &mut out, |_| {
+            Ok(char::REPLACEMENT_CHARACTER as u16)
+        });
+        // SAFETY: Lone surrogates are replaced with `char::REPLACEMENT_CHARACTER`.
+        unsafe { String::from_utf8_unchecked(out) }
     }
 
     /// Decode a UTF-16LE–encoded vector `v` into a `String`,

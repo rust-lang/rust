@@ -274,6 +274,8 @@ pub mod string;
 pub mod sync;
 #[cfg(all(not(no_global_oom_handling), not(no_rc), not(no_sync)))]
 pub mod task;
+#[cfg(not(no_global_oom_handling))]
+mod utf16_decode;
 pub mod vec;
 #[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
 pub mod wtf8;
