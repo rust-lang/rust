@@ -312,6 +312,7 @@ macro_rules! for_each_ast_visit_hook {
     ($macro:ident!) => {
         $macro! {
             // tidy-alphabetical-start
+            visit_annotatable_use_tree(AnnotatableUseTree) => walk_annotatable_use_tree;
             visit_anon_const(AnonConst) => walk_anon_const;
             visit_arm(Arm) => walk_arm;
             //visit_assoc_item(AssocItem, _ctxt: AssocCtxt) => walk_assoc_item;
@@ -367,7 +368,6 @@ macro_rules! for_each_ast_visit_hook {
             visit_ty(Ty) => walk_ty;
             visit_ty_pat(TyPat) => walk_ty_pat;
             visit_use_tree(UseTree) => walk_use_tree;
-            visit_use_tree_and_id(UseTreeAndId) => walk_use_tree_and_id;
             visit_variant(Variant) => walk_variant;
             visit_variant_data(VariantData) => walk_variant_data;
             visit_vis(Visibility) => walk_vis;
@@ -478,7 +478,6 @@ macro_rules! common_visitor_and_walkers {
             ThinVec<TestBinderExists>,
             ThinVec<TestBinderForall>,
             ThinVec<TyPat>,
-            ThinVec<UseTreeAndId>,
             // tidy-alphabetical-end
         }
 
@@ -755,6 +754,13 @@ macro_rules! common_visitor_and_walkers {
 
                 fn flat_map_pat_field(&mut self, fp: PatField) -> SmallVec<[PatField; 1]> {
                     walk_flat_map_pat_field(self, fp)
+                }
+
+                fn flat_map_annotatable_use_tree(
+                    &mut self,
+                    annotatable_use_tree:AnnotatableUseTree,
+                )->SmallVec<[AnnotatableUseTree;1]>{
+                    walk_flat_map_annotatable_use_tree(self,annotatable_use_tree)
                 }
             )?
         }
@@ -1141,6 +1147,7 @@ macro_rules! generate_list_visit_fns {
 
 generate_list_visit_fns! {
     // tidy-alphabetical-start
+    visit_annotatable_use_tree, AnnotatableUseTree;
     visit_arm, Arm;
     visit_assoc_item, Box<AssocItem>, ctxt: AssocCtxt;
     visit_expr, Box<Expr>;
