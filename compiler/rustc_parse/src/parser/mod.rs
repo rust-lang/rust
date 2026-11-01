@@ -630,6 +630,15 @@ impl<'a> Parser<'a> {
         if !self.eat_keyword(exp) { self.unexpected() } else { Ok(()) }
     }
 
+    #[must_use]
+    pub(crate) fn eat_forced_keyword_noexpect(&mut self, kw: Symbol) -> bool {
+        if self.token.is_forced_keyword(kw) {
+            self.bump();
+            return true;
+        }
+        false
+    }
+
     /// Consume a sequence produced by a metavar expansion, if present.
     pub fn eat_metavar_seq<T>(
         &mut self,
