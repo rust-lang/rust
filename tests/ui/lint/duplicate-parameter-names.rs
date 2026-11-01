@@ -49,3 +49,9 @@ trait Error {
 fn free_fn_without_body(x: u8, x: u8);
 //~^ ERROR free function without a body
 //~| WARN identifier `x` is bound more than once in this parameter list
+
+// The warning should respect hygiene
+macro_rules! decl {
+    ($p:ident) => { trait T { fn decl(x: u8, $p: u8); } };
+}
+decl!(x);

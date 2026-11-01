@@ -774,14 +774,16 @@ fn find_duplicated_parameters(cx: &EarlyContext<'_>, params: &[ast::Param]) {
 
     for param in params {
         if let ast::PatKind::Ident(_, ident, _) = param.pat.kind {
-            if let Some(&prev_use) = map.get(&ident.name) {
+            let name = ident.normalize_to_macro_rules();
+
+            if let Some(&prev_use) = map.get(&name) {
                 cx.emit_span_lint(
                     DUPLICATE_PARAMETER_NAMES,
                     ident.span,
                     BuiltinDuplicateParameterNames { span: ident.span, ident, prev_use },
                 );
             } else {
-                map.insert(ident.name, ident.span);
+                map.insert(name, ident.span);
             }
         }
     }
