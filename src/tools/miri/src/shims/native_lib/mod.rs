@@ -492,7 +492,7 @@ pub fn build_libffi_closure<'tcx, 'this>(
 /// As future improvement we might continue execution in the interpreter here.
 unsafe extern "C" fn libffi_closure_callback<'tcx>(
     _cif: &libffi::low::ffi_cif,
-    _result: &mut c_void,
+    _result: &mut (),
     _args: *const *const c_void,
     data: &LibffiClosureData<'tcx>,
 ) {
