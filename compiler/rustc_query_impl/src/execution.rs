@@ -481,14 +481,13 @@ fn execute_job_incr<'tcx, C: QueryCache>(
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         if let Some(ret) = start_query(job_id, false, || try {
-            let (prev_index, dep_node_index) = dep_graph_data.try_mark_green(tcx, &dep_node)?;
+            let dep_node_index = dep_graph_data.try_mark_green(tcx, &dep_node)?;
             let value = load_from_disk_or_invoke_provider_green(
                 tcx,
                 dep_graph_data,
                 query,
                 key,
                 &dep_node,
-                prev_index,
                 dep_node_index,
             );
             (value, dep_node_index)
@@ -524,12 +523,14 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     key: C::Key,
     dep_node: &DepNode,
-    prev_index: SerializedDepNodeIndex,
     dep_node_index: DepNodeIndex,
 ) -> C::Value {
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
 
+    // A green node keeps its previous index, under which the previous session stored its
+    // value and fingerprint.
+    let prev_index = SerializedDepNodeIndex::from(dep_node_index);
     debug_assert!(dep_graph_data.is_index_green(prev_index));
 
     // First try to load the result from the on-disk cache. Some things are never cached on disk.
@@ -612,7 +613,7 @@ fn ensure_can_skip_execution<'tcx, C: QueryCache>(
             // in-memory cache, or another query down the line will.
             false
         }
-        Some((_, dep_node_index)) => {
+        Some(dep_node_index) => {
             tcx.dep_graph.read_index(dep_node_index);
             tcx.prof.query_cache_hit(dep_node_index.into());
 

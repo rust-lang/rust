@@ -808,14 +808,14 @@ impl<'tcx> CacheEncoder<'tcx> {
     }
 
     pub fn encode_query_value<V: Encodable<Self>>(&mut self, index: DepNodeIndex, value: &V) {
-        let index = SerializedDepNodeIndex::from_curr_for_serialization(index);
+        let index = SerializedDepNodeIndex::from(index);
 
         self.query_values_index.push((index, AbsoluteBytePos::new(self.position())));
         self.encode_tagged(index, value);
     }
 
     fn encode_side_effect(&mut self, index: DepNodeIndex, side_effect: &QuerySideEffect) {
-        let index = SerializedDepNodeIndex::from_curr_for_serialization(index);
+        let index = SerializedDepNodeIndex::from(index);
 
         self.side_effects_index.push((index, AbsoluteBytePos::new(self.position())));
         self.encode_tagged(index, side_effect);
