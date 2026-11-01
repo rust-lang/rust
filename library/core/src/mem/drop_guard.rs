@@ -11,7 +11,6 @@ use crate::ops::{Deref, DerefMut};
 ///
 /// ```rust
 /// # #![allow(unused)]
-///
 /// use std::mem::DropGuard;
 ///
 /// {
@@ -48,7 +47,6 @@ where
     ///
     /// ```rust
     /// # #![allow(unused)]
-    ///
     /// use std::mem::DropGuard;
     ///
     /// let value = String::from("Chashu likes tuna");
@@ -72,7 +70,6 @@ where
     ///
     /// ```rust
     /// # #![allow(unused)]
-    ///
     /// use std::mem::DropGuard;
     ///
     /// let value = String::from("Nori likes chicken");
