@@ -42,7 +42,7 @@ impl<'a, Fut: Future<Output = ()>> SomeTrait<'a, Fut> for Fut {
 }
 
 impl<'b, 'a, Fut> DerefMut for Pin<&'b dyn SomeTrait<'a, Fut>> {
-//~^ ERROR: conflicting implementations of trait `DerefMut`
+//~^ ERROR: cannot implement `DerefMut` for the fundamental type
     fn deref_mut<'c>(
         self: &'c mut Pin<&'b dyn SomeTrait<'a, Fut>>,
     ) -> &'c mut (dyn SomeTrait<'a, Fut> + 'b) {

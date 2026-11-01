@@ -1,0 +1,21 @@
+error[E0119]: conflicting implementations of trait `WithoutAttr` for type `FundamentalWrapper<_>`
+  --> $DIR/anti-fundamental-negative-reasoning.rs:27:1
+   |
+LL | impl<T: NotAntiFundamentalTrait> WithoutAttr for T {}
+   | -------------------------------------------------- first implementation here
+LL | impl<T> WithoutAttr for FundamentalWrapper<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `FundamentalWrapper<_>`
+   |
+   = note: downstream crates may implement trait `NotAntiFundamentalTrait` for type `FundamentalWrapper<_>`
+
+error[E0119]: conflicting implementations of trait `OverlapsLocalImpl` for type `FundamentalWrapper<u8>`
+  --> $DIR/anti-fundamental-negative-reasoning.rs:37:1
+   |
+LL | impl<T: AntiFundamentalWithLocalImpl> OverlapsLocalImpl for T {}
+   | ------------------------------------------------------------- first implementation here
+LL | impl<T> OverlapsLocalImpl for FundamentalWrapper<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `FundamentalWrapper<u8>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

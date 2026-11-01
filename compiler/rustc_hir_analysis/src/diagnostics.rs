@@ -2188,3 +2188,18 @@ pub(crate) struct UnevaluatedDefaultFieldValue {
     pub(crate) struct_start: Span,
     pub(crate) padding: String,
 }
+
+#[derive(Diagnostic)]
+#[diag("cannot implement `{$trait_name}` for the fundamental type `{$fundamental_ty}`")]
+#[note(
+    "`{$trait_name}` is `#[rustc_anti_fundamental]` and \
+     cannot be implemented for `#[fundamental]` types from another crate"
+)]
+pub(crate) struct AntiFundamentalForeignImpl<'tcx> {
+    #[primary_span]
+    #[label("impl of `{$trait_name}` not allowed for `{$self_ty}`")]
+    pub(crate) span: Span,
+    pub(crate) trait_name: String,
+    pub(crate) self_ty: Ty<'tcx>,
+    pub(crate) fundamental_ty: Ty<'tcx>,
+}
