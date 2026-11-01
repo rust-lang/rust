@@ -1,0 +1,20 @@
+// rustfix-only-machine-applicable
+#![feature(rustc_attrs, const_trait_impl, const_clone, const_destruct)]
+#![warn(clippy::redundant_clone)]
+
+struct S;
+
+const impl Clone for S {
+    fn clone(&self) -> Self {
+        Self
+    }
+}
+
+#[rustc_comptime]
+fn comptime_func() {
+    let a = S;
+    let _a = a.clone();
+    //~^ redundant_clone
+}
+
+fn main() {}

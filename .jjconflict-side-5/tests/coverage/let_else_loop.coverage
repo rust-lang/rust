@@ -1,0 +1,31 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |// Regression test for <https://github.com/rust-lang/rust/issues/122738>.
+   LL|       |// These code patterns should not trigger an ICE when allocating a physical
+   LL|       |// counter to a node and also one of its in-edges, because that is allowed
+   LL|       |// when the node contains a tight loop to itself.
+   LL|       |
+   LL|      1|fn loopy(cond: bool) {
+   LL|      1|    let true = cond else { loop {} };
+                                         ^0
+   LL|      1|}
+   LL|       |
+   LL|       |// Variant that also has `loop {}` on the success path.
+   LL|       |// This isn't needed to catch the original ICE, but might help detect regressions.
+   LL|      0|fn _loop_either_way(cond: bool) {
+   LL|      0|    let true = cond else { loop {} };
+   LL|      0|    loop {}
+   LL|       |}
+   LL|       |
+   LL|       |// Variant using regular `if` instead of let-else.
+   LL|       |// This doesn't trigger the original ICE, but might help detect regressions.
+   LL|      0|fn _if(cond: bool) {
+   LL|      0|    if cond { loop {} } else { loop {} }
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    loopy(true);
+   LL|       |}
+

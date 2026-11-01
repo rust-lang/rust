@@ -1,0 +1,58 @@
+error: item does not constrain `FooRet::{opaque#0}`
+  --> $DIR/issue-70877.rs:25:8
+   |
+LL | pub fn ham() -> Foo {
+   |        ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/issue-70877.rs:18:19
+   |
+LL | pub type FooRet = impl std::fmt::Debug;
+   |                   ^^^^^^^^^^^^^^^^^^^^
+
+error: item does not constrain `FooRet::{opaque#0}`
+  --> $DIR/issue-70877.rs:30:8
+   |
+LL | pub fn oof() -> impl std::fmt::Debug {
+   |        ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/issue-70877.rs:18:19
+   |
+LL | pub type FooRet = impl std::fmt::Debug;
+   |                   ^^^^^^^^^^^^^^^^^^^^
+
+error: item does not constrain `Foo::{opaque#0}`
+  --> $DIR/issue-70877.rs:30:8
+   |
+LL | pub fn oof() -> impl std::fmt::Debug {
+   |        ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/issue-70877.rs:23:16
+   |
+LL | pub type Foo = impl Iterator<Item = FooItem>;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: opaque type's hidden type cannot be another opaque type from the same scope
+  --> $DIR/issue-70877.rs:35:12
+   |
+LL |     return func(&"oof");
+   |            ^^^^^^^^^^^^ one of the two opaque types used here has to be outside its defining scope
+   |
+note: opaque type whose hidden type is being assigned
+  --> $DIR/issue-70877.rs:30:17
+   |
+LL | pub fn oof() -> impl std::fmt::Debug {
+   |                 ^^^^^^^^^^^^^^^^^^^^
+note: opaque type being used as hidden type
+  --> $DIR/issue-70877.rs:18:19
+   |
+LL | pub type FooRet = impl std::fmt::Debug;
+   |                   ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

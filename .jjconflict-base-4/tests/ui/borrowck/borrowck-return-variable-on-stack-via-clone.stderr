@@ -1,0 +1,12 @@
+error[E0515]: cannot return value referencing function parameter `x`
+  --> $DIR/borrowck-return-variable-on-stack-via-clone.rs:7:5
+   |
+LL |     (&x).clone()
+   |     ----^^^^^^^^
+   |     |
+   |     returns a value referencing data owned by the current function
+   |     `x` is borrowed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

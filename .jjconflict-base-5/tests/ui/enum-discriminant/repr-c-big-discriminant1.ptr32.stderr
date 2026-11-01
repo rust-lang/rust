@@ -1,0 +1,35 @@
+error: literal out of range for `isize`
+  --> $DIR/repr-c-big-discriminant1.rs:18:9
+   |
+LL |     A = 9223372036854775807, // i64::MAX
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the literal `9223372036854775807` does not fit into the type `isize` whose range is `-2147483648..=2147483647`
+   = note: `#[deny(overflowing_literals)]` on by default
+
+error: literal out of range for `isize`
+  --> $DIR/repr-c-big-discriminant1.rs:26:9
+   |
+LL |     A = -2147483649, // i32::MIN-1
+   |         ^^^^^^^^^^^
+   |
+   = note: the literal `-2147483649` does not fit into the type `isize` whose range is `-2147483648..=2147483647`
+
+error: literal out of range for `isize`
+  --> $DIR/repr-c-big-discriminant1.rs:34:9
+   |
+LL |     A = 2147483648, // i32::MAX+1
+   |         ^^^^^^^^^^
+   |
+   = note: the literal `2147483648` does not fit into the type `isize` whose range is `-2147483648..=2147483647`
+
+error: literal out of range for `isize`
+  --> $DIR/repr-c-big-discriminant1.rs:43:9
+   |
+LL |     A = 2147483648, // i32::MAX+1
+   |         ^^^^^^^^^^
+   |
+   = note: the literal `2147483648` does not fit into the type `isize` whose range is `-2147483648..=2147483647`
+
+error: aborting due to 4 previous errors
+

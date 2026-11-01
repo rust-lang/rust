@@ -1,0 +1,9 @@
+error[E0080]: modifying a static's initial value from another static's initializer
+  --> $DIR/assign-to-static-within-other-static.rs:8:5
+   |
+LL |     FOO = 5;
+   |     ^^^^^^^ evaluation of `BOO` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

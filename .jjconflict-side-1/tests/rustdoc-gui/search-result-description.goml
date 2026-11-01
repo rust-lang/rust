@@ -1,0 +1,5 @@
+// This test is to ensure that the codeblocks are correctly rendered in the search results.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=some_more_function"
+call-function: ("wait-for-search-results", {})
+assert-text: (".search-results .desc code", "format!")

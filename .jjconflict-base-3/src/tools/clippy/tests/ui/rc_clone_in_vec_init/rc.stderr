@@ -1,0 +1,104 @@
+error: initializing a reference-counted pointer in `vec![elem; len]`
+  --> tests/ui/rc_clone_in_vec_init/rc.rs:10:13
+   |
+LL |     let v = vec![Rc::new("x".to_string()); 2];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each element will point to the same `Rc` instance
+   = note: `-D clippy::rc-clone-in-vec-init` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::rc_clone_in_vec_init)]`
+help: consider initializing each `Rc` element individually
+   |
+LL ~     let v = {
+LL +         let mut v = Vec::with_capacity(2);
+LL +         (0..2).for_each(|_| v.push(Rc::new(..)));
+LL +         v
+LL ~     };
+   |
+help: or if this is intentional, consider extracting the `Rc` initialization to a variable
+   |
+LL ~     let v = {
+LL +         let data = Rc::new(..);
+LL +         vec![data; 2]
+LL ~     };
+   |
+
+error: initializing a reference-counted pointer in `vec![elem; len]`
+  --> tests/ui/rc_clone_in_vec_init/rc.rs:19:21
+   |
+LL |             let v = vec![Rc::new("x".to_string()); 2];
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: each element will point to the same `Rc` instance
+help: consider initializing each `Rc` element individually
+   |
+LL ~             let v = {
+LL +                 let mut v = Vec::with_capacity(2);
+LL +                 (0..2).for_each(|_| v.push(Rc::new(..)));
+LL +                 v
+LL ~             };
+   |
+help: or if this is intentional, consider extracting the `Rc` initialization to a variable
+   |
+LL ~             let v = {
+LL +                 let data = Rc::new(..);
+LL +                 vec![data; 2]
+LL ~             };
+   |
+
+error: initializing a reference-counted pointer in `vec![elem; len]`
+  --> tests/ui/rc_clone_in_vec_init/rc.rs:26:13
+   |
+LL |       let v = vec![
+   |  _____________^
+...  |
+LL | |         2
+LL | |     ];
+   | |_____^
+   |
+   = note: each element will point to the same `Rc` instance
+help: consider initializing each `Rc` element individually
+   |
+LL ~     let v = {
+LL +         let mut v = Vec::with_capacity(2);
+LL +         (0..2).for_each(|_| v.push(std::rc::Rc::new(..)));
+LL +         v
+LL ~     };
+   |
+help: or if this is intentional, consider extracting the `Rc` initialization to a variable
+   |
+LL ~     let v = {
+LL +         let data = std::rc::Rc::new(..);
+LL +         vec![data; 2]
+LL ~     };
+   |
+
+error: initializing a reference-counted pointer in `vec![elem; len]`
+  --> tests/ui/rc_clone_in_vec_init/rc.rs:38:14
+   |
+LL |       let v1 = vec![
+   |  ______________^
+...  |
+LL | |         2
+LL | |     ];
+   | |_____^
+   |
+   = note: each element will point to the same `Rc` instance
+help: consider initializing each `Rc` element individually
+   |
+LL ~     let v1 = {
+LL +         let mut v = Vec::with_capacity(2);
+LL +         (0..2).for_each(|_| v.push(Rc::new(..)));
+LL +         v
+LL ~     };
+   |
+help: or if this is intentional, consider extracting the `Rc` initialization to a variable
+   |
+LL ~     let v1 = {
+LL +         let data = Rc::new(..);
+LL +         vec![data; 2]
+LL ~     };
+   |
+
+error: aborting due to 4 previous errors
+

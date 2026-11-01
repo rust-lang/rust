@@ -1,0 +1,281 @@
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:6:11
+   |
+LL | fn foo(s: &mut Vec<u32>, b: &u32, x: &mut u32) {
+   |           ^----^^^^^^^^
+   |            |
+   |            help: consider removing this `mut`
+   |
+   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_ref_mut)]`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:32:12
+   |
+LL | fn foo6(s: &mut Vec<u32>) {
+   |            ^----^^^^^^^^
+   |             |
+   |             help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:43:12
+   |
+LL |     fn bar(&mut self) {}
+   |            ^----^^^^
+   |             |
+   |             help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:46:29
+   |
+LL |     fn mushroom(&self, vec: &mut Vec<i32>) -> usize {
+   |                             ^----^^^^^^^^
+   |                              |
+   |                              help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:124:16
+   |
+LL | async fn a1(x: &mut i32) {
+   |                ^----^^^
+   |                 |
+   |                 help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:129:16
+   |
+LL | async fn a2(x: &mut i32, y: String) {
+   |                ^----^^^
+   |                 |
+   |                 help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:134:16
+   |
+LL | async fn a3(x: &mut i32, y: String, z: String) {
+   |                ^----^^^
+   |                 |
+   |                 help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:139:16
+   |
+LL | async fn a4(x: &mut i32, y: i32) {
+   |                ^----^^^
+   |                 |
+   |                 help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:144:24
+   |
+LL | async fn a5(x: i32, y: &mut i32) {
+   |                        ^----^^^
+   |                         |
+   |                         help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:149:24
+   |
+LL | async fn a6(x: i32, y: &mut i32) {
+   |                        ^----^^^
+   |                         |
+   |                         help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:154:32
+   |
+LL | async fn a7(x: i32, y: i32, z: &mut i32) {
+   |                                ^----^^^
+   |                                 |
+   |                                 help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:159:24
+   |
+LL | async fn a8(x: i32, a: &mut i32, y: i32, z: &mut i32) {
+   |                        ^----^^^
+   |                         |
+   |                         help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:159:45
+   |
+LL | async fn a8(x: i32, a: &mut i32, y: i32, z: &mut i32) {
+   |                                             ^----^^^
+   |                                              |
+   |                                              help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:195:16
+   |
+LL | fn cfg_warn(s: &mut u32) {}
+   |                ^----^^^
+   |                 |
+   |                 help: consider removing this `mut`
+   |
+   = note: this is cfg-gated and may require further changes
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:200:20
+   |
+LL |     fn cfg_warn(s: &mut u32) {}
+   |                    ^----^^^
+   |                     |
+   |                     help: consider removing this `mut`
+   |
+   = note: this is cfg-gated and may require further changes
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:213:39
+   |
+LL | async fn inner_async2(x: &mut i32, y: &mut u32) {
+   |                                       ^----^^^
+   |                                        |
+   |                                        help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:222:26
+   |
+LL | async fn inner_async3(x: &mut i32, y: &mut u32) {
+   |                          ^----^^^
+   |                           |
+   |                           help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:242:30
+   |
+LL | async fn call_in_closure1(n: &mut str) {
+   |                              ^----^^^
+   |                               |
+   |                               help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:262:16
+   |
+LL | fn closure2(n: &mut usize) -> impl '_ + FnMut() -> usize {
+   |                ^----^^^^^
+   |                 |
+   |                 help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:274:22
+   |
+LL | async fn closure4(n: &mut usize) {
+   |                      ^----^^^^^
+   |                       |
+   |                       help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:329:12
+   |
+LL |     fn bar(&mut self) {}
+   |            ^----^^^^
+   |             |
+   |             help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:332:18
+   |
+LL |     async fn foo(&mut self, u: &mut i32, v: &mut u32) {
+   |                  ^----^^^^
+   |                   |
+   |                   help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:332:45
+   |
+LL |     async fn foo(&mut self, u: &mut i32, v: &mut u32) {
+   |                                             ^----^^^
+   |                                              |
+   |                                              help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:341:46
+   |
+LL |     async fn foo2(&mut self, u: &mut i32, v: &mut u32) {
+   |                                              ^----^^^
+   |                                               |
+   |                                               help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:358:18
+   |
+LL | fn _empty_tup(x: &mut (())) {}
+   |                  ^^----^^^
+   |                    |
+   |                    help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:360:19
+   |
+LL | fn _single_tup(x: &mut ((i32,))) {}
+   |                   ^^----^^^^^^^
+   |                     |
+   |                     help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:362:18
+   |
+LL | fn _multi_tup(x: &mut ((i32, u32))) {}
+   |                  ^^----^^^^^^^^^^^
+   |                    |
+   |                    help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:364:11
+   |
+LL | fn _fn(x: &mut (fn())) {}
+   |           ^^----^^^^^
+   |             |
+   |             help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:367:23
+   |
+LL | fn _extern_rust_fn(x: &mut extern "Rust" fn()) {}
+   |                       ^----^^^^^^^^^^^^^^^^^^
+   |                        |
+   |                        help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:369:20
+   |
+LL | fn _extern_c_fn(x: &mut extern "C" fn()) {}
+   |                    ^----^^^^^^^^^^^^^^^
+   |                     |
+   |                     help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:371:18
+   |
+LL | fn _unsafe_fn(x: &mut unsafe fn()) {}
+   |                  ^----^^^^^^^^^^^
+   |                   |
+   |                   help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:373:25
+   |
+LL | fn _unsafe_extern_fn(x: &mut unsafe extern "C" fn()) {}
+   |                         ^----^^^^^^^^^^^^^^^^^^^^^^
+   |                          |
+   |                          help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:375:20
+   |
+LL | fn _fn_with_arg(x: &mut unsafe extern "C" fn(i32)) {}
+   |                    ^----^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     |
+   |                     help: consider removing this `mut`
+
+error: this parameter is a mutable reference but is not used mutably
+  --> tests/ui/needless_pass_by_ref_mut.rs:377:20
+   |
+LL | fn _fn_with_ret(x: &mut unsafe extern "C" fn() -> (i32)) {}
+   |                    ^----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     |
+   |                     help: consider removing this `mut`
+
+error: aborting due to 34 previous errors
+

@@ -1,0 +1,8 @@
+error: offset_of expects dot-separated field and variant names
+  --> $DIR/offset-of-error-recovery.rs:9:26
+   |
+LL |         offset_of!(Self, Self::x);
+   |                          ^^^^^^^
+
+error: aborting due to 1 previous error
+

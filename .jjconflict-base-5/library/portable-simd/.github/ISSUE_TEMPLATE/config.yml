@@ -1,0 +1,10 @@
+# This only controls whether a tiny, hard-to-find "open a blank issue" link appears at the end of
+# the template list.
+blank_issues_enabled: true
+contact_links:
+  - name: Intrinsic Support
+    url: https://github.com/rust-lang/stdarch/issues
+    about: Please direct issues about Rust's support for vendor intrinsics to core::arch
+  - name: Internal Compiler Error
+    url: https://github.com/rust-lang/rust/issues
+    about: Please report ICEs to the rustc repository

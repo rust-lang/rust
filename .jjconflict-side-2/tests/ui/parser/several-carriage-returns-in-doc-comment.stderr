@@ -1,0 +1,20 @@
+error: bare CR not allowed in doc-comment
+  --> $DIR/several-carriage-returns-in-doc-comment.rs:6:12
+   |
+LL | /// This do␍c comment contains ␍three isolated `\r`␍ symbols
+   |            ^
+
+error: bare CR not allowed in doc-comment
+  --> $DIR/several-carriage-returns-in-doc-comment.rs:6:32
+   |
+LL | /// This do␍c comment contains ␍three isolated `\r`␍ symbols
+   |                                ^
+
+error: bare CR not allowed in doc-comment
+  --> $DIR/several-carriage-returns-in-doc-comment.rs:6:52
+   |
+LL | /// This do␍c comment contains ␍three isolated `\r`␍ symbols
+   |                                                    ^
+
+error: aborting due to 3 previous errors
+

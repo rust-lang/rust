@@ -1,0 +1,35 @@
+// Check that the targeted element has the expected styles.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html#method.a_method"
+show-text: true
+
+// Confirming that the method is the target.
+assert: "#method\.a_method:target"
+
+define-function: (
+    "check-style",
+    [theme, background, border],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        wait-for-css: ("#method\.a_method:target", {
+            "background-color": |background|,
+            "border-right": "3px solid " + |border|,
+        })
+    },
+)
+
+call-function: ("check-style", {
+    "theme": "ayu",
+    "background": "rgba(255, 236, 164, 0.06)",
+    "border": "rgba(255, 180, 76, 0.85)",
+})
+call-function: ("check-style", {
+    "theme": "dark",
+    "background": "#494a3d",
+    "border": "#bb7410",
+})
+call-function: ("check-style", {
+    "theme": "light",
+    "background": "#fdffd3",
+    "border": "#ad7c37",
+})

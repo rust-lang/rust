@@ -1,0 +1,21 @@
+error[E0507]: cannot move out of `x`, a captured variable in an `Fn` closure
+  --> $DIR/borrowck-in-static.rs:5:17
+   |
+LL |     let x = Box::new(0);
+   |         -   ----------- move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+   |         |
+   |         captured outer variable
+LL |     Box::new(|| x)
+   |              -- ^ `x` is moved here
+   |              |
+   |              captured by this `Fn` closure
+   |
+   = help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     Box::new(|| x.clone())
+   |                  ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

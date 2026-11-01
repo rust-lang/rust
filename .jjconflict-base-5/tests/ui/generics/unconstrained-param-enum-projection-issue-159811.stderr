@@ -1,0 +1,28 @@
+error[E0119]: conflicting implementations of trait `From<MyError<_>>` for type `MyError<_>`
+  --> $DIR/unconstrained-param-enum-projection-issue-159811.rs:19:1
+   |
+LL | impl<'a, S: Site> From<<S::Child<'a> as Child>::Error> for MyError<S::Error> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<T> From<T> for T;
+
+error[E0207]: the type parameter `S` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-param-enum-projection-issue-159811.rs:19:10
+   |
+LL | impl<'a, S: Site> From<<S::Child<'a> as Child>::Error> for MyError<S::Error> {
+   |          ^ unconstrained type parameter
+   |
+help: use the type parameter `S` in the `MyError` type and use it in the type definition
+   |
+LL ~ enum MyError<P, S> {
+LL |     Own,
+...
+LL |
+LL ~ impl<'a, S: Site> From<<S::Child<'a> as Child>::Error> for MyError<S::Error, S> {
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0207.
+For more information about an error, try `rustc --explain E0119`.

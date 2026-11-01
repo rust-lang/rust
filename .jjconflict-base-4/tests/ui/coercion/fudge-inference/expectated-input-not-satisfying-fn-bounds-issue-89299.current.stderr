@@ -1,0 +1,16 @@
+error[E0277]: `dyn Trait + Send` cannot be unpinned
+  --> $DIR/expectated-input-not-satisfying-fn-bounds-issue-89299.rs:20:27
+   |
+LL |     let _x = Foo(Pin::new(&mut a));
+   |                  -------- ^^^^^^ the trait `Unpin` is not implemented for `dyn Trait + Send`
+   |                  |
+   |                  required by a bound introduced by this call
+   |
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+note: required by a bound in `Pin::<Ptr>::new`
+  --> $SRC_DIR/core/src/pin.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

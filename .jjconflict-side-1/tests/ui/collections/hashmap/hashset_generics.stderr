@@ -1,0 +1,29 @@
+error[E0369]: binary operation `==` cannot be applied to type `HashSet<String, String>`
+  --> $DIR/hashset_generics.rs:8:5
+   |
+LL | #[derive(PartialEq)]
+   |          --------- in this derive macro expansion
+...
+LL |     pub parameters: HashSet<String, String>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `String` does not implement `BuildHasher`
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+   |
+   = note: `String` is defined in another crate
+   = help: you might have intended to use a HashMap instead
+
+error[E0599]: the method `insert` exists for struct `HashSet<usize, usize>`, but its trait bounds were not satisfied
+  --> $DIR/hashset_generics.rs:16:8
+   |
+LL |     h1.insert(1);
+   |        ^^^^^^
+   |
+   = note: the following trait bounds were not satisfied:
+           `usize: BuildHasher`
+   = help: you might have intended to use a HashMap instead
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0369, E0599.
+For more information about an error, try `rustc --explain E0369`.

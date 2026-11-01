@@ -1,0 +1,4 @@
+[crates]
+cc = {name = "cc", versions = ['1.0.67']}
+home = {name = "home", git_url = "https://github.com/brson/home", git_hash = "32044e53dfbdcd32bafad3109d1fbab805fc0f40"}
+rustc_tools_util = {name = "rustc_tools_util", versions = ['0.2.0']}

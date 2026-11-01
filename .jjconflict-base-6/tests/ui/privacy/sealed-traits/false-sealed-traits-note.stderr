@@ -1,0 +1,47 @@
+error[E0277]: the trait bound `Struct: TraitA` is not satisfied
+  --> $DIR/false-sealed-traits-note.rs:12:24
+   |
+LL | impl inner::TraitB for Struct {}
+   |                        ^^^^^^ unsatisfied trait bound
+   |
+help: the trait `TraitA` is not implemented for `Struct`
+  --> $DIR/false-sealed-traits-note.rs:10:1
+   |
+LL | struct Struct;
+   | ^^^^^^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> $DIR/false-sealed-traits-note.rs:5:5
+   |
+LL |     pub trait TraitA {}
+   |     ^^^^^^^^^^^^^^^^
+note: required by a bound in `TraitB`
+  --> $DIR/false-sealed-traits-note.rs:7:23
+   |
+LL |     pub trait TraitB: TraitA {}
+   |                       ^^^^^^ required by this bound in `TraitB`
+
+error[E0277]: the trait bound `C: A` is not satisfied
+  --> $DIR/false-sealed-traits-note.rs:20:16
+   |
+LL |     impl B for C {}
+   |                ^ unsatisfied trait bound
+   |
+help: the trait `A` is not implemented for `C`
+  --> $DIR/false-sealed-traits-note.rs:19:5
+   |
+LL |     pub struct C;
+   |     ^^^^^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> $DIR/false-sealed-traits-note.rs:16:5
+   |
+LL |     pub trait A {}
+   |     ^^^^^^^^^^^
+note: required by a bound in `B`
+  --> $DIR/false-sealed-traits-note.rs:17:18
+   |
+LL |     pub trait B: A {}
+   |                  ^ required by this bound in `B`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

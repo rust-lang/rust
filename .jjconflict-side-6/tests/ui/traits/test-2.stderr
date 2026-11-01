@@ -1,0 +1,55 @@
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/test-2.rs:9:8
+   |
+LL |     10.dup::<i32>();
+   |        ^^^------- help: remove the unnecessary generics
+   |        |
+   |        expected 0 generic arguments
+   |
+note: method defined here, with 0 generic parameters
+  --> $DIR/test-2.rs:4:16
+   |
+LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
+   |                ^^^
+
+error[E0107]: method takes 1 generic argument but 2 generic arguments were supplied
+  --> $DIR/test-2.rs:11:8
+   |
+LL |     10.blah::<i32, i32>();
+   |        ^^^^      ----- help: remove the unnecessary generic argument
+   |        |
+   |        expected 1 generic argument
+   |
+note: method defined here, with 1 generic parameter: `X`
+  --> $DIR/test-2.rs:4:39
+   |
+LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
+   |                                       ^^^^ -
+
+error[E0038]: the trait `bar` is not dyn compatible
+  --> $DIR/test-2.rs:13:30
+   |
+LL |     (Box::new(10) as Box<dyn bar>).dup();
+   |                              ^^^ `bar` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/test-2.rs:4:30
+   |
+LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
+   |       ---                    ^^^^     ^^^^ ...because method `blah` has generic type parameters
+   |       |                      |
+   |       |                      ...because method `dup` references the `Self` type in its return type
+   |       this trait is not dyn compatible...
+   = help: consider moving `dup` to another trait
+   = help: consider moving `blah` to another trait
+   = help: the following types implement `bar`:
+             i32
+             u32
+           consider defining an enum where each variant holds one of these types,
+           implementing `bar` for this new enum and using it instead
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0038, E0107.
+For more information about an error, try `rustc --explain E0038`.

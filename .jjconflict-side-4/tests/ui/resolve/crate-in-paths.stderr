@@ -1,0 +1,14 @@
+error[E0425]: cannot find value `Foo` in this scope
+  --> $DIR/crate-in-paths.rs:8:5
+   |
+LL |     Foo;
+   |     ^^^ not found in this scope
+   |
+help: consider importing this unit struct
+   |
+LL + use crate::bar::Foo;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

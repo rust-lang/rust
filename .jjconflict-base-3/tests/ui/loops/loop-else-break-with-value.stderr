@@ -1,0 +1,37 @@
+error: `loop...else` loops are not supported
+  --> $DIR/loop-else-break-with-value.rs:10:7
+   |
+LL |       let Some(1) = loop {
+   |                     ---- `else` is attached to this loop
+...
+LL |       } else {
+   |  _______^
+LL | |
+LL | |
+LL | |         return;
+LL | |     };
+   | |_____^
+   |
+   = note: consider moving this `else` clause to a separate `if` statement and use a `bool` variable to control if it should run
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/loop-else-break-with-value.rs:2:9
+   |
+LL |     let Some(1) = loop {
+   |         ^^^^^^^ pattern `None` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `Option<i32>`
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL ~     if let Some(1) = loop {
+LL |
+...
+LL |         return;
+LL ~     } { todo!() };
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0005`.

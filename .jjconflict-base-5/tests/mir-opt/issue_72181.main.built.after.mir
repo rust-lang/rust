@@ -1,0 +1,68 @@
+// MIR for `main` after built
+
+fn main() -> () {
+    let mut _0: ();
+    let mut _1: usize;
+    let mut _3: Foo;
+    let mut _4: Foo;
+    let mut _5: u64;
+    let _6: usize;
+    let mut _7: bool;
+    scope 1 {
+        let _2: [Foo; 2];
+        scope 2 {
+            debug f => _2;
+            scope 3 {
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = std::mem::size_of::<Foo>() -> [return: bb1, unwind: bb5];
+    }
+
+    bb1: {
+        PlaceMention(_1);
+        StorageDead(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = Foo { a: const 42_u64 };
+        StorageLive(_4);
+        _4 = Foo { a: const 10_u64 };
+        _2 = [move _3, move _4];
+        StorageDead(_4);
+        StorageDead(_3);
+        FakeRead(ForLet(None), _2);
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = const 0_usize;
+        FakeRead(ForIndex, _2);
+        _7 = Lt(copy _6, const 2_usize);
+        assert(move _7, "index out of bounds: the length is {} but the index is {}", const 2_usize, copy _6) -> [success: bb3, unwind: bb5];
+    }
+
+    bb2: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb3: {
+        _5 = copy (_2[_6].0: u64);
+        PlaceMention(_5);
+        StorageDead(_6);
+        StorageDead(_5);
+        _0 = const ();
+        StorageDead(_2);
+        return;
+    }
+
+    bb4: {
+        FakeRead(ForMatchedPlace(None), _5);
+        unreachable;
+    }
+
+    bb5 (cleanup): {
+        resume;
+    }
+}

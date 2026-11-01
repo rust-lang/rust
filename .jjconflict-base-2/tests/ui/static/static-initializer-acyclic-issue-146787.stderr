@@ -1,0 +1,32 @@
+error: static initializer forms a cycle involving `C0`
+  --> $DIR/static-initializer-acyclic-issue-146787.rs:21:1
+   |
+LL | static C0: Foo = Foo(&C1);
+   | ^^^^^^^^^^^^^^ part of this cycle
+LL | static C1: Foo = Foo(&C2);
+   | -------------- part of this cycle
+LL | static C2: Foo = Foo(&C0);
+   | -------------- part of this cycle
+   |
+   = note: cyclic static initializers are not supported for target `nvptx64-nvidia-cuda`
+
+error: static initializer forms a cycle involving `B0`
+  --> $DIR/static-initializer-acyclic-issue-146787.rs:18:1
+   |
+LL | static B0: Foo = Foo(&B1);
+   | ^^^^^^^^^^^^^^ part of this cycle
+LL | static B1: Foo = Foo(&B0);
+   | -------------- part of this cycle
+   |
+   = note: cyclic static initializers are not supported for target `nvptx64-nvidia-cuda`
+
+error: static initializer forms a cycle involving `A`
+  --> $DIR/static-initializer-acyclic-issue-146787.rs:16:1
+   |
+LL | static A: Foo = Foo(&A);
+   | ^^^^^^^^^^^^^ part of this cycle
+   |
+   = note: cyclic static initializers are not supported for target `nvptx64-nvidia-cuda`
+
+error: aborting due to 3 previous errors
+

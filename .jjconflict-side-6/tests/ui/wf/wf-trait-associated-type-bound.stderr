@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `T: Copy` is not satisfied
+  --> $DIR/wf-trait-associated-type-bound.rs:10:17
+   |
+LL |     type Type1: ExtraCopy<T>;
+   |                 ^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
+   |
+note: required by a bound in `ExtraCopy`
+  --> $DIR/wf-trait-associated-type-bound.rs:7:19
+   |
+LL | trait ExtraCopy<T:Copy> { }
+   |                   ^^^^ required by this bound in `ExtraCopy`
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | trait SomeTrait<T: std::marker::Copy> {
+   |                  +++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

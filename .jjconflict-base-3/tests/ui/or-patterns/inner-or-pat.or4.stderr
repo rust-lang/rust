@@ -1,0 +1,11 @@
+error[E0408]: variable `x` is not bound in all patterns
+  --> $DIR/inner-or-pat.rs:51:37
+   |
+LL |         (x @ "red" | (x @ "blue" |  "red")) => {
+   |                       -             ^^^^^ pattern doesn't bind `x`
+   |                       |
+   |                       variable not in all patterns
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0408`.

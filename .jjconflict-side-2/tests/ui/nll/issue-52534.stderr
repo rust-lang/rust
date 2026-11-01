@@ -1,0 +1,31 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/issue-52534.rs:9:14
+   |
+LL |     foo(|a| &x)
+   |          -   ^ `x` would have to be valid for `'0`...
+   |          |
+   |          has type `&'0 u32`
+LL |
+LL | }
+   | - ...but `x` will be dropped here, when the function `bar` returns
+   |
+   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references>
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/issue-52534.rs:15:26
+   |
+LL |     baz(|first, second| &y)
+   |          -----           ^ `y` would have to be valid for `'0`...
+   |          |
+   |          has type `&'0 u32`
+LL |
+LL | }
+   | - ...but `y` will be dropped here, when the function `foobar` returns
+   |
+   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references>
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

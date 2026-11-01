@@ -1,0 +1,29 @@
+SOURCE_FILE
+  TRAIT
+    TRAIT_KW "trait"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    COLON ":"
+    WHITESPACE " "
+    TYPE_BOUND_LIST
+      TYPE_BOUND
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "Hash"
+      WHITESPACE " "
+      PLUS "+"
+      WHITESPACE " "
+      TYPE_BOUND
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "Clone"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"

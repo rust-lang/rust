@@ -1,0 +1,6 @@
+[package]
+name = "cargo-common-metadata-fail"
+version = "0.1.0"
+publish = false
+
+[workspace]

@@ -1,0 +1,21 @@
+warning: unexpected `cfg` condition name: `linux`
+  --> $DIR/cfg-value-for-cfg-name.rs:9:7
+   |
+LL | #[cfg(linux)]
+   |       ^^^^^ help: found config with similar value: `target_os = "linux"`
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(linux)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `linux`
+  --> $DIR/cfg-value-for-cfg-name.rs:14:7
+   |
+LL | #[cfg(linux = "os-name")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(linux, values("os-name"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: 2 warnings emitted
+

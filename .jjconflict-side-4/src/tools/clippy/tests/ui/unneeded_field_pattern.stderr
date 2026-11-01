@@ -1,0 +1,20 @@
+error: you matched a field with a wildcard pattern, consider using `..` instead
+  --> tests/ui/unneeded_field_pattern.rs:18:15
+   |
+LL |         Foo { a: _, b: 0, .. } => {},
+   |               ^^^^
+   |
+   = help: try with `Foo { b: 0, .. }`
+   = note: `-D clippy::unneeded-field-pattern` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unneeded_field_pattern)]`
+
+error: all the struct fields are matched to a wildcard pattern, consider using `..`
+  --> tests/ui/unneeded_field_pattern.rs:20:9
+   |
+LL |         Foo { a: _, b: _, c: _ } => {},
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try with `Foo { .. }` instead
+
+error: aborting due to 2 previous errors
+

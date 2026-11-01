@@ -1,0 +1,10 @@
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/allow-non-lint-warnings.rs:24:23
+   |
+LL | const fn constant() { non_constant() }
+   |                       ^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

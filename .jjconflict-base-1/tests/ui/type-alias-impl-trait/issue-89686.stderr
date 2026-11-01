@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `T: Trait` is not satisfied
+  --> $DIR/issue-89686.rs:19:9
+   |
+LL |         async move { self.f().await }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
+   |
+help: consider restricting type parameter `T` with trait `Trait`
+   |
+LL | type G<'a, T: Trait> = impl Future<Output = ()>;
+   |             +++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

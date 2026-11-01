@@ -1,0 +1,11 @@
+error: an `#[unstable]` annotation here has no effect
+  --> $DIR/unstable-feature-bound-no-effect.rs:22:1
+   |
+LL | #[unstable(feature = "feat_moo", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information
+   = note: `#[deny(ineffective_unstable_trait_impl)]` on by default
+
+error: aborting due to 1 previous error
+

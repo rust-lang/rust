@@ -1,0 +1,17 @@
+error[E0382]: use of moved value: `t`
+  --> $DIR/issue-67123.rs:2:13
+   |
+LL |     || { t; t; };
+   |          -  ^ value used here after move
+   |          |
+   |          value moved here
+   |
+   = note: move occurs because `t` has type `T`, which does not implement the `Copy` trait
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | fn foo<T: Copy>(t: T) {
+   |         ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

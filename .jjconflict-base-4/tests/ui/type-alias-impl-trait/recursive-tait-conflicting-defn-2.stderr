@@ -1,0 +1,9 @@
+error[E0720]: cannot resolve opaque type
+  --> $DIR/recursive-tait-conflicting-defn-2.rs:15:13
+   |
+LL | fn bad() -> Op {
+   |             ^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0720`.

@@ -1,0 +1,32 @@
+From 20d296e9a8b837e586fcc8fc648d4ab9687a2a47 Mon Sep 17 00:00:00 2001
+From: Folkert de Vries <folkert@folkertdev.nl>
+Date: Mon, 28 Sep 2026 19:14:22 +0200
+Subject: [PATCH] sysroot_tests: Disable complex type tests
+
+---
+ coretests/tests/num/complex.rs | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/coretests/tests/num/complex.rs b/coretests/tests/num/complex.rs
+index d73d04b1afc..289c0baec17 100644
+--- a/coretests/tests/num/complex.rs
++++ b/coretests/tests/num/complex.rs
+@@ -75,6 +75,7 @@ fn complex_negation() {
+ }
+ 
+ #[test]
++#[cfg_attr(target_os = "windows", ignore = "hits an ABI issue with cranelift on windows")]
+ fn complex_multiplication() {
+     #[cfg(target_has_reliable_f16)]
+     assert_eq!(Complex::new(1.0f16, 2.0) * Complex::new(3.0, 4.0), Complex::new(-5.0, 10.0));
+@@ -105,6 +106,7 @@ fn complex_multiplication() {
+ }
+ 
+ #[test]
++#[cfg_attr(target_os = "windows", ignore = "hits an ABI issue with cranelift on windows")]
+ fn complex_div() {
+     #[cfg(target_has_reliable_f16)]
+     assert_eq!(Complex::new(2.0f16, 11.0) / Complex::new(2.0, 1.0), Complex::new(3.0, 4.0));
+-- 
+2.43.0
+

@@ -1,0 +1,21 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/issue-88434-removal-index-should-be-less.rs:5:24
+   |
+LL | const _CONST: &[u8] = &f(&[], |_| {});
+   |                        ^^^^^^^^^^^^^^ evaluation of `_CONST` failed inside this call
+   |
+note: inside `f::<{closure@$DIR/issue-88434-removal-index-should-be-less.rs:5:31: 5:34}>`
+  --> $DIR/issue-88434-removal-index-should-be-less.rs:12:5
+   |
+LL |     panic!()
+   |     ^^^^^^^^ the failure occurred here
+
+note: erroneous constant encountered
+  --> $DIR/issue-88434-removal-index-should-be-less.rs:5:23
+   |
+LL | const _CONST: &[u8] = &f(&[], |_| {});
+   |                       ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

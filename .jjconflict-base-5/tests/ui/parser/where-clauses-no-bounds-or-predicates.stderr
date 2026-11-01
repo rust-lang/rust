@@ -1,0 +1,8 @@
+error: expected `:`, found `{`
+  --> $DIR/where-clauses-no-bounds-or-predicates.rs:11:23
+   |
+LL | fn foo<'a>() where 'a {}
+   |                       ^ expected `:`
+
+error: aborting due to 1 previous error
+

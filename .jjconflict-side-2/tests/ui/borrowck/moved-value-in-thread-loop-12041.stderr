@@ -1,0 +1,11 @@
+error[E0382]: use of moved value: `tx`
+  --> $DIR/moved-value-in-thread-loop-12041.rs:10:22
+   |
+LL |             let tx = tx;
+   |                      ^^ value moved here, in previous iteration of loop
+   |
+   = note: move occurs because `tx` has type `std::sync::mpsc::Sender<i32>`, which does not implement the `Copy` trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

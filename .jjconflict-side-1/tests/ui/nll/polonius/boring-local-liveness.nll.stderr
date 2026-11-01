@@ -1,0 +1,30 @@
+error[E0506]: cannot assign to `*x` because it is borrowed
+  --> $DIR/boring-local-liveness.rs:22:5
+   |
+LL | fn assigning_into_a_slot<'a>(x: &'a mut u32, slot: &mut Option<D<'a>>) {
+   |                          -- lifetime `'a` defined here
+LL |     let r: &'a u32 = &*x;
+   |            -------   --- `*x` is borrowed here
+   |            |
+   |            type annotation requires that `*x` is borrowed for `'a`
+LL |     *slot = Some(D(r));
+LL |     *x = 1;
+   |     ^^^^^^ `*x` is assigned to here but it was already borrowed
+
+error[E0506]: cannot assign to `*x` because it is borrowed
+  --> $DIR/boring-local-liveness.rs:32:5
+   |
+LL | fn clearing_the_slot_does_not_release_it<'a>(x: &'a mut u32, slot: &mut Option<D<'a>>) {
+   |                                          -- lifetime `'a` defined here
+LL |     {
+LL |         let r: &'a u32 = &*x;
+   |                -------   --- `*x` is borrowed here
+   |                |
+   |                type annotation requires that `*x` is borrowed for `'a`
+...
+LL |     *x = 1;
+   |     ^^^^^^ `*x` is assigned to here but it was already borrowed
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0506`.

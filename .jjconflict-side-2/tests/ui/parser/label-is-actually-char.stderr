@@ -1,0 +1,93 @@
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/label-is-actually-char.rs:5:15
+   |
+LL |     let c = 'a;
+   |               ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: add `'` to close the char literal
+   |
+LL |     let c = 'a';
+   |               +
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/label-is-actually-char.rs:9:17
+   |
+LL |     let c = 'abc;
+   |                 ^ expected `while`, `for`, `loop` or `{` after a label
+
+error: expected expression, found `;`
+  --> $DIR/label-is-actually-char.rs:9:17
+   |
+LL |     let c = 'abc;
+   |                 ^ expected expression
+
+error: unexpected token: `'b`
+  --> $DIR/label-is-actually-char.rs:16:15
+   |
+LL |         'a'..='b => {}
+   |               ^^
+   |
+help: add `'` to close the char literal
+   |
+LL |         'a'..='b' => {}
+   |                 +
+
+error: unexpected token: `'def`
+  --> $DIR/label-is-actually-char.rs:19:15
+   |
+LL |         'c'..='def => {}
+   |               ^^^^
+
+error: expected pattern, found `=>`
+  --> $DIR/label-is-actually-char.rs:26:11
+   |
+LL |        'g => {}
+   |           ^^ expected pattern
+   |
+help: add `'` to close the char literal
+   |
+LL |        'g' => {}
+   |          +
+
+error: expected pattern, found `'hij`
+  --> $DIR/label-is-actually-char.rs:29:8
+   |
+LL |        'hij => {}
+   |        ^^^^ expected pattern
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/label-is-actually-char.rs:36:15
+   |
+LL |    let x = ['a, 'b, 'cde];
+   |               ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: add `'` to close the char literal
+   |
+LL |    let x = ['a', 'b, 'cde];
+   |               +
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/label-is-actually-char.rs:36:19
+   |
+LL |    let x = ['a, 'b, 'cde];
+   |                   ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: add `'` to close the char literal
+   |
+LL |    let x = ['a, 'b', 'cde];
+   |                   +
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/label-is-actually-char.rs:36:25
+   |
+LL |    let x = ['a, 'b, 'cde];
+   |                         ^ expected `while`, `for`, `loop` or `{` after a label
+
+error: expected expression, found `]`
+  --> $DIR/label-is-actually-char.rs:36:25
+   |
+LL |    let x = ['a, 'b, 'cde];
+   |                         ^ expected expression
+
+error: aborting due to 11 previous errors
+

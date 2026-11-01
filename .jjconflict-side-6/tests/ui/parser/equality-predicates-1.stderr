@@ -1,0 +1,15 @@
+error: general type equality constraints are not supported
+  --> $DIR/equality-predicates-1.rs:14:5
+   |
+LL |     <T as Iterator>::Item == u8
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not supported
+   |
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
+help: replace it with an associated item constraint if possible
+   |
+LL -     <T as Iterator>::Item == u8
+LL +     T: Iterator<Item = u8>
+   |
+
+error: aborting due to 1 previous error
+

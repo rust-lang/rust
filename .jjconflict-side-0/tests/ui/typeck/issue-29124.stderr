@@ -1,0 +1,15 @@
+error[E0599]: no method named `x` found for fn item `fn() -> Ret {Obj::func}` in the current scope
+  --> $DIR/issue-29124.rs:15:15
+   |
+LL |     Obj::func.x();
+   |               ^ method not found in `fn() -> Ret {Obj::func}`
+
+error[E0599]: no method named `x` found for fn item `fn() -> Ret {func}` in the current scope
+  --> $DIR/issue-29124.rs:17:10
+   |
+LL |     func.x();
+   |          ^ method not found in `fn() -> Ret {func}`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

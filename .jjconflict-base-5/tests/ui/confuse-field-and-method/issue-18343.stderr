@@ -1,0 +1,17 @@
+error[E0599]: no method named `closure` found for struct `Obj<F>` in the current scope
+  --> $DIR/issue-18343.rs:7:7
+   |
+LL | struct Obj<F> where F: FnMut() -> u32 {
+   | ------------- method `closure` not found for this struct
+...
+LL |     o.closure();
+   |       ^^^^^^^ field, not a method
+   |
+help: to call the closure stored in `closure`, surround the field access with parentheses
+   |
+LL |     (o.closure)();
+   |     +         +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

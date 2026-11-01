@@ -1,0 +1,26 @@
+error: expected `{`, found `)`
+  --> $DIR/ice-in-tokenstream-for-contracts-issue-140683.rs:8:18
+   |
+LL |     fn b() {(loop)}
+   |              ----^ expected `{`
+   |              |
+   |              while parsing this `loop` expression
+
+error: `ensures` attribute requires an argument, e.g., `#[ensures(|result: &T| condition)]`
+  --> $DIR/ice-in-tokenstream-for-contracts-issue-140683.rs:7:5
+   |
+LL |     #[core::contracts::ensures]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected `{`, found `)`
+  --> $DIR/ice-in-tokenstream-for-contracts-issue-140683.rs:8:18
+   |
+LL |     fn b() {(loop)}
+   |              ----^ expected `{`
+   |              |
+   |              while parsing this `loop` expression
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+

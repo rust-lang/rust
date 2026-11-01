@@ -1,0 +1,36 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
+  --> $DIR/macro-span-issue-116502.rs:7:13
+   |
+LL |     macro_rules! m {
+LL |         () => {
+LL |             _
+   |             ^ not allowed in type signatures
+...
+LL |     struct S<T = m!()>(m!(), T)
+   |                  ---- in this macro invocation
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
+  --> $DIR/macro-span-issue-116502.rs:7:13
+   |
+LL |     macro_rules! m {
+LL |         () => {
+LL |             _
+   |             ^ not allowed in type signatures
+...
+LL |         T: Trait<m!()>;
+   |                  ---- in this macro invocation
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
+  --> $DIR/macro-span-issue-116502.rs:7:13
+   |
+LL |     macro_rules! m {
+LL |         () => {
+LL |             _
+   |             ^ not allowed in type signatures
+...
+LL |     struct S<T = m!()>(m!(), T)
+   |                        ---- in this macro invocation
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

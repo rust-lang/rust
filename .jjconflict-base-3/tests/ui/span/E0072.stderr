@@ -1,0 +1,17 @@
+error[E0072]: recursive type `ListNode` has infinite size
+  --> $DIR/E0072.rs:1:1
+   |
+LL | struct ListNode {
+   | ^^^^^^^^^^^^^^^
+LL |     head: u8,
+LL |     tail: Option<ListNode>,
+   |                  -------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     tail: Option<Box<ListNode>>,
+   |                  ++++        +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0072`.

@@ -1,0 +1,32 @@
+error: no rules expected `|`
+  --> $DIR/or-patterns-syntactic-fail-2018.rs:12:15
+   |
+LL | macro_rules! accept_pat {
+   | ----------------------- when calling this macro
+...
+LL | accept_pat!(p | q);
+   |               ^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$p:pat`
+  --> $DIR/or-patterns-syntactic-fail-2018.rs:9:6
+   |
+LL |     ($p:pat) => {};
+   |      ^^^^^^
+
+error: no rules expected `|`
+  --> $DIR/or-patterns-syntactic-fail-2018.rs:13:13
+   |
+LL | macro_rules! accept_pat {
+   | ----------------------- when calling this macro
+...
+LL | accept_pat!(|p| q);
+   |             ^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$p:pat`
+  --> $DIR/or-patterns-syntactic-fail-2018.rs:9:6
+   |
+LL |     ($p:pat) => {};
+   |      ^^^^^^
+
+error: aborting due to 2 previous errors
+

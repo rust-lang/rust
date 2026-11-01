@@ -1,0 +1,5 @@
+[package]
+name = "pass-lib-with-definitions"
+version = "0.1.0"
+edition = "2021"
+publish = false

@@ -1,0 +1,13 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/wf-impl-self-type.rs:5:14
+   |
+LL | impl Foo for Option<[u8]> {}
+   |              ^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: required by an implicit `Sized` bound in `Option`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

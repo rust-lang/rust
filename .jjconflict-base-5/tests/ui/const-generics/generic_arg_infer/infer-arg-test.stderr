@@ -1,0 +1,39 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/infer-arg-test.rs:5:17
+   |
+LL | struct BadInfer<_>;
+   |                 ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/infer-arg-test.rs:11:17
+   |
+LL | fn bad_infer_fn<_>() {}
+   |                 ^ expected identifier, found reserved identifier
+
+error[E0392]: type parameter `_` is never used
+  --> $DIR/infer-arg-test.rs:5:17
+   |
+LL | struct BadInfer<_>;
+   |                 ^ unused type parameter
+   |
+   = help: consider removing `_`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `_` to be a const parameter, use `const _: /* Type */` instead
+
+error[E0107]: struct takes 2 generic arguments but 3 generic arguments were supplied
+  --> $DIR/infer-arg-test.rs:16:10
+   |
+LL |   let a: All<_, _, _>;
+   |          ^^^     --- help: remove the unnecessary generic argument
+   |          |
+   |          expected 2 generic arguments
+   |
+note: struct defined here, with 2 generic parameters: `T`, `N`
+  --> $DIR/infer-arg-test.rs:1:8
+   |
+LL | struct All<'a, T, const N: usize> {
+   |        ^^^     -  --------------
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0107, E0392.
+For more information about an error, try `rustc --explain E0107`.

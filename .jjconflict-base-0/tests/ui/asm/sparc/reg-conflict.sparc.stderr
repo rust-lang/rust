@@ -1,0 +1,82 @@
+error: register `d6` conflicts with register `f6`
+  --> $DIR/reg-conflict.rs:20:36
+   |
+LL |         asm!("", in("f6") 0.0_f32, in("d6") 0.0_f64);
+   |                  ----------------  ^^^^^^^^^^^^^^^^ register `d6`
+   |                  |
+   |                  register `f6`
+
+error: register `d6` conflicts with register `f7`
+  --> $DIR/reg-conflict.rs:22:36
+   |
+LL |         asm!("", in("f7") 0.0_f32, in("d6") 0.0_f64);
+   |                  ----------------  ^^^^^^^^^^^^^^^^ register `d6`
+   |                  |
+   |                  register `f7`
+
+error: register `q8` conflicts with register `f8`
+  --> $DIR/reg-conflict.rs:24:36
+   |
+LL |         asm!("", in("f8") 0.0_f32, in("q8") 0.0_f128);
+   |                  ----------------  ^^^^^^^^^^^^^^^^^ register `q8`
+   |                  |
+   |                  register `f8`
+
+error: register `q8` conflicts with register `f9`
+  --> $DIR/reg-conflict.rs:26:36
+   |
+LL |         asm!("", in("f9") 0.0_f32, in("q8") 0.0_f128);
+   |                  ----------------  ^^^^^^^^^^^^^^^^^ register `q8`
+   |                  |
+   |                  register `f9`
+
+error: register `q8` conflicts with register `f10`
+  --> $DIR/reg-conflict.rs:28:37
+   |
+LL |         asm!("", in("f10") 0.0_f32, in("q8") 0.0_f128);
+   |                  -----------------  ^^^^^^^^^^^^^^^^^ register `q8`
+   |                  |
+   |                  register `f10`
+
+error: register `q8` conflicts with register `f11`
+  --> $DIR/reg-conflict.rs:30:37
+   |
+LL |         asm!("", in("f11") 0.0_f32, in("q8") 0.0_f128);
+   |                  -----------------  ^^^^^^^^^^^^^^^^^ register `q8`
+   |                  |
+   |                  register `f11`
+
+error: register `q12` conflicts with register `d12`
+  --> $DIR/reg-conflict.rs:32:37
+   |
+LL |         asm!("", in("d12") 0.0_f64, in("q12") 0.0_f128);
+   |                  -----------------  ^^^^^^^^^^^^^^^^^^ register `q12`
+   |                  |
+   |                  register `d12`
+
+error: register `q12` conflicts with register `d12`
+  --> $DIR/reg-conflict.rs:34:37
+   |
+LL |         asm!("", in("d12") 0.0_f64, in("q12") 0.0_f128);
+   |                  -----------------  ^^^^^^^^^^^^^^^^^^ register `q12`
+   |                  |
+   |                  register `d12`
+
+error: register `q12` conflicts with register `d14`
+  --> $DIR/reg-conflict.rs:36:37
+   |
+LL |         asm!("", in("d14") 0.0_f64, in("q12") 0.0_f128);
+   |                  -----------------  ^^^^^^^^^^^^^^^^^^ register `q12`
+   |                  |
+   |                  register `d14`
+
+error: register `q12` conflicts with register `d14`
+  --> $DIR/reg-conflict.rs:38:37
+   |
+LL |         asm!("", in("d14") 0.0_f64, in("q12") 0.0_f128);
+   |                  -----------------  ^^^^^^^^^^^^^^^^^^ register `q12`
+   |                  |
+   |                  register `d14`
+
+error: aborting due to 10 previous errors
+

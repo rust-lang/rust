@@ -1,0 +1,27 @@
+error[E0720]: cannot resolve opaque type
+  --> $DIR/infinite-impl-trait-issue-38064.rs:8:13
+   |
+LL | fn foo() -> impl Quux {
+   |             ^^^^^^^^^ recursive opaque type
+...
+LL |     Foo(bar())
+   |     ---------- returning here with type `Foo<impl Quux>`
+...
+LL | fn bar() -> impl Quux {
+   |             --------- returning this type `Foo<impl Quux>`
+
+error[E0720]: cannot resolve opaque type
+  --> $DIR/infinite-impl-trait-issue-38064.rs:14:13
+   |
+LL | fn foo() -> impl Quux {
+   |             --------- returning this type `Bar<impl Quux>`
+...
+LL | fn bar() -> impl Quux {
+   |             ^^^^^^^^^ recursive opaque type
+...
+LL |     Bar(foo())
+   |     ---------- returning here with type `Bar<impl Quux>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0720`.

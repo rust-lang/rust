@@ -1,0 +1,17 @@
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
+  --> $DIR/associated-types-unconstrained.rs:14:20
+   |
+LL |     fn bar() -> isize;
+   |     ------------------ `Foo::bar` defined here
+...
+LL |     let x: isize = Foo::bar();
+   |                    ^^^^^^^^^^ cannot call associated function of trait
+   |
+help: use the fully-qualified path to the only available implementation
+   |
+LL |     let x: isize = <isize as Foo>::bar();
+   |                    +++++++++    +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0790`.

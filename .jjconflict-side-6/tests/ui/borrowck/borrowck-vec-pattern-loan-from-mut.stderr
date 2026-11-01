@@ -1,0 +1,14 @@
+error[E0499]: cannot borrow `v` as mutable more than once at a time
+  --> $DIR/borrowck-vec-pattern-loan-from-mut.rs:6:13
+   |
+LL |     let vb: &mut [isize] = &mut v;
+   |                            ------ first mutable borrow occurs here
+...
+LL |             v.push(tail[0] + tail[1]);
+   |             ^      ------- first borrow later used here
+   |             |
+   |             second mutable borrow occurs here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

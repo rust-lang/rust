@@ -1,0 +1,19 @@
+error[E0038]: the trait `Array` is not dyn compatible
+  --> $DIR/issue-20692.rs:6:10
+   |
+LL |     &dyn Array;
+   |          ^^^^^ `Array` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-20692.rs:1:14
+   |
+LL | trait Array: Sized + Copy {}
+   |       -----  ^^^^^   ^^^^ ...because it requires `Self: Sized`
+   |       |      |
+   |       |      ...because it requires `Self: Sized`
+   |       this trait is not dyn compatible...
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

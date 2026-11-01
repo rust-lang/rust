@@ -1,0 +1,13 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/issue-30355.rs:5:8
+   |
+LL |     &X(*Y)
+   |        ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: all function arguments must have a statically known size
+   = help: unsized fn params are gated as an unstable feature
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,41 @@
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:22:13
+   |
+LL |     let _ = a as *const _ as usize == b as *const _ as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(a, b)`
+   |
+   = note: `-D clippy::ptr-eq` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ptr_eq)]`
+
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:24:13
+   |
+LL |     let _ = a as *const _ == b as *const _;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(a, b)`
+
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:50:13
+   |
+LL |     let _ = x as *const u32 == y as *mut u32 as *const u32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(x, y)`
+
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:53:13
+   |
+LL |     let _ = x as *const u32 != y as *mut u32 as *const u32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!std::ptr::eq(x, y)`
+
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:61:13
+   |
+LL |     let _ = mac!(cast a) as *const _ == mac!(cast b) as *const _;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(mac!(cast a), mac!(cast b))`
+
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:65:13
+   |
+LL |     let _ = mac!(cast a) as *const _ == mac!(cast b) as *const _;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(mac!(cast a), mac!(cast b))`
+
+error: aborting due to 6 previous errors
+

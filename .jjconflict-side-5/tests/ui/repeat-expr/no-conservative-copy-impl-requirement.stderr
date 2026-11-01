@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed for `&[Foo<_>; _]`
+  --> $DIR/no-conservative-copy-impl-requirement.rs:15:9
+   |
+LL |     let x = &[Foo::<_>; _];
+   |         ^     -------- type must be known at this point
+   |
+help: consider giving `x` an explicit type, where the value of const parameter `N` is specified
+   |
+LL |     let x: &[Foo<N>; N] = &[Foo::<_>; _];
+   |          ++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

@@ -1,0 +1,8 @@
+error: my error message
+  --> $DIR/doc-attr-compile-error.rs:1:9
+   |
+LL | #[doc = compile_error!("my error message")]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

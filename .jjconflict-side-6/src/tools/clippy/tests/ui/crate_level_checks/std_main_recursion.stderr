@@ -1,0 +1,12 @@
+error: recursing into entrypoint `main`
+  --> tests/ui/crate_level_checks/std_main_recursion.rs:5:5
+   |
+LL |     main();
+   |     ^^^^
+   |
+   = help: consider using another function for this recursion
+   = note: `-D clippy::main-recursion` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::main_recursion)]`
+
+error: aborting due to 1 previous error
+

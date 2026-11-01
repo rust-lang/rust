@@ -1,0 +1,23 @@
+//@ run-rustfix
+#![allow(unused_assignments)]
+
+use std::pin::Pin;
+fn main() {
+    let mut s = String::from("hello");
+    let mut ref_s = &mut s;
+
+    let mut binding = String::from("world");
+    ref_s = &mut binding; //~ ERROR temporary value dropped while borrowed [E0716]
+
+    print!("r1 = {}", ref_s);
+
+    let mut val: u8 = 5;
+    let mut s = Pin::new(&mut val);
+    let mut ref_s = &mut s;
+
+    let mut val2: u8 = 10;
+    let mut binding = Pin::new(&mut val2);
+    ref_s = &mut binding; //~ ERROR temporary value dropped while borrowed [E0716]
+
+    print!("r1 = {}", ref_s);
+}

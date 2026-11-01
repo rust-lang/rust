@@ -1,0 +1,45 @@
+//@ revisions: source generated
+//@ [source] run-rustfix
+//@ proc-macro: generated-enum-derive.rs
+
+//! Regression test for https://github.com/rust-lang/rust/issues/148207.
+//! Derive suggestions must target a source ADT, not its code generator.
+
+#![allow(dead_code)]
+
+extern crate generated_enum_derive;
+
+#[cfg(generated)]
+#[generated_enum_derive::generator]
+fn gen_enums_from_list() {}
+
+#[cfg(generated)]
+gen_enums_from_list!(["X"]);
+
+#[cfg(generated)]
+generated_enum_derive::generated_enum!();
+
+#[cfg(source)]
+enum Source { X }
+
+#[cfg(source)]
+#[generated_enum_derive::passthrough]
+enum Forwarded { X }
+
+fn main() {
+    #[cfg(generated)]
+    {
+        let p1 = Position1::X;
+        println!("{:?}", p1);
+        //[generated]~^ ERROR `Position1` doesn't implement `Debug`
+        println!("{:?}", Generated::X);
+        //[generated]~^ ERROR `Generated` doesn't implement `Debug`
+    }
+    #[cfg(source)]
+    {
+        println!("{:?}", Source::X);
+        //[source]~^ ERROR `Source` doesn't implement `Debug`
+        println!("{:?}", Forwarded::X);
+        //[source]~^ ERROR `Forwarded` doesn't implement `Debug`
+    }
+}

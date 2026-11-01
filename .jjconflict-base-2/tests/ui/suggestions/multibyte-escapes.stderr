@@ -1,0 +1,35 @@
+error: non-ASCII character in byte literal
+  --> $DIR/multibyte-escapes.rs:4:7
+   |
+LL |     b'µ';
+   |       ^ must be ASCII
+   |
+help: if you meant to use the unicode code point for 'µ', use a \xHH escape
+   |
+LL -     b'µ';
+LL +     b'\xB5';
+   |
+
+error: non-ASCII character in byte literal
+  --> $DIR/multibyte-escapes.rs:9:7
+   |
+LL |     b'字';
+   |       ^^
+   |       |
+   |       must be ASCII
+   |       this multibyte character does not fit into a single byte
+
+error: non-ASCII character in byte string literal
+  --> $DIR/multibyte-escapes.rs:14:7
+   |
+LL |     b"字";
+   |       ^^ must be ASCII
+   |
+help: if you meant to use the UTF-8 encoding of '字', use \xHH escapes
+   |
+LL -     b"字";
+LL +     b"\xE5\xAD\x97";
+   |
+
+error: aborting due to 3 previous errors
+

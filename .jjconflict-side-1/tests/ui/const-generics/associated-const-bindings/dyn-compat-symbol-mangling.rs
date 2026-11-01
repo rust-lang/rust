@@ -1,0 +1,28 @@
+// Ensure that we can successfully mangle & demangle trait object types w/ assoc const bindings.
+
+// FIXME(mgca): Legacy mangling still crashes:
+//              "finding type for [impl], encountered [crate root] with no parent"
+
+//@ build-fail
+//@ revisions: v0
+//\@[legacy] compile-flags: -C symbol-mangling-version=legacy -Z unstable-options
+//@    [v0] compile-flags: -C symbol-mangling-version=v0
+//\@[legacy] normalize-stderr: "h[[:xdigit:]]{16}" -> "h[HASH]"
+//@    [v0] normalize-stderr: "sym\[.*?\]" -> "sym[HASH]"
+
+#![feature(gca_min_const_items, rustc_attrs)]
+#![expect(incomplete_features)]
+#![crate_name = "sym"]
+
+trait Trait {
+    #[rustc_always_gca]
+    const N: usize;
+}
+
+#[rustc_dump_symbol_name]
+//~^ ERROR symbol-name(_RMCs
+//~| NOTE demangling(<dyn sym[
+//~| NOTE demangling-alt(<dyn sym::Trait<N = 0>>)
+impl dyn Trait<N = 0> {}
+
+fn main() {}

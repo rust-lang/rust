@@ -1,0 +1,3 @@
+$TEST_BUILD_DIR/libhotplug.rlib: $DIR/hotplug.rs
+
+$DIR/hotplug.rs:

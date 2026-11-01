@@ -1,0 +1,103 @@
+PRINT-BANG INPUT (DISPLAY): { #![rustc_dummy] let a = "hello".len(); matches!(a, 5); }
+PRINT-BANG DEEP-RE-COLLECTED (DISPLAY): { #! [rustc_dummy] let a = "hello".len(); matches! (a, 5); }
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/pretty-print-tts.rs:15:5: 15:6 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/pretty-print-tts.rs:15:6: 15:7 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "rustc_dummy",
+                        span: $DIR/pretty-print-tts.rs:15:8: 15:19 (#0),
+                    },
+                ],
+                span: $DIR/pretty-print-tts.rs:15:7: 15:20 (#0),
+            },
+            Ident {
+                ident: "let",
+                span: $DIR/pretty-print-tts.rs:16:5: 16:8 (#0),
+            },
+            Ident {
+                ident: "a",
+                span: $DIR/pretty-print-tts.rs:16:9: 16:10 (#0),
+            },
+            Punct {
+                ch: '=',
+                spacing: Alone,
+                span: $DIR/pretty-print-tts.rs:16:11: 16:12 (#0),
+            },
+            Literal {
+                kind: Str,
+                symbol: "hello",
+                suffix: None,
+                span: $DIR/pretty-print-tts.rs:16:13: 16:20 (#0),
+            },
+            Punct {
+                ch: '.',
+                spacing: Alone,
+                span: $DIR/pretty-print-tts.rs:16:20: 16:21 (#0),
+            },
+            Ident {
+                ident: "len",
+                span: $DIR/pretty-print-tts.rs:16:21: 16:24 (#0),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [],
+                span: $DIR/pretty-print-tts.rs:16:24: 16:26 (#0),
+            },
+            Punct {
+                ch: ';',
+                spacing: Alone,
+                span: $DIR/pretty-print-tts.rs:16:26: 16:27 (#0),
+            },
+            Ident {
+                ident: "matches",
+                span: $DIR/pretty-print-tts.rs:17:5: 17:12 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/pretty-print-tts.rs:17:12: 17:13 (#0),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [
+                    Ident {
+                        ident: "a",
+                        span: $DIR/pretty-print-tts.rs:17:14: 17:15 (#0),
+                    },
+                    Punct {
+                        ch: ',',
+                        spacing: Alone,
+                        span: $DIR/pretty-print-tts.rs:17:15: 17:16 (#0),
+                    },
+                    Literal {
+                        kind: Integer,
+                        symbol: "5",
+                        suffix: None,
+                        span: $DIR/pretty-print-tts.rs:17:17: 17:18 (#0),
+                    },
+                ],
+                span: $DIR/pretty-print-tts.rs:17:13: 17:19 (#0),
+            },
+            Punct {
+                ch: ';',
+                spacing: Alone,
+                span: $DIR/pretty-print-tts.rs:17:19: 17:20 (#0),
+            },
+        ],
+        span: $DIR/pretty-print-tts.rs:14:21: 18:2 (#0),
+    },
+]

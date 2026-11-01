@@ -1,0 +1,17 @@
+error: unstable feature `feat_moo` is used without being enabled.
+  --> $DIR/unstable-feature-exact-symbol.rs:37:5
+   |
+LL |     Bar::moo();
+   |     ^^^
+   |
+   = help: The feature can be enabled by marking the current item with `#[unstable_feature_bound(feat_moo)]`
+note: required for `Bar` to implement `Moo`
+  --> $DIR/unstable-feature-exact-symbol.rs:29:6
+   |
+LL | #[unstable_feature_bound(feat_moo)]
+   | ----------------------------------- unsatisfied trait bound introduced here
+LL | impl Moo for Bar {
+   |      ^^^     ^^^
+
+error: aborting due to 1 previous error
+

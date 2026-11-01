@@ -1,0 +1,41 @@
+error[E0277]: the trait bound `Forbidden: SyncDrop` is not satisfied
+  --> $DIR/default-bounds.rs:43:9
+   |
+LL |     bar(Forbidden);
+   |     --- ^^^^^^^^^ unsatisfied trait bound
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: the trait `SyncDrop` is not implemented for `Forbidden`
+  --> $DIR/default-bounds.rs:32:1
+   |
+LL | struct Forbidden;
+   | ^^^^^^^^^^^^^^^^
+note: required by a bound in `bar`
+  --> $DIR/default-bounds.rs:39:8
+   |
+LL | fn bar<T: Leak>(_: T) {}
+   |        ^ required by this bound in `bar`
+
+error[E0277]: the trait bound `Forbidden: Leak` is not satisfied
+  --> $DIR/default-bounds.rs:43:9
+   |
+LL |     bar(Forbidden);
+   |     --- ^^^^^^^^^ unsatisfied trait bound
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: the trait `Leak` is not implemented for `Forbidden`
+  --> $DIR/default-bounds.rs:32:1
+   |
+LL | struct Forbidden;
+   | ^^^^^^^^^^^^^^^^
+note: required by a bound in `bar`
+  --> $DIR/default-bounds.rs:39:11
+   |
+LL | fn bar<T: Leak>(_: T) {}
+   |           ^^^^ required by this bound in `bar`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

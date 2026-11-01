@@ -1,0 +1,33 @@
+error[E0625]: thread-local statics cannot be accessed at compile-time
+  --> $DIR/thread-local-in-ctfe.rs:6:17
+   |
+LL | static B: u32 = A;
+   |                 ^
+
+error[E0625]: thread-local statics cannot be accessed at compile-time
+  --> $DIR/thread-local-in-ctfe.rs:9:19
+   |
+LL | static C: &u32 = &A;
+   |                   ^
+
+error[E0625]: thread-local statics cannot be accessed at compile-time
+  --> $DIR/thread-local-in-ctfe.rs:12:16
+   |
+LL | const D: u32 = A;
+   |                ^
+
+error[E0625]: thread-local statics cannot be accessed at compile-time
+  --> $DIR/thread-local-in-ctfe.rs:15:18
+   |
+LL | const E: &u32 = &A;
+   |                  ^
+
+error[E0625]: thread-local statics cannot be accessed at compile-time
+  --> $DIR/thread-local-in-ctfe.rs:19:5
+   |
+LL |     A
+   |     ^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0625`.

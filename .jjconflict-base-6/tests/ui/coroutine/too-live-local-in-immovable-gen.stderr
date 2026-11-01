@@ -1,0 +1,15 @@
+warning: unused coroutine that must be used
+  --> $DIR/too-live-local-in-immovable-gen.rs:8:22
+   |
+LL |           #[coroutine] static move || {
+   |  ______________________^
+...  |
+LL | |             let _ = &a;
+LL | |         };
+   | |_________^
+   |
+   = note: coroutines are lazy and do nothing unless resumed
+   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

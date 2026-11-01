@@ -1,0 +1,12 @@
+error: unsupported operation: can't call foreign function `foo` on $OS
+  --> tests/native-lib/fail/function_not_in_so.rs:LL:CC
+   |
+LL |         foo();
+   |         ^^^^^ unsupported operation occurred here
+   |
+   = help: this means the program tried to do something Miri does not support; it does not indicate a bug in the program
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

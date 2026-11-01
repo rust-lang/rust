@@ -1,0 +1,134 @@
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:13:48
+   |
+LL |     let invalid_tup_struct_suffix = tup_struct.0suffix;
+   |                                                ^^^^^^^ invalid suffix `suffix`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:15:59
+   |
+LL |     let previous_carve_out_tup_struct_suffix = tup_struct.0i32;
+   |                                                           ^^^^ invalid suffix `i32`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:19:34
+   |
+LL |     let invalid_tup_suffix = tup.0suffix;
+   |                                  ^^^^^^^ invalid suffix `suffix`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:21:45
+   |
+LL |     let previous_carve_out_tup_suffix = tup.0u32;
+   |                                             ^^^^ invalid suffix `u32`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:33:40
+   |
+LL |     let previous_carve_out_i32 = (42,).0i32;
+   |                                        ^^^^ invalid suffix `i32`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:34:40
+   |
+LL |     let previous_carve_out_i32 = (42,).0u32;
+   |                                        ^^^^ invalid suffix `u32`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:35:42
+   |
+LL |     let previous_carve_out_isize = (42,).0isize;
+   |                                          ^^^^^^ invalid suffix `isize`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:36:42
+   |
+LL |     let previous_carve_out_usize = (42,).0usize;
+   |                                          ^^^^^^ invalid suffix `usize`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:39:26
+   |
+LL |     let error_i8 = (42,).0i8;
+   |                          ^^^ invalid suffix `i8`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:40:26
+   |
+LL |     let error_u8 = (42,).0u8;
+   |                          ^^^ invalid suffix `u8`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:41:27
+   |
+LL |     let error_i16 = (42,).0i16;
+   |                           ^^^^ invalid suffix `i16`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:42:27
+   |
+LL |     let error_u16 = (42,).0u16;
+   |                           ^^^^ invalid suffix `u16`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:43:27
+   |
+LL |     let error_i64 = (42,).0i64;
+   |                           ^^^^ invalid suffix `i64`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:44:27
+   |
+LL |     let error_u64 = (42,).0u64;
+   |                           ^^^^ invalid suffix `u64`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:45:28
+   |
+LL |     let error_i128 = (42,).0i128;
+   |                            ^^^^^ invalid suffix `i128`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:46:28
+   |
+LL |     let error_u128 = (42,).0u128;
+   |                            ^^^^^ invalid suffix `u128`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:50:35
+   |
+LL |     let invalid_struct_name = X { 0suffix: 0, 1: 1, 2: 2 };
+   |                                   ^^^^^^^ invalid suffix `suffix`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:53:13
+   |
+LL |         X { 0suffix: _, .. } => {}
+   |             ^^^^^^^ invalid suffix `suffix`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:59:37
+   |
+LL |     let carve_out_struct_name = X { 0u32: 0, 1: 1, 2: 2 };
+   |                                     ^^^^ invalid suffix `u32`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:62:13
+   |
+LL |         X { 0u32: _, .. } => {}
+   |             ^^^^ invalid suffix `u32`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:73:50
+   |
+LL |     assert_eq!(std::mem::offset_of!(Struct<u32>, 0usize), 0);
+   |                                                  ^^^^^^ invalid suffix `usize`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix.rs:77:50
+   |
+LL |     assert_eq!(std::mem::offset_of!(Struct<u32>, 0u8), 0);
+   |                                                  ^^^ invalid suffix `u8`
+
+error: aborting due to 22 previous errors
+

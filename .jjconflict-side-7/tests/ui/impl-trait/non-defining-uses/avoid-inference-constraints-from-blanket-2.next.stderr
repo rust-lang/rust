@@ -1,0 +1,16 @@
+error[E0308]: mismatched types
+  --> $DIR/avoid-inference-constraints-from-blanket-2.rs:27:18
+   |
+LL |     let _: u32 = x;
+   |            ---   ^ expected `u32`, found `u64`
+   |            |
+   |            expected due to this
+   |
+help: you can convert a `u64` to a `u32` and panic if the converted value doesn't fit
+   |
+LL |     let _: u32 = x.try_into().unwrap();
+   |                   ++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

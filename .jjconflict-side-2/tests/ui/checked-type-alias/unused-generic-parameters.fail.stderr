@@ -1,0 +1,50 @@
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/unused-generic-parameters.rs:24:22
+   |
+LL | #[cfg(fail)] fn a(_: A<'_>) {}
+   |                      ^^^^^
+   |
+note: lifetime parameter instantiated with the anonymous lifetime defined here
+  --> $DIR/unused-generic-parameters.rs:24:22
+   |
+LL | #[cfg(fail)] fn a(_: A<'_>) {}
+   |                      ^^^^^
+   = note: but lifetime parameter must outlive the static lifetime
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unused-generic-parameters.rs:28:22
+   |
+LL | #[cfg(fail)] fn b(_: B<str>) {}
+   |                      ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by a bound on the type alias `B`
+  --> $DIR/unused-generic-parameters.rs:26:8
+   |
+LL | type B<T> = ();
+   |        ^ required by this bound
+
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/unused-generic-parameters.rs:34:26
+   |
+LL | #[cfg(fail)] fn c(_: C<{ panic!() }>) {}
+   |                          ^^^^^^^^ evaluation of `c::{constant#0}` failed here
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unused-generic-parameters.rs:28:22
+   |
+LL | #[cfg(fail)] fn b(_: B<str>) {}
+   |                      ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by a bound on the type alias `B`
+  --> $DIR/unused-generic-parameters.rs:26:8
+   |
+LL | type B<T> = ();
+   |        ^ required by this bound
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0080, E0277, E0478.
+For more information about an error, try `rustc --explain E0080`.

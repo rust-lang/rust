@@ -1,0 +1,8 @@
+error: values of the type $REALLY_TOO_BIG are too big for the target architecture
+  --> $DIR/huge-struct.rs:47:9
+   |
+LL |     let fat: Option<SXX<SXX<SXX<u32>>>> = None;
+   |         ^^^
+
+error: aborting due to 1 previous error
+

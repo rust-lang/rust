@@ -1,0 +1,4 @@
+error: option `-o` or `--emit` is used to write binary output type `metadata` to stdout, but stdout is a tty
+
+error: aborting due to 1 previous error
+

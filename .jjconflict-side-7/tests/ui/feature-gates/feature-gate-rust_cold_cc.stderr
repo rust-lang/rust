@@ -1,0 +1,73 @@
+error[E0658]: the extern "rust-cold" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust_cold_cc.rs:3:8
+   |
+LL | extern "rust-cold" fn fu() {}
+   |        ^^^^^^^^^^^
+   |
+   = note: see issue #97544 <https://github.com/rust-lang/rust/issues/97544> for more information
+   = help: add `#![feature(rust_cold_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-cold" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust_cold_cc.rs:6:12
+   |
+LL |     extern "rust-cold" fn mu();
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #97544 <https://github.com/rust-lang/rust/issues/97544> for more information
+   = help: add `#![feature(rust_cold_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-cold" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust_cold_cc.rs:7:12
+   |
+LL |     extern "rust-cold" fn dmu() {}
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #97544 <https://github.com/rust-lang/rust/issues/97544> for more information
+   = help: add `#![feature(rust_cold_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-cold" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust_cold_cc.rs:12:12
+   |
+LL |     extern "rust-cold" fn mu() {}
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #97544 <https://github.com/rust-lang/rust/issues/97544> for more information
+   = help: add `#![feature(rust_cold_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-cold" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust_cold_cc.rs:16:12
+   |
+LL |     extern "rust-cold" fn imu() {}
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #97544 <https://github.com/rust-lang/rust/issues/97544> for more information
+   = help: add `#![feature(rust_cold_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-cold" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust_cold_cc.rs:19:19
+   |
+LL | type TAU = extern "rust-cold" fn();
+   |                   ^^^^^^^^^^^
+   |
+   = note: see issue #97544 <https://github.com/rust-lang/rust/issues/97544> for more information
+   = help: add `#![feature(rust_cold_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the extern "rust-cold" ABI is experimental and subject to change
+  --> $DIR/feature-gate-rust_cold_cc.rs:21:8
+   |
+LL | extern "rust-cold" {}
+   |        ^^^^^^^^^^^
+   |
+   = note: see issue #97544 <https://github.com/rust-lang/rust/issues/97544> for more information
+   = help: add `#![feature(rust_cold_cc)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

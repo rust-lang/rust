@@ -1,0 +1,14 @@
+error: lifetime parameter `'a` never used
+  --> $DIR/zero-uses-in-impl.rs:8:6
+   |
+LL | impl<'a> Foo {}
+   |     -^^- help: elide the unused lifetime
+   |
+note: the lint level is defined here
+  --> $DIR/zero-uses-in-impl.rs:3:9
+   |
+LL | #![deny(unused_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

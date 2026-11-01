@@ -1,0 +1,13 @@
+error[E0658]: `cfg(sanitize)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg_sanitize.rs:1:11
+   |
+LL | #[cfg(not(sanitize = "thread"))]
+   |           ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #39699 <https://github.com/rust-lang/rust/issues/39699> for more information
+   = help: add `#![feature(cfg_sanitize)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

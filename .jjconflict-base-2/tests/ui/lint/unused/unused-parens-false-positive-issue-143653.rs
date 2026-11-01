@@ -1,0 +1,12 @@
+//@ run-rustfix
+
+#![deny(unused_parens)]
+#![allow(warnings)]
+trait MyTrait {}
+
+fn foo(_: Box<dyn FnMut(&mut u32) -> &mut (dyn MyTrait) + Send + Sync>) {}
+
+//~v ERROR unnecessary parentheses around type
+fn bar(_: Box<dyn FnMut(&mut u32) -> &mut (dyn MyTrait)>) {}
+
+fn main() {}

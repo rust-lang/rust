@@ -1,0 +1,13 @@
+// MIR for `process_void` after SimplifyLocals-final
+
+fn process_void(_1: *const Void) -> () {
+    debug input => _1;
+    let mut _0: ();
+    scope 1 {
+        debug _input => const ZeroSized: Void;
+    }
+
+    bb0: {
+        return;
+    }
+}

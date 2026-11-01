@@ -1,0 +1,68 @@
+error[E0277]: `fn() -> impl Iterator<Item = u8> {S::inherent_assoc}` is not an iterator
+  --> $DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:29:14
+   |
+LL |     for _ in S::inherent_assoc {}
+   |              ^^^^^^^^^^^^^^^^^ `fn() -> impl Iterator<Item = u8> {S::inherent_assoc}` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for fn item `fn() -> impl Iterator<Item = u8> {S::inherent_assoc}`
+   = note: required for `fn() -> impl Iterator<Item = u8> {S::inherent_assoc}` to implement `IntoIterator`
+help: use parentheses to call this associated function
+   |
+LL |     for _ in S::inherent_assoc() {}
+   |                               ++
+
+error[E0277]: `fn() -> std::vec::IntoIter<u8> {<S as T>::assoc_in_trait}` is not an iterator
+  --> $DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:30:14
+   |
+LL |     for _ in <S as T>::assoc_in_trait {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ `fn() -> std::vec::IntoIter<u8> {<S as T>::assoc_in_trait}` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for fn item `fn() -> std::vec::IntoIter<u8> {<S as T>::assoc_in_trait}`
+   = note: required for `fn() -> std::vec::IntoIter<u8> {<S as T>::assoc_in_trait}` to implement `IntoIterator`
+help: use parentheses to call this associated function
+   |
+LL |     for _ in <S as T>::assoc_in_trait() {}
+   |                                      ++
+
+error[E0277]: `fn() -> impl Iterator<Item = u8> {free_fn}` is not an iterator
+  --> $DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:31:14
+   |
+LL |     for _ in free_fn {}
+   |              ^^^^^^^ `fn() -> impl Iterator<Item = u8> {free_fn}` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for fn item `fn() -> impl Iterator<Item = u8> {free_fn}`
+   = note: required for `fn() -> impl Iterator<Item = u8> {free_fn}` to implement `IntoIterator`
+help: use parentheses to call this function
+   |
+LL |     for _ in free_fn() {}
+   |                     ++
+
+error[E0277]: `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:33:19: 33:21}` is not an iterator
+  --> $DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:34:14
+   |
+LL |     for _ in closure {}
+   |              ^^^^^^^ `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:33:19: 33:21}` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for closure `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:33:19: 33:21}`
+   = note: required for `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:33:19: 33:21}` to implement `IntoIterator`
+help: use parentheses to call this closure
+   |
+LL |     for _ in closure() {}
+   |                     ++
+
+error[E0277]: `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:36:14: 36:16}` is not an iterator
+  --> $DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:36:14
+   |
+LL |     for _ in || vec![1u8].into_iter() {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:36:14: 36:16}` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for closure `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:36:14: 36:16}`
+   = note: required for `{closure@$DIR/suggest-calling-fn-in-for-loop-issue-161564.rs:36:14: 36:16}` to implement `IntoIterator`
+help: use parentheses to call this closure
+   |
+LL |     for _ in (|| vec![1u8].into_iter())() {}
+   |              +                        +++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

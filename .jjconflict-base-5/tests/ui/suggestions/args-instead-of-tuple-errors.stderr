@@ -1,0 +1,109 @@
+error[E0061]: this enum variant takes 1 argument but 2 arguments were supplied
+  --> $DIR/args-instead-of-tuple-errors.rs:6:34
+   |
+LL |     let _: Option<(i32, bool)> = Some(1, 2);
+   |                                  ^^^^    - unexpected argument #2 of type `{integer}`
+   |
+note: expected `(i32, bool)`, found integer
+  --> $DIR/args-instead-of-tuple-errors.rs:6:39
+   |
+LL |     let _: Option<(i32, bool)> = Some(1, 2);
+   |                                       ^
+   = note: expected tuple `(i32, bool)`
+               found type `{integer}`
+help: the type constructed contains `{integer}` due to the type of the argument passed
+  --> $DIR/args-instead-of-tuple-errors.rs:6:34
+   |
+LL |     let _: Option<(i32, bool)> = Some(1, 2);
+   |                                  ^^^^^-^^^^
+   |                                       |
+   |                                       this argument influences the type of `Some`
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: remove the extra argument
+   |
+LL -     let _: Option<(i32, bool)> = Some(1, 2);
+LL +     let _: Option<(i32, bool)> = Some(/* (i32, bool) */);
+   |
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/args-instead-of-tuple-errors.rs:8:5
+   |
+LL |     int_bool(1, 2);
+   |     ^^^^^^^^    - unexpected argument #2 of type `{integer}`
+   |
+note: expected `(i32, bool)`, found integer
+  --> $DIR/args-instead-of-tuple-errors.rs:8:14
+   |
+LL |     int_bool(1, 2);
+   |              ^
+   = note: expected tuple `(i32, bool)`
+               found type `{integer}`
+note: function defined here
+  --> $DIR/args-instead-of-tuple-errors.rs:21:4
+   |
+LL | fn int_bool(_: (i32, bool)) {
+   |    ^^^^^^^^ --------------
+help: remove the extra argument
+   |
+LL -     int_bool(1, 2);
+LL +     int_bool(/* (i32, bool) */);
+   |
+
+error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
+  --> $DIR/args-instead-of-tuple-errors.rs:11:28
+   |
+LL |     let _: Option<(i8,)> = Some();
+   |                            ^^^^-- argument #1 of type `(i8,)` is missing
+   |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: provide the argument
+   |
+LL |     let _: Option<(i8,)> = Some(/* (i8,) */);
+   |                                 +++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/args-instead-of-tuple-errors.rs:14:34
+   |
+LL |     let _: Option<(i32,)> = Some(5_usize);
+   |                             ---- ^^^^^^^ expected `(i32,)`, found `usize`
+   |                             |
+   |                             arguments to this enum variant are incorrect
+   |
+   = note: expected tuple `(i32,)`
+               found type `usize`
+help: the type constructed contains `usize` due to the type of the argument passed
+  --> $DIR/args-instead-of-tuple-errors.rs:14:29
+   |
+LL |     let _: Option<(i32,)> = Some(5_usize);
+   |                             ^^^^^-------^
+   |                                  |
+   |                                  this argument influences the type of `Some`
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+
+error[E0308]: mismatched types
+  --> $DIR/args-instead-of-tuple-errors.rs:17:34
+   |
+LL |     let _: Option<(i32,)> = Some((5_usize));
+   |                             ---- ^^^^^^^^^ expected `(i32,)`, found `usize`
+   |                             |
+   |                             arguments to this enum variant are incorrect
+   |
+   = note: expected tuple `(i32,)`
+               found type `usize`
+help: the type constructed contains `usize` due to the type of the argument passed
+  --> $DIR/args-instead-of-tuple-errors.rs:17:29
+   |
+LL |     let _: Option<(i32,)> = Some((5_usize));
+   |                             ^^^^^---------^
+   |                                  |
+   |                                  this argument influences the type of `Some`
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0061, E0308.
+For more information about an error, try `rustc --explain E0061`.

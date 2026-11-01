@@ -1,0 +1,16 @@
+error: cannot find attribute `does_not_exist` in this scope
+  --> $DIR/unsafe-nonexistent-attribute.rs:5:10
+   |
+LL | #[unsafe(does_not_exist)]
+   |          ^^^^^^^^^^^^^^
+
+error: `does_not_exist` is not an unsafe attribute
+  --> $DIR/unsafe-nonexistent-attribute.rs:5:3
+   |
+LL | #[unsafe(does_not_exist)]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: aborting due to 2 previous errors
+

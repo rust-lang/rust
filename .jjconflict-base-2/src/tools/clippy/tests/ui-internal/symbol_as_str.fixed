@@ -1,0 +1,28 @@
+#![feature(rustc_private)]
+
+extern crate rustc_span;
+
+use clippy_utils::sym;
+use rustc_span::{Symbol, kw};
+
+fn f(s: Symbol) {
+    s == sym::f32;
+    //~^ symbol_as_str
+    s == sym::proc_dash_macro;
+    //~^ symbol_as_str
+    s == kw::SelfLower;
+    //~^ symbol_as_str
+    s == sym::msrv;
+    //~^ symbol_as_str
+    s == sym::Cargo_toml;
+    //~^ symbol_as_str
+    sym::get == s;
+    //~^ symbol_as_str
+
+    let _ = match s {
+        //~^ symbol_as_str
+        sym::unwrap_err => 1,
+        sym::unwrap_or_default | sym::unwrap_or_else => 2,
+        _ => 3,
+    };
+}

@@ -1,0 +1,16 @@
+error: map of a closure that does not depend on its parameter over a range
+  --> tests/ui/map_with_unused_argument_over_ranges_nostd.rs:7:21
+   |
+LL |     let _: Vec<_> = (0..10).map(|_| 3 + 1).collect();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::map-with-unused-argument-over-ranges` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_with_unused_argument_over_ranges)]`
+help: remove the explicit range and use `repeat_n`
+   |
+LL -     let _: Vec<_> = (0..10).map(|_| 3 + 1).collect();
+LL +     let _: Vec<_> = core::iter::repeat_n(3 + 1, 10).collect();
+   |
+
+error: aborting due to 1 previous error
+

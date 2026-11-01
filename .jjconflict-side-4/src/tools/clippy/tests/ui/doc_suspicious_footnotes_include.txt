@@ -1,0 +1,13 @@
+This is not a footnote[^1]. //~ doc_suspicious_footnotes
+
+This is not a footnote[^either], but it doesn't warn.
+
+This is not a footnote\[^1], but it also doesn't warn.
+
+This is not a footnote[^1\], but it also doesn't warn.
+
+This is not a `footnote[^1]`, but it also doesn't warn.
+
+This is a footnote[^2].
+
+[^2]: hello world

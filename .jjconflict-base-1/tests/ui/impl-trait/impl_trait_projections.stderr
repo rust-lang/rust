@@ -1,0 +1,43 @@
+error[E0562]: `impl Trait` is not allowed in paths
+  --> $DIR/impl_trait_projections.rs:12:51
+   |
+LL | fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
+   |                                                   ^^^^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error[E0562]: `impl Trait` is not allowed in paths
+  --> $DIR/impl_trait_projections.rs:18:9
+   |
+LL |     -> <impl Iterator as Iterator>::Item
+   |         ^^^^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error[E0562]: `impl Trait` is not allowed in paths
+  --> $DIR/impl_trait_projections.rs:25:27
+   |
+LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
+   |                           ^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error[E0562]: `impl Trait` is not allowed in paths
+  --> $DIR/impl_trait_projections.rs:32:29
+   |
+LL |     -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
+   |                             ^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error[E0562]: `impl Trait` is not allowed in paths
+  --> $DIR/impl_trait_projections.rs:38:68
+   |
+LL | fn parametrized_value_in_anon_const_is_disallowed() -> [(); None::<impl Sized>] {
+   |                                                                    ^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0562`.

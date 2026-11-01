@@ -1,0 +1,50 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          ASM_EXPR
+            BUILTIN_KW "builtin"
+            POUND "#"
+            ASM_KW "asm"
+            L_PAREN "("
+            WHITESPACE "\n        "
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "label"
+            WHITESPACE " "
+            NAME
+              IDENT "crashy"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                EXPR_STMT
+                  RETURN_EXPR
+                    RETURN_KW "return"
+                  SEMICOLON ";"
+                WHITESPACE " "
+                R_CURLY "}"
+            WHITESPACE "\n    "
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 41: expected COMMA
+error 50: expected asm operand

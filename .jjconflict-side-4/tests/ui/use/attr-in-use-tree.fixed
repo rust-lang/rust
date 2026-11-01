@@ -1,0 +1,33 @@
+//@ run-rustfix
+
+#![allow(unused_imports)]
+
+#[cfg(true)]
+use foo::bar;
+#[cfg(false)]
+use foo::baz;
+use foo::{
+    
+    //~^ ERROR attributes are not allowed inside imports
+    
+    
+    //~^ ERROR attributes are not allowed inside imports
+    
+};
+
+// Make sure we handle reserved symbols (leading `::` is `sym::PathRoot`).
+#[cfg(false)]
+use ::foo::qux;
+use ::foo::{
+    
+    //~^ ERROR attributes are not allowed inside imports
+    
+};
+
+mod foo {
+    pub(crate) mod bar {}
+    pub(crate) mod baz {}
+    pub(crate) mod qux {}
+}
+
+fn main() {}

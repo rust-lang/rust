@@ -1,0 +1,52 @@
+error: casting a known NaN to usize
+  --> tests/ui/cast_nan_to_int.rs:7:13
+   |
+LL |     let _ = (0.0_f32 / -0.0) as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this always evaluates to 0
+   = note: `-D clippy::cast-nan-to-int` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_nan_to_int)]`
+
+error: casting a known NaN to usize
+  --> tests/ui/cast_nan_to_int.rs:10:13
+   |
+LL |     let _ = (f64::INFINITY * -0.0) as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this always evaluates to 0
+
+error: casting a known NaN to usize
+  --> tests/ui/cast_nan_to_int.rs:13:13
+   |
+LL |     let _ = (0.0 * f32::INFINITY) as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this always evaluates to 0
+
+error: casting a known NaN to usize
+  --> tests/ui/cast_nan_to_int.rs:16:13
+   |
+LL |     let _ = (f64::INFINITY + f64::NEG_INFINITY) as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this always evaluates to 0
+
+error: casting a known NaN to usize
+  --> tests/ui/cast_nan_to_int.rs:19:13
+   |
+LL |     let _ = (f32::INFINITY - f32::INFINITY) as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this always evaluates to 0
+
+error: casting a known NaN to usize
+  --> tests/ui/cast_nan_to_int.rs:22:13
+   |
+LL |     let _ = (f32::INFINITY / f32::NEG_INFINITY) as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this always evaluates to 0
+
+error: aborting due to 6 previous errors
+

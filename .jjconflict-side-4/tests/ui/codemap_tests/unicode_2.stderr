@@ -1,0 +1,25 @@
+error[E0425]: cannot find value `a̐é` in this scope
+  --> $DIR/unicode_2.rs:4:13
+   |
+LL |     let _ = a̐é;
+   |             ^^ not found in this scope
+
+error: invalid width `7` for integer literal
+  --> $DIR/unicode_2.rs:2:25
+   |
+LL |     let _ = ("a̐éö̲", 0u7);
+   |                     ^^^
+   |
+   = help: valid widths are 8, 16, 32, 64 and 128
+
+error: invalid width `42` for integer literal
+  --> $DIR/unicode_2.rs:3:20
+   |
+LL |     let _ = ("아あ", 1i42);
+   |                      ^^^^
+   |
+   = help: valid widths are 8, 16, 32, 64 and 128
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

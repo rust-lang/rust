@@ -1,0 +1,15 @@
+error[E0637]: `'_` cannot be used here
+  --> $DIR/where-clauses.rs:3:10
+   |
+LL | impl<'b: '_> Foo<'b> for i32 {}
+   |          ^^ `'_` is a reserved lifetime name
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/where-clauses.rs:5:9
+   |
+LL | impl<T: '_> Foo<'static> for Vec<T> {}
+   |         ^^ `'_` is a reserved lifetime name
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0637`.

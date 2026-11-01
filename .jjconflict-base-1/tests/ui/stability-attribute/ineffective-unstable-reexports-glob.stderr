@@ -1,0 +1,13 @@
+error: `#[unstable]` does not make this re-exported path unstable
+  --> $DIR/ineffective-unstable-reexports-glob.rs:15:9
+   |
+LL | pub use stable_glob_source::*;
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/ineffective-unstable-reexports-glob.rs:7:9
+   |
+LL | #![deny(ineffective_unstable_reexports)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error

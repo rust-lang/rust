@@ -1,0 +1,11 @@
+//@ run-rustfix
+
+fn main() {
+    2.0e1; //~ERROR `{integer}` is a primitive type and therefore doesn't have fields
+    2.0E1; //~ERROR `{integer}` is a primitive type and therefore doesn't have fields
+    2.0f32; //~ERROR `{integer}` is a primitive type and therefore doesn't have fields
+    2.0f64; //~ERROR `{integer}` is a primitive type and therefore doesn't have fields
+    2.0e+12; //~ERROR `{integer}` is a primitive type and therefore doesn't have fields
+    2.0e-12; //~ERROR `{integer}` is a primitive type and therefore doesn't have fields
+    2.0e1f32; //~ERROR `{integer}` is a primitive type and therefore doesn't have fields
+}

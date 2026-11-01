@@ -1,0 +1,11 @@
+error[E0164]: expected tuple struct or tuple variant, found associated function `A::new`
+  --> $DIR/fn-in-pat.rs:11:9
+   |
+LL |         A::new() => (),
+   |         ^^^^^^^^ `fn` calls are not allowed in patterns
+   |
+   = help: for more information, visit https://doc.rust-lang.org/book/ch19-00-patterns.html
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0164`.

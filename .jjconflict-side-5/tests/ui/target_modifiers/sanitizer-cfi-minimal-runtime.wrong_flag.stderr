@@ -1,0 +1,9 @@
+error: mixing `-Zsanitizer-cfi-minimal-runtime` will cause an ABI mismatch in crate `sanitizer_cfi_minimal_runtime`
+   |
+   = help: the `-Zsanitizer-cfi-minimal-runtime` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
+   = note: `-Zsanitizer-cfi-minimal-runtime` is unset in this crate which is incompatible with `-Zsanitizer-cfi-minimal-runtime` being set in dependency `cfi_minimal_runtime`
+   = help: set `-Zsanitizer-cfi-minimal-runtime` in this crate or unset `-Zsanitizer-cfi-minimal-runtime` in `cfi_minimal_runtime`
+   = help: if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch=sanitizer-cfi-minimal-runtime` to silence this error
+
+error: aborting due to 1 previous error
+

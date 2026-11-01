@@ -1,0 +1,93 @@
+error[E0061]: this function takes 3 arguments but 1 argument was supplied
+  --> $DIR/issue-100478.rs:34:5
+   |
+LL |     three_diff(T2::new(0));
+   |     ^^^^^^^^^^------------
+   |               ||
+   |               |argument #1 of type `T1` is missing
+   |               argument #3 of type `T3` is missing
+   |
+note: function defined here
+  --> $DIR/issue-100478.rs:30:4
+   |
+LL | fn three_diff(_a: T1, _b: T2, _c: T3) {}
+   |    ^^^^^^^^^^ ------          ------
+help: provide the arguments
+   |
+LL -     three_diff(T2::new(0));
+LL +     three_diff(/* T1 */, T2::new(0), /* T3 */);
+   |
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-100478.rs:35:5
+   |
+LL |     four_shuffle(T3::default(), T4::default(), T1::default(), T2::default());
+   |     ^^^^^^^^^^^^ -------------  -------------  -------------  ------------- expected `T4`, found `T2`
+   |                  |              |              |
+   |                  |              |              expected `T3`, found `T1`
+   |                  |              expected `T2`, found `T4`
+   |                  expected `T1`, found `T3`
+   |
+note: function defined here
+  --> $DIR/issue-100478.rs:31:4
+   |
+LL | fn four_shuffle(_a: T1, _b: T2, _c: T3, _d: T4) {}
+   |    ^^^^^^^^^^^^
+help: did you mean
+   |
+LL -     four_shuffle(T3::default(), T4::default(), T1::default(), T2::default());
+LL +     four_shuffle(T1::default(), T2::default(), T3::default(), T4::default());
+   |
+
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/issue-100478.rs:36:5
+   |
+LL |     four_shuffle(T3::default(), T2::default(), T1::default(), T3::default());
+   |     ^^^^^^^^^^^^ -------------                 -------------  ------------- expected `T4`, found `T3`
+   |                  |                             |
+   |                  |                             expected `T3`, found `T1`
+   |                  expected `T1`, found `T3`
+   |
+note: function defined here
+  --> $DIR/issue-100478.rs:31:4
+   |
+LL | fn four_shuffle(_a: T1, _b: T2, _c: T3, _d: T4) {}
+   |    ^^^^^^^^^^^^                         ------
+help: swap these arguments
+   |
+LL -     four_shuffle(T3::default(), T2::default(), T1::default(), T3::default());
+LL +     four_shuffle(T1::default(), T2::default(), T3::default(), /* T4 */);
+   |
+
+error[E0061]: this function takes 8 arguments but 7 arguments were supplied
+  --> $DIR/issue-100478.rs:47:5
+   |
+LL |     foo(
+   |     ^^^
+...
+LL |         p3, p4, p5, p6, p7, p8,
+   |         -- argument #2 of type `Arc<T2>` is missing
+   |
+note: function defined here
+  --> $DIR/issue-100478.rs:29:4
+   |
+LL | fn foo(p1: T1, p2: Arc<T2>, p3: T3, p4: Arc<T4>, p5: T5, p6: T6, p7: T7, p8: Arc<T8>) {}
+   |    ^^^         -----------
+help: provide the argument
+   |
+LL ~     foo(
+LL +         p1,
+LL +         /* Arc<T2> */,
+LL +         p3,
+LL +         p4,
+LL +         p5,
+LL +         p6,
+LL +         p7,
+LL +         p8,
+LL ~     );
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0061, E0308.
+For more information about an error, try `rustc --explain E0061`.

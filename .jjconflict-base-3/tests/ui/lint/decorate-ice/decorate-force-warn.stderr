@@ -1,0 +1,14 @@
+warning: unused return value of `f` that must be used
+  --> $DIR/decorate-force-warn.rs:11:5
+   |
+LL |     f();
+   |     ^^^
+   |
+   = note: requested on the command line with `--force-warn unused-must-use`
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = f();
+   |     +++++++
+
+warning: 1 warning emitted
+

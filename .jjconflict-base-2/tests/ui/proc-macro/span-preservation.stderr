@@ -1,0 +1,72 @@
+error[E0308]: mismatched types
+  --> $DIR/span-preservation.rs:11:20
+   |
+LL |     let x: usize = "hello";
+   |            -----   ^^^^^^^ expected `usize`, found `&str`
+   |            |
+   |            expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/span-preservation.rs:17:29
+   |
+LL | fn b(x: Option<isize>) -> usize {
+   |                           ----- expected `usize` because of return type
+LL |     match x {
+LL |         Some(x) => { return x },
+   |                             ^ expected `usize`, found `isize`
+   |
+help: you can convert an `isize` to a `usize` and panic if the converted value doesn't fit
+   |
+LL |         Some(x) => { return x.try_into().unwrap() },
+   |                              ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/span-preservation.rs:33:22
+   |
+LL |     let x = Foo { a: 10isize };
+   |                      ^^^^^^^ expected `usize`, found `isize`
+
+error[E0560]: struct `Foo` has no field named `b`
+  --> $DIR/span-preservation.rs:34:26
+   |
+LL |     let y = Foo { a: 10, b: 10isize };
+   |                          ^ `Foo` does not have this field
+   |
+   = note: all struct fields are already assigned
+
+error[E0308]: mismatched types
+  --> $DIR/span-preservation.rs:39:5
+   |
+LL | extern "C" fn bar() {
+   |                    - help: try adding a return type: `-> i32`
+LL |     0
+   |     ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/span-preservation.rs:44:5
+   |
+LL | extern "C" fn baz() {
+   |                    - help: try adding a return type: `-> i32`
+LL |     0
+   |     ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/span-preservation.rs:49:5
+   |
+LL | extern "Rust" fn rust_abi() {
+   |                            - help: try adding a return type: `-> i32`
+LL |     0
+   |     ^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/span-preservation.rs:54:5
+   |
+LL | extern "\x43" fn c_abi_escaped() {
+   |                                 - help: try adding a return type: `-> i32`
+LL |     0
+   |     ^ expected `()`, found integer
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0308, E0560.
+For more information about an error, try `rustc --explain E0308`.

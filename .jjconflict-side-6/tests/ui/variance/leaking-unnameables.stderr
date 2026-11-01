@@ -1,0 +1,15 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/leaking-unnameables.rs:8:18
+   |
+LL | pub fn f<T>() -> _ {
+   |                  ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - pub fn f<T>() -> _ {
+LL + pub fn f<T>() -> fn() {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0121`.

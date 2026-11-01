@@ -1,0 +1,11 @@
+error[E0741]: `&'static (dyn A + 'static)` can't be used as a const parameter type
+  --> $DIR/issue-63322-forbid-dyn.rs:9:18
+   |
+LL | fn test<const T: &'static dyn A>() {
+   |                  ^^^^^^^^^^^^^^
+   |
+   = note: `(dyn A + 'static)` must implement `ConstParamTy_`, but it does not
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0741`.

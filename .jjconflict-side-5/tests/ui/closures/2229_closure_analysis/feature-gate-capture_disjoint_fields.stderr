@@ -1,0 +1,36 @@
+error: First Pass analysis includes:
+  --> $DIR/feature-gate-capture_disjoint_fields.rs:9:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("This uses new capture analyysis to capture s={}", s);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing s[] -> Immutable
+  --> $DIR/feature-gate-capture_disjoint_fields.rs:12:69
+   |
+LL |         println!("This uses new capture analyysis to capture s={}", s);
+   |                                                                     ^
+
+error: Min Capture analysis includes:
+  --> $DIR/feature-gate-capture_disjoint_fields.rs:9:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("This uses new capture analyysis to capture s={}", s);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture s[] -> Immutable
+  --> $DIR/feature-gate-capture_disjoint_fields.rs:12:69
+   |
+LL |         println!("This uses new capture analyysis to capture s={}", s);
+   |                                                                     ^
+
+error: aborting due to 2 previous errors
+

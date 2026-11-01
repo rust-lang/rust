@@ -1,0 +1,14 @@
+error: OK
+  --> $DIR/dep-graph-trait-impl-two-traits-same-method.rs:33:34
+   |
+LL |     #[rustc_then_this_would_need(typeck_root)]
+   |                                  ^^^^^^^^^^^
+
+error: no path from `x::<impl Foo for u32>` to `typeck_root`
+  --> $DIR/dep-graph-trait-impl-two-traits-same-method.rs:42:34
+   |
+LL |     #[rustc_then_this_would_need(typeck_root)]
+   |                                  ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

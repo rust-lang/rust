@@ -1,0 +1,31 @@
+error[E0283]: type annotations needed: cannot satisfy `(&'static (), &'a ()): A`
+  --> $DIR/region-overlap.rs:5:16
+   |
+LL | impl<'a> A for (&'static (), &'a ()) {}
+   |                ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: multiple `impl`s satisfying `(&'static (), &'a ()): A` found
+  --> $DIR/region-overlap.rs:5:1
+   |
+LL | impl<'a> A for (&'static (), &'a ()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<'a> A for (&'a (), &'static ()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0283]: type annotations needed: cannot satisfy `(&'a (), &'static ()): A`
+  --> $DIR/region-overlap.rs:6:16
+   |
+LL | impl<'a> A for (&'a (), &'static ()) {}
+   |                ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: multiple `impl`s satisfying `(&'a (), &'static ()): A` found
+  --> $DIR/region-overlap.rs:5:1
+   |
+LL | impl<'a> A for (&'static (), &'a ()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<'a> A for (&'a (), &'static ()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0283`.

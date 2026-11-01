@@ -1,0 +1,59 @@
+// Checks that the documentation toggles on mobile have the correct position, style and work
+// as expected.
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+set-window-size: (433, 600)
+assert-attribute: (".top-doc", {"open": ""})
+click: (4, 230) // This is the position of the top doc comment toggle
+assert-attribute-false: (".top-doc", {"open": ""})
+click: (4, 230)
+assert-attribute: (".top-doc", {"open": ""})
+// To ensure that the toggle isn't over the text, we check that the toggle isn't clicked.
+click: (3, 230)
+assert-attribute: (".top-doc", {"open": ""})
+
+// Assert the position of the toggle on the top doc block.
+assert-position: (".top-doc summary::before", {"x": 4})
+// Assert the position of the toggle on the impl block.
+assert-position: ("#implementations-list > details > summary::before", {"x": 4})
+// Assert the position of the toggle on a method.
+assert-position: (
+    "#trait-implementations-list .impl-items .method-toggle > summary::before",
+    {"x": 6},
+)
+
+// Now we do the same but with a little bigger width
+set-window-size: (600, 600)
+assert-attribute: (".top-doc", {"open": ""})
+click: (4, 230) // New Y position since all search elements are back on one line.
+assert-attribute-false: (".top-doc", {"open": ""})
+click: (4, 230)
+assert-attribute: (".top-doc", {"open": ""})
+// To ensure that the toggle isn't over the text, we check that the toggle isn't clicked.
+click: (3, 230)
+assert-attribute: (".top-doc", {"open": ""})
+
+// Same check on trait items.
+fail-on-request-error: false // To prevent downloads errors on "trait.impl/test_docs/trait.ItemsTrait.js"
+go-to: "file://" + |DOC_PATH| + "/test_docs/trait.ItemsTrait.html"
+
+define-function: (
+    "check-trait-item",
+    [nth, text],
+    block {
+        store-value: (selector, ".methods:nth-of-type(" + |nth| + ") > details summary")
+        assert-text: (|selector| + " h4", |text|)
+        assert-position: (
+            |selector| + "::before",
+            {"x": 6},
+        )
+    },
+)
+
+// Assert the position of the toggle on an associated const.
+call-function: ("check-trait-item", {"nth": 2, "text": "const X: u32"})
+// Assert the position of the toggle on an associated type.
+call-function: ("check-trait-item", {"nth": 3, "text": "type F"})
+// Assert the position of the toggle on an associated required method.
+call-function: ("check-trait-item", {"nth": 4, "text": "fn bar()"})
+// Assert the position of the toggle on an associated provided method.
+call-function: ("check-trait-item", {"nth": 5, "text": "fn foo()"})

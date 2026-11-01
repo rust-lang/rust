@@ -1,0 +1,13 @@
+error: mismatched closing delimiter: `}`
+  --> $DIR/constrain-suggest-ice.rs:2:8
+   |
+LL | struct Bug<S>{
+   |              - closing delimiter possibly meant for this
+LL |     A: [(); {
+   |        ^ unclosed delimiter
+...
+LL | }
+   | ^ mismatched closing delimiter
+
+error: aborting due to 1 previous error
+

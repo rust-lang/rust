@@ -1,0 +1,4 @@
+https://doc.rust-lang.org/stable/
+https://doc.rust-lang.org/beta/
+https://doc.rust-lang.org/nightly/
+

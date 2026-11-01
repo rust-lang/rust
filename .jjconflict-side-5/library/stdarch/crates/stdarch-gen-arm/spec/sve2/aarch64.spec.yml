@@ -1,0 +1,3206 @@
+arch_cfgs:
+  - arch_name: aarch64
+    target_feature: [sve, sve2]
+    llvm_prefix: llvm.aarch64.sve
+
+auto_llvm_sign_conversion: true
+generate_load_store_tests: true
+
+# `#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]`
+sve-unstable: &sve-unstable
+  FnCall: [unstable, ['feature = "stdarch_aarch64_sve"', 'issue= "145052"']]
+
+# `#[cfg_attr(all(test, not(target_env = "msvc"))]`
+msvc-disabled: &msvc-disabled
+  FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]
+
+intrinsics:
+  - name: svbext[{_n}_{type}]
+    attr: [*sve-unstable]
+    target_features: [sve2-bitperm]
+    doc: Gather lower bits from positions selected by bitmask
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u8, u16, u32, u64]
+    assert_instr: [bext]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "bext.x.{sve_type}" }
+
+  - name: svbgrp[{_n}_{type}]
+    attr: [*sve-unstable]
+    target_features: [sve2-bitperm]
+    doc: Group bits to right or left as selected by bitmask
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u8, u16, u32, u64]
+    assert_instr: [bgrp]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "bgrp.x.{sve_type}" }
+
+  - name: svbdep[{_n}_{type}]
+    attr: [*sve-unstable]
+    target_features: [sve2-bitperm]
+    doc: Scatter lower bits into positions selected by bitmask
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u8, u16, u32, u64]
+    assert_instr: [bdep]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "bdep.x.{sve_type}" }
+
+  - name: svhistcnt[_{type[0]}]_z
+    attr: [*sve-unstable]
+    doc: Count matching elements
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types: [[i32, u32], [i64, u64], [u32, u32], [u64, u64]]
+    assert_instr: [histcnt]
+    compose:
+      - LLVMLink: { name: "histcnt.{sve_type[0]}" }
+
+  - name: svhistseg[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Count matching elements in 128-bit segments
+    arguments: ["op1: {sve_type[0]}", "op2: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types: [[i8, u8], [u8, u8]]
+    assert_instr: [histseg]
+    compose:
+      - LLVMLink: { name: "histseg.{sve_type[0]}" }
+
+  - name: svmatch[_{type}]
+    attr: [*sve-unstable]
+    doc: Detect any matching elements
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{predicate}"
+    types: [i8, i16, u8, u16]
+    assert_instr: [match]
+    compose:
+      - LLVMLink: { name: "match.{sve_type}" }
+
+  - name: svnmatch[_{type}]
+    attr: [*sve-unstable]
+    doc: Detect no matching elements
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{predicate}"
+    types: [i8, i16, u8, u16]
+    assert_instr: [nmatch]
+    compose:
+      - LLVMLink: { name: "nmatch.{sve_type}" }
+
+  - name: svhadd[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Halving add
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { select: op1 }
+    assert_instr: ["{type_kind.su}hadd"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.su}hadd.{sve_type}" }
+
+  - name: svrhadd[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Rounding halving add
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { select: op1 }
+    assert_instr: ["{type_kind.su}rhadd"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.su}rhadd.{sve_type}" }
+
+  - name: svaddhnb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Add narrow high part (bottom)
+    types:
+      [[i16, i8], [i32, i16], [i64, i32], [u16, u8], [u32, u16], [u64, u32]]
+    return_type: "{sve_type[1]}"
+    arguments: ["op1: {sve_type[0]}", "op2: {sve_type[0]}"]
+    assert_instr: [addhnb]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "addhnb.{sve_type[0]}" }
+
+  - name: svaddhnt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Add narrow high part (top)
+    types:
+      [[i16, i8], [i32, i16], [i64, i32], [u16, u8], [u32, u16], [u64, u32]]
+    return_type: "{sve_type[1]}"
+    arguments:
+      ["even: {sve_type[1]}", "op1: {sve_type[0]}", "op2: {sve_type[0]}"]
+    assert_instr: [addhnt]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "addhnt.{sve_type[0]}" }
+
+  - name: svraddhnb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Rounding add narrow high part (bottom)
+    types:
+      [[i16, i8], [i32, i16], [i64, i32], [u16, u8], [u32, u16], [u64, u32]]
+    return_type: "{sve_type[1]}"
+    arguments: ["op1: {sve_type[0]}", "op2: {sve_type[0]}"]
+    assert_instr: [raddhnb]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "raddhnb.{sve_type[0]}" }
+
+  - name: svraddhnt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Rounding add narrow high part (top)
+    types:
+      [[i16, i8], [i32, i16], [i64, i32], [u16, u8], [u32, u16], [u64, u32]]
+    return_type: "{sve_type[1]}"
+    arguments:
+      ["even: {sve_type[1]}", "op1: {sve_type[0]}", "op2: {sve_type[0]}"]
+    assert_instr: [raddhnt]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "raddhnt.{sve_type[0]}" }
+
+  - name: svcadd[_{type}]
+    attr: [*sve-unstable]
+    doc: Complex add with rotate
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    static_defs: ["const IMM_ROTATION: i32"]
+    constraints: [{ variable: IMM_ROTATION, any_values: [90, 270] }]
+    assert_instr: [[cadd, "IMM_ROTATION = 90"]]
+    compose:
+      - LLVMLink:
+          name: cadd.x.{sve_type}
+          arguments: ["op1: {sve_type}", "op2: {sve_type}", "imm_rotation: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, $IMM_ROTATION]]
+
+  - name: svcdot[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Complex dot product
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i32, i8], [i64, i16]]
+    static_defs: ["const IMM_ROTATION: i32"]
+    constraints: [{ variable: IMM_ROTATION, any_values: [0, 90, 180, 270] }]
+    assert_instr: [[cdot, "IMM_ROTATION = 90"]]
+    compose:
+      - LLVMLink:
+          name: cdot.{sve_type[0]}
+          arguments:
+            - "op1: {sve_type[0]}"
+            - "op2: {sve_type[1]}"
+            - "op3: {sve_type[1]}"
+            - "imm_rotation: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_ROTATION]]
+
+  - name: svcdot_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Complex dot product
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i32, i8], [i64, i16]]
+    static_defs: ["const IMM_INDEX: i32", "const IMM_ROTATION: i32"]
+    constraints:
+      - { variable: IMM_INDEX, vec_max_elems_type: "{type[0]}" }
+      - { variable: IMM_ROTATION, any_values: [0, 90, 180, 270] }
+    assert_instr: [[cdot, "IMM_INDEX = 0, IMM_ROTATION = 90"]]
+    compose:
+      - LLVMLink:
+          name: cdot.lane.{sve_type[0]}
+          arguments:
+            - "op1: {sve_type[0]}"
+            - "op2: {sve_type[1]}"
+            - "op3: {sve_type[1]}"
+            - "imm_index: i32"
+            - "imm_rotation: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX, $IMM_ROTATION]]
+
+  - name: svcmla[_{type}]
+    attr: [*sve-unstable]
+    doc: Complex multiply-add with rotate
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    static_defs: ["const IMM_ROTATION: i32"]
+    constraints: [{ variable: IMM_ROTATION, any_values: [0, 90, 180, 270] }]
+    assert_instr: [[cmla, "IMM_ROTATION = 90"]]
+    compose:
+      - LLVMLink:
+          name: cmla.x.{sve_type}
+          arguments:
+            - "op1: {sve_type}"
+            - "op2: {sve_type}"
+            - "op3: {sve_type}"
+            - "imm_rotation: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_ROTATION]]
+
+  - name: svcmla_lane[_{type}]
+    attr: [*sve-unstable]
+    doc: Complex multiply-add with rotate
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i16, i32, u16, u32]
+    static_defs: ["const IMM_INDEX: i32", "const IMM_ROTATION: i32"]
+    constraints:
+      - variable: IMM_INDEX
+        range: { match_size: "{type}", default: [0, 1], halfword: [0, 3] }
+      - { variable: IMM_ROTATION, any_values: [0, 90, 180, 270] }
+    assert_instr: [[cmla, "IMM_INDEX = 0, IMM_ROTATION = 90"]]
+    compose:
+      - LLVMLink:
+          name: cmla.lane.x.{sve_type}
+          arguments:
+            - "op1: {sve_type}"
+            - "op2: {sve_type}"
+            - "op3: {sve_type}"
+            - "imm_index: i32"
+            - "imm_rotation: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX, $IMM_ROTATION]]
+
+  - name: svqrdcmlah[_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating rounding doubling complex multiply-add high with rotate
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64]
+    static_defs: ["const IMM_ROTATION: i32"]
+    constraints: [{ variable: IMM_ROTATION, any_values: [0, 90, 180, 270] }]
+    assert_instr: [[sqrdcmlah, "IMM_ROTATION = 90"]]
+    compose:
+      - LLVMLink:
+          name: sqrdcmlah.x.{sve_type}
+          arguments:
+            - "op1: {sve_type}"
+            - "op2: {sve_type}"
+            - "op3: {sve_type}"
+            - "imm_rotation: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_ROTATION]]
+
+  - name: svqrdcmlah_lane[_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating rounding doubling complex multiply-add high with rotate
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i16, i32]
+    static_defs: ["const IMM_INDEX: i32", "const IMM_ROTATION: i32"]
+    constraints:
+      - variable: IMM_INDEX
+        range: { match_size: "{type}", default: [0, 1], halfword: [0, 3] }
+      - { variable: IMM_ROTATION, any_values: [0, 90, 180, 270] }
+    assert_instr: [[sqrdcmlah, "IMM_INDEX = 0, IMM_ROTATION = 90"]]
+    compose:
+      - LLVMLink:
+          name: sqrdcmlah.lane.x.{sve_type}
+          arguments:
+            - "op1: {sve_type}"
+            - "op2: {sve_type}"
+            - "op3: {sve_type}"
+            - "imm_index: i32"
+            - "imm_rotation: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX, $IMM_ROTATION]]
+
+  - name: svqcadd[_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating complex add with rotate
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64]
+    static_defs: ["const IMM_ROTATION: i32"]
+    constraints: [{ variable: "IMM_ROTATION", any_values: [90, 270] }]
+    assert_instr: [[sqcadd, "IMM_ROTATION = 90"]]
+    compose:
+      - LLVMLink:
+          name: "sqcadd.x.{sve_type}"
+          arguments: ["op1: {sve_type}", "op2: {sve_type}", "imm_rotation: i32"]
+      - FnCall: ["{llvm_link}", ["$op1", "$op2", "$IMM_ROTATION"]]
+
+  - name: svsublb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Subtract long (bottom)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}sublb"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}sublb.{sve_type[0]}"
+
+  - name: svsublbt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Subtract long (bottom - top)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+    assert_instr: [ssublbt]
+    n_variant_op: op2
+    compose:
+      - LLVMLink:
+          name: "ssublbt.{sve_type[0]}"
+
+  - name: svsublt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Subtract long (top)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}sublt"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}sublt.{sve_type[0]}" }
+
+  - name: svsubltb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Subtract long (top - bottom)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+    assert_instr: [ssubltb]
+    n_variant_op: op2
+    compose:
+      - LLVMLink:
+          name: "ssubltb.{sve_type[0]}"
+
+  - name: svsubwb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Subtract wide (bottom)
+    arguments: ["op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}subwb"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}subwb.{sve_type[0]}" }
+
+  - name: svsubwt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Subtract wide (top)
+    arguments: ["op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}subwt"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}subwt.{sve_type[0]}" }
+
+  - name: svrsubhnb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Rounding subtract narrow high part (bottom)
+    arguments: ["op1: {sve_type[0]}", "op2: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [rsubhnb]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "rsubhnb.{sve_type[0]}" }
+
+  - name: svrsubhnt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Rounding subtract narrow high part (top)
+    arguments:
+      ["even: {sve_type[1]}", "op1: {sve_type[0]}", "op2: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [rsubhnt]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "rsubhnt.{sve_type[0]}" }
+
+  - name: svsubhnb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Subtract narrow high part (bottom)
+    arguments: ["op1: {sve_type[0]}", "op2: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [subhnb]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "subhnb.{sve_type[0]}" }
+
+  - name: svsubhnt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Subtract narrow high part (top)
+    arguments:
+      ["even: {sve_type[1]}", "op1: {sve_type[0]}", "op2: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [subhnt]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "subhnt.{sve_type[0]}" }
+
+  - name: svsbclb[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Subtract with borrow long (bottom)
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u32, u64]
+    assert_instr: [sbclb]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "sbclb.{sve_type}" }
+
+  - name: svsbclt[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Subtract with borrow long (top)
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u32, u64]
+    assert_instr: [sbclt]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "sbclt.{sve_type}" }
+
+  - name: svqsub[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Saturating subtract
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { select: op1 }
+    assert_instr: ["{type_kind.su}qsub"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.su}qsub.{sve_type}" }
+
+  - name: svqsubr[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Saturating subtract reversed
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    zeroing_method: { select: op1 }
+    assert_instr: ["{type_kind.su}qsubr"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.su}qsubr.{sve_type}" }
+
+  - name: svhsub[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Halving subtract
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["{type_kind.su}hsub"]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.su}hsub.{sve_type}" }
+
+  - name: svhsubr[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Halving subtract reversed
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["{type_kind.su}hsub"]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.su}hsubr.{sve_type}" }
+
+  - name: svwhilege_{sve_type[1]}[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: While decrementing scalar is greater than or equal to
+    arguments: ["op1: {type[0]}", "op2: {type[0]}"]
+    return_type: "{sve_type[1]}"
+    types: [[[i32, i64, u32, u64], [b8, b16, b32, b64]]]
+    assert_instr: [{ default: whilege, unsigned: whilehs }]
+    compose:
+      - MatchKind:
+          - "{type[0]}"
+          - default: { LLVMLink: { name: "whilege.{sve_type[1]}.{type[0]}" } }
+            unsigned: { LLVMLink: { name: "whilehs.{sve_type[1]}.{type[0]}" } }
+
+  - name: svwhilegt_{sve_type[1]}[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: While decrementing scalar is greater than
+    arguments: ["op1: {type[0]}", "op2: {type[0]}"]
+    return_type: "{sve_type[1]}"
+    types: [[[i32, i64, u32, u64], [b8, b16, b32, b64]]]
+    assert_instr: [{ default: whilegt, unsigned: whilehi }]
+    compose:
+      - MatchKind:
+          - "{type[0]}"
+          - default: { LLVMLink: { name: "whilegt.{sve_type[1]}.{type[0]}" } }
+            unsigned: { LLVMLink: { name: "whilehi.{sve_type[1]}.{type[0]}" } }
+
+  - name: svwhilerw_{size}ptr
+    attr: [*sve-unstable]
+    safety:
+      unsafe: []
+    visibility: private
+    static_defs: [T]
+    substitutions:
+      size_alt:
+        match_size: "{type}"
+        byte: b
+        halfword: h
+        default: s
+        doubleword: d
+    arguments: ["op1: *T", "op2: *T"]
+    return_type: "{predicate}"
+    types: [i8, i16, i32, i64]
+    assert_instr: []
+    compose:
+      - Let: [op1, CastAs: [$op1, "*const crate::ffi::c_void"]]
+      - Let: [op2, CastAs: [$op2, "*const crate::ffi::c_void"]]
+      - LLVMLink:
+          name: "whilerw.{size_alt}.{predicate}.p0"
+          arguments: ["op1: *crate::ffi::c_void", "op2: *crate::ffi::c_void"]
+
+  - name: svwhilerw[_{type}]
+    attr: [*sve-unstable]
+    doc: While free of read-after-write conflicts
+    # TODO: This might be safe even with unrelated pointers, but the LLVM builtin's guarantees don't
+    # seem to be documented, so we conservatively keep this unsafe for now.
+    safety:
+      unsafe:
+      - custom: "[`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints
+        must be met for at least the base pointers, `op1` and `op2`."
+    arguments: ["op1: *{type}", "op2: *{type}"]
+    return_type: "svbool_t"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [whilerw]
+    compose:
+      - FnCall:
+          - "svwhilerw_{size}ptr"
+          - - $op1
+            - $op2
+          - - Type: "{type}"
+
+  - name: svwhilewr_{size}ptr
+    attr: [*sve-unstable]
+    safety:
+      unsafe: []
+    visibility: private
+    static_defs: [T]
+    substitutions:
+      size_alt:
+        match_size: "{type}"
+        byte: b
+        halfword: h
+        default: s
+        doubleword: d
+    arguments: ["op1: *T", "op2: *T"]
+    return_type: "{predicate}"
+    types: [i8, i16, i32, i64]
+    assert_instr: []
+    compose:
+      - Let: [op1, CastAs: [$op1, "*const crate::ffi::c_void"]]
+      - Let: [op2, CastAs: [$op2, "*const crate::ffi::c_void"]]
+      - LLVMLink:
+          name: "whilewr.{size_alt}.{predicate}.p0"
+          arguments: ["op1: *crate::ffi::c_void", "op2: *crate::ffi::c_void"]
+
+  - name: svwhilewr[_{type}]
+    attr: [*sve-unstable]
+    doc: While free of write-after-read conflicts
+    # TODO: This might be safe even with unrelated pointers, but the LLVM builtin's guarantees don't
+    # seem to be documented, so we conservatively keep this unsafe for now.
+    safety:
+      unsafe:
+      - custom: "[`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints
+        must be met for at least the base pointers, `op1` and `op2`."
+    arguments: ["op1: *{type}", "op2: *{type}"]
+    return_type: "svbool_t"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [whilewr]
+    compose:
+      - FnCall:
+          - "svwhilewr_{size}ptr"
+          - - $op1
+            - $op2
+          - - Type: "{type}"
+
+  - name: svtbl2[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Table lookup in two-vector table
+    arguments: ["data: {sve_type_x2[0]}", "indices: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [f32, u32]
+      - [f64, u64]
+      - [i8, u8]
+      - [i16, u16]
+      - [i32, u32]
+      - [i64, u64]
+      - [u8, u8]
+      - [u16, u16]
+      - [u32, u32]
+      - [u64, u64]
+    assert_instr: [tbl]
+    compose:
+      - LLVMLink:
+          name: "tbl2.{sve_type[0]}"
+          arguments:
+            - "data0: {sve_type[0]}"
+            - "data1: {sve_type[0]}"
+            - "indices: {sve_type[1]}"
+      - FnCall:
+          - "{llvm_link}"
+          - - FnCall: ["svget2_{type[0]}", ["$data"], [0]]
+            - FnCall: ["svget2_{type[0]}", ["$data"], [1]]
+            - $indices
+
+  - name: svtbx[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Table lookup in single-vector table (merging)
+    arguments:
+      - "fallback: {sve_type[0]}"
+      - "data: {sve_type[0]}"
+      - "indices: {sve_type[1]}"
+    return_type: "{sve_type[0]}"
+    types:
+      - [f32, u32]
+      - [f64, u64]
+      - [i8, u8]
+      - [i16, u16]
+      - [i32, u32]
+      - [i64, u64]
+      - [u8, u8]
+      - [u16, u16]
+      - [u32, u32]
+      - [u64, u64]
+    assert_instr: [tbx]
+    compose:
+      - LLVMLink: { name: "tbx.{sve_type[0]}" }
+
+  - name: svcvtlt_{type[0]}[_{type[1]}]_m
+    attr: [*sve-unstable]
+    doc: Up convert long (top)
+    arguments:
+      ["inactive: {sve_type[0]}", "pg: {max_predicate}", "op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[f64, f32]]
+    assert_instr: [fcvtlt]
+    compose:
+      - LLVMLink: { name: "fcvtlt.{type[0]}{type[1]}" }
+
+  - name: svcvtlt_{type[0]}[_{type[1]}]_x
+    attr: [*sve-unstable]
+    doc: Up convert long (top)
+    arguments: ["pg: svbool_t", "op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[f64, f32]]
+    assert_instr: [fcvtlt]
+    compose:
+      - FnCall:
+        - "svcvtlt_{type[0]}_{type[1]}_m"
+        - - FnCall: ["crate::intrinsics::transmute_unchecked", [$op], [], true]
+          - $pg
+          - $op
+
+  - name: svcvtnt_{type[0]}[_{type[1]}]{_mx}
+    attr: [*sve-unstable]
+    doc: Down convert and narrow (top)
+    arguments:
+      ["even: {sve_type[0]}", "pg: {max_predicate}", "op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[f32, f64]]
+    assert_instr: [fcvtnt]
+    compose:
+      - LLVMLink: { name: "fcvtnt.{type[0]}{type[1]}" }
+
+  - name: svcvtx_{type[0]}[_{type[1]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Down convert, rounding to odd
+    arguments:
+      ["inactive: {sve_type[0]}", "pg: {max_predicate}", "op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[f32, f64]]
+    zeroing_method: { drop: inactive }
+    assert_instr: [fcvtx]
+    compose:
+      - LLVMLink: { name: "fcvtx.{type[0]}{type[1]}" }
+
+  - name: svcvtxnt_{type[0]}[_{type[1]}]{_mx}
+    attr: [*sve-unstable]
+    doc: Down convert, rounding to odd (top)
+    arguments:
+      ["even: {sve_type[0]}", "pg: {max_predicate}", "op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[f32, f64]]
+    assert_instr: [fcvtxnt]
+    compose:
+      - LLVMLink: { name: "fcvtxnt.{type[0]}{type[1]}" }
+
+  - name: svldnt1_gather_[{type[0]}]index[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Unextended load, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[1]}", "indices: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i64, u64], [f64, i64, u64]]
+    assert_instr: ["ldnt1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - LLVMLink: { name: "ldnt1.gather.index.{sve_type[1]}" }
+
+  - name: svldnt1_gather_[{type[0]}]offset[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Unextended load, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[1]}", "offsets: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [[i64, u64], [f64, i64, u64]]
+    assert_instr: ["ldnt1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink: { name: "ldnt1.gather.uxtw.{sve_type[1]}" }
+            doubleword:
+              LLVMLink: { name: "ldnt1.gather.{sve_type[1]}" }
+
+  - name: svldnt1_gather[_{type[0]}base]_offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Unextended load, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "offset: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["ldnt1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - LLVMLink:
+          name: "ldnt1.gather.scalar.offset.{sve_type[1]}.{sve_type[0]}"
+
+  - name: svldnt1_gather[_{type[0]}base]_{type[1]}
+    attr: [*sve-unstable]
+    doc: Unextended load, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["ldnt1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - FnCall:
+          - "svldnt1_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - 0
+
+  - name: svldnt1_gather[_{type[0]}base]_index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Unextended load, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "index: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["ldnt1{size_literal[0]}"]
+    test: { load: 1 }
+    compose:
+      - FnCall:
+          - "svldnt1_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - MethodCall: [$index, unchecked_shl, ["{size_in_bytes_log2[0]}"]]
+
+  - name: svldnt1s{size_literal[2]}_gather_[{type[0]}]index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[2]}", "indices: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i64, u64], [i64, u64], [i16, i32]]
+    assert_instr: ["ldnt1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - LLVMLink:
+          name: "ldnt1.gather.index.{sve_type[1] as {type[2]}}"
+          return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - "crate::intrinsics::simd::simd_cast"
+          - - FnCall: ["{llvm_link}", [$pg, $base, $indices]]
+
+  - name: svldnt1u{size_literal[2]}_gather_[{type[0]}]index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[2]}", "indices: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [[i64, u64], [u64, i64], [u16, u32]]
+    assert_instr: ["ldnt1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - LLVMLink:
+          name: "ldnt1.gather.index.{sve_type[1] as {type[2]}}"
+          return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - "crate::intrinsics::simd::simd_cast"
+          - - FnCall: ["{llvm_link}", [$pg, $base, $indices]]
+          - - Type: "{sve_type[1] as {type[2]}}"
+            - _
+
+  - name: svldnt1s{size_literal[2]}_gather_[{type[0]}]offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[2]}", "offsets: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], [i8, i16]]
+      - [[i64, u64], [i64, u64], [i8, i16, i32]]
+    assert_instr: ["ldnt1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ldnt1.gather.uxtw.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+            doubleword:
+              LLVMLink:
+                name: "ldnt1.gather.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - "crate::intrinsics::simd::simd_cast"
+          - - FnCall: ["{llvm_link}", [$pg, $base, $offsets]]
+
+  - name: svldnt1u{size_literal[2]}_gather_[{type[0]}]offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments:
+      ["pg: {predicate[0]}", "base: *{type[2]}", "offsets: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [u32, i32], [u8, u16]]
+      - [[i64, u64], [u64, i64], [u8, u16, u32]]
+    assert_instr: ["ldnt1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "ldnt1.gather.uxtw.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+            doubleword:
+              LLVMLink:
+                name: "ldnt1.gather.{sve_type[1] as {type[2]}}"
+                return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - "crate::intrinsics::simd::simd_cast"
+          - - FnCall: ["{llvm_link}", [$pg, $base, $offsets]]
+          - - Type: "{sve_type[1] as {type[2]}}"
+            - _
+
+  - name: svldnt1s{size_literal[2]}_gather[_{type[0]}base]_offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "offset: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], [i8, i16]]
+      - [u64, [i64, u64], [i8, i16, i32]]
+    assert_instr: ["ldnt1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - LLVMLink:
+          name: "ldnt1.gather.scalar.offset.{sve_type[1] as {type[2]}}.{sve_type[0]}"
+          return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - "crate::intrinsics::simd::simd_cast"
+          - - FnCall: ["{llvm_link}", [$pg, $bases, $offset]]
+
+  - name: svldnt1u{size_literal[2]}_gather[_{type[0]}base]_offset_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "offset: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [u32, i32], [u8, u16]]
+      - [u64, [u64, i64], [u8, u16, u32]]
+    assert_instr: ["ldnt1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - LLVMLink:
+          name: "ldnt1.gather.scalar.offset.{sve_type[1] as {type[2]}}.{sve_type[0]}"
+          return_type: "{sve_type[1] as {type[2]}}"
+      - FnCall:
+          - "crate::intrinsics::simd::simd_cast"
+          - - FnCall: ["{llvm_link}", [$pg, $bases, $offset]]
+          - - Type: "{sve_type[1] as {type[2]}}"
+            - _
+
+  - name: svldnt1s{size_literal[2]}_gather[_{type[0]}base]_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], [i8, i16]]
+      - [u64, [i64, u64], [i8, i16, i32]]
+    assert_instr: ["ldnt1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - FnCall:
+          - "svldnt1s{size_literal[2]}_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - 0
+
+  - name: svldnt1u{size_literal[2]}_gather[_{type[0]}base]_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], [u8, u16]]
+      - [u64, [i64, u64], [u8, u16, u32]]
+    assert_instr: ["ldnt1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - FnCall:
+          - "svldnt1u{size_literal[2]}_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - 0
+
+  - name: svldnt1s{size_literal[2]}_gather[_{type[0]}base]_index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and sign-extend, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "index: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], u16]
+      - [u64, [i64, u64], [u16, u32]]
+    assert_instr: ["ldnt1s{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - FnCall:
+          - "svldnt1s{size_literal[2]}_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - MethodCall: [$index, unchecked_shl, ["{size_in_bytes_log2[2]}"]]
+
+  - name: svldnt1u{size_literal[2]}_gather[_{type[0]}base]_index_{type[1]}
+    attr: [*sve-unstable]
+    doc: Load {size[2]}-bit data and zero-extend, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments: ["pg: {predicate[0]}", "bases: {sve_type[0]}", "index: i64"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [u32, [i32, u32], u16]
+      - [u64, [i64, u64], [u16, u32]]
+    assert_instr: ["ldnt1{size_literal[2]}"]
+    test: { load: 2 }
+    compose:
+      - FnCall:
+          - "svldnt1u{size_literal[2]}_gather_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - MethodCall: [$index, unchecked_shl, ["{size_in_bytes_log2[2]}"]]
+
+  - name: svstnt1_scatter_[{type[0]}]index[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments:
+      - "pg: {predicate[0]}"
+      - "base: *mut {type[1]}"
+      - "indices: {sve_type[0]}"
+      - "data: {sve_type[1]}"
+    types:
+      - [[i64, u64], [f64, i64, u64]]
+    assert_instr: ["stnt1{size_literal[0]}"]
+    test: { store: 1 }
+    compose:
+      - LLVMLink:
+          name: "stnt1.scatter.index.{sve_type[1]}"
+          arguments:
+            - "data: {sve_type[1]}"
+            - "pg: {predicate[0]}"
+            - "base: *mut {type[1]}"
+            - "indices: {sve_type[0]}"
+      - FnCall: ["{llvm_link}", [$data, $pg, $base, $indices]]
+
+  - name: svstnt1_scatter_[{type[0]}]offset[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments:
+      - "pg: {predicate[0]}"
+      - "base: *mut {type[1]}"
+      - "offsets: {sve_type[0]}"
+      - "data: {sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [[i64, u64], [f64, i64, u64]]
+    assert_instr: ["stnt1{size_literal[0]}"]
+    test: { store: 1 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "stnt1.scatter.uxtw.{sve_type[1]}"
+                arguments:
+                  - "data: {sve_type[1]}"
+                  - "pg: {predicate[0]}"
+                  - "base: *mut {type[1]}"
+                  - "offsets: {sve_type[0]}"
+            doubleword:
+              LLVMLink:
+                name: "stnt1.scatter.{sve_type[1]}"
+                arguments:
+                  - "data: {sve_type[1]}"
+                  - "pg: {predicate[0]}"
+                  - "base: *mut {type[1]}"
+                  - "offsets: {sve_type[0]}"
+      - FnCall: ["{llvm_link}", [$data, $pg, $base, $offsets]]
+
+  - name: svstnt1_scatter[_{type[0]}base]_offset[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments:
+      - "pg: {predicate[0]}"
+      - "bases: {sve_type[0]}"
+      - "offset: i64"
+      - "data: {sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["stnt1{size_literal[0]}"]
+    test: { store: 1 }
+    compose:
+      - LLVMLink:
+          arguments:
+            - "data: {sve_type[1]}"
+            - "pg: {predicate[0]}"
+            - "bases: {sve_type[0]}"
+            - "offset: i64"
+          name: "stnt1.scatter.scalar.offset.{sve_type[1]}.{sve_type[0]}"
+      - FnCall: ["{llvm_link}", [$data, $pg, $bases, $offset]]
+
+  - name: svstnt1_scatter[_{type[0]}base_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments:
+      ["pg: {predicate[0]}", "bases: {sve_type[0]}", "data: {sve_type[1]}"]
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["stnt1{size_literal[0]}"]
+    test: { store: 1 }
+    compose:
+      - FnCall:
+          - "svstnt1_scatter_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - 0
+            - $data
+
+  - name: svstnt1_scatter[_{type[0]}base]_index[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Non-truncating store, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments:
+      - "pg: {predicate[0]}"
+      - "bases: {sve_type[0]}"
+      - "index: i64"
+      - "data: {sve_type[1]}"
+    types:
+      - [u32, [f32, i32, u32]]
+      - [u64, [f64, i64, u64]]
+    assert_instr: ["stnt1{size_literal[0]}"]
+    test: { store: 1 }
+    compose:
+      - FnCall:
+          - "svstnt1_scatter_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - MethodCall: [$index, unchecked_shl, ["{size_in_bytes_log2[0]}"]]
+            - $data
+
+  - name: svstnt1{size_literal[2]}_scatter_[{type[0]}]index[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Truncate to {size[2]} bits and store, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments:
+      - "pg: {predicate[0]}"
+      - "base: *mut {type[2]}"
+      - "indices: {sve_type[0]}"
+      - "data: {sve_type[1]}"
+    types:
+      - [[i64, u64], i64, [i16, i32]]
+      - [[i64, u64], u64, [u16, u32]]
+    assert_instr: ["stnt1{size_literal[2]}"]
+    test: { store: 2 }
+    compose:
+      - LLVMLink:
+          name: "stnt1.scatter.index.{sve_type[1] as {type[2]}}"
+          arguments:
+            - "data: {sve_type[1] as {type[2]}}"
+            - "pg: {predicate[0]}"
+            - "base: *mut {type[2]}"
+            - "indices: {sve_type[0]}"
+      - FnCall:
+          - "{llvm_link}"
+          - [FnCall: ["crate::intrinsics::simd::simd_cast", [$data]], $pg, $base, $indices]
+
+  - name: svstnt1{size_literal[2]}_scatter_[{type[0]}]offset[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Truncate to {size[2]} bits and store, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - non_temporal
+    arguments:
+      - "pg: {predicate[0]}"
+      - "base: *mut {type[2]}"
+      - "offsets: {sve_type[0]}"
+      - "data: {sve_type[1]}"
+    types:
+      - [u32, i32, [i8, i16]]
+      - [u32, u32, [u8, u16]]
+      - [[i64, u64], i64, [i8, i16, i32]]
+      - [[i64, u64], u64, [u8, u16, u32]]
+    assert_instr: ["stnt1{size_literal[2]}"]
+    test: { store: 2 }
+    compose:
+      - MatchSize:
+          - "{type[0]}"
+          - default:
+              LLVMLink:
+                name: "stnt1.scatter.uxtw.{sve_type[1] as {type[2]}}"
+                arguments:
+                  - "data: {sve_type[1] as {type[2]}}"
+                  - "pg: {predicate[0]}"
+                  - "base: *mut {type[2]}"
+                  - "offsets: {sve_type[0]}"
+            doubleword:
+              LLVMLink:
+                name: "stnt1.scatter.{sve_type[1] as {type[2]}}"
+                arguments:
+                  - "data: {sve_type[1] as {type[2]}}"
+                  - "pg: {predicate[0]}"
+                  - "base: *mut {type[2]}"
+                  - "offsets: {sve_type[0]}"
+      - FnCall:
+          - "{llvm_link}"
+          - [FnCall: ["crate::intrinsics::simd::simd_cast", [$data]], $pg, $base, $offsets]
+
+  - name: svstnt1{size_literal[2]}_scatter[_{type[0]}base]_offset[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Truncate to {size[2]} bits and store, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments:
+      - "pg: {predicate[0]}"
+      - "bases: {sve_type[0]}"
+      - "offset: i64"
+      - "data: {sve_type[1]}"
+    types:
+      - [u32, [i32, u32], [i8, i16]]
+      - [u64, [i64, u64], [i8, i16, i32]]
+    assert_instr: ["stnt1{size_literal[2]}"]
+    test: { store: 2 }
+    compose:
+      - LLVMLink:
+          name: "stnt1.scatter.scalar.offset.{sve_type[1] as {type[2]}}.{sve_type[0]}"
+          arguments:
+            - "data: {sve_type[1] as {type[2]}}"
+            - "pg: {predicate[0]}"
+            - "bases: {sve_type[0]}"
+            - "offset: i64"
+      - FnCall:
+          - "{llvm_link}"
+          - [FnCall: ["crate::intrinsics::simd::simd_cast", [$data]], $pg, $bases, $offset]
+
+  - name: svstnt1{size_literal[2]}_scatter[_{type[0]}base_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Truncate to {size[2]} bits and store, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments:
+      ["pg: {predicate[0]}", "bases: {sve_type[0]}", "data: {sve_type[1]}"]
+    types:
+      - [u32, [i32, u32], [i8, i16]]
+      - [u64, [i64, u64], [i8, i16, i32]]
+    assert_instr: ["stnt1{size_literal[2]}"]
+    test: { store: 2 }
+    compose:
+      - FnCall:
+          - "svstnt1{size_literal[2]}_scatter_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - 0
+            - $data
+
+  - name: svstnt1{size_literal[2]}_scatter[_{type[0]}base]_index[_{type[1]}]
+    attr: [*sve-unstable]
+    doc: Truncate to {size[2]} bits and store, non-temporal
+    safety:
+      unsafe:
+        - pointer_offset: predicated
+        - dereference: predicated
+        - no_provenance: bases
+        - non_temporal
+    arguments:
+      - "pg: {predicate[0]}"
+      - "bases: {sve_type[0]}"
+      - "index: i64"
+      - "data: {sve_type[1]}"
+    types:
+      - [u32, [i32, u32], i16]
+      - [u64, [i64, u64], [i16, i32]]
+    assert_instr: ["stnt1{size_literal[2]}"]
+    test: { store: 2 }
+    compose:
+      - FnCall:
+          - "svstnt1{size_literal[2]}_scatter_{type[0]}base_offset_{type[1]}"
+          - - $pg
+            - $bases
+            - MethodCall: [$index, unchecked_shl, ["{size_in_bytes_log2[2]}"]]
+            - $data
+
+  - name: svaba[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Absolute difference and accumulate
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["{type_kind}aba"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "{type_kind}aba.{sve_type}" }
+
+  - name: svqabs[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Saturating absolute value
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64]
+    assert_instr: [sqabs]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "sqabs.{sve_type}" }
+
+  - name: svabdlb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Absolute difference long (bottom)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}abdlb"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}abdlb.{sve_type[0]}" }
+
+  - name: svabdlt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Absolute difference long (top)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}abdlt"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}abdlt.{sve_type[0]}" }
+
+  - name: svabalb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Absolute difference long (bottom)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}abalb"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}abalb.{sve_type[0]}" }
+
+  - name: svabalt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Absolute difference long (top)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}abalt"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}abalt.{sve_type[0]}" }
+
+  - name: svbcax[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Bitwise clear and exclusive OR
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [bcax]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "bcax.{sve_type}" }
+
+  - name: sveorbt[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Interleaving exclusive OR (bottom, top)
+    arguments: ["odd: {sve_type}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [eorbt]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "eorbt.{sve_type}" }
+
+  - name: sveortb[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Interleaving exclusive OR (top, bottom)
+    arguments: ["even: {sve_type}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [eortb]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "eortb.{sve_type}" }
+
+  - name: sveor3[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Bitwise exclusive OR of three vectors
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [eor3]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "eor3.{sve_type}" }
+
+  - name: svbsl[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Bitwise select
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [bsl]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "bsl.{sve_type}" }
+
+  - name: svbsl1n[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Bitwise select with first input inverted
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [bsl1n]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "bsl1n.{sve_type}" }
+
+  - name: svbsl2n[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Bitwise select with second input inverted
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [bsl2n]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "bsl2n.{sve_type}" }
+
+  - name: svnbsl[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Bitwise select
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [nbsl]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "nbsl.{sve_type}" }
+
+  - name: svxar[_n_{type}]
+    attr: [*sve-unstable]
+    doc: Bitwise exclusive OR and rotate right
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM3: i32"]
+    constraints: [{ variable: IMM3, range: ["1", "{size}"] }]
+    assert_instr: [[xar, "IMM3 = 1"]]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    compose:
+      - LLVMLink:
+          name: "xar.{sve_type}"
+          arguments: ["op1: {sve_type}", "op2: {sve_type}", "imm3: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, $IMM3]]
+
+  - name: svrax1[_{type}]
+    attr: [*sve-unstable]
+    doc: Bitwise rotate left by 1 and exclusive OR
+    target_features: [sve2-sha3]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    assert_instr: [rax1]
+    types: [i64, u64]
+    compose:
+      - LLVMLink: { name: "rax1" }
+
+  - name: svshllb[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Shift left long (bottom)
+    arguments: ["op1: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["0", "{size_minus_one[1]}"] }]
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [["{type_kind[0].su}shllb", "IMM2 = 0"]]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}shllb.{sve_type[0]}"
+          arguments: ["op1: {sve_type[1]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $IMM2]]
+
+  - name: svshllt[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Shift left long (top)
+    arguments: ["op1: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["0", "{size_minus_one[1]}"] }]
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [["{type_kind[0].su}shllt", "IMM2 = 0"]]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}shllt.{sve_type[0]}"
+          arguments: ["op1: {sve_type[1]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $IMM2]]
+
+  - name: svrshl[{_n}_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Rounding shift left
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i8, u8], i8]
+      - [[i16, u16], i16]
+      - [[i32, u32], i32]
+      - [[i64, u64], i64]
+    assert_instr: ["{type_kind[0].su}rshl"]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}rshl.{sve_type[0]}" }
+
+  - name: svqrshl[{_n}_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Saturating rounding shift left
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i8, u8], i8]
+      - [[i16, u16], i16]
+      - [[i32, u32], i32]
+      - [[i64, u64], i64]
+    assert_instr: ["{type_kind[0].su}qrshl"]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}qrshl.{sve_type[0]}" }
+
+  - name: svqshl[{_n}_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Saturating shift left
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [[i8, u8], i8]
+      - [[i16, u16], i16]
+      - [[i32, u32], i32]
+      - [[i64, u64], i64]
+    assert_instr: ["{type_kind[0].su}qshl"]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}qshl.{sve_type[0]}" }
+
+  - name: svqshlu[_n_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Saturating shift left unsigned
+    arguments: ["pg: {predicate[0]}", "op1: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["0", "{size_minus_one[1]}"] }]
+    types:
+      - [i8, u8]
+      - [i16, u16]
+      - [i32, u32]
+      - [i64, u64]
+    assert_instr: [[sqshlu, "IMM2 = 0"]]
+    zeroing_method: { select: op1 }
+    compose:
+      - LLVMLink:
+          name: "sqshlu.{sve_type[0]}"
+          arguments: ["pg: {predicate[0]}", "op1: {sve_type[0]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$pg, $op1, $IMM2]]
+
+  - name: svsli[_n_{type}]
+    attr: [*sve-unstable]
+    doc: Shift left and insert
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM3: i32"]
+    constraints: [{ variable: IMM3, range: ["0", "{size_minus_one}"] }]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [[sli, "IMM3 = 0"]]
+    compose:
+      - LLVMLink:
+          name: "sli.{sve_type}"
+          arguments: ["op1: {sve_type}", "op2: {sve_type}", "imm3: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, $IMM3]]
+
+  - name: svrshr[_n_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Rounding shift right
+    arguments: ["pg: {predicate}", "op1: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size}"] }]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [["{type_kind.su}rshr", "IMM2 = 1"]]
+    zeroing_method: { select: op1 }
+    compose:
+      - LLVMLink:
+          name: "{type_kind.su}rshr.{sve_type}"
+          arguments: ["pg: {predicate}", "op1: {sve_type}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$pg, $op1, $IMM2]]
+
+  - name: svrsra[_n_{type}]
+    attr: [*sve-unstable]
+    doc: Rounding shift right and accumulate
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM3: i32"]
+    constraints: [{ variable: IMM3, range: ["1", "{size}"] }]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [["{type_kind.su}rsra", "IMM3 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "{type_kind.su}rsra.{sve_type}"
+          arguments: ["op1: {sve_type}", "op2: {sve_type}", "imm3: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, $IMM3]]
+
+  - name: svrshrnb[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Rounding shift right narrow (bottom)
+    arguments: ["op1: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size[1]}"] }]
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [[rshrnb, "IMM2 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "rshrnb.{sve_type[0]}"
+          arguments: ["op1: {sve_type[0]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $IMM2]]
+
+  - name: svrshrnt[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Rounding shift right narrow (top)
+    arguments: ["even: {sve_type[1]}", "op1: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size[1]}"] }]
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [[rshrnt, "IMM2 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "rshrnt.{sve_type[0]}"
+          arguments: ["even: {sve_type[1]}", "op1: {sve_type[0]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$even, $op1, $IMM2]]
+
+  - name: svqrshrnb[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating rounding shift right narrow (bottom)
+    arguments: ["op1: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size[1]}"] }]
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [["{type_kind[0].su}qrshrnb", "IMM2 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}qrshrnb.{sve_type[0]}"
+          arguments: ["op1: {sve_type[0]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $IMM2]]
+
+  - name: svqrshrnt[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating rounding shift right narrow (top)
+    arguments: ["even: {sve_type[1]}", "op1: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size[1]}"] }]
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [["{type_kind[0].su}qrshrnt", "IMM2 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}qrshrnt.{sve_type[0]}"
+          arguments: ["even: {sve_type[1]}", "op1: {sve_type[0]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$even, $op1, $IMM2]]
+
+  - name: svqrshrunb[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating rounding shift right unsigned narrow (bottom)
+    arguments: ["op1: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size[1]}"] }]
+    types:
+      - [i16, u8]
+      - [i32, u16]
+      - [i64, u32]
+    assert_instr: [[sqrshrunb, "IMM2 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "sqrshrunb.{sve_type[0]}"
+          arguments: ["op1: {sve_type[0]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $IMM2]]
+
+  - name: svqrshrunt[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating rounding shift right unsigned narrow (top)
+    arguments: ["even: {sve_type[1]}", "op1: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size[1]}"] }]
+    types:
+      - [i16, u8]
+      - [i32, u16]
+      - [i64, u32]
+    assert_instr: [[sqrshrunt, "IMM2 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "sqrshrunt.{sve_type[0]}"
+          arguments: ["even: {sve_type[1]}", "op1: {sve_type[0]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$even, $op1, $IMM2]]
+
+  - name: svqshrnb[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating shift right narrow (bottom)
+    arguments: ["op1: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size[1]}"] }]
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [["{type_kind[0].su}qshrnb", "IMM2 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}qshrnb.{sve_type[0]}"
+          arguments: ["op1: {sve_type[0]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $IMM2]]
+
+  - name: svqshrnt[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating shift right narrow (top)
+    arguments: ["even: {sve_type[1]}", "op1: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size[1]}"] }]
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [["{type_kind[0].su}qshrnt", "IMM2 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}qshrnt.{sve_type[0]}"
+          arguments: ["even: {sve_type[1]}", "op1: {sve_type[0]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$even, $op1, $IMM2]]
+
+  - name: svqshrunb[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating shift right unsigned narrow (bottom)
+    arguments: ["op1: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size[1]}"] }]
+    types:
+      - [i16, u8]
+      - [i32, u16]
+      - [i64, u32]
+    assert_instr: [[sqshrunb, "IMM2 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "sqshrunb.{sve_type[0]}"
+          arguments: ["op1: {sve_type[0]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $IMM2]]
+
+  - name: svqshrunt[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating shift right unsigned narrow (top)
+    arguments: ["even: {sve_type[1]}", "op1: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size[1]}"] }]
+    types:
+      - [i16, u8]
+      - [i32, u16]
+      - [i64, u32]
+    assert_instr: [[sqshrunt, "IMM2 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "sqshrunt.{sve_type[0]}"
+          arguments: ["even: {sve_type[1]}", "op1: {sve_type[0]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$even, $op1, $IMM2]]
+
+  - name: svsra[_n_{type}]
+    attr: [*sve-unstable]
+    doc: Shift right and accumulate
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM3: i32"]
+    constraints: [{ variable: IMM3, range: ["1", "{size}"] }]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [["{type_kind.su}sra", "IMM3 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "{type_kind.su}sra.{sve_type}"
+          arguments: ["op1: {sve_type}", "op2: {sve_type}", "imm3: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, $IMM3]]
+
+  - name: svsri[_n_{type}]
+    attr: [*sve-unstable]
+    doc: Shift right and insert
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM3: i32"]
+    constraints: [{ variable: IMM3, range: ["1", "{size}"] }]
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: [[sri, "IMM3 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "sri.{sve_type}"
+          arguments: ["op1: {sve_type}", "op2: {sve_type}", "imm3: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, $IMM3]]
+
+  - name: svshrnb[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Shift right narrow (bottom)
+    arguments: ["op1: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size[1]}"] }]
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [[shrnb, "IMM2 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "shrnb.{sve_type[0]}"
+          arguments: ["op1: {sve_type[0]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $IMM2]]
+
+  - name: svshrnt[_n_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Shift right narrow (top)
+    arguments: ["even: {sve_type[1]}", "op1: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    static_defs: ["const IMM2: i32"]
+    constraints: [{ variable: IMM2, range: ["1", "{size[1]}"] }]
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: [[shrnt, "IMM2 = 1"]]
+    compose:
+      - LLVMLink:
+          name: "shrnt.{sve_type[0]}"
+          arguments: ["even: {sve_type[1]}", "op1: {sve_type[0]}", "imm2: i32"]
+      - FnCall: ["{llvm_link}", [$even, $op1, $IMM2]]
+
+  - name: svqxtnb[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating extract narrow (bottom)
+    arguments: ["op: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}qxtnb"]
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}qxtnb.{sve_type[0]}" }
+
+  - name: svqxtnt[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating extract narrow (top)
+    arguments: ["even: {sve_type[1]}", "op: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}qxtnt"]
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}qxtnt.{sve_type[0]}" }
+
+  - name: svqxtunb[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating extract unsigned narrow (bottom)
+    arguments: ["op: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [i16, u8]
+      - [i32, u16]
+      - [i64, u32]
+    assert_instr: [sqxtunb]
+    compose:
+      - LLVMLink: { name: "sqxtunb.{sve_type[0]}" }
+
+  - name: svqxtunt[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating extract unsigned narrow (top)
+    arguments: ["even: {sve_type[1]}", "op: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types:
+      - [i16, u8]
+      - [i32, u16]
+      - [i64, u32]
+    assert_instr: [sqxtunt]
+    compose:
+      - LLVMLink: { name: "sqxtunt.{sve_type[0]}" }
+
+  - name: svmovlb[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Move long (bottom)
+    arguments: ["op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}shllb"]
+    compose:
+      - FnCall: ["svshllb_n_{type[0]}", [$op], [0]]
+
+  - name: svmovlt[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Move long (top)
+    arguments: ["op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}shllt"]
+    compose:
+      - FnCall: ["svshllt_n_{type[0]}", [$op], [0]]
+
+  - name: svunpkhi[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Unpack and extend high half
+    arguments: ["op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}unpkhi"]
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}unpkhi.{sve_type[0]}" }
+
+  - name: svunpkhi[_b]
+    attr: [*sve-unstable]
+    doc: Unpack and extend high half
+    arguments: ["op: svbool_t"]
+    return_type: "svbool8_t"
+    assert_instr: [punpkhi]
+    compose:
+      - LLVMLink: { name: "punpkhi.nxv16i1" }
+
+  - name: svunpklo[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Unpack and extend low half
+    arguments: ["op: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}unpklo"]
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}unpklo.{sve_type[0]}" }
+
+  - name: svunpklo[_b]
+    attr: [*sve-unstable]
+    doc: Unpack and extend low half
+    arguments: ["op: svbool_t"]
+    return_type: "svbool8_t"
+    assert_instr: [punpklo]
+    compose:
+      - LLVMLink: { name: "punpklo.nxv16i1" }
+
+  - name: svaddp[_{type}]{_mx}
+    attr: [*sve-unstable]
+    doc: Add pairwise
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["{type_kind.f}addp"]
+    compose:
+      - LLVMLink: { name: "{type_kind.f}addp.{sve_type}" }
+
+  - name: svadalp[_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Add and accumulate long pairwise
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}adalp"]
+    zeroing_method: { select: op1 }
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}adalp.{sve_type[0]}" }
+
+  - name: svmaxp[_{type}]{_mx}
+    attr: [*sve-unstable]
+    doc: Maximum pairwise
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["{type_kind.fsu}maxp"]
+    compose:
+      - LLVMLink: { name: "{type_kind.fsu}maxp.{sve_type}" }
+
+  - name: svmaxnmp[_{type}]{_mx}
+    attr: [*sve-unstable]
+    doc: Maximum number pairwise
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: ["fmaxnmp"]
+    compose:
+      - LLVMLink: { name: "fmaxnmp.{sve_type}" }
+
+  - name: svminp[_{type}]{_mx}
+    attr: [*sve-unstable]
+    doc: Minimum pairwise
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["{type_kind.fsu}minp"]
+    compose:
+      - LLVMLink: { name: "{type_kind.fsu}minp.{sve_type}" }
+
+  - name: svminnmp[_{type}]{_mx}
+    attr: [*sve-unstable]
+    doc: Minimum number pairwise
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [f32, f64]
+    assert_instr: ["fminnmp"]
+    compose:
+      - LLVMLink: { name: "fminnmp.{sve_type}" }
+
+  - name: svmul_lane[_{type}]
+    attr: [*sve-unstable]
+    doc: Multiply
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type}" }]
+    assert_instr: [["{type_kind.f}mul", "IMM_INDEX = 0"]]
+    types: [f32, f64, i16, i32, i64, u16, u32, u64]
+    compose:
+      - LLVMLink:
+          name: "{type_kind.f}mul.lane.{sve_type}"
+          arguments: ["op1: {sve_type}", "op2: {sve_type}", "imm_index: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, IMM_INDEX]]
+
+  - name: svqdmulh[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply high
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64]
+    assert_instr: [sqdmulh]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "sqdmulh.{sve_type}" }
+
+  - name: svqdmulh_lane[_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply high
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type}" }]
+    assert_instr: [["sqdmulh", "IMM_INDEX = 0"]]
+    types: [i16, i32, i64]
+    compose:
+      - LLVMLink:
+          name: "sqdmulh.lane.{sve_type}"
+          arguments: ["op1: {sve_type}", "op2: {sve_type}", "imm_index: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, IMM_INDEX]]
+
+  - name: svqrdmulh[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating rounding doubling multiply high
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64]
+    assert_instr: [sqrdmulh]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "sqrdmulh.{sve_type}" }
+
+  - name: svqrdmulh_lane[_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating rounding doubling multiply high
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type}" }]
+    assert_instr: [["sqrdmulh", "IMM_INDEX = 0"]]
+    types: [i16, i32, i64]
+    compose:
+      - LLVMLink:
+          name: "sqrdmulh.lane.{sve_type}"
+          arguments: ["op1: {sve_type}", "op2: {sve_type}", "imm_index: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, IMM_INDEX]]
+
+  - name: svqdmullb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply long (bottom)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i16, i8], [i32, i16], [i64, i32]]
+    assert_instr: [sqdmullb]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "sqdmullb.{sve_type[0]}" }
+
+  - name: svqdmullb_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply long (bottom)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
+    assert_instr: [["sqdmullb", "IMM_INDEX = 0"]]
+    types: [[i32, i16], [i64, i32]]
+    compose:
+      - LLVMLink:
+          name: "sqdmullb.lane.{sve_type[0]}"
+          arguments:
+            ["op1: {sve_type[1]}", "op2: {sve_type[1]}", "imm_index: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, IMM_INDEX]]
+
+  - name: svqdmullt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply long (top)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i16, i8], [i32, i16], [i64, i32]]
+    assert_instr: [sqdmullt]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "sqdmullt.{sve_type[0]}" }
+
+  - name: svqdmullt_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply long (top)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
+    assert_instr: [["sqdmullt", "IMM_INDEX = 0"]]
+    types: [[i32, i16], [i64, i32]]
+    compose:
+      - LLVMLink:
+          name: "sqdmullt.lane.{sve_type[0]}"
+          arguments:
+            ["op1: {sve_type[1]}", "op2: {sve_type[1]}", "imm_index: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, IMM_INDEX]]
+
+  - name: svmullb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Multiply long (bottom)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}mullb"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}mullb.{sve_type[0]}" }
+
+  - name: svmullb_lane[_{type[0]}]
+    attr:
+      - *sve-unstable
+      # FIXME(arm-maintainers): MSVC disassembly of `[su]mullb` fails
+      - FnCall: [cfg_attr, [*msvc-disabled, {FnCall: [assert_instr, ["{type_kind[0].su}mullb", "IMM_INDEX = 0"]]}]]
+    doc: Multiply long (bottom)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i32, i16]
+      - [i64, i32]
+      - [u32, u16]
+      - [u64, u32]
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}mullb.lane.{sve_type[0]}"
+          arguments:
+            ["op1: {sve_type[1]}", "op2: {sve_type[1]}", "imm_index: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, $IMM_INDEX]]
+
+  - name: svmullt[{_n}_{type[0]}]
+    attr:
+      - *sve-unstable
+      # FIXME(arm-maintainers): MSVC disassembly of `[su]mullt` fails
+      - FnCall: [cfg_attr, [*msvc-disabled, {FnCall: [assert_instr, ["{type_kind[0].su}mullt"]]}]]
+    doc: Multiply long (top)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}mullt.{sve_type[0]}" }
+
+  - name: svmullt_lane[_{type[0]}]
+    attr:
+      - *sve-unstable
+      # FIXME(arm-maintainers): MSVC disassembly of `[su]mullt` fails
+      - FnCall: [cfg_attr, [*msvc-disabled, {FnCall: [assert_instr, ["{type_kind[0].su}mullt", "IMM_INDEX = 0"]]}]]
+    doc: Multiply long (top)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i32, i16]
+      - [i64, i32]
+      - [u32, u16]
+      - [u64, u32]
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}mullt.lane.{sve_type[0]}"
+          arguments:
+            ["op1: {sve_type[1]}", "op2: {sve_type[1]}", "imm_index: i32"]
+      - FnCall: ["{llvm_link}", [$op1, $op2, $IMM_INDEX]]
+
+  - name: svrecpe[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Reciprocal estimate
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u32]
+    assert_instr: [urecpe]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "urecpe.{sve_type}" }
+
+  - name: svrsqrte[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Reciprocal square root estimate
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u32]
+    assert_instr: [ursqrte]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "ursqrte.{sve_type}" }
+
+  - name: svmla_lane[_{type}]
+    attr: [*sve-unstable]
+    doc: Multiply-add, addend first
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type}" }]
+    types: [i16, i32, i64, u16, u32, u64]
+    assert_instr: [[mla, "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "mla.lane.{sve_type}"
+          arguments:
+            - "op1: {sve_type}"
+            - "op2: {sve_type}"
+            - "op3: {sve_type}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svmls_lane[_{type}]
+    attr: [*sve-unstable]
+    doc: Multiply-subtract, minuend first
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type}" }]
+    types: [i16, i32, i64, u16, u32, u64]
+    assert_instr: [[mls, "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "mls.lane.{sve_type}"
+          arguments:
+            - "op1: {sve_type}"
+            - "op2: {sve_type}"
+            - "op3: {sve_type}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svmlalb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Multiply-add long (bottom)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      [[i16, i8], [i32, i16], [i64, i32], [u16, u8], [u32, u16], [u64, u32]]
+    assert_instr: ["{type_kind[0].su}mlalb"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}mlalb.{sve_type[0]}" }
+
+  - name: svmlalb_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Multiply-add long (bottom)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
+    types: [[i32, i16], [i64, i32], [u32, u16], [u64, u32]]
+    assert_instr: [["{type_kind[0].su}mlalb", "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}mlalb.lane.{sve_type[0]}"
+          arguments:
+            - "op1: {sve_type[0]}"
+            - "op2: {sve_type[1]}"
+            - "op3: {sve_type[1]}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svmlalt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Multiply-add long (top)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      [[i16, i8], [i32, i16], [i64, i32], [u16, u8], [u32, u16], [u64, u32]]
+    assert_instr: ["{type_kind[0].su}mlalt"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}mlalt.{sve_type[0]}" }
+
+  - name: svmlalt_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Multiply-add long (top)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
+    types: [[i32, i16], [i64, i32], [u32, u16], [u64, u32]]
+    assert_instr: [["{type_kind[0].su}mlalt", "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}mlalt.lane.{sve_type[0]}"
+          arguments:
+            - "op1: {sve_type[0]}"
+            - "op2: {sve_type[1]}"
+            - "op3: {sve_type[1]}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svmlslb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Multiply-subtract long (bottom)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      [[i16, i8], [i32, i16], [i64, i32], [u16, u8], [u32, u16], [u64, u32]]
+    assert_instr: ["{type_kind[0].su}mlslb"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}mlslb.{sve_type[0]}" }
+
+  - name: svmlslb_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Multiply-subtract long (bottom)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
+    types: [[i32, i16], [i64, i32], [u32, u16], [u64, u32]]
+    assert_instr: [["{type_kind[0].su}mlslb", "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}mlslb.lane.{sve_type[0]}"
+          arguments:
+            - "op1: {sve_type[0]}"
+            - "op2: {sve_type[1]}"
+            - "op3: {sve_type[1]}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svmlslt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Multiply-subtract long (top)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      [[i16, i8], [i32, i16], [i64, i32], [u16, u8], [u32, u16], [u64, u32]]
+    assert_instr: ["{type_kind[0].su}mlslt"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}mlslt.{sve_type[0]}" }
+
+  - name: svmlslt_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Multiply-subtract long (top)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
+    types: [[i32, i16], [i64, i32], [u32, u16], [u64, u32]]
+    assert_instr: [["{type_kind[0].su}mlslt", "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "{type_kind[0].su}mlslt.lane.{sve_type[0]}"
+          arguments:
+            - "op1: {sve_type[0]}"
+            - "op2: {sve_type[1]}"
+            - "op3: {sve_type[1]}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svqrdmlah[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating rounding doubling multiply-add high
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64]
+    assert_instr: [sqrdmlah]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "sqrdmlah.{sve_type}" }
+
+  - name: svqrdmlah_lane[_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating rounding doubling multiply-add high
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type}" }]
+    types: [i16, i32, i64]
+    assert_instr: [[sqrdmlah, "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "sqrdmlah.lane.{sve_type}"
+          arguments:
+            - "op1: {sve_type}"
+            - "op2: {sve_type}"
+            - "op3: {sve_type}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svqrdmlsh[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating rounding doubling multiply-subtract high
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64]
+    assert_instr: [sqrdmlsh]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "sqrdmlsh.{sve_type}" }
+
+  - name: svqrdmlsh_lane[_{type}]
+    attr: [*sve-unstable]
+    doc: Saturating rounding doubling multiply-subtract high
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type}" }]
+    types: [i16, i32, i64]
+    assert_instr: [[sqrdmlsh, "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "sqrdmlsh.lane.{sve_type}"
+          arguments:
+            - "op1: {sve_type}"
+            - "op2: {sve_type}"
+            - "op3: {sve_type}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svqdmlalb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply-add long (bottom)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i16, i8], [i32, i16], [i64, i32]]
+    assert_instr: ["sqdmlalb"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "sqdmlalb.{sve_type[0]}" }
+
+  - name: svqdmlalb_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply-add long (bottom)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
+    types: [[i32, i16], [i64, i32]]
+    assert_instr: [["sqdmlalb", "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "sqdmlalb.lane.{sve_type[0]}"
+          arguments:
+            - "op1: {sve_type[0]}"
+            - "op2: {sve_type[1]}"
+            - "op3: {sve_type[1]}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svqdmlalbt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply-add long (bottom × top)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i16, i8], [i32, i16], [i64, i32]]
+    assert_instr: ["sqdmlalbt"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "sqdmlalbt.{sve_type[0]}" }
+
+  - name: svqdmlalt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply-add long (top)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i16, i8], [i32, i16], [i64, i32]]
+    assert_instr: ["sqdmlalt"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "sqdmlalt.{sve_type[0]}" }
+
+  - name: svqdmlalt_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply-add long (top)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
+    types: [[i32, i16], [i64, i32]]
+    assert_instr: [["sqdmlalt", "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "sqdmlalt.lane.{sve_type[0]}"
+          arguments:
+            - "op1: {sve_type[0]}"
+            - "op2: {sve_type[1]}"
+            - "op3: {sve_type[1]}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svqdmlslb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply-subtract long (bottom)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i16, i8], [i32, i16], [i64, i32]]
+    assert_instr: ["sqdmlslb"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "sqdmlslb.{sve_type[0]}" }
+
+  - name: svqdmlslb_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply-subtract long (bottom)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
+    types: [[i32, i16], [i64, i32]]
+    assert_instr: [["sqdmlslb", "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "sqdmlslb.lane.{sve_type[0]}"
+          arguments:
+            - "op1: {sve_type[0]}"
+            - "op2: {sve_type[1]}"
+            - "op3: {sve_type[1]}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svqdmlslbt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply-subtract long (bottom × top)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i16, i8], [i32, i16], [i64, i32]]
+    assert_instr: ["sqdmlslbt"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "sqdmlslbt.{sve_type[0]}" }
+
+  - name: svqdmlslt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply-subtract long (top)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[i16, i8], [i32, i16], [i64, i32]]
+    assert_instr: ["sqdmlslt"]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "sqdmlslt.{sve_type[0]}" }
+
+  - name: svqdmlslt_lane[_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Saturating doubling multiply-subtract long (top)
+    arguments:
+      ["op1: {sve_type[0]}", "op2: {sve_type[1]}", "op3: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    static_defs: ["const IMM_INDEX: i32"]
+    constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
+    types: [[i32, i16], [i64, i32]]
+    assert_instr: [["sqdmlslt", "IMM_INDEX = 0"]]
+    compose:
+      - LLVMLink:
+          name: "sqdmlslt.lane.{sve_type[0]}"
+          arguments:
+            - "op1: {sve_type[0]}"
+            - "op2: {sve_type[1]}"
+            - "op3: {sve_type[1]}"
+            - "IMM_INDEX: i32"
+      - FnCall: ["{llvm_link}", [$op1, $op2, $op3, $IMM_INDEX]]
+
+  - name: svqneg[_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Saturating negate
+    arguments: ["inactive: {sve_type}", "pg: {predicate}", "op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64]
+    assert_instr: [sqneg]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "sqneg.{sve_type}" }
+
+  - name: svadclb[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Add with carry long (bottom)
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u32, u64]
+    assert_instr: [adclb]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "adclb.{sve_type}" }
+
+  - name: svadclt[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Add with carry long (top)
+    arguments: ["op1: {sve_type}", "op2: {sve_type}", "op3: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u32, u64]
+    assert_instr: [adclt]
+    n_variant_op: op3
+    compose:
+      - LLVMLink: { name: "adclt.{sve_type}" }
+
+  - name: svqadd[{_n}_{type}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Saturating add
+    arguments: ["pg: {predicate}", "op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [i8, i16, i32, i64, u8, u16, u32, u64]
+    assert_instr: ["{type_kind.su}qadd"]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind.su}qadd.{sve_type}" }
+
+  - name: svsqadd[{_n}_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Saturating add with signed addend
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [u8, i8]
+      - [u16, i16]
+      - [u32, i32]
+      - [u64, i64]
+    assert_instr: [usqadd]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "usqadd.{sve_type[0]}" }
+
+  - name: svuqadd[{_n}_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Saturating add with unsigned addend
+    arguments:
+      ["pg: {predicate[0]}", "op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i8, u8]
+      - [i16, u16]
+      - [i32, u32]
+      - [i64, u64]
+    assert_instr: [suqadd]
+    zeroing_method: { select: op1 }
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "suqadd.{sve_type[0]}" }
+
+  - name: svaddlb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Add long (bottom)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}addlb"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}addlb.{sve_type[0]}" }
+
+  - name: svaddlbt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Add long (bottom + top)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+    assert_instr: ["{type_kind[0].su}addlbt"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}addlbt.{sve_type[0]}" }
+
+  - name: svaddlt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Add long (top)
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}addlt"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}addlt.{sve_type[0]}" }
+
+  - name: svaddwb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Add wide (bottom)
+    arguments: ["op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}addwb"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}addwb.{sve_type[0]}" }
+
+  - name: svaddwt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Add wide (top)
+    arguments: ["op1: {sve_type[0]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types:
+      - [i16, i8]
+      - [i32, i16]
+      - [i64, i32]
+      - [u16, u8]
+      - [u32, u16]
+      - [u64, u32]
+    assert_instr: ["{type_kind[0].su}addwt"]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "{type_kind[0].su}addwt.{sve_type[0]}" }
+
+  - name: svlogb[_{type[0]}]{_mxz}
+    attr: [*sve-unstable]
+    doc: Base 2 logarithm as integer
+    arguments:
+      ["inactive: {sve_type[1]}", "pg: {predicate[0]}", "op: {sve_type[0]}"]
+    return_type: "{sve_type[1]}"
+    types: [[f32, i32], [f64, i64]]
+    assert_instr: [flogb]
+    zeroing_method: { drop: inactive }
+    compose:
+      - LLVMLink: { name: "flogb.{sve_type[0]}" }
+
+  - name: svpmul[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Polynomial multiply
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u8]
+    assert_instr: [pmul]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "pmul.{sve_type}" }
+
+  - name: svpmullb_pair[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Polynomial multiply long (bottom)
+    target_features: [sve2-aes]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u8, u32, u64]
+    assert_instr: [pmullb]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "pmullb.pair.{sve_type}" }
+
+  - name: svpmullb[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Polynomial multiply long (bottom)
+    target_features: [sve2-aes]
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[u16, u8], [u64, u32]]
+    assert_instr: [pmullb]
+    n_variant_op: op2
+    compose:
+      - FnCall:
+          - "crate::intrinsics::transmute_unchecked"
+          - [FnCall: ["svpmullb_pair_{type[1]}", [$op1, $op2]]]
+          - []
+          - true
+
+  - name: svpmullt_pair[{_n}_{type}]
+    attr: [*sve-unstable]
+    doc: Polynomial multiply long (top)
+    target_features: [sve2-aes]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u8, u32, u64]
+    assert_instr: [pmullt]
+    n_variant_op: op2
+    compose:
+      - LLVMLink: { name: "pmullt.pair.{sve_type}" }
+
+  - name: svpmullt[{_n}_{type[0]}]
+    attr: [*sve-unstable]
+    doc: Polynomial multiply long (top)
+    target_features: [sve2-aes]
+    arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
+    return_type: "{sve_type[0]}"
+    types: [[u16, u8], [u64, u32]]
+    assert_instr: [pmullt]
+    n_variant_op: op2
+    compose:
+      - FnCall:
+          - "crate::intrinsics::transmute_unchecked"
+          - [FnCall: ["svpmullt_pair_{type[1]}", [$op1, $op2]]]
+          - []
+          - true
+
+  - name: svaesd[_{type}]
+    attr: [*sve-unstable]
+    doc: AES single round decryption
+    target_features: [sve2-aes]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u8]
+    assert_instr: [aesd]
+    compose:
+      - LLVMLink: { name: "aesd" }
+
+  - name: svaese[_{type}]
+    attr: [*sve-unstable]
+    doc: AES single round encryption
+    target_features: [sve2-aes]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u8]
+    assert_instr: [aese]
+    compose:
+      - LLVMLink: { name: "aese" }
+
+  - name: svaesmc[_{type}]
+    attr: [*sve-unstable]
+    doc: AES mix columns
+    target_features: [sve2-aes]
+    arguments: ["op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u8]
+    assert_instr: [aesmc]
+    compose:
+      - LLVMLink: { name: "aesmc" }
+
+  - name: svaesimc[_{type}]
+    attr: [*sve-unstable]
+    doc: AES inverse mix columns
+    target_features: [sve2-aes]
+    arguments: ["op: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u8]
+    assert_instr: [aesimc]
+    compose:
+      - LLVMLink: { name: "aesimc" }
+
+  - name: svsm4e[_{type}]
+    attr: [*sve-unstable]
+    doc: SM4 encryption and decryption
+    target_features: [sve2-sm4]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u32]
+    assert_instr: [sm4e]
+    compose:
+      - LLVMLink: { name: "sm4e" }
+
+  - name: svsm4ekey[_{type}]
+    attr: [*sve-unstable]
+    doc: SM4 key updates
+    target_features: [sve2-sm4]
+    arguments: ["op1: {sve_type}", "op2: {sve_type}"]
+    return_type: "{sve_type}"
+    types: [u32]
+    assert_instr: [sm4ekey]
+    compose:
+      - LLVMLink: { name: "sm4ekey" }

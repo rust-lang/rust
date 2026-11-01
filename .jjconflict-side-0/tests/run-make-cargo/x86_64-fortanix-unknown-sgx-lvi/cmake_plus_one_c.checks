@@ -1,0 +1,6 @@
+CHECK: cmake_plus_one_c
+CHECK:      lfence
+CHECK:      popq
+CHECK-NEXT: popq [[REGISTER:%[a-z]+]]
+CHECK-NEXT: lfence
+CHECK-NEXT: jmpq *[[REGISTER]]

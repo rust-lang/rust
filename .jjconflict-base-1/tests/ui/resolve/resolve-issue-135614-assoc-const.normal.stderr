@@ -1,0 +1,30 @@
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/resolve-issue-135614-assoc-const.rs:6:5
+   |
+LL | use MyDefault::DEFAULT;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/resolve-issue-135614-assoc-const.rs:21:9
+   |
+LL |     let DEFAULT: u32 = 0;
+   |         ^^^^^^^ pattern `1_u32..=u32::MAX` not covered
+LL |     const DEFAULT: u32 = 0;
+   |     ------------------ missing patterns are not covered because `DEFAULT` is interpreted as a constant pattern, not a new variable
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `u32`
+help: introduce a variable instead
+   |
+LL |     let DEFAULT_var: u32 = 0;
+   |                ++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0005, E0658.
+For more information about an error, try `rustc --explain E0005`.

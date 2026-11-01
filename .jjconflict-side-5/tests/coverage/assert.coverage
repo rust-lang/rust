@@ -1,0 +1,42 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2024
+   LL|       |
+   LL|       |use core::assert_matches;
+   LL|       |
+   LL|      1|fn assert_a_plain(opt: Option<&str>) {
+   LL|      1|    assert!(opt.is_some());
+   LL|      1|    assert_eq!(opt, Some("true"));
+   LL|      1|    assert_ne!(opt, None);
+   LL|      1|    assert_matches!(opt, Some("true"));
+   LL|      1|}
+   LL|       |
+   LL|      1|fn assert_b_message(opt: Option<&str>) {
+   LL|      1|    assert!(opt.is_some(), "message");
+   LL|      1|    assert_eq!(opt, Some("true"), "message");
+   LL|      1|    assert_ne!(opt, None, "message");
+   LL|      1|    assert_matches!(opt, Some("true"), "message");
+   LL|      1|}
+   LL|       |
+   LL|      1|fn assert_c_format_inline(opt: Option<&str>, msg: &str) {
+   LL|      1|    assert!(opt.is_some(), "message: {msg}");
+   LL|      1|    assert_eq!(opt, Some("true"), "message: {msg}");
+   LL|      1|    assert_ne!(opt, None, "message: {msg}");
+   LL|      1|    assert_matches!(opt, Some("true"), "message: {msg}");
+   LL|      1|}
+   LL|       |
+   LL|      1|fn assert_d_format_arg(opt: Option<&str>, msg: &str) {
+   LL|      1|    assert!(opt.is_some(), "message: {}", msg);
+   LL|      1|    assert_eq!(opt, Some("true"), "message: {}", msg);
+   LL|      1|    assert_ne!(opt, None, "message: {}", msg);
+   LL|      1|    assert_matches!(opt, Some("true"), "message: {}", msg);
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    let opt = core::hint::black_box(Some("true"));
+   LL|       |    assert_a_plain(opt);
+   LL|       |    assert_b_message(opt);
+   LL|       |    assert_c_format_inline(opt, "message");
+   LL|       |    assert_d_format_arg(opt, "message");
+   LL|       |}
+

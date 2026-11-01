@@ -1,0 +1,63 @@
+error: cannot find attribute `unknown` in this scope
+  --> $DIR/cfg-generic-params.rs:19:29
+   |
+LL | fn f_lt_yes<#[cfg_attr(yes, unknown)] 'a>() {}
+   |                             ^^^^^^^
+
+error: cannot find attribute `unknown` in this scope
+  --> $DIR/cfg-generic-params.rs:22:29
+   |
+LL | fn f_ty_yes<#[cfg_attr(yes, unknown)] T>() {}
+   |                             ^^^^^^^
+
+error: cannot find attribute `unknown` in this scope
+  --> $DIR/cfg-generic-params.rs:26:34
+   |
+LL | type FnYes = for<#[cfg_attr(yes, unknown)] 'a> fn();
+   |                                  ^^^^^^^
+
+error: cannot find attribute `unknown` in this scope
+  --> $DIR/cfg-generic-params.rs:30:40
+   |
+LL | type PolyYes = dyn for<#[cfg_attr(yes, unknown)] 'a> Copy;
+   |                                        ^^^^^^^
+
+error: cannot find attribute `unknown` in this scope
+  --> $DIR/cfg-generic-params.rs:34:43
+   |
+LL | struct WhereYes where for<#[cfg_attr(yes, unknown)] 'a> u8: Copy;
+   |                                           ^^^^^^^
+
+error[E0658]: only lifetime parameters can be used in this context
+  --> $DIR/cfg-generic-params.rs:7:48
+   |
+LL | type FnBad = for<#[cfg(false)] 'a, #[cfg(yes)] T> fn();
+   |                                                ^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: only lifetime parameters can be used in this context
+  --> $DIR/cfg-generic-params.rs:11:54
+   |
+LL | type PolyBad = dyn for<#[cfg(false)] 'a, #[cfg(yes)] T> Copy;
+   |                                                      ^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: only lifetime parameters can be used in this context
+  --> $DIR/cfg-generic-params.rs:15:57
+   |
+LL | struct WhereBad where for<#[cfg(false)] 'a, #[cfg(yes)] T> u8: Copy;
+   |                                                         ^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

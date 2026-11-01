@@ -1,0 +1,4 @@
+disallowed-methods = [
+    { path = "replaceable_disallowed_methods::bad", replacement = "good" },
+    { path = "replaceable_disallowed_methods::questionable", replacement = "good", reason = "a better function exists" },
+]

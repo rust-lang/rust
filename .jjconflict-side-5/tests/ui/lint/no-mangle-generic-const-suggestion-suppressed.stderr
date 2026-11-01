@@ -1,0 +1,26 @@
+error: const items should never be `#[no_mangle]`
+  --> $DIR/no-mangle-generic-const-suggestion-suppressed.rs:13:1
+   |
+LL | const WHERE_BOUND: u32 = <&'static ()>::ASSOC where for<'a> &'a (): Trait;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/no-mangle-generic-const-suggestion-suppressed.rs:7:9
+   |
+LL | #![deny(no_mangle_const_items)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: const items should never be `#[no_mangle]`
+  --> $DIR/no-mangle-generic-const-suggestion-suppressed.rs:17:1
+   |
+LL | const _: () = () where;
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: const items should never be `#[no_mangle]`
+  --> $DIR/no-mangle-generic-const-suggestion-suppressed.rs:21:1
+   |
+LL | pub const GENERIC<const N: usize>: usize = N;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

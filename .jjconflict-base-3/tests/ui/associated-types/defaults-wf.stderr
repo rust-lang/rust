@@ -1,0 +1,13 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/defaults-wf.rs:7:15
+   |
+LL |     type Ty = Vec<[u8]>;
+   |               ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: required by an implicit `Sized` bound in `Vec`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

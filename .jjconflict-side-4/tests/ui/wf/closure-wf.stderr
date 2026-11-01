@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `u32: Bound` is not satisfied
+  --> $DIR/closure-wf.rs:9:33
+   |
+LL |     constrain_inner(1u32, |&(), _| ());
+   |                                 ^ the trait `Bound` is not implemented for `u32`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/closure-wf.rs:1:1
+   |
+LL | trait Bound {}
+   | ^^^^^^^^^^^
+note: required by a bound in `NeedsBound`
+  --> $DIR/closure-wf.rs:2:22
+   |
+LL | struct NeedsBound<T: Bound>(T);
+   |                      ^^^^^ required by this bound in `NeedsBound`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

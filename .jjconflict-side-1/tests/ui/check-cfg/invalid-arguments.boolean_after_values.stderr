@@ -1,0 +1,5 @@
+error: invalid `--check-cfg` argument: `cfg(values(),true)`
+   |
+   = note: `values()` cannot be specified before the names
+   = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
+

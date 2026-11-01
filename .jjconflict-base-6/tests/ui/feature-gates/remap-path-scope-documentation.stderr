@@ -1,0 +1,2 @@
+error: remapping `documentation` path scope requested but `-Zunstable-options` not specified
+

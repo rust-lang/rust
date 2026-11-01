@@ -1,0 +1,48 @@
+- // MIR for `fn0` before GVN
++ // MIR for `fn0` after GVN
+  
+  fn fn0() -> bool {
+      let mut _0: bool;
+      let mut _1: !;
+      let mut _2: (i32, bool);
+      let _4: ();
+      let mut _6: bool;
+      scope 1 {
+          debug pair => _2;
+          let _3: *mut bool;
+          scope 2 {
+              debug ptr => _3;
+              let _5: bool;
+              scope 3 {
+                  debug ret => _5;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+-         _2 = (const 1_i32, const false);
++         _2 = const (1_i32, false);
+          StorageLive(_3);
+          _3 = &raw mut (_2.1: bool);
+-         _2 = (const 1_i32, const false);
++         _2 = const (1_i32, false);
+          StorageLive(_4);
+          (*_3) = const true;
+          _4 = const ();
+          StorageDead(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = copy (_2.1: bool);
+          _5 = Not(move _6);
+          StorageDead(_6);
+          _0 = copy _5;
+          StorageDead(_5);
+          StorageDead(_3);
+          StorageDead(_2);
+          return;
+      }
+  }
++ 
++ ALLOC0 (size: 8, align: 4) { .. }
+  

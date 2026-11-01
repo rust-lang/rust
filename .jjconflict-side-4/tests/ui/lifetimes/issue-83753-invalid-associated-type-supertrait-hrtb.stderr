@@ -1,0 +1,15 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/issue-83753-invalid-associated-type-supertrait-hrtb.rs:5:21
+   |
+LL |     fn bar(foo: Foo<Target = usize>) {}
+   |                     ^^^^^^^^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL -     fn bar(foo: Foo<Target = usize>) {}
+LL +     fn bar(foo: Foo) {}
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0229`.

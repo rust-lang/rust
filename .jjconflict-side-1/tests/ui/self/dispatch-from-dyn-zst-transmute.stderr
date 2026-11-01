@@ -1,0 +1,21 @@
+error[E0375]: implementing `DispatchFromDyn` does not allow multiple fields to be coerced
+  --> $DIR/dispatch-from-dyn-zst-transmute.rs:17:1
+   |
+LL | / impl<'a, T, U> DispatchFromDyn<Foo<'a, U>> for Foo<'a, T>
+LL | |
+LL | | where
+LL | |     T: Unsize<U> + ?Sized,
+LL | |     U: ?Sized {}
+   | |_____________^
+   |
+note: the trait `DispatchFromDyn` may only be implemented when a single field is being coerced
+  --> $DIR/dispatch-from-dyn-zst-transmute.rs:13:5
+   |
+LL |     token: IsSendToken<U>,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |     ptr: &'a U,
+   |     ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0375`.

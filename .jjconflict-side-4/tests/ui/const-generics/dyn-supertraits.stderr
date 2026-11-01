@@ -1,0 +1,22 @@
+warning: trait `Baz` is never used
+  --> $DIR/dyn-supertraits.rs:7:7
+   |
+LL | trait Baz: Foo<3> {}
+   |       ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: trait `Boz` is never used
+  --> $DIR/dyn-supertraits.rs:26:7
+   |
+LL | trait Boz: Foo<3> + Foz {}
+   |       ^^^
+
+warning: struct `FozType` is never constructed
+  --> $DIR/dyn-supertraits.rs:29:8
+   |
+LL | struct FozType;
+   |        ^^^^^^^
+
+warning: 3 warnings emitted
+

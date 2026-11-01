@@ -1,0 +1,59 @@
+error: bound is defined in more than one place
+  --> tests/ui/multiple_bound_locations.rs:3:7
+   |
+LL | fn ty<F: std::fmt::Debug>(a: F)
+   |       ^
+...
+LL |     F: Sized,
+   |     ^
+   |
+   = note: `-D clippy::multiple-bound-locations` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::multiple_bound_locations)]`
+
+error: bound is defined in more than one place
+  --> tests/ui/multiple_bound_locations.rs:10:17
+   |
+LL | fn lifetime<'a, 'b: 'a, 'c>(a: &'b str, b: &'a str, c: &'c str)
+   |                 ^^
+...
+LL |     'b: 'c,
+   |     ^^
+
+error: bound is defined in more than one place
+  --> tests/ui/multiple_bound_locations.rs:17:12
+   |
+LL | fn ty_pred<F: Sized>()
+   |            ^
+...
+LL |     for<'a> F: Send + 'a,
+   |             ^
+
+error: bound is defined in more than one place
+  --> tests/ui/multiple_bound_locations.rs:27:11
+   |
+LL |     fn ty<F: std::fmt::Debug>(a: F)
+   |           ^
+...
+LL |         F: Sized,
+   |         ^
+
+error: bound is defined in more than one place
+  --> tests/ui/multiple_bound_locations.rs:34:21
+   |
+LL |     fn lifetime<'a, 'b: 'a, 'c>(a: &'b str, b: &'a str, c: &'c str)
+   |                     ^^
+...
+LL |         'b: 'c,
+   |         ^^
+
+error: bound is defined in more than one place
+  --> tests/ui/multiple_bound_locations.rs:41:16
+   |
+LL |     fn ty_pred<F: Sized>()
+   |                ^
+...
+LL |         for<'a> F: Send + 'a,
+   |                 ^
+
+error: aborting due to 6 previous errors
+

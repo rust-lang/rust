@@ -1,0 +1,2 @@
+error: incorrect value `bad-value` for codegen option `symbol-mangling-version` - one of: `legacy`, `v0` (RFC 2603), or `hashed` was expected
+

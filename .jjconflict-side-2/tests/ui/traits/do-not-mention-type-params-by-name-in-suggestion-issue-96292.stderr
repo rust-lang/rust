@@ -1,0 +1,23 @@
+error[E0283]: type annotations needed
+  --> $DIR/do-not-mention-type-params-by-name-in-suggestion-issue-96292.rs:17:11
+   |
+LL |     thing.method(42);
+   |           ^^^^^^
+   |
+note: multiple `impl`s satisfying `Thing<bool>: Method<_>` found
+  --> $DIR/do-not-mention-type-params-by-name-in-suggestion-issue-96292.rs:7:1
+   |
+LL | impl<X> Method<i32> for Thing<X> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl<X> Method<u32> for Thing<X> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     thing.method(42);
+LL +     <Thing<bool> as Method<T>>::method(thing, 42);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

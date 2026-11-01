@@ -1,0 +1,77 @@
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_structs.rs:7:22
+   |
+LL |     flag: Option<Box<Basic>>,
+   |                      ^^^^^ help: use the applicable keyword: `Self`
+   |
+   = note: `-D clippy::use-self` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::use_self)]`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_structs.rs:17:22
+   |
+LL |     flag: Option<Box<Generic<'q, T>>>,
+   |                      ^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_structs.rs:38:22
+   |
+LL |     flag: Option<Box<ConcreteAndGeneric<'q, T>>>,
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_structs.rs:62:22
+   |
+LL |     left: Option<Box<Tree>>,
+   |                      ^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_structs.rs:64:23
+   |
+LL |     right: Option<Box<Tree>>,
+   |                       ^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_structs.rs:75:23
+   |
+LL |     right: Option<Box<TreeMixed>>,
+   |                       ^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_structs.rs:80:33
+   |
+LL |     flag: Option<Box<Option<Box<Nested>>>>,
+   |                                 ^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_structs.rs:88:25
+   |
+LL | struct Tuple(Option<Box<Tuple>>);
+   |                         ^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_structs.rs:97:46
+   |
+LL |     flag: Vec<Option<Rc<RefCell<Weak<Vec<Box<Containers>>>>>>>,
+   |                                              ^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_structs.rs:108:20
+   |
+LL |     flag: Wrappers<Alias>,
+   |                    ^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_structs.rs:117:23
+   |
+LL |     flag: [Option<Box<Array<N>>>; N],
+   |                       ^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> tests/ui/use_self_structs.rs:127:14
+   |
+LL |     Cons(Box<Enum>),
+   |              ^^^^ help: use the applicable keyword: `Self`
+
+error: aborting due to 12 previous errors
+

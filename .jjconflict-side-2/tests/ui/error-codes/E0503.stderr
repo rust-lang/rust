@@ -1,0 +1,13 @@
+error[E0503]: cannot use `value` because it was mutably borrowed
+  --> $DIR/E0503.rs:4:16
+   |
+LL |     let _borrow = &mut value;
+   |                   ---------- `value` is borrowed here
+LL |     let _sum = value + 1;
+   |                ^^^^^ use of borrowed `value`
+LL |     _borrow.use_mut();
+   |     ------- borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0503`.

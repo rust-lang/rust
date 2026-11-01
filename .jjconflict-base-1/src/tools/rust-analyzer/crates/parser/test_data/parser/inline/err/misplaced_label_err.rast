@@ -1,0 +1,28 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        ERROR
+          LABEL
+            LIFETIME
+              LIFETIME_IDENT "'loop"
+            COLON ":"
+        WHITESPACE " "
+        IMPL
+          IMPL_KW "impl"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 22: expected a loop or block
+error 27: expected type
+error 27: expected `{`

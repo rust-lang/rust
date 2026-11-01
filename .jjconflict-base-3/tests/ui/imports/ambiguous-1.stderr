@@ -1,0 +1,34 @@
+error[E0659]: `id` is ambiguous
+  --> $DIR/ambiguous-1.rs:26:5
+   |
+LL |     id();
+   |     ^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `id` could refer to the function imported here
+  --> $DIR/ambiguous-1.rs:10:13
+   |
+LL |     pub use self::evp::*;
+   |             ^^^^^^^^^^^^
+   = help: consider adding an explicit import of `id` to disambiguate
+note: `id` could also refer to the function imported here
+  --> $DIR/ambiguous-1.rs:12:13
+   |
+LL |     pub use self::handwritten::*;
+   |             ^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `id` to disambiguate
+
+warning: ambiguous glob re-exports
+  --> $DIR/ambiguous-1.rs:10:13
+   |
+LL |     pub use self::evp::*;
+   |             ^^^^^^^^^^^^ the name `id` in the value namespace is first re-exported here
+LL |
+LL |     pub use self::handwritten::*;
+   |             -------------------- but the name `id` in the value namespace is also re-exported here
+   |
+   = note: `#[warn(ambiguous_glob_reexports)]` on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0659`.

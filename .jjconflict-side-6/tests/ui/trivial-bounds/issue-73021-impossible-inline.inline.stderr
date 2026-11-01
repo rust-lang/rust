@@ -1,0 +1,46 @@
+warning: trait bound for<'any> &'any mut (): Clone does not depend on any type or lifetime parameters
+  --> $DIR/issue-73021-impossible-inline.rs:20:29
+   |
+LL |     for<'any> &'any mut (): Clone,
+   |                             ^^^^^
+   |
+   = note: `#[warn(trivial_bounds)]` on by default
+
+warning: trait bound i32: Foo does not depend on any type or lifetime parameters
+  --> $DIR/issue-73021-impossible-inline.rs:28:21
+   |
+LL | struct S where i32: Foo;
+   |                     ^^^
+
+warning: trait bound i32: Foo does not depend on any type or lifetime parameters
+  --> $DIR/issue-73021-impossible-inline.rs:31:28
+   |
+LL | impl Foo for () where i32: Foo {
+   |                            ^^^
+
+warning: trait bound i32: Foo does not depend on any type or lifetime parameters
+  --> $DIR/issue-73021-impossible-inline.rs:40:19
+   |
+LL | fn f() where i32: Foo {
+   |                   ^^^
+
+warning: trait bound &'static str: Foo does not depend on any type or lifetime parameters
+  --> $DIR/issue-73021-impossible-inline.rs:48:28
+   |
+LL | fn g() where &'static str: Foo {
+   |                            ^^^
+
+warning: trait bound String: Neg does not depend on any type or lifetime parameters
+  --> $DIR/issue-73021-impossible-inline.rs:57:13
+   |
+LL |     String: ::std::ops::Neg<Output = String>,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: trait bound i32: Iterator does not depend on any type or lifetime parameters
+  --> $DIR/issue-73021-impossible-inline.rs:65:10
+   |
+LL |     i32: Iterator,
+   |          ^^^^^^^^
+
+warning: 7 warnings emitted
+

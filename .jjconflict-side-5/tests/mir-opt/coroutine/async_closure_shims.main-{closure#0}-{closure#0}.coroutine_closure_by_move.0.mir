@@ -1,0 +1,10 @@
+// MIR for `main::{closure#0}::{closure#0}` 0 coroutine_closure_by_move
+
+fn main::{closure#0}::{closure#0}(_1: {async closure@$DIR/async_closure_shims.rs:53:33: 53:52}, _2: i32) -> {async closure body@$DIR/async_closure_shims.rs:53:53: 56:10} {
+    let mut _0: {async closure body@$DIR/async_closure_shims.rs:53:53: 56:10};
+
+    bb0: {
+        _0 = {coroutine@$DIR/async_closure_shims.rs:53:53: 56:10 (#0)} { a: move _2, b: move (_1.0: i32) };
+        return;
+    }
+}

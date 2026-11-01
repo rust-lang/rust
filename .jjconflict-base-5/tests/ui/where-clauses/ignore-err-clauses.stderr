@@ -1,0 +1,33 @@
+error[E0425]: cannot find type `UUU` in this scope
+  --> $DIR/ignore-err-clauses.rs:6:5
+   |
+LL |     UUU: Copy,
+   |     ^^^ not found in this scope
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/ignore-err-clauses.rs:9:9
+   |
+LL | fn dbl<T>(x: T) -> <T as Add>::Output
+   |           - move occurs because `x` has type `T`, which does not implement the `Copy` trait
+...
+LL |     x + x
+   |     ----^
+   |     |   |
+   |     |   value used here after move
+   |     `x` moved due to usage in operator
+   |
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/ignore-err-clauses.rs:3:8
+   |
+LL | fn dbl<T>(x: T) -> <T as Add>::Output
+   |        ^ consider constraining this type parameter with `Clone`
+...
+LL |     x + x
+   |     - you could clone this value
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0382, E0425.
+For more information about an error, try `rustc --explain E0382`.

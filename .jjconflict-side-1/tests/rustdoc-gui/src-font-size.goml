@@ -1,0 +1,16 @@
+// This test ensures that the "[src]" have the same font size as their headers
+// to avoid having some weird height difference in the background when the element
+// is selected.
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+show-text: true
+// Check the impl headers.
+assert-css: (".impl a.src", {"font-size": "16px", "font-weight": 400}, ALL)
+assert-css: (".impl .code-header", {"font-size": "18px", "font-weight": 600}, ALL)
+// Check the impl items.
+assert-css: (".impl-items a.src", {"font-size": "16px", "font-weight": 400}, ALL)
+assert-css: (".impl-items .code-header", {"font-size": "16px", "font-weight": 600}, ALL)
+
+// Check that we can click on source link
+store-document-property: {"URL": url}
+click: ".impl-items a.src"
+assert-document-property-false: {"URL": |url|}

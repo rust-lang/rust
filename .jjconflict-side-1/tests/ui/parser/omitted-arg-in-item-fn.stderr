@@ -1,0 +1,17 @@
+error: expected one of `:`, `@`, or `|`, found `)`
+  --> $DIR/omitted-arg-in-item-fn.rs:1:9
+   |
+LL | fn foo(x) {
+   |         ^ expected one of `:`, `@`, or `|`
+   |
+help: if this is a parameter name, give it a type
+   |
+LL | fn foo(x: TypeName) {
+   |         ++++++++++
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL | fn foo(_: x) {
+   |        ++
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,12 @@
+error[E0407]: method `b` is not a member of trait `Foo`
+  --> $DIR/E0407.rs:9:5
+   |
+LL |     fn b() {}
+   |     ^^^-^^^^^
+   |     |  |
+   |     |  help: there is an associated function with a similar name: `a`
+   |     not a member of trait `Foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0407`.

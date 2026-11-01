@@ -1,0 +1,31 @@
+
+running 2 tests
+test $DIR/comment-in-attr-134221-2.rs - (line 11) ... FAILED
+test $DIR/comment-in-attr-134221-2.rs - (line 7) ... ok
+
+failures:
+
+---- $DIR/comment-in-attr-134221-2.rs - (line 11) stdout ----
+error: unknown start of token: \
+  --> $DIR/comment-in-attr-134221-2.rs:$LINE:$COL
+   |
+LL | #![all\
+   |       ^
+
+error: expected one of `(`, `::`, `=`, `[`, `]`, or `{`, found `ow`
+  --> $DIR/comment-in-attr-134221-2.rs:$LINE:$COL
+   |
+LL | #![all\
+   |       - expected one of `(`, `::`, `=`, `[`, `]`, or `{`
+LL | ow(unused)]
+   | ^^ unexpected token
+
+error: aborting due to 2 previous errors
+
+Couldn't compile the test.
+
+failures:
+    $DIR/comment-in-attr-134221-2.rs - (line 11)
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

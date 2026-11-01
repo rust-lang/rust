@@ -1,0 +1,13 @@
+[package]
+name = "cargo-fmt-test"
+version = "0.1.0"
+authors = ["calebcartwright"]
+edition = "2018"
+
+[dependencies]
+indexmap = "1.0.2"
+
+[workspace]
+members = [
+  "dependency-dir-name",
+]

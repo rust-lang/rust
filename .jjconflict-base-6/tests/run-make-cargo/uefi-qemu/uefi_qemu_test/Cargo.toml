@@ -1,0 +1,10 @@
+[package]
+name = "uefi_qemu_test"
+version = "0.0.0"
+edition = "2021"
+
+[workspace]
+resolver = "2"
+
+[dependencies]
+r-efi = "5.2.0"

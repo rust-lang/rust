@@ -1,0 +1,22 @@
+error[E0407]: method `nonexistent` is not a member of trait `issue_119463_extern::PrivateTrait`
+  --> $DIR/issue-119463.rs:11:5
+   |
+LL |     fn nonexistent() {}
+   |     ^^^^^^^^^^^^^^^^^^^ not a member of trait `issue_119463_extern::PrivateTrait`
+
+error[E0603]: trait `PrivateTrait` is private
+  --> $DIR/issue-119463.rs:7:27
+   |
+LL | impl issue_119463_extern::PrivateTrait for S {
+   |                           ^^^^^^^^^^^^ private trait
+   |
+note: the trait `PrivateTrait` is defined here
+  --> $DIR/auxiliary/issue-119463-extern.rs:1:1
+   |
+LL | trait PrivateTrait {
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0407, E0603.
+For more information about an error, try `rustc --explain E0407`.

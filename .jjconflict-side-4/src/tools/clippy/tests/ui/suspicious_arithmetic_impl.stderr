@@ -1,0 +1,62 @@
+error: suspicious use of `-` in `Add` impl
+  --> tests/ui/suspicious_arithmetic_impl.rs:14:20
+   |
+LL |         Foo(self.0 - other.0)
+   |                    ^
+   |
+   = note: `-D clippy::suspicious-arithmetic-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_arithmetic_impl)]`
+
+error: suspicious use of `-` in `AddAssign` impl
+  --> tests/ui/suspicious_arithmetic_impl.rs:21:23
+   |
+LL |         *self = *self - other;
+   |                       ^
+   |
+   = note: `-D clippy::suspicious-op-assign-impl` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_op_assign_impl)]`
+
+error: suspicious use of `/` in `MulAssign` impl
+  --> tests/ui/suspicious_arithmetic_impl.rs:35:16
+   |
+LL |         self.0 /= other.0;
+   |                ^^
+
+error: suspicious use of `/` in `Rem` impl
+  --> tests/ui/suspicious_arithmetic_impl.rs:74:20
+   |
+LL |         Foo(self.0 / other.0)
+   |                    ^
+
+error: suspicious use of `|` in `BitAnd` impl
+  --> tests/ui/suspicious_arithmetic_impl.rs:83:20
+   |
+LL |         Foo(self.0 | other.0)
+   |                    ^
+
+error: suspicious use of `^` in `BitOr` impl
+  --> tests/ui/suspicious_arithmetic_impl.rs:92:20
+   |
+LL |         Foo(self.0 ^ other.0)
+   |                    ^
+
+error: suspicious use of `&` in `BitXor` impl
+  --> tests/ui/suspicious_arithmetic_impl.rs:101:20
+   |
+LL |         Foo(self.0 & other.0)
+   |                    ^
+
+error: suspicious use of `>>` in `Shl` impl
+  --> tests/ui/suspicious_arithmetic_impl.rs:110:20
+   |
+LL |         Foo(self.0 >> other.0)
+   |                    ^^
+
+error: suspicious use of `<<` in `Shr` impl
+  --> tests/ui/suspicious_arithmetic_impl.rs:119:20
+   |
+LL |         Foo(self.0 << other.0)
+   |                    ^^
+
+error: aborting due to 9 previous errors
+

@@ -1,0 +1,12 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/ice-zst-as-discr-145786.rs:12:25
+   |
+LL |     let _: A = unsafe { std::mem::transmute(()) };
+   |                         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `()` (0 bits)
+   = note: target type: `A` (8 bits)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0512`.

@@ -1,0 +1,3 @@
+IDENT "hello"
+WHITESPACE " "
+IDENT "world"

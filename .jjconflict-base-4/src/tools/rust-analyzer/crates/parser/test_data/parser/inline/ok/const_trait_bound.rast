@@ -1,0 +1,34 @@
+SOURCE_FILE
+  FN
+    CONST_KW "const"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        WILDCARD_PAT
+          UNDERSCORE "_"
+        COLON ":"
+        WHITESPACE " "
+        IMPL_TRAIT_TYPE
+          IMPL_KW "impl"
+          WHITESPACE " "
+          TYPE_BOUND_LIST
+            TYPE_BOUND
+              CONST_KW "const"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Trait"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

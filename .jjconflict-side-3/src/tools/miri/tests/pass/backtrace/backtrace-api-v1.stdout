@@ -1,0 +1,5 @@
+tests/pass/backtrace/backtrace-api-v1.rs:27:9 (func_d)
+tests/pass/backtrace/backtrace-api-v1.rs:14:9 (func_c)
+tests/pass/backtrace/backtrace-api-v1.rs:9:5 (func_b::<u8>)
+tests/pass/backtrace/backtrace-api-v1.rs:5:5 (func_a)
+tests/pass/backtrace/backtrace-api-v1.rs:34:18 (main)

@@ -1,0 +1,27 @@
+error[E0559]: variant `Option<_>::None` has no field named `value`
+  --> $DIR/drop-track-bad-field-in-fru.rs:6:12
+   |
+LL |     None { value: (), ..Default::default() }.await;
+   |            ^^^^^ `Option<_>::None` does not have this field
+   |
+   = note: all struct fields are already assigned
+
+error[E0277]: `Option<_>` is not a future
+  --> $DIR/drop-track-bad-field-in-fru.rs:6:46
+   |
+LL |     None { value: (), ..Default::default() }.await;
+   |                                              ^^^^^ `Option<_>` is not a future
+   |
+   = help: the trait `Future` is not implemented for `Option<_>`
+   = note: Option<_> must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `Option<_>` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -     None { value: (), ..Default::default() }.await;
+LL +     None { value: (), ..Default::default() };
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0559.
+For more information about an error, try `rustc --explain E0277`.

@@ -1,0 +1,35 @@
+warning: unused attribute
+  --> $DIR/empty-lint-attributes.rs:9:1
+   |
+LL | #[forbid()]
+   | ^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: attribute `forbid` with an empty list has no effect
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: unused attribute
+  --> $DIR/empty-lint-attributes.rs:12:1
+   |
+LL | #[deny(reason = "ultion")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: attribute `deny` without any lints has no effect
+
+warning: unused attribute
+  --> $DIR/empty-lint-attributes.rs:6:1
+   |
+LL | #![allow()]
+   | ^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: attribute `allow` with an empty list has no effect
+
+warning: unused attribute
+  --> $DIR/empty-lint-attributes.rs:7:1
+   |
+LL | #![warn(reason = "observationalism")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: attribute `warn` without any lints has no effect
+
+warning: 4 warnings emitted
+

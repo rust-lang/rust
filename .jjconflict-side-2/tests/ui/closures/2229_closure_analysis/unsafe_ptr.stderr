@@ -1,0 +1,72 @@
+error: First Pass analysis includes:
+  --> $DIR/unsafe_ptr.rs:26:6
+   |
+LL | /      || unsafe {
+LL | |
+LL | |
+LL | |         println!("{:?}", (*t.0).s);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0),Deref,(0, 0)] -> Immutable
+  --> $DIR/unsafe_ptr.rs:29:26
+   |
+LL |         println!("{:?}", (*t.0).s);
+   |                          ^^^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/unsafe_ptr.rs:26:6
+   |
+LL | /      || unsafe {
+LL | |
+LL | |
+LL | |         println!("{:?}", (*t.0).s);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(0, 0)] -> Immutable
+  --> $DIR/unsafe_ptr.rs:29:26
+   |
+LL |         println!("{:?}", (*t.0).s);
+   |                          ^^^^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/unsafe_ptr.rs:44:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let x = unsafe { &mut (*p).s };
+...  |
+LL | |         *x = "s".into();
+LL | |     };
+   | |_____^
+   |
+note: Capturing p[Deref,(0, 0)] -> Immutable
+  --> $DIR/unsafe_ptr.rs:47:31
+   |
+LL |         let x = unsafe { &mut (*p).s };
+   |                               ^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/unsafe_ptr.rs:44:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let x = unsafe { &mut (*p).s };
+...  |
+LL | |         *x = "s".into();
+LL | |     };
+   | |_____^
+   |
+note: Min Capture p[] -> Immutable
+  --> $DIR/unsafe_ptr.rs:47:31
+   |
+LL |         let x = unsafe { &mut (*p).s };
+   |                               ^^^^^^
+
+error: aborting due to 4 previous errors
+

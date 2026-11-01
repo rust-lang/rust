@@ -1,0 +1,37 @@
+error: this identifier consists of only a single character
+  --> tests/ui-toml/min_ident_chars_trait_impl/min_ident_chars.rs:4:10
+   |
+LL |     fn f(g: i32);
+   |          ^
+   |
+   = note: `-D clippy::min-ident-chars` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::min_ident_chars)]`
+
+error: this identifier consists of only a single character
+  --> tests/ui-toml/min_ident_chars_trait_impl/min_ident_chars.rs:4:8
+   |
+LL |     fn f(g: i32);
+   |        ^
+
+error: this identifier consists of only a single character
+  --> tests/ui-toml/min_ident_chars_trait_impl/min_ident_chars.rs:12:10
+   |
+LL |     fn f(g: i32) {}
+   |          ^
+   |
+   = note: the configured threshold is 1
+
+error: this identifier consists of only a single character
+  --> tests/ui-toml/min_ident_chars_trait_impl/min_ident_chars.rs:12:8
+   |
+LL |     fn f(g: i32) {}
+   |        ^
+
+error: this identifier consists of only a single character
+  --> tests/ui-toml/min_ident_chars_trait_impl/min_ident_chars.rs:18:19
+   |
+LL |     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+   |                   ^
+
+error: aborting due to 5 previous errors
+

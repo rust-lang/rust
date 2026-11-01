@@ -1,0 +1,14 @@
+error[E0502]: cannot borrow `t0` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-swap-mut-base-ptr.rs:13:10
+   |
+LL |     let p: &isize = &*t0;     // Freezes `*t0`
+   |                     ---- immutable borrow occurs here
+LL |     swap(&mut t0, &mut t1);
+   |          ^^^^^^^ mutable borrow occurs here
+LL |     *t1 = 22;
+LL |     p.use_ref();
+   |     - immutable borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0502`.

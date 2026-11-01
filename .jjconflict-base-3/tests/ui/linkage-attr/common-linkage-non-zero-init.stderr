@@ -1,0 +1,3 @@
+'common' global must have a zero initializer!
+ptr @TEST
+rustc-LLVM ERROR: Broken module found, compilation aborted!

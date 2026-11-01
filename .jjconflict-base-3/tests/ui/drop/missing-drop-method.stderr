@@ -1,0 +1,11 @@
+error[E0046]: not all trait items implemented, missing: `drop`
+  --> $DIR/missing-drop-method.rs:2:1
+   |
+LL | impl Drop for DropNoMethod {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `drop` in implementation
+   |
+   = help: implement the missing item: `fn drop(&mut self) { todo!() }`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

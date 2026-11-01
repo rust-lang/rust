@@ -1,0 +1,12 @@
+error: type `T` has already been used as a bound predicate
+  --> tests/ui-toml/type_repetition_in_bounds/main.rs:14:5
+   |
+LL |     T: Unpin + PartialEq,
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider combining the bounds: `T: Copy + Clone + Sync + Send + ?Sized + Unpin + PartialEq`
+   = note: `-D clippy::type-repetition-in-bounds` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::type_repetition_in_bounds)]`
+
+error: aborting due to 1 previous error
+

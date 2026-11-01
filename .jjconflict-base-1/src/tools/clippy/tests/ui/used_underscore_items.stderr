@@ -1,0 +1,112 @@
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:28:9
+   |
+LL |         _f;
+   |         ^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:15:9
+   |
+LL |         fn _f() {}
+   |         ^^^^^^^
+   = note: `-D clippy::used-underscore-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::used_underscore_items)]`
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:29:9
+   |
+LL |         _f();
+   |         ^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:15:9
+   |
+LL |         fn _f() {}
+   |         ^^^^^^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:30:9
+   |
+LL |         _C;
+   |         ^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:16:9
+   |
+LL |         const _C: u32 = 0;
+   |         ^^^^^^^^^^^^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:31:9
+   |
+LL |         _S;
+   |         ^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:17:9
+   |
+LL |         static _S: u32 = 0;
+   |         ^^^^^^^^^^^^^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:32:9
+   |
+LL |         _X;
+   |         ^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:18:9
+   |
+LL |         struct _X;
+   |         ^^^^^^^^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:33:9
+   |
+LL |         _X {};
+   |         ^^^^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:18:9
+   |
+LL |         struct _X;
+   |         ^^^^^^^^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:34:9
+   |
+LL |         Z::_A;
+   |         ^^^^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:20:13
+   |
+LL |             _A,
+   |             ^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:35:9
+   |
+LL |         X::_m;
+   |         ^^^^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:25:13
+   |
+LL |             fn _m(self) {}
+   |             ^^^^^^^^^^^
+
+error: used underscore-prefixed item
+  --> tests/ui/used_underscore_items.rs:36:9
+   |
+LL |         X._m();
+   |         ^^^^^^
+   |
+note: item is defined here
+  --> tests/ui/used_underscore_items.rs:25:13
+   |
+LL |             fn _m(self) {}
+   |             ^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

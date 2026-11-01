@@ -1,0 +1,111 @@
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+  --> $DIR/shadowed-intrinsic-method.rs:20:7
+   |
+LL |     a.borrow(());
+   |       ^^^^^^ -- unexpected argument of type `()`
+   |
+note: the `borrow` call is resolved to the method in `std::borrow::Borrow`, shadowing the method of the same name on the inherent impl for `A`
+  --> $DIR/shadowed-intrinsic-method.rs:20:7
+   |
+LL | use std::borrow::Borrow;
+   |     ------------------- `std::borrow::Borrow` imported here
+...
+LL |     a.borrow(());
+   |       ^^^^^^ refers to `std::borrow::Borrow::borrow`
+note: method defined here
+  --> $SRC_DIR/core/src/borrow.rs:LL:COL
+help: you might have meant to call the other method; you can use the fully-qualified path to call it explicitly
+   |
+LL -     a.borrow(());
+LL +     A::borrow(&mut a, ());
+   |
+help: remove the extra argument
+   |
+LL -     a.borrow(());
+LL +     a.borrow();
+   |
+
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+  --> $DIR/shadowed-intrinsic-method.rs:23:7
+   |
+LL |     b.borrow(());
+   |       ^^^^^^ -- unexpected argument of type `()`
+   |
+note: the `borrow` call is resolved to the method in `std::borrow::Borrow`, shadowing the method of the same name on the inherent impl for `main::<impl B>`
+  --> $DIR/shadowed-intrinsic-method.rs:23:7
+   |
+LL | use std::borrow::Borrow;
+   |     ------------------- `std::borrow::Borrow` imported here
+...
+LL |     b.borrow(());
+   |       ^^^^^^ refers to `std::borrow::Borrow::borrow`
+note: method defined here
+  --> $SRC_DIR/core/src/borrow.rs:LL:COL
+help: you might have meant to call the other method; you can use the fully-qualified path to call it explicitly
+   |
+LL -     b.borrow(());
+LL +     B::borrow(&mut b, ());
+   |
+help: remove the extra argument
+   |
+LL -     b.borrow(());
+LL +     b.borrow();
+   |
+
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+  --> $DIR/shadowed-intrinsic-method.rs:27:7
+   |
+LL |     c.borrow(());
+   |       ^^^^^^ -- unexpected argument of type `()`
+   |
+note: the `borrow` call is resolved to the method in `std::borrow::Borrow`, shadowing the method of the same name on the inherent impl for `main::C`
+  --> $DIR/shadowed-intrinsic-method.rs:27:7
+   |
+LL | use std::borrow::Borrow;
+   |     ------------------- `std::borrow::Borrow` imported here
+...
+LL |     c.borrow(());
+   |       ^^^^^^ refers to `std::borrow::Borrow::borrow`
+note: method defined here
+  --> $SRC_DIR/core/src/borrow.rs:LL:COL
+help: you might have meant to call the other method; you can use the fully-qualified path to call it explicitly
+   |
+LL -     c.borrow(());
+LL +     C::borrow(&mut c, ());
+   |
+help: remove the extra argument
+   |
+LL -     c.borrow(());
+LL +     c.borrow();
+   |
+
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+  --> $DIR/shadowed-intrinsic-method.rs:34:7
+   |
+LL |     b.borrow(());
+   |       ^^^^^^ -- unexpected argument of type `()`
+   |
+note: the `borrow` call is resolved to the method in `std::borrow::Borrow`, shadowing the method of the same name on the inherent impl for `main::<impl B>`
+  --> $DIR/shadowed-intrinsic-method.rs:34:7
+   |
+LL | use std::borrow::Borrow;
+   |     ------------------- `std::borrow::Borrow` imported here
+...
+LL |     b.borrow(());
+   |       ^^^^^^ refers to `std::borrow::Borrow::borrow`
+note: method defined here
+  --> $SRC_DIR/core/src/borrow.rs:LL:COL
+help: you might have meant to call the other method; you can use the fully-qualified path to call it explicitly
+   |
+LL -     b.borrow(());
+LL +     B::borrow(&mut b, ());
+   |
+help: remove the extra argument
+   |
+LL -     b.borrow(());
+LL +     b.borrow();
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0061`.

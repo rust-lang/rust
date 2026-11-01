@@ -1,0 +1,12 @@
+error[E0185]: method `foo` has a `&self` declaration in the impl, but not in the trait
+  --> $DIR/E0185.rs:9:5
+   |
+LL |     fn foo();
+   |     --------- trait method declared without `&self`
+...
+LL |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^ `&self` used in impl
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0185`.

@@ -1,0 +1,17 @@
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/false-binop-caused-by-missing-semi.rs:7:8
+   |
+LL | /     foo()
+LL | |     *x = 0;
+   | |      - ^
+   | |______|
+   |        cannot assign to this expression
+   |
+help: you might have meant to write a semicolon here
+   |
+LL |     foo();
+   |          +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0070`.

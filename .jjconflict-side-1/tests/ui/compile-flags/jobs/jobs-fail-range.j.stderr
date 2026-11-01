@@ -1,0 +1,4 @@
+error: Argument to option 'jobs' missing
+       Usage:
+           -j, --jobs <N>      Limit on the number of used parallel jobs
+

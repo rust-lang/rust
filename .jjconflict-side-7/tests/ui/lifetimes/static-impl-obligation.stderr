@@ -1,0 +1,614 @@
+error[E0637]: `'_` cannot be used here
+  --> $DIR/static-impl-obligation.rs:282:35
+   |
+LL |     impl dyn Foo + '_ where Self: '_ {
+   |                                   ^^ `'_` is a reserved lifetime name
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/static-impl-obligation.rs:221:10
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |          ^^^^^^^
+   |
+note: lifetime parameter instantiated with the anonymous lifetime as defined here
+  --> $DIR/static-impl-obligation.rs:221:40
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                                        ^^
+   = note: but lifetime parameter must outlive the static lifetime
+
+error[E0803]: cannot infer an appropriate lifetime for lifetime parameter `'_` due to conflicting requirements
+  --> $DIR/static-impl-obligation.rs:221:22
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                      ^^^^^^^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime as defined here...
+  --> $DIR/static-impl-obligation.rs:221:40
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                                        ^^
+note: ...so that the types are compatible
+  --> $DIR/static-impl-obligation.rs:221:22
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                      ^^^^^^^^^^^^^^^^^^^^
+   = note: expected `<dyn t::ObjectTrait as t::MyTrait>`
+              found `<dyn t::ObjectTrait as t::MyTrait>`
+   = note: but, the lifetime must be valid for the static lifetime...
+note: ...so that the declared lifetime parameter bounds are satisfied
+  --> $DIR/static-impl-obligation.rs:221:22
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                      ^^^^^^^^^^^^^^^^^^^^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/static-impl-obligation.rs:270:10
+   |
+LL |     impl Trait for dyn Foo + '_ {
+   |          ^^^^^
+   |
+note: lifetime parameter instantiated with the anonymous lifetime as defined here
+  --> $DIR/static-impl-obligation.rs:270:30
+   |
+LL |     impl Trait for dyn Foo + '_ {
+   |                              ^^
+   = note: but lifetime parameter must outlive the static lifetime
+
+error[E0803]: cannot infer an appropriate lifetime for lifetime parameter `'_` due to conflicting requirements
+  --> $DIR/static-impl-obligation.rs:270:20
+   |
+LL |     impl Trait for dyn Foo + '_ {
+   |                    ^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime as defined here...
+  --> $DIR/static-impl-obligation.rs:270:30
+   |
+LL |     impl Trait for dyn Foo + '_ {
+   |                              ^^
+note: ...so that the types are compatible
+  --> $DIR/static-impl-obligation.rs:270:20
+   |
+LL |     impl Trait for dyn Foo + '_ {
+   |                    ^^^^^^^^^^^^
+   = note: expected `<dyn w::Foo as w::Trait>`
+              found `<dyn w::Foo as w::Trait>`
+   = note: but, the lifetime must be valid for the static lifetime...
+note: ...so that the declared lifetime parameter bounds are satisfied
+  --> $DIR/static-impl-obligation.rs:270:20
+   |
+LL |     impl Trait for dyn Foo + '_ {
+   |                    ^^^^^^^^^^^^
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:225:9
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+   |               --  --- `val` is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
+LL |         val.use_self()
+   |         ^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `t::MyTrait::use_self` introduced here
+  --> $DIR/static-impl-obligation.rs:214:31
+   |
+LL |     trait MyTrait where Self: 'static {
+   |                               ^^^^^^^ lifetime requirement introduced here
+LL |         fn use_self(&self) -> &() where Self: 'static { panic!() }
+   |                                               ^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:243:9
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+   |               --  --- `val` is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
+LL |         val.use_self()
+   |         ^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `u::MyTrait::use_self` introduced here
+  --> $DIR/static-impl-obligation.rs:234:47
+   |
+LL |     trait MyTrait {
+LL |         fn use_self(&self) -> &() where Self: 'static { panic!() }
+   |                                               ^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:261:9
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+   |               --  --- `val` is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
+LL |         val.use_self()
+   |         ^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/static-impl-obligation.rs:258:26
+   |
+LL |         fn use_self(&'static self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s `'static` requirement
+...
+LL |     impl MyTrait for dyn ObjectTrait {}
+   |                          ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+note: `'static` lifetime requirement from `v::MyTrait::use_self` introduced here
+  --> $DIR/static-impl-obligation.rs:251:31
+   |
+LL |     trait MyTrait where Self: 'static {
+   |                               ^^^^^^^ lifetime requirement introduced here
+LL |         fn use_self(&'static self) -> &() { panic!() }
+   |                     ^^^^^^^^^^^^^ lifetime requirement introduced here
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                                      ++++
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:9:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn a::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:4:10
+   |
+LL |     impl dyn Foo {
+   |          ^^^^^^^ `dyn Trait` introduces an implicit `'static` lifetime requirement
+LL |         fn hello(&self) {}
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:20:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn b::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:15:10
+   |
+LL |     impl dyn Foo {
+   |          ^^^^^^^ `dyn Trait` introduces an implicit `'static` lifetime requirement
+LL |         fn hello(&'static self) {}
+   |                  ^^^^^^^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:31:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn c::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:26:10
+   |
+LL |     impl dyn Foo {
+   |          ^^^^^^^ `dyn Trait` introduces an implicit `'static` lifetime requirement
+LL |         fn hello(&'static self) where Self: 'static {}
+   |                  ^^^^^^^^^^^^^              ^^^^^^^ lifetime requirement introduced here
+   |                  |
+   |                  lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:42:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn d::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:37:10
+   |
+LL |     impl dyn Foo {
+   |          ^^^^^^^ `dyn Trait` introduces an implicit `'static` lifetime requirement
+LL |         fn hello(&self) where Self: 'static {}
+   |                                     ^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:53:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn e::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:48:20
+   |
+LL |     impl dyn Foo + 'static {
+   |                    ^^^^^^^ lifetime requirement introduced here
+LL |         fn hello(&self) {}
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:64:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn f::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:59:20
+   |
+LL |     impl dyn Foo + 'static {
+   |                    ^^^^^^^ lifetime requirement introduced here
+LL |         fn hello(&'static self) {}
+   |                  ^^^^^^^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:75:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn g::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:70:20
+   |
+LL |     impl dyn Foo + 'static {
+   |                    ^^^^^^^ lifetime requirement introduced here
+LL |         fn hello(&'static self) where Self: 'static {}
+   |                  ^^^^^^^^^^^^^              ^^^^^^^ lifetime requirement introduced here
+   |                  |
+   |                  lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:86:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn h::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:81:20
+   |
+LL |     impl dyn Foo + 'static {
+   |                    ^^^^^^^ lifetime requirement introduced here
+LL |         fn hello(&self) where Self: 'static {}
+   |                                     ^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:97:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn i::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:92:10
+   |
+LL |     impl dyn Foo where Self: 'static {
+   |          ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |          |
+   |          `dyn Trait` introduces an implicit `'static` lifetime requirement
+LL |         fn hello(&self) {}
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:108:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn j::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:103:10
+   |
+LL |     impl dyn Foo where Self: 'static {
+   |          ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |          |
+   |          `dyn Trait` introduces an implicit `'static` lifetime requirement
+LL |         fn hello(&'static self) {}
+   |                  ^^^^^^^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:119:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn k::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:114:10
+   |
+LL |     impl dyn Foo where Self: 'static {
+   |          ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |          |
+   |          `dyn Trait` introduces an implicit `'static` lifetime requirement
+LL |         fn hello(&'static self) where Self: 'static {}
+   |                  ^^^^^^^^^^^^^              ^^^^^^^ lifetime requirement introduced here
+   |                  |
+   |                  lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:130:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn l::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:125:10
+   |
+LL |     impl dyn Foo where Self: 'static {
+   |          ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |          |
+   |          `dyn Trait` introduces an implicit `'static` lifetime requirement
+LL |         fn hello(&self) where Self: 'static {}
+   |                                     ^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:141:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn m::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:136:20
+   |
+LL |     impl dyn Foo + 'static where Self: 'static {
+   |                    ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |                    |
+   |                    lifetime requirement introduced here
+LL |         fn hello(&self) {}
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:152:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn n::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:147:20
+   |
+LL |     impl dyn Foo + 'static where Self: 'static {
+   |                    ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |                    |
+   |                    lifetime requirement introduced here
+LL |         fn hello(&'static self) {}
+   |                  ^^^^^^^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:163:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn o::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:158:20
+   |
+LL |     impl dyn Foo + 'static where Self: 'static {
+   |                    ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |                    |
+   |                    lifetime requirement introduced here
+LL |         fn hello(&'static self) where Self: 'static {}
+   |                  ^^^^^^^^^^^^^              ^^^^^^^ lifetime requirement introduced here
+   |                  |
+   |                  lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:174:9
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn p::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:169:20
+   |
+LL |     impl dyn Foo + 'static where Self: 'static {
+   |                    ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |                    |
+   |                    lifetime requirement introduced here
+LL |         fn hello(&self) where Self: 'static {}
+   |                                     ^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:183:9
+   |
+LL |     fn bar<'a>(x: &'a &'a Foo) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         x.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `q::Foo::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:180:18
+   |
+LL |     impl Foo {
+LL |         fn hello(&'static self) {}
+   |                  ^^^^^^^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:192:9
+   |
+LL |     fn bar<'a>(x: &'a &'a Foo) {
+   |            --  - `x` is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         x.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `r::Foo::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:189:18
+   |
+LL |     impl Foo {
+LL |         fn hello(&'static self) where Self: 'static {}
+   |                  ^^^^^^^^^^^^^              ^^^^^^^ lifetime requirement introduced here
+   |                  |
+   |                  lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:206:9
+   |
+LL |     fn convert<'a>(x: &'a &'a u32) {
+   |                --  - `x` is only valid in the function body
+   |                |
+   |                lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn s::Foo + 'static) as s::Trait>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:201:20
+   |
+LL |     impl Trait for dyn Foo {
+   |                    ^^^^^^^ `dyn Trait` introduces an implicit `'static` lifetime requirement
+LL |         fn hello(&self) {}
+   |
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:276:9
+   |
+LL |     fn convert<'a>(x: &'a &'a u32) {
+   |                --  - `x` is only valid in the function body
+   |                |
+   |                lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+LL |         y.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+
+error: aborting due to 28 previous errors
+
+Some errors have detailed explanations: E0478, E0521, E0637, E0803.
+For more information about an error, try `rustc --explain E0478`.

@@ -1,0 +1,9 @@
+warning: unknown lint: `test_unstable_lint`
+   |
+   = note: the `test_unstable_lint` lint is unstable
+   = help: add `-Zcrate-attr="feature(test_unstable_lint)"` to the command-line options to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: requested on the command line with `-W unknown-lints`
+
+warning: 1 warning emitted
+

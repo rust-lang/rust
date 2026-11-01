@@ -1,0 +1,15 @@
+error[E0120]: the `AsyncDrop` trait may only be implemented for local structs, enums, and unions
+  --> $DIR/foreign-fundamental.rs:10:20
+   |
+LL | impl AsyncDrop for &Foo {
+   |                    ^^^^ must be a struct, enum, or union in the current crate
+
+error[E0120]: the `AsyncDrop` trait may only be implemented for local structs, enums, and unions
+  --> $DIR/foreign-fundamental.rs:15:20
+   |
+LL | impl AsyncDrop for Pin<Foo> {
+   |                    ^^^^^^^^ must be a struct, enum, or union in the current crate
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0120`.

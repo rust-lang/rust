@@ -1,0 +1,28 @@
+- // MIR for `f` before GVN
++ // MIR for `f` after GVN
+  
+  fn f(_1: u32) -> () {
+      let mut _0: ();
+      let mut _2: S;
+      let mut _3: S;
+      let mut _4: S;
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = S(copy _1, const 2_u32);
+          StorageLive(_3);
+-         _3 = S(copy _1, const 2_u32);
++         _3 = copy _2;
+          StorageDead(_3);
+          StorageDead(_2);
+          return;
+      }
+  
+      bb1: {
+          StorageLive(_2);
+          _4 = copy _2;
+          StorageDead(_2);
+          return;
+      }
+  }
+  

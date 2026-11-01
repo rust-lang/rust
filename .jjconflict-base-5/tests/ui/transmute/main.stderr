@@ -1,0 +1,30 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/main.rs:17:17
+   |
+LL |     let x: u8 = transmute(10u16);
+   |                 ^^^^^^^^^
+   |
+   = note: source type: `u16` (16 bits)
+   = note: target type: `u8` (8 bits)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/main.rs:21:17
+   |
+LL |     let x: u8 = transmute("test");
+   |                 ^^^^^^^^^
+   |
+   = note: source type: `&str` ($STR bits)
+   = note: target type: `u8` (8 bits)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/main.rs:26:18
+   |
+LL |     let x: Foo = transmute(10);
+   |                  ^^^^^^^^^
+   |
+   = note: source type: `i32` (32 bits)
+   = note: target type: `Foo` (0 bits)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0512`.

@@ -1,0 +1,11 @@
+error[E0751]: found both positive and negative implementation of trait `DerefMut` for type `&MyType<'_>`:
+  --> $DIR/pin-unsound-issue-66544-derefmut.rs:12:1
+   |
+LL | impl<'a> DerefMut for &'a MyType<'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ positive implementation here
+   |
+   = note: negative implementation in crate `core`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0751`.

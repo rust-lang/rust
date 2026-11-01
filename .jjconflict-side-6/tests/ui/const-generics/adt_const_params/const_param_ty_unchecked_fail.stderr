@@ -1,0 +1,56 @@
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/const_param_ty_unchecked_fail.rs:16:24
+   |
+LL | struct Meoww(Miow);
+   |              ---- this field does not implement `ConstParamTy_`
+...
+LL | impl ConstParamTy_ for Meoww {}
+   |                        ^^^^^
+
+error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
+  --> $DIR/const_param_ty_unchecked_fail.rs:18:24
+   |
+LL |     float: f32,
+   |     ---------- this field does not implement `ConstParamTy_`
+...
+LL | impl ConstParamTy_ for Float {}
+   |                        ^^^^^
+
+error: using raw pointers as const generic parameters is forbidden
+  --> $DIR/const_param_ty_unchecked_fail.rs:21:24
+   |
+LL | fn something2<const N: *mut u8>() {}
+   |                        ^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: `f64` is forbidden as the type of a const generic parameter
+  --> $DIR/const_param_ty_unchecked_fail.rs:23:23
+   |
+LL | fn something<const N: f64>(a: f64) -> f64 {
+   |                       ^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/const_param_ty_unchecked_fail.rs:27:8
+   |
+LL | fn foo<const N: Vec<[u8]>>() {}
+   |        ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: required by an implicit `Sized` bound in `Vec`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error: `Vec<[u8]>` is forbidden as the type of a const generic parameter
+  --> $DIR/const_param_ty_unchecked_fail.rs:27:17
+   |
+LL | fn foo<const N: Vec<[u8]>>() {}
+   |                 ^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0204, E0277.
+For more information about an error, try `rustc --explain E0204`.

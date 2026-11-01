@@ -1,0 +1,21 @@
+error[E0277]: the size for values of type `(dyn Fn() -> Fut + 'static)` cannot be known at compilation time
+  --> $DIR/dont-elaborate-non-self.rs:7:14
+   |
+LL | fn f<Fut>(a: dyn F<Fut>) {}
+   |              ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Fn() -> Fut + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: you can use `impl Trait` as the argument type
+   |
+LL - fn f<Fut>(a: dyn F<Fut>) {}
+LL + fn f<Fut>(a: impl F<Fut>) {}
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn f<Fut>(a: &dyn F<Fut>) {}
+   |              +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

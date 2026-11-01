@@ -1,0 +1,26 @@
+error: lifetime may not live long enough
+  --> $DIR/projection-type-lifetime-mismatch.rs:15:5
+   |
+LL | fn f(x: &impl for<'a> X<Y<'a> = &'a ()>) -> &'static () {
+   |         - let's call the lifetime of this reference `'1`
+LL |     x.m()
+   |     ^^^^^ returning this value requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/projection-type-lifetime-mismatch.rs:20:5
+   |
+LL | fn g<T: for<'a> X<Y<'a> = &'a ()>>(x: &T) -> &'static () {
+   |                                       - let's call the lifetime of this reference `'1`
+LL |     x.m()
+   |     ^^^^^ returning this value requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/projection-type-lifetime-mismatch.rs:25:5
+   |
+LL | fn h(x: &()) -> &'static () {
+   |         - let's call the lifetime of this reference `'1`
+LL |     x.m()
+   |     ^^^^^ returning this value requires that `'1` must outlive `'static`
+
+error: aborting due to 3 previous errors
+

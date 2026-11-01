@@ -1,0 +1,37 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2024
+   LL|       |//@ revisions: none some
+   LL|       |//@[some] ignore-coverage-map
+   LL|       |
+   LL|       |// Basic test for let-else statements.
+   LL|       |
+   LL|      1|fn let_else_semi(opt_msg: Option<&str>) {
+   LL|      1|    let Some(msg) = opt_msg else {
+   LL|      0|        return;
+   LL|       |    };
+   LL|      1|    say(msg);
+   LL|      1|}
+   LL|       |
+   LL|       |#[rustfmt::skip]
+   LL|      1|fn let_else_no_semi(opt_msg: Option<&str>) {
+   LL|      1|    let Some(msg) = opt_msg else {
+   LL|      0|        return
+   LL|       |    };
+   LL|      1|    say(msg);
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    let opt_msg = cfg_select!(
+   LL|       |        some => Some("hello"),
+   LL|       |        none => None,
+   LL|       |    );
+   LL|       |    let_else_semi(opt_msg);
+   LL|       |    let_else_no_semi(opt_msg);
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn say(msg: &str) {
+   LL|       |    println!("{msg}");
+   LL|       |}
+

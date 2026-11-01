@@ -1,0 +1,55 @@
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      ERROR
+        INT_NUMBER "90"
+  WHITESPACE " "
+  ERROR
+    PLUS "+"
+  WHITESPACE " "
+  ERROR
+    INT_NUMBER "2"
+  ERROR
+    R_ANGLE ">"
+  WHITESPACE " "
+  ERROR
+    L_CURLY "{"
+    WHITESPACE "\n    "
+    EXPR_STMT
+      PATH_EXPR
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "f"
+    ERROR
+      COLON ":"
+    WHITESPACE " "
+    PATH_EXPR
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "u32"
+    WHITESPACE "\n"
+    R_CURLY "}"
+  WHITESPACE "\n\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 9: expected generic parameter
+error 11: expected R_ANGLE
+error 11: expected `;`, `{`, or `(`
+error 12: expected an item
+error 14: expected an item
+error 15: expected an item
+error 17: expected an item
+error 24: expected SEMICOLON
+error 24: expected expression

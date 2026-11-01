@@ -1,0 +1,16 @@
+error[E0599]: no method named `nonexistent_method` found for enum constructor `fn(_) -> Option<_> {Option::<_>::Some}` in the current scope
+  --> $DIR/issue-96738.rs:2:10
+   |
+LL |     Some.nonexistent_method();
+   |          ^^^^^^^^^^^^^^^^^^ method not found in `fn(_) -> Option<_> {Option::<_>::Some}`
+
+error[E0609]: no field `nonexistent_field` on type `fn(_) -> Option<_> {Option::<_>::Some}`
+  --> $DIR/issue-96738.rs:3:10
+   |
+LL |     Some.nonexistent_field;
+   |          ^^^^^^^^^^^^^^^^^ unknown field
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0599, E0609.
+For more information about an error, try `rustc --explain E0599`.

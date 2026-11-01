@@ -1,0 +1,63 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-89856.rs:8:20
+   |
+LL |     take_str_maybe(option);
+   |     -------------- ^^^^^^ expected `Option<&str>`, found `Option<String>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected enum `Option<&str>`
+              found enum `Option<String>`
+note: function defined here
+  --> $DIR/issue-89856.rs:3:4
+   |
+LL | fn take_str_maybe(_: Option<&str>) { }
+   |    ^^^^^^^^^^^^^^ ---------------
+help: try using `.as_deref()` to convert `Option<String>` to `Option<&str>`
+   |
+LL |     take_str_maybe(option.as_deref());
+   |                          +++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-89856.rs:12:20
+   |
+LL |     take_str_maybe(option_ref);
+   |     -------------- ^^^^^^^^^^ expected `Option<&str>`, found `Option<&String>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected enum `Option<&str>`
+              found enum `Option<&String>`
+note: function defined here
+  --> $DIR/issue-89856.rs:3:4
+   |
+LL | fn take_str_maybe(_: Option<&str>) { }
+   |    ^^^^^^^^^^^^^^ ---------------
+help: try converting the passed type into a `&str`
+   |
+LL |     take_str_maybe(option_ref.map(|x| x.as_str()));
+   |                              ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-89856.rs:16:20
+   |
+LL |     take_str_maybe(option_ref_ref);
+   |     -------------- ^^^^^^^^^^^^^^ expected `Option<&str>`, found `Option<&&String>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected enum `Option<&str>`
+              found enum `Option<&&String>`
+note: function defined here
+  --> $DIR/issue-89856.rs:3:4
+   |
+LL | fn take_str_maybe(_: Option<&str>) { }
+   |    ^^^^^^^^^^^^^^ ---------------
+help: try converting the passed type into a `&str`
+   |
+LL |     take_str_maybe(option_ref_ref.map(|x| x.as_str()));
+   |                                  ++++++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

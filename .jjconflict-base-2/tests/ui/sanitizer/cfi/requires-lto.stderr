@@ -1,0 +1,4 @@
+error: `-Zsanitizer=cfi` requires `-Clto` or `-Clinker-plugin-lto`
+
+error: aborting due to 1 previous error
+

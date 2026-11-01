@@ -1,0 +1,127 @@
+error[E0425]: cannot find value `start` in this scope
+  --> $DIR/suggest-range-struct-destructuring.rs:4:9
+   |
+LL |     let start..end = r;
+   |         ^^^^^ not found in this scope
+   |
+   = note: range patterns match against the start and end of a range; to bind the components, use a struct pattern
+help: if you meant to destructure a range use a struct pattern
+   |
+LL -     let start..end = r;
+LL +     let Range { start, end } = r;
+   |
+
+error[E0425]: cannot find value `end` in this scope
+  --> $DIR/suggest-range-struct-destructuring.rs:4:16
+   |
+LL |     let start..end = r;
+   |                ^^^ not found in this scope
+   |
+   = note: range patterns match against the start and end of a range; to bind the components, use a struct pattern
+help: if you meant to destructure a range use a struct pattern
+   |
+LL -     let start..end = r;
+LL +     let Range { start, end } = r;
+   |
+
+error[E0425]: cannot find value `start` in this scope
+  --> $DIR/suggest-range-struct-destructuring.rs:10:9
+   |
+LL |     let start..=end = r;
+   |         ^^^^^ not found in this scope
+   |
+   = note: range patterns match against the start and end of a range; to bind the components, use a struct pattern
+help: if you meant to destructure a range use a struct pattern
+   |
+LL -     let start..=end = r;
+LL +     let RangeInclusive { start, end } = r;
+   |
+
+error[E0425]: cannot find value `end` in this scope
+  --> $DIR/suggest-range-struct-destructuring.rs:10:17
+   |
+LL |     let start..=end = r;
+   |                 ^^^ not found in this scope
+   |
+   = note: range patterns match against the start and end of a range; to bind the components, use a struct pattern
+help: if you meant to destructure a range use a struct pattern
+   |
+LL -     let start..=end = r;
+LL +     let RangeInclusive { start, end } = r;
+   |
+
+error[E0425]: cannot find value `start` in this scope
+  --> $DIR/suggest-range-struct-destructuring.rs:16:9
+   |
+LL |     let start.. = r;
+   |         ^^^^^ not found in this scope
+   |
+   = note: range patterns match against the start and end of a range; to bind the components, use a struct pattern
+help: if you meant to collect the rest of the slice in `start`, use the at operator
+   |
+LL |     let start @ .. = r;
+   |               +
+help: if you meant to destructure a range use a struct pattern
+   |
+LL -     let start.. = r;
+LL +     let RangeFrom { start } = r;
+   |
+
+error[E0425]: cannot find value `end` in this scope
+  --> $DIR/suggest-range-struct-destructuring.rs:21:11
+   |
+LL |     let ..end = r;
+   |           ^^^ not found in this scope
+   |
+   = note: range patterns match against the start and end of a range; to bind the components, use a struct pattern
+help: if you meant to collect the rest of the slice in `end`, use the at operator
+   |
+LL -     let ..end = r;
+LL +     let end @ .. = r;
+   |
+help: if you meant to destructure a range use a struct pattern
+   |
+LL -     let ..end = r;
+LL +     let RangeTo { end } = r;
+   |
+
+error[E0425]: cannot find value `end` in this scope
+  --> $DIR/suggest-range-struct-destructuring.rs:26:12
+   |
+LL |     let ..=end = r;
+   |            ^^^ not found in this scope
+   |
+   = note: range patterns match against the start and end of a range; to bind the components, use a struct pattern
+help: if you meant to collect the rest of the slice in `end`, use the at operator
+   |
+LL -     let ..=end = r;
+LL +     let end @ .. = r;
+   |
+help: if you meant to destructure a range use a struct pattern
+   |
+LL -     let ..=end = r;
+LL +     let RangeToInclusive { end } = r;
+   |
+
+error[E0425]: cannot find value `MISSING` in module `my`
+  --> $DIR/suggest-range-struct-destructuring.rs:35:13
+   |
+LL |     let my::MISSING..end = r;
+   |             ^^^^^^^ not found in `my`
+
+error[E0425]: cannot find value `end` in this scope
+  --> $DIR/suggest-range-struct-destructuring.rs:35:22
+   |
+LL |     let my::MISSING..end = r;
+   |                      ^^^ not found in this scope
+   |
+   = note: range patterns match against the start and end of a range; to bind the components, use a struct pattern
+help: if you meant to destructure a range use a struct pattern
+   |
+LL -     let my::MISSING..end = r;
+LL +     let Range { start: my::MISSING, end } = r;
+   |
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

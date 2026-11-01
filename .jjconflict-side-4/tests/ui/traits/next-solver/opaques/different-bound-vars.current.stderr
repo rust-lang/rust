@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/different-bound-vars.rs:13:37
+   |
+LL |         let _: for<'b> fn(&'b ()) = foo::<U, T>(false);
+   |                                     ^^^^^^^^^^^^^^^^^^ expected `for<'a> fn(&'a ())`, got `for<'b> fn(&'b ())`
+   |
+note: previous use here
+  --> $DIR/different-bound-vars.rs:12:37
+   |
+LL |         let _: for<'a> fn(&'a ()) = foo::<T, U>(false);
+   |                                     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

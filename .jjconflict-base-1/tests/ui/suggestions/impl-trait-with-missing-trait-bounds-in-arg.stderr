@@ -1,0 +1,31 @@
+error[E0599]: no method named `hello` found for type parameter `impl Foo` in the current scope
+  --> $DIR/impl-trait-with-missing-trait-bounds-in-arg.rs:15:9
+   |
+LL | fn test(foo: impl Foo) {
+   |              -------- method `hello` not found for this type parameter
+LL |     foo.hello();
+   |         ^^^^^ method not found in `impl Foo`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `hello`, perhaps you need to restrict type parameter `impl Foo` with it:
+   |
+LL | fn test(foo: impl Foo + Bar) {
+   |                       +++++
+
+error[E0599]: no method named `method` found for type parameter `impl Fn() -> dyn std::fmt::Debug` in the current scope
+  --> $DIR/impl-trait-with-missing-trait-bounds-in-arg.rs:26:7
+   |
+LL | fn test2(f: impl Fn() -> dyn std::fmt::Debug) {
+   |             -------------------------------- method `method` not found for this type parameter
+LL |     f.method();
+   |       ^^^^^^ method not found in `impl Fn() -> dyn std::fmt::Debug`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `method`, perhaps you need to restrict type parameter `impl Fn() -> dyn std::fmt::Debug` with it:
+   |
+LL | fn test2(f: impl Fn() -> (dyn std::fmt::Debug) + Trait) {
+   |                          +                   +++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

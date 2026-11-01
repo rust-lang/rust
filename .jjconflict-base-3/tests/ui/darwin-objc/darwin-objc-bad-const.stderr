@@ -1,0 +1,19 @@
+error[E0080]: cannot access extern static `CLASS::VAL`
+  --> $DIR/darwin-objc-bad-const.rs:11:32
+   |
+LL | pub const CLASS: objc::Class = objc::class!("NSObject");
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `CLASS` failed here
+   |
+   = note: this error originates in the macro `objc::class` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: cannot access extern static `SELECTOR::VAL`
+  --> $DIR/darwin-objc-bad-const.rs:14:33
+   |
+LL | pub const SELECTOR: objc::SEL = objc::selector!("alloc");
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `SELECTOR` failed here
+   |
+   = note: this error originates in the macro `objc::selector` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,28 @@
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `const`, `mut`, `{`, or an operator, found `x`
+  --> $DIR/raw-no-const-mut-arg-list.rs:8:24
+   |
+LL |     takes_raw_ptr(&raw x);
+   |                        ^ expected one of 10 possible tokens
+   |
+help: `&raw` must be followed by `const` or `mut` to be a raw reference expression
+   |
+LL |     takes_raw_ptr(&raw const x);
+   |                        +++++
+LL |     takes_raw_ptr(&raw mut x);
+   |                        +++
+
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `const`, `mut`, `{`, or an operator, found `x`
+  --> $DIR/raw-no-const-mut-arg-list.rs:10:29
+   |
+LL |     takes_raw_ptr_args(&raw x, &raw x);
+   |                             ^ expected one of 10 possible tokens
+   |
+help: `&raw` must be followed by `const` or `mut` to be a raw reference expression
+   |
+LL |     takes_raw_ptr_args(&raw const x, &raw x);
+   |                             +++++
+LL |     takes_raw_ptr_args(&raw mut x, &raw x);
+   |                             +++
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,21 @@
+error[E0618]: expected function, found enum variant `Alias::Unit`
+  --> $DIR/issue-99240-2.rs:7:5
+   |
+LL |        Unit,
+   |        ---- enum variant `Alias::Unit` defined here
+...
+LL | //     Alias::
+LL | ||     Unit();
+   | ||________^_- call expression requires function
+   |  |________|
+   |
+   |
+help: `Alias::Unit` is a unit enum variant, and does not take parentheses to be constructed
+   |
+LL -     Unit();
+LL +     Unit;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0618`.

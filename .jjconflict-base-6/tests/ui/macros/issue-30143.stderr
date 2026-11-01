@@ -1,0 +1,35 @@
+error: format argument must be a string literal
+  --> $DIR/issue-30143.rs:4:14
+   |
+LL |     println!(0);
+   |              ^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     println!("{}", 0);
+   |              +++++
+
+error: format argument must be a string literal
+  --> $DIR/issue-30143.rs:6:15
+   |
+LL |     eprintln!('a');
+   |               ^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     eprintln!("{}", 'a');
+   |               +++++
+
+error: format argument must be a string literal
+  --> $DIR/issue-30143.rs:9:17
+   |
+LL |     writeln!(s, true).unwrap();
+   |                 ^^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     writeln!(s, "{}", true).unwrap();
+   |                 +++++
+
+error: aborting due to 3 previous errors
+

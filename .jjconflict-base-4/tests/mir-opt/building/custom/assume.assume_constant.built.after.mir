@@ -1,0 +1,10 @@
+// MIR for `assume_constant` after built
+
+fn assume_constant() -> () {
+    let mut _0: ();
+
+    bb0: {
+        assume(const true);
+        return;
+    }
+}

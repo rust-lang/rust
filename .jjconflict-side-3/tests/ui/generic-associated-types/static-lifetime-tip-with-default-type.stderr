@@ -1,0 +1,110 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/static-lifetime-tip-with-default-type.rs:7:24
+   |
+LL | struct Foo<T, K = i32>(&'static T, &'static K);
+   |                        ^^^^^^^^^^
+   |                        |
+   |                        the parameter type `T` must be valid for the static lifetime...
+   |                        ...so that the reference type `&'static T` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | struct Foo<T: 'static, K = i32>(&'static T, &'static K);
+   |             +++++++++
+
+error[E0310]: the parameter type `K` may not live long enough
+  --> $DIR/static-lifetime-tip-with-default-type.rs:7:36
+   |
+LL | struct Foo<T, K = i32>(&'static T, &'static K);
+   |                                    ^^^^^^^^^^
+   |                                    |
+   |                                    the parameter type `K` must be valid for the static lifetime...
+   |                                    ...so that the reference type `&'static K` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | struct Foo<T, K: 'static = i32>(&'static T, &'static K);
+   |                +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/static-lifetime-tip-with-default-type.rs:11:28
+   |
+LL | struct Bar<r#T, r#K = i32>(&'static r#T, &'static r#K);
+   |                            ^^^^^^^^^^^^
+   |                            |
+   |                            the parameter type `T` must be valid for the static lifetime...
+   |                            ...so that the reference type `&'static T` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | struct Bar<r#T: 'static, r#K = i32>(&'static r#T, &'static r#K);
+   |               +++++++++
+
+error[E0310]: the parameter type `K` may not live long enough
+  --> $DIR/static-lifetime-tip-with-default-type.rs:11:42
+   |
+LL | struct Bar<r#T, r#K = i32>(&'static r#T, &'static r#K);
+   |                                          ^^^^^^^^^^^^
+   |                                          |
+   |                                          the parameter type `K` must be valid for the static lifetime...
+   |                                          ...so that the reference type `&'static K` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | struct Bar<r#T, r#K: 'static = i32>(&'static r#T, &'static r#K);
+   |                    +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/static-lifetime-tip-with-default-type.rs:15:20
+   |
+LL | struct Boo<T= i32>(&'static T);
+   |                    ^^^^^^^^^^
+   |                    |
+   |                    the parameter type `T` must be valid for the static lifetime...
+   |                    ...so that the reference type `&'static T` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | struct Boo<T: 'static= i32>(&'static T);
+   |             +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/static-lifetime-tip-with-default-type.rs:19:8
+   |
+LL | = i32>(&'static T);
+   |        ^^^^^^^^^^
+   |        |
+   |        the parameter type `T` must be valid for the static lifetime...
+   |        ...so that the reference type `&'static T` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | struct Far<T: 'static
+   |             +++++++++
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/static-lifetime-tip-with-default-type.rs:22:10
+   |
+LL | struct S<'a, K: 'a = i32>(&'static K);
+   |          ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0310]: the parameter type `K` may not live long enough
+  --> $DIR/static-lifetime-tip-with-default-type.rs:22:27
+   |
+LL | struct S<'a, K: 'a = i32>(&'static K);
+   |                           ^^^^^^^^^^
+   |                           |
+   |                           the parameter type `K` must be valid for the static lifetime...
+   |                           ...so that the reference type `&'static K` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | struct S<'a, K: 'a + 'static = i32>(&'static K);
+   |                    +++++++++
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0310, E0392.
+For more information about an error, try `rustc --explain E0310`.

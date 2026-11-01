@@ -1,0 +1,29 @@
+error[E0599]: no method named `clone` found for struct `NotClone` in the current scope
+  --> $DIR/clone-missing.rs:28:16
+   |
+LL | struct NotClone {
+   | --------------- method `clone` not found for this struct
+...
+LL |     let _y = x.clone();
+   |                ^^^^^ method not found in `NotClone`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `clone`, perhaps you need to implement it:
+           candidate #1: `Clone`
+
+error[E0599]: no method named `clone` found for struct `AlsoNotClone` in the current scope
+  --> $DIR/clone-missing.rs:32:16
+   |
+LL | struct AlsoNotClone {
+   | ------------------- method `clone` not found for this struct
+...
+LL |     let _y = x.clone();
+   |                ^^^^^ method not found in `AlsoNotClone`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `clone`, perhaps you need to implement it:
+           candidate #1: `Clone`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

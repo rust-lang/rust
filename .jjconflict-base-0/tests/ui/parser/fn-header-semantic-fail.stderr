@@ -1,0 +1,159 @@
+error: functions cannot be both `const` and `async`
+  --> $DIR/fn-header-semantic-fail.rs:10:5
+   |
+LL |     const async unsafe extern "C" fn ff5() {}
+   |     ^^^^^-^^^^^------------------------------
+   |     |     |
+   |     |     `async` because of this
+   |     `const` because of this
+
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/fn-header-semantic-fail.rs:16:9
+   |
+LL |         const fn ft3();
+   |         ^^^^^-
+   |         |
+   |         functions in traits cannot be const
+   |         help: remove the `const`
+
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/fn-header-semantic-fail.rs:18:9
+   |
+LL |         const async unsafe extern "C" fn ft5();
+   |         ^^^^^-
+   |         |
+   |         functions in traits cannot be const
+   |         help: remove the `const`
+
+error: functions cannot be both `const` and `async`
+  --> $DIR/fn-header-semantic-fail.rs:18:9
+   |
+LL |         const async unsafe extern "C" fn ft5();
+   |         ^^^^^-^^^^^----------------------------
+   |         |     |
+   |         |     `async` because of this
+   |         `const` because of this
+
+error[E0379]: functions in trait impls cannot be declared const
+  --> $DIR/fn-header-semantic-fail.rs:27:9
+   |
+LL |         const fn ft3() {}
+   |         ^^^^^-
+   |         |
+   |         functions in trait impls cannot be const
+   |         help: remove the `const`
+
+error[E0379]: functions in trait impls cannot be declared const
+  --> $DIR/fn-header-semantic-fail.rs:29:9
+   |
+LL |         const async unsafe extern "C" fn ft5() {}
+   |         ^^^^^-
+   |         |
+   |         functions in trait impls cannot be const
+   |         help: remove the `const`
+
+error: functions cannot be both `const` and `async`
+  --> $DIR/fn-header-semantic-fail.rs:29:9
+   |
+LL |         const async unsafe extern "C" fn ft5() {}
+   |         ^^^^^-^^^^^------------------------------
+   |         |     |
+   |         |     `async` because of this
+   |         `const` because of this
+
+error: functions cannot be both `const` and `async`
+  --> $DIR/fn-header-semantic-fail.rs:39:9
+   |
+LL |         const async unsafe extern "C" fn fi5() {}
+   |         ^^^^^-^^^^^------------------------------
+   |         |     |
+   |         |     `async` because of this
+   |         `const` because of this
+
+error: functions in `extern` blocks cannot have `async` qualifier
+  --> $DIR/fn-header-semantic-fail.rs:44:9
+   |
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+LL |         async fn fe1();
+   |         ^^^^^ help: remove the `async` qualifier
+
+error: items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:45:9
+   |
+LL |         unsafe fn fe2();
+   |         ^^^^^^^^^^^^^^^^
+   |
+help: add `unsafe` to this `extern` block
+   |
+LL |     unsafe extern "C" {
+   |     ++++++
+
+error: functions in `extern` blocks cannot have `const` qualifier
+  --> $DIR/fn-header-semantic-fail.rs:46:9
+   |
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+...
+LL |         const fn fe3();
+   |         ^^^^^ help: remove the `const` qualifier
+
+error: functions in `extern` blocks cannot have `extern` qualifier
+  --> $DIR/fn-header-semantic-fail.rs:47:9
+   |
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+...
+LL |         extern "C" fn fe4();
+   |         ^^^^^^^^^^ help: remove the `extern` qualifier
+
+error: functions in `extern` blocks cannot have `async` qualifier
+  --> $DIR/fn-header-semantic-fail.rs:48:15
+   |
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+...
+LL |         const async unsafe extern "C" fn fe5();
+   |               ^^^^^ help: remove the `async` qualifier
+
+error: functions in `extern` blocks cannot have `const` qualifier
+  --> $DIR/fn-header-semantic-fail.rs:48:9
+   |
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+...
+LL |         const async unsafe extern "C" fn fe5();
+   |         ^^^^^ help: remove the `const` qualifier
+
+error: functions in `extern` blocks cannot have `extern` qualifier
+  --> $DIR/fn-header-semantic-fail.rs:48:28
+   |
+LL |     extern "C" {
+   |     ---------- in this `extern` block
+...
+LL |         const async unsafe extern "C" fn fe5();
+   |                            ^^^^^^^^^^ help: remove the `extern` qualifier
+
+error: items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
+  --> $DIR/fn-header-semantic-fail.rs:48:9
+   |
+LL |         const async unsafe extern "C" fn fe5();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `unsafe` to this `extern` block
+   |
+LL |     unsafe extern "C" {
+   |     ++++++
+
+error: functions cannot be both `const` and `async`
+  --> $DIR/fn-header-semantic-fail.rs:48:9
+   |
+LL |         const async unsafe extern "C" fn fe5();
+   |         ^^^^^-^^^^^----------------------------
+   |         |     |
+   |         |     `async` because of this
+   |         `const` because of this
+
+error: aborting due to 17 previous errors
+
+For more information about this error, try `rustc --explain E0379`.

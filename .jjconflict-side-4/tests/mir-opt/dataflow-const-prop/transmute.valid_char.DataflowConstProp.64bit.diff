@@ -1,0 +1,13 @@
+- // MIR for `valid_char` before DataflowConstProp
++ // MIR for `valid_char` after DataflowConstProp
+  
+  fn valid_char() -> char {
+      let mut _0: char;
+  
+      bb0: {
+-         _0 = const 82_u32 as char (Transmute);
++         _0 = const 'R';
+          return;
+      }
+  }
+  

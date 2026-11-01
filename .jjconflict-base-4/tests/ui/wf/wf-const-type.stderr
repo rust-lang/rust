@@ -1,0 +1,58 @@
+error[E0277]: the trait bound `NotCopy: Copy` is not satisfied
+  --> $DIR/wf-const-type.rs:10:12
+   |
+LL | const FOO: IsCopy<Option<NotCopy>> = IsCopy { t: None };
+   |            ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `NotCopy`
+   |
+   = note: required for `Option<NotCopy>` to implement `Copy`
+note: required by a bound in `IsCopy`
+  --> $DIR/wf-const-type.rs:7:17
+   |
+LL | struct IsCopy<T:Copy> { t: T }
+   |                 ^^^^ required by this bound in `IsCopy`
+help: consider annotating `NotCopy` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | struct NotCopy;
+   |
+
+error[E0277]: the trait bound `NotCopy: Copy` is not satisfied
+  --> $DIR/wf-const-type.rs:10:12
+   |
+LL | const FOO: IsCopy<Option<NotCopy>> = IsCopy { t: None };
+   |            ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `NotCopy`
+   |
+   = note: required for `Option<NotCopy>` to implement `Copy`
+note: required by a bound in `IsCopy`
+  --> $DIR/wf-const-type.rs:7:17
+   |
+LL | struct IsCopy<T:Copy> { t: T }
+   |                 ^^^^ required by this bound in `IsCopy`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider annotating `NotCopy` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | struct NotCopy;
+   |
+
+error[E0277]: the trait bound `NotCopy: Copy` is not satisfied
+  --> $DIR/wf-const-type.rs:10:50
+   |
+LL | const FOO: IsCopy<Option<NotCopy>> = IsCopy { t: None };
+   |                                                  ^^^^ the trait `Copy` is not implemented for `NotCopy`
+   |
+   = note: required for `Option<NotCopy>` to implement `Copy`
+note: required by a bound in `IsCopy`
+  --> $DIR/wf-const-type.rs:7:17
+   |
+LL | struct IsCopy<T:Copy> { t: T }
+   |                 ^^^^ required by this bound in `IsCopy`
+help: consider annotating `NotCopy` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | struct NotCopy;
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

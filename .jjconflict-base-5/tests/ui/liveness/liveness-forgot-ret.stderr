@@ -1,0 +1,27 @@
+error[E0308]: mismatched types
+  --> $DIR/liveness-forgot-ret.rs:4:19
+   |
+LL | fn f(a: isize) -> isize { if god_exists(a) { return 5; }; }
+   |    -              ^^^^^ expected `isize`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+   |
+help: consider returning the local binding `a`
+   |
+LL | fn f(a: isize) -> isize { if god_exists(a) { return 5; }; a }
+   |                                                           +
+
+warning: function cannot return without recursing
+  --> $DIR/liveness-forgot-ret.rs:1:1
+   |
+LL | fn god_exists(a: isize) -> bool { return god_exists(a); }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^          ------------- recursive call site
+   | |
+   | cannot return without recursing
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

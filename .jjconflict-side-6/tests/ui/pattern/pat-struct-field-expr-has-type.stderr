@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/pat-struct-field-expr-has-type.rs:7:16
+   |
+LL |     match (S { f: 42 }) {
+   |           ------------- this expression has type `S`
+LL |         S { f: Ok(_) } => {}
+   |                ^^^^^ expected `u8`, found `Result<_, _>`
+   |
+   = note: expected type `u8`
+              found enum `Result<_, _>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

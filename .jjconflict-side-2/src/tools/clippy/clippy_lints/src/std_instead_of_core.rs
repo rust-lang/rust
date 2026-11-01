@@ -1,0 +1,358 @@
+use clippy_config::Conf;
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::is_from_proc_macro;
+use clippy_utils::msrvs::Msrv;
+use clippy_utils::paths::{PathNS, lookup_path};
+use rustc_attr_ir::{StabilityLevel, StableSince};
+use rustc_errors::Applicability;
+use rustc_hir::def::{DefKind, Namespace, Res};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{Block, Body, HirId, Item, ItemKind, Path, PathSegment, UseKind, UseTree};
+use rustc_lint::{LateContext, LateLintPass, Lint, LintContext as _, impl_lint_pass};
+use rustc_span::symbol::kw;
+use rustc_span::{Ident, Span, Symbol, sym};
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds items imported through `alloc` when available through `core`.
+    ///
+    /// ### Why restrict this?
+    /// Crates which have `no_std` compatibility and may optionally require alloc may wish to ensure types are
+    /// imported from core to ensure disabling `alloc` does not cause the crate to fail to compile. This lint
+    /// is also useful for crates migrating to become `no_std` compatible.
+    ///
+    /// ### Known problems
+    /// The lint is only partially aware of the required MSRV for items that were originally in `std` but moved
+    /// to `core`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # extern crate alloc;
+    /// use alloc::slice::from_ref;
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use core::slice::from_ref;
+    /// ```
+    #[clippy::version = "1.64.0"]
+    pub ALLOC_INSTEAD_OF_CORE,
+    restriction,
+    "type is imported from alloc when available in core"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds items imported through `std` when available through `alloc`.
+    ///
+    /// ### Why restrict this?
+    /// Crates which have `no_std` compatibility and require alloc may wish to ensure types are imported from
+    /// alloc to ensure disabling `std` does not cause the crate to fail to compile. This lint is also useful
+    /// for crates migrating to become `no_std` compatible.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::vec::Vec;
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # extern crate alloc;
+    /// use alloc::vec::Vec;
+    /// ```
+    #[clippy::version = "1.64.0"]
+    pub STD_INSTEAD_OF_ALLOC,
+    restriction,
+    "type is imported from std when available in alloc"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds items imported through `std` when available through `core`.
+    ///
+    /// ### Why restrict this?
+    /// Crates which have `no_std` compatibility may wish to ensure types are imported from core to ensure
+    /// disabling `std` does not cause the crate to fail to compile. This lint is also useful for crates
+    /// migrating to become `no_std` compatible.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::hash::Hasher;
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use core::hash::Hasher;
+    /// ```
+    #[clippy::version = "1.64.0"]
+    pub STD_INSTEAD_OF_CORE,
+    restriction,
+    "type is imported from std when available in core"
+}
+
+impl_lint_pass!(StdReexports => [
+    ALLOC_INSTEAD_OF_CORE,
+    STD_INSTEAD_OF_ALLOC,
+    STD_INSTEAD_OF_CORE,
+]);
+
+pub struct StdReexports {
+    lint_points: Option<(Span, Vec<LintPoint>)>,
+    msrv: Msrv,
+    /// Imports are handled manually, as they are a tree, not a linear path.
+    /// If one element in a nested import wants to change the shared start of the import,
+    /// but another element does not, then we shouldn't emit a suggestion.
+    in_import: bool,
+}
+
+impl StdReexports {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            lint_points: Option::default(),
+            msrv: conf.msrv.into(),
+            in_import: false,
+        }
+    }
+
+    fn lint_if_finish(&mut self, cx: &LateContext<'_>, krate: Span, lint_point: LintPoint) {
+        match &mut self.lint_points {
+            Some((prev_krate, prev_lints)) if prev_krate.overlaps(krate) => {
+                prev_lints.push(lint_point);
+            },
+            _ => emit_lints(cx, self.lint_points.replace((krate, vec![lint_point]))),
+        }
+    }
+
+    fn walk_import<'tcx>(&mut self, cx: &LateContext<'tcx>, tree: &UseTree<'tcx>, prefix: &[PathSegment<'tcx>]) {
+        match tree.kind {
+            UseKind::Single(_) => {
+                let segments: Vec<_> = prefix
+                    .iter()
+                    .copied()
+                    .chain(tree.prefix.segments.iter().copied())
+                    .collect();
+                for res in tree.prefix.res.present_items() {
+                    self.check_path_segments(
+                        cx,
+                        &Path {
+                            span: tree.prefix.span,
+                            res,
+                            segments: &segments[..],
+                        },
+                    );
+                }
+            },
+            UseKind::Glob => {},
+            UseKind::Nested { items } => {
+                let segments: Vec<_> = prefix
+                    .iter()
+                    .copied()
+                    .chain(tree.prefix.segments.iter().copied())
+                    .collect();
+                for (nested, _, _) in items {
+                    self.walk_import(cx, nested, &segments);
+                }
+            },
+        }
+    }
+
+    fn check_path_segments(&mut self, cx: &LateContext<'_>, path: &Path<'_>) {
+        if let Res::Def(def_kind, def_id) = path.res
+            && !matches!(def_kind, DefKind::Macro(_))
+            && let Some((res, ident)) = get_first_segment(path.segments)
+            && let Res::Def(DefKind::Mod, crate_def_id) = res
+            && crate_def_id.is_crate_root()
+            && is_stable(cx, def_id, self.msrv)
+            && !path.span.in_external_macro(cx.sess().source_map())
+            && !is_from_proc_macro(cx, &ident)
+            && let Some(last_segment) = path.segments.last()
+        {
+            let (lint, used_mod, replace_with) = match ident.name {
+                sym::std => match cx.tcx.crate_name(def_id.krate) {
+                    sym::core => (STD_INSTEAD_OF_CORE, "std", "core"),
+                    sym::alloc => (STD_INSTEAD_OF_ALLOC, "std", "alloc"),
+                    _ => {
+                        self.lint_if_finish(cx, ident.span, LintPoint::Conflict);
+                        return;
+                    },
+                },
+                sym::alloc if cx.tcx.crate_name(def_id.krate) == sym::core => (ALLOC_INSTEAD_OF_CORE, "alloc", "core"),
+                _ => {
+                    self.lint_if_finish(cx, ident.span, LintPoint::Conflict);
+                    return;
+                },
+            };
+
+            // Only the crate name is replaced, so the rest of the path has to name the same item in
+            // the target crate. `std::collections::Bound` for instance reaches `core::ops::Bound`
+            // through a legacy re-export, and `core::collections` does not exist.
+            if !resolves_in(cx, path, def_kind, def_id, replace_with) {
+                self.lint_if_finish(cx, ident.span, LintPoint::Conflict);
+                return;
+            }
+
+            self.lint_if_finish(
+                cx,
+                ident.span,
+                LintPoint::Available(last_segment.ident.span, lint, used_mod, replace_with),
+            );
+        }
+    }
+}
+
+#[derive(Debug)]
+enum LintPoint {
+    Available(Span, &'static Lint, &'static str, &'static str),
+    Conflict,
+}
+
+impl<'tcx> LateLintPass<'tcx> for StdReexports {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
+        if let ItemKind::Use(tree) = item.kind {
+            if let UseKind::Nested { items } = tree.kind {
+                for (nested, _, _) in items {
+                    self.walk_import(cx, nested, tree.prefix.segments);
+                }
+                self.in_import = true;
+            }
+        }
+    }
+
+    fn check_item_post(&mut self, _: &LateContext<'_>, _: &Item<'_>) {
+        self.in_import = false;
+    }
+
+    fn check_path(&mut self, cx: &LateContext<'tcx>, path: &Path<'_>, _: HirId) {
+        if self.in_import {
+            return;
+        }
+        self.check_path_segments(cx, path);
+    }
+
+    fn check_block_post(&mut self, cx: &LateContext<'tcx>, _: &Block<'tcx>) {
+        emit_lints(cx, self.lint_points.take());
+    }
+
+    fn check_body_post(&mut self, cx: &LateContext<'tcx>, _: &Body<'tcx>) {
+        emit_lints(cx, self.lint_points.take());
+    }
+
+    fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
+        emit_lints(cx, self.lint_points.take());
+    }
+}
+
+fn emit_lints(cx: &LateContext<'_>, lint_points: Option<(Span, Vec<LintPoint>)>) {
+    let Some((krate_span, lint_points)) = lint_points else {
+        return;
+    };
+
+    let mut lint: Option<(&'static Lint, &'static str, &'static str)> = None;
+    let mut has_conflict = false;
+    for lint_point in &lint_points {
+        match lint_point {
+            LintPoint::Available(_, l, used_mod, replace_with)
+                if lint.is_none_or(|(prev_l, ..)| l.name == prev_l.name) =>
+            {
+                lint = Some((l, used_mod, replace_with));
+            },
+            _ => {
+                has_conflict = true;
+                break;
+            },
+        }
+    }
+
+    if !has_conflict && let Some((lint, used_mod, replace_with)) = lint {
+        span_lint_and_sugg(
+            cx,
+            lint,
+            krate_span,
+            format!("used import from `{used_mod}` instead of `{replace_with}`"),
+            format!("consider importing the item from `{replace_with}`"),
+            (*replace_with).to_string(),
+            Applicability::MachineApplicable,
+        );
+        return;
+    }
+
+    for lint_point in lint_points {
+        let LintPoint::Available(span, lint, used_mod, replace_with) = lint_point else {
+            continue;
+        };
+        span_lint_and_help(
+            cx,
+            lint,
+            span,
+            format!("used import from `{used_mod}` instead of `{replace_with}`"),
+            None,
+            format!("consider importing the item from `{replace_with}`"),
+        );
+    }
+}
+
+/// Checks whether `path` still resolves to `def_id` once its crate name is replaced with
+/// `replace_with`.
+///
+/// [`lookup_path`] is expensive, so this is only called once a path is about to be linted.
+fn resolves_in(cx: &LateContext<'_>, path: &Path<'_>, def_kind: DefKind, def_id: DefId, replace_with: &str) -> bool {
+    let ns = match def_kind.ns() {
+        Some(Namespace::TypeNS) => PathNS::Type,
+        Some(Namespace::ValueNS) => PathNS::Value,
+        Some(Namespace::MacroNS) => PathNS::Macro,
+        None => PathNS::Arbitrary,
+    };
+
+    let mut segments = Vec::with_capacity(path.segments.len());
+    segments.push(Symbol::intern(replace_with));
+    segments.extend(
+        path.segments
+            .iter()
+            .skip_while(|segment| segment.ident.name == kw::PathRoot)
+            .skip(1)
+            .map(|segment| segment.ident.name),
+    );
+
+    lookup_path(cx.tcx, ns, &segments).contains(&def_id)
+}
+
+/// Returns the first named segment of a [`Path`].
+///
+/// If this is a global path (such as `::std::fmt::Debug`), then the segment after [`kw::PathRoot`]
+/// is returned.
+fn get_first_segment<'tcx>(segments: &'tcx [PathSegment<'tcx>]) -> Option<(Res, Ident)> {
+    match segments {
+        // A global path will have PathRoot as the first segment. In this case, return the segment after.
+        [x, y, ..] if x.ident.name == kw::PathRoot => Some((y.res, y.ident)),
+        [x, ..] => Some((x.res, x.ident)),
+        _ => None,
+    }
+}
+
+/// Checks if all ancestors of `def_id` meet `msrv` to avoid linting [unstable moves](https://github.com/rust-lang/rust/pull/95956)
+/// or now stable moves that were once unstable.
+///
+/// Does not catch individually moved items
+fn is_stable(cx: &LateContext<'_>, mut def_id: DefId, msrv: Msrv) -> bool {
+    loop {
+        if let Some(stability) = cx.tcx.lookup_stability(def_id) {
+            match stability.level {
+                // Workaround for items from `core::intrinsics` with a stable export in a different module.
+                // Not that we ignore the `since` field as we are already accessing the item in question.
+                StabilityLevel::Stable {
+                    allowed_through_unstable_modules: Some(_),
+                    ..
+                } => return true,
+                StabilityLevel::Stable { since, .. } => match since {
+                    StableSince::Version(v) if !msrv.meets(cx, v) => return false,
+                    StableSince::Current if msrv.current(cx).is_none() => return false,
+                    StableSince::Err(_) => return false,
+                    StableSince::Version(_) | StableSince::Current => {},
+                },
+                StabilityLevel::Unstable { .. } => return false,
+            }
+        }
+
+        match cx.tcx.opt_parent(def_id) {
+            Some(parent) => def_id = parent,
+            None => return true,
+        }
+    }
+}

@@ -1,0 +1,18 @@
+error: expected one of `>`, a const expression, lifetime, or type, found `}`
+  --> $DIR/missing-closing-angle-bracket-struct-field-ty.rs:9:1
+   |
+LL | pub struct Foo {
+   |            --- while parsing this struct
+...
+LL |     c: Arc<Mutex<usize>>,
+   |                          - expected one of `>`, a const expression, lifetime, or type
+LL | }
+   | ^ unexpected token
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |     b: Arc<Mutex<usize>>,
+   |                        +
+
+error: aborting due to 1 previous error
+

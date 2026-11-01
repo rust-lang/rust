@@ -1,0 +1,5 @@
+// Test to ensure that the `--extend-css` option is working as expected.
+go-to: "file://" + |DOC_PATH| + "/extend_css/index.html"
+show-text: true
+// The text from the `.extend` element should be red.
+assert-css: (".extend", {"color": "rgb(255, 0, 0)"})

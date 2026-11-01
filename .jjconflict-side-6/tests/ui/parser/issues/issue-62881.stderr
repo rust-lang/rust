@@ -1,0 +1,8 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-62881.rs:3:96
+   |
+LL | fn f() -> isize { fn f() -> isize {} pub f<
+   |                 - unclosed delimiter                                                          ^
+
+error: aborting due to 1 previous error
+

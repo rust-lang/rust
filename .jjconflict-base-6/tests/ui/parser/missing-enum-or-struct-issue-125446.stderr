@@ -1,0 +1,8 @@
+error: missing `enum` or `struct` for enum or struct definition
+  --> $DIR/missing-enum-or-struct-issue-125446.rs:1:1
+   |
+LL | Whoops {}
+   | ^^^^^^
+
+error: aborting due to 1 previous error
+

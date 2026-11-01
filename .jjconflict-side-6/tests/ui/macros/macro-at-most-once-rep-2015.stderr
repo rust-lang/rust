@@ -1,0 +1,161 @@
+error: the `?` macro repetition operator does not take a separator
+  --> $DIR/macro-at-most-once-rep-2015.rs:11:10
+   |
+LL |     ($(a),?) => {};
+   |          ^
+
+error: no rules expected `?`
+  --> $DIR/macro-at-most-once-rep-2015.rs:25:11
+   |
+LL | macro_rules! foo {
+   | ---------------- when calling this macro
+...
+LL |     foo!(a?);
+   |           ^ no rules expected this token in macro call
+   |
+   = note: while trying to match sequence end
+
+error: no rules expected `?`
+  --> $DIR/macro-at-most-once-rep-2015.rs:26:11
+   |
+LL | macro_rules! foo {
+   | ---------------- when calling this macro
+...
+LL |     foo!(a?a);
+   |           ^ no rules expected this token in macro call
+   |
+   = note: while trying to match sequence end
+
+error: no rules expected `?`
+  --> $DIR/macro-at-most-once-rep-2015.rs:27:11
+   |
+LL | macro_rules! foo {
+   | ---------------- when calling this macro
+...
+LL |     foo!(a?a?a);
+   |           ^ no rules expected this token in macro call
+   |
+   = note: while trying to match sequence end
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-at-most-once-rep-2015.rs:29:5
+   |
+LL | macro_rules! barplus {
+   | -------------------- when calling this macro
+...
+LL |     barplus!();
+   |     ^^^^^^^^^^ missing tokens in macro arguments
+   |
+note: while trying to match `+`
+  --> $DIR/macro-at-most-once-rep-2015.rs:15:11
+   |
+LL |     ($(a)?+) => {}; // ok. matches "a+" and "+"
+   |           ^
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-at-most-once-rep-2015.rs:30:15
+   |
+LL | macro_rules! barplus {
+   | -------------------- when calling this macro
+...
+LL |     barplus!(a);
+   |               ^ missing tokens in macro arguments
+   |
+note: while trying to match `+`
+  --> $DIR/macro-at-most-once-rep-2015.rs:15:11
+   |
+LL |     ($(a)?+) => {}; // ok. matches "a+" and "+"
+   |           ^
+
+error: no rules expected `?`
+  --> $DIR/macro-at-most-once-rep-2015.rs:31:15
+   |
+LL | macro_rules! barplus {
+   | -------------------- when calling this macro
+...
+LL |     barplus!(a?);
+   |               ^ no rules expected this token in macro call
+   |
+note: while trying to match `+`
+  --> $DIR/macro-at-most-once-rep-2015.rs:15:11
+   |
+LL |     ($(a)?+) => {}; // ok. matches "a+" and "+"
+   |           ^
+
+error: no rules expected `?`
+  --> $DIR/macro-at-most-once-rep-2015.rs:32:15
+   |
+LL | macro_rules! barplus {
+   | -------------------- when calling this macro
+...
+LL |     barplus!(a?a);
+   |               ^ no rules expected this token in macro call
+   |
+note: while trying to match `+`
+  --> $DIR/macro-at-most-once-rep-2015.rs:15:11
+   |
+LL |     ($(a)?+) => {}; // ok. matches "a+" and "+"
+   |           ^
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-at-most-once-rep-2015.rs:36:5
+   |
+LL | macro_rules! barstar {
+   | -------------------- when calling this macro
+...
+LL |     barstar!();
+   |     ^^^^^^^^^^ missing tokens in macro arguments
+   |
+note: while trying to match `*`
+  --> $DIR/macro-at-most-once-rep-2015.rs:19:11
+   |
+LL |     ($(a)?*) => {}; // ok. matches "a*" and "*"
+   |           ^
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-at-most-once-rep-2015.rs:37:15
+   |
+LL | macro_rules! barstar {
+   | -------------------- when calling this macro
+...
+LL |     barstar!(a);
+   |               ^ missing tokens in macro arguments
+   |
+note: while trying to match `*`
+  --> $DIR/macro-at-most-once-rep-2015.rs:19:11
+   |
+LL |     ($(a)?*) => {}; // ok. matches "a*" and "*"
+   |           ^
+
+error: no rules expected `?`
+  --> $DIR/macro-at-most-once-rep-2015.rs:38:15
+   |
+LL | macro_rules! barstar {
+   | -------------------- when calling this macro
+...
+LL |     barstar!(a?);
+   |               ^ no rules expected this token in macro call
+   |
+note: while trying to match `*`
+  --> $DIR/macro-at-most-once-rep-2015.rs:19:11
+   |
+LL |     ($(a)?*) => {}; // ok. matches "a*" and "*"
+   |           ^
+
+error: no rules expected `?`
+  --> $DIR/macro-at-most-once-rep-2015.rs:39:15
+   |
+LL | macro_rules! barstar {
+   | -------------------- when calling this macro
+...
+LL |     barstar!(a?a);
+   |               ^ no rules expected this token in macro call
+   |
+note: while trying to match `*`
+  --> $DIR/macro-at-most-once-rep-2015.rs:19:11
+   |
+LL |     ($(a)?*) => {}; // ok. matches "a*" and "*"
+   |           ^
+
+error: aborting due to 12 previous errors
+

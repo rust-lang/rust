@@ -1,0 +1,41 @@
+error: `#[pin_v2]` types may not have `#[repr(packed)]`
+  --> $DIR/pin_v2-packed.rs:16:1
+   |
+LL | struct Packed {
+   | ^^^^^^^^^^^^^
+   |
+   = note: fields of a `#[repr(packed)]` type can be under-aligned, so a structurally pinned field may be moved to a properly aligned location, which `Pin` does not allow
+note: `Packed` is marked `#[pin_v2]` here
+  --> $DIR/pin_v2-packed.rs:14:1
+   |
+LL | #[pin_v2]
+   | ^^^^^^^^^
+
+error: `#[pin_v2]` types may not have `#[repr(packed)]`
+  --> $DIR/pin_v2-packed.rs:24:1
+   |
+LL | struct PackedN<T>(T);
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: fields of a `#[repr(packed)]` type can be under-aligned, so a structurally pinned field may be moved to a properly aligned location, which `Pin` does not allow
+note: `PackedN` is marked `#[pin_v2]` here
+  --> $DIR/pin_v2-packed.rs:22:1
+   |
+LL | #[pin_v2]
+   | ^^^^^^^^^
+
+error: `#[pin_v2]` types may not have `#[repr(packed)]`
+  --> $DIR/pin_v2-packed.rs:29:1
+   |
+LL | union PackedUnion {
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: fields of a `#[repr(packed)]` type can be under-aligned, so a structurally pinned field may be moved to a properly aligned location, which `Pin` does not allow
+note: `PackedUnion` is marked `#[pin_v2]` here
+  --> $DIR/pin_v2-packed.rs:27:1
+   |
+LL | #[pin_v2]
+   | ^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

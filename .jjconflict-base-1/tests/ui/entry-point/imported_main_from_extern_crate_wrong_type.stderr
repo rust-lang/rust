@@ -1,0 +1,12 @@
+error[E0580]: `main` function has wrong type
+  --> $DIR/auxiliary/bad_main_functions.rs:1:1
+   |
+LL | pub fn boilerplate(x: u8) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+   = note: expected signature `fn()`
+              found signature `fn(u8)`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0580`.

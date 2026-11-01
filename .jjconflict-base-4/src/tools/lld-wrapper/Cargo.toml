@@ -1,0 +1,5 @@
+[package]
+name = "lld-wrapper"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"

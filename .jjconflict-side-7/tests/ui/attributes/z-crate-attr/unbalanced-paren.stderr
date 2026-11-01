@@ -1,0 +1,11 @@
+error: mismatched closing delimiter: `]`
+  --> <crate attribute>:1:4
+   |
+LL | #![(]
+   |   -^^ mismatched closing delimiter
+   |   ||
+   |   |unclosed delimiter
+   |   closing delimiter possibly meant for this
+
+error: aborting due to 1 previous error
+

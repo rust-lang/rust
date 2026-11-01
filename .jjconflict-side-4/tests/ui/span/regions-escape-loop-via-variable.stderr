@@ -1,0 +1,15 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/regions-escape-loop-via-variable.rs:11:13
+   |
+LL |         let x = 1 + *p;
+   |             -       -- borrow later used here
+   |             |
+   |             binding `x` declared here
+LL |         p = &x;
+   |             ^^ borrowed value does not live long enough
+LL |     }
+   |     - `x` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

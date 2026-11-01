@@ -1,0 +1,1 @@
+builtin#global_asm("")

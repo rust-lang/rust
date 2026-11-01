@@ -1,0 +1,17 @@
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
+  --> $DIR/issue-104327.rs:10:5
+   |
+LL |     fn f() {}
+   |     ------ `Foo::f` defined here
+...
+LL |     Foo::f();
+   |     ^^^^^^^^ cannot call associated function of trait
+   |
+help: use the fully-qualified path to the only available implementation
+   |
+LL |     <(dyn Bar + 'static) as Foo>::f();
+   |     +++++++++++++++++++++++    +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0790`.

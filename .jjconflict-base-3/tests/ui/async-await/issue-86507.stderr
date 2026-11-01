@@ -1,0 +1,23 @@
+error: future cannot be sent between threads safely
+  --> $DIR/issue-86507.rs:17:13
+   |
+LL | /             Box::pin(
+LL | |                 async move {
+LL | |                     let x = x;
+LL | |                 }
+LL | |             )
+   | |_____________^ future created by async block is not `Send`
+   |
+note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
+  --> $DIR/issue-86507.rs:19:29
+   |
+LL |                     let x = x;
+   |                             ^ has type `&T` which is not `Send`, because `T` is not `Sync`
+   = note: required for the cast from `Pin<Box<{async block@$DIR/issue-86507.rs:18:17: 18:27}>>` to `Pin<Box<dyn Future<Output = ()> + Send>>`
+help: consider further restricting type parameter `T` with trait `Sync`
+   |
+LL |     fn bar<'me, 'async_trait, T: Send + std::marker::Sync>(x: &'me T)
+   |                                       +++++++++++++++++++
+
+error: aborting due to 1 previous error
+

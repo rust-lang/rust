@@ -1,0 +1,9 @@
+Content-Length: 89
+
+{"seq":1,"type":"request","command":"enableNetworking","arguments":{"mirrorEvents":true}}Content-Length: 85
+
+{"seq":2,"type":"request","command":"initialize","arguments":{"adapterID":"priroda"}}Content-Length: 60
+
+{"seq":3,"type":"request","command":"launch","arguments":{}}Content-Length: 56
+
+{"seq":4,"type":"request","command":"configurationDone"}

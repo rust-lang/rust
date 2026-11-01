@@ -1,0 +1,21 @@
+error[E0369]: binary operation `==` cannot be applied to type `A`
+  --> $DIR/issue-62375.rs:7:7
+   |
+LL |     a == A::Value;
+   |     - ^^ -------- fn(()) -> A {A::Value}
+   |     |
+   |     A
+   |
+note: an implementation of `PartialEq<fn(()) -> A {A::Value}>` might be missing for `A`
+  --> $DIR/issue-62375.rs:1:1
+   |
+LL | enum A {
+   | ^^^^^^ must implement `PartialEq<fn(()) -> A {A::Value}>`
+help: use parentheses to construct this tuple variant
+   |
+LL |     a == A::Value(/* () */);
+   |                  ++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

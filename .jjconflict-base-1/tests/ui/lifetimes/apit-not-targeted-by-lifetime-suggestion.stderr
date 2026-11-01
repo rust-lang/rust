@@ -1,0 +1,56 @@
+error: lifetime may not live long enough
+  --> $DIR/apit-not-targeted-by-lifetime-suggestion.rs:10:5
+   |
+LL | fn push_apit(vec: &mut Vec<&str>, s: &str, _fun: impl Clone) {
+   |                            -         - let's call the lifetime of this reference `'1`
+   |                            |
+   |                            let's call the lifetime of this reference `'2`
+LL |     vec.push(s);
+   |     ^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of a mutable reference to `Vec<&str>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+help: consider introducing a named lifetime parameter
+   |
+LL | fn push_apit<'a>(vec: &mut Vec<&'a str>, s: &'a str, _fun: impl Clone) {
+   |             ++++                ++           ++
+
+error: lifetime may not live long enough
+  --> $DIR/apit-not-targeted-by-lifetime-suggestion.rs:15:5
+   |
+LL | fn push_ref_apit(vec: &mut Vec<&str>, s: &str, _fun: &impl Clone) {
+   |                                -         - let's call the lifetime of this reference `'1`
+   |                                |
+   |                                let's call the lifetime of this reference `'2`
+LL |     vec.push(s);
+   |     ^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of a mutable reference to `Vec<&str>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+help: consider introducing a named lifetime parameter
+   |
+LL | fn push_ref_apit<'a>(vec: &mut Vec<&'a str>, s: &'a str, _fun: &impl Clone) {
+   |                 ++++                ++           ++
+
+error: lifetime may not live long enough
+  --> $DIR/apit-not-targeted-by-lifetime-suggestion.rs:20:5
+   |
+LL | fn push_real_generic<T>(vec: &mut Vec<&str>, s: &str, _fun: T) {
+   |                                       -         - let's call the lifetime of this reference `'1`
+   |                                       |
+   |                                       let's call the lifetime of this reference `'2`
+LL |     vec.push(s);
+   |     ^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of a mutable reference to `Vec<&str>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+help: consider introducing a named lifetime parameter
+   |
+LL | fn push_real_generic<'a, T>(vec: &mut Vec<&'a str>, s: &'a str, _fun: T) {
+   |                      +++                   ++           ++
+
+error: aborting due to 3 previous errors
+

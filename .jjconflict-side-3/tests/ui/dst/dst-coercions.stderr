@@ -1,0 +1,12 @@
+warning: method `dummy` is never used
+  --> $DIR/dst-coercions.rs:7:14
+   |
+LL | trait T { fn dummy(&self) { } }
+   |       -      ^^^^^
+   |       |
+   |       method in this trait
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,37 @@
+error: cannot find attribute `empty_helper` in this scope
+  --> $DIR/disappearing-resolution.rs:18:3
+   |
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^
+   |
+help: `empty_helper` is an attribute that can be used by the derive macro `Empty`, you might be missing a `derive` attribute
+   |
+LL + #[derive(Empty)]
+LL | struct S;
+   |
+
+error[E0603]: derive macro import `Empty` is private
+  --> $DIR/disappearing-resolution.rs:11:8
+   |
+LL | use m::Empty;
+   |        ^^^^^ private derive macro import
+   |
+note: the derive macro import `Empty` is defined here...
+  --> $DIR/disappearing-resolution.rs:9:9
+   |
+LL |     use test_macros::Empty;
+   |         ^^^^^^^^^^^^^^^^^^
+note: ...and refers to the derive macro `Empty` which is defined here
+  --> $DIR/auxiliary/test-macros.rs:20:1
+   |
+LL | pub fn empty_derive(_: TokenStream) -> TokenStream {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ you could import this directly
+help: import `Empty` directly
+   |
+LL - use m::Empty;
+LL + use test_macros::Empty;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

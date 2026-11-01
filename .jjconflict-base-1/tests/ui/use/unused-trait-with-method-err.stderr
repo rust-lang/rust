@@ -1,0 +1,19 @@
+error[E0599]: no method named `uwu` found for struct `Foo` in the current scope
+  --> $DIR/unused-trait-with-method-err.rs:15:9
+   |
+LL | struct Foo;
+   | ---------- method `uwu` not found for this struct
+...
+LL |     Foo.uwu();
+   |         ^^^ method not found in `Foo`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Bar` defines an item `uwu`, perhaps you need to implement it
+  --> $DIR/unused-trait-with-method-err.rs:7:5
+   |
+LL |     pub trait Bar {
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

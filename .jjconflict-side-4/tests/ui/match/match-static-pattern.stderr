@@ -1,0 +1,9 @@
+error[E0532]: expected unit struct, unit variant or constant, found static `self::X`
+  --> $DIR/match-static-pattern.rs:6:9
+   |
+LL |         self::X => {}
+   |         ^^^^^^^ not a unit struct, unit variant or constant
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0532`.

@@ -1,0 +1,12 @@
+error: `#[panic_handler]` function required, but not found
+
+error: the `panic_handler` attribute cannot be used on statics
+  --> $DIR/panic-handler-wrong-location.rs:6:3
+   |
+LL | #[panic_handler]
+   |   ^^^^^^^^^^^^^
+   |
+   = help: the `panic_handler` attribute can only be applied to functions
+
+error: aborting due to 2 previous errors
+

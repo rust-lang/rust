@@ -1,0 +1,12 @@
+warning: method `dummy` is never used
+  --> $DIR/coerce-mut-trait-object-8248.rs:5:8
+   |
+LL | trait A {
+   |       - method in this trait
+LL |     fn dummy(&self) { }
+   |        ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,27 @@
+error[E0599]: no method named `get_a` found for reference `&Self` in the current scope
+  --> $DIR/constrain-trait.rs:16:31
+   |
+LL |         println!("{:?}", self.get_a());
+   |                               ^^^^^ method not found in `&Self`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `get_a`, perhaps you need to add another supertrait for it:
+   |
+LL | trait UseString: std::fmt::Debug + GetString {
+   |                                  +++++++++++
+
+error[E0599]: no method named `get_a` found for reference `&Self` in the current scope
+  --> $DIR/constrain-trait.rs:22:31
+   |
+LL |         println!("{:?}", self.get_a());
+   |                               ^^^^^ method not found in `&Self`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `get_a`, perhaps you need to add a supertrait for it:
+   |
+LL | trait UseString2: GetString {
+   |                 +++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

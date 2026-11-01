@@ -1,0 +1,20 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/borrowck-ref-into-rvalue.rs:4:11
+   |
+LL |     match Some("Hello".to_string()) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+...
+LL |     }
+   |     - temporary value is freed at the end of this statement
+LL |     println!("{}", *msg);
+   |                    ---- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = Some("Hello".to_string());
+LL ~     match binding {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.

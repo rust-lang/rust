@@ -1,0 +1,11 @@
+   LL|       |// Verify that the entry point injected by the test harness doesn't cause
+   LL|       |// weird artifacts in the coverage report (e.g. issue #10749).
+   LL|       |
+   LL|       |//@ compile-flags: --test
+   LL|       |
+   LL|       |#[allow(dead_code)]
+   LL|      0|fn unused() {}
+   LL|       |
+   LL|       |#[test]
+   LL|      1|fn my_test() {}
+

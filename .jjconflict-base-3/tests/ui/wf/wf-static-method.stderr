@@ -1,0 +1,38 @@
+error: lifetime may not live long enough
+  --> $DIR/wf-static-method.rs:37:5
+   |
+LL | fn evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |     <()>::static_evil(b)
+   |     ^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/wf-static-method.rs:42:5
+   |
+LL | fn indirect_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |                  --  -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     <IndirectEvil>::static_evil(b)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/wf-static-method.rs:47:5
+   |
+LL | fn inherent_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |                  --  -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     <Evil>::inherent_evil(b)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: aborting due to 3 previous errors
+

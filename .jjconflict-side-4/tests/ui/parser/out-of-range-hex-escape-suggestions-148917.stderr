@@ -1,0 +1,77 @@
+error: out of range hex escape
+  --> $DIR/out-of-range-hex-escape-suggestions-148917.rs:2:15
+   |
+LL |     let _c = '\xFF';
+   |               ^^^^ must be a character in the range [\x00-\x7f]
+   |
+   = help: if you want to write a byte literal, use `b'\xFF'`
+   = help: if you want to write a Unicode character, use `'\u{FF}'`
+
+error: out of range hex escape
+  --> $DIR/out-of-range-hex-escape-suggestions-148917.rs:3:15
+   |
+LL |     let _s = "\xFF";
+   |               ^^^^ must be a character in the range [\x00-\x7f]
+   |
+   = help: if you want to write a byte literal, use `b'\xFF'`
+   = help: if you want to write a Unicode character, use `'\u{FF}'`
+
+error: out of range hex escape
+  --> $DIR/out-of-range-hex-escape-suggestions-148917.rs:5:16
+   |
+LL |     let _c2 = '\xff';
+   |                ^^^^ must be a character in the range [\x00-\x7f]
+   |
+   = help: if you want to write a byte literal, use `b'\xff'`
+   = help: if you want to write a Unicode character, use `'\u{FF}'`
+
+error: out of range hex escape
+  --> $DIR/out-of-range-hex-escape-suggestions-148917.rs:6:16
+   |
+LL |     let _s2 = "\xff";
+   |                ^^^^ must be a character in the range [\x00-\x7f]
+   |
+   = help: if you want to write a byte literal, use `b'\xff'`
+   = help: if you want to write a Unicode character, use `'\u{FF}'`
+
+error: out of range hex escape
+  --> $DIR/out-of-range-hex-escape-suggestions-148917.rs:8:16
+   |
+LL |     let _c3 = '\x80';
+   |                ^^^^ must be a character in the range [\x00-\x7f]
+   |
+   = help: if you want to write a byte literal, use `b'\x80'`
+   = help: if you want to write a Unicode character, use `'\u{80}'`
+
+error: out of range hex escape
+  --> $DIR/out-of-range-hex-escape-suggestions-148917.rs:9:16
+   |
+LL |     let _s3 = "\x80";
+   |                ^^^^ must be a character in the range [\x00-\x7f]
+   |
+   = help: if you want to write a byte literal, use `b'\x80'`
+   = help: if you want to write a Unicode character, use `'\u{80}'`
+
+error: out of range hex escape
+  --> $DIR/out-of-range-hex-escape-suggestions-148917.rs:15:11
+   |
+LL |     dbg!('\xFF');
+   |           ^^^^ must be a character in the range [\x00-\x7f]
+   |
+   = help: if you want to write a byte literal, use `b'\xFF'`
+   = help: if you want to write a Unicode character, use `'\u{FF}'`
+
+error: out of range hex escape
+  --> $DIR/out-of-range-hex-escape-suggestions-148917.rs:18:11
+   |
+LL |     dbg!("\xFFFFF");
+   |           ^^^^ must be a character in the range [\x00-\x7f]
+
+error: out of range hex escape
+  --> $DIR/out-of-range-hex-escape-suggestions-148917.rs:20:39
+   |
+LL |     dbg!("this is some kind of string \xa7");
+   |                                       ^^^^ must be a character in the range [\x00-\x7f]
+
+error: aborting due to 9 previous errors
+

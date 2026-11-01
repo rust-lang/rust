@@ -1,0 +1,60 @@
+error: type `T` has already been used as a bound predicate
+  --> tests/ui/type_repetition_in_bounds.rs:10:5
+   |
+LL |     T: Clone,
+   |     ^^^^^^^^
+   |
+   = help: consider combining the bounds: `T: Copy + Clone`
+   = note: `-D clippy::type-repetition-in-bounds` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::type_repetition_in_bounds)]`
+
+error: type `Self` has already been used as a bound predicate
+  --> tests/ui/type_repetition_in_bounds.rs:28:5
+   |
+LL |     Self: Copy + Default + Ord,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider combining the bounds: `Self: Clone + Copy + Default + Ord`
+
+error: type `T` has already been used as a bound predicate
+  --> tests/ui/type_repetition_in_bounds.rs:103:5
+   |
+LL |     T: Clone,
+   |     ^^^^^^^^
+   |
+   = help: consider combining the bounds: `T: ?Sized + Clone`
+
+error: type `T` has already been used as a bound predicate
+  --> tests/ui/type_repetition_in_bounds.rs:109:5
+   |
+LL |     T: ?Sized,
+   |     ^^^^^^^^^
+   |
+   = help: consider combining the bounds: `T: Clone + ?Sized`
+
+error: type `T` has already been used as a bound predicate
+  --> tests/ui/type_repetition_in_bounds.rs:135:9
+   |
+LL |         T: Trait<Option<usize>, Box<[String]>, bool> + 'static,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider combining the bounds: `T: ?Sized + Trait<Option<usize>, Box<[String]>, bool> + 'static`
+
+error: type `K` has already been used as a bound predicate
+  --> tests/ui/type_repetition_in_bounds.rs:144:5
+   |
+LL |     K: Clone,
+   |     ^^^^^^^^
+   |
+   = help: consider combining the bounds: `K: 'a + Clone`
+
+error: type `Vec<T>` has already been used as a bound predicate
+  --> tests/ui/type_repetition_in_bounds.rs:153:5
+   |
+LL |     Vec<T>: Clone,
+   |     ^^^^^^^^^^^^^
+   |
+   = help: consider combining the bounds: `Vec<T>: Clone + Clone`
+
+error: aborting due to 7 previous errors
+

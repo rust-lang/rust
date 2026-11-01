@@ -1,0 +1,8 @@
+error: expected expression, found keyword `mut`
+  --> $DIR/removed-syntax-mut-vec-expr.rs:2:14
+   |
+LL |     let v = [mut 1, 2, 3, 4];
+   |              ^^^ expected expression
+
+error: aborting due to 1 previous error
+

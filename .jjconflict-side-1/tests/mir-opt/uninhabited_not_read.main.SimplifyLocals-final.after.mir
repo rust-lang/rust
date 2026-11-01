@@ -1,0 +1,49 @@
+// MIR for `main` after SimplifyLocals-final
+
+fn main() -> () {
+    let mut _0: ();
+    let _1: u8;
+    let mut _2: *const !;
+    let mut _3: *const u8;
+    let _4: u8;
+    let mut _5: *const !;
+    let mut _6: *const u8;
+    scope 1 {
+        debug x => _1;
+        scope 2 {
+            debug x => _2;
+            scope 3 {
+            }
+        }
+    }
+    scope 4 {
+        debug x => _4;
+        scope 5 {
+            debug x => _5;
+            scope 6 {
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const 3_u8;
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = &raw const _1;
+        _2 = copy _3 as *const ! (PtrToPtr);
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageDead(_1);
+        StorageLive(_4);
+        _4 = const 3_u8;
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = &raw const _4;
+        _5 = copy _6 as *const ! (PtrToPtr);
+        StorageDead(_6);
+        StorageDead(_5);
+        StorageDead(_4);
+        return;
+    }
+}

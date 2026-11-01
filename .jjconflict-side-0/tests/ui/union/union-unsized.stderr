@@ -1,0 +1,64 @@
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/union-unsized.rs:2:5
+   |
+LL |     a: str,
+   |     ^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     a: std::mem::ManuallyDrop<str>,
+   |        +++++++++++++++++++++++   +
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/union-unsized.rs:2:8
+   |
+LL |     a: str,
+   |        ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: no field of a union may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     a: &str,
+   |        +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     a: Box<str>,
+   |        ++++   +
+
+error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
+  --> $DIR/union-unsized.rs:11:5
+   |
+LL |     b: str,
+   |     ^^^^^^
+   |
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+help: wrap the field type in `ManuallyDrop<...>`
+   |
+LL |     b: std::mem::ManuallyDrop<str>,
+   |        +++++++++++++++++++++++   +
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/union-unsized.rs:11:8
+   |
+LL |     b: str,
+   |        ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: no field of a union may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     b: &str,
+   |        +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     b: Box<str>,
+   |        ++++   +
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0740.
+For more information about an error, try `rustc --explain E0277`.

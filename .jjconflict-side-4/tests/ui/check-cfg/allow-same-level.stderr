@@ -1,0 +1,21 @@
+warning: unexpected `cfg` condition name: `unknown_and_inactive_cfg`
+  --> $DIR/allow-same-level.rs:15:7
+   |
+LL | #[cfg(unknown_and_inactive_cfg)]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(unknown_and_inactive_cfg)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `unknown_but_active_cfg`
+  --> $DIR/allow-same-level.rs:20:7
+   |
+LL | #[cfg(unknown_but_active_cfg)]
+   |       ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(unknown_but_active_cfg)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+warning: 2 warnings emitted
+

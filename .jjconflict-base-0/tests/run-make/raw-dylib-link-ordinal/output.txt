@@ -1,0 +1,3 @@
+exported_function
+exported_variable value: 42
+exported_variable value: -42

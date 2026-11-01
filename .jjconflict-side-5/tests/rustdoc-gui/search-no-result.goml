@@ -1,0 +1,35 @@
+// The goal of this test is to check the color of the "no result" links.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=sdkfskjfsdks"
+show-text: true
+
+define-function: (
+    "check-no-result",
+    [theme, link, link_hover],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        wait-for: "#results"
+        assert: ".search-failed.active"
+        assert-css: ("#results a", {"color": |link|}, ALL)
+        move-cursor-to: "#results a"
+        assert-css: ("#results a:hover", {"color": |link_hover|})
+        // Moving the cursor to some other place to not create issues with next function run.
+        move-cursor-to: ".search-input"
+    },
+)
+
+call-function: ("check-no-result", {
+    "theme": "ayu",
+    "link": "#39afd7",
+    "link_hover": "#39afd7",
+})
+call-function: ("check-no-result", {
+    "theme": "dark",
+    "link": "#d2991d",
+    "link_hover": "#d2991d",
+})
+call-function: ("check-no-result", {
+    "theme": "light",
+    "link": "#3873ad",
+    "link_hover": "#3873ad",
+})

@@ -1,0 +1,19 @@
+error[E0080]: evaluation panicked: offload device must be non-negative; omit `device` to use the default device
+  --> $DIR/offload_negative_device.rs:10:5
+   |
+LL |     core::offload::offload! { kernel = kernel, args = (), device = -1 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `main::{constant#0}` failed here
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant encountered
+  --> $DIR/offload_negative_device.rs:10:5
+   |
+LL |     core::offload::offload! { kernel = kernel, args = (), device = -1 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this note originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

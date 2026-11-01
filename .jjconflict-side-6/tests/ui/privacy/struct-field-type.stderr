@@ -1,0 +1,21 @@
+warning: type `Priv` is more private than the item `Leak`
+  --> $DIR/struct-field-type.rs:3:5
+   |
+LL |     pub type Leak = Priv;
+   |     ^^^^^^^^^^^^^ type alias `Leak` is reachable at visibility `pub(crate)`
+   |
+note: but type `Priv` is only usable at visibility `pub(self)`
+  --> $DIR/struct-field-type.rs:2:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by default
+
+error: type `Priv` is private
+  --> $DIR/struct-field-type.rs:7:5
+   |
+LL |     field: m::Leak,
+   |     ^^^^^ private type
+
+error: aborting due to 1 previous error; 1 warning emitted
+

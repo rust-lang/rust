@@ -1,0 +1,26 @@
+error[E0502]: cannot borrow `t0` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-mut-borrow-of-mut-base-ptr.rs:11:18
+   |
+LL |     let p: &isize = &*t0;     // Freezes `*t0`
+   |                     ---- immutable borrow occurs here
+LL |     let mut t2 = &mut t0;
+   |                  ^^^^^^^ mutable borrow occurs here
+LL |     **t2 += 1;              // Mutates `*t0`
+LL |     p.use_ref();
+   |     - immutable borrow later used here
+
+error[E0499]: cannot borrow `t0` as mutable more than once at a time
+  --> $DIR/borrowck-mut-borrow-of-mut-base-ptr.rs:19:18
+   |
+LL |     let p: &mut isize = &mut *t0; // Claims `*t0`
+   |                         -------- first mutable borrow occurs here
+LL |     let mut t2 = &mut t0;
+   |                  ^^^^^^^ second mutable borrow occurs here
+LL |     **t2 += 1;                  // Mutates `*t0` but not through `*p`
+LL |     p.use_mut();
+   |     - first borrow later used here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0499, E0502.
+For more information about an error, try `rustc --explain E0499`.

@@ -1,0 +1,22 @@
+error[E0507]: cannot move out of static item `FOO`
+  --> $DIR/issue-17718-static-move.rs:6:14
+   |
+LL |     let _a = FOO;
+   |              ^^^ move occurs because `FOO` has type `Foo`, which does not implement the `Copy` trait
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/issue-17718-static-move.rs:1:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let _a = FOO;
+   |              --- you could clone this value
+help: consider borrowing here
+   |
+LL |     let _a = &FOO;
+   |              +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

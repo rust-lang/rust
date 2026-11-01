@@ -1,0 +1,8 @@
+error: `env!()` takes 1 or 2 arguments
+  --> $DIR/env-no-args.rs:1:13
+   |
+LL | fn main() { env!(); }
+   |             ^^^^^^
+
+error: aborting due to 1 previous error
+

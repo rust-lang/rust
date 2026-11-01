@@ -1,0 +1,60 @@
+error: used `sort` on primitive type `i32`
+  --> tests/ui/stable_sort_primitive.rs:7:5
+   |
+LL |     vec.sort();
+   |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
+   |
+   = note: an unstable sort typically performs faster without any observable difference for this data type
+   = note: `-D clippy::stable-sort-primitive` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::stable_sort_primitive)]`
+
+error: used `sort` on primitive type `bool`
+  --> tests/ui/stable_sort_primitive.rs:10:5
+   |
+LL |     vec.sort();
+   |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
+   |
+   = note: an unstable sort typically performs faster without any observable difference for this data type
+
+error: used `sort` on primitive type `char`
+  --> tests/ui/stable_sort_primitive.rs:13:5
+   |
+LL |     vec.sort();
+   |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
+   |
+   = note: an unstable sort typically performs faster without any observable difference for this data type
+
+error: used `sort` on primitive type `str`
+  --> tests/ui/stable_sort_primitive.rs:16:5
+   |
+LL |     vec.sort();
+   |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
+   |
+   = note: an unstable sort typically performs faster without any observable difference for this data type
+
+error: used `sort` on primitive type `tuple`
+  --> tests/ui/stable_sort_primitive.rs:19:5
+   |
+LL |     vec.sort();
+   |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
+   |
+   = note: an unstable sort typically performs faster without any observable difference for this data type
+
+error: used `sort` on primitive type `array`
+  --> tests/ui/stable_sort_primitive.rs:22:5
+   |
+LL |     vec.sort();
+   |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
+   |
+   = note: an unstable sort typically performs faster without any observable difference for this data type
+
+error: used `sort` on primitive type `i32`
+  --> tests/ui/stable_sort_primitive.rs:25:5
+   |
+LL |     arr.sort();
+   |     ^^^^^^^^^^ help: try: `arr.sort_unstable()`
+   |
+   = note: an unstable sort typically performs faster without any observable difference for this data type
+
+error: aborting due to 7 previous errors
+

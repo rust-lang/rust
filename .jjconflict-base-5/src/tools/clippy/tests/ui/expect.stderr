@@ -1,0 +1,60 @@
+error: used `expect()` on an `Option` value
+  --> tests/ui/expect.rs:6:13
+   |
+LL |     let _ = opt.expect("");
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = note: `-D clippy::expect-used` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::expect_used)]`
+
+error: used `expect()` on a `Result` value
+  --> tests/ui/expect.rs:12:13
+   |
+LL |     let _ = res.expect("");
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+
+error: used `expect_err()` on a `Result` value
+  --> tests/ui/expect.rs:15:13
+   |
+LL |     let _ = res.expect_err("");
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Ok`, it will panic
+
+error: used `expect()` on an `Option` value
+  --> tests/ui/expect.rs:23:5
+   |
+LL |     x.ok().expect("Huh");
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+
+error: used `expect()` on an `Option` value
+  --> tests/ui/expect.rs:26:5
+   |
+LL |     { x.ok() }.expect("...");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+
+error: used `expect()` on an `Option` value
+  --> tests/ui/expect.rs:30:5
+   |
+LL |     y.err().expect("Huh");
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+
+error: used `expect()` on an `Option` value
+  --> tests/ui/expect.rs:33:5
+   |
+LL |     { y.err() }.expect("...");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+
+error: aborting due to 7 previous errors
+

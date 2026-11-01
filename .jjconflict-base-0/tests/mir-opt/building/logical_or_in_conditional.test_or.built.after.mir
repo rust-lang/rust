@@ -1,0 +1,91 @@
+// MIR for `test_or` after built
+
+fn test_or() -> () {
+    let mut _0: ();
+    let mut _1: bool;
+    let mut _2: u8;
+    let mut _3: Droppy;
+    let mut _4: bool;
+    let mut _5: u8;
+    let mut _6: Droppy;
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = Droppy(const 0_u8);
+        _2 = copy (_3.0: u8);
+        _1 = Gt(move _2, const 0_u8);
+        switchInt(move _1) -> [0: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        drop(_3) -> [return: bb3, unwind: bb13];
+    }
+
+    bb2: {
+        goto -> bb4;
+    }
+
+    bb3: {
+        StorageDead(_3);
+        StorageDead(_2);
+        goto -> bb9;
+    }
+
+    bb4: {
+        drop(_3) -> [return: bb5, unwind: bb13];
+    }
+
+    bb5: {
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageLive(_4);
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = Droppy(const 1_u8);
+        _5 = copy (_6.0: u8);
+        _4 = Gt(move _5, const 1_u8);
+        switchInt(move _4) -> [0: bb7, otherwise: bb6];
+    }
+
+    bb6: {
+        drop(_6) -> [return: bb8, unwind: bb13];
+    }
+
+    bb7: {
+        goto -> bb10;
+    }
+
+    bb8: {
+        StorageDead(_6);
+        StorageDead(_5);
+        goto -> bb9;
+    }
+
+    bb9: {
+        _0 = const ();
+        goto -> bb12;
+    }
+
+    bb10: {
+        drop(_6) -> [return: bb11, unwind: bb13];
+    }
+
+    bb11: {
+        StorageDead(_6);
+        StorageDead(_5);
+        _0 = const ();
+        goto -> bb12;
+    }
+
+    bb12: {
+        StorageDead(_4);
+        StorageDead(_1);
+        return;
+    }
+
+    bb13 (cleanup): {
+        resume;
+    }
+}

@@ -1,0 +1,113 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: -Zcoverage-options=branch
+   LL|       |//@ llvm-cov-flags: --show-branches=count
+   LL|       |
+   LL|       |// Tests for branch coverage of the lazy boolean operators `&&` and `||`,
+   LL|       |// as ordinary expressions that aren't part of an `if` condition or similar.
+   LL|       |
+   LL|       |use core::hint::black_box;
+   LL|       |
+   LL|       |// Helper macro to prevent start-of-function spans from being merged into
+   LL|       |// spans on the lines we care about.
+   LL|       |macro_rules! no_merge {
+   LL|       |    () => {
+   LL|       |        for _ in 0..1 {}
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|     15|fn branch_and(a: bool, b: bool) {
+   LL|     15|    no_merge!();
+   LL|       |
+   LL|       |    //      |13  |18 (no branch)
+   LL|     15|    let c = a && b;
+                               ^12
+  ------------------
+  |  Branch (LL:13): [True: 12, False: 3]
+  ------------------
+   LL|     15|    black_box(c);
+   LL|     15|}
+   LL|       |
+   LL|     15|fn branch_or(a: bool, b: bool) {
+   LL|     15|    no_merge!();
+   LL|       |
+   LL|       |    //      |13  |18 (no branch)
+   LL|     15|    let c = a || b;
+                               ^3
+  ------------------
+  |  Branch (LL:13): [True: 12, False: 3]
+  ------------------
+   LL|     15|    black_box(c);
+   LL|     15|}
+   LL|       |
+   LL|       |// Test for chaining one operator several times.
+   LL|     16|fn chain(x: u32) {
+   LL|     16|    no_merge!();
+   LL|       |
+   LL|       |    //      |13      |22      |31      |40 (no branch)
+   LL|     16|    let c = x > 1 && x > 2 && x > 4 && x > 8;
+                                   ^14      ^13      ^11
+  ------------------
+  |  Branch (LL:13): [True: 14, False: 2]
+  |  Branch (LL:22): [True: 13, False: 1]
+  |  Branch (LL:31): [True: 11, False: 2]
+  ------------------
+   LL|     16|    black_box(c);
+   LL|       |
+   LL|       |    //      |13      |22      |31      |40 (no branch)
+   LL|     16|    let d = x < 1 || x < 2 || x < 4 || x < 8;
+                                   ^15      ^14      ^12
+  ------------------
+  |  Branch (LL:13): [True: 1, False: 15]
+  |  Branch (LL:22): [True: 1, False: 14]
+  |  Branch (LL:31): [True: 2, False: 12]
+  ------------------
+   LL|     16|    black_box(d);
+   LL|     16|}
+   LL|       |
+   LL|       |// Test for nested combinations of different operators.
+   LL|     16|fn nested_mixed(x: u32) {
+   LL|     16|    no_merge!();
+   LL|       |
+   LL|       |    //       |14      |23         |35      |44 (no branch)
+   LL|     16|    let c = (x < 4 || x >= 9) && (x < 2 || x >= 10);
+                                    ^12         ^11      ^9
+  ------------------
+  |  Branch (LL:14): [True: 4, False: 12]
+  |  Branch (LL:23): [True: 7, False: 5]
+  |  Branch (LL:35): [True: 2, False: 9]
+  ------------------
+   LL|     16|    black_box(c);
+   LL|       |
+   LL|       |    //       |14      |23        |34       |44 (no branch)
+   LL|     16|    let d = (x < 4 && x < 1) || (x >= 8 && x >= 10);
+                                    ^4         ^15       ^8
+  ------------------
+  |  Branch (LL:14): [True: 4, False: 12]
+  |  Branch (LL:23): [True: 1, False: 3]
+  |  Branch (LL:34): [True: 8, False: 7]
+  ------------------
+   LL|     16|    black_box(d);
+   LL|     16|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    // Use each set of arguments (2^n) times, so that each combination has a
+   LL|       |    // unique sum, and we can use those sums to verify expected control flow.
+   LL|       |    // 1x (false, false)
+   LL|       |    // 2x (false, true)
+   LL|       |    // 4x (true, false)
+   LL|       |    // 8x (true, true)
+   LL|       |    for a in [false, true, true, true, true] {
+   LL|       |        for b in [false, true, true] {
+   LL|       |            branch_and(a, b);
+   LL|       |            branch_or(a, b);
+   LL|       |        }
+   LL|       |    }
+   LL|       |
+   LL|       |    for x in 0..16 {
+   LL|       |        chain(x);
+   LL|       |        nested_mixed(x);
+   LL|       |    }
+   LL|       |}
+

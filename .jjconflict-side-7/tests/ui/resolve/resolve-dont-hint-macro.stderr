@@ -1,0 +1,13 @@
+error[E0423]: cannot find function `assert_eq` in this scope
+  --> $DIR/resolve-dont-hint-macro.rs:2:16
+   |
+LL |     let zero = assert_eq::<()>();
+   |                ^^^^^^^^^------
+   |                |
+   |                not found in this scope
+   |
+   = note: a macro named `assert_eq` exists in another namespace
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0423`.

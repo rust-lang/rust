@@ -1,0 +1,65 @@
+error: long literal lacking separators
+  --> tests/ui/unreadable_literal.rs:31:17
+   |
+LL |     let _bad = (0b110110_i64, 0x12345678_usize, 123456_f32, 1.234567_f32);
+   |                 ^^^^^^^^^^^^ help: consider: `0b11_0110_i64`
+   |
+   = note: `-D clippy::unreadable-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unreadable_literal)]`
+
+error: long literal lacking separators
+  --> tests/ui/unreadable_literal.rs:31:31
+   |
+LL |     let _bad = (0b110110_i64, 0x12345678_usize, 123456_f32, 1.234567_f32);
+   |                               ^^^^^^^^^^^^^^^^ help: consider: `0x1234_5678_usize`
+
+error: long literal lacking separators
+  --> tests/ui/unreadable_literal.rs:31:49
+   |
+LL |     let _bad = (0b110110_i64, 0x12345678_usize, 123456_f32, 1.234567_f32);
+   |                                                 ^^^^^^^^^^ help: consider: `123_456_f32`
+
+error: long literal lacking separators
+  --> tests/ui/unreadable_literal.rs:31:61
+   |
+LL |     let _bad = (0b110110_i64, 0x12345678_usize, 123456_f32, 1.234567_f32);
+   |                                                             ^^^^^^^^^^^^ help: consider: `1.234_567_f32`
+
+error: long literal lacking separators
+  --> tests/ui/unreadable_literal.rs:37:20
+   |
+LL |     let _bad_sci = 1.123456e1;
+   |                    ^^^^^^^^^^ help: consider: `1.123_456e1`
+
+error: long literal lacking separators
+  --> tests/ui/unreadable_literal.rs:40:18
+   |
+LL |     let _fail1 = 0xabcdef;
+   |                  ^^^^^^^^ help: consider: `0x00ab_cdef`
+
+error: long literal lacking separators
+  --> tests/ui/unreadable_literal.rs:42:23
+   |
+LL |     let _fail2: u32 = 0xBAFEBAFE;
+   |                       ^^^^^^^^^^ help: consider: `0xBAFE_BAFE`
+
+error: long literal lacking separators
+  --> tests/ui/unreadable_literal.rs:44:18
+   |
+LL |     let _fail3 = 0xabcdeff;
+   |                  ^^^^^^^^^ help: consider: `0x0abc_deff`
+
+error: long literal lacking separators
+  --> tests/ui/unreadable_literal.rs:46:24
+   |
+LL |     let _fail4: i128 = 0xabcabcabcabcabcabc;
+   |                        ^^^^^^^^^^^^^^^^^^^^ help: consider: `0x00ab_cabc_abca_bcab_cabc`
+
+error: long literal lacking separators
+  --> tests/ui/unreadable_literal.rs:48:18
+   |
+LL |     let _fail5 = 1.100300400;
+   |                  ^^^^^^^^^^^ help: consider: `1.100_300_400`
+
+error: aborting due to 10 previous errors
+

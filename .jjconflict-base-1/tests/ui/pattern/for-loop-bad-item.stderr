@@ -1,0 +1,32 @@
+error[E0308]: mismatched types
+  --> $DIR/for-loop-bad-item.rs:7:19
+   |
+LL |     for ((_, _), (&mut c, _)) in &mut map {
+   |                   ^^^^^^         -------- this is an iterator with items of type `(&(char, char), &mut (char, char))`
+   |                   |
+   |                   expected `char`, found `&mut _`
+   |
+   = note:           expected type `char`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut c`
+  --> $DIR/for-loop-bad-item.rs:7:19
+   |
+LL |     for ((_, _), (&mut c, _)) in &mut map {
+   |                   ^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -     for ((_, _), (&mut c, _)) in &mut map {
+LL +     for ((_, _), (c, _)) in &mut map {
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/for-loop-bad-item.rs:14:14
+   |
+LL |     for Some(Qux(_)) | None in [Some(""), None] {
+   |              ^^^^^^            ---------------- this is an iterator with items of type `Option<&str>`
+   |              |
+   |              expected `str`, found `Qux`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

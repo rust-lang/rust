@@ -1,0 +1,27 @@
+error[E0507]: cannot move out of `f` as enum variant `Foo1` which is behind a shared reference
+  --> $DIR/borrowck-move-error-many-places.rs:15:11
+   |
+LL |     match *f {
+   |           ^^
+LL |         Foo::Foo1(num1,
+   |                   ---- data moved here
+LL |                   num2) => (),
+   |                   ---- ...and here
+LL |         Foo::Foo2(num) => (),
+   |                   --- ...and here
+LL |         Foo::Foo3(num) => (),
+   |                   --- ...and here
+LL |         Foo::Foo4(num) => (),
+   |                   --- ...and here
+   |
+   = note: ...and 4 other places
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the dereference here
+   |
+LL -     match *f {
+LL +     match f {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

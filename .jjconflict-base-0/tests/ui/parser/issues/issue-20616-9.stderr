@@ -1,0 +1,8 @@
+error: expected one of `#`, `>`, `const`, identifier, or lifetime, found `,`
+  --> $DIR/issue-20616-9.rs:34:15
+   |
+LL | type Type_9<T,,> = Box<T>;
+   |               ^ expected one of `#`, `>`, `const`, identifier, or lifetime
+
+error: aborting due to 1 previous error
+

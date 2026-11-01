@@ -1,0 +1,32 @@
+error[E0277]: the trait bound `(): Foo` is not satisfied
+  --> $DIR/wf-foreign-fn-decl-ret.rs:11:25
+   |
+LL |     pub fn lint_me() -> <() as Foo>::Assoc;
+   |                         ^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/wf-foreign-fn-decl-ret.rs:6:1
+   |
+LL | pub trait Foo {
+   | ^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `u32: Unsatisfied` is not satisfied
+  --> $DIR/wf-foreign-fn-decl-ret.rs:14:32
+   |
+LL |     pub fn lint_me_aswell() -> Bar<u32>;
+   |                                ^^^^^^^^ the trait `Unsatisfied` is not implemented for `u32`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/wf-foreign-fn-decl-ret.rs:1:1
+   |
+LL | pub trait Unsatisfied {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `Bar`
+  --> $DIR/wf-foreign-fn-decl-ret.rs:4:19
+   |
+LL | pub struct Bar<T: Unsatisfied>(T);
+   |                   ^^^^^^^^^^^ required by this bound in `Bar`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

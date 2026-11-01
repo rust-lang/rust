@@ -1,0 +1,46 @@
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `map`
+  --> $DIR/missing-dot-on-statement-expression.rs:7:29
+   |
+LL |     let _ = [1, 2, 3].iter()map(|x| x);
+   |                             ^^^ expected one of `.`, `;`, `?`, `else`, or an operator
+   |
+help: you might have meant to write a method call
+   |
+LL |     let _ = [1, 2, 3].iter().map(|x| x);
+   |                             +
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, found `field`
+  --> $DIR/missing-dot-on-statement-expression.rs:14:17
+   |
+LL |     let _ = baz field;
+   |                 ^^^^^ expected one of 8 possible tokens
+   |
+help: you might have meant to write a field access
+   |
+LL |     let _ = baz.field;
+   |                +
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `map`
+  --> $DIR/missing-dot-on-statement-expression.rs:19:21
+   |
+LL |     [1, 2, 3].iter()map(|x| x);
+   |                     ^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+   |
+help: you might have meant to write a method call
+   |
+LL |     [1, 2, 3].iter().map(|x| x);
+   |                     +
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `field`
+  --> $DIR/missing-dot-on-statement-expression.rs:26:9
+   |
+LL |     baz field;
+   |         ^^^^^ expected one of 8 possible tokens
+   |
+help: you might have meant to write a field access
+   |
+LL |     baz.field;
+   |        +
+
+error: aborting due to 4 previous errors
+

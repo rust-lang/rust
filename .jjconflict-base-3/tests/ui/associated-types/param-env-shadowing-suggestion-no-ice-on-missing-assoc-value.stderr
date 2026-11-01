@@ -1,0 +1,32 @@
+error[E0407]: method `iter` is not a member of trait `Iterable`
+  --> $DIR/param-env-shadowing-suggestion-no-ice-on-missing-assoc-value.rs:13:5
+   |
+LL |     fn iter() -> Self::Iter {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ not a member of trait `Iterable`
+
+error[E0046]: not all trait items implemented, missing: `Iter`
+  --> $DIR/param-env-shadowing-suggestion-no-ice-on-missing-assoc-value.rs:11:1
+   |
+LL |     type Iter;
+   |     --------- `Iter` from trait
+...
+LL | impl<T> Iterable for [T] {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ missing `Iter` in implementation
+
+error[E0308]: mismatched types
+  --> $DIR/param-env-shadowing-suggestion-no-ice-on-missing-assoc-value.rs:13:18
+   |
+LL |     fn iter() -> Self::Iter {}
+   |        ----      ^^^^^^^^^^ expected associated type, found `()`
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note: expected associated type `<[T] as Iterable>::Iter`
+                    found unit type `()`
+   = help: consider constraining the associated type `<[T] as Iterable>::Iter` to `()` or calling a method that returns `<[T] as Iterable>::Iter`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0046, E0308, E0407.
+For more information about an error, try `rustc --explain E0046`.

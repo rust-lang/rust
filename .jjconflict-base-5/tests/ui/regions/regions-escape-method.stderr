@@ -1,0 +1,16 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-escape-method.rs:16:13
+   |
+LL |     s.f(|p| p)
+   |          -- ^ returning this value requires that `'1` must outlive `'2`
+   |          ||
+   |          |return type of closure is &'2 i32
+   |          has type `&'1 i32`
+   |
+help: dereference the return value
+   |
+LL |     s.f(|p| *p)
+   |             +
+
+error: aborting due to 1 previous error
+

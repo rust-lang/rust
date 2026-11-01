@@ -1,0 +1,28 @@
+error: non-defining opaque type use in defining scope
+  --> $DIR/issue-88595.rs:21:23
+   |
+LL |     fn a(&'a self) -> Self::B<'a> {}
+   |                       ^^^^^^^^^^^ generic argument `'a` used twice
+   |
+note: for this opaque type
+  --> $DIR/issue-88595.rs:19:18
+   |
+LL |     type B<'b> = impl Clone;
+   |                  ^^^^^^^^^^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/issue-88595.rs:21:35
+   |
+LL |     fn a(&'a self) -> Self::B<'a> {}
+   |                                   ^^
+   |
+note: lifetime used multiple times
+  --> $DIR/issue-88595.rs:18:6
+   |
+LL | impl<'a> A<'a> for C {
+   |      ^^
+LL |     type B<'b> = impl Clone;
+   |            ^^
+
+error: aborting due to 2 previous errors
+

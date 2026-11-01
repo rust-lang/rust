@@ -1,0 +1,89 @@
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:16:13
+   |
+LL |     let x = concat!();
+   |             ^^^^^^^^^ help: replace with: `""`
+   |
+   = note: `-D clippy::useless-concat` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_concat)]`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:17:13
+   |
+LL |     let x = concat!('c');
+   |             ^^^^^^^^^^^^ help: replace with: `"c"`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:18:13
+   |
+LL |     let x = concat!('"');
+   |             ^^^^^^^^^^^^ help: replace with: `"\""`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:19:13
+   |
+LL |     let x = concat!(true);
+   |             ^^^^^^^^^^^^^ help: replace with: `"true"`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:20:13
+   |
+LL |     let x = concat!(1f32);
+   |             ^^^^^^^^^^^^^ help: replace with: `"1"`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:21:13
+   |
+LL |     let x = concat!(1.0000f32);
+   |             ^^^^^^^^^^^^^^^^^^ help: replace with: `"1.0000"`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:22:13
+   |
+LL |     let x = concat!(1_f32);
+   |             ^^^^^^^^^^^^^^ help: replace with: `"1"`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:23:13
+   |
+LL |     let x = concat!(1_);
+   |             ^^^^^^^^^^^ help: replace with: `"1"`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:24:13
+   |
+LL |     let x = concat!(1.0000_f32);
+   |             ^^^^^^^^^^^^^^^^^^^ help: replace with: `"1.0000"`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:25:13
+   |
+LL |     let x = concat!(1.0000_);
+   |             ^^^^^^^^^^^^^^^^ help: replace with: `"1.0000"`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:26:13
+   |
+LL |     let x = concat!("a\u{1f600}\n");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `"a😀\n"`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:27:13
+   |
+LL |     let x = concat!(r##"a"##);
+   |             ^^^^^^^^^^^^^^^^^ help: replace with: `"a"`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:28:13
+   |
+LL |     let x = concat!(1);
+   |             ^^^^^^^^^^ help: replace with: `"1"`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:29:23
+   |
+LL |     println!("b: {}", concat!("a"));
+   |                       ^^^^^^^^^^^^ help: replace with: `"a"`
+
+error: aborting due to 14 previous errors
+

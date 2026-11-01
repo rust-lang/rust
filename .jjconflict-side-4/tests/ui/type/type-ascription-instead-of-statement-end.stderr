@@ -1,0 +1,20 @@
+error: statements are terminated with a semicolon
+  --> $DIR/type-ascription-instead-of-statement-end.rs:2:21
+   |
+LL |     println!("test"):
+   |                     ^
+   |
+help: use a semicolon instead
+   |
+LL -     println!("test"):
+LL +     println!("test");
+   |
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
+  --> $DIR/type-ascription-instead-of-statement-end.rs:7:21
+   |
+LL |     println!("test"): 0;
+   |                     ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,58 @@
+From 5d7c709608b01301d4628d2159265936d4440b67 Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Thu, 18 Feb 2021 18:45:28 +0100
+Subject: [PATCH] Disable 128bit atomic operations
+
+Cranelift doesn't support them yet
+---
+ library/core/src/panic/unwind_safe.rs | 4 ++--
+ library/core/src/sync/atomic.rs       | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/library/core/src/panic/unwind_safe.rs b/library/core/src/panic/unwind_safe.rs
+index bf2e61d..cb82b07 100644
+--- a/library/core/src/panic/unwind_safe.rs
++++ b/library/core/src/panic/unwind_safe.rs
+@@ -217,7 +217,7 @@ impl RefUnwindSafe for crate::sync::atomic::AtomicI32 {}
+ #[cfg(target_has_atomic_load_store = "64")]
+ #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
+ impl RefUnwindSafe for crate::sync::atomic::AtomicI64 {}
+-#[cfg(target_has_atomic_load_store = "128")]
++#[cfg(false)]
+ #[unstable(feature = "integer_atomics", issue = "99069")]
+ impl RefUnwindSafe for crate::sync::atomic::AtomicI128 {}
+ 
+@@ -236,7 +236,7 @@ impl RefUnwindSafe for crate::sync::atomic::AtomicU32 {}
+ #[cfg(target_has_atomic_load_store = "64")]
+ #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
+ impl RefUnwindSafe for crate::sync::atomic::AtomicU64 {}
+-#[cfg(target_has_atomic_load_store = "128")]
++#[cfg(false)]
+ #[unstable(feature = "integer_atomics", issue = "99069")]
+ impl RefUnwindSafe for crate::sync::atomic::AtomicU128 {}
+ 
+diff --git a/library/core/src/sync/atomic.rs b/library/core/src/sync/atomic.rs
+index e676a38..b6a9a3c 100644
+--- a/library/core/src/sync/atomic.rs
++++ b/library/core/src/sync/atomic.rs
+@@ -3850,7 +3850,7 @@ atomic_int! {
+     8,
+     u64 AtomicU64
+ }
+-#[cfg(any(target_has_atomic_load_store = "128", doc))]
++#[cfg(false)]
+ atomic_int! {
+     target_has_atomic_load_store = "128",
+     target_has_atomic = "128",
+@@ -3869,7 +3869,7 @@ atomic_int! {
+     16,
+     i128 AtomicI128
+ }
+-#[cfg(any(target_has_atomic_load_store = "128", doc))]
++#[cfg(false)]
+ atomic_int! {
+     target_has_atomic_load_store = "128",
+     target_has_atomic = "128",
+-- 
+2.48.1
+

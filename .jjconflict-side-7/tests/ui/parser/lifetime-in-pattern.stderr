@@ -1,0 +1,30 @@
+error: unexpected lifetime `'a` in pattern
+  --> $DIR/lifetime-in-pattern.rs:1:10
+   |
+LL | fn test(&'a str) {
+   |          ^^
+   |
+help: remove the lifetime
+   |
+LL - fn test(&'a str) {
+LL + fn test(&str) {
+   |
+
+error: expected one of `:`, `@`, or `|`, found `)`
+  --> $DIR/lifetime-in-pattern.rs:1:16
+   |
+LL | fn test(&'a str) {
+   |                ^ expected one of `:`, `@`, or `|`
+   |
+help: if this is a parameter name, give it a type
+   |
+LL - fn test(&'a str) {
+LL + fn test(str: &TypeName) {
+   |
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL | fn test(_: &'a str) {
+   |         ++
+
+error: aborting due to 2 previous errors
+

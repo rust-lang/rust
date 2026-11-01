@@ -1,0 +1,11 @@
+error[E0186]: method `drop` has a `self: Pin<&mut Self>` declaration in the trait, but not in the impl
+  --> $DIR/type-parameter.rs:12:5
+   |
+LL |     fn drop(_wrong: impl Sized) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `self: Pin<&mut Self>` in impl
+   |
+   = note: `drop` from trait: `fn(Pin<&mut Self>) -> impl Future<Output = ()>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0186`.

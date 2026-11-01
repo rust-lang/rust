@@ -1,0 +1,15 @@
+error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+  --> $DIR/issue-55872-3.rs:14:20
+   |
+LL |     fn foo<T>() -> Self::E {
+   |                    ^^^^^^^
+
+error[E0277]: the trait bound `{async block@$DIR/issue-55872-3.rs:17:9: 17:14}: Copy` is not satisfied
+  --> $DIR/issue-55872-3.rs:14:20
+   |
+LL |     fn foo<T>() -> Self::E {
+   |                    ^^^^^^^ the trait `Copy` is not implemented for `{async block@$DIR/issue-55872-3.rs:17:9: 17:14}`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

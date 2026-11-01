@@ -1,0 +1,18 @@
+error[E0509]: cannot move out of type `A`, which implements the `Drop` trait
+  --> $DIR/functional-struct-update-noncopyable.rs:12:14
+   |
+LL |     let _b = A { y: Arc::new(3), ..a };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              cannot move out of here
+   |              move occurs because `a.x` has type `Arc<isize>`, which does not implement the `Copy` trait
+   |
+help: clone the value from the field instead of using the functional record update syntax
+   |
+LL -     let _b = A { y: Arc::new(3), ..a };
+LL +     let _b = A { y: Arc::new(3), x: a.x.clone() };
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0509`.

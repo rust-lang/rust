@@ -1,0 +1,23 @@
+warning: label name `'blk` shadows a label name that is already in scope
+  --> $DIR/const-continue-to-block.rs:38:22
+   |
+LL |         state = 'blk: {
+   |                 ---- first declared here
+...
+LL |                 _ => 'blk: {
+   |                      ^^^^ label `'blk` already in scope
+
+error: `#[const_continue]` must break to a labeled block that participates in a `#[loop_match]`
+  --> $DIR/const-continue-to-block.rs:20:27
+   |
+LL |                     break 'b 2;
+   |                           ^^
+
+error: `#[const_continue]` must break to a labeled block that participates in a `#[loop_match]`
+  --> $DIR/const-continue-to-block.rs:41:27
+   |
+LL |                     break 'blk 2;
+   |                           ^^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

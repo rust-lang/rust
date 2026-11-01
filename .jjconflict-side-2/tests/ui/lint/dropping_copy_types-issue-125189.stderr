@@ -1,0 +1,35 @@
+error: calls to `std::mem::drop` with a value that implements `Copy` does nothing
+  --> $DIR/dropping_copy_types-issue-125189.rs:8:5
+   |
+LL |     drop(3.2);
+   |     ^^^^^---^
+   |          |
+   |          argument has type `f64`
+   |
+note: the lint level is defined here
+  --> $DIR/dropping_copy_types-issue-125189.rs:4:9
+   |
+LL | #![deny(dropping_copy_types)]
+   |         ^^^^^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(3.2);
+LL +     let _ = 3.2;
+   |
+
+error: calls to `std::mem::drop` with a value that implements `Copy` does nothing
+  --> $DIR/dropping_copy_types-issue-125189.rs:9:5
+   |
+LL |     drop(y);
+   |     ^^^^^-^
+   |          |
+   |          argument has type `i32`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(y);
+LL +     let _ = y;
+   |
+
+error: aborting due to 2 previous errors
+

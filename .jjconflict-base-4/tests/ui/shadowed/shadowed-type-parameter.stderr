@@ -1,0 +1,29 @@
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/shadowed-type-parameter.rs:8:25
+   |
+LL | impl<T> Foo<T> {
+   |      - first use of `T`
+LL |     fn shadow_in_method<T>(&self) {}
+   |                         ^ already used
+
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/shadowed-type-parameter.rs:20:27
+   |
+LL | trait Bar<T> {
+   |           - first use of `T`
+...
+LL |     fn shadow_in_required<T>(&self);
+   |                           ^ already used
+
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/shadowed-type-parameter.rs:23:27
+   |
+LL | trait Bar<T> {
+   |           - first use of `T`
+...
+LL |     fn shadow_in_provided<T>(&self) {}
+   |                           ^ already used
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0403`.

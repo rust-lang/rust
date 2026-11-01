@@ -1,0 +1,39 @@
+error: unknown start of token: \u{ff09}
+  --> $DIR/suggest-arg-comma-delete-ice.rs:15:14
+   |
+LL |     main(rahh）;
+   |              ^^
+   |
+help: Unicode character '）' (Fullwidth Right Parenthesis) looks like ')' (Right Parenthesis), but it is not
+   |
+LL -     main(rahh）;
+LL +     main(rahh);
+   |
+
+error[E0425]: cannot find value `rahh` in this scope
+  --> $DIR/suggest-arg-comma-delete-ice.rs:15:10
+   |
+LL |     main(rahh）;
+   |          ^^^^ not found in this scope
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/suggest-arg-comma-delete-ice.rs:15:5
+   |
+LL |     main(rahh）;
+   |     ^^^^ ---- unexpected argument
+   |
+note: function defined here
+  --> $DIR/suggest-arg-comma-delete-ice.rs:11:4
+   |
+LL | fn main() {
+   |    ^^^^
+help: remove the extra argument
+   |
+LL -     main(rahh）;
+LL +     main(）;
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0061, E0425.
+For more information about an error, try `rustc --explain E0061`.

@@ -1,0 +1,228 @@
+use rustc_ast::visit::{
+    AssocCtxt, Visitor, walk_assoc_item, walk_crate, walk_expr, walk_item, walk_pat, walk_stmt,
+    walk_ty,
+};
+use rustc_ast::{AssocItem, Crate, Expr, ForeignItem, Item, Pat, Stmt, Ty};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_span::source_map::SourceMap;
+use rustc_span::{BytePos, Span};
+
+use crate::config::{OutputFormat, RenderOptions};
+
+/// It returns the expanded macros correspondence map.
+pub(crate) fn source_macro_expansion(
+    krate: &Crate,
+    render_options: &RenderOptions,
+    output_format: OutputFormat,
+    source_map: &SourceMap,
+) -> FxHashMap<BytePos, Vec<ExpandedCode>> {
+    if output_format == OutputFormat::Html
+        && !render_options.html_no_source
+        && render_options.generate_macro_expansion
+    {
+        let mut expanded_visitor = ExpandedCodeVisitor { expanded_codes: Vec::new(), source_map };
+        walk_crate(&mut expanded_visitor, krate);
+        expanded_visitor.compute_expanded()
+    } else {
+        Default::default()
+    }
+}
+
+/// Contains information about macro expansion in the source code pages.
+#[derive(Debug)]
+pub(crate) struct ExpandedCode {
+    /// The line where the macro expansion starts.
+    pub(crate) start_line: u32,
+    /// The line where the macro expansion ends.
+    pub(crate) end_line: u32,
+    /// The source code of the expanded macro.
+    pub(crate) code: String,
+    /// The span of macro callsite.
+    pub(crate) span: Span,
+}
+
+/// Contains temporary information of macro expanded code.
+///
+/// As we go through the HIR visitor, if any span overlaps with another, they will
+/// both be merged.
+struct ExpandedCodeInfo {
+    original_span: Span,
+    /// Callsite of the macro.
+    span: Span,
+    /// Expanded macro source code (HTML escaped).
+    code: String,
+    /// Span of macro-generated code.
+    expanded_span: Span,
+}
+
+/// HIR visitor which retrieves expanded macro.
+///
+/// Once done, the `expanded_codes` will be transformed into a vec of [`ExpandedCode`]
+/// which contains the information needed when running the source code highlighter.
+pub(crate) struct ExpandedCodeVisitor<'ast> {
+    expanded_codes: Vec<ExpandedCodeInfo>,
+    source_map: &'ast SourceMap,
+}
+
+impl<'ast> ExpandedCodeVisitor<'ast> {
+    fn handle_new_span<F: Fn() -> String>(&mut self, new_span: Span, f: F) {
+        if new_span.is_dummy() || !new_span.from_expansion() {
+            return;
+        }
+        let callsite_span = new_span.source_callsite();
+        if let Some(info) =
+            self.expanded_codes.iter_mut().find(|info| info.span.overlaps(callsite_span))
+        {
+            // If the new span we got has the exact same span information as a span already in the
+            // list, it means it's generated from the same macro but is a different item, so we need
+            // to add it as well.
+            let has_same_macro_origin =
+                new_span == info.original_span && callsite_span == info.span;
+            if !has_same_macro_origin && new_span.contains(info.expanded_span) {
+                // New macro expansion recursively contains the old one, so replace it.
+                info.span = callsite_span;
+                info.expanded_span = new_span;
+                info.code = f();
+            } else {
+                // We push the new item after the existing one.
+                info.code.push('\n');
+                info.code.push_str(&f());
+                let lo = BytePos(info.expanded_span.lo().0.min(new_span.lo().0));
+                let hi = BytePos(info.expanded_span.hi().0.max(new_span.hi().0));
+                info.expanded_span = info.expanded_span.with_lo(lo).with_hi(hi);
+            }
+        } else {
+            // We add a new item.
+            self.expanded_codes.push(ExpandedCodeInfo {
+                original_span: new_span,
+                span: callsite_span,
+                code: f(),
+                expanded_span: new_span,
+            });
+        }
+    }
+
+    fn compute_expanded(mut self) -> FxHashMap<BytePos, Vec<ExpandedCode>> {
+        self.expanded_codes.sort_unstable_by_key(|item| item.span.lo_hi());
+        let mut expanded: FxHashMap<BytePos, Vec<ExpandedCode>> = FxHashMap::default();
+        for ExpandedCodeInfo { span, code, original_span, .. } in self.expanded_codes {
+            if let Ok(lines) = self.source_map.span_to_lines(span)
+                && !lines.lines.is_empty()
+            {
+                let mut out = String::new();
+                super::highlight::write_code(
+                    &mut out,
+                    &code,
+                    None,
+                    None,
+                    // NOTE: This is only "an approximation" or "best effort" since the edition of
+                    // individual tokens contained in the expansion can differ from the the edition
+                    // of the entire expansion. And we can't fix that since code is just a `String`
+                    // that was produced by `rustc_ast_pretty` meaning more precise edition
+                    // information has been lost.
+                    //
+                    // Here is an example:
+                    //
+                    // ```edition2015
+                    // #[macro_export]
+                    // macro_rules! generate {
+                    //     ($kw:ident) => {
+                    //         pub fn host() {
+                    //             let _ = $kw {};
+                    //         }
+                    //     };
+                    // }
+                    // ```
+                    //
+                    // ```edition2024
+                    // dependency::generate!(async);
+                    // ```
+                    //
+                    // Here, the `async` keyword wouldn't be highlighted in the rendered expansion
+                    // `let _ = async {}` since it uses the edition of the entire expansion (which
+                    // is Rust 2015) but the `async` in the Rust 2015 expansion does actually refer
+                    // to Rust 2024 `async` keyword and thus contains an `async` block, not a struct
+                    // expression! That's because the keyword `async` originates from a Rust 2024
+                    // crate (root expansion).
+                    original_span.edition(),
+                    None,
+                );
+                let first = lines.lines.first().unwrap();
+                let end = lines.lines.last().unwrap();
+                expanded.entry(lines.file.start_pos).or_default().push(ExpandedCode {
+                    start_line: first.line_index as u32 + 1,
+                    end_line: end.line_index as u32 + 1,
+                    code: out,
+                    span,
+                });
+            }
+        }
+        expanded
+    }
+}
+
+// We need to use the AST pretty printing because:
+//
+// 1. HIR pretty printing doesn't display accurately the code (like `impl Trait`).
+// 2. `SourceMap::snippet_opt` might fail if the source is not available.
+impl<'ast> Visitor<'ast> for ExpandedCodeVisitor<'ast> {
+    fn visit_expr(&mut self, expr: &'ast Expr) {
+        if expr.span.from_expansion() {
+            self.handle_new_span(expr.span, || rustc_ast_pretty::pprust::expr_to_string(expr));
+        } else {
+            walk_expr(self, expr);
+        }
+    }
+
+    fn visit_item(&mut self, item: &'ast Item) {
+        if item.span.from_expansion() {
+            self.handle_new_span(item.span, || rustc_ast_pretty::pprust::item_to_string(item));
+        } else {
+            walk_item(self, item);
+        }
+    }
+
+    fn visit_stmt(&mut self, stmt: &'ast Stmt) {
+        if stmt.span.from_expansion() {
+            self.handle_new_span(stmt.span, || rustc_ast_pretty::pprust::stmt_to_string(stmt));
+        } else {
+            walk_stmt(self, stmt);
+        }
+    }
+
+    fn visit_pat(&mut self, pat: &'ast Pat) {
+        if pat.span.from_expansion() {
+            self.handle_new_span(pat.span, || rustc_ast_pretty::pprust::pat_to_string(pat));
+        } else {
+            walk_pat(self, pat);
+        }
+    }
+
+    fn visit_ty(&mut self, ty: &'ast Ty) {
+        if ty.span.from_expansion() {
+            self.handle_new_span(ty.span, || rustc_ast_pretty::pprust::ty_to_string(ty));
+        } else {
+            walk_ty(self, ty);
+        }
+    }
+
+    fn visit_assoc_item(&mut self, item: &'ast AssocItem, ctxt: AssocCtxt) -> Self::Result {
+        if item.span.from_expansion() {
+            self.handle_new_span(item.span, || {
+                rustc_ast_pretty::pprust::assoc_item_to_string(item)
+            });
+        } else {
+            walk_assoc_item(self, item, ctxt);
+        }
+    }
+
+    fn visit_foreign_item(&mut self, item: &'ast ForeignItem) -> Self::Result {
+        if item.span.from_expansion() {
+            self.handle_new_span(item.span, || {
+                rustc_ast_pretty::pprust::foreign_item_to_string(item)
+            });
+        } else {
+            walk_item(self, item);
+        }
+    }
+}

@@ -1,0 +1,10 @@
+error: higher-ranked lifetime error
+  --> $DIR/higher-ranked-auto-trait-4.rs:29:5
+   |
+LL | /     async {
+LL | |         let _ = evil_function::<dyn BoringTrait, _>().await;
+LL | |     }
+   | |_____^
+
+error: aborting due to 1 previous error
+
