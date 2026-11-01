@@ -256,7 +256,7 @@ impl<'a> Parser<'a> {
             return Some(respan(self.token.span, op));
         }
 
-        self.recover_from_alpha_logic_op()
+        self.recover_from_alpha_logic_bin_op()
     }
 
     /// Checks if this expression is a successfully parsed statement.
@@ -341,80 +341,31 @@ impl<'a> Parser<'a> {
     fn parse_expr_prefix(&mut self, attrs: AttrWrapper) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
 
-        macro_rules! make_it {
-            ($this:ident, $attrs:expr, |this, _| $body:expr) => {
-                $this.collect_tokens_for_expr($attrs, |$this, attrs| {
-                    let (hi, ex) = $body?;
-                    Ok($this.mk_expr_with_attrs(lo.to(hi), ex, attrs))
-                })
-            };
-        }
+        // NOTE: When adding new unary operators, don't forget to adjust TokenKind::can_begin_expr.
+        let parse: fn(&mut Self, _) -> _ = match self.token.uninterpolate().kind {
+            token::Bang => |this, lo| this.parse_expr_unary(lo, UnOp::Not),
+            token::Minus => |this, lo| this.parse_expr_unary(lo, UnOp::Neg),
+            token::Star => |this, lo| this.parse_expr_unary(lo, UnOp::Deref),
+            token::And | token::AndAnd => |this, lo| this.parse_expr_borrow(lo),
 
-        let this = self;
+            token::Tilde => |this, lo| this.recover_from_tilde_bitwise_neg_op(lo),
+            token::Plus if self.look_ahead(1, |t| t.is_numeric_lit()) => {
+                return self.recover_from_leading_plus_on_expr_lit(lo);
+            }
+            token::Plus if self.look_ahead(1, |t| *t == token::Plus) => {
+                return self.recover_from_prefix_inc_op(attrs);
+            }
+            token::Ident(..) if self.is_mistaken_alpha_logic_un_op() => {
+                |this, lo| this.recover_from_alpha_logic_un_op(lo)
+            }
 
-        // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
-        match this.token.uninterpolate().kind {
-            // `!expr`
-            token::Bang => make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Not)),
-            // `~expr`
-            token::Tilde => make_it!(this, attrs, |this, _| this.recover_tilde_expr(lo)),
-            // `-expr`
-            token::Minus => {
-                make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Neg))
-            }
-            // `*expr`
-            token::Star => {
-                make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Deref))
-            }
-            // `&expr` and `&&expr`
-            token::And | token::AndAnd => {
-                make_it!(this, attrs, |this, _| this.parse_expr_borrow(lo))
-            }
-            // `+lit`
-            token::Plus if this.look_ahead(1, |tok| tok.is_numeric_lit()) => {
-                let mut err = crate::diagnostics::LeadingPlusNotSupported {
-                    span: lo,
-                    remove_plus: None,
-                    add_parentheses: None,
-                };
+            _ => return self.parse_expr_dot_or_call(attrs),
+        };
 
-                // a block on the LHS might have been intended to be an expression instead
-                if let Some(sp) =
-                    this.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&lo)
-                {
-                    err.add_parentheses =
-                        Some(crate::diagnostics::ExprParenthesesNeeded::surrounding(*sp));
-                } else {
-                    err.remove_plus = Some(lo);
-                }
-                this.dcx().emit_err(err);
-
-                this.bump(); // `+`
-                Ok(this.parse_expr_prefix_common(lo)?.1)
-            }
-            // Recover from `++x`:
-            token::Plus if this.look_ahead(1, |t| *t == token::Plus) => {
-                let starts_stmt =
-                    this.prev_token == token::Semi || this.prev_token == token::CloseBrace;
-                let pre_span = this.token.span.to(this.look_ahead(1, |t| t.span));
-                // Eat both `+`s.
-                this.bump();
-                this.bump();
-
-                let operand = this.parse_expr_dot_or_call(attrs)?;
-                return Err(this.report_inc_dec_op(
-                    &operand,
-                    starts_stmt,
-                    diagnostics::IncOrDec::Inc,
-                    diagnostics::UnaryFixity::Pre,
-                    pre_span,
-                ));
-            }
-            token::Ident(..) if this.may_recover() && this.is_mistaken_not_ident_negation() => {
-                make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
-            }
-            _ => this.parse_expr_dot_or_call(attrs),
-        }
+        self.collect_tokens_for_expr(attrs, |this, attrs| {
+            let (hi, kind) = parse(this, lo)?;
+            Ok(this.mk_expr_with_attrs(lo.to(hi), kind, attrs))
+        })
     }
 
     fn parse_expr_prefix_common(&mut self, lo: Span) -> PResult<'a, (Span, Box<Expr>)> {
@@ -432,49 +383,6 @@ impl<'a> Parser<'a> {
         self.bump(); // `op`
         let (span, expr) = self.parse_expr_prefix_common(lo)?;
         Ok((span, self.mk_unary(op, expr)))
-    }
-
-    /// Recover on `~expr` in favor of `!expr`.
-    fn recover_tilde_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        self.dcx().emit_err(crate::diagnostics::TildeAsUnaryOperator(lo));
-
-        self.parse_expr_unary(lo, UnOp::Not)
-    }
-
-    fn is_mistaken_not_ident_negation(&self) -> bool {
-        let token_cannot_continue_expr = |t: &Token| match t.uninterpolate().kind {
-            // These tokens can start an expression after `!`, but
-            // can't continue an expression after an ident
-            token::Ident(name, kind) => token::ident_can_begin_expr(name, t.span, kind),
-            token::Literal(..) | token::Pound => true,
-            _ => t.is_metavar_expr(),
-        };
-        self.token.is_ident_named(sym::not) && self.look_ahead(1, token_cannot_continue_expr)
-    }
-
-    /// Recover on `not expr` in favor of `!expr`.
-    fn recover_not_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        let negated_token = self.look_ahead(1, |t| *t);
-
-        let sub_diag = if negated_token.is_numeric_lit() {
-            crate::diagnostics::NotAsNegationOperatorSub::SuggestNotBitwise
-        } else if negated_token.is_bool_lit() {
-            crate::diagnostics::NotAsNegationOperatorSub::SuggestNotLogical
-        } else {
-            crate::diagnostics::NotAsNegationOperatorSub::SuggestNotDefault
-        };
-
-        self.dcx().emit_err(crate::diagnostics::NotAsNegationOperator {
-            negated: negated_token.span,
-            negated_desc: super::token_descr(&negated_token),
-            // Span the `not` plus trailing whitespace to avoid
-            // trailing whitespace after the `!` in our suggestion
-            sub: sub_diag(
-                self.psess.source_map().span_until_non_whitespace(lo.to(negated_token.span)),
-            ),
-        });
-
-        self.parse_expr_unary(lo, UnOp::Not)
     }
 
     /// Returns the span of expr if it was not interpolated, or the span of the interpolated token.
@@ -681,59 +589,35 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_expr_dot_or_call_with(
         &mut self,
         mut attrs: ast::AttrVec,
-        mut e: Box<Expr>,
+        mut expr: Box<Expr>,
         lo: Span,
     ) -> PResult<'a, Box<Expr>> {
-        let mut res = loop {
-            let has_question = if self.prev_token.is_keyword(kw::Return) {
-                // We are using noexpect here because we don't expect a `?` directly after
-                // a `return` which could be suggested otherwise.
-                self.eat_noexpect(&token::Question)
+        loop {
+            expr = if self.eat(exp!(Question)) {
+                self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(expr))
+            } else if self.eat(exp!(Dot)) {
+                self.parse_dot_suffix_expr(lo, expr)?
+            } else if let Some(expr) = self.recover_from_c_arrow_op(lo, &mut expr) {
+                expr?
+            } else if self.expr_is_complete(&expr) {
+                break;
+            } else if self.token == token::OpenParen {
+                self.parse_expr_fn_call(lo, expr)
+            } else if self.token == token::OpenBracket {
+                self.parse_expr_index(lo, expr)?
             } else {
-                self.eat(exp!(Question))
+                break;
             };
-            if has_question {
-                // `expr?`
-                e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
-                continue;
-            }
-            let has_dot = if self.prev_token.is_keyword(kw::Return) {
-                // We are using noexpect here because we don't expect a `.` directly after
-                // a `return` which could be suggested otherwise.
-                self.eat_noexpect(&token::Dot)
-            } else if self.token == TokenKind::RArrow && self.may_recover() {
-                // Recovery for `expr->suffix`.
-                self.bump();
-                let span = self.prev_token.span;
-                self.dcx().emit_err(crate::diagnostics::ExprRArrowCall { span });
-                true
-            } else {
-                self.eat(exp!(Dot))
-            };
-            if has_dot {
-                // expr.f
-                e = self.parse_dot_suffix_expr(lo, e)?;
-                continue;
-            }
-            if self.expr_is_complete(&e) {
-                break Ok(e);
-            }
-            e = match self.token.kind {
-                token::OpenParen => self.parse_expr_fn_call(lo, e),
-                token::OpenBracket => self.parse_expr_index(lo, e)?,
-                _ => break Ok(e),
-            }
-        };
+        }
 
         // Stitch the list of outer attributes onto the return value. A little
         // bit ugly, but the best way given the current code structure.
-        if !attrs.is_empty()
-            && let Ok(expr) = &mut res
-        {
+        if !attrs.is_empty() {
             mem::swap(&mut expr.attrs, &mut attrs);
             expr.attrs.extend(attrs)
         }
-        res
+
+        Ok(expr)
     }
 
     pub(super) fn parse_dot_suffix_expr(

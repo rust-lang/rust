@@ -1,13 +1,100 @@
+use std::mem;
+
 use rustc_ast::util::parser::AssocOp;
-use rustc_ast::{BinOpKind, Expr, ExprKind, token};
+use rustc_ast::{BinOpKind, Expr, ExprKind, UnOp, token};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{Span, Spanned, respan, sym};
 
-use crate::parser::Parser;
+use crate::parser::{AttrWrapper, Parser, token_descr};
 use crate::{diagnostics, exp};
 
 impl<'a> Parser<'a> {
+    /// Recover from numeric literals with leading plus as found in many C-style languages.
+    pub(super) fn recover_from_leading_plus_on_expr_lit(
+        &mut self,
+        lo: Span,
+    ) -> PResult<'a, Box<Expr>> {
+        let mut err = diagnostics::LeadingPlusNotSupported {
+            span: lo,
+            remove_plus: None,
+            add_parentheses: None,
+        };
+        // A block on the LHS might have been intended to be an expression instead.
+        if let Some(sp) = self.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&lo) {
+            err.add_parentheses = Some(diagnostics::ExprParenthesesNeeded::surrounding(*sp));
+        } else {
+            err.remove_plus = Some(lo);
+        }
+        self.dcx().emit_err(err);
+
+        self.bump(); // `+`
+        self.parse_expr_prefix_common(lo).map(|(_, expr)| expr)
+    }
+
+    pub(super) fn is_mistaken_alpha_logic_un_op(&self) -> bool {
+        self.may_recover()
+            && self.token.is_ident_named(sym::not)
+            && self.look_ahead(1, |t: &token::Token| match t.uninterpolate().kind {
+                // These tokens can start an expression after `!`, but
+                // can't continue an expression after an ident
+                token::Ident(name, kind) => token::ident_can_begin_expr(name, t.span, kind),
+                token::Literal(..) | token::Pound => true,
+                _ => t.is_metavar_expr(),
+            })
+    }
+
+    /// Recover from alphabetic logic operator `not` as found in e.g., Python.
+    pub(super) fn recover_from_alpha_logic_un_op(
+        &mut self,
+        lo: Span,
+    ) -> PResult<'a, (Span, ExprKind)> {
+        let negated_token = self.look_ahead(1, |t| *t);
+
+        let sub_diag = if negated_token.is_numeric_lit() {
+            diagnostics::NotAsNegationOperatorSub::SuggestNotBitwise
+        } else if negated_token.is_bool_lit() {
+            diagnostics::NotAsNegationOperatorSub::SuggestNotLogical
+        } else {
+            diagnostics::NotAsNegationOperatorSub::SuggestNotDefault
+        };
+
+        self.dcx().emit_err(crate::diagnostics::NotAsNegationOperator {
+            negated: negated_token.span,
+            negated_desc: token_descr(&negated_token),
+            // Span the `not` plus trailing whitespace to avoid
+            // trailing whitespace after the `!` in our suggestion
+            sub: sub_diag(
+                self.psess.source_map().span_until_non_whitespace(lo.to(negated_token.span)),
+            ),
+        });
+
+        self.parse_expr_unary(lo, UnOp::Not)
+    }
+
+    /// Recover from bitwise negation operator `~` as found in many C-style languages.
+    pub(super) fn recover_from_tilde_bitwise_neg_op(
+        &mut self,
+        lo: Span,
+    ) -> PResult<'a, (Span, ExprKind)> {
+        self.dcx().emit_err(diagnostics::TildeAsUnaryOperator(lo));
+        self.parse_expr_unary(lo, UnOp::Not)
+    }
+
+    /// Recover from arrow operators as found in C like `ptr->field`.
+    pub(super) fn recover_from_c_arrow_op(
+        &mut self,
+        lo: Span,
+        base: &mut Expr,
+    ) -> Option<PResult<'a, Box<Expr>>> {
+        if self.may_recover() && self.eat_noexpect(&token::RArrow) {
+            self.dcx().emit_err(diagnostics::ExprRArrowCall { span: self.prev_token.span });
+            let base = Box::new(mem::replace(base, Expr::dummy()));
+            return Some(self.parse_dot_suffix_expr(lo, base));
+        }
+        None
+    }
+
     /// Recover from a binary operator after complete statement expression as in `{ 4 } / 2`.
     pub(super) fn recover_from_bin_op_after_complete_stmt_expr(&self, lhs: &Expr) -> bool {
         use BinOpKind::*;
@@ -54,7 +141,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Recover from alphabetic logic operators `and` and `or` as found in e.g., Python and PHP.
-    pub(super) fn recover_from_alpha_logic_op(&self) -> Option<Spanned<AssocOp>> {
+    pub(super) fn recover_from_alpha_logic_bin_op(&self) -> Option<Spanned<AssocOp>> {
         if self.may_recover()
             && let Some(ident) = self.token.non_raw_ident()
         {
@@ -146,6 +233,28 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Recover from prefix increment operator `++` as found in many C-style languages.
+    pub(super) fn recover_from_prefix_inc_op(
+        &mut self,
+        attrs: AttrWrapper,
+    ) -> PResult<'a, Box<Expr>> {
+        let starts_stmt = self.prev_token == token::Semi || self.prev_token == token::CloseBrace;
+        let pre_span = self.token.span.to(self.look_ahead(1, |t| t.span));
+        // Eat both `+`s.
+        self.bump();
+        self.bump();
+
+        let operand = self.parse_expr_dot_or_call(attrs)?;
+
+        Err(self.report_inc_dec_op(
+            &operand,
+            starts_stmt,
+            IncOrDec::Inc,
+            UnaryFixity::Pre,
+            pre_span,
+        ))
+    }
+
     /// Recover from postfix increment operator `++` as found in many C-style languages.
     pub(super) fn recover_from_postfix_inc_op(
         &mut self,
@@ -182,7 +291,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Report increment operator `++` & decrement operator `--` as found in many C-style languages.
-    pub(super) fn report_inc_dec_op(
+    fn report_inc_dec_op(
         &mut self,
         base: &Expr,
         starts_stmt: bool,
