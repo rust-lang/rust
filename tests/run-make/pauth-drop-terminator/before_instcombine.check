@@ -1,0 +1,4 @@
+// CHECK-LABEL: ; *** IR Dump Before InstCombinePass
+
+// CHECK-LABEL: define void @{{.*}}Drop4drop
+// CHECK: call void ptrauth (ptr @c_cleanup, i32 0)(i32 noundef %{{.*}}) #[[#]] [ "ptrauth"(i32 0, i64 0) ]
