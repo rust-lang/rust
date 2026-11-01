@@ -229,14 +229,12 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     is_loop_move = true;
                 }
 
-                let mut has_suggest_reborrow = false;
                 if !seen_spans.contains(&move_span) {
                     self.suggest_ref_or_clone(
                         mpi,
                         &mut err,
                         move_spans,
                         moved_place.as_ref(),
-                        &mut has_suggest_reborrow,
                         closure,
                     );
 
@@ -244,8 +242,6 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                         is_partial_move,
                         is_loop_message,
                         is_move_msg,
-                        is_loop_move,
-                        has_suggest_reborrow,
                         maybe_reinitialized_locations_is_empty: maybe_reinitialized_locations
                             .is_empty(),
                     };
@@ -356,7 +352,6 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         err: &mut Diag<'_>,
         move_spans: UseSpans<'tcx>,
         moved_place: PlaceRef<'tcx>,
-        has_suggest_reborrow: &mut bool,
         moved_or_invoked_closure: bool,
     ) {
         let move_span = match move_spans {
@@ -476,20 +471,6 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     } else {
                         None
                     };
-
-                    // If the moved value is a mut reference, it is used in a
-                    // generic function and it's type is a generic param, it can be
-                    // reborrowed to avoid moving.
-                    // for example:
-                    // struct Y(u32);
-                    // x's type is '& mut Y' and it is used in `fn generic<T>(x: T) {}`.
-                    if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind()
-                        && arg_param.is_some()
-                    {
-                        *has_suggest_reborrow = true;
-                        self.suggest_reborrow(err, expr.span, moved_place);
-                        return;
-                    }
 
                     // If the moved place is used generically by the callee and a reference to it
                     // would still satisfy any bounds on its type, suggest borrowing.
@@ -630,25 +611,6 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 Applicability::MachineApplicable,
             );
         }
-    }
-
-    pub(crate) fn suggest_reborrow(
-        &self,
-        err: &mut Diag<'_>,
-        span: Span,
-        moved_place: PlaceRef<'tcx>,
-    ) {
-        err.span_suggestion_verbose(
-            span.shrink_to_lo(),
-            format!(
-                "consider creating a fresh reborrow of {} here",
-                self.describe_place(moved_place)
-                    .map(|n| format!("`{n}`"))
-                    .unwrap_or_else(|| "the mutable reference".to_string()),
-            ),
-            "&mut *",
-            Applicability::MachineApplicable,
-        );
     }
 
     /// If a place is used after being moved as an argument to a function, the function is generic

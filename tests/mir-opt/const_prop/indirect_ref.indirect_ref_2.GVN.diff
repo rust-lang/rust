@@ -15,8 +15,6 @@
       let _11: ();
       let mut _12: for<'a> fn(&'a i32);
       let mut _13: &i32;
-      let mut _14: &i32;
-      let mut _15: &i32;
       scope 1 {
           debug y1 => _4;
           let _10: (&i32,);
@@ -32,8 +30,7 @@
           StorageLive(_6);
           _6 = copy _2;
           StorageLive(_7);
-          _14 = no_retag copy (_4.0: &i32);
-          _7 = &(*_14);
+          _7 = copy (_4.0: &i32);
 -         _5 = move _6(move _7) -> [return: bb1, unwind unreachable];
 +         _5 = copy _2(move _7) -> [return: bb1, unwind unreachable];
       }
@@ -58,8 +55,7 @@
           StorageLive(_12);
           _12 = copy _2;
           StorageLive(_13);
-          _15 = no_retag copy (_10.0: &i32);
-          _13 = &(*_15);
+          _13 = copy (_10.0: &i32);
 -         _11 = move _12(move _13) -> [return: bb3, unwind unreachable];
 +         _11 = copy _2(move _13) -> [return: bb3, unwind unreachable];
       }

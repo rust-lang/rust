@@ -38,8 +38,8 @@ fn foo(test: bool, x: &mut S, y: S, mut z: S) -> S {
 
     ::std::mem::drop(x);
 
-    // `x` is *definitely* uninitialized here
-    rustc_peek(&x); //~ ERROR rustc_peek: bit not set
+    // `x` is still initialized here!
+    rustc_peek(&x);
 
     // `ret` is now definitely initialized (via `if` above).
     rustc_peek(&ret);

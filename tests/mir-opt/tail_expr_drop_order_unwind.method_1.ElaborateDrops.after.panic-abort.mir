@@ -5,44 +5,41 @@ fn method_1(_1: Guard) -> () {
     let mut _0: ();
     let mut _2: std::result::Result<OtherDrop, ()>;
     let mut _3: &Guard;
-    let _4: &Guard;
-    let _5: Guard;
-    let mut _6: &Guard;
-    let mut _7: isize;
-    let _8: OtherDrop;
-    let _9: ();
-    let mut _10: bool;
+    let _4: Guard;
+    let mut _5: &Guard;
+    let mut _6: isize;
+    let _7: OtherDrop;
+    let _8: ();
+    let mut _9: bool;
     scope 1 {
-        debug other_drop => _8;
+        debug other_drop => _7;
     }
     scope 2 {
-        debug err => _9;
+        debug err => _8;
     }
 
     bb0: {
-        _10 = const false;
+        _9 = const false;
         StorageLive(_2);
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_5);
-        StorageLive(_6);
-        _6 = &_1;
-        _5 = <Guard as Clone>::clone(move _6) -> [return: bb1, unwind: bb13];
+        _5 = &_1;
+        _4 = <Guard as Clone>::clone(move _5) -> [return: bb1, unwind: bb13];
     }
 
     bb1: {
-        StorageDead(_6);
-        _4 = &_5;
-        _3 = &(*_4);
+        StorageDead(_5);
+        _3 = &_4;
         _2 = method_2(move _3) -> [return: bb2, unwind: bb12];
     }
 
     bb2: {
-        _10 = const true;
+        _9 = const true;
         StorageDead(_3);
         PlaceMention(_2);
-        _7 = discriminant(_2);
-        switchInt(move _7) -> [0: bb5, 1: bb4, otherwise: bb3];
+        _6 = discriminant(_2);
+        switchInt(move _6) -> [0: bb5, 1: bb4, otherwise: bb3];
     }
 
     bb3: {
@@ -50,22 +47,22 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb4: {
-        StorageLive(_9);
-        _9 = copy ((_2 as Err).0: ());
+        StorageLive(_8);
+        _8 = copy ((_2 as Err).0: ());
         _0 = const ();
-        StorageDead(_9);
+        StorageDead(_8);
         goto -> bb7;
     }
 
     bb5: {
-        StorageLive(_8);
-        _8 = move ((_2 as Ok).0: OtherDrop);
+        StorageLive(_7);
+        _7 = move ((_2 as Ok).0: OtherDrop);
         _0 = const ();
-        drop(_8) -> [return: bb6, unwind: bb11];
+        drop(_7) -> [return: bb6, unwind: bb11];
     }
 
     bb6: {
-        StorageDead(_8);
+        StorageDead(_7);
         goto -> bb7;
     }
 
@@ -74,13 +71,12 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb8: {
-        drop(_5) -> [return: bb9, unwind: bb13];
+        drop(_4) -> [return: bb9, unwind: bb13];
     }
 
     bb9: {
-        StorageDead(_5);
         StorageDead(_4);
-        _10 = const false;
+        _9 = const false;
         StorageDead(_2);
         drop(_1) -> [return: bb10, unwind: bb14];
     }
@@ -94,7 +90,7 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb12 (cleanup): {
-        drop(_5) -> [return: bb13, unwind terminate(cleanup)];
+        drop(_4) -> [return: bb13, unwind terminate(cleanup)];
     }
 
     bb13 (cleanup): {

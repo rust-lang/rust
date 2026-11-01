@@ -158,16 +158,16 @@ pub fn change_argument_method_ufcs() {
 #[cfg(any(bpass1,bpass4))]
 pub fn change_to_ufcs() {
     let s = Struct;
-    s.method1('x', true); // ------
+    s.method1('x', true);
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="hir_owner,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass2", except="hir_owner,typeck_root")]
 #[rustc_clean(cfg="bpass3")]
+// MIR changes because spans change, and there is no `-Zincremental-ignore-spans`
+// for the last 3 revisions
 #[rustc_clean(cfg="bpass5", except="hir_owner,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="bpass6")]
-// One might think this would be expanded in the hir_owner/Mir, but it actually
-// results in slightly different hir_owner/Mir.
 pub fn change_to_ufcs() {
     let s = Struct;
     Struct::method1(&s, 'x', true);
