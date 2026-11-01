@@ -1369,7 +1369,6 @@ where
                 }
                 let fields = drop_ranges
                     .iter()
-                    .rev()
                     .map(|p| {
                         let (project, path) = match p {
                             ProjectionKind::Drop(r) => (
