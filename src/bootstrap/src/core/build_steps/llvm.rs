@@ -2436,17 +2436,30 @@ impl CommandLineStep for Tpde {
             .define("TPDE_ENABLE_COVERAGE", "OFF")
             .define("TPDE_BUILD_DOCS", "OFF")
             .define("TPDE_ENABLE_EH", "OFF")
+            .define("CMAKE_INSTALL_LIBDIR", "lib")
             .define("LLVM_DIR", llvm.cmake_dir());
 
         let mut ldflags = LdFlags::default();
         try_link_with_in_tree_lld(builder, target, &llvm, &mut cfg, &mut ldflags);
         configure_cmake(builder, target, &mut cfg, true, ldflags, CcFlags::default(), &[]);
 
+        if builder.config.llvm_clang {
+            let clang_bin_dir = llvm.llvm_config().parent().map(Path::to_path_buf).unwrap();
+            let clang = clang_bin_dir.join(exe("clang", target));
+            let clangxx = clang_bin_dir.join(exe("clang++", target));
+
+            cfg.define("CMAKE_C_COMPILER", &clang)
+                .define("CMAKE_CXX_COMPILER", &clangxx)
+                .define("CMAKE_ASM_COMPILER", &clang)
+                .define("CMAKE_PROGRAM_PATH", &clang_bin_dir); // This makes TPDE encodegen use the locally built clang instead of the system clang
+        }
+
         if builder.config.dry_run() {
             return output;
         }
 
         cfg.build_target("tpde-plugin.so");
+        cfg.build();
 
         // When building TPDE as a shared library on linux, it can contain unexpected debuginfo:
         // some can come from the C++ standard library. Unless we're explicitly requesting TPDE to
