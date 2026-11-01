@@ -378,18 +378,6 @@ fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
     let version = get_version();
     let (major, _, _) = version;
 
-    cfg.has_reliable_f16 = match (target_arch, target_os) {
-        // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054> resolved in GCC 16
-        // but our toolchain hasn't been updated.
-        (Arch::X86_64, Os::Windows) if *target_env == Env::Gnu && *target_abi != CfgAbi::Llvm => {
-            false
-        }
-        // `f16` support only requires that symbols converting to and from `f32` are available. We
-        // provide these in `compiler-builtins`, so `f16` should be available on all platforms that
-        // do not have other ABI issues or LLVM crashes.
-        _ => true,
-    };
-
     // The heuristic for evaluating to true is twofold, namely;
     //
     // 1. Can LLVM compile an IR snippet containing `fpext bfloat %<var> to float`
@@ -434,10 +422,6 @@ fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
         // support, so this should work for everything else.
         _ => true,
     };
-
-    // Assume that working `f16` means working `f16` math for most platforms, since
-    // operations just go through `f32`.
-    cfg.has_reliable_f16_math = cfg.has_reliable_f16;
 
     cfg.has_reliable_f128_math = match (target_arch, target_os) {
         // LLVM lowers `fp128` math to `long double` symbols even on platforms where
