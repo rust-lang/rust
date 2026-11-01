@@ -2772,17 +2772,17 @@ options! {
         "A comma-separated list of pointer authentication options, each prefixed with `+` (enable) or `-` (disable). Available options:
         `aarch64-jump-table-hardening` - enable hardened lowering for jump-table dispatch
         `auth-traps` - trap immediately on pointer authentication failure
-        `calls` - enable signing and authentication of all indirect calls
+        `calls` - enable signing and authentication of indirect calls
         `elf-got` - enable authentication of pointers from GOT (ELF only)
-        `function-pointer-type-discrimination` - enable type discrimination on C function pointers
+        `function-pointer-type-discrimination` - enable type discrimination on function pointers
         `indirect-gotos` - enable signing and authentication of indirect goto targets
         `init-fini` - enable signing of function pointers in init/fini arrays
         `init-fini-address-discrimination` - enable address discrimination in init/fini arrays
         `intrinsics` - pointer authentication intrinsics
         `return-addresses` - enable signing and authentication of return addresses
-        `typeinfo-vt-ptr-discrimination - incorporate type and address discrimination in authenticated vtable pointers for std::type_info
-        `vt-ptr-addr-discrimination - incorporate address discrimination in authenticated vtable pointers
-        `vt-ptr-type-discrimination - incorporate type discrimination in authenticated vtable pointers
+        `typeinfo-vt-ptr-discrimination` - incorporate type and address discrimination in authenticated vtable pointers for std::type_info
+        `vt-ptr-addr-discrimination` - incorporate address discrimination in authenticated vtable pointers
+        `vt-ptr-type-discrimination` - incorporate type discrimination in authenticated vtable pointers
         Example: `-Zpointer-authentication=+calls,-init-fini`."),
     polonius: Polonius = (Polonius::default(), parse_polonius, [TRACKED],
         POLONIUS_HELP),
