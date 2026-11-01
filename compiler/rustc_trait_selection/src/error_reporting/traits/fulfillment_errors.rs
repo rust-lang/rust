@@ -2581,11 +2581,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             types.dedup();
             let all_types_equal = types.len() == 1;
 
-            let end = if candidates.len() <= 9 || self.tcx.sess.opts.verbose {
-                candidates.len()
-            } else {
-                8
-            };
             if candidates.len() < 5 {
                 let spans: Vec<_> =
                     candidates.iter().map(|&(_, def_id)| self.tcx.def_span(def_id)).collect();
@@ -2639,12 +2634,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         std::cmp::Ordering::Equal
                     }
                 });
+
+                let tuple_start_idx = candidates
+                    .iter()
+                    .position(|(c, _)| matches!(c.self_ty().kind(), ty::Tuple(_)))
+                    .map_or(0, |idx| idx);
+                let tuple_end_idx = candidates
+                    .iter()
+                    .rposition(|(c, _)| matches!(c.self_ty().kind(), ty::Tuple(_)))
+                    .map_or(0, |idx| idx);
+
                 let candidate_names: Vec<String> = candidates
                     .iter()
                     .map(|(c, _)| {
-                        if all_traits_equal {
+                        if let ty::Tuple(tys) = c.self_ty().kind() {
                             if all_types_tuples_cont_arity
-                                && let ty::Tuple(tys) = c.self_ty().kind()
                                 && last_arity.map_or(1, |a: usize| a.abs_diff(tys.len())) == 1
                             {
                                 last_arity = Some(tys.len());
@@ -2657,6 +2661,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             } else {
                                 all_types_tuples_cont_arity = false;
                             }
+                        }
+                        if all_traits_equal {
                             format!(
                                 "\n  {}",
                                 self.tcx.short_string(c.self_ty(), err.long_ty_path())
@@ -2678,28 +2684,56 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     })
                     .collect();
 
-                let details = if all_traits_equal && all_types_tuples_cont_arity {
-                    if tuple_min_arity == 0 {
+                let mut tuples_traits: Vec<_> = candidates[tuple_start_idx..=tuple_end_idx]
+                    .iter()
+                    .map(|(c, _)| c.print_only_trait_path().to_string())
+                    .collect();
+                tuples_traits.sort();
+                tuples_traits.dedup();
+                let all_tuples_impl_the_same_trait = tuples_traits.len() == 1;
+
+                let candidate_names: Vec<_> = if !(tuple_start_idx..tuple_end_idx).is_empty()
+                    && all_types_tuples_cont_arity
+                    && (all_traits_equal || all_tuples_impl_the_same_trait)
+                {
+                    let details = if tuple_min_arity == 0 {
                         format!("up to tuples of arity {tuple_max_arity}")
                     } else {
                         format!(
                             "for tuples of arity {tuple_min_arity} up to and including {tuple_max_arity}"
                         )
-                    }
+                    };
+                    let impl_trait = if all_traits_equal {
+                        String::new()
+                    } else {
+                        let c = candidates[tuple_start_idx].0;
+                        format!(
+                            "implements `{}`",
+                            self.tcx.short_string(c.print_only_trait_path(), err.long_ty_path())
+                        )
+                    };
+                    let simplified_output = vec![
+                        // (T₁, T₂, …, Tₙ)
+                        format!(
+                            "\n  `(T\u{2081}, T\u{2082}, …, T\u{2099})` {details} {impl_trait}"
+                        ),
+                    ];
+                    [
+                        &candidate_names[0..tuple_start_idx],
+                        &simplified_output[..],
+                        &candidate_names[tuple_end_idx + 1..],
+                    ]
+                    .concat()
                 } else {
-                    String::new()
+                    candidate_names
                 };
-                let (candidate_names, end) = if all_traits_equal && all_types_tuples_cont_arity {
-                    (
-                        vec![
-                            // (T₁, T₂, …, Tₙ)
-                            format!("\n  (T\u{2081}, T\u{2082}, …, T\u{2099}) {details}"),
-                        ],
-                        1,
-                    )
+
+                let end = if candidate_names.len() <= 9 || self.tcx.sess.opts.verbose {
+                    candidate_names.len()
                 } else {
-                    (candidate_names, end)
+                    8
                 };
+
                 let msg = if all_types_equal {
                     format!(
                         "`{}` implements trait `{}`",
