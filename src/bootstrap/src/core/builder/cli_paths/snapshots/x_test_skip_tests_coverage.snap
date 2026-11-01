@@ -214,6 +214,9 @@ expression: test --skip=tests/coverage
 [Test] test::TestFloatParse
     targets: [aarch64-unknown-linux-gnu]
     - Set({src/tools/test-float-parse})
+[Test] test::CompilerBuiltins
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({compiler-builtins})
 [Test] test::RunMake
     targets: [aarch64-unknown-linux-gnu]
     - Suite(tests/run-make)
