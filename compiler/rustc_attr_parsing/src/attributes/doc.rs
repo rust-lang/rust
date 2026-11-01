@@ -735,14 +735,13 @@ impl DocParser {
                 no_args_and_not_crate_level!(search_unbox)
             }
             Some(sym::rust_logo) => {
-                // FIXME: Only feature gated at the crate level (!!)
-                if cx.target == Target::Crate {
-                    gated!(
-                        rustdoc_internals,
-                        "the `#[doc(rust_logo)]` attribute is used for Rust branding"
-                    );
-                }
-                no_args_and_crate_level!(rust_logo)
+                gated!(
+                    rustdoc_internals,
+                    "the `#[doc(rust_logo)]` attribute is used for Rust branding"
+                );
+
+                no_args!(rust_logo);
+                cx.check_target("", &AllowedTargets::AllowList(&[Allow(Target::Crate)]));
             }
             Some(sym::auto_cfg) => {
                 gated!(doc_cfg);

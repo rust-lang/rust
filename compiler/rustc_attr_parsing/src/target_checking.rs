@@ -245,7 +245,7 @@ impl<'sess> AttributeParser<'sess> {
             .unwrap_or_default();
 
         if name == "doc" {
-            let diag = crate::diagnostics::AttrCrateLevelOnly;
+            let diag = crate::diagnostics::AttrCrateLevelOnly { attr_span };
             if warn {
                 cx.emit_lint(INVALID_DOC_ATTRIBUTES, diag, attr_span);
             } else {
