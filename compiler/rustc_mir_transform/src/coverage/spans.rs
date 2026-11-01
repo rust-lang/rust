@@ -28,7 +28,20 @@ pub(super) fn extract_refined_covspans<'tcx>(
 
     // If there somehow isn't an expansion tree node corresponding to the
     // body span, return now and don't create any mappings.
-    let Some(node) = expn_tree.get(hir_info.body_span.ctxt()) else { return };
+    let Some(mut node) = expn_tree.get(hir_info.body_span.ctxt()) else { return };
+
+    // An attribute proc macro can create a closure whose body has only empty spans in the
+    // expansion context, while interpolated user code retains root-context spans. Since this
+    // expansion tree contains spans from only one MIR body, use that root node as the body.
+    if matches!(
+        hir_info.body_span.ctxt().outer_expn_data().kind,
+        ExpnKind::Macro(MacroKind::Attr, _)
+    ) && node.child_contexts.is_empty()
+        && node.spans.iter().all(|span| span.span.is_dummy() || span.span.is_empty())
+        && let Some(root_node) = expn_tree.get(SyntaxContext::root())
+    {
+        node = root_node;
+    }
 
     let mut covspans = vec![];
 
