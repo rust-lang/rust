@@ -2084,7 +2084,7 @@ impl str {
     }
 
     /// Returns an iterator over the disjoint matches of a pattern within this string
-    /// slice as well as the index that the match starts at.
+    /// slice as well as the byte index that the match starts at.
     ///
     /// For matches of `pat` within `self` that overlap, only the indices
     /// corresponding to the first match are returned.
