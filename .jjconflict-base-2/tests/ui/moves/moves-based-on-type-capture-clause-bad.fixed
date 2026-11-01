@@ -1,0 +1,11 @@
+//@ run-rustfix
+use std::thread;
+
+fn main() {
+    let x = "Hello world!".to_string();
+    let value = x.clone();
+    thread::spawn(move || {
+        println!("{}", value);
+    });
+    println!("{}", x); //~ ERROR borrow of moved value
+}

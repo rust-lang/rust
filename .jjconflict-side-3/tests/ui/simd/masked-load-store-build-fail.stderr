@@ -1,0 +1,83 @@
+error[E0511]: invalid monomorphization of `simd_masked_load` intrinsic: expected third argument with length 8 (same as input type `Simd<i8, 8>`), found `Simd<u8, 4>` with length 4
+  --> $DIR/masked-load-store-build-fail.rs:17:9
+   |
+LL | /         simd_masked_load::<_, _, _, { SimdAlign::Element }>(
+LL | |             Simd::<i8, 8>([-1, 0, -1, -1, 0, 0, 0, 0]),
+LL | |             arr.as_ptr(),
+LL | |             default,
+LL | |         );
+   | |_________^
+
+error[E0511]: invalid monomorphization of `simd_masked_load` intrinsic: expected element type `u8` of second argument `*const i8` to be a pointer to the element type `u8` of the first argument `Simd<u8, 4>`, found `u8` != `*_ u8`
+  --> $DIR/masked-load-store-build-fail.rs:24:9
+   |
+LL | /         simd_masked_load::<_, _, _, { SimdAlign::Element }>(
+LL | |             Simd::<i8, 4>([-1, 0, -1, -1]),
+LL | |             arr.as_ptr() as *const i8,
+LL | |             default,
+LL | |         );
+   | |_________^
+
+error[E0511]: invalid monomorphization of `simd_masked_load` intrinsic: expected element type `u32` of second argument `*const u8` to be a pointer to the element type `u32` of the first argument `Simd<u32, 4>`, found `u32` != `*_ u32`
+  --> $DIR/masked-load-store-build-fail.rs:31:9
+   |
+LL | /         simd_masked_load::<_, _, _, { SimdAlign::Element }>(
+LL | |             Simd::<i8, 4>([-1, 0, -1, -1]),
+LL | |             arr.as_ptr(),
+LL | |             Simd::<u32, 4>([9; 4]),
+LL | |         );
+   | |_________^
+
+error[E0511]: invalid monomorphization of `simd_masked_load` intrinsic: expected mask element type to be an integer, found `f32`
+  --> $DIR/masked-load-store-build-fail.rs:38:9
+   |
+LL | /         simd_masked_load::<_, _, _, { SimdAlign::Element }>(
+LL | |             Simd::<f32, 4>([1.0, 0.0, 1.0, 1.0]),
+LL | |             arr.as_ptr(),
+LL | |             default,
+LL | |         );
+   | |_________^
+
+error[E0511]: invalid monomorphization of `simd_masked_store` intrinsic: expected element type `u32` of second argument `*const u8` to be a pointer to the element type `u32` of the first argument `Simd<u32, 4>`, found `u32` != `*mut u32`
+  --> $DIR/masked-load-store-build-fail.rs:45:9
+   |
+LL | /         simd_masked_store::<_, _, _, { SimdAlign::Element }>(
+LL | |             Simd([-1i8; 4]),
+LL | |             arr.as_ptr(),
+LL | |             Simd([5u32; 4]),
+LL | |         );
+   | |_________^
+
+error[E0511]: invalid monomorphization of `simd_masked_store` intrinsic: expected element type `u8` of second argument `*const u8` to be a pointer to the element type `u8` of the first argument `Simd<u8, 4>`, found `u8` != `*mut u8`
+  --> $DIR/masked-load-store-build-fail.rs:52:9
+   |
+LL | /         simd_masked_store::<_, _, _, { SimdAlign::Element }>(
+LL | |             Simd([-1i8; 4]),
+LL | |             arr.as_ptr(),
+LL | |             Simd([5u8; 4]),
+LL | |         );
+   | |_________^
+
+error[E0511]: invalid monomorphization of `simd_masked_store` intrinsic: expected third argument with length 4 (same as input type `Simd<i8, 4>`), found `Simd<u8, 2>` with length 2
+  --> $DIR/masked-load-store-build-fail.rs:59:9
+   |
+LL | /         simd_masked_store::<_, _, _, { SimdAlign::Element }>(
+LL | |             Simd([-1i8; 4]),
+LL | |             arr.as_mut_ptr(),
+LL | |             Simd([5u8; 2]),
+LL | |         );
+   | |_________^
+
+error[E0511]: invalid monomorphization of `simd_masked_store` intrinsic: expected mask element type to be an integer, found `f32`
+  --> $DIR/masked-load-store-build-fail.rs:66:9
+   |
+LL | /         simd_masked_store::<_, _, _, { SimdAlign::Element }>(
+LL | |             Simd([1f32; 4]),
+LL | |             arr.as_mut_ptr(),
+LL | |             Simd([5u8; 4]),
+LL | |         );
+   | |_________^
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0511`.

@@ -1,0 +1,8 @@
+error: expected identifier, found keyword `Self`
+  --> $DIR/issue-95878.rs:6:17
+   |
+LL |             ref Self => (),
+   |                 ^^^^ expected identifier, found keyword
+
+error: aborting due to 1 previous error
+

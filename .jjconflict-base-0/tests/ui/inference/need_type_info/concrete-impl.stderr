@@ -1,0 +1,18 @@
+error[E0283]: type annotations needed
+  --> $DIR/concrete-impl.rs:14:5
+   |
+LL |     <Struct as Ambiguous<_>>::method();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `A` declared on the trait `Ambiguous`
+   |
+note: multiple `impl`s satisfying `Struct: Ambiguous<_>` found
+  --> $DIR/concrete-impl.rs:9:1
+   |
+LL | impl Ambiguous<One> for Struct {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl Ambiguous<Two> for Struct {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

@@ -1,0 +1,8 @@
+error: file!() = remapped/remap-path-prefix.rs
+  --> remapped/remap-path-prefix.rs:21:1
+   |
+LL | compile_error!(concat!("file!() = ", file!()));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

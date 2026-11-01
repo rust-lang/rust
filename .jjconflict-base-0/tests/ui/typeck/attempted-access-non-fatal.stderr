@@ -1,0 +1,63 @@
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/attempted-access-non-fatal.rs:4:15
+   |
+LL |     let _ = x.foo;
+   |               ^^^
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/attempted-access-non-fatal.rs:5:15
+   |
+LL |     let _ = x.bar;
+   |               ^^^
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/attempted-access-non-fatal.rs:6:15
+   |
+LL |     let _ = 0.f;
+   |               ^
+   |
+help: if intended to be a floating point literal, consider adding a `0` after the period and a `f32` suffix
+   |
+LL -     let _ = 0.f;
+LL +     let _ = 0.0f32;
+   |
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/attempted-access-non-fatal.rs:7:15
+   |
+LL |     let _ = 2.l;
+   |               ^
+   |
+help: if intended to be a floating point literal, consider adding a `0` after the period and a `f64` suffix
+   |
+LL -     let _ = 2.l;
+LL +     let _ = 2.0f64;
+   |
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/attempted-access-non-fatal.rs:8:16
+   |
+LL |     let _ = 12.F;
+   |                ^
+   |
+help: if intended to be a floating point literal, consider adding a `0` after the period and a `f32` suffix
+   |
+LL -     let _ = 12.F;
+LL +     let _ = 12.0f32;
+   |
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/attempted-access-non-fatal.rs:9:16
+   |
+LL |     let _ = 34.L;
+   |                ^
+   |
+help: if intended to be a floating point literal, consider adding a `0` after the period and a `f64` suffix
+   |
+LL -     let _ = 34.L;
+LL +     let _ = 34.0f64;
+   |
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0610`.

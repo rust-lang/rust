@@ -1,0 +1,9 @@
+error[E0720]: cannot resolve opaque type
+  --> $DIR/infinite-cycle-involving-weak.rs:6:13
+   |
+LL | fn foo() -> T {
+   |             ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0720`.

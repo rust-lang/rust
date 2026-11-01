@@ -1,0 +1,9 @@
+error[E0572]: return statement outside of function body
+  --> $DIR/issue-86721-return-expr-ice.rs:15:20
+   |
+LL |     fn foo(a: [(); return]);
+   |                    ^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0572`.

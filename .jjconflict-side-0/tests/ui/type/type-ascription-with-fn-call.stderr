@@ -1,0 +1,14 @@
+error: statements are terminated with a semicolon
+  --> $DIR/type-ascription-with-fn-call.rs:3:10
+   |
+LL |     f()  :
+   |          ^
+   |
+help: use a semicolon instead
+   |
+LL -     f()  :
+LL +     f()  ;
+   |
+
+error: aborting due to 1 previous error
+

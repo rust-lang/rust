@@ -1,0 +1,34 @@
+error[E0648]: `export_name` may not contain null characters
+  --> $DIR/invalid-export-name.rs:3:1
+   |
+LL | #[export_name = "\0foo"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0648]: `export_name` may not contain null characters
+  --> $DIR/invalid-export-name.rs:7:1
+   |
+LL | #[export_name = "foo\0"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0648]: `export_name` may not contain null characters
+  --> $DIR/invalid-export-name.rs:11:1
+   |
+LL | #[export_name = "\0"]
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: `export_name` may not be empty
+  --> $DIR/invalid-export-name.rs:15:1
+   |
+LL | #[export_name = ""]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: `export_name` may not be empty
+  --> $DIR/invalid-export-name.rs:19:1
+   |
+LL | / #[export_name = "\
+LL | | "]
+   | |__^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0648`.

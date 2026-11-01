@@ -1,0 +1,25 @@
+error[E0382]: use of moved value: `f`
+  --> $DIR/move-error-suggest-clone-panic-issue-127915.rs:10:78
+   |
+LL | fn test<T, U>(a: i64, b: i64, c: i64, d: i64, e: i64, f: T, g: U) -> i64 {
+   |                                                       - move occurs because `f` has type `T`, which does not implement the `Copy` trait
+...
+LL |             6, a as f64, b, b as f64, f, c as f64, d, d as f64, e, e as f64, f, g,
+   |                                       - value moved here                     ^ value used here after move
+   |
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/move-error-suggest-clone-panic-issue-127915.rs:7:9
+   |
+LL | fn test<T, U>(a: i64, b: i64, c: i64, d: i64, e: i64, f: T, g: U) -> i64 {
+   |         ^ consider constraining this type parameter with `Clone`
+...
+LL |             6, a as f64, b, b as f64, f, c as f64, d, d as f64, e, e as f64, f, g,
+   |                                       - you could clone this value
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | fn test<T: Copy, U>(a: i64, b: i64, c: i64, d: i64, e: i64, f: T, g: U) -> i64 {
+   |          ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

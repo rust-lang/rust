@@ -1,0 +1,26 @@
+error[E0369]: binary operation `==` cannot be applied to type `S<T>`
+  --> $DIR/invalid-bin-op.rs:2:15
+   |
+LL |     let _ = s == t;
+   |             - ^^ - S<T>
+   |             |
+   |             S<T>
+   |
+note: an implementation of `PartialEq` might be missing for `S<T>`
+  --> $DIR/invalid-bin-op.rs:5:1
+   |
+LL | struct S<T>(T);
+   | ^^^^^^^^^^^ must implement `PartialEq`
+help: consider annotating `S<T>` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct S<T>(T);
+   |
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | pub fn foo<T>(s: S<T>, t: S<T>) where S<T>: PartialEq {
+   |                                 +++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

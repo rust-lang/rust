@@ -1,0 +1,15 @@
+error[E0223]: ambiguous associated constant
+  --> $DIR/ambiguous-assoc-const.rs:10:20
+   |
+LL | fn foo() -> Blah<{ Tr::N }> {
+   |                    ^^^^^
+   |
+help: if there were a type named `Example` that implemented `Tr`, you could use the fully-qualified path
+   |
+LL - fn foo() -> Blah<{ Tr::N }> {
+LL + fn foo() -> Blah<{ <Example as Tr>::N }> {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0223`.

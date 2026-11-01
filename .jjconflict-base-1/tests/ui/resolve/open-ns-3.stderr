@@ -1,0 +1,19 @@
+error[E0425]: cannot find function `utils_helper` in module `my_api::utils`
+  --> $DIR/open-ns-3.rs:12:28
+   |
+LL |     let _ = my_api::utils::utils_helper();
+   |                            ^^^^^^^^^^^^ not found in `my_api::utils`
+   |
+help: consider importing this function
+   |
+LL + use my_api::utils::utils_helper;
+   |
+help: if you import `utils_helper`, refer to it directly
+   |
+LL -     let _ = my_api::utils::utils_helper();
+LL +     let _ = utils_helper();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,18 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-bounded-method-type-parameters-cross-crate.rs:20:5
+   |
+LL | fn call_bigger_region<'x, 'y>(a: Inv<'x>, b: Inv<'y>) {
+   |                       --  -- lifetime `'y` defined here
+   |                       |
+   |                       lifetime `'x` defined here
+LL |     // Here the value provided for 'y is 'y, and hence 'y:'x does not hold.
+LL |     a.bigger_region(b)
+   |     ^^^^^^^^^^^^^^^^^^ argument requires that `'y` must outlive `'x`
+   |
+   = help: consider adding the following bound: `'y: 'x`
+   = note: requirement occurs because of the type `Inv<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Inv<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,23 @@
+error[E0004]: non-exhaustive patterns: type `&A` is non-empty
+  --> $DIR/issue-78123-non-exhaustive-reference.rs:5:11
+   |
+LL |     match a {}
+   |           ^
+   |
+note: `A` defined here
+  --> $DIR/issue-78123-non-exhaustive-reference.rs:1:6
+   |
+LL | enum A {}
+   |      ^
+   = note: the matched value is of type `&A`
+   = note: references are always considered inhabited
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   |
+LL ~     match a {
+LL +         _ => todo!(),
+LL ~     }
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0004`.

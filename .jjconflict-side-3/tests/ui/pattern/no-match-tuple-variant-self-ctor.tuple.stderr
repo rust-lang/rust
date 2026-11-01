@@ -1,0 +1,9 @@
+error[E0533]: expected unit struct, found self constructor `Self`
+  --> $DIR/no-match-tuple-variant-self-ctor.rs:19:17
+   |
+LL |             let Self = S;
+   |                 ^^^^ not a unit struct
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0533`.

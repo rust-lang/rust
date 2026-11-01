@@ -1,0 +1,5 @@
+error: Argument to option 'cap-lints' missing
+       Usage:
+           --cap-lints <LEVEL> Set the most restrictive lint level. More restrictive
+                               lints are capped at this level
+

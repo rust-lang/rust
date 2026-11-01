@@ -1,0 +1,12 @@
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/issue-65673.rs:9:16
+   |
+LL | trait Alias<T> = where T: Trait;
+   | -------------- this alias does not contain a trait
+...
+LL |     type Ctx = dyn Alias<T>;
+   |                ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0224`.

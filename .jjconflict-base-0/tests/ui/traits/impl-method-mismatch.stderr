@@ -1,0 +1,17 @@
+error[E0053]: method `jumbo` has an incompatible type for trait
+  --> $DIR/impl-method-mismatch.rs:9:5
+   |
+LL |     unsafe fn jumbo(&self, x: &usize) { *self + *x; }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected safe fn, found unsafe fn
+   |
+note: type in trait
+  --> $DIR/impl-method-mismatch.rs:4:5
+   |
+LL |     fn jumbo(&self, x: &usize) -> usize;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature `fn(&_, &_) -> usize`
+              found signature `unsafe fn(&_, &_) -> ()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0053`.

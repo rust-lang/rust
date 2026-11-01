@@ -1,0 +1,47 @@
+- // MIR for `constant` before ScalarReplacementOfAggregates
++ // MIR for `constant` after ScalarReplacementOfAggregates
+  
+  fn constant() -> () {
+      let mut _0: ();
+      let _1: (usize, u8);
++     let _4: usize;
++     let _5: u8;
+      scope 1 {
+-         debug y => _1;
++         debug ((y: (usize, u8)).0: usize) => _4;
++         debug ((y: (usize, u8)).1: u8) => _5;
+          let _2: usize;
+          scope 2 {
+              debug t => _2;
+              let _3: u8;
+              scope 3 {
+                  debug u => _3;
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
++         StorageLive(_4);
++         StorageLive(_5);
++         nop;
+          _1 = const constant::U;
++         _4 = move (_1.0: usize);
++         _5 = move (_1.1: u8);
+          StorageLive(_2);
+-         _2 = copy (_1.0: usize);
++         _2 = copy _4;
+          StorageLive(_3);
+-         _3 = copy (_1.1: u8);
++         _3 = copy _5;
+          _0 = const ();
+          StorageDead(_3);
+          StorageDead(_2);
+-         StorageDead(_1);
++         StorageDead(_4);
++         StorageDead(_5);
++         nop;
+          return;
+      }
+  }
+  

@@ -1,0 +1,15 @@
+error[E0040]: explicit use of destructor method
+  --> $DIR/explicit-drop-call-named-ref.rs:10:5
+   |
+LL |     Drop::drop(&mut f);
+   |     ^^^^^^^^^^ explicit destructor calls not allowed
+   |
+help: consider using `drop` function
+   |
+LL -     Drop::drop(&mut f);
+LL +     drop(f);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0040`.

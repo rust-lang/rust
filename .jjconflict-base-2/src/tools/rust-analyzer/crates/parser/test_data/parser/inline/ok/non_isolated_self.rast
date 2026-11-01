@@ -1,0 +1,109 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        PATH_PAT
+          PATH
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  SELF_KW "self"
+            COLON2 "::"
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "S"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "S"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "g"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        REF_PAT
+          AMP "&"
+          PATH_PAT
+            PATH
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    SELF_KW "self"
+              COLON2 "::"
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+        COLON ":"
+        WHITESPACE " "
+        REF_TYPE
+          AMP "&"
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "h"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        REF_PAT
+          AMP "&"
+          MUT_KW "mut"
+          WHITESPACE " "
+          PATH_PAT
+            PATH
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    SELF_KW "self"
+              COLON2 "::"
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+        COLON ":"
+        WHITESPACE " "
+        REF_TYPE
+          AMP "&"
+          MUT_KW "mut"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

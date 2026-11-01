@@ -1,0 +1,22 @@
+error[E0432]: unresolved import `my_api::utils`
+  --> $DIR/open-ns-1.rs:8:13
+   |
+LL | use my_api::utils::util;
+   |             ^^^^^ could not find `utils` in `my_api`
+
+error[E0433]: cannot find `utils` in `my_api`
+  --> $DIR/open-ns-1.rs:14:21
+   |
+LL |     let _ = my_api::utils::utils_helper();
+   |                     ^^^^^ could not find `utils` in `my_api`
+
+error[E0433]: cannot find `core` in `my_api`
+  --> $DIR/open-ns-1.rs:17:21
+   |
+LL |     let _ = my_api::core::core_fn();
+   |                     ^^^^ could not find `core` in `my_api`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

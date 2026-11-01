@@ -1,0 +1,40 @@
+- // MIR for `f` before Inline
++ // MIR for `f` after Inline
+  
+  fn f(_1: impl Fn()) -> () {
+      debug g => _1;
+      let mut _0: ();
+      let _2: ();
+      let mut _3: &impl Fn();
+      let mut _4: ();
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = &_1;
+          StorageLive(_4);
+          _4 = ();
+          _2 = <impl Fn() as Fn<()>>::call(move _3, move _4) -> [return: bb1, unwind: bb3];
+      }
+  
+      bb1: {
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageDead(_2);
+          _0 = const ();
+          drop(_1) -> [return: bb2, unwind: bb4];
+      }
+  
+      bb2: {
+          return;
+      }
+  
+      bb3 (cleanup): {
+          drop(_1) -> [return: bb4, unwind terminate(cleanup)];
+      }
+  
+      bb4 (cleanup): {
+          resume;
+      }
+  }
+  

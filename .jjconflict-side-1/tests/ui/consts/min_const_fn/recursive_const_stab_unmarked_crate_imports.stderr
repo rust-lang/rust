@@ -1,0 +1,23 @@
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(rustc_private)]`
+  --> $DIR/recursive_const_stab_unmarked_crate_imports.rs:15:5
+   |
+LL |     unstable_if_unmarked_const_fn_crate::not_stably_const();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn stable_fn() {
+   |
+
+error: `just_a_fn` cannot be (indirectly) exposed to stable
+  --> $DIR/recursive_const_stab_unmarked_crate_imports.rs:17:5
+   |
+LL |     unmarked_const_fn_crate::just_a_fn();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: either mark the callee as `#[rustc_const_stable_indirect]`, or the caller as `#[rustc_const_unstable]`
+
+error: aborting due to 2 previous errors
+

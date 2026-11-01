@@ -1,0 +1,53 @@
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/variance-regions-direct.rs:52:14
+   |
+LL | struct Test7<'a> {
+   |              ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: ['a: +, 'b: +, 'c: +]
+  --> $DIR/variance-regions-direct.rs:9:1
+   |
+LL | struct Test2<'a, 'b, 'c> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: -, 'b: -, 'c: -]
+  --> $DIR/variance-regions-direct.rs:18:1
+   |
+LL | struct Test3<'a, 'b, 'c> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: +, 'b: o]
+  --> $DIR/variance-regions-direct.rs:27:1
+   |
+LL | struct Test4<'a, 'b:'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: -, 'b: o]
+  --> $DIR/variance-regions-direct.rs:35:1
+   |
+LL | struct Test5<'a, 'b:'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: +, 'b: o]
+  --> $DIR/variance-regions-direct.rs:45:1
+   |
+LL | struct Test6<'a, 'b:'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: *]
+  --> $DIR/variance-regions-direct.rs:52:1
+   |
+LL | struct Test7<'a> {
+   | ^^^^^^^^^^^^^^^^
+
+error: ['a: -, 'b: +, 'c: o]
+  --> $DIR/variance-regions-direct.rs:60:1
+   |
+LL | enum Test8<'a, 'b, 'c:'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

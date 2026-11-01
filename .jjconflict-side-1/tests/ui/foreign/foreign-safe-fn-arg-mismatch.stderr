@@ -1,0 +1,44 @@
+error[E0593]: function is expected to take 1 argument, but it takes 0 arguments
+  --> $DIR/foreign-safe-fn-arg-mismatch.rs:11:10
+   |
+LL |     pub safe fn foo();
+   |     ------------------ takes 0 arguments
+...
+LL |     test(foo);
+   |     ---- ^^^ expected function that takes 1 argument
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `test`
+  --> $DIR/foreign-safe-fn-arg-mismatch.rs:8:17
+   |
+LL | fn test(_: impl Fn(i32)) {}
+   |                 ^^^^^^^ required by this bound in `test`
+
+error[E0631]: type mismatch in function arguments
+  --> $DIR/foreign-safe-fn-arg-mismatch.rs:12:10
+   |
+LL |     pub safe fn bar(x: u32);
+   |     ------------------------ found signature defined here
+...
+LL |     test(bar);
+   |     ---- ^^^ expected due to this
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: expected function signature `fn(i32) -> _`
+              found function signature `fn(u32) -> _`
+note: required by a bound in `test`
+  --> $DIR/foreign-safe-fn-arg-mismatch.rs:8:17
+   |
+LL | fn test(_: impl Fn(i32)) {}
+   |                 ^^^^^^^ required by this bound in `test`
+help: consider wrapping the function in a closure
+   |
+LL |     test(|arg0: i32| bar(/* u32 */));
+   |          +++++++++++    +++++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0593, E0631.
+For more information about an error, try `rustc --explain E0593`.

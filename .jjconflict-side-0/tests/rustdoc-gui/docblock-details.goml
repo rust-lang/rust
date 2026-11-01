@@ -1,0 +1,34 @@
+// This ensures that the `<details>`/`<summary>` elements are displayed as expected.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/details/struct.Details.html"
+show-text: true
+call-function: ("switch-theme", {"theme": "dark"})
+
+// We first check that the headers in the `.top-doc` doc block still have their
+// bottom border.
+assert-text: (".top-doc .docblock > h3", "§Hello")
+assert-css: (
+    ".top-doc .docblock > h3",
+    {"border-bottom": "1px solid #d2d2d2"},
+)
+// We now check that the `<summary>` doesn't have a bottom border and has the correct display.
+assert-css: (
+    ".top-doc .docblock summary h4",
+    {"border-bottom-width": "0px"},
+)
+// This allows to ensure that summary is on one line only!
+assert-property: (".top-doc .docblock summary h4", {"offsetHeight": "33"})
+assert-css: (".top-doc .docblock summary h4", {"margin-top": "15px", "margin-bottom": "5px"})
+// So `33 + 15 + 5` == `53`
+assert-property: (".top-doc .docblock summary", {"offsetHeight": "53"})
+
+// We now check the `<summary>` on a method.
+assert-css: (
+    ".method-toggle .docblock summary h4",
+    {"border-bottom-width": "0px"},
+)
+// This allows to ensure that summary is on one line only!
+assert-property: (".method-toggle .docblock summary h4", {"offsetHeight": "30"})
+assert-css: (".method-toggle .docblock summary h4", {"margin-top": "15px", "margin-bottom": "5px"})
+// So `30 + 15 + 5` == `50`
+assert-property: (".method-toggle .docblock summary", {"offsetHeight": "50"})

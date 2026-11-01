@@ -1,0 +1,18 @@
+error[E0015]: cannot call non-const closure in constant functions
+  --> $DIR/issue-56164.rs:1:18
+   |
+LL | const fn foo() { (||{})() }
+   |                  ^^^^^^^^
+   |
+   = note: closures need an RFC before allowed to be called in constant functions
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: function pointer calls are not allowed in constant functions
+  --> $DIR/issue-56164.rs:5:5
+   |
+LL |     input()
+   |     ^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

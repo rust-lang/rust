@@ -1,0 +1,23 @@
+error[E0658]: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/bench.rs:3:3
+   |
+LL | #[bench]
+   |   ^^^^^
+   |
+   = note: see issue #50297 <https://github.com/rust-lang/rust/issues/50297> for more information
+   = help: add `#![feature(test)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/bench.rs:6:5
+   |
+LL | use bench as _;
+   |     ^^^^^
+   |
+   = note: see issue #50297 <https://github.com/rust-lang/rust/issues/50297> for more information
+   = help: add `#![feature(test)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

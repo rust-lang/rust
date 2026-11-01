@@ -1,0 +1,63 @@
+error: `char` is both a module and a primitive type
+  --> $DIR/prim-conflict.rs:4:6
+   |
+LL | /// [char]
+   |      ^^^^ ambiguous link
+   |
+note: the lint level is defined here
+  --> $DIR/prim-conflict.rs:1:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to link to the module, prefix with `mod@`
+   |
+LL | /// [mod@char]
+   |      ++++
+help: to link to the primitive type, prefix with `prim@`
+   |
+LL | /// [prim@char]
+   |      +++++
+
+error: `char` is both a module and a primitive type
+  --> $DIR/prim-conflict.rs:10:6
+   |
+LL | /// [type@char]
+   |      ^^^^^^^^^ ambiguous link
+   |
+help: to link to the module, prefix with `mod@`
+   |
+LL - /// [type@char]
+LL + /// [mod@char]
+   |
+help: to link to the primitive type, prefix with `prim@`
+   |
+LL - /// [type@char]
+LL + /// [prim@char]
+   |
+
+error: incompatible link kind for `char`
+  --> $DIR/prim-conflict.rs:19:6
+   |
+LL | /// [struct@char]
+   |      ^^^^^^^^^^^ this link resolved to a module, which is not a struct
+   |
+help: to link to the module, prefix with `mod@`
+   |
+LL - /// [struct@char]
+LL + /// [mod@char]
+   |
+
+error: incompatible link kind for `char`
+  --> $DIR/prim-conflict.rs:26:10
+   |
+LL |     //! [struct@char]
+   |          ^^^^^^^^^^^ this link resolved to a primitive type, which is not a struct
+   |
+help: to link to the primitive type, prefix with `prim@`
+   |
+LL -     //! [struct@char]
+LL +     //! [prim@char]
+   |
+
+error: aborting due to 4 previous errors
+

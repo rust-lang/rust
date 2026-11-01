@@ -1,0 +1,13 @@
+error[E0658]: use of unstable library feature `log_syntax`: `log_syntax!` is not stable enough for use and is subject to change
+  --> $DIR/feature-gate-log_syntax2.rs:2:22
+   |
+LL |     println!("{:?}", log_syntax!());
+   |                      ^^^^^^^^^^
+   |
+   = note: see issue #29598 <https://github.com/rust-lang/rust/issues/29598> for more information
+   = help: add `#![feature(log_syntax)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

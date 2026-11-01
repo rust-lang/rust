@@ -1,0 +1,4 @@
+; Check that f128 TypeTree metadata is correctly generated
+; Should show Float@fp128 for f128 values and Pointer for references
+
+CHECK: define{{.*}}"enzyme_type"="{[-1]:Float@fp128}"{{.*}}@test_f128{{.*}}"enzyme_type"="{[-1]:Pointer, [-1,0]:Float@fp128}"

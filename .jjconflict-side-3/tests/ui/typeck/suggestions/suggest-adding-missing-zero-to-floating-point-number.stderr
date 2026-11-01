@@ -1,0 +1,80 @@
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/suggest-adding-missing-zero-to-floating-point-number.rs:4:7
+   |
+LL |     2.e1;
+   |       ^^
+   |
+help: if intended to be a floating point literal, consider adding a `0` after the period
+   |
+LL |     2.0e1;
+   |       +
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/suggest-adding-missing-zero-to-floating-point-number.rs:5:7
+   |
+LL |     2.E1;
+   |       ^^
+   |
+help: if intended to be a floating point literal, consider adding a `0` after the period
+   |
+LL |     2.0E1;
+   |       +
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/suggest-adding-missing-zero-to-floating-point-number.rs:6:7
+   |
+LL |     2.f32;
+   |       ^^^
+   |
+help: if intended to be a floating point literal, consider adding a `0` after the period
+   |
+LL |     2.0f32;
+   |       +
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/suggest-adding-missing-zero-to-floating-point-number.rs:7:7
+   |
+LL |     2.f64;
+   |       ^^^
+   |
+help: if intended to be a floating point literal, consider adding a `0` after the period
+   |
+LL |     2.0f64;
+   |       +
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/suggest-adding-missing-zero-to-floating-point-number.rs:8:7
+   |
+LL |     2.e+12;
+   |       ^
+   |
+help: if intended to be a floating point literal, consider adding a `0` after the period
+   |
+LL |     2.0e+12;
+   |       +
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/suggest-adding-missing-zero-to-floating-point-number.rs:9:7
+   |
+LL |     2.e-12;
+   |       ^
+   |
+help: if intended to be a floating point literal, consider adding a `0` after the period
+   |
+LL |     2.0e-12;
+   |       +
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/suggest-adding-missing-zero-to-floating-point-number.rs:10:7
+   |
+LL |     2.e1f32;
+   |       ^^^^^
+   |
+help: if intended to be a floating point literal, consider adding a `0` after the period
+   |
+LL |     2.0e1f32;
+   |       +
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0610`.

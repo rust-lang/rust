@@ -1,0 +1,56 @@
+// MIR for `foo` after built
+
+fn foo(_1: Box<[T]>) -> T {
+    debug it => _1;
+    let mut _0: T;
+    let _2: T;
+    let mut _3: &T;
+    let _4: usize;
+    let mut _5: *const [T];
+    let mut _6: usize;
+    let mut _7: bool;
+    scope 1 {
+        debug f => _2;
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = const 0_usize;
+        _5 = &raw const (fake) (*_1);
+        _6 = PtrMetadata(move _5);
+        _7 = Lt(copy _4, copy _6);
+        assert(move _7, "index out of bounds: the length is {} but the index is {}", move _6, copy _4) -> [success: bb1, unwind: bb5];
+    }
+
+    bb1: {
+        _3 = &(*_1)[_4];
+        _2 = <T as Clone>::clone(move _3) -> [return: bb2, unwind: bb5];
+    }
+
+    bb2: {
+        StorageDead(_3);
+        FakeRead(ForLet(None), _2);
+        StorageDead(_4);
+        _0 = move _2;
+        drop(_2) -> [return: bb3, unwind: bb5];
+    }
+
+    bb3: {
+        StorageDead(_2);
+        drop(_1) -> [return: bb4, unwind: bb6];
+    }
+
+    bb4: {
+        return;
+    }
+
+    bb5 (cleanup): {
+        drop(_1) -> [return: bb6, unwind terminate(cleanup)];
+    }
+
+    bb6 (cleanup): {
+        resume;
+    }
+}

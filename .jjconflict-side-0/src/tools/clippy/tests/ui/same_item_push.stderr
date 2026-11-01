@@ -1,0 +1,58 @@
+error: it looks like the same item is being pushed into this `Vec`
+  --> tests/ui/same_item_push.rs:23:9
+   |
+LL |         vec.push(item);
+   |         ^^^
+   |
+   = help: consider using `vec![item;SIZE]`
+   = help: or `vec.extend(std::iter::repeat_n(item, SIZE))`
+   = note: `-D clippy::same-item-push` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::same_item_push)]`
+
+error: it looks like the same item is being pushed into this `Vec`
+  --> tests/ui/same_item_push.rs:30:9
+   |
+LL |         vec.push(item);
+   |         ^^^
+   |
+   = help: consider using `vec![item;SIZE]`
+   = help: or `vec.extend(std::iter::repeat_n(item, SIZE))`
+
+error: it looks like the same item is being pushed into this `Vec`
+  --> tests/ui/same_item_push.rs:36:9
+   |
+LL |         vec.push(13);
+   |         ^^^
+   |
+   = help: consider using `vec![13;SIZE]`
+   = help: or `vec.extend(std::iter::repeat_n(13, SIZE))`
+
+error: it looks like the same item is being pushed into this `Vec`
+  --> tests/ui/same_item_push.rs:42:9
+   |
+LL |         vec.push(VALUE);
+   |         ^^^
+   |
+   = help: consider using `vec![VALUE;SIZE]`
+   = help: or `vec.extend(std::iter::repeat_n(VALUE, SIZE))`
+
+error: it looks like the same item is being pushed into this `Vec`
+  --> tests/ui/same_item_push.rs:49:9
+   |
+LL |         vec.push(item);
+   |         ^^^
+   |
+   = help: consider using `vec![item;SIZE]`
+   = help: or `vec.extend(std::iter::repeat_n(item, SIZE))`
+
+error: it looks like the same item is being pushed into this `Vec`
+  --> tests/ui/same_item_push.rs:58:13
+   |
+LL |             vec.push(item);
+   |             ^^^
+   |
+   = help: consider using `vec![item;SIZE]`
+   = help: or `vec.resize(NEW_SIZE, item)`
+
+error: aborting due to 6 previous errors
+

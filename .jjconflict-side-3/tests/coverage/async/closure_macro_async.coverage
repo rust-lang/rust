@@ -1,0 +1,51 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2018
+   LL|       |
+   LL|       |//@ aux-build: executor.rs
+   LL|       |extern crate executor;
+   LL|       |
+   LL|       |macro_rules! bail {
+   LL|       |    ($msg:literal $(,)?) => {
+   LL|       |        if $msg.len() > 0 {
+   LL|       |            println!("no msg");
+   LL|       |        } else {
+   LL|       |            println!($msg);
+   LL|       |        }
+   LL|       |        return Err(String::from($msg));
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|       |macro_rules! on_error {
+   LL|       |    ($value:expr, $error_message:expr) => {
+   LL|      0|        $value.or_else(|e| {
+   LL|       |            // This closure, which is declared in a macro, should be instrumented.
+   LL|      0|            let message = format!($error_message, e);
+   LL|      0|            if message.len() > 0 {
+   LL|      0|                println!("{}", message);
+   LL|      0|                Ok(String::from("ok"))
+   LL|       |            } else {
+   LL|      0|                bail!("error");
+   LL|       |            }
+   LL|      0|        })
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|      1|fn load_configuration_files() -> Result<String, String> {
+   LL|      1|    Ok(String::from("config"))
+   LL|      1|}
+   LL|       |
+   LL|      1|pub async fn test() -> Result<(), String> {
+   LL|      1|    println!("Starting service");
+   LL|      1|    let config = on_error!(load_configuration_files(), "Error loading configs: {}")?;
+                                                                                                 ^0
+   LL|       |
+   LL|      1|    let startup_delay_duration = String::from("arg");
+   LL|      1|    let _ = (config, startup_delay_duration);
+   LL|      1|    Ok(())
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    executor::block_on(test()).unwrap();
+   LL|       |}
+

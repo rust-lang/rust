@@ -1,0 +1,14 @@
+error[E0425]: cannot find value `HashesEntryLEN` in this scope
+  --> $DIR/issue-109141.rs:10:32
+   |
+LL | struct EntriesBuffer(Box<[[u8; HashesEntryLEN]; 5]>);
+   |                                ^^^^^^^^^^^^^^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | struct EntriesBuffer<const HashesEntryLEN: /* Type */>(Box<[[u8; HashesEntryLEN]; 5]>);
+   |                     ++++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

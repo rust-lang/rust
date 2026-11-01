@@ -1,0 +1,13 @@
+error: item has both inner and outer attributes
+  --> tests/ui/mixed_attributes_style/auxiliary/submodule.rs:5:1
+   |
+LL | / #[allow(unused)]
+LL | | mod foo {
+LL | |     #![allow(dead_code)]
+   | |________________________^
+   |
+   = note: `-D clippy::mixed-attributes-style` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mixed_attributes_style)]`
+
+error: aborting due to 1 previous error
+

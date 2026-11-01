@@ -1,0 +1,14 @@
+error[E0615]: attempted to take value of method `chat_template` on type `LlamaModel`
+  --> $DIR/suggest-method-name-with-maybe-ty-mismatch-146008.rs:13:30
+   |
+LL |     template_from_str(&model.chat_template);
+   |                              ^^^^^^^^^^^^^ method, not a field
+   |
+help: use parentheses to call the method
+   |
+LL |     template_from_str(&model.chat_template());
+   |                                           ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0615`.

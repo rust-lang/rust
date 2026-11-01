@@ -64,7 +64,6 @@ fn main() {
 
     fn env<T: Trait<Out = Foo>>() {
         if FOO == <T as Trait>::Out { x: one() } {} //~ ERROR struct literals are not allowed here
-        //~^ ERROR usage of qualified paths in this context is experimental
     }
 }
 

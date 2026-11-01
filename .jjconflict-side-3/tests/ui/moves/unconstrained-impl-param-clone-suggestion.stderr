@@ -1,0 +1,19 @@
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-impl-param-clone-suggestion.rs:9:6
+   |
+LL | impl<T> Clone for S<C>
+   |     -^-
+   |     ||
+   |     |unconstrained type parameter
+   |     help: remove the unused type parameter `T`
+
+error[E0507]: cannot move out of `*self` which is behind a shared reference
+  --> $DIR/unconstrained-impl-param-clone-suggestion.rs:15:9
+   |
+LL |         *self
+   |         ^^^^^ move occurs because `*self` has type `S<C>`, which does not implement the `Copy` trait
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0207, E0507.
+For more information about an error, try `rustc --explain E0207`.

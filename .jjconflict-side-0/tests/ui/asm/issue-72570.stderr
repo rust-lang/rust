@@ -1,0 +1,8 @@
+error: invalid register `invalid`: unknown register
+  --> $DIR/issue-72570.rs:7:18
+   |
+LL |         asm!("", in("invalid") "".len());
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,18 @@
+error: invalid unicode character escape
+  --> $DIR/new-unicode-escapes-3.rs:2:15
+   |
+LL |     let s1 = "\u{d805}";
+   |               ^^^^^^^^ invalid escape
+   |
+   = help: unicode escape must not be a surrogate
+
+error: invalid unicode character escape
+  --> $DIR/new-unicode-escapes-3.rs:3:15
+   |
+LL |     let s2 = "\u{ffffff}";
+   |               ^^^^^^^^^^ invalid escape
+   |
+   = help: unicode escape must be at most 10FFFF
+
+error: aborting due to 2 previous errors
+

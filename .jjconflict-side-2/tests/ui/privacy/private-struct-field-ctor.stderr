@@ -1,0 +1,9 @@
+error[E0451]: field `x` of struct `Foo` is private
+  --> $DIR/private-struct-field-ctor.rs:8:22
+   |
+LL |     let s = a::Foo { x: 1 };
+   |                      ^ private field
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0451`.

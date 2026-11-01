@@ -1,0 +1,35 @@
+error: unexpected `...`
+  --> $DIR/issue-70388-recover-dotdotdot-rest-pat.rs:4:13
+   |
+LL |     let Foo(...) = Foo(0);
+   |             ^^^ not a valid pattern
+   |
+help: for a rest pattern, use `..` instead of `...`
+   |
+LL -     let Foo(...) = Foo(0);
+LL +     let Foo(..) = Foo(0);
+   |
+
+error: unexpected `...`
+  --> $DIR/issue-70388-recover-dotdotdot-rest-pat.rs:5:13
+   |
+LL |     let [_, ..., _] = [0, 1];
+   |             ^^^ not a valid pattern
+   |
+help: for a rest pattern, use `..` instead of `...`
+   |
+LL -     let [_, ..., _] = [0, 1];
+LL +     let [_, .., _] = [0, 1];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-70388-recover-dotdotdot-rest-pat.rs:6:33
+   |
+LL |     let _recovery_witness: () = 0;
+   |                            --   ^ expected `()`, found integer
+   |                            |
+   |                            expected due to this
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

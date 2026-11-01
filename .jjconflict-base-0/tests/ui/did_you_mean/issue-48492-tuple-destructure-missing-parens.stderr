@@ -1,0 +1,75 @@
+error: unexpected `,` in pattern
+  --> $DIR/issue-48492-tuple-destructure-missing-parens.rs:38:17
+   |
+LL |     while let b1, b2, b3 = reading_frame.next().expect("there should be a start codon") {
+   |     -----       ^
+   |     |
+   |     while parsing the condition of this `while` expression
+   |
+help: try adding parentheses to match on a tuple
+   |
+LL |     while let (b1, b2, b3) = reading_frame.next().expect("there should be a start codon") {
+   |               +          +
+
+error: unexpected `,` in pattern
+  --> $DIR/issue-48492-tuple-destructure-missing-parens.rs:49:14
+   |
+LL |     if let b1, b2, b3 = reading_frame.next().unwrap() {
+   |              ^
+   |
+help: try adding parentheses to match on a tuple
+   |
+LL |     if let (b1, b2, b3) = reading_frame.next().unwrap() {
+   |            +          +
+
+error: unexpected `,` in pattern
+  --> $DIR/issue-48492-tuple-destructure-missing-parens.rs:59:28
+   |
+LL |         Nucleotide::Adenine, Nucleotide::Cytosine, _ => true
+   |                            ^
+   |
+help: try adding parentheses to match on a tuple...
+   |
+LL |         (Nucleotide::Adenine, Nucleotide::Cytosine, _) => true
+   |         +                                            +
+help: ...or a vertical bar to match on alternatives
+   |
+LL -         Nucleotide::Adenine, Nucleotide::Cytosine, _ => true
+LL +         Nucleotide::Adenine | Nucleotide::Cytosine, _ => true
+   |
+
+error: unexpected `,` in pattern
+  --> $DIR/issue-48492-tuple-destructure-missing-parens.rs:67:10
+   |
+LL |     for x, _barr_body in women.iter().map(|woman| woman.allosomes.clone()) {
+   |          ^
+   |
+help: try adding parentheses to match on a tuple
+   |
+LL |     for (x, _barr_body) in women.iter().map(|woman| woman.allosomes.clone()) {
+   |         +             +
+
+error: unexpected `,` in pattern
+  --> $DIR/issue-48492-tuple-destructure-missing-parens.rs:75:10
+   |
+LL |     for x, y @ Allosome::Y(_) in men.iter().map(|man| man.allosomes.clone()) {
+   |          ^
+   |
+help: try adding parentheses to match on a tuple
+   |
+LL |     for (x, y @ Allosome::Y(_)) in men.iter().map(|man| man.allosomes.clone()) {
+   |         +                     +
+
+error: unexpected `,` in pattern
+  --> $DIR/issue-48492-tuple-destructure-missing-parens.rs:84:14
+   |
+LL |     let women, men: (Vec<Genome>, Vec<Genome>) = genomes.iter().cloned()
+   |              ^
+   |
+help: try adding parentheses to match on a tuple
+   |
+LL |     let (women, men): (Vec<Genome>, Vec<Genome>) = genomes.iter().cloned()
+   |         +          +
+
+error: aborting due to 6 previous errors
+

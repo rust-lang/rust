@@ -1,0 +1,12 @@
+error[E0277]: the size for values of type `[i8]` cannot be known at compilation time
+  --> $DIR/static-by-value-slice.rs:5:1
+   |
+LL | static mut S: [i8] = ["Some thing"; 1];
+   | ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[i8]`
+   = note: statics and constants must have a statically known size
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

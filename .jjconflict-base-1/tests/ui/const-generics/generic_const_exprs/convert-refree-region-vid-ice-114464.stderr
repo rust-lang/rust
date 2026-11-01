@@ -1,0 +1,11 @@
+error: cannot capture late-bound lifetime in constant
+  --> $DIR/convert-refree-region-vid-ice-114464.rs:11:17
+   |
+LL | fn wow<'a>() {
+   |        -- lifetime defined here
+LL |     test::<{
+LL |         let _: &'a ();
+   |                 ^^
+
+error: aborting due to 1 previous error
+

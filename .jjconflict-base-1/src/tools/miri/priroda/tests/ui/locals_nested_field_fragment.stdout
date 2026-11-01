@@ -1,0 +1,14 @@
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_nested_field_fragment.rs:12
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_nested_field_fragment.rs:12
+(priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
+Name: <none>, Id: _1, Ty: Outer, Value: <uninit>
+Name: <none>, Id: _2, Ty: (Leaf,), Value: <uninit>
+Name: <none>, Id: _3, Ty: Leaf, Value: <uninit>
+Name: <none>, Id: _4, Ty: (Leaf,), Value: <uninit>
+Name: <none>, Id: _5, Ty: Leaf, Value: <uninit>
+Name: <none>, Id: _6, Ty: Leaf, Value: <uninit>
+Name: x.inner.0.field, Id: _7, Ty: u8, Value: <dead>
+Name: <none>, Id: _8, Ty: u8, Value: <dead>
+Name: <none>, Id: _9, Ty: u8, Value: <dead>
+(priroda) quitting

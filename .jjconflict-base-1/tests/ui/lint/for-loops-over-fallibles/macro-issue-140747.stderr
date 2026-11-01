@@ -1,0 +1,24 @@
+error: for loop over an `Option`. This is more readably written as an `if let` statement
+  --> $DIR/macro-issue-140747.rs:9:14
+   |
+LL |     for _ in x! {} {}
+   |              ^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/macro-issue-140747.rs:1:11
+   |
+LL | #![forbid(for_loops_over_fallibles)]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^
+help: to check pattern in a loop use `while let`
+   |
+LL -     for _ in x! {} {}
+LL +     while let Some(_) = x! {} {}
+   |
+help: consider using `if let` to clear intent
+   |
+LL -     for _ in x! {} {}
+LL +     if let Some(_) = x! {} {}
+   |
+
+error: aborting due to 1 previous error
+

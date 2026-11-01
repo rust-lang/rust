@@ -1,0 +1,15 @@
+error[E0404]: cannot find trait `Hash` in this scope
+  --> $DIR/relaxing-default-bound-error-37534.rs:3:16
+   |
+LL | struct Foo<T: ?Hash> {}
+   |                ^^^^ not found in this scope
+   |
+   = note: a derive macro named `Hash` exists in another namespace
+help: consider importing this trait instead
+   |
+LL + use std::hash::Hash;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0404`.

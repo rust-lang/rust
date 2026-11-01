@@ -1,0 +1,131 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        IDENT_PAT
+          MUT_KW "mut"
+          WHITESPACE " "
+          ERROR
+            SELF_KW "self"
+        COLON ":"
+        ERROR
+          COLON ":"
+      PARAM
+        IDENT_PAT
+          NAME
+            IDENT "S"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "S"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "g"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        REF_PAT
+          AMP "&"
+          ERROR
+            LIFETIME_IDENT "'l"
+      WHITESPACE " "
+      PARAM
+        PATH_PAT
+          PATH
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  SELF_KW "self"
+            COLON2 "::"
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "S"
+        COLON ":"
+        WHITESPACE " "
+        REF_TYPE
+          AMP "&"
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "h"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        REF_PAT
+          AMP "&"
+          ERROR
+            LIFETIME_IDENT "'l"
+      WHITESPACE " "
+      PARAM
+        IDENT_PAT
+          MUT_KW "mut"
+          WHITESPACE " "
+          ERROR
+            SELF_KW "self"
+        COLON ":"
+        ERROR
+          COLON ":"
+      PARAM
+        IDENT_PAT
+          NAME
+            IDENT "S"
+        COLON ":"
+        WHITESPACE " "
+        REF_TYPE
+          AMP "&"
+          MUT_KW "mut"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 9: expected a name
+error 14: expected type
+error 15: expected `,`
+error 30: expected pattern
+error 32: missing type for function parameter
+error 32: expected `,`
+error 55: expected pattern
+error 57: missing type for function parameter
+error 57: expected `,`
+error 62: expected a name
+error 67: expected type
+error 68: expected `,`

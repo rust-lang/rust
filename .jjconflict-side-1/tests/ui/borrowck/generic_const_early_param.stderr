@@ -1,0 +1,32 @@
+error[E0262]: invalid lifetime parameter name: `'static`
+  --> $DIR/generic_const_early_param.rs:3:20
+   |
+LL | struct DataWrapper<'static> {
+   |                    ^^^^^^^ 'static is a reserved lifetime name
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/generic_const_early_param.rs:5:12
+   |
+LL |     data: &'a [u8; Self::SIZE],
+   |            ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | struct DataWrapper<'a, 'static> {
+   |                    +++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/generic_const_early_param.rs:9:18
+   |
+LL | impl DataWrapper<'a> {
+   |                  ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | impl<'a> DataWrapper<'a> {
+   |     ++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0261, E0262.
+For more information about an error, try `rustc --explain E0261`.

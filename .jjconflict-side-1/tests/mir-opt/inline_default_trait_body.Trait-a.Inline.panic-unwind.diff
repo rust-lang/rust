@@ -1,0 +1,27 @@
+- // MIR for `Trait::a` before Inline
++ // MIR for `Trait::a` after Inline
+  
+  fn Trait::a(_1: &Self) -> () {
+      debug self => _1;
+      let mut _0: ();
+      let _2: ();
+      let mut _3: &();
+      let _4: ();
+      let mut _5: &();
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _5 = const <Self as Trait>::a::promoted[0];
+          _3 = &(*_5);
+          _2 = <() as Trait>::b(move _3) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          StorageDead(_2);
+          _0 = const ();
+          return;
+      }
+  }
+  

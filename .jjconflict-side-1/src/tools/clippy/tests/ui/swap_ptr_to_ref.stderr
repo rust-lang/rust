@@ -1,0 +1,29 @@
+error: call to `core::mem::swap` with a parameter derived from a raw pointer
+  --> tests/ui/swap_ptr_to_ref.rs:11:9
+   |
+LL |         core::mem::swap(&mut *y, &mut *z);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use ptr::swap: `core::ptr::swap(y, z)`
+   |
+   = note: `-D clippy::swap-ptr-to-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::swap_ptr_to_ref)]`
+
+error: call to `core::mem::swap` with a parameter derived from a raw pointer
+  --> tests/ui/swap_ptr_to_ref.rs:13:9
+   |
+LL |         core::mem::swap(&mut *y, &mut x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use ptr::swap: `core::ptr::swap(y, &mut x)`
+
+error: call to `core::mem::swap` with a parameter derived from a raw pointer
+  --> tests/ui/swap_ptr_to_ref.rs:15:9
+   |
+LL |         core::mem::swap(&mut x, &mut *y);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use ptr::swap: `core::ptr::swap(&mut x, y)`
+
+error: call to `core::mem::swap` with a parameter derived from a raw pointer
+  --> tests/ui/swap_ptr_to_ref.rs:17:9
+   |
+LL |         core::mem::swap(&mut *addr_of_mut!(x), &mut *addr_of_mut!(x));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use ptr::swap: `core::ptr::swap(addr_of_mut!(x), addr_of_mut!(x))`
+
+error: aborting due to 4 previous errors
+

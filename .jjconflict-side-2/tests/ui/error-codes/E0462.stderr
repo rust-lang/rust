@@ -1,0 +1,13 @@
+error[E0462]: found staticlib `found_staticlib` instead of rlib or dylib
+  --> $DIR/E0462.rs:7:1
+   |
+LL | extern crate found_staticlib;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the following crate versions were found:
+           crate `found_staticlib`: $TEST_BUILD_DIR/auxiliary/libfound_staticlib.somelib
+   = help: please recompile that crate using --crate-type lib
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0462`.

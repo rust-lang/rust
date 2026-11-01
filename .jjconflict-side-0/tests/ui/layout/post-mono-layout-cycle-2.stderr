@@ -1,0 +1,17 @@
+error[E0733]: recursion in an async fn requires boxing
+  --> $DIR/post-mono-layout-cycle-2.rs:28:5
+   |
+LL | /     async fn iter<T>(&mut self, iterator: T)
+LL | |
+LL | |     where
+LL | |         T: IntoIterator<Item = ()>,
+   | |___________________________________^
+LL |       {
+LL |           Blah::iter(self, iterator).await
+   |           -------------------------------- recursive call here
+   |
+   = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0733`.

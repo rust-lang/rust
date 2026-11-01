@@ -1,0 +1,5 @@
+warning: the `passes` flag no longer functions
+   |
+   = note: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
+   = help: you may want to use --document-private-items
+

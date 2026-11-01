@@ -1,0 +1,62 @@
+//@ run-rustfix
+
+fn foo<N>(_x: N) {}
+//~^ NOTE function defined here
+//~| NOTE function defined here
+//~| NOTE function defined here
+//~| NOTE function defined here
+//~| NOTE function defined here
+//~| NOTE function defined here
+//~| NOTE function defined here
+//~| NOTE function defined here
+//~| NOTE function defined here
+//~| NOTE function defined here
+//~| NOTE function defined here
+
+fn main() {
+    foo::<u64>(42_u64);
+    //~^ ERROR mismatched types
+    //~| NOTE expected
+    //~| NOTE arguments
+    foo::<u64>(42_u64);
+    foo::<u64>(42_u64);
+    //~^ ERROR mismatched types
+    //~| NOTE expected
+    //~| NOTE arguments
+    foo::<u64>(42_u64);
+    //~^ ERROR mismatched types
+    //~| NOTE expected
+    //~| NOTE arguments
+    foo::<u64>(42_u64);
+    //~^ ERROR mismatched types
+    //~| NOTE expected
+    //~| NOTE arguments
+    foo::<u64>(42_u64);
+    //~^ ERROR mismatched types
+    //~| NOTE expected
+    //~| NOTE arguments
+    foo::<u64>(42_u64);
+    //~^ ERROR mismatched types
+    //~| NOTE expected
+    //~| NOTE arguments
+    foo::<u64>(42_u64);
+    //~^ ERROR mismatched types
+    //~| NOTE expected
+    //~| NOTE arguments
+    foo::<u64>(42_u64);
+    //~^ ERROR mismatched types
+    //~| NOTE expected
+    //~| NOTE arguments
+    foo::<u64>(42_u64);
+    //~^ ERROR mismatched types
+    //~| NOTE expected
+    //~| NOTE arguments
+    foo::<u64>(42u64);
+    //~^ ERROR mismatched types
+    //~| NOTE expected
+    //~| NOTE arguments
+    foo::<u64>(42u64);
+    //~^ ERROR mismatched types
+    //~| NOTE expected
+    //~| NOTE arguments
+}

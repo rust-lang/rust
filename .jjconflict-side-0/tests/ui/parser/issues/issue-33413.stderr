@@ -1,0 +1,22 @@
+error: expected parameter name, found `*`
+  --> $DIR/issue-33413.rs:4:10
+   |
+LL |     fn f(*, a: u8) -> u8 {}
+   |          ^ expected parameter name
+
+error[E0308]: mismatched types
+  --> $DIR/issue-33413.rs:4:23
+   |
+LL |     fn f(*, a: u8) -> u8 {}
+   |        -              ^^ expected `u8`, found `()`
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+   |
+help: consider returning the local binding `a`
+   |
+LL |     fn f(*, a: u8) -> u8 { a }
+   |                            +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

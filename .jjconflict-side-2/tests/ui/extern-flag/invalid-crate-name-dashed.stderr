@@ -1,0 +1,4 @@
+error: crate name `my-awesome-library` passed to `--extern` is not a valid ASCII identifier
+  |
+  = help: consider replacing the dashes with underscores: `my_awesome_library`
+

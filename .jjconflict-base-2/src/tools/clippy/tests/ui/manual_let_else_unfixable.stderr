@@ -1,0 +1,97 @@
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_unfixable.rs:21:5
+   |
+LL | /     let v = if let Some(v_some) = g() {
+LL | |
+LL | |
+LL | |         v_some
+...  |
+LL | |         ()
+LL | |     };
+   | |______^
+   |
+   = note: `-D clippy::manual-let-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
+help: consider writing
+   |
+LL ~     let Some(v) = g() else {
+LL +         panic!();
+LL +         ()
+LL +     };
+   |
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_unfixable.rs:31:5
+   |
+LL | /     let v = if let Some(v_some) = g() {
+LL | |
+LL | |
+LL | |         v_some
+...  |
+LL | |     };
+   | |______^
+   |
+help: consider writing
+   |
+LL ~     let Some(v) = g() else {
+LL +         panic!();
+LL +         if true {
+LL +             match 0 {
+LL +                 0 => (),
+LL +                 _ => (),
+LL +             }
+LL +         } else {
+LL +             panic!()
+LL +         }
+LL +     };
+   |
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_unfixable.rs:48:5
+   |
+LL | /     let v = if let Some(v_some) = g() {
+LL | |
+LL | |
+LL | |         v_some
+...  |
+LL | |     };
+   | |______^
+   |
+help: consider writing
+   |
+LL ~     let Some(v) = g() else {
+LL +         loop {
+LL +             panic!();
+LL +             break ();
+LL +         }
+LL +     };
+   |
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else_unfixable.rs:60:5
+   |
+LL | /     let v = if let Some(v_some) = g() {
+LL | |
+LL | |
+LL | |         v_some
+...  |
+LL | |     };
+   | |______^
+   |
+help: consider writing
+   |
+LL ~     let Some(v) = g() else {
+LL +         'a: loop {
+LL +             panic!();
+LL +             loop {
+LL +                 match 0 {
+LL +                     0 if (return break 'a ()) => {},
+LL +                     _ => {},
+LL +                 }
+LL +             }
+LL +         }
+LL +     };
+   |
+
+error: aborting due to 4 previous errors
+

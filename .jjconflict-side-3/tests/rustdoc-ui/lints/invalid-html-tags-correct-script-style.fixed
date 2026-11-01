@@ -1,0 +1,30 @@
+//@ run-rustfix
+#![deny(rustdoc::invalid_html_tags)]
+//~^ NOTE the lint level is defined here
+
+//! Warn on Markdown text written in RAWTEXT HTML tags,
+//! like *this: 
+//! <script>1*2</script>
+//~^ ERROR nested Markdown emphasis in HTML `script` tag
+//~| NOTE Markdown translates this into HTML, but the browser parses it as JavaScript
+//~| HELP to turn off Markdown parsing, put the tag at the start of the line
+//!
+//! Or 
+//! <script>1*2</script> this*
+//~^ ERROR nested Markdown emphasis in HTML `script` tag
+//~| NOTE Markdown translates this into HTML, but the browser parses it as JavaScript
+//~| HELP to turn off Markdown parsing, put the tag at the start of the line
+
+/// One 
+/// <SCRIPT>*emph*</SCRIPT>
+//~^ ERROR nested Markdown emphasis in HTML `script` tag
+//~| NOTE Markdown translates this into HTML, but the browser parses it as JavaScript
+//~| HELP to turn off Markdown parsing, put the tag at the start of the line
+pub struct ScriptMarkdown;
+
+/// One 
+/// <STYLE>*emph*</STYLE>
+//~^ ERROR nested Markdown emphasis in HTML `style` tag
+//~| NOTE Markdown translates this into HTML, but the browser parses it as CSS
+//~| HELP to turn off Markdown parsing, put the tag at the start of the line
+pub struct StyleMarkdown;

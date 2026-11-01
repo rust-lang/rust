@@ -1,0 +1,190 @@
+error[E0689]: can't call method `rev` on type `usize`
+  --> $DIR/issue-90315.rs:4:28
+   |
+LL |     for _i in 0..arr.len().rev() {
+   |                            ^^^ can't call method `rev` on type `usize`
+   |
+help: you must surround the range in parentheses to call its `rev` function
+   |
+LL |     for _i in (0..arr.len()).rev() {
+   |               +            +
+
+error[E0689]: can't call method `rev` on type `{integer}`
+  --> $DIR/issue-90315.rs:12:20
+   |
+LL |     for i in 1..11.rev() {
+   |                    ^^^ can't call method `rev` on type `{integer}`
+   |
+help: you must surround the range in parentheses to call its `rev` function
+   |
+LL |     for i in (1..11).rev() {
+   |              +     +
+
+error[E0689]: can't call method `rev` on type `usize`
+  --> $DIR/issue-90315.rs:18:21
+   |
+LL |     for i in 1..end.rev() {
+   |                     ^^^ can't call method `rev` on type `usize`
+   |
+help: you must surround the range in parentheses to call its `rev` function
+   |
+LL |     for i in (1..end).rev() {
+   |              +      +
+
+error[E0689]: can't call method `rev` on type `usize`
+  --> $DIR/issue-90315.rs:23:27
+   |
+LL |     for i in 1..(end + 1).rev() {
+   |                           ^^^ can't call method `rev` on type `usize`
+   |
+help: you must surround the range in parentheses to call its `rev` function
+   |
+LL |     for i in (1..(end + 1)).rev() {
+   |              +            +
+
+error[E0689]: can't call method `is_empty` on type `usize`
+  --> $DIR/issue-90315.rs:28:21
+   |
+LL |     if 1..(end + 1).is_empty() {
+   |                     ^^^^^^^^ can't call method `is_empty` on type `usize`
+   |
+help: you must surround the range in parentheses to call its `is_empty` function
+   |
+LL |     if (1..(end + 1)).is_empty() {
+   |        +            +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-90315.rs:28:8
+   |
+LL |     if 1..(end + 1).is_empty() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<{integer}>`
+   |
+   = note: expected type `bool`
+            found struct `std::ops::Range<{integer}>`
+
+error[E0689]: can't call method `is_sorted` on type `usize`
+  --> $DIR/issue-90315.rs:34:21
+   |
+LL |     if 1..(end + 1).is_sorted() {
+   |                     ^^^^^^^^^ can't call method `is_sorted` on type `usize`
+   |
+help: you must surround the range in parentheses to call its `is_sorted` function
+   |
+LL |     if (1..(end + 1)).is_sorted() {
+   |        +            +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-90315.rs:34:8
+   |
+LL |     if 1..(end + 1).is_sorted() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<{integer}>`
+   |
+   = note: expected type `bool`
+            found struct `std::ops::Range<{integer}>`
+
+error[E0689]: can't call method `take` on type `{integer}`
+  --> $DIR/issue-90315.rs:40:26
+   |
+LL |     let _res: i32 = 3..6.take(2).sum();
+   |                          ^^^^ can't call method `take` on type `{integer}`
+   |
+help: you must surround the range in parentheses to call its `take` function
+   |
+LL |     let _res: i32 = (3..6).take(2).sum();
+   |                     +    +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-90315.rs:40:21
+   |
+LL |     let _res: i32 = 3..6.take(2).sum();
+   |               ---   ^^^^^^^^^^^^^^^^^^ expected `i32`, found `Range<{integer}>`
+   |               |
+   |               expected due to this
+   |
+   = note: expected type `i32`
+            found struct `std::ops::Range<{integer}>`
+
+error[E0689]: can't call method `sum` on type `{integer}`
+  --> $DIR/issue-90315.rs:45:26
+   |
+LL |     let _sum: i32 = 3..6.sum();
+   |                          ^^^ can't call method `sum` on type `{integer}`
+   |
+help: you must surround the range in parentheses to call its `sum` function
+   |
+LL |     let _sum: i32 = (3..6).sum();
+   |                     +    +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-90315.rs:45:21
+   |
+LL |     let _sum: i32 = 3..6.sum();
+   |               ---   ^^^^^^^^^^ expected `i32`, found `Range<{integer}>`
+   |               |
+   |               expected due to this
+   |
+   = note: expected type `i32`
+            found struct `std::ops::Range<{integer}>`
+
+error[E0689]: can't call method `rev` on type `usize`
+  --> $DIR/issue-90315.rs:53:21
+   |
+LL |     for _a in a..=b.rev() {
+   |                     ^^^ can't call method `rev` on type `usize`
+   |
+help: you must surround the range in parentheses to call its `rev` function
+   |
+LL |     for _a in (a..=b).rev() {
+   |               +     +
+
+error[E0689]: can't call method `contains` on type `{integer}`
+  --> $DIR/issue-90315.rs:58:21
+   |
+LL |     let _res = ..10.contains(3);
+   |                     ^^^^^^^^ can't call method `contains` on type `{integer}`
+   |
+help: you must surround the range in parentheses to call its `contains` function
+   |
+LL |     let _res = (..10).contains(3);
+   |                +    +
+
+error[E0599]: no method named `error_method` found for type `usize` in the current scope
+  --> $DIR/issue-90315.rs:62:15
+   |
+LL |     if 1..end.error_method() {
+   |               ^^^^^^^^^^^^ method not found in `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-90315.rs:62:8
+   |
+LL |     if 1..end.error_method() {
+   |        ^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<{integer}>`
+   |
+   = note: expected type `bool`
+            found struct `std::ops::Range<{integer}>`
+
+error[E0599]: `usize` is not an iterator
+  --> $DIR/issue-90315.rs:68:18
+   |
+LL |     let _res = b.take(1)..a;
+   |                  ^^^^ `usize` is not an iterator
+   |
+   = note: the following trait bounds were not satisfied:
+           `usize: Iterator`
+           which is required by `&mut usize: Iterator`
+
+error[E0689]: can't call method `take` on ambiguous numeric type `{integer}`
+  --> $DIR/issue-90315.rs:71:25
+   |
+LL |     let _res: i32 = ..6.take(2).sum();
+   |                         ^^^^
+   |
+help: you must specify a concrete type for this numeric value, like `i32`
+   |
+LL |     let _res: i32 = ..6_i32.take(2).sum();
+   |                        ++++
+
+error: aborting due to 18 previous errors
+
+Some errors have detailed explanations: E0308, E0599, E0689.
+For more information about an error, try `rustc --explain E0308`.

@@ -1,0 +1,13 @@
+error[E0658]: `macro_rules!` attributes are unstable
+  --> $DIR/feature-gate-macro-attr.rs:3:1
+   |
+LL | macro_rules! myattr { attr() {} => {} }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #143547 <https://github.com/rust-lang/rust/issues/143547> for more information
+   = help: add `#![feature(macro_attr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

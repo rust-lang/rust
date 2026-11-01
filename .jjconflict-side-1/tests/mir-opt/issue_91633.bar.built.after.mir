@@ -1,0 +1,42 @@
+// MIR for `bar` after built
+
+fn bar(_1: Box<[T]>) -> () {
+    debug it => _1;
+    let mut _0: ();
+    let mut _2: &<[T] as std::ops::Index<usize>>::Output;
+    let mut _3: &[T];
+    scope 1 {
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = &(*_1);
+        _2 = <[T] as Index<usize>>::index(move _3, const 0_usize) -> [return: bb1, unwind: bb4];
+    }
+
+    bb1: {
+        StorageDead(_3);
+        PlaceMention((*_2));
+        StorageDead(_2);
+        _0 = const ();
+        drop(_1) -> [return: bb3, unwind: bb5];
+    }
+
+    bb2: {
+        FakeRead(ForMatchedPlace(None), (*_2));
+        unreachable;
+    }
+
+    bb3: {
+        return;
+    }
+
+    bb4 (cleanup): {
+        drop(_1) -> [return: bb5, unwind terminate(cleanup)];
+    }
+
+    bb5 (cleanup): {
+        resume;
+    }
+}

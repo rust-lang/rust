@@ -1,0 +1,14 @@
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/trivial_impl2.rs:10:1
+   |
+LL | /     fn foo()
+LL | |     where
+LL | |         Self: Foo<()>;
+   | |______________________- `foo` from trait
+...
+LL |   impl Foo<u32> for () {}
+   |   ^^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

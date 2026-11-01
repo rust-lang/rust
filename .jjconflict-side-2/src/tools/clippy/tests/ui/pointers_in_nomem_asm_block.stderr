@@ -1,0 +1,34 @@
+error: passing pointers to nomem asm block
+  --> tests/ui/pointers_in_nomem_asm_block.rs:12:13
+   |
+LL |             p1 = in(reg) p,
+   |             ^^^^^^^^^^^^^^
+...
+LL |             p3 = in(reg) p,
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: `nomem` means that no memory write or read happens inside the asm! block
+   = note: if this is intentional and no pointers are read or written to, consider allowing the lint
+   = note: `-D clippy::pointers-in-nomem-asm-block` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::pointers_in_nomem_asm_block)]`
+
+error: passing pointers to nomem asm block
+  --> tests/ui/pointers_in_nomem_asm_block.rs:32:26
+   |
+LL |         asm!("asdf {p}", p = in(reg) p, options(nomem, nostack, preserves_flags));
+   |                          ^^^^^^^^^^^^^
+   |
+   = note: `nomem` means that no memory write or read happens inside the asm! block
+   = note: if this is intentional and no pointers are read or written to, consider allowing the lint
+
+error: passing pointers to nomem asm block
+  --> tests/ui/pointers_in_nomem_asm_block.rs:39:26
+   |
+LL |         asm!("call {p}", p = in(reg) p, options(nomem));
+   |                          ^^^^^^^^^^^^^
+   |
+   = note: `nomem` means that no memory write or read happens inside the asm! block
+   = note: if this is intentional and no pointers are read or written to, consider allowing the lint
+
+error: aborting due to 3 previous errors
+

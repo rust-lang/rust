@@ -1,0 +1,15 @@
+//@ run-rustfix
+#![allow(dead_code)]
+
+struct Bravery {
+    guts: String,
+    brains: String,
+}
+
+fn main() {
+    let guts = "mettle";
+    let _ = Bravery {
+        guts: guts.to_string(), //~ ERROR mismatched types
+        brains: guts.to_string(), //~ ERROR mismatched types
+    };
+}

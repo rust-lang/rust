@@ -1,0 +1,92 @@
+error: macro definition ended unexpectedly
+  --> $DIR/macro-attr-bad.rs:4:38
+   |
+LL | macro_rules! attr_incomplete_1 { attr }
+   |                                      ^ expected macro attr args
+
+error: macro definition ended unexpectedly
+  --> $DIR/macro-attr-bad.rs:7:40
+   |
+LL | macro_rules! attr_incomplete_2 { attr() }
+   |                                        ^ expected macro attr body
+
+error: expected `=>`, found end of macro arguments
+  --> $DIR/macro-attr-bad.rs:10:43
+   |
+LL | macro_rules! attr_incomplete_3 { attr() {} }
+   |                                           ^ expected `=>`
+
+error: macro definition ended unexpectedly
+  --> $DIR/macro-attr-bad.rs:13:46
+   |
+LL | macro_rules! attr_incomplete_4 { attr() {} => }
+   |                                              ^ expected right-hand side of macro rule
+
+error: macro definition ended unexpectedly
+  --> $DIR/macro-attr-bad.rs:16:40
+   |
+LL | macro_rules! attr_incomplete_5 { unsafe }
+   |                                        ^ expected `attr`
+
+error: macro definition ended unexpectedly
+  --> $DIR/macro-attr-bad.rs:19:45
+   |
+LL | macro_rules! attr_incomplete_6 { unsafe attr }
+   |                                             ^ expected macro attr args
+
+error: `attr` rule argument matchers require parentheses
+  --> $DIR/macro-attr-bad.rs:22:36
+   |
+LL | macro_rules! attr_noparens_1 { attr{} {} => {} }
+   |                                    ^^
+   |
+help: the delimiters should be `(` and `)`
+   |
+LL - macro_rules! attr_noparens_1 { attr{} {} => {} }
+LL + macro_rules! attr_noparens_1 { attr() {} => {} }
+   |
+
+error: `attr` rule argument matchers require parentheses
+  --> $DIR/macro-attr-bad.rs:25:36
+   |
+LL | macro_rules! attr_noparens_2 { attr[] {} => {} }
+   |                                    ^^
+   |
+help: the delimiters should be `(` and `)`
+   |
+LL - macro_rules! attr_noparens_2 { attr[] {} => {} }
+LL + macro_rules! attr_noparens_2 { attr() {} => {} }
+   |
+
+error: invalid macro matcher; matchers must be contained in balanced delimiters
+  --> $DIR/macro-attr-bad.rs:28:37
+   |
+LL | macro_rules! attr_noparens_3 { attr _ {} => {} }
+   |                                     ^
+
+error: duplicate matcher binding
+  --> $DIR/macro-attr-bad.rs:31:52
+   |
+LL | macro_rules! attr_dup_matcher_1 { attr() {$x:ident $x:ident} => {} }
+   |                                           -------- ^^^^^^^^ duplicate binding
+   |                                           |
+   |                                           previous binding
+
+error: duplicate matcher binding
+  --> $DIR/macro-attr-bad.rs:34:49
+   |
+LL | macro_rules! attr_dup_matcher_2 { attr($x:ident $x:ident) {} => {} }
+   |                                        -------- ^^^^^^^^ duplicate binding
+   |                                        |
+   |                                        previous binding
+
+error: duplicate matcher binding
+  --> $DIR/macro-attr-bad.rs:37:51
+   |
+LL | macro_rules! attr_dup_matcher_3 { attr($x:ident) {$x:ident} => {} }
+   |                                        --------   ^^^^^^^^ duplicate binding
+   |                                        |
+   |                                        previous binding
+
+error: aborting due to 12 previous errors
+

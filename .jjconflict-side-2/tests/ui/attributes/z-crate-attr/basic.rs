@@ -1,0 +1,10 @@
+//@ run-pass
+// This test checks if an unstable feature is enabled with the -Zcrate-attr=feature(foo) flag. If
+// the exact feature used here is causing problems feel free to replace it with another
+// perma-unstable feature.
+
+//@ compile-flags: -Zcrate-attr=feature(allocator_internals)
+
+#![needs_allocator]
+
+fn main() {}

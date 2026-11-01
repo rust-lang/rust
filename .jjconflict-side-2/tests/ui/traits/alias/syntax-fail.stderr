@@ -1,0 +1,26 @@
+error: trait aliases cannot be `auto`
+  --> $DIR/syntax-fail.rs:4:1
+   |
+LL | auto trait A = Foo;
+   | ^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `auto`
+
+error: trait aliases cannot be `unsafe`
+  --> $DIR/syntax-fail.rs:5:1
+   |
+LL | unsafe trait B = Foo;
+   | ^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `unsafe`
+
+error: bounds are not allowed on trait aliases
+  --> $DIR/syntax-fail.rs:7:8
+   |
+LL | trait C: Ord = Eq;
+   |        ^^^^^
+
+error: bounds are not allowed on trait aliases
+  --> $DIR/syntax-fail.rs:8:8
+   |
+LL | trait D: = Eq;
+   |        ^
+
+error: aborting due to 4 previous errors
+

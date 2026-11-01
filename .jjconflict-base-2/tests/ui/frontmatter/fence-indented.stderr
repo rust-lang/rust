@@ -1,0 +1,30 @@
+error: invalid preceding whitespace for frontmatter opening
+  --> $DIR/fence-indented.rs:1:1
+   |
+LL |   ---
+   | ^^^^^
+   |
+note: frontmatter opening should not be preceded by whitespace
+  --> $DIR/fence-indented.rs:1:1
+   |
+LL |   ---
+   | ^^
+
+error: unclosed frontmatter
+  --> $DIR/fence-indented.rs:1:3
+   |
+LL | /   ---
+LL | |
+LL | |
+LL | |   ---
+LL | |
+   | |_^
+   |
+note: frontmatter opening here was not closed
+  --> $DIR/fence-indented.rs:1:3
+   |
+LL |   ---
+   |   ^^^
+
+error: aborting due to 2 previous errors
+

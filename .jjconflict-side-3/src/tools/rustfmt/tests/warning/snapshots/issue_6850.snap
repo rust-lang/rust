@@ -1,0 +1,12 @@
+---
+source: src/test/mod.rs
+---
+error[internal]: line formatted, but exceeded maximum width (maximum: 50 (see `max_width` option), found: 53)
+ --> tests/warning/source/issue_6850.rs:3:3:51
+  |
+3 |     "☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃";
+  |                                                   ^^^
+  |
+  = note: set `error_on_unformatted = false` to suppress the warning against comments or string literals
+
+warning: rustfmt has failed to format. See previous 1 errors.

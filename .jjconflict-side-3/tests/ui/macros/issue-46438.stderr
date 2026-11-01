@@ -1,0 +1,8 @@
+error: expected a trait, found type
+  --> $DIR/issue-46438.rs:11:4
+   |
+LL | m!(&'static u8);
+   |    ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

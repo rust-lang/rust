@@ -1,0 +1,8 @@
+error: align: Align(4 bytes)
+ --> $DIR/rustc_dump_layout_align.rs:7:1
+  |
+7 | enum Enum {
+  | ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

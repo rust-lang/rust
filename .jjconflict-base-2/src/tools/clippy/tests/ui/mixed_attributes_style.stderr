@@ -1,0 +1,64 @@
+error: item has both inner and outer attributes
+  --> tests/ui/mixed_attributes_style.rs:10:1
+   |
+LL | / #[allow(unused)]
+LL | | fn foo1() {
+LL | |     #![allow(unused)]
+   | |_____________________^
+   |
+   = note: `-D clippy::mixed-attributes-style` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mixed_attributes_style)]`
+
+error: item has both inner and outer attributes
+  --> tests/ui/mixed_attributes_style.rs:24:1
+   |
+LL | / /// linux
+LL | |
+LL | | fn foo4() {
+LL | |     //! windows
+   | |_______________^
+
+error: item has both inner and outer attributes
+  --> tests/ui/mixed_attributes_style.rs:39:1
+   |
+LL | / #[allow(unused)]
+LL | | mod bar {
+LL | |     #![allow(unused)]
+   | |_____________________^
+
+error: item has both inner and outer attributes
+  --> tests/ui/mixed_attributes_style.rs:69:9
+   |
+LL | /         #[allow(dead_code)]
+LL | |         mod inner_mod {
+LL | |             #![allow(dead_code)]
+   | |________________________________^
+
+error: item has both inner and outer attributes
+  --> tests/ui/mixed_attributes_style.rs:80:9
+   |
+LL | /         #[allow(dead_code)]
+LL | |         mod inner_mod {
+LL | |             #![allow(dead_code)]
+   | |________________________________^
+
+error: item has both inner and outer attributes
+  --> tests/ui/mixed_attributes_style.rs:85:5
+   |
+LL | /     /// Nested mod
+LL | |
+LL | |     #[allow(unused)]
+LL | |     mod nest_mod_2 {
+LL | |         #![allow(unused)]
+   | |_________________________^
+
+error: item has both inner and outer attributes
+  --> tests/ui/mixed_attributes_style.rs:91:9
+   |
+LL | /         #[allow(dead_code)]
+LL | |         mod inner_mod {
+LL | |             #![allow(dead_code)]
+   | |________________________________^
+
+error: aborting due to 7 previous errors
+

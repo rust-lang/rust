@@ -1,0 +1,50 @@
+error: return types are denoted using `->`
+  --> $DIR/fn-recover-return-sign.rs:3:8
+   |
+LL | fn a() => usize { 0 }
+   |        ^^
+   |
+help: use `->` instead
+   |
+LL - fn a() => usize { 0 }
+LL + fn a() -> usize { 0 }
+   |
+
+error: return types are denoted using `->`
+  --> $DIR/fn-recover-return-sign.rs:6:7
+   |
+LL | fn b(): usize { 0 }
+   |       ^
+   |
+help: use `->` instead
+   |
+LL - fn b(): usize { 0 }
+LL + fn b() -> usize { 0 }
+   |
+
+error: return types are denoted using `->`
+  --> $DIR/fn-recover-return-sign.rs:21:25
+   |
+LL |     let foo = |a: bool| => bool { a };
+   |                         ^^
+   |
+help: use `->` instead
+   |
+LL -     let foo = |a: bool| => bool { a };
+LL +     let foo = |a: bool| -> bool { a };
+   |
+
+error: return types are denoted using `->`
+  --> $DIR/fn-recover-return-sign.rs:25:24
+   |
+LL |     let bar = |a: bool|: bool { a };
+   |                        ^
+   |
+help: use `->` instead
+   |
+LL -     let bar = |a: bool|: bool { a };
+LL +     let bar = |a: bool| -> bool { a };
+   |
+
+error: aborting due to 4 previous errors
+

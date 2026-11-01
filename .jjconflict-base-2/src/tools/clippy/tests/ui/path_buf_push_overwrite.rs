@@ -1,0 +1,9 @@
+use std::path::PathBuf;
+
+#[warn(clippy::path_buf_push_overwrite)]
+#[allow(clippy::pathbuf_init_then_push)]
+fn main() {
+    let mut x = PathBuf::from("/foo");
+    x.push("/bar");
+    //~^ path_buf_push_overwrite
+}

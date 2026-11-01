@@ -1,0 +1,23 @@
+error[E0277]: `T` cannot be unpinned
+  --> $DIR/issue-90164.rs:5:10
+   |
+LL |     copy(r, w);
+   |     ---- ^ the trait `Unpin` is not implemented for `T`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+note: required by a bound in `copy`
+  --> $DIR/issue-90164.rs:1:12
+   |
+LL | fn copy<R: Unpin, W>(_: R, _: W) {}
+   |            ^^^^^ required by this bound in `copy`
+help: consider restricting type parameter `T` with trait `Unpin`
+   |
+LL | fn f<T: std::marker::Unpin>(r: T) {
+   |       ++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

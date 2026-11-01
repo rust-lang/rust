@@ -1,0 +1,23 @@
+error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
+  --> $DIR/fnmut-shared-reference-requires-fn.rs:7:20
+   |
+LL |     let mut func = || value += 1;
+   |                    ^^ ----- closure is `FnMut` because it mutates the variable `value` here
+   |                    |
+   |                    this closure implements `FnMut`, not `Fn`
+...
+LL |     requires_fn(&func);
+   |     -----------  ---- the requirement to implement `Fn` derives from here
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: required for `&{closure@$DIR/fnmut-shared-reference-requires-fn.rs:7:20: 7:22}` to implement `Fn()`
+note: required by a bound in `requires_fn`
+  --> $DIR/fnmut-shared-reference-requires-fn.rs:3:19
+   |
+LL | fn requires_fn<F: Fn()>(_: F) {}
+   |                   ^^^^ required by this bound in `requires_fn`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0525`.

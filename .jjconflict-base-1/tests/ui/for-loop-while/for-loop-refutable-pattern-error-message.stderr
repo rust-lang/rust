@@ -1,0 +1,11 @@
+error[E0005]: refutable pattern in `for` loop binding
+  --> $DIR/for-loop-refutable-pattern-error-message.rs:2:9
+   |
+LL |     for &1 in [1].iter() {}
+   |         ^^ patterns `&i32::MIN..=0_i32` and `&2_i32..=i32::MAX` not covered
+   |
+   = note: the matched value is of type `&i32`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0005`.

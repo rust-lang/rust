@@ -1,0 +1,11 @@
+error: useless use of `vec!`
+  --> tests/ui-toml/too_large_for_stack/useless_vec.rs:4:13
+   |
+LL |     let x = vec![0u8; 500];
+   |             ^^^^^^^^^^^^^^ help: you can use an array directly: `[0u8; 500]`
+   |
+   = note: `-D clippy::useless-vec` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_vec)]`
+
+error: aborting due to 1 previous error
+

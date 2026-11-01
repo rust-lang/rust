@@ -1,0 +1,13 @@
+error: the `min` method cannot be invoked on `&dyn Iterator<Item = &u64>`
+  --> $DIR/imm-ref-trait-object.rs:2:8
+   |
+LL |      t.min().unwrap()
+   |        ^^^
+   |
+help: you need `&mut dyn Iterator<Item = &u64>` instead of `&dyn Iterator<Item = &u64>`
+   |
+LL | fn test(t: &mut dyn Iterator<Item=&u64>) -> u64 {
+   |             +++
+
+error: aborting due to 1 previous error
+

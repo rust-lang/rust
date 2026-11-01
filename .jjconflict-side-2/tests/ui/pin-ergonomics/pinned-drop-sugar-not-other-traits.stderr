@@ -1,0 +1,52 @@
+error[E0407]: method `drop` is not a member of trait `HasDrop`
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:25:5
+   |
+LL |     fn drop(&pin mut self) {}
+   |     ^^^----^^^^^^^^^^^^^^^^^^
+   |     |  |
+   |     |  help: there is an associated function with a similar name: `drop`
+   |     not a member of trait `HasDrop`
+
+error[E0407]: method `drop` is not a member of trait `HasPinnedDropReceiver`
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:35:5
+   |
+LL |     fn drop(&pin mut self) {}
+   |     ^^^----^^^^^^^^^^^^^^^^^^
+   |     |  |
+   |     |  help: there is an associated function with a similar name: `drop`
+   |     not a member of trait `HasPinnedDropReceiver`
+
+error: method `drop` with `&pin mut self` is only supported for the `Drop` trait
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:15:5
+   |
+LL |     fn drop(&pin mut self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ not a `Drop::pin_drop` implementation
+
+error: method `drop` with `&pin mut self` is only supported for the `Drop` trait
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:55:9
+   |
+LL |         fn drop(&pin mut self) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ not a `Drop::pin_drop` implementation
+
+error[E0046]: not all trait items implemented, missing: `drop`
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:23:1
+   |
+LL |     fn drop(self: Pin<&mut Self>);
+   |     ------------------------------ `drop` from trait
+...
+LL | impl HasDrop for S {
+   | ^^^^^^^^^^^^^^^^^^ missing `drop` in implementation
+
+error[E0046]: not all trait items implemented, missing: `drop`
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:33:1
+   |
+LL |     fn drop(self: &pin mut Self);
+   |     ----------------------------- `drop` from trait
+...
+LL | impl HasPinnedDropReceiver for S {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `drop` in implementation
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0046, E0407.
+For more information about an error, try `rustc --explain E0046`.

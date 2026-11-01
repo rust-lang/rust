@@ -1,0 +1,15 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/missing-assoc-item.rs:5:12
+   |
+LL |     for<B> B::Item: Send,
+   |            ^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Item` implemented for `B`, you could use the fully-qualified path
+   |
+LL -     for<B> B::Item: Send,
+LL +     for<B> <B as Example>::Item: Send,
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0223`.

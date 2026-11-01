@@ -1,0 +1,31 @@
+error[E0596]: cannot borrow `tick1` as mutable, as it is not declared as mutable
+  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:16:9
+   |
+LL |         counter += 1;
+   |         ------- calling `tick1` requires mutable binding due to mutable borrow of `counter`
+...
+LL |         tick1();
+   |         ^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut tick1 = || {
+   |         +++
+
+error[E0596]: cannot borrow `tick2` as mutable, as it is not declared as mutable
+  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:19:5
+   |
+LL |         tick1();
+   |         ----- calling `tick2` requires mutable binding due to mutable borrow of `tick1`
+...
+LL |     tick2();
+   |     ^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut tick2 = || {
+   |         +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

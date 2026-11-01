@@ -1,0 +1,15 @@
+error[E0605]: non-primitive cast: `Foo` as `isize`
+  --> $DIR/non-primitive-cast-suggestion.rs:21:13
+   |
+LL |     let _ = Foo { x: 1 } as isize;
+   |             ^^^^^^^^^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+   |
+help: consider using the `From` trait instead
+   |
+LL -     let _ = Foo { x: 1 } as isize;
+LL +     let _ = isize::from(Foo { x: 1 });
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0605`.

@@ -1,0 +1,42 @@
+error[E0277]: `Foo` doesn't implement `Debug`
+  --> $DIR/multiple_tuples_implement_same_trait_continuous_arities.rs:17:23
+   |
+LL |     testing_debug((1, Foo));
+   |     -------------     ^^^ the trait `Debug` is not implemented for `Foo`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `Debug`:
+             (T₁, T₂, …, Tₙ) up to tuples of arity 12
+           and 5 others
+   = note: required for `({integer}, Foo)` to implement `Debug`
+note: required by a bound in `testing_debug`
+  --> $DIR/multiple_tuples_implement_same_trait_continuous_arities.rs:3:21
+   |
+LL | fn testing_debug<T: Debug>(t: T) {}
+   |                     ^^^^^ required by this bound in `testing_debug`
+help: consider annotating `Foo` with `#[derive(Debug)]`
+   |
+LL + #[derive(Debug)]
+LL | struct Foo;
+   |
+
+error[E0277]: the trait bound `({integer}, Foo): MyTrait` is not satisfied
+  --> $DIR/multiple_tuples_implement_same_trait_continuous_arities.rs:19:21
+   |
+LL |     testing_mytrait((1, Foo));
+   |     --------------- ^^^^^^^^ the trait `MyTrait` is not implemented for `({integer}, Foo)`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `MyTrait`:
+             (T₁, T₂, …, Tₙ) for tuples of arity 1 up to and including 5
+note: required by a bound in `testing_mytrait`
+  --> $DIR/multiple_tuples_implement_same_trait_continuous_arities.rs:4:23
+   |
+LL | fn testing_mytrait<T: MyTrait>(t: T) {}
+   |                       ^^^^^^^ required by this bound in `testing_mytrait`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

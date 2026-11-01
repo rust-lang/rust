@@ -1,0 +1,271 @@
+// Checks multiple things on the sidebar display (width of its elements, colors, etc).
+include: "utils.goml"
+// Disable animations so they don't mess up color assertions later.
+emulate-media-features: { "prefers-reduced-motion": "reduce" }
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-property: (".sidebar", {"clientWidth": "199"})
+show-text: true
+
+// First, check the sidebar colors.
+define-function: (
+    "check-colors",
+    [theme, color, background_color],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        // Checking results colors.
+        assert-css: (".sidebar", {
+            "color": |color|,
+            "background-color": |background_color|
+        }, ALL)
+    },
+)
+
+call-function: (
+    "check-colors",
+    {
+        "theme": "ayu",
+        "color": "#c5c5c5",
+        "background_color": "#14191f",
+    }
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "dark",
+        "color": "#ddd",
+        "background_color": "#505050",
+    }
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "light",
+        "color": "black",
+        "background_color": "#f5f5f5",
+    }
+)
+
+call-function: ("switch-theme", {"theme": "light"})
+
+assert-text: (".sidebar > .sidebar-crate > h2 > a", "test_docs")
+// Crate root has no "location" element
+assert-count: (".sidebar .location", 0)
+assert-count: (".sidebar h2", 1)
+assert-text: ("#all-types", "All Items")
+assert-css: ("#all-types", {"color": "#356da4"})
+// We check that we have the crates list and that the "current" on is "test_docs".
+assert-text: (".sidebar-elems ul.crate > li.current > a", "test_docs")
+// And we're also supposed to have the list of items in the current module.
+assert-text: (".sidebar-elems section ul > li:nth-child(1)", "Re-exports")
+assert-text: (".sidebar-elems section ul > li:nth-child(2)", "Modules")
+assert-text: (".sidebar-elems section ul > li:nth-child(3)", "Macros")
+assert-text: (".sidebar-elems section ul > li:nth-child(4)", "Structs")
+assert-text: (".sidebar-elems section ul > li:nth-child(5)", "Enums")
+assert-text: (".sidebar-elems section ul > li:nth-child(6)", "Constants")
+assert-text: (".sidebar-elems section ul > li:nth-child(7)", "Traits")
+assert-text: (".sidebar-elems section ul > li:nth-child(8)", "Functions")
+assert-text: (".sidebar-elems section ul > li:nth-child(9)", "Type Aliases")
+assert-text: (".sidebar-elems section ul > li:nth-child(10)", "Unions")
+assert-text: (".sidebar-elems section ul > li:nth-child(11)", "Keywords")
+assert-text: ("#structs + .item-table dt > a", "Foo")
+click: "#structs + .item-table dt > a"
+
+// PAGE: struct.Foo.html
+assert-count: (".sidebar .sidebar-crate", 1)
+assert-count: (".sidebar .location", 1)
+assert-count: (".sidebar h2", 3)
+assert-text: (".sidebar-elems ul.block > li.current > a", "Foo")
+// We check that there is no crate listed outside of the top level.
+assert-false: ".sidebar-elems > .crate"
+
+click: ".sidebar-elems section .block li > a"
+assert-property-false: ("html", {"scrollTop": "0"})
+
+click: ".sidebar h2.location a"
+assert-property: ("html", {"scrollTop": "0"})
+
+// We now go back to the crate page to click on the "lib2" crate link.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-property: (".sidebar", {"clientWidth": "199"})
+assert-css: (".sidebar-elems ul.crate > li:first-child > a", {"color": "#356da4"})
+click: ".sidebar-elems ul.crate > li:first-child > a"
+
+// PAGE: lib2/index.html
+go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
+assert-property: (".sidebar", {"clientWidth": "199"})
+assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
+assert-count: (".sidebar .location", 0)
+// We check that we have the crates list and that the "current" on is now "lib2".
+assert-text: (".sidebar-elems ul.crate > li.current > a", "lib2")
+// We now go to the "foobar" function page.
+assert-text: (".sidebar-elems > section ul.block > li:nth-child(1)", "Modules")
+assert-text: (".sidebar-elems > section ul.block > li:nth-child(2)", "Structs")
+assert-text: (".sidebar-elems > section ul.block > li:nth-child(3)", "Traits")
+assert-text: (".sidebar-elems > section ul.block > li:nth-child(4)", "Functions")
+assert-text: (".sidebar-elems > section ul.block > li:nth-child(5)", "Type Aliases")
+assert-text: ("#functions + .item-table dt > a", "foobar")
+click: "#functions + .item-table dt > a"
+
+// PAGE: fn.foobar.html
+// In items containing no items (like functions or constants) and in modules, we have no
+// "location" elements. Only the crate and optional parent module.
+// This page, being directly below the crate, only has its heading.
+assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
+assert-count: (".sidebar .location", 0)
+assert-count: (".sidebar h2", 1)
+assert-text: (".sidebar-elems ul.block > li.current > a", "foobar")
+// We check that we don't have the crate list.
+assert-false: ".sidebar-elems > .crate"
+
+go-to: "./module/index.html"
+assert-property: (".sidebar", {"clientWidth": "199"})
+assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
+assert-text: (".sidebar .location", "Module module")
+assert-count: (".sidebar .location", 1)
+assert-text: (".sidebar-elems ul.block > li.current > a", "module")
+// Module page requires three headings:
+//   - Presistent crate branding (name and version)
+//   - Module name, followed by TOC for module headings
+//   - "In crate [name]" parent pointer, followed by sibling navigation
+assert-count: (".sidebar h2", 3)
+assert-text: (".sidebar > .sidebar-elems > #rustdoc-modnav > h2", "In crate lib2")
+assert-property: (".sidebar > .sidebar-elems > #rustdoc-modnav > h2 > a", {
+    "href": "/lib2/index.html",
+}, ENDS_WITH)
+// We check that we don't have the crate list.
+assert-false: ".sidebar-elems > .crate"
+
+go-to: "./sub_module/sub_sub_module/index.html"
+assert-property: (".sidebar", {"clientWidth": "199"})
+assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
+assert-text: (".sidebar .location", "Module sub_sub_module")
+assert-text: (".sidebar > .sidebar-elems > #rustdoc-modnav > h2", "In lib2::module::sub_module")
+assert-property: (".sidebar > .sidebar-elems > #rustdoc-modnav > h2 > a", {
+    "href": "/module/sub_module/index.html",
+}, ENDS_WITH)
+assert-text: (".sidebar-elems ul.block > li.current > a", "sub_sub_module")
+// We check that we don't have the crate list.
+assert-false: ".sidebar-elems .crate"
+assert-text: (".sidebar-elems > section ul > li:nth-child(1)", "Functions")
+assert-text: ("#functions + .item-table dt > a", "foo")
+
+// Links to trait implementations in the sidebar should not wrap even if they are long.
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.HasALongTraitWithParams.html"
+assert-property: (".sidebar", {"clientWidth": "199"})
+assert-property: (".sidebar-elems section .block li > a", {"offsetHeight": 29})
+
+// Test that clicking on of the "In <module>" headings in the sidebar links to the
+// appropriate anchor in index.html.
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+assert-property: (".sidebar", {"clientWidth": "199"})
+click: "//ul[@class='block mod']/preceding-sibling::h3/a"
+// PAGE: index.html
+assert-css: ("#modules", {"background-color": "#fdffd3"})
+
+// Finally, assert that the Summary toggle doesn't affect sidebar width.
+click: "#toggle-all-docs"
+assert-text: ("#toggle-all-docs", "Show all")
+assert-property: (".sidebar", {"clientWidth": "199"})
+click: "#toggle-all-docs"
+assert-text: ("#toggle-all-docs", "Summary")
+assert-property: (".sidebar", {"clientWidth": "199"})
+
+// Checks that all.html and index.html have their sidebar link in the same place.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+store-property: (".sidebar .sidebar-crate h2 a", {
+    "clientWidth": index_sidebar_width,
+    "clientHeight": index_sidebar_height,
+    "offsetTop": index_sidebar_y,
+    "offsetLeft": index_sidebar_x,
+})
+go-to: "file://" + |DOC_PATH| + "/test_docs/all.html"
+assert-property: (".sidebar .sidebar-crate h2 a", {
+    "clientWidth": |index_sidebar_width|,
+    "clientHeight": |index_sidebar_height|,
+    "offsetTop": |index_sidebar_y|,
+    "offsetLeft": |index_sidebar_x|,
+})
+
+// Check that the sidebar links touch the left side of the box
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-position: (".sidebar .block a", {"x": -4})
+assert-position: (".sidebar-crate > h2 > a", {"x": -3})
+
+// Check that the main sidebar links touch the left side of the box
+// but the crate name doesn't, because the logo takes that space
+go-to: "file://" + |DOC_PATH| + "/huge_logo/index.html"
+assert-position: (".sidebar .block a", {"x": -4})
+// when side-by-side, it's not line wrapped
+assert-position-false: (".sidebar-crate > h2 > a", {"x": -3})
+// when line-wrapped, see that it becomes flush-left again
+drag-and-drop: ((205, 100), (108, 100))
+assert-position: (".sidebar-crate > h2 > a", {"x": -3})
+
+// Check that the mobile sidebar and the source sidebar use the same icon.
+store-css: ("rustdoc-topbar .sidebar-menu-toggle::before", {"content": image_url})
+// Then we go to a source page.
+click: ".main-heading .src"
+assert-css: ("#sidebar-button a::before", {"content": |image_url|})
+// Check that hover events work as expected.
+store-css: ("#sidebar-button a", {"background-color": sidebar_background})
+move-cursor-to: "#sidebar-button a"
+store-css: ("#sidebar-button a:hover", {"background-color": sidebar_background_hover})
+assert: |sidebar_background| != |sidebar_background_hover|
+click: "#sidebar-button a"
+wait-for: "html.src-sidebar-expanded"
+assert-css: ("#sidebar-button a:hover", {"background-color": |sidebar_background_hover|})
+move-cursor-to: "#search-button"
+assert-css: ("#sidebar-button a:not(:hover)", {"background-color": |sidebar_background|})
+// Closing sidebar.
+click: "#sidebar-button a"
+wait-for: "html:not(.src-sidebar-expanded)"
+// Now we check the same when the sidebar button is moved alongside the search.
+set-window-size: (500, 500)
+store-css: ("#sidebar-button a:hover", {"background-color": not_sidebar_background_hover})
+move-cursor-to: "rustdoc-toolbar #search-button"
+store-css: ("#sidebar-button a:not(:hover)", {"background-color": not_sidebar_background})
+// The sidebar background is supposed to be the same as the main background.
+assert-css: ("body", {"background-color": |not_sidebar_background|})
+assert: |not_sidebar_background| != |not_sidebar_background_hover| && |not_sidebar_background| != |sidebar_background|
+// The hover background is supposed to be the same as the sidebar background.
+assert: |not_sidebar_background_hover| == |sidebar_background|
+click: "#sidebar-button a"
+wait-for: "html.src-sidebar-expanded"
+// And now the background colors are supposed to be the same as the sidebar since the sidebar has
+// been open.
+assert-css: ("#sidebar-button a:hover", {"background-color": |sidebar_background_hover|})
+move-cursor-to: "h2"
+assert-css: ("#sidebar-button a:not(:hover)", {"background-color": |sidebar_background|})
+
+// Configuration option to show TOC in sidebar.
+set-local-storage: {"rustdoc-hide-toc": "true"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.WhoLetTheDogOut.html"
+assert-css: ("#rustdoc-toc", {"display": "none"})
+assert-css: (".sidebar .in-crate", {"display": "none"})
+set-local-storage: {"rustdoc-hide-toc": "false"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.WhoLetTheDogOut.html"
+assert-css: ("#rustdoc-toc", {"display": "block"})
+assert-css: (".sidebar .in-crate", {"display": "block"})
+
+set-local-storage: {"rustdoc-hide-modnav": "true"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.WhoLetTheDogOut.html"
+assert-css: ("#rustdoc-modnav", {"display": "none"})
+set-local-storage: {"rustdoc-hide-modnav": "false"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.WhoLetTheDogOut.html"
+assert-css: ("#rustdoc-modnav", {"display": "block"})
+
+set-local-storage: {"rustdoc-hide-toc": "true"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-css: ("#rustdoc-toc", {"display": "none"})
+assert-false: ".sidebar .in-crate"
+set-local-storage: {"rustdoc-hide-toc": "false"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-css: ("#rustdoc-toc", {"display": "block"})
+assert-false: ".sidebar .in-crate"
+
+set-local-storage: {"rustdoc-hide-modnav": "true"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-css: ("#rustdoc-modnav", {"display": "none"})
+set-local-storage: {"rustdoc-hide-modnav": "false"}
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+assert-css: ("#rustdoc-modnav", {"display": "block"})

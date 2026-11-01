@@ -1,0 +1,28 @@
+[package]
+name = "std_float"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+core_simd = { path = "../core_simd", default-features = false }
+
+[dev-dependencies.test_helpers]
+path = "../test_helpers"
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-test = "0.3"
+
+[features]
+default = ["as_crate"]
+as_crate = []
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    # Internal features aren't marked known config by default, we use these to
+    # gate tests.
+    'cfg(target_has_reliable_f16_math)',
+]

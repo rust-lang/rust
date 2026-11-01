@@ -1,0 +1,28 @@
+error[E0409]: variable `y` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/E0409.rs:5:23
+   |
+LL |         (0, ref y) | (y, 0) => {}
+   |                 -     ^ bound in different ways
+   |                 |
+   |                 first binding
+
+error[E0308]: mismatched types
+  --> $DIR/E0409.rs:5:23
+   |
+LL |     match x {
+   |           - this expression has type `({integer}, {integer})`
+LL |         (0, ref y) | (y, 0) => {}
+   |             -----     ^ expected `&{integer}`, found integer
+   |             |
+   |             first introduced with type `&{integer}` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
+help: consider adding `ref`
+   |
+LL |         (0, ref y) | (ref y, 0) => {}
+   |                       +++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0409.
+For more information about an error, try `rustc --explain E0308`.

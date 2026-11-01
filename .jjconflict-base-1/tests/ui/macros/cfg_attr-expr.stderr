@@ -1,0 +1,20 @@
+error: expected identifier, found metavariable
+  --> $DIR/cfg_attr-expr.rs:3:26
+   |
+LL | macro_rules! foo {
+LL |     ($e:expr) => {
+LL |         #[cfg_attr(true, $e)]
+   |                          ^^ expected identifier, found metavariable
+...
+LL | foo!(inline);
+   | ------------ in this macro invocation
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+help: must be of the form
+   |
+LL -         #[cfg_attr(true, $e)]
+LL +         #[cfg_attr(predicate, attr1, attr2, ...)]
+   |
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,65 @@
+error: expected `,` following `match` arm
+  --> $DIR/parse.rs:26:16
+   |
+LL |         Some(!)
+   |                ^
+   |
+help: missing a comma here to end this `match` arm
+   |
+LL |         Some(!),
+   |                +
+
+error: expected `,` following `match` arm
+  --> $DIR/parse.rs:31:24
+   |
+LL |         Some(!) if true
+   |                        ^
+   |
+help: missing a comma here to end this `match` arm
+   |
+LL |         Some(!) if true,
+   |                        +
+
+error: expected one of `,`, `=>`, `if`, `|`, or `}`, found `<=`
+  --> $DIR/parse.rs:42:17
+   |
+LL |         Some(!) <=
+   |                 ^^ expected one of `,`, `=>`, `if`, `|`, or `}`
+
+error: `let` bindings require top-level or-patterns in parentheses
+  --> $DIR/parse.rs:67:9
+   |
+LL |     let Ok(_) | Err(!) = &res; // Disallowed; see #82048.
+   |         ^^^^^^^^^^^^^^
+   |
+help: wrap the pattern in parentheses
+   |
+LL |     let (Ok(_) | Err(!)) = &res; // Disallowed; see #82048.
+   |         +              +
+
+error: never patterns cannot contain variable bindings
+  --> $DIR/parse.rs:73:9
+   |
+LL |     let y @ ! = x;
+   |         ^ help: use a wildcard `_` instead
+
+error: a guard on a never pattern will never be run
+  --> $DIR/parse.rs:31:20
+   |
+LL |         Some(!) if true
+   |                    ^^^^ help: remove this guard
+
+error: a guard on a never pattern will never be run
+  --> $DIR/parse.rs:37:20
+   |
+LL |         Some(!) if true,
+   |                    ^^^^ help: remove this guard
+
+error: a guard on a never pattern will never be run
+  --> $DIR/parse.rs:49:21
+   |
+LL |         never!() if true,
+   |                     ^^^^ help: remove this guard
+
+error: aborting due to 8 previous errors
+

@@ -1,0 +1,26 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `a`
+  --> $DIR/let.rs:2:9
+   |
+LL |     Let a = 10;
+   |         ^ expected one of 8 possible tokens
+   |
+help: write keyword `let` in lowercase
+   |
+LL -     Let a = 10;
+LL +     let a = 10;
+   |
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `a`
+  --> $DIR/let.rs:7:10
+   |
+LL |     lett a = 10;
+   |          ^ expected one of 8 possible tokens
+   |
+help: there is a keyword `let` with a similar name
+   |
+LL -     lett a = 10;
+LL +     let a = 10;
+   |
+
+error: aborting due to 2 previous errors
+

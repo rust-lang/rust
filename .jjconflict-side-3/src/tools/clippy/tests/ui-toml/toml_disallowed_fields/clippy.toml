@@ -1,0 +1,14 @@
+disallowed-fields = [
+    # just a string is shorthand for path only
+    "std::ops::Range::start",
+    # can give path and reason with an inline table
+    { path = "std::ops::Range::end", reason = "no end allowed" },
+    # can use an inline table but omit reason
+    { path = "std::ops::RangeTo::end" },
+    # local paths
+    "conf_disallowed_fields::X::y",
+    # re-exports
+    "conf_disallowed_fields::Y::y",
+    # field of a variant
+    "conf_disallowed_fields::Z::B::x",
+]

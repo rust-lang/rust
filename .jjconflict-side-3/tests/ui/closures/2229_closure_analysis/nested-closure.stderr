@@ -1,0 +1,85 @@
+error: First Pass analysis includes:
+  --> $DIR/nested-closure.rs:28:9
+   |
+LL |         || p.y += incr;
+   |         ^^^^^^^^^^^^^^
+   |
+note: Capturing p[(1, 0)] -> Mutable
+  --> $DIR/nested-closure.rs:28:12
+   |
+LL |         || p.y += incr;
+   |            ^^^
+note: Capturing incr[] -> Immutable
+  --> $DIR/nested-closure.rs:28:19
+   |
+LL |         || p.y += incr;
+   |                   ^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/nested-closure.rs:28:9
+   |
+LL |         || p.y += incr;
+   |         ^^^^^^^^^^^^^^
+   |
+note: Min Capture p[(1, 0)] -> Mutable
+  --> $DIR/nested-closure.rs:28:12
+   |
+LL |         || p.y += incr;
+   |            ^^^
+note: Min Capture incr[] -> Immutable
+  --> $DIR/nested-closure.rs:28:19
+   |
+LL |         || p.y += incr;
+   |                   ^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/nested-closure.rs:20:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", p.x);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing p[(0, 0)] -> Immutable
+  --> $DIR/nested-closure.rs:23:24
+   |
+LL |         println!("{}", p.x);
+   |                        ^^^
+note: Capturing p[(1, 0)] -> Mutable
+  --> $DIR/nested-closure.rs:28:12
+   |
+LL |         || p.y += incr;
+   |            ^^^
+note: Capturing p[(1, 0)] -> Immutable
+  --> $DIR/nested-closure.rs:38:24
+   |
+LL |         println!("{}", p.y);
+   |                        ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/nested-closure.rs:20:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", p.x);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture p[(0, 0)] -> Immutable
+  --> $DIR/nested-closure.rs:23:24
+   |
+LL |         println!("{}", p.x);
+   |                        ^^^
+note: Min Capture p[(1, 0)] -> Mutable
+  --> $DIR/nested-closure.rs:28:12
+   |
+LL |         || p.y += incr;
+   |            ^^^
+
+error: aborting due to 4 previous errors
+

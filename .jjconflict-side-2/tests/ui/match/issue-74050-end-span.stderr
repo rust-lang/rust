@@ -1,0 +1,16 @@
+error[E0597]: `arg` does not live long enough
+  --> $DIR/issue-74050-end-span.rs:5:19
+   |
+LL |     let _arg = match args.next() {
+   |         ---- borrow later stored here
+LL |         Some(arg) => {
+   |              --- binding `arg` declared here
+LL |             match arg.to_str() {
+   |                   ^^^ borrowed value does not live long enough
+...
+LL |         }
+   |         - `arg` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

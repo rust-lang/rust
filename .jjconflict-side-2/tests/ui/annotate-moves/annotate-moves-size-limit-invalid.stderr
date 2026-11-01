@@ -1,0 +1,2 @@
+error: incorrect value `-5` for unstable option `annotate-moves` - either a boolean (`yes`, `no`, `on`, `off`, etc.), or a size limit in bytes was expected
+

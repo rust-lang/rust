@@ -1,0 +1,18 @@
+   LL|       |//@ edition: 2024
+   LL|       |
+   LL|       |// The presence of `#[rustfmt::skip]` on a function should not cause macros
+   LL|       |// within that function to mysteriously not be instrumented.
+   LL|       |//
+   LL|       |// This test detects problems that can occur when building an expansion tree
+   LL|       |// based on `ExpnData::parent` instead of `ExpnData::call_site`, for example.
+   LL|       |
+   LL|       |#[rustfmt::skip]
+   LL|      1|fn main() {
+   LL|       |    // Ensure a gap between the body start and the first statement.
+   LL|      1|    println!(
+   LL|       |        // Keep this on a separate line, to distinguish instrumentation of
+   LL|       |        // `println!` from instrumentation of its arguments.
+   LL|      1|        "hello"
+   LL|       |    );
+   LL|      1|}
+

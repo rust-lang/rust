@@ -1,0 +1,52 @@
+error: rustc_dump_clauses
+  --> $DIR/rustc_dump_clauses.rs:10:1
+   |
+10 | fn function<T: Send>(_t: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Binder { value: TraitClause(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<T as std::marker::Send>, polarity:Positive), bound_vars: [] }
+
+error: rustc_dump_clauses
+  --> $DIR/rustc_dump_clauses.rs:13:1
+   |
+13 | trait Trait: Sync {
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: Binder { value: TraitClause(<Self as std::marker::MetaSized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<Self as std::marker::Sync>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<Self as Trait>, polarity:Positive), bound_vars: [] }
+
+error: rustc_dump_clauses
+  --> $DIR/rustc_dump_clauses.rs:19:1
+   |
+19 | struct X<'a, T: ?Sized, I: Iterator> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Binder { value: TraitClause(<T as std::marker::MetaSized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<I as std::marker::Sized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<I as std::iter::Iterator>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: OutlivesClause(T/#1, 'a/#0), bound_vars: [] }
+   = note: Binder { value: OutlivesClause(Alias(No, Alias { kind: Projection { def_id: DefId(..:.. ~ core[....]::iter::traits::iterator::Iterator::Item) }, args: [I/#2], .. }), 'a/#0), bound_vars: [] }
+
+error: rustc_dump_clauses
+  --> $DIR/rustc_dump_clauses.rs:25:1
+   |
+25 | impl<T: ?Sized, I> !Sync for X<'_, T, I> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Binder { value: TraitClause(<T as std::marker::MetaSized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<I as std::marker::Sized>, polarity:Positive), bound_vars: [] }
+
+error: rustc_dump_clauses
+  --> $DIR/rustc_dump_clauses.rs:15:5
+   |
+15 |     type Assoc;
+   |     ^^^^^^^^^^
+   |
+   = note: Binder { value: TraitClause(<Self as std::marker::MetaSized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<Self as std::marker::Sync>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitClause(<Self as Trait>, polarity:Positive), bound_vars: [] }
+
+error: aborting due to 5 previous errors
+

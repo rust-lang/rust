@@ -1,0 +1,61 @@
+error: rustc_dump_generics: DefId(..:.. ~ rustc_dump_generics[....]::Struct)
+ --> $DIR/rustc_dump_generics.rs:9:1
+  |
+9 | struct Struct<'lifetime, const CONST: usize, GENERIC> {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+note: Generics {
+          parent: None,
+          parent_count: 0,
+          own_params: [
+              GenericParamDef {
+                  name: "'lifetime",
+                  def_id: DefId(..:.. ~ rustc_dump_generics[....]::Struct::'lifetime),
+                  index: 0,
+                  pure_wrt_drop: false,
+                  kind: Lifetime,
+              },
+              GenericParamDef {
+                  name: "CONST",
+                  def_id: DefId(..:.. ~ rustc_dump_generics[....]::Struct::CONST),
+                  index: 1,
+                  pure_wrt_drop: false,
+                  kind: Const {
+                      has_default: false,
+                  },
+              },
+              GenericParamDef {
+                  name: "GENERIC",
+                  def_id: DefId(..:.. ~ rustc_dump_generics[....]::Struct::GENERIC),
+                  index: 2,
+                  pure_wrt_drop: false,
+                  kind: Type {
+                      has_default: false,
+                      synthetic: false,
+                  },
+              },
+          ],
+          param_def_id_to_index: [
+              (
+                  DefId(..:.. ~ rustc_dump_generics[....]::Struct::'lifetime),
+                  0,
+              ),
+              (
+                  DefId(..:.. ~ rustc_dump_generics[....]::Struct::CONST),
+                  1,
+              ),
+              (
+                  DefId(..:.. ~ rustc_dump_generics[....]::Struct::GENERIC),
+                  2,
+              ),
+          ],
+          has_self: false,
+          has_late_bound_regions: None,
+      }
+ --> $DIR/rustc_dump_generics.rs:9:1
+  |
+9 | struct Struct<'lifetime, const CONST: usize, GENERIC> {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

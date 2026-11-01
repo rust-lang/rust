@@ -1,0 +1,21 @@
+error[E0207]: the type parameter `Unconstrained` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/ice-const-not-fully-resolved-113045.rs:11:10
+   |
+LL | impl<'a, Unconstrained> X for [(); 0] {}
+   |          ^^^^^^^^^^^^^ unconstrained type parameter
+
+error: specialization impl does not specialize any associated items
+  --> $DIR/ice-const-not-fully-resolved-113045.rs:11:1
+   |
+LL | impl<'a, Unconstrained> X for [(); 0] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: impl is a specialization of this impl
+  --> $DIR/ice-const-not-fully-resolved-113045.rs:9:1
+   |
+LL | impl<'a, const N: usize> X for [(); N] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0207`.

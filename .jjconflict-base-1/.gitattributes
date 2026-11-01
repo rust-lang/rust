@@ -1,0 +1,18 @@
+[attr]rust text eol=lf whitespace=tab-in-indent,trailing-space,tabwidth=4
+
+* text=auto eol=lf
+*.cpp rust
+*.h rust
+*.rs rust diff=rust
+*.fixed linguist-language=Rust
+*.pp linguist-language=Rust
+*.mir linguist-language=Rust
+src/etc/installer/gfx/* binary
+src/vendor/** -text
+Cargo.lock linguist-generated=false
+
+# Older git versions try to fix line endings on images and fonts, this prevents it.
+*.png binary
+*.ico binary
+*.woff binary
+*.woff2 binary

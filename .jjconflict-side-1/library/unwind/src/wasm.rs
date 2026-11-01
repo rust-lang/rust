@@ -1,0 +1,78 @@
+//! A shim for libunwind implemented in terms of the native wasm `throw` instruction.
+
+#![allow(nonstandard_style)]
+
+// Define the __cpp_exception tag that LLVM's wasm exception handling requires.
+// In particular it is required to use either of:
+//  1. the wasm_throw llvm intrinsic, or
+//  2. the Rust try intrinsic.
+//
+// This must be provided since LLVM commit
+// aee99e8015daa9f53ab1fd4e5b24cc4c694bdc4a which changed the tag from being
+// weakly defined in each object file to being an external reference that must
+// be linked from somewhere.
+//
+// We only define this for wasm32-unknown-unknown because on Emscripten/WASI
+// targets, this symbol should be defined by the external toolchain. In
+// particular, defining this on Emscripten would break Emscripten dynamic
+// libraries.
+#[cfg(all(target_os = "unknown", panic = "unwind"))]
+core::arch::global_asm!(
+    ".globl __cpp_exception",
+    #[cfg(target_pointer_width = "64")]
+    ".tagtype __cpp_exception i64",
+    #[cfg(target_pointer_width = "32")]
+    ".tagtype __cpp_exception i32",
+    "__cpp_exception:",
+);
+
+pub use crate::types::*;
+
+pub unsafe fn _Unwind_DeleteException(exception: *mut _Unwind_Exception) {
+    if let Some(exception_cleanup) = unsafe { (*exception).exception_cleanup } {
+        exception_cleanup(_URC_FOREIGN_EXCEPTION_CAUGHT, exception);
+    }
+}
+
+pub unsafe fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code {
+    // This implementation is only used for `wasm*-unknown-unknown` targets. Such targets are not
+    // guaranteed to support exceptions, and they default to `-C panic=abort`. Because an unknown
+    // instruction is a load-time error on wasm, instead of a runtime error like on traditional
+    // architectures, we never want to codegen a `throw` instruction unless the user explicitly
+    // enabled exceptions via `-Z build-std` with `-C panic=unwind`.
+    cfg_select! {
+        panic = "unwind" => {
+            // It's important that this intrinsic is defined here rather than in `core`. Since it
+            // unwinds, invoking it from Rust code compiled with `-C panic=unwind` immediately
+            // forces `panic_unwind` as the required panic runtime.
+            //
+            // We ship unwinding `core` on Emscripten, so making this intrinsic part of `core` would
+            // prevent linking precompiled `core` into `-C panic=abort` binaries. Unlike `core`,
+            // this particular module is never precompiled with `-C panic=unwind` because it's only
+            // used for bare-metal targets, so an error can only arise if the user both manually
+            // recompiles `std` with `-C panic=unwind` and manually compiles the binary crate with
+            // `-C panic=abort`, which we don't care to support.
+            //
+            // See https://github.com/rust-lang/rust/issues/148246.
+            unsafe extern "C-unwind" {
+                /// LLVM lowers this intrinsic to the `throw` instruction.
+                #[link_name = "llvm.wasm.throw"]
+                fn wasm_throw(tag: i32, ptr: *mut u8) -> !;
+            }
+
+            // The wasm `throw` instruction takes a "tag", which differentiates certain types of
+            // exceptions from others. LLVM currently just identifies these via integers, with 0
+            // corresponding to C++ exceptions and 1 to C setjmp()/longjmp(). Ideally, we'd be able
+            // to choose something unique for Rust, but for now, we pretend to be C++ and implement
+            // the Itanium exception-handling ABI.
+            // corresponds with llvm::WebAssembly::Tag::CPP_EXCEPTION
+            //     in llvm-project/llvm/include/llvm/CodeGen/WasmEHFuncInfo.h
+            const CPP_EXCEPTION_TAG: i32 = 0;
+            unsafe { wasm_throw(CPP_EXCEPTION_TAG, exception.cast()) }
+        }
+        _ => {
+            let _ = exception;
+            core::arch::wasm::unreachable()
+        }
+    }
+}

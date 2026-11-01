@@ -1,0 +1,17 @@
+error: unneeded `return` statement
+  --> tests/ui/crashes/ice-12491.rs:6:9
+   |
+LL |         return;
+   |         ^^^^^^
+   |
+   = note: `-D clippy::needless-return` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_return)]`
+help: remove `return`
+   |
+LL -         // anything一些中文
+LL -         return;
+LL +         // anything一些中文
+   |
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,15 @@
+error[E0741]: `C` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/forbid-non-structural_match-types.rs:13:19
+   |
+LL | struct D<const X: C>;
+   |                   ^
+   |
+help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
+   |
+LL + #[derive(ConstParamTy, PartialEq, Eq)]
+LL | struct C;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0741`.

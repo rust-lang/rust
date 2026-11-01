@@ -1,0 +1,44 @@
+error[E0178]: expected a path on the left-hand side of `+`
+  --> $DIR/E0178.rs:7:8
+   |
+LL |     w: &'a Foo + Copy,
+   |        ^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL |     w: &'a (Foo + Copy),
+   |            +          +
+
+error[E0178]: expected a path on the left-hand side of `+`
+  --> $DIR/E0178.rs:8:8
+   |
+LL |     x: &'a Foo + 'a,
+   |        ^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL |     x: &'a (Foo + 'a),
+   |            +        +
+
+error[E0178]: expected a path on the left-hand side of `+`
+  --> $DIR/E0178.rs:9:8
+   |
+LL |     y: &'a mut Foo + 'a,
+   |        ^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL |     y: &'a mut (Foo + 'a),
+   |                +        +
+
+error[E0178]: expected a path on the left-hand side of `+`
+  --> $DIR/E0178.rs:10:8
+   |
+LL |     z: fn() -> Foo + 'a,
+   |        ^^^^^^^^^^^-----
+   |        |
+   |        perhaps you forgot parentheses?
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0178`.

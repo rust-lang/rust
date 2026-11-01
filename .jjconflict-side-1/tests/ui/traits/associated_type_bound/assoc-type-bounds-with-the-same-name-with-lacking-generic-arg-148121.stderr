@@ -1,0 +1,35 @@
+error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/assoc-type-bounds-with-the-same-name-with-lacking-generic-arg-148121.rs:11:16
+   |
+LL | impl A for dyn Super<X = ()> {}
+   |                ^^^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `X`
+  --> $DIR/assoc-type-bounds-with-the-same-name-with-lacking-generic-arg-148121.rs:3:11
+   |
+LL | pub trait Super<X> {
+   |           ^^^^^ -
+help: add missing generic argument
+   |
+LL | impl A for dyn Super<X, X = ()> {}
+   |                      ++
+
+error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/assoc-type-bounds-with-the-same-name-with-lacking-generic-arg-148121.rs:14:16
+   |
+LL | impl A for dyn Zelf<X = ()> {}
+   |                ^^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `X`
+  --> $DIR/assoc-type-bounds-with-the-same-name-with-lacking-generic-arg-148121.rs:7:11
+   |
+LL | pub trait Zelf<X>: Super<X> {}
+   |           ^^^^ -
+help: add missing generic argument
+   |
+LL | impl A for dyn Zelf<X, X = ()> {}
+   |                     ++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

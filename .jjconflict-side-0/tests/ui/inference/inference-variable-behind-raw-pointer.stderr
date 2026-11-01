@@ -1,0 +1,12 @@
+warning: type annotations needed
+  --> $DIR/inference-variable-behind-raw-pointer.rs:9:13
+   |
+LL |     if data.is_null() {}
+   |             ^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2018/tyvar-behind-raw-pointer.html>
+   = note: `#[warn(tyvar_behind_raw_pointer)]` (part of `#[warn(rust_2018_compatibility)]`) on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,102 @@
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
+  --> $DIR/weird-exprs.rs:8:5
+   |
+LL |   type A = [u32; {
+   |  ________________-
+LL | |     impl Uto for *mut Test {}
+   | |     ^^^^^---^^^^^^^^^^----
+   | |          |            |
+   | |          |            `Test` is not local
+   | |          `Uto` is not local
+...  |
+LL | | }];
+   | |_- move the `impl` block outside of this constant expression `<unnameable>`
+   |
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+   = note: `#[warn(non_local_definitions)]` on by default
+
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
+  --> $DIR/weird-exprs.rs:16:9
+   |
+LL |       Discr = {
+   |  _____________-
+LL | |         impl Uto for Test {}
+   | |         ^^^^^---^^^^^----
+   | |              |       |
+   | |              |       `Test` is not local
+   | |              `Uto` is not local
+...  |
+LL | |     }
+   | |_____- move the `impl` block outside of this constant expression `<unnameable>`
+   |
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
+  --> $DIR/weird-exprs.rs:25:9
+   |
+LL |       let _array = [0i32; {
+   |  _________________________-
+LL | |         impl Test {
+   | |         ^^^^^----
+   | |              |
+   | |              `Test` is not local
+LL | |
+LL | |             fn bar() {}
+...  |
+LL | |         1
+LL | |     }];
+   | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
+   |
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
+  --> $DIR/weird-exprs.rs:34:9
+   |
+LL |       type A = [u32; {
+   |  ____________________-
+LL | |         impl Uto for &Test {}
+   | |         ^^^^^---^^^^^^----
+   | |              |        |
+   | |              |        `Test` is not local
+   | |              `Uto` is not local
+...  |
+LL | |     }];
+   | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
+   |
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
+  --> $DIR/weird-exprs.rs:41:9
+   |
+LL |       fn a(_: [u32; {
+   |  ___________________-
+LL | |         impl Uto for &(Test,) {}
+   | |         ^^^^^---^^^^^^^----^^
+   | |              |         |
+   | |              |         `Test` is not local
+   | |              `Uto` is not local
+...  |
+LL | |     }]) {}
+   | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
+   |
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+
+warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
+  --> $DIR/weird-exprs.rs:48:9
+   |
+LL |       fn b() -> [u32; {
+   |  _____________________-
+LL | |         impl Uto for &(Test,Test) {}
+   | |         ^^^^^---^^^^^^^----^----^
+   | |              |         |    |
+   | |              |         |    `Test` is not local
+   | |              |         `Test` is not local
+   | |              `Uto` is not local
+...  |
+LL | |     }] { todo!() }
+   | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
+   |
+   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
+
+warning: 6 warnings emitted
+

@@ -1,0 +1,40 @@
+error: future cannot be sent between threads safely
+  --> $DIR/stalled-coroutine-obligations.rs:9:5
+   |
+LL | /     Box::new(async {
+LL | |
+LL | |         let non_send = null::<()>();
+LL | |         &non_send;
+LL | |         async {}.await
+LL | |     })
+   | |______^ future created by async block is not `Send`
+   |
+   = help: within `{async block@$DIR/stalled-coroutine-obligations.rs:9:14: 9:19}`, the trait `Send` is not implemented for `*const ()`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/stalled-coroutine-obligations.rs:13:18
+   |
+LL |         let non_send = null::<()>();
+   |             -------- has type `*const ()` which is not `Send`
+LL |         &non_send;
+LL |         async {}.await
+   |                  ^^^^^ await occurs here, with `non_send` maybe used later
+   = note: required for the cast from `Box<{async block@$DIR/stalled-coroutine-obligations.rs:9:14: 9:19}>` to `Box<dyn Send>`
+
+error: future cannot be sent between threads safely
+  --> $DIR/stalled-coroutine-obligations.rs:27:32
+   |
+LL |         let _: Box<dyn Send> = Box::new(fut);
+   |                                ^^^^^^^^^^^^^ future created by async block is not `Send`
+   |
+   = help: the trait `Send` is not implemented for `dyn Trait`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/stalled-coroutine-obligations.rs:25:22
+   |
+LL |             let _x = foo();
+   |                 -- has type `Box<dyn Trait>` which is not `Send`
+LL |             async {}.await;
+   |                      ^^^^^ await occurs here, with `_x` maybe used later
+   = note: required for the cast from `Box<{async block@$DIR/stalled-coroutine-obligations.rs:23:19: 23:24}>` to `Box<dyn Send>`
+
+error: aborting due to 2 previous errors
+

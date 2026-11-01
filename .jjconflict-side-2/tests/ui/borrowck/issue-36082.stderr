@@ -1,0 +1,20 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/issue-36082.rs:9:19
+   |
+LL |     let val: &_ = x.borrow().0;
+   |                   ^^^^^^^^^^  - temporary value is freed at the end of this statement
+   |                   |
+   |                   creates a temporary value which is freed while still in use
+...
+LL |     println!("{}", val);
+   |                    --- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = x.borrow();
+LL ~     let val: &_ = binding.0;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.

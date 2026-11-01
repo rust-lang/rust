@@ -1,0 +1,20 @@
+error: constant of non-structural type `Thing<Incomparable>` in a pattern
+  --> $DIR/derive-and-manual-partialeq-issue-147714.rs:27:12
+   |
+LL | enum Thing<T> {
+   | ------------- `Thing<Incomparable>` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+...
+LL | const X: Thing<Incomparable> = Thing::B;
+   | ---------------------------- constant defined here
+...
+LL |     if let X = X {
+   |            ^ constant of non-structural type
+   |
+help: if `Thing<Incomparable>` manually implemented `PartialEq`, you could check for equality instead of pattern matching
+   |
+LL -     if let X = X {
+LL +     if X == X {
+   |
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,134 @@
+error[E0277]: the trait bound `(): bad_on_unimplemented::MissingAttr` is not satisfied
+  --> $DIR/malformed_foreign_on_unimplemented.rs:23:18
+   |
+LL |     missing_attr(());
+   |     ------------ ^^ the trait `bad_on_unimplemented::MissingAttr` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `missing_attr`
+  --> $DIR/malformed_foreign_on_unimplemented.rs:12:20
+   |
+LL | fn missing_attr<T: MissingAttr>(_: T) {}
+   |                    ^^^^^^^^^^^ required by this bound in `missing_attr`
+
+error[E0277]: the trait bound `(): bad_on_unimplemented::DuplicateAttr` is not satisfied
+  --> $DIR/malformed_foreign_on_unimplemented.rs:24:20
+   |
+LL |     duplicate_attr(());
+   |     -------------- ^^ a
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `bad_on_unimplemented::DuplicateAttr` is not implemented for `()`
+note: required by a bound in `duplicate_attr`
+  --> $DIR/malformed_foreign_on_unimplemented.rs:13:22
+   |
+LL | fn duplicate_attr<T: DuplicateAttr>(_: T) {}
+   |                      ^^^^^^^^^^^^^ required by this bound in `duplicate_attr`
+
+error[E0277]: the trait bound `(): bad_on_unimplemented::NotMetaList` is not satisfied
+  --> $DIR/malformed_foreign_on_unimplemented.rs:25:19
+   |
+LL |     not_meta_list(());
+   |     ------------- ^^ the trait `bad_on_unimplemented::NotMetaList` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `not_meta_list`
+  --> $DIR/malformed_foreign_on_unimplemented.rs:14:21
+   |
+LL | fn not_meta_list<T: NotMetaList>(_: T) {}
+   |                     ^^^^^^^^^^^ required by this bound in `not_meta_list`
+
+error[E0277]: the trait bound `(): bad_on_unimplemented::Empty` is not satisfied
+  --> $DIR/malformed_foreign_on_unimplemented.rs:26:11
+   |
+LL |     empty(());
+   |     ----- ^^ the trait `bad_on_unimplemented::Empty` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `empty`
+  --> $DIR/malformed_foreign_on_unimplemented.rs:15:13
+   |
+LL | fn empty<T: Empty>(_: T) {}
+   |             ^^^^^ required by this bound in `empty`
+
+error[E0277]: the trait bound `(): bad_on_unimplemented::WrongDelim` is not satisfied
+  --> $DIR/malformed_foreign_on_unimplemented.rs:27:17
+   |
+LL |     wrong_delim(());
+   |     ----------- ^^ the trait `bad_on_unimplemented::WrongDelim` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `wrong_delim`
+  --> $DIR/malformed_foreign_on_unimplemented.rs:16:19
+   |
+LL | fn wrong_delim<T: WrongDelim>(_: T) {}
+   |                   ^^^^^^^^^^ required by this bound in `wrong_delim`
+
+error[E0277]: the trait bound `(): bad_on_unimplemented::BadFormatter<()>` is not satisfied
+  --> $DIR/malformed_foreign_on_unimplemented.rs:28:19
+   |
+LL |     bad_formatter(());
+   |     ------------- ^^ ()
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `bad_on_unimplemented::BadFormatter<()>` is not implemented for `()`
+note: required by a bound in `bad_formatter`
+  --> $DIR/malformed_foreign_on_unimplemented.rs:17:21
+   |
+LL | fn bad_formatter<T: BadFormatter<()>>(_: T) {}
+   |                     ^^^^^^^^^^^^^^^^ required by this bound in `bad_formatter`
+
+error[E0277]: the trait bound `(): bad_on_unimplemented::NoImplicitArgs` is not satisfied
+  --> $DIR/malformed_foreign_on_unimplemented.rs:29:22
+   |
+LL |     no_implicit_args(());
+   |     ---------------- ^^ test {}
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `bad_on_unimplemented::NoImplicitArgs` is not implemented for `()`
+note: required by a bound in `no_implicit_args`
+  --> $DIR/malformed_foreign_on_unimplemented.rs:18:24
+   |
+LL | fn no_implicit_args<T: NoImplicitArgs>(_: T) {}
+   |                        ^^^^^^^^^^^^^^ required by this bound in `no_implicit_args`
+
+error[E0277]: the trait bound `(): bad_on_unimplemented::MissingArg` is not satisfied
+  --> $DIR/malformed_foreign_on_unimplemented.rs:30:17
+   |
+LL |     missing_arg(());
+   |     ----------- ^^ {missing}
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `bad_on_unimplemented::MissingArg` is not implemented for `()`
+note: required by a bound in `missing_arg`
+  --> $DIR/malformed_foreign_on_unimplemented.rs:19:19
+   |
+LL | fn missing_arg<T: MissingArg>(_: T) {}
+   |                   ^^^^^^^^^^ required by this bound in `missing_arg`
+
+error[E0277]: the trait bound `(): bad_on_unimplemented::BadArg` is not satisfied
+  --> $DIR/malformed_foreign_on_unimplemented.rs:31:13
+   |
+LL |     bad_arg(());
+   |     ------- ^^ {_}
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `bad_on_unimplemented::BadArg` is not implemented for `()`
+note: required by a bound in `bad_arg`
+  --> $DIR/malformed_foreign_on_unimplemented.rs:20:15
+   |
+LL | fn bad_arg<T: BadArg>(_: T) {}
+   |               ^^^^^^ required by this bound in `bad_arg`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

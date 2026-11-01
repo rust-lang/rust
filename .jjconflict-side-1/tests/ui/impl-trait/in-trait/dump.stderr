@@ -1,0 +1,8 @@
+error: <T as Foo>::hello::{anon_assoc#0}<'s/#1>
+  --> $DIR/dump.rs:10:35
+   |
+LL | fn hello<'s, T: Foo>(x: &'s T) -> impl Sized + use<'s, T> {
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

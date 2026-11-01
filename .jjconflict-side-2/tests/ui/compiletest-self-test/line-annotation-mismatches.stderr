@@ -1,0 +1,61 @@
+warning: lint `raw_pointer_derive` has been removed: using derive with raw pointers is ok
+   |
+   = note: requested on the command line with `-D raw_pointer_derive`
+   = note: `#[warn(renamed_and_removed_lints)]` on by default
+
+error[E0425]: cannot find value `unresolved1` in this scope
+  --> $DIR/line-annotation-mismatches.rs:21:5
+   |
+LL |     unresolved1;
+   |     ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `unresolved2` in this scope
+  --> $DIR/line-annotation-mismatches.rs:25:5
+   |
+LL |     unresolved2;
+   |     ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `unresolved3` in this scope
+  --> $DIR/line-annotation-mismatches.rs:28:5
+   |
+LL |     unresolved3;
+   |     ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `unresolved4` in this scope
+  --> $DIR/line-annotation-mismatches.rs:31:5
+   |
+LL |     unresolved4;
+   |     ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `unresolvedA` in this scope
+  --> $DIR/line-annotation-mismatches.rs:37:5
+   |
+LL |     unresolvedA;
+   |     ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `unresolvedB` in this scope
+  --> $DIR/line-annotation-mismatches.rs:41:5
+   |
+LL |     unresolvedB;
+   |     ^^^^^^^^^^^ not found in this scope
+
+warning: lint `raw_pointer_derive` has been removed: using derive with raw pointers is ok
+   |
+   = note: requested on the command line with `-D raw_pointer_derive`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0601]: `main` function not found in crate `line_annotation_mismatches`
+  --> $DIR/line-annotation-mismatches.rs:42:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/line-annotation-mismatches.rs`
+
+warning: lint `raw_pointer_derive` has been removed: using derive with raw pointers is ok
+   |
+   = note: requested on the command line with `-D raw_pointer_derive`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 7 previous errors; 3 warnings emitted
+
+Some errors have detailed explanations: E0425, E0601.
+For more information about an error, try `rustc --explain E0425`.

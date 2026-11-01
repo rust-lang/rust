@@ -1,0 +1,5 @@
+Running GenMC Verification...
+Verification complete with 16 executions. No errors found.
+Number of complete executions explored: 8
+Number of blocked executions seen: 8
+Verification took [TIME]s.

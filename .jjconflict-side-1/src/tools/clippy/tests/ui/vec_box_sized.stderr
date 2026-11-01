@@ -1,0 +1,59 @@
+error: `Vec<T>` is already on the heap, the boxing is unnecessary
+  --> tests/ui/vec_box_sized.rs:26:14
+   |
+LL |     const C: Vec<Box<i32>> = Vec::new();
+   |              ^^^^^^^^^^^^^ help: try: `Vec<i32>`
+   |
+   = note: `-D clippy::vec-box` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::vec_box)]`
+
+error: `Vec<T>` is already on the heap, the boxing is unnecessary
+  --> tests/ui/vec_box_sized.rs:28:15
+   |
+LL |     static S: Vec<Box<i32>> = Vec::new();
+   |               ^^^^^^^^^^^^^ help: try: `Vec<i32>`
+
+error: `Vec<T>` is already on the heap, the boxing is unnecessary
+  --> tests/ui/vec_box_sized.rs:32:21
+   |
+LL |         sized_type: Vec<Box<SizedStruct>>,
+   |                     ^^^^^^^^^^^^^^^^^^^^^ help: try: `Vec<SizedStruct>`
+
+error: `Vec<T>` is already on the heap, the boxing is unnecessary
+  --> tests/ui/vec_box_sized.rs:36:14
+   |
+LL |     struct A(Vec<Box<SizedStruct>>);
+   |              ^^^^^^^^^^^^^^^^^^^^^ help: try: `Vec<SizedStruct>`
+
+error: `Vec<T>` is already on the heap, the boxing is unnecessary
+  --> tests/ui/vec_box_sized.rs:38:18
+   |
+LL |     struct B(Vec<Vec<Box<(u32)>>>);
+   |                  ^^^^^^^^^^^^^^^ help: try: `Vec<u32>`
+
+error: `Vec<T>` is already on the heap, the boxing is unnecessary
+  --> tests/ui/vec_box_sized.rs:41:42
+   |
+LL |     fn allocator_global_defined_vec() -> Vec<Box<i32>, std::alloc::Global> {
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Vec<i32>`
+
+error: `Vec<T>` is already on the heap, the boxing is unnecessary
+  --> tests/ui/vec_box_sized.rs:45:42
+   |
+LL |     fn allocator_global_defined_box() -> Vec<Box<i32, std::alloc::Global>> {
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Vec<i32>`
+
+error: `Vec<T>` is already on the heap, the boxing is unnecessary
+  --> tests/ui/vec_box_sized.rs:49:29
+   |
+LL |     fn allocator_match() -> Vec<Box<i32, DummyAllocator>, DummyAllocator> {
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Vec<i32>`
+
+error: `Vec<T>` is already on the heap, the boxing is unnecessary
+  --> tests/ui/vec_box_sized.rs:87:23
+   |
+LL |         pub fn f() -> Vec<Box<S>> {
+   |                       ^^^^^^^^^^^ help: try: `Vec<S>`
+
+error: aborting due to 9 previous errors
+

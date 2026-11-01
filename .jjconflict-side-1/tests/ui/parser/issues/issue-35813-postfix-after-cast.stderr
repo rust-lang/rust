@@ -1,0 +1,332 @@
+error: cast cannot be followed by indexing
+  --> $DIR/issue-35813-postfix-after-cast.rs:10:5
+   |
+LL |     vec![1, 2, 3] as Vec<i32>[0];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |     (vec![1, 2, 3] as Vec<i32>)[0];
+   |     +                         +
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:12:18
+   |
+LL |     vec![1, 2, 3]: Vec<i32>[0];
+   |                  ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: cast cannot be followed by indexing
+  --> $DIR/issue-35813-postfix-after-cast.rs:17:5
+   |
+LL |     (&[0]) as &[i32][0];
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |     ((&[0]) as &[i32])[0];
+   |     +                +
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:19:14
+   |
+LL |     (&[0i32]): &[i32; 1][0];
+   |              ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected `{`, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:27:12
+   |
+LL |     if 5u64: u64: u64 == 0u64 {
+   |            ^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/issue-35813-postfix-after-cast.rs:27:8
+   |
+LL |     if 5u64: u64: u64 == 0u64 {
+   |        ^^^^
+
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:39:17
+   |
+LL |     let _ = 0i32: i32: i32.count_ones();
+   |                 ^ expected one of `.`, `;`, `?`, `else`, or an operator
+
+error: expected one of `!`, `(`, `.`, `::`, `;`, `<`, `?`, or `else`, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:43:21
+   |
+LL |     let _ = 0 as i32: i32.count_ones();
+   |                     ^ expected one of 8 possible tokens
+
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:47:17
+   |
+LL |     let _ = 0i32: i32 as i32.count_ones();
+   |                 ^ expected one of `.`, `;`, `?`, `else`, or an operator
+
+error: cast cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:51:13
+   |
+LL |     let _ = 0 as i32 as i32.count_ones();
+   |             ^^^^^^^^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |     let _ = (0 as i32 as i32).count_ones();
+   |             +               +
+
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:56:17
+   |
+LL |     let _ = 0i32: i32: i32 as u32 as i32.count_ones();
+   |                 ^ expected one of `.`, `;`, `?`, `else`, or an operator
+
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:60:17
+   |
+LL |     let _ = 0i32: i32.count_ones(): u32;
+   |                 ^ expected one of `.`, `;`, `?`, `else`, or an operator
+
+error: cast cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:64:13
+   |
+LL |     let _ = 0 as i32.count_ones(): u32;
+   |             ^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |     let _ = (0 as i32).count_ones(): u32;
+   |             +        +
+
+error: expected one of `.`, `;`, `?`, or `else`, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:64:34
+   |
+LL |     let _ = 0 as i32.count_ones(): u32;
+   |                                  ^ expected one of `.`, `;`, `?`, or `else`
+
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:69:17
+   |
+LL |     let _ = 0i32: i32.count_ones() as u32;
+   |                 ^ expected one of `.`, `;`, `?`, `else`, or an operator
+
+error: cast cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:73:13
+   |
+LL |     let _ = 0 as i32.count_ones() as u32;
+   |             ^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |     let _ = (0 as i32).count_ones() as u32;
+   |             +        +
+
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:78:17
+   |
+LL |     let _ = 0i32: i32: i32.count_ones() as u32 as i32;
+   |                 ^ expected one of `.`, `;`, `?`, `else`, or an operator
+
+error: cast cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:82:13
+   |
+LL |       let _ = 0
+   |  _____________^
+LL | |         as i32
+   | |______________^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL ~     let _ = (0
+LL ~         as i32)
+   |
+
+error: cast cannot be followed by indexing
+  --> $DIR/issue-35813-postfix-after-cast.rs:90:18
+   |
+LL |     let x: i32 = &vec![1, 2, 3] as &Vec<i32>[0];
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |     let x: i32 = (&vec![1, 2, 3] as &Vec<i32>)[0];
+   |                  +                           +
+
+error: cast cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:95:5
+   |
+LL |     0 as i32.max(0);
+   |     ^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |     (0 as i32).max(0);
+   |     +        +
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:97:6
+   |
+LL |     0: i32.max(0);
+   |      ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: cast cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:111:8
+   |
+LL |     if 5u64 as i32.max(0) == 0 {
+   |        ^^^^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |     if (5u64 as i32).max(0) == 0 {
+   |        +           +
+
+error: expected `{`, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:114:12
+   |
+LL |     if 5u64: u64.max(0) == 0 {
+   |            ^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/issue-35813-postfix-after-cast.rs:114:8
+   |
+LL |     if 5u64: u64.max(0) == 0 {
+   |        ^^^^
+
+error: cast cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:121:9
+   |
+LL |         5u64 as u32.max(0) == 0
+   |         ^^^^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |         (5u64 as u32).max(0) == 0
+   |         +           +
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:125:13
+   |
+LL |         5u64: u64.max(0) == 0
+   |             ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: cast cannot be followed by indexing
+  --> $DIR/issue-35813-postfix-after-cast.rs:130:24
+   |
+LL | static bar: &[i32] = &(&[1,2,3] as &[i32][0..1]);
+   |                        ^^^^^^^^^^^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL | static bar: &[i32] = &((&[1,2,3] as &[i32])[0..1]);
+   |                        +                  +
+
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:133:36
+   |
+LL | static bar2: &[i32] = &(&[1i32,2,3]: &[i32; 3][0..1]);
+   |                                    ^ expected one of `)`, `,`, `.`, `?`, or an operator
+
+error: cast cannot be followed by `?`
+  --> $DIR/issue-35813-postfix-after-cast.rs:138:5
+   |
+LL |     Err(0u64) as Result<u64,u64>?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |     (Err(0u64) as Result<u64,u64>)?;
+   |     +                            +
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:140:14
+   |
+LL |     Err(0u64): Result<u64,u64>?;
+   |              ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected identifier, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:152:13
+   |
+LL |     drop_ptr: F();
+   |             ^ expected identifier
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:159:13
+   |
+LL |     drop_ptr: fn(u8);
+   |             ^ expected one of 8 possible tokens
+
+error: cast cannot be followed by a function call
+  --> $DIR/issue-35813-postfix-after-cast.rs:165:5
+   |
+LL |     drop as fn(u8)(0);
+   |     ^^^^^^^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |     (drop as fn(u8))(0);
+   |     +              +
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:167:13
+   |
+LL |     drop_ptr: fn(u8)(0);
+   |             ^ expected one of 8 possible tokens
+
+error: cast cannot be followed by `.await`
+  --> $DIR/issue-35813-postfix-after-cast.rs:172:5
+   |
+LL |     Box::pin(noop()) as Pin<Box<dyn Future<Output = ()>>>.await;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |     (Box::pin(noop()) as Pin<Box<dyn Future<Output = ()>>>).await;
+   |     +                                                     +
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:175:21
+   |
+LL |     Box::pin(noop()): Pin<Box<_>>.await;
+   |                     ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: cast cannot be followed by a field access
+  --> $DIR/issue-35813-postfix-after-cast.rs:187:5
+   |
+LL |     Foo::default() as Foo.bar;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |     (Foo::default() as Foo).bar;
+   |     +                     +
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:189:19
+   |
+LL |     Foo::default(): Foo.bar;
+   |                   ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: cast cannot be followed by a method call
+  --> $DIR/issue-35813-postfix-after-cast.rs:103:9
+   |
+LL |         if true { 33 } else { 44 } as i32.max(0),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |         (if true { 33 } else { 44 } as i32).max(0),
+   |         +                                 +
+
+error: expected one of `,`, `.`, `?`, or an operator, found `:`
+  --> $DIR/issue-35813-postfix-after-cast.rs:105:35
+   |
+LL |         if true { 33 } else { 44 }: i32.max(0)
+   |                                   ^ expected one of `,`, `.`, `?`, or an operator
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-35813-postfix-after-cast.rs:150:13
+   |
+LL |     drop as F();
+   |             ^^^ only `Fn` traits may use parentheses
+
+error: aborting due to 39 previous errors
+
+For more information about this error, try `rustc --explain E0214`.

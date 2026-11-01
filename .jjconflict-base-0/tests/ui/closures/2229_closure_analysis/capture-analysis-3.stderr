@@ -1,0 +1,44 @@
+error: First Pass analysis includes:
+  --> $DIR/capture-analysis-3.rs:20:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _x = a.b.c;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing a[(0, 0),(0, 0)] -> ByValue
+  --> $DIR/capture-analysis-3.rs:23:18
+   |
+LL |         let _x = a.b.c;
+   |                  ^^^^^
+note: Capturing a[(0, 0)] -> Immutable
+  --> $DIR/capture-analysis-3.rs:26:26
+   |
+LL |         println!("{:?}", a.b);
+   |                          ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/capture-analysis-3.rs:20:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _x = a.b.c;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture a[(0, 0)] -> ByValue
+  --> $DIR/capture-analysis-3.rs:23:18
+   |
+LL |         let _x = a.b.c;
+   |                  ^^^^^ a[(0, 0)] captured as ByValue here
+...
+LL |         println!("{:?}", a.b);
+   |                          ^^^ a[(0, 0)] used here
+
+error: aborting due to 2 previous errors
+

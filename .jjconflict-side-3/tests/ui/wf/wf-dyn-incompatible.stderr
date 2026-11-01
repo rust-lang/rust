@@ -1,0 +1,19 @@
+error[E0038]: the trait `A` is not dyn compatible
+  --> $DIR/wf-dyn-incompatible.rs:9:18
+   |
+LL |     let _x: &dyn A;
+   |                  ^ `A` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/wf-dyn-incompatible.rs:5:23
+   |
+LL | trait A {
+   |       - this trait is not dyn compatible...
+LL |     fn foo(&self, _x: &Self);
+   |                       ^^^^^ ...because method `foo` references the `Self` type in this parameter
+   = help: consider moving `foo` to another trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

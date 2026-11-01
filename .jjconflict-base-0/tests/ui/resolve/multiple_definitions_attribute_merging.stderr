@@ -1,0 +1,14 @@
+error[E0428]: the name `Dealigned` is defined multiple times
+  --> $DIR/multiple_definitions_attribute_merging.rs:13:1
+   |
+LL | struct Dealigned<T>(u8, T);
+   | --------------------------- previous definition of the type `Dealigned` here
+...
+LL | struct Dealigned<T>(u8, T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Dealigned` redefined here
+   |
+   = note: `Dealigned` must be defined only once in the type namespace of this module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0428`.

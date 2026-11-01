@@ -1,0 +1,32 @@
+// Test to ensure that the headings anchor behave as expected.
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
+show-text: true
+
+define-function: (
+    "check-heading-anchor",
+    [heading_id],
+    block {
+        // The anchor should not be displayed by default.
+        assert-css: ("#" + |heading_id| + " .doc-anchor", { "display": "none" })
+        // We ensure that hovering the heading makes the anchor visible.
+        move-cursor-to: "#" + |heading_id|
+        assert-css: ("#" + |heading_id| + ":hover .doc-anchor", { "display": "block" })
+        // We then ensure that moving from the heading to the anchor doesn't make the anchor
+        // disappear.
+        move-cursor-to: "#" + |heading_id| + " .doc-anchor"
+        assert-css: ("#" + |heading_id| + " .doc-anchor:hover", {
+            "display": "block",
+            // We also ensure that there is no underline decoration.
+            "text-decoration-line": "none",
+        })
+    }
+)
+
+move-cursor-to: "#top-doc-prose-title"
+// If the top documentation block first element is a heading, we should never display its anchor
+// to prevent it from overlapping with the `[-]` element.
+assert-css: ("#top-doc-prose-title:hover .doc-anchor", { "display": "none" })
+
+call-function: ("check-heading-anchor", {"heading_id": "top-doc-prose-sub-heading"})
+call-function: ("check-heading-anchor", {"heading_id": "top-doc-prose-sub-sub-heading"})
+call-function: ("check-heading-anchor", {"heading_id": "you-know-the-drill"})

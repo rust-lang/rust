@@ -1,0 +1,54 @@
+error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:2:11
+   |
+LL | #[global_allocator]
+   | ------------------- in this attribute macro expansion
+LL | static A: usize = 0;
+   |           ^^^^^ the nightly-only, unstable trait `GlobalAllocator` is not implemented for `usize`
+   |
+help: the trait `GlobalAllocator` is implemented for `System`
+  --> $SRC_DIR/std/src/alloc.rs:LL:COL
+   = note: required for `usize` to implement `GlobalAlloc`
+
+error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:2:11
+   |
+LL | #[global_allocator]
+   | ------------------- in this attribute macro expansion
+LL | static A: usize = 0;
+   |           ^^^^^ the nightly-only, unstable trait `GlobalAllocator` is not implemented for `usize`
+   |
+help: the trait `GlobalAllocator` is implemented for `System`
+  --> $SRC_DIR/std/src/alloc.rs:LL:COL
+   = note: required for `usize` to implement `GlobalAlloc`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:2:11
+   |
+LL | #[global_allocator]
+   | ------------------- in this attribute macro expansion
+LL | static A: usize = 0;
+   |           ^^^^^ the nightly-only, unstable trait `GlobalAllocator` is not implemented for `usize`
+   |
+help: the trait `GlobalAllocator` is implemented for `System`
+  --> $SRC_DIR/std/src/alloc.rs:LL:COL
+   = note: required for `usize` to implement `GlobalAlloc`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:2:11
+   |
+LL | #[global_allocator]
+   | ------------------- in this attribute macro expansion
+LL | static A: usize = 0;
+   |           ^^^^^ the nightly-only, unstable trait `GlobalAllocator` is not implemented for `usize`
+   |
+help: the trait `GlobalAllocator` is implemented for `System`
+  --> $SRC_DIR/std/src/alloc.rs:LL:COL
+   = note: required for `usize` to implement `GlobalAlloc`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

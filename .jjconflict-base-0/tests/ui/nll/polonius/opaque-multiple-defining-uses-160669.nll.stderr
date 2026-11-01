@@ -1,0 +1,80 @@
+error[E0597]: `local` does not live long enough
+  --> $DIR/opaque-multiple-defining-uses-160669.rs:31:16
+   |
+LL | fn two_uses<'a>(s: &'a String, flag: bool) -> impl Display + use<'a> {
+   |             -- lifetime `'a` defined here
+LL |     if flag {
+LL |         let local = String::from("dangling");
+   |             ----- binding `local` declared here
+LL |         return &local;
+   |                ^^^^^^ borrowed value does not live long enough
+LL |     }
+   |     - `local` dropped here while still borrowed
+LL |     s
+   |     - opaque type requires that `local` is borrowed for `'a`
+
+error[E0597]: `local` does not live long enough
+  --> $DIR/opaque-multiple-defining-uses-160669.rs:41:16
+   |
+LL | fn three_uses<'a>(s: &'a String, flag: u8) -> impl Display + use<'a> {
+   |               -- lifetime `'a` defined here
+LL |     if flag == 0 {
+LL |         let local = String::from("dangling0");
+   |             ----- binding `local` declared here
+LL |         return &local;
+   |                ^^^^^^ borrowed value does not live long enough
+LL |     }
+   |     - `local` dropped here while still borrowed
+...
+LL |         return &local;
+   |                ------ opaque type requires that `local` is borrowed for `'a`
+
+error[E0597]: `local` does not live long enough
+  --> $DIR/opaque-multiple-defining-uses-160669.rs:45:16
+   |
+LL | fn three_uses<'a>(s: &'a String, flag: u8) -> impl Display + use<'a> {
+   |               -- lifetime `'a` defined here
+...
+LL |         let local = String::from("dangling1");
+   |             ----- binding `local` declared here
+LL |         return &local;
+   |                ^^^^^^
+   |                |
+   |                borrowed value does not live long enough
+   |                opaque type requires that `local` is borrowed for `'a`
+LL |     }
+   |     - `local` dropped here while still borrowed
+
+error[E0597]: `local` does not live long enough
+  --> $DIR/opaque-multiple-defining-uses-160669.rs:57:5
+   |
+LL | fn reversed_order<'a>(s: &'a String, flag: bool) -> impl Display + use<'a> {
+   |                   -- lifetime `'a` defined here
+...
+LL |     let local = String::from("dangling");
+   |         ----- binding `local` declared here
+LL |     &local
+   |     ^^^^^^
+   |     |
+   |     borrowed value does not live long enough
+   |     opaque type requires that `local` is borrowed for `'a`
+LL | }
+   | - `local` dropped here while still borrowed
+
+error[E0597]: `short` does not live long enough
+  --> $DIR/opaque-multiple-defining-uses-160669.rs:64:16
+   |
+LL | fn minimal(short: (), out: &'static ()) -> impl Sized {
+   |            ----- binding `short` declared here
+LL |     if true {
+LL |         return &short;
+   |                ^^^^^^ borrowed value does not live long enough
+LL |     }
+LL |     out
+   |     --- opaque type requires that `short` is borrowed for `'static`
+LL | }
+   |  - `short` dropped here while still borrowed
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

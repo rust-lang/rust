@@ -1,0 +1,16 @@
+error: this operation will panic at runtime
+  --> $DIR/issue-54348.rs:5:5
+   |
+LL |     [1][1.5 as usize];
+   |     ^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 1
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: this operation will panic at runtime
+  --> $DIR/issue-54348.rs:6:5
+   |
+LL |     [1][1u64 as usize];
+   |     ^^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 1
+
+error: aborting due to 2 previous errors
+

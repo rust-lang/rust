@@ -1,0 +1,22 @@
+error: traits in `#[derive(...)]` don't accept arguments
+  --> $DIR/correct-meta-item-span.rs:4:5
+   |
+LL | m!(a(::b::c));
+   |     ^^^^^^^^ help: remove the arguments
+
+error: cannot find derive macro `a` in this scope
+  --> $DIR/correct-meta-item-span.rs:4:4
+   |
+LL | m!(a(::b::c));
+   |    ^
+
+error: cannot find derive macro `a` in this scope
+  --> $DIR/correct-meta-item-span.rs:4:4
+   |
+LL | m!(a(::b::c));
+   |    ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+

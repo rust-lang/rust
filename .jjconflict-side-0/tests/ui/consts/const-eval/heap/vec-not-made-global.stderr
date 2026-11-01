@@ -1,0 +1,10 @@
+error: encountered `const_allocate` pointer in final value that was not made global
+  --> $DIR/vec-not-made-global.rs:2:1
+   |
+LL | const V: Vec<i32> = Vec::with_capacity(1);
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: use `const_make_global` to turn allocated pointers into immutable globals before returning
+
+error: aborting due to 1 previous error
+

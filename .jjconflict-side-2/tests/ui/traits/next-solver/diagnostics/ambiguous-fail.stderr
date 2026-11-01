@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `NoOverlap` for type `W<_>`
+  --> $DIR/ambiguous-fail.rs:18:1
+   |
+LL | impl<T: Trait> NoOverlap for T {}
+   | ------------------------------ first implementation here
+LL |
+LL | impl<T: Trait<Assoc = u32>> NoOverlap for W<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `W<_>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.
