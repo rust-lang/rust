@@ -2112,16 +2112,17 @@ fn test(mut cx: Context<'_>) {
         expect![[r#"
             91..97 'mut cx': Context<'?>
             112..239 '{     ...cx); }': ()
-            122..135 'mut generator': impl AsyncIterator<Item = {unknown}>
-            138..174 'async ...     }': impl AsyncIterator<Item = {unknown}>
+            122..135 'mut generator': impl AsyncIterator<Item = i8>
+            138..174 'async ...     }': impl AsyncIterator<Item = i8>
+            158..167 'yield 1i8': Poll<Option<i8>>
             158..167 'yield 1i8': ()
             164..167 '1i8': i8
-            184..190 'result': Poll<Option<{unknown}>>
-            193..201 'Pin::new': fn new<&'? mut impl AsyncIterator<Item = {unknown}>>(&'? mut impl AsyncIterator<Item = {unknown}>) -> Pin<&'? mut impl AsyncIterator<Item = {unknown}>>
-            193..217 'Pin::n...rator)': Pin<&'? mut impl AsyncIterator<Item = {unknown}>>
-            193..236 'Pin::n...ut cx)': Poll<Option<{unknown}>>
-            202..216 '&mut generator': &'? mut impl AsyncIterator<Item = {unknown}>
-            207..216 'generator': impl AsyncIterator<Item = {unknown}>
+            184..190 'result': Poll<Option<i8>>
+            193..201 'Pin::new': fn new<&'? mut impl AsyncIterator<Item = i8>>(&'? mut impl AsyncIterator<Item = i8>) -> Pin<&'? mut impl AsyncIterator<Item = i8>>
+            193..217 'Pin::n...rator)': Pin<&'? mut impl AsyncIterator<Item = i8>>
+            193..236 'Pin::n...ut cx)': Poll<Option<i8>>
+            202..216 '&mut generator': &'? mut impl AsyncIterator<Item = i8>
+            207..216 'generator': impl AsyncIterator<Item = i8>
             228..235 '&mut cx': &'? mut Context<'?>
             233..235 'cx': Context<'?>
         "#]],
@@ -2179,6 +2180,7 @@ fn test(mut cx: Context<'_>) {
         "#,
         expect![[r#"
             103..120 '{     ... (); }': ()
+            109..117 'yield ()': Poll<Option<()>>
             109..117 'yield ()': ()
             115..117 '()': ()
             130..136 'mut cx': Context<'?>

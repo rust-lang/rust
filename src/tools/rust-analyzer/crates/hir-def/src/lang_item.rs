@@ -541,6 +541,8 @@ language_item_table! { LangItems =>
     Unpin,                   sym::unpin,               TraitId;
     Pin,                     sym::pin,                 StructId;
 
+    AsyncGenReady,           sym::AsyncGenReady,       FunctionId;
+
     PartialEq,               sym::eq,                  TraitId;
     PartialOrd,              sym::partial_ord,         TraitId;
     CVoid,                   sym::c_void,              EnumId;
