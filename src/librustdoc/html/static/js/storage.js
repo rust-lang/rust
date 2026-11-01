@@ -10,6 +10,7 @@
  * @import * as stringdex from "./stringdex.d.ts";
  */
 
+const MAIN_ID = "main-content";
 const builtinThemes = ["light", "dark", "ayu"];
 const darkThemes = ["dark", "ayu"];
 window.currentTheme = (function() {
@@ -394,7 +395,18 @@ class RustdocToolbarElement extends HTMLElement {
         }
         const rootPath = getVar("root-path");
         const currentUrl = window.location.href.split("?")[0].split("#")[0];
-        this.innerHTML = `
+
+        let copyPathButton = "";
+        const itemPath = nonnull(document.getElementById(MAIN_ID))
+            .querySelector(".main-heading h1");
+        // The best way to check it's a page where we should generate the "copy path" button is to
+        // check if there is a `<span>` in the `<h1>`.
+        if (itemPath && itemPath.querySelector("span")) {
+            copyPathButton = "\
+<button id='copy-path' title='Copy item path to clipboard'>Copy item path</button>";
+        }
+
+        this.innerHTML = `${copyPathButton}
         <div id="search-button" tabindex="-1">
             <a href="${currentUrl}?search="><span class="label">Search</span></a>
         </div>

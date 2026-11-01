@@ -1,6 +1,6 @@
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass, updateLocalStorage */
-/* global onEachLazy, removeClass, getVar, nonnull */
+/* global onEachLazy, removeClass, getVar, nonnull, MAIN_ID */
 
 "use strict";
 
@@ -81,7 +81,6 @@ function getVirtualKey(ev) {
     return String.fromCharCode(c);
 }
 
-const MAIN_ID = "main-content";
 const ALTERNATIVE_DISPLAY_ID = "alternative-display";
 const NOT_DISPLAYED_ID = "not-displayed";
 
@@ -1264,7 +1263,6 @@ function preLoadCss(cssUrl) {
             if (hideMethodDocs && hasClass(e, "method-toggle")) {
                 e.open = false;
             }
-
         });
     }());
 
@@ -2145,34 +2143,32 @@ function preLoadCss(cssUrl) {
         }, 1000);
     }
 
-    // Copy button that appears next to the path breadcrumbs.
-    const but = document.getElementById("copy-path");
-    if (!but) {
-        return;
-    }
-    but.onclick = () => {
-        // We get the path from the "breadcrumbs" and the actual item name.
-        let path = "";
-        // @ts-expect-error
-        const heading = document.getElementById(MAIN_ID).querySelector(".main-heading");
+    const copyPathButton = document.getElementById("copy-path");
+    if (copyPathButton) {
+        copyPathButton.onclick = () => {
+            const heading = nonnull(
+                document.getElementById(MAIN_ID)).querySelector(".main-heading");
+            if (heading) {
+                // We get the path from the "breadcrumbs" and the actual item name.
+                let path = "";
 
-        if (heading) {
-            const breadcrumbs = heading.querySelector(".rustdoc-breadcrumbs");
-            if (breadcrumbs) {
-                // @ts-expect-error
-                path = breadcrumbs.innerText;
-                if (path.length > 0) {
-                    path += "::";
+                const breadcrumbs = heading.querySelector(".rustdoc-breadcrumbs");
+                if (breadcrumbs) {
+                    // @ts-expect-error
+                    path = breadcrumbs.innerText;
+                    if (path.length > 0) {
+                        path += "::";
+                    }
                 }
+
+                // @ts-expect-error
+                path += heading.querySelector("h1 > span").innerText;
+
+                copyContentToClipboard(path);
+                copyButtonAnimation(copyPathButton);
             }
-
-            // @ts-expect-error
-            path += heading.querySelector("h1 > span").innerText;
-
-            copyContentToClipboard(path);
-            copyButtonAnimation(but);
-        }
-    };
+        };
+    }
 
     /**
      * Copy buttons on code examples.

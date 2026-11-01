@@ -270,7 +270,7 @@ h1, h2, h3, h4 {
 		"main-heading-breadcrumbs main-heading-breadcrumbs"
 		"main-heading-h1 main-heading-toolbar"
 		"main-heading-sub-heading main-heading-toolbar";
-	grid-template-columns: minmax(105px, 1fr) minmax(0, max-content);
+	grid-template-columns: minmax(105px, max-content) minmax(min-content, 1fr);
 	grid-template-rows: minmax(25px, min-content) min-content min-content;
 	padding-bottom: 6px;
 	margin-bottom: 15px;
@@ -285,6 +285,9 @@ h1, h2, h3, h4 {
 	grid-area: main-heading-h1;
 	align-items: end;
 	margin: 4px 0 8px 0;
+}
+.search-results-main-heading rustdoc-toolbar #copy-path {
+	display: none;
 }
 .rustdoc-breadcrumbs {
 	grid-area: main-heading-breadcrumbs;
@@ -1123,6 +1126,7 @@ rustdoc-toolbar {
 	flex-wrap: nowrap;
 	min-height: 60px;
 	height: fit-content;
+	justify-content: flex-end;
 }
 
 .docblock code, .item-table dd code,
@@ -2203,6 +2207,8 @@ a.tooltip:hover::after {
 	margin-left: var(--button-left-margin);
 	display: flex;
 	line-height: 1.25;
+}
+.settings-menu, .help-menu {
 	min-width: 14px;
 }
 #sidebar-button {
@@ -2411,6 +2417,7 @@ rustdoc-toolbar span.label {
 	border: solid 1px transparent;
 	border-radius: var(--button-border-radius);
 	font-size: 0;
+	margin-right: auto;
 }
 #copy-path::before {
 	filter: var(--copy-path-img-filter);
@@ -2715,8 +2722,8 @@ However, it's not needed with smaller screen width because the doc/code block is
 		margin-top: -10px;
 		display: grid;
 		grid-template-areas:
-			"x settings help"
-			"search summary summary";
+			".    .      settings help"
+			"copy search summary  summary";
 		grid-template-rows: 35px 1fr;
 	}
 	.search-results-main-heading rustdoc-toolbar {
@@ -2727,6 +2734,10 @@ However, it's not needed with smaller screen width because the doc/code block is
 	}
 	.search-results-main-heading #toggle-all-docs {
 		display: none;
+	}
+	rustdoc-toolbar #copy-path {
+		grid-area: copy;
+		justify-self: start;
 	}
 	rustdoc-toolbar .settings-menu span.label,
 	rustdoc-toolbar .help-menu span.label
