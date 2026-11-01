@@ -1,0 +1,103 @@
+error: unnecessary parentheses around type
+  --> $DIR/unused-parens-fn-output-no-bounds.rs:33:59
+   |
+LL | fn removable_where_predicate<F>(_: F) where F: Fn(&()) -> (dyn Send) {}
+   |                                                           ^        ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-parens-fn-output-no-bounds.rs:4:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL - fn removable_where_predicate<F>(_: F) where F: Fn(&()) -> (dyn Send) {}
+LL + fn removable_where_predicate<F>(_: F) where F: Fn(&()) -> dyn Send {}
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/unused-parens-fn-output-no-bounds.rs:35:42
+   |
+LL | fn removable_generic_param<F: Fn(&()) -> (dyn Send)>(_: F) {}
+   |                                          ^        ^
+   |
+help: remove these parentheses
+   |
+LL - fn removable_generic_param<F: Fn(&()) -> (dyn Send)>(_: F) {}
+LL + fn removable_generic_param<F: Fn(&()) -> dyn Send>(_: F) {}
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/unused-parens-fn-output-no-bounds.rs:37:39
+   |
+LL | trait RemovableSupertrait: Fn(&()) -> (dyn Send) {}
+   |                                       ^        ^
+   |
+help: remove these parentheses
+   |
+LL - trait RemovableSupertrait: Fn(&()) -> (dyn Send) {}
+LL + trait RemovableSupertrait: Fn(&()) -> dyn Send {}
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/unused-parens-fn-output-no-bounds.rs:39:40
+   |
+LL | trait RemovableTraitAlias = Fn(&()) -> (dyn Send);
+   |                                        ^        ^
+   |
+help: remove these parentheses
+   |
+LL - trait RemovableTraitAlias = Fn(&()) -> (dyn Send);
+LL + trait RemovableTraitAlias = Fn(&()) -> dyn Send;
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/unused-parens-fn-output-no-bounds.rs:42:28
+   |
+LL |     type Assoc: Fn(&()) -> (dyn Send);
+   |                            ^        ^
+   |
+help: remove these parentheses
+   |
+LL -     type Assoc: Fn(&()) -> (dyn Send);
+LL +     type Assoc: Fn(&()) -> dyn Send;
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/unused-parens-fn-output-no-bounds.rs:45:44
+   |
+LL | fn removable_impl_trait(_: impl Fn(&()) -> (dyn Send)) {}
+   |                                            ^        ^
+   |
+help: remove these parentheses
+   |
+LL - fn removable_impl_trait(_: impl Fn(&()) -> (dyn Send)) {}
+LL + fn removable_impl_trait(_: impl Fn(&()) -> dyn Send) {}
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/unused-parens-fn-output-no-bounds.rs:47:56
+   |
+LL | trait RemovableAssocConstraint: Iterator<Item: Fn() -> (dyn Send)> {}
+   |                                                        ^        ^
+   |
+help: remove these parentheses
+   |
+LL - trait RemovableAssocConstraint: Iterator<Item: Fn() -> (dyn Send)> {}
+LL + trait RemovableAssocConstraint: Iterator<Item: Fn() -> dyn Send> {}
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/unused-parens-fn-output-no-bounds.rs:49:31
+   |
+LL | type RemovableFnPtr = fn() -> (dyn Send);
+   |                               ^        ^
+   |
+help: remove these parentheses
+   |
+LL - type RemovableFnPtr = fn() -> (dyn Send);
+LL + type RemovableFnPtr = fn() -> dyn Send;
+   |
+
+error: aborting due to 8 previous errors
+
