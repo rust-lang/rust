@@ -333,7 +333,6 @@ impl<'a> StripUnconfigured<'a> {
             attr.span,
             self.lint_node_id,
             // Doesn't matter what the target actually is here.
-            Target::Crate,
             AstTarget::None(Target::Crate),
             self.features,
             emit_errors,

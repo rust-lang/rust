@@ -59,7 +59,6 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
         span,
         cx.current_expansion.lint_node_id,
         // Doesn't matter what the target actually is here.
-        Target::Crate,
         AstTarget::None(Target::Crate),
         Some(cx.ecfg.features),
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },

@@ -124,7 +124,6 @@ pub fn parse_cfg_select(
                 cfg_span,
                 lint_node_id,
                 // Doesn't matter what the target actually is here.
-                Target::Crate,
                 AstTarget::None(Target::Crate),
                 features,
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },

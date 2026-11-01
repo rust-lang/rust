@@ -176,7 +176,6 @@ impl<'sess> AttributeParser<'sess> {
         attr: &ast::Attribute,
         target_span: Span,
         target_node_id: NodeId,
-        target: Target,
         ast_target: AstTarget<'_>,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
@@ -207,7 +206,6 @@ impl<'sess> AttributeParser<'sess> {
             ParsedDescription::Attribute,
             target_span,
             target_node_id,
-            target,
             ast_target,
             features,
             emit_errors,
@@ -230,7 +228,6 @@ impl<'sess> AttributeParser<'sess> {
         parsed_description: ParsedDescription,
         target_span: Span,
         target_node_id: NodeId,
-        target: Target,
         ast_target: AstTarget<'_>,
         features: Option<&'sess Features>,
         should_emit: ShouldEmit,
@@ -255,7 +252,7 @@ impl<'sess> AttributeParser<'sess> {
             shared: SharedContext {
                 cx: &mut parser,
                 target_span,
-                target,
+                target: Target::from_ast_target(&ast_target),
                 emit_lint: &mut emit_lint,
                 #[cfg(debug_assertions)]
                 has_lint_been_emitted: AtomicBool::new(false),
