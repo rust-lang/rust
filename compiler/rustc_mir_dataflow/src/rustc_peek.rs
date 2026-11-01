@@ -223,7 +223,7 @@ where
                 }
             }
 
-            LookupResult::Parent(..) => {
+            LookupResult::Parent { .. } | LookupResult::None => {
                 tcx.dcx().emit_err(PeekArgumentUntracked { span: call.span });
             }
         }
