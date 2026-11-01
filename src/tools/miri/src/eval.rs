@@ -6,7 +6,7 @@ use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::task::Poll;
-use std::{iter, thread};
+use std::{iter, mem, thread};
 
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -337,6 +337,12 @@ impl<'tcx> MainThreadState<'tcx> {
             }
             Running => {
                 // Main code is done, the program is exiting.
+
+                // This is like a call to `exit`. Ensure `exit` gets called at most once.
+                let old_exit = mem::replace(&mut ecx.machine.exit_called, true);
+                if old_exit {
+                    throw_ub_format!("`exit` called more than once");
+                }
 
                 // Figure out exit code.
                 let ret_place = ecx.machine.main_fn_ret_place.clone().unwrap();
