@@ -34,6 +34,14 @@ pub fn std_debug_assertions_enabled() -> bool {
     std::env::var_os("__STD_DEBUG_ASSERTIONS_ENABLED").is_some()
 }
 
+/// Check if staged `std`-under-test was built with overflow checks.
+#[track_caller]
+#[must_use]
+pub fn std_overflow_checks_enabled() -> bool {
+    // Note: we assume this env var is set when the test recipe is being executed.
+    std::env::var_os("__STD_OVERFLOW_CHECKS_ENABLED").is_some()
+}
+
 /// Check if staged `std`-under-test was built with remapping of it's sources.
 #[track_caller]
 #[must_use]

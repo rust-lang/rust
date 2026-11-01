@@ -483,6 +483,11 @@ pub(crate) struct Config {
     /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
     pub(crate) with_std_debug_assertions: bool,
 
+    /// Whether *staged* `std` was built with overflow checks.
+    ///
+    /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
+    pub(crate) with_std_overflow_checks: bool,
+
     /// Whether *staged* `std` was built with remapping of debuginfo.
     ///
     /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
