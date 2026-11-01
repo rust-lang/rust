@@ -366,7 +366,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             self.span,
             false,
             local_bind,
-            self.cx.expr_addr_of(self.span, expr.clone()),
+            self.cx.expr_ref(self.span, expr.clone()),
         ));
         let wrapper = self.cx.expr_call(
             self.span,
@@ -377,7 +377,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             .cx
             .stmt_expr(self.cx.expr_method_call(
                 self.span,
-                self.cx.expr_paren(self.span, self.cx.expr_addr_of(self.span, wrapper)),
+                self.cx.expr_paren(self.span, self.cx.expr_ref(self.span, wrapper)),
                 Ident::new(sym::try_capture, self.span),
                 thin_vec![expr_addr_of_mut(
                     self.cx,

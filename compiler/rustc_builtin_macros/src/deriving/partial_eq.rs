@@ -8,7 +8,7 @@ use crate::deriving::{call_discriminant_value, path_std};
 
 /// Expands a `#[derive(PartialEq)]` attribute into an implementation for the
 /// target item.
-pub(crate) fn expand_deriving_partial_eq(
+pub(crate) fn expand_derive_partial_eq(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
@@ -39,12 +39,12 @@ pub(crate) fn expand_deriving_partial_eq(
         name: sym::eq,
         generics: cx.empty_generics(span),
         explicit_self: true,
-        nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
+        nonself_args: smallvec![(sym::other, cx.ty_self_ref(span))],
         has_other_selflike_arg: true,
         ret_ty: cx.ty_name(span, sym::bool),
         attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        combine_substructure: combine_substructure(get_substructure_equality_expr),
+        body: Box::new(partial_eq_body),
     }];
 
     let trait_def = TraitDef {
@@ -106,16 +106,7 @@ pub(crate) fn expand_deriving_partial_eq(
 /// ```
 ///
 /// For enums, the discriminant is compared first, then the rest of the fields.
-///
-/// # Panics
-///
-/// If called on static or all-fieldless enums/structs, which should not occur
-/// during derive expansion.
-fn get_substructure_equality_expr(
-    cx: &ExtCtxt<'_>,
-    span: Span,
-    substructure: Substructure<'_>,
-) -> BlockOrExpr {
+fn partial_eq_body(cx: &ExtCtxt<'_>, span: Span, substructure: Substructure<'_>) -> BlockOrExpr {
     BlockOrExpr::new_expr(match substructure {
         EnumMatching(.., fields) | Struct(.., fields) => {
             let combine = move |acc, field: &FieldInfo| {

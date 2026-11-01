@@ -6,7 +6,7 @@ use thin_vec::thin_vec;
 use crate::deriving::generic::*;
 use crate::deriving::{call_discriminant_value, path_std, pathvec};
 
-pub(crate) fn expand_deriving_partial_ord(
+pub(crate) fn expand_derive_partial_ord(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
@@ -25,11 +25,10 @@ pub(crate) fn expand_deriving_partial_ord(
 
     let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
     let has_derive_ord = cx.resolver.has_derive_ord(container_id);
-    let default_substructure =
-        combine_substructure(|cx, span, substr| cs_partial_cmp(cx, span, substr, discr_then_data));
-    let simple_substructure = combine_substructure(|cx, span, _| {
-        cs_partial_cmp_simple(cx, span, cx.expr_name(span, sym::other))
-    });
+    let default_body: MethodBodyFunc<'_> =
+        Box::new(|cx, span, substr| partial_cmp_body(cx, span, substr, discr_then_data));
+    let simple_body: MethodBodyFunc<'_> =
+        Box::new(|cx, span, _| partial_cmp_simple_body(cx, span, cx.expr_name(span, sym::other)));
     let is_simple = match &item.kind {
         // For unit structs/zero-variant enums, the default generated code is better.
         ItemKind::Struct(.., ast::VariantData::Unit(..)) => false,
@@ -57,12 +56,12 @@ pub(crate) fn expand_deriving_partial_ord(
         name: sym::partial_cmp,
         generics: cx.empty_generics(span),
         explicit_self: true,
-        nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
+        nonself_args: smallvec![(sym::other, cx.ty_self_ref(span))],
         has_other_selflike_arg: true,
         ret_ty,
         attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        combine_substructure: if is_simple { simple_substructure } else { default_substructure },
+        body: if is_simple { simple_body } else { default_body },
     };
 
     let trait_def = TraitDef {
@@ -104,14 +103,18 @@ pub(crate) fn discr_data_order(item: &ast::Item) -> bool {
 // ```
 // Some(::core::cmp::Ord::cmp(self, other))
 // ```
-fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr>) -> BlockOrExpr {
+fn partial_cmp_simple_body(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    other_expr: Box<ast::Expr>,
+) -> BlockOrExpr {
     let ord_cmp_path = cx.std_path(span, &[sym::cmp, sym::Ord, sym::cmp]);
     let cmp_expr =
         cx.expr_call_global(span, ord_cmp_path, thin_vec![cx.expr_self(span), other_expr]);
     BlockOrExpr::new_expr(cx.expr_some(span, cmp_expr))
 }
 
-fn cs_partial_cmp(
+fn partial_cmp_body(
     cx: &ExtCtxt<'_>,
     span: Span,
     substr: Substructure<'_>,
@@ -229,8 +232,8 @@ pub(crate) fn cmp_body(
             })
         }
         EnumDiscr(match_expr) => {
-            let self_expr = cx.expr_addr_of(span, call_discriminant_value(cx, span, kw::SelfLower));
-            let other_expr = cx.expr_addr_of(span, call_discriminant_value(cx, span, sym::other));
+            let self_expr = cx.expr_ref(span, call_discriminant_value(cx, span, kw::SelfLower));
+            let other_expr = cx.expr_ref(span, call_discriminant_value(cx, span, sym::other));
             let args = thin_vec![self_expr, other_expr];
             let discr_check_expr = cx.expr_call_global(span, cx.std_path(span, &method_path), args);
             if let Some(match_expr) = match_expr {
