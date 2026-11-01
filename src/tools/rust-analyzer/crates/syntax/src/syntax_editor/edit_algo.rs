@@ -10,7 +10,7 @@ use crate::{NodeOrToken, SyntaxElement, SyntaxNode};
 
 use super::{
     Change, ChangeKind, PositionRepr, SyntaxAnnotation, SyntaxEdit, SyntaxEditor, SyntaxMapping,
-    mapping::MissingMapping,
+    index_no_trivia, mapping::MissingMapping,
 };
 
 /// A validated batch of changes in the exact order in which it must execute.
@@ -289,8 +289,7 @@ impl SyntaxPath {
         let mut node = match element {
             SyntaxElement::Node(node) => node.clone(),
             SyntaxElement::Token(token) => {
-                child_indices
-                    .push(token.index().expect("the parser emits trivia as standalone tokens"));
+                child_indices.push(index_no_trivia(element));
                 token.parent().unwrap()
             }
         };
@@ -492,11 +491,7 @@ impl TreeState {
                     }
                     PositionRepr::After(child) => {
                         let child = self.map_original_element(child);
-                        (
-                            child.parent().unwrap(),
-                            child.index().expect("the parser emits trivia as standalone tokens")
-                                + 1,
-                        )
+                        (child.parent().unwrap(), index_no_trivia(&child) + 1)
                     }
                 };
                 self.splice(
@@ -512,7 +507,7 @@ impl TreeState {
             Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => {
                 let target = self.map_original_element(target);
                 let parent = target.parent().unwrap();
-                let index = target.index().expect("the parser emits trivia as standalone tokens");
+                let index = index_no_trivia(&target);
                 self.splice(
                     SyntaxPath::new(&parent.into()),
                     index..index + 1,
@@ -526,8 +521,7 @@ impl TreeState {
                 let parent = start.parent().unwrap();
                 self.splice(
                     SyntaxPath::new(&parent.into()),
-                    start.index().expect("the parser emits trivia as standalone tokens")
-                        ..end.index().expect("the parser emits trivia as standalone tokens") + 1,
+                    index_no_trivia(&start)..index_no_trivia(&end) + 1,
                     replacement,
                     record_as_changed,
                 );
