@@ -506,3 +506,11 @@ impl rustc_errors::IntoDiagArg for InternKind {
         }))
     }
 }
+
+#[derive(Diagnostic)]
+#[diag("cannot evaluate associated constant with unresolved type dependencies `{$instance}`")]
+pub(crate) struct UnresolvedDynAssociatedConst {
+    #[primary_span]
+    pub span: Span,
+    pub instance: String,
+}

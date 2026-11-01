@@ -444,7 +444,43 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         trace!("const eval: {:?} ({})", key, instance);
     }
 
-    eval_in_interpreter(tcx, key.value, key.typing_env)
+    // blanket impls can overlap with trait object impls (see #57893)
+    // the error does not tell us which goal failed
+    // so only handle associated constants with a trait object during codegen
+    let in_codegen = match key.typing_env.typing_mode() {
+        ty::TypingMode::Codegen => true,
+        ty::TypingMode::Coherence
+        | ty::TypingMode::Typeck { .. }
+        | ty::TypingMode::PostTypeckThroughBorrowck { .. }
+        | ty::TypingMode::PostBorrowck { .. }
+        | ty::TypingMode::Reflection
+        | ty::TypingMode::PostAnalysis
+        | ty::TypingMode::ErasedNotCoherence(_) => false,
+    };
+
+    let unresolved_dyn_assoc = tcx.next_trait_solver_globally()
+        && in_codegen
+        && key.value.promoted.is_none()
+        && matches!(tcx.def_kind(key.value.instance.def_id()), DefKind::AssocConst)
+        && key.value.instance.args.iter().any(|arg| {
+            matches!(arg.kind(), ty::GenericArgKind::Type(ty) if matches!(ty.kind(), ty::Dynamic(..)))
+        });
+
+    let result = eval_in_interpreter(tcx, key.value, key.typing_env);
+    match result {
+        Err(ErrorHandled::TooGeneric(..)) if unresolved_dyn_assoc => {
+            // report here to avoid duplicate errors
+            let error = tcx.dcx().emit_err(diagnostics::UnresolvedDynAssociatedConst {
+                span: tcx.def_span(key.value.instance.def_id()),
+                instance: with_no_trimmed_paths!(key.value.instance.to_string()),
+            });
+            Err(ErrorHandled::Reported(
+                ReportedErrorInfo::non_const_eval_error(error),
+                rustc_span::DUMMY_SP,
+            ))
+        }
+        result => result,
+    }
 }
 
 fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(

@@ -1,0 +1,7 @@
+error: cannot evaluate associated constant with unresolved type dependencies `Of::<dyn Ob<A = u16>>::SIZE`
+  --> $DIR/ambiguous-dyn-associated-const-issue-311.rs:17:5
+   |
+LL |     const SIZE: usize = size_of::<T::A>();
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
