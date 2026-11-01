@@ -217,7 +217,7 @@ jobs:
 
       - name: Set release tag
         run: |
-          if [ "${{ github.ref }}" = "refs/heads/release" ]; then
+          if [ "${GITHUB_REF}" = "refs/heads/release" ]; then
             git fetch --tags
             today=$(date --iso -u)
             last_tag=$(git tag -l "${today}*" | sort -V | tail -n1)
