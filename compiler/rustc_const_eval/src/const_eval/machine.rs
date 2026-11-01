@@ -4,8 +4,8 @@ use std::{fmt, mem};
 
 use rustc_abi::{Align, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::Mutability;
-use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{HasAttrs, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{CRATE_HIR_ID, HirId};
@@ -794,6 +794,54 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     ),
                     dest,
                 )?;
+            }
+
+            sym::type_id_docs => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let attrs = match ty.kind() {
+                    ty::Adt(def, args)
+                        if let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
+                            def.field_representing_type_info(ecx.tcx(), *args) =>
+                    {
+                        match base.kind() {
+                            ty::Adt(base_def, _) => {
+                                let field = &base_def.variants()[variant_idx].fields[field_idx];
+                                field.did.get_attrs(&ecx.tcx)
+                            }
+                            ty::Tuple(_) => &[],
+                            _ => {
+                                // only adts and tuples have fields
+                                span_bug!(ecx.cur_span(), "expected adt or tuple type, got {ty}");
+                            }
+                        }
+                    }
+                    ty::Adt(def, _) => def.did().get_attrs(&ecx.tcx),
+                    _ => &[],
+                };
+
+                ecx.write_doc_attributes(dest, attrs)?;
+            }
+
+            sym::type_id_variant_docs => {
+                let base = ecx.read_type_id(&args[0])?;
+
+                if let ty::Adt(def, _) = base.kind() {
+                    let variant_idx = ecx.read_target_usize(&args[1])? as usize;
+                    if variant_idx >= def.variants().len() {
+                        throw_ub!(BoundsCheckFailed {
+                            len: def.variants().len() as u64,
+                            index: variant_idx as u64
+                        });
+                    }
+                    let variant_idx = VariantIdx::from_usize(variant_idx);
+
+                    ecx.write_doc_attributes(
+                        dest,
+                        def.variant(variant_idx).def_id.get_attrs(&ecx.tcx),
+                    )?;
+                } else {
+                    span_bug!(ecx.cur_span(), "expected enum type, got {base}")
+                };
             }
 
             sym::type_id_variant_non_exhaustive => {
