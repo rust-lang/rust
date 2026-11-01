@@ -62,9 +62,7 @@ error: variable `Super` should have a snake case name
   --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:16:9
    |
 LL |     let Super: usize = 0;
-   |         ^^^^^ help: rename the identifier
-   |
-   = note: `super` cannot be used as a raw identifier
+   |         ^^^^^ `super` cannot be used as a raw identifier
 
 error: aborting due to 4 previous errors; 2 warnings emitted
 
