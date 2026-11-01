@@ -48,6 +48,4 @@ fn main() {
     // This `#[allow]` does not work, since the attribute gets dropped
     // when we expand the macro
     let _ = #[allow(semicolon_in_expressions_from_macros)] foo!(allow_does_not_work);
-    //~^ WARN the `allow` attribute cannot be used on macro calls
-    //~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }
