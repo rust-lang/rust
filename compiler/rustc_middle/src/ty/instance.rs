@@ -60,12 +60,11 @@ pub enum ReifyReason {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable, Lift)]
 pub enum InstanceKind<'tcx> {
-    /// A user-defined callable item.
+    /// Can represent a callable item
+    /// (`fn`, associated `fn`, closure, coroutine, coroutine closure, ADT constructor).
+    /// It can also represent a static data item or a const item.
     ///
-    /// This includes:
-    /// - `fn` items
-    /// - closures
-    /// - coroutines
+    /// (Static data items cannot be generic.)
     Item(DefId),
 
     /// An intrinsic `fn` item (with`#[rustc_intrinsic]`).
