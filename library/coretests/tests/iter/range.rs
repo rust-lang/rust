@@ -456,6 +456,64 @@ fn test_range_inclusive_folds() {
     assert!(it.is_empty());
     assert_eq!(it.try_rfold(0, |a, b| Some(a + b)), Some(0));
     assert!(it.is_empty());
+
+    // No endless loop.
+    let mut it = 0u8..=u8::MAX;
+    assert_eq!(it.try_fold(0u32, |a, b| Some(a + u32::from(b))), Some(32640));
+    assert!(it.is_empty());
+    assert_eq!(it.try_fold(0, |a, b| Some(a + b)), Some(0));
+    assert!(it.is_empty());
+
+    // No endless loop.
+    let mut it = i8::MIN..=i8::MAX;
+    assert_eq!(it.try_rfold(0i32, |a, b| Some(a + i32::from(b))), Some(-128));
+    assert!(it.is_empty());
+    assert_eq!(it.try_rfold(0, |a, b| Some(a + b)), Some(0));
+    assert!(it.is_empty());
+
+    // Visit every value exactly once in order.
+    let mut expected: Option<u8> = Some(0);
+    let mut it = 0u8..=u8::MAX;
+    it.try_fold((), |_, x| {
+        assert!(expected.is_some());
+        assert_eq!(Some(x), expected);
+        expected = expected.and_then(|e| e.checked_add(1));
+        Some(())
+    });
+
+    // Visit every value exactly once in reverse order.
+    let mut expected: Option<u8> = Some(u8::MAX);
+    let mut it = 0u8..=u8::MAX;
+    it.try_rfold((), |_, x| {
+        assert!(expected.is_some());
+        assert_eq!(Some(x), expected);
+        expected = expected.and_then(|e| e.checked_sub(1));
+        Some(())
+    });
+
+    // Early stop updates state correctly.
+    let mut it = 0..=100;
+    it.try_fold((), |_, x| (x < 10).then_some(()));
+    assert!(!it.is_empty());
+    assert_eq!(it.next(), Some(11));
+
+    // Early stop updates state correctly at the end.
+    let mut it = 0..=100;
+    it.try_fold((), |_, x| (x < 100).then_some(()));
+    assert!(it.is_empty());
+    assert_eq!(it.next(), None);
+
+    // Early stop updates state correctly.
+    let mut it = 0..=100;
+    it.try_rfold((), |_, x| (x > 10).then_some(()));
+    assert!(!it.is_empty());
+    assert_eq!(it.next_back(), Some(9));
+
+    // Early stop updates state correctly at the end.
+    let mut it = 0..=100;
+    it.try_rfold((), |_, x| (x != 0).then_some(()));
+    assert!(it.is_empty());
+    assert_eq!(it.next(), None);
 }
 
 #[test]
