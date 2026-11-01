@@ -130,6 +130,7 @@
 #![feature(dispatch_from_dyn)]
 #![feature(ergonomic_clones)]
 #![feature(error_generic_member_access)]
+#![feature(error_type_id_internal)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(extend_one_unchecked)]
