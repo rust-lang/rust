@@ -2581,31 +2581,54 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             && args.len() == fields.len()
                         // Make sure we have same number of args as fields
                         {
+                            let call_span = *span;
+                            let source_map = this.r.tcx.sess.source_map();
                             let path_span = path.span;
-                            let mut parts = Vec::new();
 
-                            // Start with the opening brace
-                            parts.push((
-                                path_span.shrink_to_hi().until(args[0].span),
-                                "{".to_owned(),
-                            ));
+                            let arg_spans: Option<Vec<_>> = args
+                                .iter()
+                                .map(|arg| arg.span.find_ancestor_inside_same_ctxt(call_span))
+                                .collect();
 
-                            for (field, arg) in fields.iter().zip(args.iter()) {
-                                // Add the field name before the argument
-                                parts.push((arg.span.shrink_to_lo(), format!("{}: ", field)));
+                            if !call_span.in_external_macro(source_map)
+                                && call_span.contains(path_span)
+                                && path_span.ctxt() == call_span.ctxt()
+                                && let Some(arg_spans) = arg_spans
+                            {
+                                let first_arg = arg_spans[0];
+                                let last_arg = arg_spans[arg_spans.len() - 1];
+                                let ordered_args =
+                                    arg_spans.windows(2).all(|pair| pair[0].hi() <= pair[1].lo());
+
+                                if !path_span.is_empty()
+                                    && arg_spans.iter().all(|arg| !arg.is_empty())
+                                    && path_span.hi() < first_arg.lo()
+                                    && ordered_args
+                                    && last_arg.hi() < call_span.hi()
+                                {
+                                    let mut parts = Vec::new();
+
+                                    parts.push((
+                                        path_span.shrink_to_hi().until(first_arg),
+                                        format!("{{{}: ", fields[0]),
+                                    ));
+
+                                    for (field, arg_span) in fields.iter().zip(arg_spans.iter()).skip(1) {
+                                        parts.push((arg_span.shrink_to_lo(), format!("{}: ", field)));
+                                    }
+
+                                    parts.push((
+                                        last_arg.shrink_to_hi().until(call_span.shrink_to_hi()),
+                                        "}".to_owned(),
+                                    ));
+
+                                    err.multipart_suggestion(
+                                        format!("use struct {descr} syntax instead of calling"),
+                                        parts,
+                                        applicability,
+                                    );
+                                }
                             }
-
-                            // Add the closing brace
-                            parts.push((
-                                args.last().unwrap().span.shrink_to_hi().until(span.shrink_to_hi()),
-                                "}".to_owned(),
-                            ));
-
-                            err.multipart_suggestion(
-                                format!("use struct {descr} syntax instead of calling"),
-                                parts,
-                                applicability,
-                            );
                         } else {
                             let (fields, applicability) = match fields {
                                 Some(fields) => {
