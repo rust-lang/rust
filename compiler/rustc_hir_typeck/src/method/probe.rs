@@ -6,7 +6,6 @@ use std::{assert_matches, debug_assert_matches};
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, ExprKind, HirId, Node};
@@ -19,7 +18,6 @@ use rustc_lint_defs::builtin::{
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::middle::stability;
-use rustc_middle::ty::elaborate::supertrait_def_ids;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::{
     self, AssocContainer, AssocItem, GenericArgs, GenericParamDefKind, ParamEnvAnd, Ty, TyCtxt,
@@ -1796,14 +1794,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         debug!("applicable_candidates: {:?}", applicable_candidates);
 
-        if applicable_candidates.len() > 1 {
-            if let Some(pick) =
-                self.collapse_candidates_to_trait_pick(self_ty, &applicable_candidates)
-            {
-                return Some(Ok(pick));
-            }
-        }
-
         if let Some(uc) = &mut pick_diag_hints.unstable_candidates {
             applicable_candidates.retain(|&(candidate, _)| {
                 if let stability::EvalResult::Deny { feature, .. } =
@@ -1817,15 +1807,40 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
 
         if applicable_candidates.len() > 1 {
-            // We collapse to a subtrait pick *after* filtering unstable candidates
-            // to make sure we don't prefer a unstable subtrait method over a stable
-            // supertrait method.
+            // Filter to subtrait candidates *after* filtering unstable
+            // candidates so unavailable unstable subtrait items cannot shadow
+            // a stable supertrait item.
+            let mut shadowed_candidates = vec![];
             if self.tcx.features().supertrait_item_shadowing() {
-                if let Some(pick) =
-                    self.collapse_candidates_to_subtrait_pick(self_ty, &applicable_candidates)
+                // If the candidates include any inherent items then we cannot
+                // use supertrait item shadowing to resolve the ambiguity.
+                let candidate_traits: Option<Vec<_>> = applicable_candidates
+                    .iter()
+                    .map(|(candidate, _)| candidate.item.trait_container(self.tcx))
+                    .collect();
+                if let Some(candidate_traits) = candidate_traits
+                    && let Some(selected) = ty::util::unique_subtrait(self.tcx, &candidate_traits)
                 {
-                    return Some(Ok(pick));
+                    applicable_candidates.retain(|(candidate, _)| {
+                        if candidate.item.trait_container(self.tcx).unwrap() == selected {
+                            true
+                        } else {
+                            shadowed_candidates.push(candidate.item);
+                            false
+                        }
+                    });
                 }
+            }
+
+            // Only attempt to collapse multiple impls of the same trait after
+            // shadowing has had a chance to remove supertrait impls.
+            if let Some(mut pick) =
+                self.collapse_candidates_to_trait_pick(self_ty, &applicable_candidates)
+            {
+                pick.shadowed_candidates = shadowed_candidates;
+                pick.unstable_candidates =
+                    pick_diag_hints.unstable_candidates.clone().unwrap_or_default();
+                return Some(Ok(pick));
             }
 
             let sources =
@@ -2406,92 +2421,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             unstable_candidates: vec![],
             receiver_steps: None,
             shadowed_candidates: vec![],
-        })
-    }
-
-    /// Much like `collapse_candidates_to_trait_pick`, this method allows us to collapse
-    /// multiple conflicting picks if there is one pick whose trait container is a subtrait
-    /// of the trait containers of all of the other picks.
-    ///
-    /// This is the method-probe analogue of
-    /// `rustc_hir_analysis::hir_ty_lowering::HirTyLowerer::collapse_candidates_to_subtrait_pick`;
-    /// keep both implementations in sync.
-    ///
-    /// This implements RFC #3624.
-    fn collapse_candidates_to_subtrait_pick(
-        &self,
-        self_ty: Ty<'tcx>,
-        probes: &[(&Candidate<'tcx>, ProbeResult)],
-    ) -> Option<Pick<'tcx>> {
-        let mut child_candidate = probes[0].0;
-        let mut child_trait = child_candidate.item.trait_container(self.tcx)?;
-        let mut supertraits: SsoHashSet<_> = supertrait_def_ids(self.tcx, child_trait).collect();
-
-        let mut remaining_candidates: Vec<_> = probes[1..].iter().map(|&(p, _)| p).collect();
-        while !remaining_candidates.is_empty() {
-            let mut made_progress = false;
-            let mut next_round = vec![];
-
-            for remaining_candidate in remaining_candidates {
-                let remaining_trait = remaining_candidate.item.trait_container(self.tcx)?;
-                if supertraits.contains(&remaining_trait) {
-                    made_progress = true;
-                    continue;
-                }
-
-                // This candidate is not a supertrait of the `child_trait`.
-                // Check if it's a subtrait of the `child_trait`, instead.
-                // If it is, then it must have been a subtrait of every
-                // other pick we've eliminated at this point. It will
-                // take over at this point.
-                let remaining_trait_supertraits: SsoHashSet<_> =
-                    supertrait_def_ids(self.tcx, remaining_trait).collect();
-                if remaining_trait_supertraits.contains(&child_trait) {
-                    child_candidate = remaining_candidate;
-                    child_trait = remaining_trait;
-                    supertraits = remaining_trait_supertraits;
-                    made_progress = true;
-                    continue;
-                }
-
-                // Neither `child_trait` or the current candidate are
-                // supertraits of each other.
-                // Don't bail here, since we may be comparing two supertraits
-                // of a common subtrait. These two supertraits won't be related
-                // at all, but we will pick them up next round when we find their
-                // child as we continue iterating in this round.
-                next_round.push(remaining_candidate);
-            }
-
-            if made_progress {
-                // If we've made progress, iterate again.
-                remaining_candidates = next_round;
-            } else {
-                // Otherwise, we must have at least two candidates which
-                // are not related to each other at all.
-                return None;
-            }
-        }
-
-        let is_ambiguously_imported = match child_candidate.kind {
-            TraitCandidate { is_ambiguously_imported, .. } => is_ambiguously_imported,
-            _ => false,
-        };
-
-        Some(Pick {
-            item: child_candidate.item,
-            kind: TraitPick { is_ambiguously_imported },
-            import_ids: child_candidate.import_ids,
-            autoderefs: 0,
-            autoref_or_ptr_adjustment: None,
-            self_ty,
-            unstable_candidates: vec![],
-            shadowed_candidates: probes
-                .iter()
-                .map(|(c, _)| c.item)
-                .filter(|item| item.def_id != child_candidate.item.def_id)
-                .collect(),
-            receiver_steps: None,
         })
     }
 
