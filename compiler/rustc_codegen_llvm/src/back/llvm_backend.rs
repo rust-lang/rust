@@ -20,12 +20,10 @@ use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodege
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
+use rustc_middle::dep_graph::{BorrowedIncrCompSession, IncrCompSession, WorkProduct};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
-use rustc_session::{
-    BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
-};
+use rustc_session::{CodegenBackendInit, EarlySession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{RelocModel, TlsModel};
 
@@ -368,11 +366,11 @@ impl CodegenBackend for LlvmCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
-        incr_comp_session: Option<&IncrCompSession>,
+        incr_comp_session: Option<&mut IncrCompSession>,
         outputs: &OutputFilenames,
         crate_info: &CrateInfo,
-    ) -> (CompiledModules, WorkProductMap) {
-        let (compiled_modules, work_products) = ongoing_codegen
+    ) -> CompiledModules {
+        let compiled_modules = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
             .join(sess, incr_comp_session, crate_info);
@@ -412,7 +410,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             }
         }
 
-        (compiled_modules, work_products)
+        compiled_modules
     }
 
     fn link(
