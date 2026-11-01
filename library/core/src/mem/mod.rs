@@ -39,6 +39,7 @@ use crate::ub_checks::assert_unsafe_precondition;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
 
 mod alignment;
+
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
 pub use alignment::Alignment;
 
@@ -70,6 +71,9 @@ pub use crate::intrinsics::transmute;
 
 #[unstable(feature = "type_info", issue = "146922")]
 pub mod type_info;
+
+#[unstable(feature = "type_info", issue = "146922")]
+pub mod comptime;
 
 /// Takes ownership and "forgets" about the value **without running its destructor**.
 ///

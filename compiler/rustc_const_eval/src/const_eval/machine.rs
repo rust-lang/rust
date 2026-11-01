@@ -598,6 +598,42 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 }
             }
 
+            sym::comptime_fetch_file => {
+                let arg_place = ecx.deref_pointer(&args[0])?;
+                let path = ecx.read_str(&arg_place)?;
+                let path_sym = Symbol::intern(path);
+
+                let krate = ecx
+                    .stack()
+                    .first()
+                    .expect("should have a call frame if we are here")
+                    .instance()
+                    .def_id()
+                    .krate;
+
+                let content = ecx.tcx.experimental_comptime_fetch_file((krate, path_sym));
+                let variant_index = if let Some(value) = content {
+                    let ptr = ecx.allocate_bytes_dedup(value)?;
+
+                    let (variant_idx, variant_place) =
+                        ecx.project_downcast_named(dest, sym::Some)?;
+                    let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
+                    ecx.write_immediate(
+                        Immediate::ScalarPair(
+                            Scalar::from_pointer(ptr, ecx),
+                            Scalar::from_target_usize(value.len() as u64, ecx),
+                        ),
+                        &field_place,
+                    )?;
+
+                    variant_idx
+                } else {
+                    ecx.project_downcast_named(dest, sym::None)?.0
+                };
+
+                ecx.write_discriminant(variant_index, dest)?;
+            }
+
             sym::type_id_vtable => {
                 let tp_ty = ecx.read_type_id(&args[0])?;
                 let result_ty = ecx.read_type_id(&args[1])?;

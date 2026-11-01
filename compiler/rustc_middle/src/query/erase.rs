@@ -182,6 +182,7 @@ impl_erasable_for_types_with_no_type_params! {
     (traits::solve::QueryResult<'_>, &'_ traits::solve::inspect::Probe<TyCtxt<'_>>, ty::RequiredDepth),
     Option<&'_ OsStr>,
     Option<&'_ [rustc_hir::PreciseCapturingArgKind<rustc_span::Symbol, rustc_span::Symbol>]>,
+    Option<&'_ [u8]>,
     Option<(mir::ConstValue, Ty<'_>)>,
     Option<(rustc_span::def_id::DefId, rustc_session::config::EntryFnType)>,
     Option<rustc_abi::Align>,

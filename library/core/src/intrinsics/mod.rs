@@ -84,6 +84,7 @@ use crate::num::imp::libm;
 use crate::{mem, ptr};
 
 mod bounds;
+pub mod comptime;
 pub mod fallback;
 pub mod gpu;
 mod macros;

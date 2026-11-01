@@ -41,6 +41,7 @@ use rustc_middle::middle::resolve::{AmbigModChild, DocLinkResMap, ModChild};
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::mir;
 use rustc_middle::mir::ConstValue;
+use rustc_middle::ty::data_structures::IndexMap;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
@@ -332,6 +333,8 @@ pub(crate) struct CrateRoot {
     symbol_mangling_version: SymbolManglingVersion,
 
     specialization_enabled_in: bool,
+
+    comptime_files: IndexMap<Symbol, LazyValue<Vec<u8>>>,
 }
 
 /// A separate struct for extra metadata that must be encoded *after*
@@ -653,6 +656,7 @@ define_tables! {
     safety: Table<hir::Safety>,
     defaultness: Table<hir::Defaultness>,
     impl_is_fully_generic_for_reflection: Table<bool>,
+
 
 - optional:
     opt_rpitit_info: Table<LazyValue<ty::ImplTraitInTraitData>>,

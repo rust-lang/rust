@@ -21,7 +21,7 @@ use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_crate_store::{CrateStoreDyn, Untracked};
 use rustc_data_structures::defer;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
@@ -711,6 +711,9 @@ pub struct GlobalCaches<'tcx> {
     /// Caches the instantiation of a canonical binder given a set of args.
     pub clauses_cache:
         Lock<FxHashMap<(ty::Clauses<'tcx>, &'tcx [ty::GenericArg<'tcx>]), ty::Clauses<'tcx>>>,
+
+    /// Cache of files that have been read by the const evaluator
+    pub experimental_comptime_files: Lock<FxIndexMap<&'tcx String, &'tcx [u8]>>,
 }
 
 /// The central data structure of the compiler. It stores references
