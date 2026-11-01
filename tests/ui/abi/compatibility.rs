@@ -91,10 +91,6 @@
 #![no_core]
 #![expect(unused, improper_ctypes_definitions, internal_features)]
 
-// FIXME: some targets are broken in various ways.
-// Hence there are `cfg` throughout this test to disable parts of it on those targets.
-// mips64: https://github.com/rust-lang/rust/issues/115404
-
 extern crate minicore;
 use minicore::*;
 
@@ -278,7 +274,7 @@ test_transparent!(zst, Zst);
 test_transparent!(unit, ());
 test_transparent!(enum_, Option<i32>);
 test_transparent!(enum_niched, Option<&'static i32>);
-#[cfg(not(any(target_arch = "mips64")))]
+
 mod structs_and_tuples {
     use super::*;
     test_transparent!(float_struct, ReprC<f32>);

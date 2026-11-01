@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
 use rustc_abi::{
     BackendRepr, FieldsShape, Float, HasDataLayout, Integer, Numeric, Primitive, Reg, RegKind,
-    Size, TyAbiInterface,
+    Size, TyAbiInterface, TyAndLayout,
 };
 
 use crate::callconv::{ArgAbi, ArgAttribute, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
@@ -21,12 +21,12 @@ fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
     arg.extend_integer_width_to(bits);
 }
 
-fn float_reg<'a, Ty, C>(cx: &C, ret: &ArgAbi<'a, Ty>, i: usize) -> Option<Reg>
+fn float_reg<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>, i: usize) -> Option<Reg>
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    match ret.layout.field(cx, i).backend_repr {
+    match layout.field(cx, i).backend_repr {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
             Primitive::Float(float) => {
                 match float {
@@ -77,19 +77,19 @@ where
         // Unlike other architectures which return aggregates in registers, MIPS n64 limits the
         // use of float registers to structures (not unions) containing exactly one or two
         // float fields.
-
-        if let FieldsShape::Arbitrary { .. } = ret.layout.fields {
-            if ret.layout.fields.count() == 1 {
-                if let Some(reg) = float_reg(cx, ret, 0) {
+        let layout = ret.layout.peel_transparent_wrappers_from_non_1zst(cx);
+        if let FieldsShape::Arbitrary { .. } = layout.fields {
+            if layout.fields.count() == 1 {
+                if let Some(reg) = float_reg(cx, layout, 0) {
                     // The inreg attribute forces LLVM to return a struct containing a f128 in
                     // $f0 and $f1 rather than $f0 and $f2, see:
                     // https://github.com/llvm/llvm-project/blob/a81db64570f94c2ca8ac0f598c0b5bba1a7ae59e/llvm/lib/Target/Mips/MipsCallingConv.td#L48-L51
                     ret.cast_to_with_attrs(reg, ArgAttribute::InReg.into());
                     return;
                 }
-            } else if ret.layout.fields.count() == 2
-                && let Some(reg0) = float_reg(cx, ret, 0)
-                && let Some(reg1) = float_reg(cx, ret, 1)
+            } else if layout.fields.count() == 2
+                && let Some(reg0) = float_reg(cx, layout, 0)
+                && let Some(reg1) = float_reg(cx, layout, 1)
             {
                 ret.cast_to_with_attrs(CastTarget::pair(reg0, reg1), ArgAttribute::InReg.into());
                 return;
@@ -117,7 +117,9 @@ where
     let align = Ord::clamp(arg.layout.align.abi, dl.i64_align, dl.i128_align);
     let pad_i32 = u8::from(!offset.is_aligned(align));
 
-    if !arg.layout.is_aggregate() {
+    let layout = arg.layout.peel_transparent_wrappers_from_non_1zst(cx);
+
+    if !layout.is_aggregate() {
         extend_integer_width_mips(arg, 64);
 
         // We always pad with an integer, even if the primitive is a float. This
@@ -126,13 +128,13 @@ where
         // starting from $f12 if it belongs in a FPR.
         // Therefore padding with an integer results in skipping a FPR for the
         // next floating point parameter.
-        if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
+        if let BackendRepr::Scalar(scalar) = layout.backend_repr {
             let kind = RegKind::from_primitive(scalar.primitive());
             arg.cast_to_and_pad_i32(CastTarget::from(Reg { kind, size }), pad_i32);
         }
-    } else if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+    } else if layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();
-    } else if let Some(component) = arg.layout.complex_number(cx)
+    } else if let Some(component) = layout.complex_number(cx)
         && !matches!(component, Numeric::Float(Float::F16))
     {
         let slot = dl.pointer_size();
@@ -180,7 +182,7 @@ where
             }
         }
     } else {
-        match arg.layout.fields {
+        match layout.fields {
             FieldsShape::Primitive => unreachable!(),
             FieldsShape::Array { .. } => {
                 // Arrays are passed indirectly
@@ -194,9 +196,9 @@ where
                 // doubles not part of another aggregate are passed as floats.
                 let mut last_offset = Size::ZERO;
 
-                'outer: for i in 0..arg.layout.fields.count() {
-                    let field = arg.layout.field(cx, i);
-                    let offset = arg.layout.fields.offset(i);
+                'outer: for i in 0..layout.fields.count() {
+                    let field = layout.field(cx, i);
+                    let offset = layout.fields.offset(i);
 
                     // We only care about aligned doubles
                     if let BackendRepr::Scalar(scalar) = field.backend_repr {
