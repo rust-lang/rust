@@ -1,3 +1,5 @@
+#![cfg(not(skip_missing_miri_shims))] // disable tests Miri does not support
+
 #[test]
 fn quickack() {
     use crate::net::tests::LOCALHOST_IP4;

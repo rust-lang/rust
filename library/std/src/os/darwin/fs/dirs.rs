@@ -291,6 +291,7 @@ mod sys {
 
 #[cfg(test)]
 #[cfg(target_vendor = "apple")]
+#[cfg(not(skip_missing_miri_shims))] // disable tests Miri does not support
 mod tests {
     use super::*;
 

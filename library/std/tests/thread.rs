@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 #[test]
 #[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
-#[cfg_attr(miri, ignore)] // Miri does not like the thread leak
+#[cfg_attr(miri, ignore)] // Test leaks memory; a copy in the Miri test suite covers this
 fn sleep_very_long() {
     let finished = Arc::new(Mutex::new(false));
     let t_finished = finished.clone();
