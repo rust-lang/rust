@@ -260,7 +260,7 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
         &[],
     ),
     // FEAT_FP8
-    ("fp8", Unstable(sym::aarch64_unstable_target_feature), &["faminmax", "lut", "bf16"]),
+    ("fp8", Unstable(sym::aarch64_unstable_target_feature), &["neon"]),
     // FEAT_FP8DOT2
     ("fp8dot2", Unstable(sym::aarch64_unstable_target_feature), &["fp8dot4"]),
     // FEAT_FP8DOT4
