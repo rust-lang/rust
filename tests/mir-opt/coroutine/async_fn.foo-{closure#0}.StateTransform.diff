@@ -280,7 +280,6 @@
 -         StorageDead(_26);
 -         drop(_13) -> [return: bb14, unwind: bb26];
 +     bb13 (cleanup): {
-+         StorageDead(_21);
 +         StorageDead(_20);
 +         goto -> bb15;
       }
@@ -302,7 +301,6 @@
 -         StorageDead(_3);
 -         drop(_1) -> [return: bb16, unwind: bb25];
 +     bb15 (cleanup): {
-+         StorageDead(_19);
 +         StorageDead(_17);
 +         StorageDead(_16);
 +         StorageDead(_15);
@@ -322,7 +320,6 @@
       }
   
       bb18 (cleanup): {
--         StorageDead(_21);
 -         StorageDead(_20);
 -         goto -> bb20;
 +         StorageDead(_10);
@@ -342,7 +339,6 @@
       }
   
       bb20 (cleanup): {
--         StorageDead(_19);
 -         StorageDead(_17);
 -         StorageDead(_16);
 -         StorageDead(_15);

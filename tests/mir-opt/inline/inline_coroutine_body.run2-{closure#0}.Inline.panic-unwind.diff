@@ -256,8 +256,6 @@
 +     bb10 (cleanup): {
 +         StorageDead(_22);
 +         StorageDead(_19);
-+         StorageDead(_23);
-+         StorageDead(_21);
 +         StorageDead(_18);
 +         StorageDead(_17);
 +         StorageDead(_12);

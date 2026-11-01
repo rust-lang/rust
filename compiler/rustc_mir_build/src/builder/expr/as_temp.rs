@@ -12,13 +12,37 @@ use crate::builder::{BlockAnd, BlockAndExtension, Builder};
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
-    #[instrument(skip(self), level = "debug")]
     pub(crate) fn as_temp(
+        &mut self,
+        block: BasicBlock,
+        temp_lifetime: TempLifetime,
+        expr_id: ExprId,
+        mutability: Mutability,
+    ) -> BlockAnd<Local> {
+        self.as_temp_inner(block, temp_lifetime, expr_id, mutability, false)
+    }
+
+    /// Like [`Builder::as_temp`], but for a temporary of a pointer type that
+    /// is only ever accessed through a dereference of it, e.g. the reference
+    /// returned by `make_ref()` in `*make_ref()`.
+    pub(crate) fn as_dereferenced_temp(
+        &mut self,
+        block: BasicBlock,
+        temp_lifetime: TempLifetime,
+        expr_id: ExprId,
+        mutability: Mutability,
+    ) -> BlockAnd<Local> {
+        self.as_temp_inner(block, temp_lifetime, expr_id, mutability, true)
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn as_temp_inner(
         &mut self,
         mut block: BasicBlock,
         temp_lifetime: TempLifetime,
         expr_id: ExprId,
         mutability: Mutability,
+        only_dereferenced: bool,
     ) -> BlockAnd<Local> {
         let this = self; // See "LET_THIS_SELF".
 
@@ -31,7 +55,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 LintLevel::Explicit(hir_id),
                 |this| {
                     this.push_coverage_point_for_expr(block, source_info, hir_id);
-                    this.as_temp(block, temp_lifetime, value, mutability)
+                    this.as_temp_inner(block, temp_lifetime, value, mutability, only_dereferenced)
                 },
             );
         }
@@ -109,7 +133,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // `bar(&foo())` or anything within a block will keep the
                 // regular drops just like runtime code.
                 if let Some(temp_lifetime) = temp_lifetime.temp_lifetime {
-                    this.schedule_drop_storage(expr_span, temp_lifetime, temp);
+                    if only_dereferenced {
+                        this.schedule_drop_storage_of_dereferenced_temp(
+                            expr_span,
+                            temp_lifetime,
+                            temp,
+                        );
+                    } else {
+                        this.schedule_drop_storage(expr_span, temp_lifetime, temp);
+                    }
                 }
             }
         }

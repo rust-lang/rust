@@ -1,0 +1,110 @@
+error[E0597]: `y` does not live long enough
+  --> $DIR/unwind-storage-dead-of-dereferenced-temp.rs:31:18
+   |
+LL |         let y = 1;
+   |             - binding `y` declared here
+LL |         x = Wrap(&y);
+   |                  ^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `y` dropped here while still borrowed
+LL | }
+   | - borrow might be used here, when `x` is dropped and runs the `Drop` code for type `Wrap`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/unwind-storage-dead-of-dereferenced-temp.rs:41:23
+   |
+LL |         let y = 1;
+   |             - binding `y` declared here
+LL |         x = Wrap(&*id(&y));
+   |                       ^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `y` dropped here while still borrowed
+LL | }
+   | - borrow might be used here, when `x` is dropped and runs the `Drop` code for type `Wrap`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/unwind-storage-dead-of-dereferenced-temp.rs:51:23
+   |
+LL |         let y = 1;
+   |             - binding `y` declared here
+LL |         x = Wrap(&*id(&y));
+   |                       ^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `y` dropped here while still borrowed
+LL | }
+   | - borrow might be used here, when `x` is dropped and runs the `Drop` code for type `Wrap`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/unwind-storage-dead-of-dereferenced-temp.rs:61:24
+   |
+LL |         x = Wrap(&*id(&String::new()));
+   |                        ^^^^^^^^^^^^^  - temporary value is freed at the end of this statement
+   |                        |
+   |                        creates a temporary value which is freed while still in use
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/unwind-storage-dead-of-dereferenced-temp.rs:71:28
+   |
+LL |         let y = String::new();
+   |             - binding `y` declared here
+LL |         x = vec![Wrap(&*id(y.as_str())), Wrap(&*id(&*y.clone()))];
+   |                            ^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `y` dropped here while still borrowed
+LL | }
+   | - borrow might be used here, when `x` is dropped and runs the `Drop` code for type `Vec`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/unwind-storage-dead-of-dereferenced-temp.rs:71:54
+   |
+LL |         x = vec![Wrap(&*id(y.as_str())), Wrap(&*id(&*y.clone()))];
+   |                                                      ^^^^^^^^^   - temporary value is freed at the end of this statement
+   |                                                      |
+   |                                                      creates a temporary value which is freed while still in use
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/unwind-storage-dead-of-dereferenced-temp.rs:82:27
+   |
+LL |         let mut y = 1;
+   |             ----- binding `y` declared here
+LL |         x = Wrap(&mut *id(&mut y));
+   |                           ^^^^^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `y` dropped here while still borrowed
+LL | }
+   | - borrow might be used here, when `x` is dropped and runs the `Drop` code for type `Wrap`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/unwind-storage-dead-of-dereferenced-temp.rs:98:19
+   |
+LL |         let y = 1;
+   |             - binding `y` declared here
+LL |         match *id(&y) {
+   |                   ^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `y` dropped here while still borrowed
+LL | }
+   | - borrow might be used here, when `x` is dropped and runs the `Drop` code for type `Wrap`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0597, E0716.
+For more information about an error, try `rustc --explain E0597`.

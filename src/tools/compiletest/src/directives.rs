@@ -266,6 +266,7 @@ mod directives {
     pub(crate) const ADD_MINICORE: &str = "add-minicore";
     pub(crate) const MINICORE_COMPILE_FLAGS: &str = "minicore-compile-flags";
     pub(crate) const DISABLE_GDB_PRETTY_PRINTERS: &str = "disable-gdb-pretty-printers";
+    pub(crate) const TIMEOUT: &str = "timeout";
     pub(crate) const COMPARE_OUTPUT_BY_LINES: &str = "compare-output-by-lines";
     pub(crate) const USE_RUSTDOC_CCI_DOC_META_MERGE: &str = "use-rustdoc-cci-doc-meta-merge";
 }
@@ -905,6 +906,7 @@ pub(crate) fn make_test_description(
 ) -> CollectedTestDesc {
     let mut ignore_message: Option<Cow<'static, str>> = None;
     let mut should_fail = false;
+    let mut timeout_seconds = None;
 
     // Perform a per-file (rather than per-line) ignore decision to skip running debuginfo tests
     // if we don't have a debugger for them available.
@@ -980,6 +982,13 @@ pub(crate) fn make_test_description(
                 }
 
                 should_fail |= config.parse_name_directive(ln, "should-fail");
+
+                if let Some(seconds) = config
+                    .parse_name_value_directive(ln, directives::TIMEOUT)
+                    .and_then(|value| value.trim().parse::<u64>().ok())
+                {
+                    timeout_seconds = Some(seconds);
+                }
             },
         );
     }
@@ -998,6 +1007,7 @@ pub(crate) fn make_test_description(
         filterable_path: filterable_path.to_owned(),
         ignore_message,
         should_fail,
+        timeout_seconds,
     }
 }
 
