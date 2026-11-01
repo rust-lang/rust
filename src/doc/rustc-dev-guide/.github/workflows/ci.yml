@@ -9,10 +9,14 @@ on:
     # Run multiple times a day as the successful cached links are not checked every time.
     - cron: "0 */8 * * *"
 
+permissions: {}
+
 jobs:
   ci:
     if: github.repository == 'rust-lang/rustc-dev-guide'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required by `git push`
     env:
       MDBOOK_VERSION: 0.5.2
       MDBOOK_LINKCHECK2_VERSION: 0.13.0
@@ -26,13 +30,14 @@ jobs:
         with:
           # linkcheck needs the base commit.
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Test CI scripts
         run: ci/tests/report-scheduled-linkcheck-failure.sh
 
       - name: Cache binaries
         id: mdbook-cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ~/.cargo/bin
@@ -41,7 +46,7 @@ jobs:
       - name: Restore cached Linkcheck
         if: github.event_name == 'schedule'
         id: cache-linkcheck-restore
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: book/linkcheck/cache.json
           key: linkcheck--${{ env.MDBOOK_LINKCHECK2_VERSION }}--${{ github.run_id }}
@@ -57,9 +62,9 @@ jobs:
       - name: Install Dependencies
         if: steps.mdbook-cache.outputs.cache-hit != 'true'
         run: |
-          cargo install --locked mdbook --version ${{ env.MDBOOK_VERSION }}
-          cargo install --locked mdbook-linkcheck2 --version ${{ env.MDBOOK_LINKCHECK2_VERSION }}
-          cargo install --locked mdbook-mermaid --version ${{ env.MDBOOK_MERMAID_VERSION }}
+          cargo install --locked mdbook --version ${MDBOOK_VERSION}
+          cargo install --locked mdbook-linkcheck2 --version ${MDBOOK_LINKCHECK2_VERSION}
+          cargo install --locked mdbook-mermaid --version ${MDBOOK_MERMAID_VERSION}
 
       - name: Check build
         run: ENABLE_LINKCHECK=1 mdbook build
@@ -73,7 +78,7 @@ jobs:
       - name: Save cached Linkcheck
         id: cache-linkcheck-save
         if: ${{ !cancelled() && github.event_name == 'schedule' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: book/linkcheck/cache.json
           key: linkcheck--${{ env.MDBOOK_LINKCHECK2_VERSION }}--${{ github.run_id }}
@@ -81,16 +86,16 @@ jobs:
       - name: Deploy to gh-pages
         if: github.event_name == 'push'
         run: |
-          touch "${{ env.DEPLOY_DIR }}/.nojekyll"
-          cp CNAME "${{ env.DEPLOY_DIR }}"
-          cd "${{ env.DEPLOY_DIR }}"
+          touch "${DEPLOY_DIR}/.nojekyll"
+          cp CNAME "${DEPLOY_DIR}"
+          cd "${DEPLOY_DIR}"
           rm -rf .git
           git init
           git config user.name "Deploy from CI"
           git config user.email ""
           git add .
           git commit -m "Deploy ${GITHUB_SHA} to gh-pages"
-          git push --quiet -f "https://x-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}" HEAD:gh-pages
+          git push --quiet -f "https://x-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:gh-pages
 
       - name: Check if files comply with semantic line breaks
         continue-on-error: true
@@ -104,11 +109,11 @@ jobs:
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:
-      actions: read
-      contents: read
-      issues: write
+      issues: write # Required to open issues with `gh issue create`
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Open an issue or comment on an existing one
         run: ci/report-scheduled-linkcheck-failure.sh
         env:
@@ -120,10 +125,11 @@ jobs:
     if: success() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      issues: write
+      issues: write # Required to close issues with `gh issue close`
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Close issue
         run: ci/close-scheduled-linkcheck-issues.sh
         env:

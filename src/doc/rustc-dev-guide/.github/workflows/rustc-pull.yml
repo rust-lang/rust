@@ -6,9 +6,15 @@ on:
     # Run at 04:00 UTC every Monday
     - cron: '0 4 * * 1'
 
+permissions: {}
+
 jobs:
   pull:
     if: github.repository == 'rust-lang/rustc-dev-guide'
+    permissions:
+      contents: write # Required by `josh-sync/rustc-pull` to push to a branch
+      pull-requests: write # Required by `josh-sync/rustc-pull` to open a PR
+    # zizmor: ignore[unpinned-uses] We explicitly want to track the main branch.
     uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@main
     with:
       github-app-id: ${{ vars.APP_CLIENT_ID }}
