@@ -2896,7 +2896,7 @@ impl Interner {
         // reduce resizing for normal code without regresing memory use for smaller crates.
         // FIXME(panstromek): we could do better if we take into account whether this is
         //  Debug/Opt build. Those builds intern at least 6k more symbols than Check ones.
-        let additional_capacity = 2400;
+        let additional_capacity = 11000;
         let size_hint = values.size_hint().0 + additional_capacity;
         let mut conflicting_values: Vec<&[u8]> = Vec::new();
 
