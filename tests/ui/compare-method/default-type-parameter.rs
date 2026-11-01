@@ -1,5 +1,5 @@
 // Regression test for https://github.com/rust-lang/rust/issues/67991
-// The weird indentation is to excercise the span context that shows the enclosing items in the
+// The weird indentation is to exercise the span context that shows the enclosing items in the
 // diagnostics being emitted.
 trait Trait<
     T = (),
