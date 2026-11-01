@@ -15,4 +15,5 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 }
 
 //~? NOTE native-static-libs:
+//~? NOTE the order and any duplication can be significant on some platforms
 //~? NOTE link against the following native artifacts when linking against this static library
