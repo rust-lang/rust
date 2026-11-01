@@ -8,9 +8,11 @@
 // This test is ignored on musl hosts because musl's dlclose is a no-op and
 // therefore destructors won't run when the library is unloaded.
 // See https://wiki.musl-libc.org/functional-differences-from-glibc.html#Unloading-libraries
+// This test is also ignored on AIX because AIX's dlclose does not run TLS destructors either.
 
 //@ ignore-cross-compile
 //@ ignore-musl
+//@ ignore-aix
 
 use run_make_support::{diff, run_with_args, rustc};
 
