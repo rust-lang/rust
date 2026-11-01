@@ -37,10 +37,10 @@
 //! and the last personality routine transfers control to the catch block.
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-use unwind as uw;
+use core::ffi::{c_int, c_void};
 
 use super::dwarf::eh::{self, EHAction, EHContext};
-use crate::ffi::c_int;
+use crate::types::*;
 
 // Register ids were lifted from LLVM's TargetLowering::getExceptionPointerRegister()
 // and TargetLowering::getExceptionSelectorRegister() for each architecture,
@@ -104,28 +104,28 @@ cfg_select! {
         /// [armeabi-eh]: https://web.archive.org/web/20190728160938/https://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf
         #[lang = "eh_personality"]
         unsafe extern "C" fn rust_eh_personality(
-            state: uw::_Unwind_State,
-            exception_object: *mut uw::_Unwind_Exception,
-            context: *mut uw::_Unwind_Context,
-        ) -> uw::_Unwind_Reason_Code {
+            state: _Unwind_State,
+            exception_object: *mut _Unwind_Exception,
+            context: *mut _Unwind_Context,
+        ) -> _Unwind_Reason_Code {
             unsafe {
                 let state = state as c_int;
-                let action = state & uw::_US_ACTION_MASK as c_int;
-                let search_phase = if action == uw::_US_VIRTUAL_UNWIND_FRAME as c_int {
+                let action = state & _US_ACTION_MASK as c_int;
+                let search_phase = if action == _US_VIRTUAL_UNWIND_FRAME as c_int {
                     // Backtraces on ARM will call the personality routine with
                     // state == _US_VIRTUAL_UNWIND_FRAME | _US_FORCE_UNWIND. In those cases
                     // we want to continue unwinding the stack, otherwise all our backtraces
                     // would end at __rust_try
-                    if state & uw::_US_FORCE_UNWIND as c_int != 0 {
+                    if state & _US_FORCE_UNWIND as c_int != 0 {
                         return continue_unwind(exception_object, context);
                     }
                     true
-                } else if action == uw::_US_UNWIND_FRAME_STARTING as c_int {
+                } else if action == _US_UNWIND_FRAME_STARTING as c_int {
                     false
-                } else if action == uw::_US_UNWIND_FRAME_RESUME as c_int {
+                } else if action == _US_UNWIND_FRAME_RESUME as c_int {
                     return continue_unwind(exception_object, context);
                 } else {
-                    return uw::_URC_FAILURE;
+                    return _URC_FAILURE;
                 };
 
                 // The DWARF unwinder assumes that _Unwind_Context holds things like the function
@@ -134,18 +134,14 @@ cfg_select! {
                 // take only the context pointer, GCC personality routines stash a pointer to
                 // exception_object in the context, using location reserved for ARM's
                 // "scratch register" (r12).
-                uw::_Unwind_SetGR(
-                    context,
-                    uw::UNWIND_POINTER_REG,
-                    exception_object as uw::_Unwind_Ptr,
-                );
+                _Unwind_SetGR(context, UNWIND_POINTER_REG, exception_object as _Unwind_Ptr);
                 // ...A more principled approach would be to provide the full definition of ARM's
                 // _Unwind_Context in our libunwind bindings and fetch the required data from there
                 // directly, bypassing DWARF compatibility functions.
 
                 let eh_action = match find_eh_action(context) {
                     Ok(action) => action,
-                    Err(_) => return uw::_URC_FAILURE,
+                    Err(_) => return _URC_FAILURE,
                 };
                 if search_phase {
                     match eh_action {
@@ -155,68 +151,67 @@ cfg_select! {
                         EHAction::Catch(_) | EHAction::Filter(_) => {
                             // EHABI requires the personality routine to update the
                             // SP value in the barrier cache of the exception object.
-                            (*exception_object).private[5] =
-                                uw::_Unwind_GetGR(context, uw::UNWIND_SP_REG);
-                            return uw::_URC_HANDLER_FOUND;
+                            (*exception_object).private[5] = _Unwind_GetGR(context, UNWIND_SP_REG);
+                            return _URC_HANDLER_FOUND;
                         }
-                        EHAction::Terminate => return uw::_URC_FAILURE,
+                        EHAction::Terminate => return _URC_FAILURE,
                     }
                 } else {
                     match eh_action {
                         EHAction::None => return continue_unwind(exception_object, context),
-                        EHAction::Filter(_) if state & uw::_US_FORCE_UNWIND as c_int != 0 => {
+                        EHAction::Filter(_) if state & _US_FORCE_UNWIND as c_int != 0 => {
                             return continue_unwind(exception_object, context);
                         }
                         EHAction::Cleanup(lpad)
                         | EHAction::Catch(lpad)
                         | EHAction::Filter(lpad) => {
-                            uw::_Unwind_SetGR(
+                            _Unwind_SetGR(
                                 context,
                                 UNWIND_DATA_REG.0,
-                                exception_object as uw::_Unwind_Ptr,
+                                exception_object as _Unwind_Ptr,
                             );
-                            uw::_Unwind_SetGR(context, UNWIND_DATA_REG.1, core::ptr::null());
-                            uw::_Unwind_SetIP(context, lpad);
-                            return uw::_URC_INSTALL_CONTEXT;
+                            _Unwind_SetGR(context, UNWIND_DATA_REG.1, core::ptr::null());
+                            _Unwind_SetIP(context, lpad);
+                            return _URC_INSTALL_CONTEXT;
                         }
-                        EHAction::Terminate => return uw::_URC_FAILURE,
+                        EHAction::Terminate => return _URC_FAILURE,
                     }
                 }
 
                 // On ARM EHABI the personality routine is responsible for actually
                 // unwinding a single stack frame before returning (ARM EHABI Sec. 6.1).
                 unsafe fn continue_unwind(
-                    exception_object: *mut uw::_Unwind_Exception,
-                    context: *mut uw::_Unwind_Context,
-                ) -> uw::_Unwind_Reason_Code {
+                    exception_object: *mut _Unwind_Exception,
+                    context: *mut _Unwind_Context,
+                ) -> _Unwind_Reason_Code {
                     unsafe {
-                        if __gnu_unwind_frame(exception_object, context) == uw::_URC_NO_REASON {
-                            uw::_URC_CONTINUE_UNWIND
+                        if __gnu_unwind_frame(exception_object, context) == _URC_NO_REASON {
+                            _URC_CONTINUE_UNWIND
                         } else {
-                            uw::_URC_FAILURE
+                            _URC_FAILURE
                         }
                     }
                 }
                 // defined in libgcc
                 unsafe extern "C" {
                     fn __gnu_unwind_frame(
-                        exception_object: *mut uw::_Unwind_Exception,
-                        context: *mut uw::_Unwind_Context,
-                    ) -> uw::_Unwind_Reason_Code;
+                        exception_object: *mut _Unwind_Exception,
+                        context: *mut _Unwind_Context,
+                    ) -> _Unwind_Reason_Code;
                 }
             }
         }
     }
     _ => {
         #[rustc_force_inline]
-        unsafe fn sign_lpad(context: *mut uw::_Unwind_Context, lpad: *const u8) -> *const u8 {
+        unsafe fn sign_lpad(context: *mut _Unwind_Context, lpad: *const u8) -> *const u8 {
             cfg_select! {
                 all(target_abi = "pauthtest", target_arch = "aarch64") => {
                     // DWARF register number for SP on AArch64.
                     const SP_REG: i32 = 31;
 
                     unsafe {
-                        let sp = uw::_Unwind_GetGR(context, SP_REG).addr() as u64;
+                        let sp = _Unwind_GetGR(context, SP_REG).addr() as u64;
                         let mut addr = lpad.addr();
 
                         // `pacib` corresponds to `ptrauth_key_process_dependent_code` in <ptrauth.h>.
@@ -241,42 +236,42 @@ cfg_select! {
         /// and indirectly on Windows x86_64 and AArch64 via SEH.
         unsafe extern "C" fn rust_eh_personality_impl(
             version: c_int,
-            actions: uw::_Unwind_Action,
-            _exception_class: uw::_Unwind_Exception_Class,
-            exception_object: *mut uw::_Unwind_Exception,
-            context: *mut uw::_Unwind_Context,
-        ) -> uw::_Unwind_Reason_Code {
+            actions: _Unwind_Action,
+            _exception_class: _Unwind_Exception_Class,
+            exception_object: *mut _Unwind_Exception,
+            context: *mut _Unwind_Context,
+        ) -> _Unwind_Reason_Code {
             unsafe {
                 if version != 1 {
-                    return uw::_URC_FATAL_PHASE1_ERROR;
+                    return _URC_FATAL_PHASE1_ERROR;
                 }
                 let eh_action = match find_eh_action(context) {
                     Ok(action) => action,
-                    Err(_) => return uw::_URC_FATAL_PHASE1_ERROR,
+                    Err(_) => return _URC_FATAL_PHASE1_ERROR,
                 };
-                if actions & uw::_UA_SEARCH_PHASE != 0 {
+                if actions & _UA_SEARCH_PHASE != 0 {
                     match eh_action {
-                        EHAction::None | EHAction::Cleanup(_) => uw::_URC_CONTINUE_UNWIND,
-                        EHAction::Catch(_) | EHAction::Filter(_) => uw::_URC_HANDLER_FOUND,
-                        EHAction::Terminate => uw::_URC_FATAL_PHASE1_ERROR,
+                        EHAction::None | EHAction::Cleanup(_) => _URC_CONTINUE_UNWIND,
+                        EHAction::Catch(_) | EHAction::Filter(_) => _URC_HANDLER_FOUND,
+                        EHAction::Terminate => _URC_FATAL_PHASE1_ERROR,
                     }
                 } else {
                     match eh_action {
-                        EHAction::None => uw::_URC_CONTINUE_UNWIND,
+                        EHAction::None => _URC_CONTINUE_UNWIND,
                         // Forced unwinding hits a terminate action.
-                        EHAction::Filter(_) if actions & uw::_UA_FORCE_UNWIND != 0 => {
-                            uw::_URC_CONTINUE_UNWIND
+                        EHAction::Filter(_) if actions & _UA_FORCE_UNWIND != 0 => {
+                            _URC_CONTINUE_UNWIND
                         }
                         EHAction::Cleanup(lpad)
                         | EHAction::Catch(lpad)
                         | EHAction::Filter(lpad) => {
-                            uw::_Unwind_SetGR(context, UNWIND_DATA_REG.0, exception_object.cast());
-                            uw::_Unwind_SetGR(context, UNWIND_DATA_REG.1, core::ptr::null());
+                            _Unwind_SetGR(context, UNWIND_DATA_REG.0, exception_object.cast());
+                            _Unwind_SetGR(context, UNWIND_DATA_REG.1, core::ptr::null());
                             let maybe_signed_lpad = sign_lpad(context, lpad);
-                            uw::_Unwind_SetIP(context, maybe_signed_lpad);
-                            uw::_URC_INSTALL_CONTEXT
+                            _Unwind_SetIP(context, maybe_signed_lpad);
+                            _URC_INSTALL_CONTEXT
                         }
-                        EHAction::Terminate => uw::_URC_FATAL_PHASE2_ERROR,
+                        EHAction::Terminate => _URC_FATAL_PHASE2_ERROR,
                     }
                 }
             }
@@ -300,16 +295,16 @@ cfg_select! {
                 #[lang = "eh_personality"]
                 #[allow(nonstandard_style)]
                 unsafe extern "C" fn rust_eh_personality(
-                    exceptionRecord: *mut uw::EXCEPTION_RECORD,
-                    establisherFrame: uw::LPVOID,
-                    contextRecord: *mut uw::CONTEXT,
-                    dispatcherContext: *mut uw::DISPATCHER_CONTEXT,
-                ) -> uw::EXCEPTION_DISPOSITION {
+                    exceptionRecord: *mut EXCEPTION_RECORD,
+                    establisherFrame: LPVOID,
+                    contextRecord: *mut CONTEXT,
+                    dispatcherContext: *mut DISPATCHER_CONTEXT,
+                ) -> EXCEPTION_DISPOSITION {
                     // SAFETY: the cfg is still target_os = "windows" and target_env = "gnu",
                     // which means that this is the correct function to call, passing our impl fn
                     // as the callback which gets actually used
                     unsafe {
-                        uw::_GCC_specific_handler(
+                        _GCC_specific_handler(
                             exceptionRecord,
                             establisherFrame,
                             contextRecord,
@@ -336,11 +331,11 @@ cfg_select! {
                 #[lang = "eh_personality"]
                 unsafe extern "C" fn rust_eh_personality(
                     version: c_int,
-                    actions: uw::_Unwind_Action,
-                    exception_class: uw::_Unwind_Exception_Class,
-                    exception_object: *mut uw::_Unwind_Exception,
-                    context: *mut uw::_Unwind_Context,
-                ) -> uw::_Unwind_Reason_Code {
+                    actions: _Unwind_Action,
+                    exception_class: _Unwind_Exception_Class,
+                    exception_object: *mut _Unwind_Exception,
+                    context: *mut _Unwind_Context,
+                ) -> _Unwind_Reason_Code {
                     // SAFETY: the platform support must modify the cfg for the inner fn
                     // if it needs something different than what is currently invoked.
                     unsafe {
@@ -358,21 +353,219 @@ cfg_select! {
     }
 }
 
-unsafe fn find_eh_action(context: *mut uw::_Unwind_Context) -> Result<EHAction, ()> {
+unsafe fn find_eh_action(context: *mut _Unwind_Context) -> Result<EHAction, ()> {
     unsafe {
-        let lsda = uw::_Unwind_GetLanguageSpecificData(context) as *const u8;
+        let lsda = _Unwind_GetLanguageSpecificData(context) as *const u8;
         let mut ip_before_instr: c_int = 0;
-        let ip = uw::_Unwind_GetIPInfo(context, &mut ip_before_instr);
+        let ip = _Unwind_GetIPInfo(context, &mut ip_before_instr);
         let eh_context = EHContext {
             // The return address points 1 byte past the call instruction,
             // which could be in the next IP range in LSDA range table.
             //
             // `ip = -1` has special meaning, so use wrapping sub to allow for that
             ip: if ip_before_instr != 0 { ip } else { ip.wrapping_sub(1) },
-            func_start: uw::_Unwind_GetRegionStart(context),
-            get_text_start: &|| uw::_Unwind_GetTextRelBase(context),
-            get_data_start: &|| uw::_Unwind_GetDataRelBase(context),
+            func_start: _Unwind_GetRegionStart(context),
+            get_text_start: &|| _Unwind_GetTextRelBase(context),
+            get_data_start: &|| _Unwind_GetDataRelBase(context),
         };
         eh::find_eh_action(lsda, &eh_context)
     }
+}
+
+#[allow(non_camel_case_types)]
+type _Unwind_Ptr = *const u8;
+
+#[allow(non_camel_case_types)]
+enum _Unwind_Context {}
+
+unsafe extern "C" {
+    fn _Unwind_GetLanguageSpecificData(ctx: *mut _Unwind_Context) -> *mut c_void;
+    fn _Unwind_GetRegionStart(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
+    fn _Unwind_GetTextRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
+    fn _Unwind_GetDataRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
+}
+
+cfg_select! {
+    any(target_vendor = "apple", target_os = "netbsd", not(target_arch = "arm")) => {
+        // Not ARM EHABI
+        //
+        // 32-bit ARM on iOS/tvOS/watchOS use either DWARF/Compact unwinding or
+        // "setjmp-longjmp" / SjLj unwinding.
+        #[allow(non_camel_case_types)]
+        type _Unwind_Action = c_int;
+
+        const _UA_SEARCH_PHASE: c_int = 1;
+        //const _UA_CLEANUP_PHASE: c_int = 2;
+        //const _UA_HANDLER_FRAME: c_int = 4;
+        const _UA_FORCE_UNWIND: c_int = 8;
+        //const _UA_END_OF_STACK: c_int = 16;
+
+        #[cfg_attr(
+            all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
+            link(name = "unwind", kind = "static", modifiers = "-bundle")
+        )]
+        unsafe extern "C" {
+            fn _Unwind_GetGR(ctx: *mut _Unwind_Context, reg_index: c_int) -> _Unwind_Word;
+            fn _Unwind_SetGR(ctx: *mut _Unwind_Context, reg_index: c_int, value: _Unwind_Word);
+            fn _Unwind_SetIP(ctx: *mut _Unwind_Context, value: _Unwind_Word);
+            fn _Unwind_GetIPInfo(
+                ctx: *mut _Unwind_Context,
+                ip_before_insn: *mut c_int,
+            ) -> _Unwind_Word;
+        }
+    }
+    _ => {
+        // ARM EHABI
+        #[allow(non_camel_case_types)]
+        #[repr(C)]
+        #[derive(Copy, Clone, PartialEq)]
+        enum _Unwind_State {
+            _US_VIRTUAL_UNWIND_FRAME = 0,
+            _US_UNWIND_FRAME_STARTING = 1,
+            _US_UNWIND_FRAME_RESUME = 2,
+            _US_ACTION_MASK = 3,
+            _US_FORCE_UNWIND = 8,
+            _US_END_OF_STACK = 16,
+        }
+        use _Unwind_State::*;
+
+        #[allow(non_camel_case_types)]
+        #[repr(C)]
+        enum _Unwind_VRS_Result {
+            _UVRSR_OK = 0,
+            _UVRSR_NOT_IMPLEMENTED = 1,
+            _UVRSR_FAILED = 2,
+        }
+        #[allow(non_camel_case_types)]
+        #[repr(C)]
+        enum _Unwind_VRS_RegClass {
+            _UVRSC_CORE = 0,
+            _UVRSC_VFP = 1,
+            _UVRSC_FPA = 2,
+            _UVRSC_WMMXD = 3,
+            _UVRSC_WMMXC = 4,
+        }
+        use _Unwind_VRS_RegClass::*;
+        #[allow(non_camel_case_types)]
+        #[repr(C)]
+        enum _Unwind_VRS_DataRepresentation {
+            _UVRSD_UINT32 = 0,
+            _UVRSD_VFPX = 1,
+            _UVRSD_FPAX = 2,
+            _UVRSD_UINT64 = 3,
+            _UVRSD_FLOAT = 4,
+            _UVRSD_DOUBLE = 5,
+        }
+        use _Unwind_VRS_DataRepresentation::*;
+
+        const UNWIND_POINTER_REG: c_int = 12;
+        const UNWIND_SP_REG: c_int = 13;
+        const UNWIND_IP_REG: c_int = 15;
+
+        #[cfg_attr(
+            all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
+            link(name = "unwind", kind = "static", modifiers = "-bundle")
+        )]
+        unsafe extern "C" {
+            fn _Unwind_VRS_Get(
+                ctx: *mut _Unwind_Context,
+                regclass: _Unwind_VRS_RegClass,
+                regno: _Unwind_Word,
+                repr: _Unwind_VRS_DataRepresentation,
+                data: *mut c_void,
+            ) -> _Unwind_VRS_Result;
+
+            fn _Unwind_VRS_Set(
+                ctx: *mut _Unwind_Context,
+                regclass: _Unwind_VRS_RegClass,
+                regno: _Unwind_Word,
+                repr: _Unwind_VRS_DataRepresentation,
+                data: *mut c_void,
+            ) -> _Unwind_VRS_Result;
+        }
+
+        // On Android or ARM/Linux, these are implemented as macros:
+
+        unsafe fn _Unwind_GetGR(ctx: *mut _Unwind_Context, reg_index: c_int) -> _Unwind_Word {
+            let mut val: _Unwind_Word = core::ptr::null();
+            unsafe {
+                _Unwind_VRS_Get(
+                    ctx,
+                    _UVRSC_CORE,
+                    reg_index as _Unwind_Word,
+                    _UVRSD_UINT32,
+                    (&raw mut val) as *mut c_void,
+                );
+            }
+            val
+        }
+
+        unsafe fn _Unwind_SetGR(ctx: *mut _Unwind_Context, reg_index: c_int, value: _Unwind_Word) {
+            let mut value = value;
+            unsafe {
+                _Unwind_VRS_Set(
+                    ctx,
+                    _UVRSC_CORE,
+                    reg_index as _Unwind_Word,
+                    _UVRSD_UINT32,
+                    (&raw mut value) as *mut c_void,
+                );
+            }
+        }
+
+        unsafe fn _Unwind_SetIP(ctx: *mut _Unwind_Context, value: _Unwind_Word) {
+            // Propagate thumb bit to instruction pointer
+            let thumb_state = unsafe { _Unwind_GetGR(ctx, UNWIND_IP_REG).addr() & 1 };
+            let value = value.map_addr(|v| v | thumb_state);
+            unsafe {
+                _Unwind_SetGR(ctx, UNWIND_IP_REG, value);
+            }
+        }
+
+        unsafe fn _Unwind_GetIPInfo(
+            ctx: *mut _Unwind_Context,
+            ip_before_insn: *mut c_int,
+        ) -> _Unwind_Word {
+            unsafe { *ip_before_insn = 0 };
+            let val = unsafe { _Unwind_GetGR(ctx, UNWIND_IP_REG) };
+            val.map_addr(|v| v & !1)
+        }
+    }
+}
+
+cfg_select! {
+    any(
+        all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"),
+        target_os = "cygwin",
+    ) => {
+        // We declare these as opaque types. This is fine since you just need to
+        // pass them to _GCC_specific_handler and forget about them.
+        #[allow(non_camel_case_types)]
+        enum EXCEPTION_RECORD {}
+        type LPVOID = *mut c_void;
+        #[allow(non_camel_case_types)]
+        enum CONTEXT {}
+        #[allow(non_camel_case_types)]
+        enum DISPATCHER_CONTEXT {}
+        #[allow(non_camel_case_types)]
+        type EXCEPTION_DISPOSITION = c_int;
+        type PersonalityFn = unsafe extern "C" fn(
+            version: c_int,
+            actions: _Unwind_Action,
+            exception_class: _Unwind_Exception_Class,
+            exception_object: *mut _Unwind_Exception,
+            context: *mut _Unwind_Context,
+        ) -> _Unwind_Reason_Code;
+
+        unsafe extern "C" {
+            fn _GCC_specific_handler(
+                exceptionRecord: *mut EXCEPTION_RECORD,
+                establisherFrame: LPVOID,
+                contextRecord: *mut CONTEXT,
+                dispatcherContext: *mut DISPATCHER_CONTEXT,
+                personality: PersonalityFn,
+            ) -> EXCEPTION_DISPOSITION;
+        }
+    }
+    _ => {}
 }
