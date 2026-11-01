@@ -300,11 +300,6 @@ pub(crate) fn prepare_needs_conditions(config: &Config) -> PreparedNeedsConditio
             ignore_reason: "ignored on targets without Rust's LLD",
         },
         Need {
-            name: "needs-dlltool",
-            condition: find_dlltool(config),
-            ignore_reason: "ignored when dlltool for the current architecture is not present",
-        },
-        Need {
             name: "needs-git-hash",
             condition: config.git_hash,
             ignore_reason: "ignored when git hashes have been omitted for building",
@@ -371,29 +366,6 @@ pub(crate) fn prepare_needs_conditions(config: &Config) -> PreparedNeedsConditio
         .collect::<HashMap<_, _>>();
 
     PreparedNeedsConditions { simple_needs }
-}
-
-fn find_dlltool(config: &Config) -> bool {
-    let path = std::env::var_os("PATH").expect("missing PATH environment variable");
-    let path = std::env::split_paths(&path).collect::<Vec<_>>();
-
-    // dlltool is used ony by GNU based `*-*-windows-gnu`
-    if !(config.matches_os("windows") && config.matches_env("gnu") && config.matches_abi("")) {
-        return false;
-    }
-
-    // On Windows, dlltool.exe is used for all architectures.
-    // For non-Windows, there are architecture specific dlltool binaries.
-    let dlltool_found = if cfg!(windows) {
-        path.iter().any(|dir| dir.join("dlltool.exe").is_file())
-    } else if config.matches_arch("i686") {
-        path.iter().any(|dir| dir.join("i686-w64-mingw32-dlltool").is_file())
-    } else if config.matches_arch("x86_64") {
-        path.iter().any(|dir| dir.join("x86_64-w64-mingw32-dlltool").is_file())
-    } else {
-        false
-    };
-    dlltool_found
 }
 
 // FIXME(#135928): this is actually not quite right because this detection is run on the **host**.
