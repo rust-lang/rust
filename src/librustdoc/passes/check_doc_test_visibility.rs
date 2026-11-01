@@ -56,31 +56,28 @@ impl crate::doctest::DocTestVisitor for Tests {
 
 pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
     if !(cx.cache.effective_visibilities.is_directly_public(cx.tcx, item.item_id.expect_def_id())
-        || item.is_exported_macro())
+        || item.is_exported_decl_macro())
         || matches!(
             item.kind,
-            clean::StructFieldItem(_)
-                | clean::VariantItem(_)
-                | clean::TypeAliasItem(_)
-                | clean::StaticItem(_)
-                | clean::ConstantItem(..)
-                | clean::ExternCrateItem { .. }
-                | clean::ImportItem(_)
-                | clean::PrimitiveItem(_)
-                | clean::KeywordItem
-                | clean::AttributeItem
-                | clean::ModuleItem(_)
-                | clean::TraitAliasItem(_)
-                | clean::ForeignFunctionItem(..)
-                | clean::ForeignStaticItem(..)
-                | clean::ForeignTypeItem
-                | clean::AssocTypeItem(..)
-                | clean::RequiredAssocConstItem(..)
-                | clean::ProvidedAssocConstItem(..)
-                | clean::ImplAssocConstItem(..)
-                | clean::RequiredAssocTypeItem(..)
-                | clean::ImplItem(_)
-                | clean::PlaceholderImplItem
+            ItemKind::StructField(_)
+                | ItemKind::Variant(_)
+                | ItemKind::TypeAlias(_)
+                | ItemKind::Static(_)
+                | ItemKind::Constant(..)
+                | ItemKind::ExternCrate { .. }
+                | ItemKind::Import(_)
+                | ItemKind::PrimitiveType(_)
+                | ItemKind::Keyword
+                | ItemKind::Attribute
+                | ItemKind::Module(_)
+                | ItemKind::TraitAlias(_)
+                | ItemKind::ForeignFunction(..)
+                | ItemKind::ForeignStatic(..)
+                | ItemKind::ForeignType
+                | ItemKind::AssocType(..)
+                | ItemKind::AssocConstant(..)
+                | ItemKind::Impl(_)
+                | ItemKind::PlaceholderImpl
         )
     {
         return false;

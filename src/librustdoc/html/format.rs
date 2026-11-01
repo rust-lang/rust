@@ -226,10 +226,10 @@ pub(crate) fn print_lifetime(lt: &clean::Lifetime) -> &str {
 }
 
 pub(crate) fn print_constant_kind(
-    constant_kind: &clean::ConstantKind,
+    constant_kind: &clean::ConstantExpr,
     tcx: TyCtxt<'_>,
 ) -> impl Display {
-    let expr = constant_kind.expr(tcx);
+    let expr = constant_kind.rendered(tcx);
     fmt::from_fn(
         move |f| {
             if f.alternate() { f.write_str(&expr) } else { write!(f, "{}", Escape(&expr)) }
@@ -1151,7 +1151,7 @@ fn fmt_type(
         }
         clean::UnsafeBinder(binder) => {
             print_higher_ranked_params_with_space(&binder.generic_params, cx, "unsafe").fmt(f)?;
-            print_type(&binder.ty, cx).fmt(f)
+            print_type(&binder.type_, cx).fmt(f)
         }
         clean::Tuple(typs) => match &typs[..] {
             &[] => primitive_link(f, PrimitiveType::Unit, format_args!("()"), cx),
