@@ -18,6 +18,15 @@
                 ) {# #}
             </span> {# #}
         </div>
+    {% when Self::Internal { feature } %}
+        <div class="stab internal"> {# #}
+            <span class="emoji">⚠️</span> {# #}
+            <span> {# #}
+                This is an internal API and should not be used. ({# #}
+                <code>{{feature}}</code>{# #}
+                ) {# #}
+            </span> {# #}
+        </div>
     {% when Self::Portability with { message } %}
         <div class="stab portability">{{message|safe}}</div>
 {% endmatch %}

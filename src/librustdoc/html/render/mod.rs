@@ -888,6 +888,10 @@ enum ShortItemInfo {
         feature: String,
         tracking: Option<(String, u32)>,
     },
+    /// Internal feature, which won't have a tracking issue.
+    Internal {
+        feature: String,
+    },
     Portability {
         message: String,
     },
@@ -945,7 +949,12 @@ fn short_item_info(
         } else {
             None
         };
-        extra_info.push(ShortItemInfo::Unstable { feature: feature.to_string(), tracking });
+
+        if is_internal_lib_feature(feature) {
+            extra_info.push(ShortItemInfo::Internal { feature: feature.to_string() });
+        } else {
+            extra_info.push(ShortItemInfo::Unstable { feature: feature.to_string(), tracking });
+        }
     }
 
     if let Some(message) = portability(item, parent) {
@@ -953,6 +962,11 @@ fn short_item_info(
     }
 
     extra_info
+}
+
+fn is_internal_lib_feature(feature: Symbol) -> bool {
+    let name = feature.as_str();
+    name == "core_intrinsics" || name.ends_with("_internal") || name.ends_with("_internals")
 }
 
 // Prints the polarity and path of an impl's trait, if it has one, e.g. `Send`, `!Sync`.

@@ -535,7 +535,11 @@ fn print_extra_info_tags(
         let stability = import_def_id
             .map_or_else(|| item.stability(tcx), |import_did| tcx.lookup_stability(import_did));
         if stability.is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private) {
-            write!(f, "{}", tag_html("unstable", "", "Experimental"))?;
+            if super::is_internal_lib_feature(stability.unwrap().feature) {
+                write!(f, "{}", tag_html("internal", "", "Internal"))?;
+            } else {
+                write!(f, "{}", tag_html("unstable", "", "Experimental"))?;
+            }
         }
 
         debug!(name = ?item.name, cfg = ?item.cfg, parent_cfg = ?parent.cfg, "Portability");
