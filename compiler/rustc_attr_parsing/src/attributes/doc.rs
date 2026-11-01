@@ -774,7 +774,11 @@ impl DocParser {
             }
             Some(sym::spotlight) => {
                 let span = path.span();
-                cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocUnknownSpotlight { sugg_span: span }, span);
+                let sugg_span = cx
+                    .features_option()
+                    .is_some_and(|features| features.doc_notable_trait())
+                    .then_some(span);
+                cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocUnknownSpotlight { sugg_span }, span);
             }
             Some(sym::include) if let Some(nv) = args.as_name_value() => {
                 let inner = match cx.attr_style {
