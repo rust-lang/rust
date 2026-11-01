@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use super::{Byte, Dfa, EdgeSet, union};
+use super::{Byte, Dfa, EdgeSet, Reference, State, union};
 
 fn bytes(range: Range<u16>) -> Byte {
     Byte { start: range.start, end: range.end }
@@ -113,6 +113,115 @@ fn edge_set_union_coalesces_only_adjacent_ranges_with_equal_destinations() {
         merged.iter().collect::<Vec<_>>(),
         [(bytes(0..6), 7), (bytes(8..10), 7), (bytes(10..12), 8)],
     );
+}
+
+#[test]
+fn edge_set_from_edges_accepts_empty_input() {
+    assert_eq!(EdgeSet::<u8>::from_edges(vec![]), EdgeSet::empty());
+}
+
+#[test]
+fn edge_set_from_edges_sorts_valid_ranges() {
+    let uninit = Byte::UNINIT;
+    let edges = EdgeSet::from_edges(vec![
+        (bytes(uninit..uninit + 1), 3),
+        (bytes(4..6), 2),
+        (bytes(0..4), 1),
+    ]);
+    assert_eq!(
+        edges.iter().collect::<Vec<_>>(),
+        [(bytes(0..4), 1), (bytes(4..6), 2), (bytes(uninit..uninit + 1), 3)],
+    );
+}
+
+#[test]
+#[should_panic(expected = "invalid byte edge range")]
+fn edge_set_from_edges_rejects_empty_range() {
+    EdgeSet::from_edges(vec![(bytes(2..2), 0)]);
+}
+
+#[test]
+#[should_panic(expected = "invalid byte edge range")]
+fn edge_set_from_edges_rejects_reversed_range() {
+    EdgeSet::from_edges(vec![(bytes(4..2), 0)]);
+}
+
+#[test]
+#[should_panic(expected = "invalid byte edge range")]
+fn edge_set_from_edges_rejects_range_past_uninit() {
+    EdgeSet::from_edges(vec![(bytes(0..Byte::UNINIT + 2), 0)]);
+}
+
+#[test]
+#[should_panic(expected = "byte edge ranges overlap")]
+fn edge_set_from_edges_rejects_overlapping_ranges() {
+    EdgeSet::from_edges(vec![(bytes(3..5), 0), (bytes(1..4), 1)]);
+}
+
+fn reference(region: usize) -> Reference<usize, ()> {
+    Reference { region, is_mut: false, referent: (), referent_size: 0, referent_align: 1 }
+}
+
+#[test]
+fn concat_preserves_reference_edges() {
+    let first_ref = reference(1);
+    let second_ref = reference(2);
+    let first = Dfa::from_ref(first_ref);
+    let second = Dfa::from_ref(second_ref).concat(Dfa::from_byte(7u8.into()));
+    let start = first.start;
+    let boundary = first.accept;
+    let second_start = second.start;
+    let after_second_ref = second.refs_from(second.start).next().unwrap().1;
+    let accept = second.accept;
+
+    let concatenated = first.concat(second);
+
+    assert_eq!(concatenated.start, start);
+    assert_eq!(concatenated.accept, accept);
+    assert_eq!(concatenated.refs_from(start).collect::<Vec<_>>(), [(first_ref, boundary)]);
+    assert_eq!(
+        concatenated.refs_from(boundary).collect::<Vec<_>>(),
+        [(second_ref, after_second_ref)],
+    );
+    assert_eq!(
+        concatenated.bytes_from(after_second_ref).collect::<Vec<_>>(),
+        [(7u8.into(), accept)]
+    );
+    assert!(!concatenated.transitions.contains_key(&second_start));
+}
+
+#[test]
+fn unit_is_concat_identity_for_reference_graph() {
+    let dfa = Dfa::from_ref(reference(1)).concat(Dfa::from_byte(7u8.into()));
+    assert_eq!(Dfa::unit().concat(dfa.clone()), dfa);
+    assert_eq!(dfa.clone().concat(Dfa::unit()), dfa);
+}
+
+#[test]
+fn union_merges_shared_and_distinct_reference_edges_in_order() {
+    let shared_ref = reference(1);
+    let a_only_ref = reference(2);
+    let b_only_ref = reference(3);
+    let mut a = Dfa::from_ref(shared_ref).concat(Dfa::from_byte(1u8.into()));
+    let mut b = Dfa::from_ref(shared_ref).concat(Dfa::from_byte(5u8.into()));
+    let a_continuation = a.refs_from(a.start).next().unwrap().1;
+    let b_continuation = b.refs_from(b.start).next().unwrap().1;
+    a.transitions.get_mut(&a.start).unwrap().ref_transitions.insert(a_only_ref, a_continuation);
+    b.transitions.get_mut(&b.start).unwrap().ref_transitions.insert(b_only_ref, b_continuation);
+
+    let merged = a.union(b, State::new);
+    let refs: Vec<_> = merged.refs_from(merged.start).collect();
+
+    assert_eq!(
+        refs.iter().map(|&(r, _)| r).collect::<Vec<_>>(),
+        [shared_ref, a_only_ref, b_only_ref]
+    );
+    assert_eq!(
+        merged.bytes_from(refs[0].1).collect::<Vec<_>>(),
+        [(1u8.into(), merged.accept), (5u8.into(), merged.accept)],
+    );
+    assert_eq!(merged.bytes_from(refs[1].1).collect::<Vec<_>>(), [(1u8.into(), merged.accept)]);
+    assert_eq!(merged.bytes_from(refs[2].1).collect::<Vec<_>>(), [(5u8.into(), merged.accept)]);
 }
 
 #[test]
