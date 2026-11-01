@@ -323,9 +323,11 @@ impl str {
     /// Converts a slice of bytes to a string slice without checking
     /// that the string contains valid UTF-8; mutable version.
     ///
+    /// See the immutable version, [`from_utf8_unchecked()`] for more information.
+    ///
     /// # Safety
     ///
-    /// See the immutable version, [`from_utf8_unchecked()`] for documentation and safety requirements.
+    /// The bytes passed in must be valid UTF-8.
     ///
     /// # Examples
     ///
@@ -502,6 +504,11 @@ impl str {
     /// Converts a string slice to a byte slice. To convert the byte slice back
     /// into a string slice, use the [`from_utf8`] function.
     ///
+    /// # Safety
+    ///
+    /// As an exception to the [general rule](prim@str#invariant), this function will not cause
+    /// immediate undefined behavior if called on a `str` containing invalid UTF-8.
+    ///
     /// # Examples
     ///
     /// ```
@@ -521,10 +528,14 @@ impl str {
     ///
     /// # Safety
     ///
-    /// The caller must ensure that the content of the slice is valid UTF-8
-    /// before the borrow ends and the underlying `str` is used.
+    /// This function is unsafe because the returned `&mut [u8]` allows writing
+    /// bytes which are not valid UTF-8. If this constraint is violated, using
+    /// the original `str` after the `&mut [u8]` borrow expires may violate memory
+    /// safety, as the rest of the standard library [assumes that `str`s are
+    /// valid UTF-8](prim@str#invariant).
     ///
-    /// Use of a `str` whose contents are not valid UTF-8 is undefined behavior.
+    /// As an exception to the [general rule](prim@str#invariant), this function will not cause
+    /// immediate undefined behavior if called on a `str` containing invalid UTF-8.
     ///
     /// # Examples
     ///
@@ -3266,6 +3277,12 @@ impl str {
     /// This method is redundant when used directly on `&str`, but
     /// it helps dereferencing other string-like types to string slices,
     /// for example references to `Box<str>` or `Arc<str>`.
+    ///
+    /// # Safety
+    ///
+    /// As an exception to the [general rule](prim@str#invariant), this function does not assume
+    /// that the input `str` contains valid UTF-8, and is guaranteed to not cause
+    /// immediate undefined behavior if called on a `str` containing invalid UTF-8.
     #[inline]
     #[unstable(feature = "str_as_str", issue = "130366")]
     pub const fn as_str(&self) -> &str {
