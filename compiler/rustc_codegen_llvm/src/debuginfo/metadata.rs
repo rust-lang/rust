@@ -180,7 +180,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
         None => {
             // This is a thin pointer. Create a regular pointer type and give it the correct name.
             assert_eq!(
-                (pointer_size, pointer_align.abi),
+                (pointer_size, pointer_align),
                 cx.size_and_align_of(ptr_type),
                 "ptr_type={ptr_type}, pointee_type={pointee_type}",
             );
@@ -189,7 +189,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                 cx,
                 pointee_type_di_node,
                 pointer_size,
-                pointer_align.abi,
+                pointer_align,
                 &ptr_type_debuginfo_name,
             );
 
@@ -326,9 +326,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);
     let (size, align) = match fn_ty.kind() {
         ty::FnDef(..) => (Size::ZERO, Align::ONE),
-        ty::FnPtr(..) => {
-            (cx.tcx.data_layout.pointer_size(), cx.tcx.data_layout.pointer_align().abi)
-        }
+        ty::FnPtr(..) => (cx.tcx.data_layout.pointer_size(), cx.tcx.data_layout.pointer_align()),
         _ => unreachable!(),
     };
     let di_node = create_pointer_type(cx, fn_di_node, size, align, &name);

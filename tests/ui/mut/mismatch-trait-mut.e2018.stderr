@@ -1,12 +1,14 @@
 error[E0053]: method `f` has an incompatible type for trait
   --> $DIR/mismatch-trait-mut.rs:30:18
    |
+LL |     impl crate::A for X {
 LL |         fn f(_x: &crate::bar::X) {}
    |                  ^^^^^^^^^^^^^^ types differ in mutability
    |
 note: type in trait
   --> $DIR/mismatch-trait-mut.rs:15:14
    |
+LL | pub trait A {
 LL |     fn f(_x: &mut bar::X) {}
    |              ^^^^^^^^^^^
    = note: expected signature `fn(&mut X)`
@@ -19,12 +21,16 @@ LL |         fn f(_x: &mut crate::bar::X) {}
 error[E0053]: method `g` has an incompatible type for trait
   --> $DIR/mismatch-trait-mut.rs:34:22
    |
+LL |     impl crate::A for X {
+...
 LL |         fn g<'a>(_x: &'a crate::bar::X) -> &'a () { &() }
    |                      ^^^^^^^^^^^^^^^^^ types differ in mutability
    |
 note: type in trait
   --> $DIR/mismatch-trait-mut.rs:17:18
    |
+LL | pub trait A {
+...
 LL |     fn g<'a>(_x: &'a mut bar::X) -> &'a () { &() }
    |                  ^^^^^^^^^^^^^^
    = note: expected signature `fn(&'a mut X) -> &'a ()`
@@ -37,12 +43,16 @@ LL |         fn g<'a>(_x: &'a mut crate::bar::X) -> &'a () { &() }
 error[E0053]: method `f2` has an incompatible type for trait
   --> $DIR/mismatch-trait-mut.rs:38:19
    |
+LL |     impl crate::A for X {
+...
 LL |         fn f2(_x: &mut crate::bar::X) {}
    |                   ^^^^^^^^^^^^^^^^^^ types differ in mutability
    |
 note: type in trait
   --> $DIR/mismatch-trait-mut.rs:19:15
    |
+LL | pub trait A {
+...
 LL |     fn f2(_x: &bar::X) {}
    |               ^^^^^^^
    = note: expected signature `fn(&X)`
@@ -56,12 +66,16 @@ LL +         fn f2(_x: &crate::bar::X) {}
 error[E0053]: method `g2` has an incompatible type for trait
   --> $DIR/mismatch-trait-mut.rs:42:23
    |
+LL |     impl crate::A for X {
+...
 LL |         fn g2<'a>(_x: &'a mut crate::bar::X) -> &'a () { &() }
    |                       ^^^^^^^^^^^^^^^^^^^^^ types differ in mutability
    |
 note: type in trait
   --> $DIR/mismatch-trait-mut.rs:21:19
    |
+LL | pub trait A {
+...
 LL |     fn g2<'a>(_x: &'a bar::X) -> &'a () { &() }
    |                   ^^^^^^^^^^
    = note: expected signature `fn(&'a X) -> &'a ()`

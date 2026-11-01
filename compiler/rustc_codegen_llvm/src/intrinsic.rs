@@ -596,8 +596,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     self.const_bool(true)
                 } else if use_integer_compare {
                     let integer_ty = self.type_ix(layout.size().bits());
-                    let a_val = self.load(integer_ty, a, layout.align().abi);
-                    let b_val = self.load(integer_ty, b, layout.align().abi);
+                    let a_val = self.load(integer_ty, a, layout.align());
+                    let b_val = self.load(integer_ty, b, layout.align());
                     self.icmp(IntPredicate::IntEQ, a_val, b_val)
                 } else {
                     let n = self.const_usize(layout.size().bytes());
@@ -1398,7 +1398,7 @@ fn codegen_msvc_try<'ll, 'tcx>(
         //
         // More information can be found in libstd's seh.rs implementation.
         let ptr_size = bx.tcx().data_layout.pointer_size();
-        let ptr_align = bx.tcx().data_layout.pointer_align().abi;
+        let ptr_align = bx.tcx().data_layout.pointer_align();
         let slot = bx.alloca(ptr_size, ptr_align);
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.invoke(
