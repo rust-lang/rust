@@ -58,9 +58,9 @@ where
         return Ok(Normalized { value, obligations: Default::default() });
     }
 
+    let delegate = <&SolverDelegate<'tcx>>::from(infcx);
     let mut stalled_goals = vec![];
-    let mut folder = NormalizationFolder::new(infcx, universes, |alias_term| {
-        let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+    let mut folder = NormalizationFolder::new(delegate, universes, |alias_term| {
         let infer_term = delegate.next_term_var_of_alias_kind(alias_term, at.cause.span);
         let predicate = ty::ProjectionClause { projection_term: alias_term, term: infer_term };
         let goal = Goal::new(infcx.tcx, at.param_env, predicate);

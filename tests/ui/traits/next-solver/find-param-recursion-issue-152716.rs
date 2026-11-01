@@ -14,10 +14,10 @@ trait Proj<'a> {
 }
 fn foo<T>()
 //[current]~^ ERROR: overflow evaluating the requirement `for<'b> T: Proj<'b>`
+//[next]~^^ ERROR: overflow evaluating the requirement `<T as Proj<'static>>::Assoc == _`
 where
     T: for<'a> Proj<'a, Assoc = for<'b> fn(<T as Proj<'b>>::Assoc)>,
     (): Trait<<T as Proj<'static>>::Assoc>
-    //[next]~^ ERROR: overflow evaluating the requirement `(): Trait<<T as Proj<'static>>::Assoc>`
 {
 }
 
