@@ -64,7 +64,7 @@
 
 macro_rules! uint_impl {
     ($U:ident) => {
-        pub(in crate::num) mod $U {
+        pub(crate) mod $U {
             const STAGES: usize = $U::BITS.ilog2() as usize;
             #[inline]
             const fn prepare(sparse: $U) -> [$U; STAGES] {
@@ -100,7 +100,7 @@ macro_rules! uint_impl {
             }
 
             #[inline(always)]
-            pub(in crate::num) const fn extract_impl(mut x: $U, sparse: $U) -> $U {
+            pub(crate) const fn extract_impl(mut x: $U, sparse: $U) -> $U {
                 let masks = prepare(sparse);
                 x &= sparse;
                 let mut stage = 0;
@@ -140,7 +140,7 @@ macro_rules! uint_impl {
                 x
             }
             #[inline(always)]
-            pub(in crate::num) const fn deposit_impl(mut x: $U, sparse: $U) -> $U {
+            pub(crate) const fn deposit_impl(mut x: $U, sparse: $U) -> $U {
                 let masks = prepare(sparse);
                 let mut stage = STAGES;
                 while stage > 0 {

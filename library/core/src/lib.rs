@@ -160,6 +160,7 @@
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
 #![feature(uint_carryless_mul)]
+#![feature(uint_gather_scatter_bits)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(with_negative_coherence)]

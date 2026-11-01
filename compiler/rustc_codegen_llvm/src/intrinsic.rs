@@ -404,7 +404,25 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let pair = self.insert_value(pair, high, 1);
                 pair
             }
+            sym::deposit_bits | sym::extract_bits if llvm_version >= (23, 0, 0) => {
+                let ty = args[0].layout.ty;
+                if !ty.is_integral() {
+                    let err = tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
+                        span,
+                        name,
+                        ty,
+                    });
+                    return IntrinsicResult::Err(err);
+                }
+                let (size, _) = ty.int_size_and_signed(self.tcx);
+                let llty = self.type_ix(size.bits());
 
+                self.call_intrinsic(
+                    if name == sym::extract_bits { "llvm.pext" } else { "llvm.pdep" },
+                    &[llty],
+                    &[args[0].immediate(), args[1].immediate()],
+                )
+            }
             sym::ctlz
             | sym::ctlz_nonzero
             | sym::cttz

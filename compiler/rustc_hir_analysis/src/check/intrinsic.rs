@@ -97,9 +97,11 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::ctlz
         | sym::ctpop
         | sym::cttz
+        | sym::deposit_bits
         | sym::discriminant_value
         | sym::exp
         | sym::exp2
+        | sym::extract_bits
         | sym::fabs
         | sym::fadd_algebraic
         | sym::fdiv_algebraic
@@ -746,6 +748,8 @@ pub(crate) fn check_intrinsic_type(
         sym::atomic_fence | sym::atomic_singlethreadfence => (0, 1, Vec::new(), tcx.types.unit),
 
         sym::return_address => (0, 0, vec![], Ty::new_imm_ptr(tcx, tcx.types.unit)),
+
+        sym::extract_bits | sym::deposit_bits => (1, 0, vec![param(0), param(0)], param(0)),
 
         other => {
             tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });

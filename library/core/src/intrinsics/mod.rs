@@ -3718,3 +3718,29 @@ pub const unsafe fn va_end(ap: &mut VaList<'_>) {
 pub fn return_address() -> *const () {
     core::ptr::null()
 }
+
+/// Returns an integer with the bit locations specified by `mask` packed
+/// contiguously into the least significant bits of the result.
+///
+/// This corresponds to `@llvm.pext.*`.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+#[unstable(feature = "uint_gather_scatter_bits", issue = "149069")]
+#[rustc_const_unstable(feature = "uint_gather_scatter_bits", issue = "149069")]
+#[miri::intrinsic_fallback_is_spec]
+pub const fn extract_bits<T: [const] fallback::ExtractDepositBits>(x: T, mask: T) -> T {
+    x.extract_bits(mask)
+}
+
+/// Returns an integer with the least significant bits of `x`
+/// distributed to the bit locations specified by `mask`.
+///
+/// This corresponds to `@llvm.pdep.*`.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+#[unstable(feature = "uint_gather_scatter_bits", issue = "149069")]
+#[rustc_const_unstable(feature = "uint_gather_scatter_bits", issue = "149069")]
+#[miri::intrinsic_fallback_is_spec]
+pub const fn deposit_bits<T: [const] fallback::ExtractDepositBits>(x: T, mask: T) -> T {
+    x.deposit_bits(mask)
+}

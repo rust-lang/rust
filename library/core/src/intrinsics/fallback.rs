@@ -258,3 +258,52 @@ macro_rules! impl_carryless_mul{
 impl_carryless_mul! {
     u8, u16, u32, u64, u128, usize
 }
+
+#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+pub const trait ExtractDepositBits: Copy + 'static {
+    fn extract_bits(self, mask: Self) -> Self;
+    fn deposit_bits(self, mask: Self) -> Self;
+}
+
+macro_rules! impl_extract_deposit_bits {
+    ($($type:ident),*) => {$(
+        #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+        const impl ExtractDepositBits for $type {
+            #[inline]
+            fn extract_bits(self, mask: Self) -> Self {
+                crate::num::imp::int_bits::$type::extract_impl(self, mask)
+            }
+
+            #[inline]
+            fn deposit_bits(self, mask: Self) -> Self {
+                crate::num::imp::int_bits::$type::deposit_impl(self, mask)
+            }
+        }
+    )*};
+}
+
+impl_extract_deposit_bits! {
+    u8, u16, u32, u64, u128
+}
+
+#[cfg(target_pointer_width = "16")]
+type UsizeActual = u16;
+#[cfg(target_pointer_width = "32")]
+type UsizeActual = u32;
+#[cfg(target_pointer_width = "64")]
+type UsizeActual = u64;
+
+#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+const impl ExtractDepositBits for usize {
+    #[inline]
+    fn extract_bits(self, mask: Self) -> Self {
+        <UsizeActual as ExtractDepositBits>::extract_bits(self as UsizeActual, mask as UsizeActual)
+            as usize
+    }
+
+    #[inline]
+    fn deposit_bits(self, mask: Self) -> Self {
+        <UsizeActual as ExtractDepositBits>::deposit_bits(self as UsizeActual, mask as UsizeActual)
+            as usize
+    }
+}
