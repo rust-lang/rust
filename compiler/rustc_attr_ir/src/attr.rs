@@ -10,7 +10,7 @@ use rustc_span::{AttrId, DUMMY_SP, Ident, Span, Symbol};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
-use crate::AttributeKind;
+use crate::{AttributeKind, EncodeCrossCrate};
 
 /// Arguments of a unparsed attribute.
 #[derive(Clone, Debug, StableHash, Encodable, Decodable)]
@@ -143,6 +143,13 @@ impl Attribute {
             // Other parsed attributes that can appear on expressions originate from source and
             // should make suggestions treat the expression like a prefixed form.
             Attribute::Parsed(_) => true,
+        }
+    }
+
+    pub fn encode_cross_crate(&self) -> EncodeCrossCrate {
+        match self {
+            Attribute::Parsed(p) => p.encode_cross_crate(),
+            Attribute::Tool(..) | Attribute::DeriveHelper(..) => EncodeCrossCrate::Yes,
         }
     }
 }
