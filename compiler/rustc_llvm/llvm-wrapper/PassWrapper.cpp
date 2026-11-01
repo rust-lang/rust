@@ -12,6 +12,7 @@
 #include "llvm/CodeGen/CommandFlags.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/AutoUpgrade.h"
+#include "llvm/IR/EHPersonalities.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/Verifier.h"
@@ -37,6 +38,7 @@
 #include "llvm/Transforms/IPO/FunctionImport.h"
 #include "llvm/Transforms/IPO/Internalize.h"
 #include "llvm/Transforms/IPO/LowerTypeTests.h"
+#include "llvm/Transforms/IPO/MergeFunctions.h"
 #include "llvm/Transforms/IPO/ThinLTOBitcodeWriter.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/DataFlowSanitizer.h"
@@ -46,12 +48,15 @@
 #include "llvm/Transforms/Instrumentation/RealtimeSanitizer.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Scalar/AnnotationRemarks.h"
+#include "llvm/Transforms/Utils/CodeExtractor.h"
 #if LLVM_VERSION_GE(23, 0)
 #include "llvm/Transforms/Utils/AssignGUID.h"
 #endif
 #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/Transforms/Utils/NameAnonGlobals.h"
+#include <atomic>
+#include <cstdlib>
 #include <set>
 #include <string>
 #include <vector>
@@ -60,6 +65,385 @@
 // so if any are needed, keep them separate down here.
 
 using namespace llvm;
+
+static std::atomic<bool> GEnableColdOutline{false};
+
+extern "C" void LLVMRustEnableColdOutline() {
+  GEnableColdOutline.store(true, std::memory_order_relaxed);
+}
+
+namespace {
+struct ColdInvokeOutlinerPass
+    : public RequiredPassInfoMixin<ColdInvokeOutlinerPass> {
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &) {
+    bool Changed = false;
+    SmallVector<Function *, 16> WorkFuncs;
+    for (Function &F : M) {
+      if (!F.isDeclaration())
+        WorkFuncs.push_back(&F);
+    }
+    for (Function *FPtr : WorkFuncs) {
+      Function &F = *FPtr;
+      if (F.hasOptNone() || F.hasFnAttribute(Attribute::Cold) ||
+          F.hasFnAttribute(Attribute::NoReturn) ||
+          F.hasFnAttribute(Attribute::Naked))
+        continue;
+      if (F.hasPersonalityFn() &&
+          isScopedEHPersonality(classifyEHPersonality(F.getPersonalityFn())))
+        continue;
+
+      auto collectColdOnlyAllocas =
+          [&](BasicBlock *TargetBB, SmallVectorImpl<AllocaInst *> &ColdAllocas,
+              SmallVectorImpl<Instruction *> &DeadLifetimes) {
+            for (Instruction &EntryI : F.getEntryBlock()) {
+              auto *AI = dyn_cast<AllocaInst>(&EntryI);
+              if (!AI || !AI->isStaticAlloca())
+                continue;
+              bool OnlyInTarget = true;
+              bool UsedInTarget = false;
+              SmallVector<User *, 8> Worklist(AI->users());
+              SmallPtrSet<User *, 8> Visited;
+              SmallVector<Instruction *, 4> LocalLifetimes;
+              while (!Worklist.empty()) {
+                User *U = Worklist.pop_back_val();
+                if (!Visited.insert(U).second)
+                  continue;
+                auto *UI = dyn_cast<Instruction>(U);
+                if (!UI) {
+                  OnlyInTarget = false;
+                  break;
+                }
+                if (auto *Intr = dyn_cast<IntrinsicInst>(UI)) {
+                  if (Intr->getIntrinsicID() == Intrinsic::lifetime_start ||
+                      Intr->getIntrinsicID() == Intrinsic::lifetime_end) {
+                    if (Intr->getParent() != TargetBB)
+                      LocalLifetimes.push_back(Intr);
+                    continue;
+                  }
+                }
+                if (UI->getParent() == TargetBB) {
+                  UsedInTarget = true;
+                  if (isa<GetElementPtrInst>(UI) || isa<BitCastInst>(UI)) {
+                    for (User *SubU : UI->users())
+                      Worklist.push_back(SubU);
+                  }
+                } else if (isa<GetElementPtrInst>(UI) || isa<BitCastInst>(UI)) {
+                  for (User *SubU : UI->users())
+                    Worklist.push_back(SubU);
+                } else {
+                  OnlyInTarget = false;
+                  break;
+                }
+              }
+              if (OnlyInTarget && UsedInTarget) {
+                ColdAllocas.push_back(AI);
+                DeadLifetimes.append(LocalLifetimes.begin(),
+                                     LocalLifetimes.end());
+              }
+            }
+          };
+
+      auto hoistAllocasToEntry = [](Function *OutF) {
+        BasicBlock &Entry = OutF->getEntryBlock();
+        SmallVector<AllocaInst *, 8> AllocasToMove;
+        for (BasicBlock &OutBB : *OutF) {
+          if (&OutBB == &Entry)
+            continue;
+          for (Instruction &OutI : OutBB) {
+            if (auto *AI = dyn_cast<AllocaInst>(&OutI))
+              AllocasToMove.push_back(AI);
+          }
+        }
+        for (AllocaInst *AI : AllocasToMove) {
+          AI->moveBefore(Entry.getFirstInsertionPt());
+        }
+      };
+
+      SmallVector<BasicBlock *, 8> Candidates;
+      for (BasicBlock &BB : F) {
+        if (&BB == &F.getEntryBlock() || BB.isEHPad() || BB.hasAddressTaken() ||
+            pred_empty(&BB))
+          continue;
+
+        if (auto *II = dyn_cast<InvokeInst>(BB.getTerminator())) {
+          if (BB.size() < 2)
+            continue;
+          if (!II->hasFnAttr(Attribute::Cold) && !II->doesNotReturn())
+            continue;
+          if (Function *Callee = II->getCalledFunction()) {
+            if (Callee->getName().contains(".cold"))
+              continue;
+          }
+          BasicBlock *NormalDest = II->getNormalDest();
+          if (!NormalDest->phis().empty() ||
+              !isa<UnreachableInst>(NormalDest->getFirstNonPHIIt()))
+            continue;
+          BasicBlock *UnwindDest = II->getUnwindDest();
+          bool Valid = true;
+          for (PHINode &PN : UnwindDest->phis()) {
+            int Idx = PN.getBasicBlockIndex(&BB);
+            if (Idx >= 0) {
+              if (auto *DefI =
+                      dyn_cast<Instruction>(PN.getIncomingValue(Idx))) {
+                if (DefI->getParent() == &BB) {
+                  Valid = false;
+                  break;
+                }
+              }
+            }
+          }
+          for (Instruction &I : BB) {
+            if (!Valid)
+              break;
+            if (isa<AllocaInst>(&I) || I.getType()->isTokenTy()) {
+              Valid = false;
+              break;
+            }
+            if (&I != II) {
+              for (User *U : I.users()) {
+                auto *UI = dyn_cast<Instruction>(U);
+                if (!UI || UI->getParent() != &BB) {
+                  Valid = false;
+                  break;
+                }
+              }
+            }
+          }
+          if (Valid)
+            Candidates.push_back(&BB);
+        } else if (isa<UnreachableInst>(BB.getTerminator())) {
+          CallInst *ColdCI = nullptr;
+          bool Valid = true;
+          for (Instruction &I : BB) {
+            if (isa<AllocaInst>(&I) || I.getType()->isTokenTy()) {
+              Valid = false;
+              break;
+            }
+            if (auto *CI = dyn_cast<CallInst>(&I)) {
+              if (CI->hasFnAttr(Attribute::Cold)) {
+                ColdCI = CI;
+                if (Function *Callee = CI->getCalledFunction()) {
+                  if (Callee->getName().contains(".cold")) {
+                    Valid = false;
+                    break;
+                  }
+                }
+              }
+            }
+            for (User *U : I.users()) {
+              auto *UI = dyn_cast<Instruction>(U);
+              if (!UI || UI->getParent() != &BB) {
+                Valid = false;
+                break;
+              }
+            }
+            if (!Valid)
+              break;
+          }
+          if (Valid && ColdCI)
+            Candidates.push_back(&BB);
+        }
+      }
+
+      unsigned ColdIdx = 0;
+      for (BasicBlock *BB : Candidates) {
+        auto *OrigII = dyn_cast<InvokeInst>(BB->getTerminator());
+        if (!OrigII && !isa<UnreachableInst>(BB->getTerminator()))
+          continue;
+
+        BasicBlock *NormalDest = nullptr;
+        BasicBlock *UnwindDest = nullptr;
+        SmallVector<std::pair<PHINode *, Value *>, 4> SavedPhis;
+        SmallVector<Value *, 8> InnerArgs;
+        SmallVector<OperandBundleDef, 2> Bundles;
+        CallInst *InnerCI = nullptr;
+        UnreachableInst *TempUnreach = nullptr;
+        DebugLoc OrigDL;
+
+        CallBase *ColdCall = nullptr;
+        unsigned NonTrivialInsts = 0;
+        for (Instruction &I : *BB) {
+          if (isa<UnreachableInst>(&I))
+            continue;
+          if (auto *Intr = dyn_cast<IntrinsicInst>(&I)) {
+            if (Intr->getIntrinsicID() == Intrinsic::lifetime_start ||
+                Intr->getIntrinsicID() == Intrinsic::lifetime_end)
+              continue;
+          }
+          ++NonTrivialInsts;
+          if (auto *CB = dyn_cast<CallBase>(&I)) {
+            if (CB->hasFnAttr(Attribute::Cold) || CB == OrigII)
+              ColdCall = CB;
+          }
+        }
+        if (!ColdCall)
+          continue;
+        unsigned OrigCallArgSize = ColdCall->arg_size();
+        if (NonTrivialInsts < 2) {
+          bool HasUniqueGlobalArg = false;
+          for (Value *Arg : ColdCall->args()) {
+            if (auto *GV = dyn_cast<GlobalValue>(Arg->stripPointerCasts())) {
+              if (GV->hasOneUse()) {
+                HasUniqueGlobalArg = true;
+                break;
+              }
+            }
+          }
+          if (HasUniqueGlobalArg)
+            continue;
+        }
+
+        if (OrigII) {
+          NormalDest = OrigII->getNormalDest();
+          UnwindDest = OrigII->getUnwindDest();
+          for (PHINode &PN : UnwindDest->phis()) {
+            int Idx = PN.getBasicBlockIndex(BB);
+            if (Idx >= 0) {
+              SavedPhis.emplace_back(&PN, PN.getIncomingValue(Idx));
+              PN.removeIncomingValue(Idx, /*DeletePHIIfEmpty=*/false);
+            }
+          }
+          InnerArgs.assign(OrigII->arg_begin(), OrigII->arg_end());
+          OrigII->getOperandBundlesAsDefs(Bundles);
+          InnerCI = CallInst::Create(
+              OrigII->getFunctionType(), OrigII->getCalledOperand(), InnerArgs,
+              Bundles, OrigII->getName(), OrigII->getIterator());
+          InnerCI->setCallingConv(OrigII->getCallingConv());
+          InnerCI->setAttributes(OrigII->getAttributes());
+          InnerCI->setDebugLoc(OrigII->getDebugLoc());
+          TempUnreach =
+              new UnreachableInst(F.getContext(), OrigII->getIterator());
+          OrigDL = OrigII->getDebugLoc();
+          OrigII->eraseFromParent();
+        }
+
+        SmallVector<AllocaInst *, 4> ColdAllocas;
+        SmallVector<Instruction *, 4> DeadLifetimes;
+        collectColdOnlyAllocas(BB, ColdAllocas, DeadLifetimes);
+        for (Instruction *DeadI : DeadLifetimes)
+          DeadI->eraseFromParent();
+        for (AllocaInst *AI : ColdAllocas)
+          AI->moveBefore(BB->getFirstNonPHIIt());
+
+        SmallPtrSet<AllocaInst *, 4> ColdAllocaSet(ColdAllocas.begin(),
+                                                   ColdAllocas.end());
+        auto getBaseColdAlloca = [&](Value *V) -> AllocaInst * {
+          while (true) {
+            if (auto *AI = dyn_cast<AllocaInst>(V))
+              return ColdAllocaSet.contains(AI) ? AI : nullptr;
+            if (auto *GEP = dyn_cast<GetElementPtrInst>(V)) {
+              V = GEP->getPointerOperand();
+              continue;
+            }
+            if (auto *BC = dyn_cast<BitCastInst>(V)) {
+              V = BC->getOperand(0);
+              continue;
+            }
+            return nullptr;
+          }
+        };
+        SmallPtrSet<AllocaInst *, 4> ReferencedColdAllocas;
+        for (Instruction &I : *BB) {
+          if (auto *SI = dyn_cast<StoreInst>(&I)) {
+            AllocaInst *ValAI = getBaseColdAlloca(SI->getValueOperand());
+            AllocaInst *PtrAI = getBaseColdAlloca(SI->getPointerOperand());
+            if (ValAI && PtrAI && ValAI != PtrAI)
+              ReferencedColdAllocas.insert(ValAI);
+          }
+        }
+        SmallVector<SelectInst *, 4> ProxiedConsts;
+        BasicBlock &EntryBB = F.getEntryBlock();
+        for (Instruction &I : *BB) {
+          if (ProxiedConsts.size() >= 4)
+            break;
+          if (auto *SI = dyn_cast<StoreInst>(&I)) {
+            AllocaInst *PtrAI = getBaseColdAlloca(SI->getPointerOperand());
+            auto *C = dyn_cast<Constant>(SI->getValueOperand());
+            if (PtrAI && ReferencedColdAllocas.contains(PtrAI) && C &&
+                !C->getType()->isTokenTy()) {
+              auto *Proxy = SelectInst::Create(
+                  ConstantInt::getTrue(F.getContext()), C, C, "cold.const",
+                  EntryBB.getTerminator()->getIterator());
+              SI->setOperand(0, Proxy);
+              ProxiedConsts.push_back(Proxy);
+            }
+          }
+        }
+
+        CodeExtractorAnalysisCache CEAC(F);
+        CodeExtractor CE(
+            ArrayRef<BasicBlock *>{BB}, /*DT=*/nullptr,
+            /*AggregateArgs=*/false, /*BFI=*/nullptr, /*BPI=*/nullptr,
+            /*AC=*/nullptr, /*AllowVarArgs=*/false, /*AllowAlloca=*/true,
+            /*AllocationBlock=*/nullptr, /*DeallocationBlocks=*/{},
+            (OrigII ? "cold.invoke." : "cold.") + std::to_string(++ColdIdx));
+        SetVector<Value *> Inputs, Outputs, Sinks;
+        CE.findInputsOutputs(Inputs, Outputs, Sinks);
+        bool Profitable =
+            Outputs.empty() && Inputs.size() <= 6 &&
+            (NonTrivialInsts >= 2 || OrigCallArgSize > Inputs.size());
+        Function *OutF = (Profitable && CE.isEligible())
+                             ? CE.extractCodeRegion(CEAC)
+                             : nullptr;
+        for (SelectInst *Proxy : ProxiedConsts) {
+          Value *OrigC = Proxy->getTrueValue();
+          Proxy->replaceAllUsesWith(OrigC);
+          Proxy->eraseFromParent();
+        }
+        if (OutF && !OutF->user_empty()) {
+          hoistAllocasToEntry(OutF);
+          auto *OutCI = cast<CallInst>(*OutF->user_begin());
+          OutF->addFnAttr(Attribute::Cold);
+          OutF->addFnAttr(Attribute::NoInline);
+          OutF->addFnAttr(Attribute::MinSize);
+          if (OrigII) {
+            BasicBlock *CodeRepl = OutCI->getParent();
+            Instruction *ReplTerm = CodeRepl->getTerminator();
+            SmallVector<Value *, 8> OutArgs(OutCI->args());
+            InvokeInst *NewII =
+                InvokeInst::Create(OutF, NormalDest, UnwindDest, OutArgs, "",
+                                   ReplTerm->getIterator());
+            NewII->setCallingConv(OutCI->getCallingConv());
+            NewII->setAttributes(OutCI->getAttributes());
+            NewII->setDebugLoc(OrigDL);
+            NewII->addFnAttr(Attribute::Cold);
+            NewII->addFnAttr(Attribute::NoInline);
+            OutCI->eraseFromParent();
+            ReplTerm->eraseFromParent();
+            for (auto &[PN, Val] : SavedPhis) {
+              PN->addIncoming(Val, CodeRepl);
+            }
+          } else {
+            OutF->addFnAttr(Attribute::NoReturn);
+            OutCI->addFnAttr(Attribute::Cold);
+            OutCI->addFnAttr(Attribute::NoInline);
+            OutCI->addFnAttr(Attribute::NoReturn);
+          }
+          Changed = true;
+        } else {
+          for (AllocaInst *AI : ColdAllocas)
+            AI->moveBefore(F.getEntryBlock().getFirstInsertionPt());
+          if (OrigII) {
+            InvokeInst *RestoredII = InvokeInst::Create(
+                InnerCI->getFunctionType(), InnerCI->getCalledOperand(),
+                NormalDest, UnwindDest, InnerArgs, Bundles, InnerCI->getName(),
+                TempUnreach->getIterator());
+            RestoredII->setCallingConv(InnerCI->getCallingConv());
+            RestoredII->setAttributes(InnerCI->getAttributes());
+            RestoredII->setDebugLoc(OrigDL);
+            InnerCI->eraseFromParent();
+            TempUnreach->eraseFromParent();
+            for (auto &[PN, Val] : SavedPhis) {
+              PN->addIncoming(Val, BB);
+            }
+          }
+        }
+      }
+    }
+    return Changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+  }
+};
+} // namespace
 
 static codegen::RegisterCodeGenFlags CGF;
 
@@ -967,6 +1351,23 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     if (!NoPrepopulatePasses) {
       PB.registerPipelineStartEPCallback(PipelineStartEPCallback);
       PB.registerOptimizerLastEPCallback(OptimizerLastEPCallback);
+
+      static const bool ExpColdOutline = []() {
+        const char *Env = std::getenv("RUSTC_EXP_COLD_OUTLINE");
+        return Env && std::string(Env) == "1";
+      }();
+      if ((ExpColdOutline ||
+           GEnableColdOutline.load(std::memory_order_relaxed)) &&
+          OptLevel != OptimizationLevel::O0) {
+        PB.registerPipelineEarlySimplificationEPCallback(
+            [](ModulePassManager &EarlyMPM, OptimizationLevel Level,
+               ThinOrFullLTOPhase /*Phase*/) {
+              if (Level == OptimizationLevel::O0)
+                return;
+              EarlyMPM.addPass(ColdInvokeOutlinerPass());
+              EarlyMPM.addPass(MergeFunctionsPass());
+            });
+      }
 
       // The pre-link pipelines don't support O0 and require using
       // buildO0DefaultPipeline() instead. At the same time, the LTO pipelines
