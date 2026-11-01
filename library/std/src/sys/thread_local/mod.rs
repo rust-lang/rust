@@ -77,7 +77,8 @@ pub(crate) mod destructors {
             target_os = "redox",
             target_os = "hurd",
             target_os = "netbsd",
-            target_os = "dragonfly"
+            target_os = "dragonfly",
+            target_os = "serenity",
         ) => {
             mod linux_like;
             mod list;

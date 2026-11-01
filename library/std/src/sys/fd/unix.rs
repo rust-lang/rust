@@ -82,6 +82,7 @@ const READ_LIMIT: usize = cfg_select! {
     target_os = "openbsd",
     target_vendor = "apple",
     target_os = "cygwin",
+    target_os = "serenity",
 ))]
 const fn max_iov() -> usize {
     libc::IOV_MAX as usize
@@ -114,6 +115,7 @@ const fn max_iov() -> usize {
     target_os = "vita",
     target_vendor = "apple",
     target_os = "cygwin",
+    target_os = "serenity",
 )))]
 const fn max_iov() -> usize {
     16 // The minimum value required by POSIX.
@@ -239,6 +241,7 @@ impl FileDesc {
         target_os = "openbsd", // OpenBSD 2.7
         target_os = "l4re",
         all(target_os = "macos", target_arch = "aarch64"),
+        target_os = "serenity",
     ))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         let ret = cvt(unsafe {
@@ -266,6 +269,7 @@ impl FileDesc {
         target_os = "openbsd",
         target_vendor = "apple",
         target_os = "l4re",
+        target_os = "serenity",
     )))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         io::default_read_vectored(|b| self.read_at(b, offset), bufs)
@@ -436,6 +440,7 @@ impl FileDesc {
         target_os = "netbsd",
         target_os = "openbsd", // OpenBSD 2.7
         all(target_os = "macos", target_arch = "aarch64"),
+        target_os = "serenity",
     ))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         let ret = cvt(unsafe {
@@ -462,6 +467,7 @@ impl FileDesc {
         target_os = "netbsd",
         target_os = "openbsd",
         target_vendor = "apple",
+        target_os = "serenity",
     )))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         io::default_write_vectored(|b| self.write_at(b, offset), bufs)

@@ -17,6 +17,7 @@ unsafe extern "C" {
             target_os = "fuchsia",
             target_os = "l4re",
             target_os = "hurd",
+            target_os = "serenity",
             target_os = "teeos",
         ),
         link_name = "__errno_location"

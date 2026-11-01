@@ -1235,6 +1235,7 @@ fn signal_string(signal: i32) -> Option<&'static str> {
             target_os = "openbsd",
             target_os = "dragonfly",
             target_vendor = "apple",
+            target_os = "serenity",
         ))]
         libc::SIGINFO => "SIGINFO",
         #[cfg(target_os = "hurd")]
