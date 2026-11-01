@@ -507,7 +507,8 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
             quote! { #kw if #ed <= edition }
         })
         .collect::<Vec<_>>();
-    let edition_dependent_keywords = grammar.edition_dependent_keywords.iter().map(|&(it, _)| it);
+    let edition_dependent_keywords =
+        grammar.edition_dependent_keywords.iter().map(|&(it, _)| it).collect::<Vec<_>>();
     let edition_dependent_keywords_variants = grammar
         .edition_dependent_keywords
         .iter()
@@ -635,6 +636,18 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
                 let kw = match ident {
                     #(#strict_keywords => #strict_keywords_variants,)*
                     #(#edition_dependent_keywords_str_match_arm => #edition_dependent_keywords_variants,)*
+                    _ => return None,
+                };
+                Some(kw)
+            }
+
+            /// Matches any keyword, regardless of edition or contextuality.
+            #[expect(unreachable_patterns)]
+            pub fn from_any_keyword(ident: &str) -> Option<SyntaxKind> {
+                let kw = match ident {
+                    #(#strict_keywords => #strict_keywords_variants,)*
+                    #(#edition_dependent_keywords => #edition_dependent_keywords_variants,)*
+                    #(#contextual_keywords => #contextual_keywords_variants,)*
                     _ => return None,
                 };
                 Some(kw)

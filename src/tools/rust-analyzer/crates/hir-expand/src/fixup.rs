@@ -87,7 +87,7 @@ pub(crate) fn fixup_syntax(
                     anchor: SpanAnchor { ast_id: FIXUP_DUMMY_AST_ID, ..span.anchor },
                     ctx: span.ctx,
                 },
-                is_raw: tt::IdentIsRaw::No,
+                kind: tt::IdentKind::Normal,
             });
             append.insert(node.clone().into(), vec![replacement]);
             preorder.skip_subtree();
@@ -103,7 +103,7 @@ pub(crate) fn fixup_syntax(
                             Leaf::Ident(Ident {
                                 sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
-                                is_raw: tt::IdentIsRaw::No
+                                kind: tt::IdentKind::Normal
                             }),
                         ]);
                     }
@@ -142,7 +142,7 @@ pub(crate) fn fixup_syntax(
                             Leaf::Ident(Ident {
                                 sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
-                                is_raw: tt::IdentIsRaw::No
+                                kind: tt::IdentKind::Normal
                             }),
                         ]);
                     }
@@ -172,7 +172,7 @@ pub(crate) fn fixup_syntax(
                             Leaf::Ident(Ident {
                                 sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
-                                is_raw: tt::IdentIsRaw::No
+                                kind: tt::IdentKind::Normal
                             }),
                         ]);
                     }
@@ -217,7 +217,7 @@ pub(crate) fn fixup_syntax(
                             Leaf::Ident(Ident {
                                 sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
-                                is_raw: tt::IdentIsRaw::No
+                                kind: tt::IdentKind::Normal
                             }),
                         ]);
                     }
@@ -251,7 +251,7 @@ pub(crate) fn fixup_syntax(
                         Leaf::Ident(Ident {
                             sym,
                             span: fake_span(node_range),
-                            is_raw: tt::IdentIsRaw::No
+                            kind: tt::IdentKind::Normal
                         }),
                     );
 
@@ -284,7 +284,7 @@ pub(crate) fn fixup_syntax(
                                 Leaf::Ident(Ident {
                                     sym: sym::__ra_fixup,
                                     span: fake_span(node_range),
-                                    is_raw: tt::IdentIsRaw::No
+                                    kind: tt::IdentKind::Normal
                                 })
                             ]);
                         }
@@ -296,7 +296,7 @@ pub(crate) fn fixup_syntax(
                                 Leaf::Ident(Ident {
                                     sym: sym::__ra_fixup,
                                     span: fake_span(node_range),
-                                    is_raw: tt::IdentIsRaw::No
+                                    kind: tt::IdentKind::Normal
                                 })
                             ]);
                         }
@@ -307,7 +307,7 @@ pub(crate) fn fixup_syntax(
                             Leaf::Ident(Ident {
                                 sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
-                                is_raw: tt::IdentIsRaw::No
+                                kind: tt::IdentKind::Normal
                             })
                         ]);
                     }
