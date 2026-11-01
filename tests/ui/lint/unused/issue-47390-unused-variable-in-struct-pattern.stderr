@@ -1,5 +1,5 @@
 warning: variable does not need to be mutable
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:31:9
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:31:13
    |
 LL |     let mut mut_unused_var = 1;
    |         ----^^^^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL | #![warn(unused)] // UI tests pass `-A unused` (#43896)
    = note: `#[warn(unused_mut)]` implied by `#[warn(unused)]`
 
 warning: variable does not need to be mutable
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:35:10
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:35:14
    |
 LL |     let (mut var, unused_var) = (1, 2);
    |          ----^^^

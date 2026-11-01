@@ -24,7 +24,7 @@ LL +         let mut registry_no = format!("NX-{}", 74205);
    |
 
 warning: variable does not need to be mutable
-  --> $DIR/suggestions.rs:48:13
+  --> $DIR/suggestions.rs:48:17
    |
 LL |         let mut registry_no = (format!("NX-{}", 74205));
    |             ----^^^^^^^^^^^
@@ -38,15 +38,14 @@ LL | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issu
    |         ^^^^^^^^^^
 
 warning: variable does not need to be mutable
-  --> $DIR/suggestions.rs:54:13
+  --> $DIR/suggestions.rs:54:17
    |
-LL |            let mut
-   |   _____________^
-   |  |_____________|
-LL | ||             b = 1;
-   | ||____________-^
-   | |_____________|
-   |               help: remove this `mut`
+LL |           let mut
+   |  _____________----^
+   | |             |
+   | |             help: remove this `mut`
+LL | |             b = 1;
+   | |_____________^
 
 error: const items should never be `#[no_mangle]`
   --> $DIR/suggestions.rs:6:14
@@ -68,7 +67,7 @@ LL | pub fn defiant<T>(_t: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: the `warp_factor:` in this pattern is redundant
-  --> $DIR/suggestions.rs:61:23
+  --> $DIR/suggestions.rs:59:23
    |
 LL |             Equinox { warp_factor: warp_factor } => {}
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^ help: use shorthand field pattern: `warp_factor`
