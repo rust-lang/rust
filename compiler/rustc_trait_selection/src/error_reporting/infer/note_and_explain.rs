@@ -485,7 +485,10 @@ impl<T> Trait<T> for X {
                         }
                         // If two if arms can be coerced to a trait object, provide a structured
                         // suggestion.
-                        let ObligationCauseCode::IfExpression { expr_id, .. } = cause.code() else {
+                        let ObligationCauseCode::IfExpression {
+                            outermost_if_expr_id: expr_id, ..
+                        } = cause.code()
+                        else {
                             return;
                         };
                         let hir::Node::Expr(&hir::Expr {
@@ -565,7 +568,10 @@ impl<T> Trait<T> for X {
                         }
                     }
                     (ty::Adt(_, _), ty::Adt(def, args))
-                        if let ObligationCauseCode::IfExpression { expr_id, .. } = cause.code()
+                        if let ObligationCauseCode::IfExpression {
+                            outermost_if_expr_id: expr_id,
+                            ..
+                        } = cause.code()
                             && let hir::Node::Expr(if_expr) = self.tcx.hir_node(*expr_id)
                             && let hir::ExprKind::If(_, then_expr, _) = if_expr.kind
                             && let hir::ExprKind::Block(blk, _) = then_expr.kind

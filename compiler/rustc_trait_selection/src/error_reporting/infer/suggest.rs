@@ -197,37 +197,31 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             self.tcx.get_impl_future_output_ty(exp_found.expected),
             self.tcx.get_impl_future_output_ty(exp_found.found),
         ) {
-            (Some(exp), Some(found)) if self.same_type_modulo_infer(exp, found) => match cause
-                .code()
-            {
-                ObligationCauseCode::IfExpression { expr_id, .. } => {
-                    let hir::Node::Expr(hir::Expr {
-                        kind: hir::ExprKind::If(_, then_expr, _), ..
-                    }) = self.tcx.hir_node(*expr_id)
-                    else {
-                        return;
-                    };
-                    let then_span = self.find_block_span_from_hir_id(then_expr.hir_id);
-                    Some(ConsiderAddingAwait::BothFuturesSugg {
-                        first: then_span.shrink_to_hi(),
-                        second: exp_span.shrink_to_hi(),
-                    })
-                }
-                ObligationCauseCode::MatchExpressionArm(MatchExpressionArmCause {
-                    prior_non_diverging_arms,
-                    ..
-                }) => {
-                    if let [.., arm_span] = &prior_non_diverging_arms[..] {
+            (Some(exp), Some(found)) if self.same_type_modulo_infer(exp, found) => {
+                match cause.code() {
+                    ObligationCauseCode::IfExpression { expected_branch_id, .. } => {
+                        let expected_span = self.find_block_span_from_hir_id(*expected_branch_id);
                         Some(ConsiderAddingAwait::BothFuturesSugg {
-                            first: arm_span.shrink_to_hi(),
+                            first: expected_span.shrink_to_hi(),
                             second: exp_span.shrink_to_hi(),
                         })
-                    } else {
-                        Some(ConsiderAddingAwait::BothFuturesHelp)
                     }
+                    ObligationCauseCode::MatchExpressionArm(MatchExpressionArmCause {
+                        prior_non_diverging_arms,
+                        ..
+                    }) => {
+                        if let [.., arm_span] = &prior_non_diverging_arms[..] {
+                            Some(ConsiderAddingAwait::BothFuturesSugg {
+                                first: arm_span.shrink_to_hi(),
+                                second: exp_span.shrink_to_hi(),
+                            })
+                        } else {
+                            Some(ConsiderAddingAwait::BothFuturesHelp)
+                        }
+                    }
+                    _ => Some(ConsiderAddingAwait::BothFuturesHelp),
                 }
-                _ => Some(ConsiderAddingAwait::BothFuturesHelp),
-            },
+            }
             (_, Some(ty)) if self.same_type_modulo_infer(exp_found.expected, ty) => {
                 // FIXME: Seems like we can't have a suggestion and a note with different spans in a single subdiagnostic
                 diag.subdiagnostic(ConsiderAddingAwait::FutureSugg {
@@ -242,15 +236,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         span: then_span.shrink_to_hi(),
                     })
                 }
-                ObligationCauseCode::IfExpression { expr_id, .. } => {
-                    let hir::Node::Expr(hir::Expr {
-                        kind: hir::ExprKind::If(_, then_expr, _), ..
-                    }) = self.tcx.hir_node(*expr_id)
-                    else {
-                        return;
-                    };
-                    let then_span = self.find_block_span_from_hir_id(then_expr.hir_id);
-                    Some(ConsiderAddingAwait::FutureSugg { span: then_span.shrink_to_hi() })
+                ObligationCauseCode::IfExpression { expected_branch_id, .. } => {
+                    let expected_span = self.find_block_span_from_hir_id(*expected_branch_id);
+                    Some(ConsiderAddingAwait::FutureSugg { span: expected_span.shrink_to_hi() })
                 }
                 ObligationCauseCode::MatchExpressionArm(MatchExpressionArmCause {
                     prior_non_diverging_arms,
