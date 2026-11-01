@@ -1567,14 +1567,14 @@ impl Primitive {
     ///
     /// This is the type alignment for the corresponding built-in.
     /// In other contexts it might have different alignment.
-    pub fn default_align<C: HasDataLayout>(self, cx: &C) -> AbiAlign {
+    pub fn default_align<C: HasDataLayout>(self, cx: &C) -> Align {
         use Primitive::*;
         let dl = cx.data_layout();
 
         match self {
-            Int(i, _) => AbiAlign::new(i.align(dl)),
-            Float(f) => AbiAlign::new(f.align(dl)),
-            Pointer(a) => AbiAlign::new(dl.pointer_align_in(a)),
+            Int(i, _) => i.align(dl),
+            Float(f) => f.align(dl),
+            Pointer(a) => dl.pointer_align_in(a),
         }
     }
 }
@@ -1644,7 +1644,7 @@ impl Scalar {
     ///
     /// This is the type alignment for the corresponding built-in.
     /// This is *not* necessarily the correct alignment for a type that has this `BackendRepr::Scalar`!
-    pub fn default_align(self, cx: &impl HasDataLayout) -> AbiAlign {
+    pub fn default_align(self, cx: &impl HasDataLayout) -> Align {
         self.primitive().default_align(cx)
     }
 
@@ -1957,9 +1957,9 @@ impl BackendRepr {
     /// not calculating something from the `Scalar`s.
     pub fn scalar_platform_align<C: HasDataLayout>(&self, cx: &C) -> Option<Align> {
         match *self {
-            BackendRepr::Scalar(s) => Some(s.default_align(cx).abi),
+            BackendRepr::Scalar(s) => Some(s.default_align(cx)),
             BackendRepr::ScalarPair { a: s1, b: s2, b_offset: _ } => {
-                Some(s1.default_align(cx).max(s2.default_align(cx)).abi)
+                Some(s1.default_align(cx).max(s2.default_align(cx)))
             }
             // The align of a Vector can vary in surprising ways
             BackendRepr::SimdVector { .. }

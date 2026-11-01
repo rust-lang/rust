@@ -485,7 +485,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 }
                 // Vectors require at least element alignment, else disable the opt
                 BackendRepr::SimdVector { element, count: _ }
-                    if element.default_align(dl).abi > align =>
+                    if element.default_align(dl) > align =>
                 {
                     BackendRepr::Memory { sized: true }
                 }

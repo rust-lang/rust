@@ -225,9 +225,9 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 };
                 // The fields should be at the right offset, and match the `scalar` layout.
                 let size1 = scalar1.size(cx);
-                let align1 = scalar1.default_align(cx).abi;
+                let align1 = scalar1.default_align(cx);
                 let size2 = scalar2.size(cx);
-                let align2 = scalar2.default_align(cx).abi;
+                let align2 = scalar2.default_align(cx);
                 assert_eq!(
                     offset1,
                     Size::ZERO,
@@ -272,7 +272,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
             BackendRepr::SimdVector { element, count } => {
                 let align = layout.align.abi;
                 let size = layout.size;
-                let element_align = element.default_align(cx).abi;
+                let element_align = element.default_align(cx);
                 let element_size = element.size(cx);
                 // Currently, vectors must always be aligned to at least their elements:
                 assert!(align >= element_align);
