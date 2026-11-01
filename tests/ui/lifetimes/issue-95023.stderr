@@ -60,7 +60,7 @@ error[E0220]: associated type `B` not found for `Self`
 LL |     fn foo<const N: usize>(&self) -> Self::B<{ N }>;
    |                                            ^
    |
-help: `Self` has the following associated type
+help: `Self` has associated type `Output`
    |
 LL -     fn foo<const N: usize>(&self) -> Self::B<{ N }>;
 LL +     fn foo<const N: usize>(&self) -> Self::Output<{ N }>;

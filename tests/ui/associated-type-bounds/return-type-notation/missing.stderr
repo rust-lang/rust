@@ -4,7 +4,7 @@ error[E0220]: associated function `methid` not found for `Trait`
 LL | fn bar<T: Trait<methid(..): Send>>() {}
    |                 ^^^^^^
    |
-help: there is an associated function with a similar name
+help: there is an associated function with similar name `method`
    |
 LL - fn bar<T: Trait<methid(..): Send>>() {}
 LL + fn bar<T: Trait<method(..): Send>>() {}
