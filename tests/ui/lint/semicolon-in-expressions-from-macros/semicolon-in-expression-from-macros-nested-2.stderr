@@ -1,0 +1,49 @@
+warning: trailing semicolon in macro used in expression position
+  --> $DIR/semicolon-in-expression-from-macros-nested-2.rs:6:17
+   |
+LL | / macro_rules! inner {
+LL | |     () => { true; };
+   | |                 ^
+LL | |
+LL | | }
+   | |_- this warning originates in the macro `inner` which comes from the expansion of the macro `outer`
+...
+LL |       outer!()
+   |       -------- in this macro invocation
+   |
+   = note: macro invocations at the end of a block are treated as expressions
+   = note: to ignore the value produced by the macro, add a semicolon after the invocation of `inner`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+note: the lint level is defined here
+  --> $DIR/semicolon-in-expression-from-macros-nested-2.rs:3:9
+   |
+LL | #![warn(semicolon_in_expressions_from_macros)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: trailing semicolon in macro used in expression position
+  --> $DIR/semicolon-in-expression-from-macros-nested-2.rs:6:17
+   |
+LL | / macro_rules! inner {
+LL | |     () => { true; };
+   | |                 ^
+LL | |
+LL | | }
+   | |_- this warning originates in the macro `inner` which comes from the expansion of the macro `outer`
+...
+LL |       outer!()
+   |       -------- in this macro invocation
+   |
+   = note: macro invocations at the end of a block are treated as expressions
+   = note: to ignore the value produced by the macro, add a semicolon after the invocation of `inner`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+note: the lint level is defined here
+  --> $DIR/semicolon-in-expression-from-macros-nested-2.rs:3:9
+   |
+LL | #![warn(semicolon_in_expressions_from_macros)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
