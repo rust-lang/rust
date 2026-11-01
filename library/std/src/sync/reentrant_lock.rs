@@ -111,30 +111,31 @@ cfg_select!(
         }
     }
     _ => {
-        /// Returns the address of a TLS variable. This is guaranteed to
+        /// Returns a pointer to a TLS variable. This is guaranteed to
         /// be unique across all currently alive threads.
-        fn tls_addr() -> usize {
+        fn tls_ptr() -> *mut () {
             thread_local! { static X: u8 = const { 0u8 } };
 
-            X.with(|p| <*const u8>::addr(p))
+            X.with(|p| p as *const u8 as *mut ())
         }
 
-        use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
+        use crate::ptr;
+        use crate::sync::atomic::{AtomicPtr, Ordering};
 
         struct Tid {
             // When a thread calls `set()`, this value gets updated to
             // the address of a thread local on that thread. This is
-            // used as a first check in `contains()`; if the `tls_addr`
+            // used as a first check in `contains()`; if the `tls_ptr`
             // doesn't match the TLS address of the current thread, then
             // the ThreadId also can't match. Only if the TLS addresses do
             // match do we read out the actual TID.
             // Note also that we can use relaxed atomic operations here, because
-            // we only ever read from the tid if `tls_addr` matches the current
+            // we only ever read from the tid if `tls_ptr` matches the current
             // TLS address. In that case, either the tid has been set by
             // the current thread, or by a thread that has terminated before
-            // the current thread's `tls_addr` was allocated. In either case, no further
+            // the current thread's `tls_ptr` was allocated. In either case, no further
             // synchronization is needed (as per <https://github.com/rust-lang/miri/issues/3450>)
-            tls_addr: Atomic<usize>,
+            tls_ptr: AtomicPtr<()>,
             tid: UnsafeCell<u64>,
         }
 
@@ -143,19 +144,21 @@ cfg_select!(
 
         impl Tid {
             const fn new() -> Self {
-                Self { tls_addr: AtomicUsize::new(0), tid: UnsafeCell::new(0) }
+                Self { tls_ptr: AtomicPtr::new(ptr::null_mut()), tid: UnsafeCell::new(0) }
             }
 
             #[inline]
             // NOTE: This assumes that `owner` is the ID of the current
             // thread, and may spuriously return `false` if that's not the case.
             fn contains(&self, owner: ThreadId) -> bool {
-                // We must call `tls_addr()` *before* doing the load to ensure that if we reuse an
-                // earlier thread's address, the `tls_addr.load()` below happens-after everything
+                // We must call `tls_ptr()` *before* doing the load to ensure that if we reuse an
+                // earlier thread's address, the `tls_ptr.load()` below happens-after everything
                 // that thread did.
-                let tls_addr = tls_addr();
+                let tls_ptr = tls_ptr();
                 // SAFETY: See the comments in the struct definition.
-                self.tls_addr.load(Ordering::Relaxed) == tls_addr
+                // `tls_ptr` uses pointer comparison to be safe against
+                // <https://github.com/rust-lang/rust/issues/163013>
+                self.tls_ptr.load(Ordering::Relaxed) == tls_ptr
                     && unsafe { *self.tid.get() } == owner.as_u64().get()
             }
 
@@ -163,12 +166,12 @@ cfg_select!(
             // This may only be called by one thread at a time, and can lead to
             // race conditions otherwise.
             unsafe fn set(&self, tid: Option<ThreadId>) {
-                // It's important that we set `self.tls_addr` to 0 if the tid is
+                // It's important that we set `self.tls_ptr` to 0 if the tid is
                 // cleared. Otherwise, there might be race conditions between
                 // `set()` and `get()`.
-                let tls_addr = if tid.is_some() { tls_addr() } else { 0 };
+                let tls_ptr = if tid.is_some() { tls_ptr() } else { ptr::null_mut() };
                 let value = tid.map_or(0, |tid| tid.as_u64().get());
-                self.tls_addr.store(tls_addr, Ordering::Relaxed);
+                self.tls_ptr.store(tls_ptr, Ordering::Relaxed);
                 unsafe { *self.tid.get() = value };
             }
         }
