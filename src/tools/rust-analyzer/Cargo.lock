@@ -2717,6 +2717,8 @@ dependencies = [
  "jod-thread",
  "libc",
  "miow",
+ "salsa",
+ "thin-vec",
  "tracing",
  "windows-sys",
 ]
