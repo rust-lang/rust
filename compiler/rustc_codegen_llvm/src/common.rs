@@ -177,7 +177,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     pub(crate) fn alloc_to_backend(
         &self,
         global_alloc: GlobalAlloc<'tcx>,
-        need_symbol_name: bool,
         schema: Option<&PointerAuthSchema>,
     ) -> Result<&'ll Value, u64> {
         let alloc = match global_alloc {
@@ -228,25 +227,9 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         let init = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No);
         let alloc = alloc.inner();
 
-        if need_symbol_name {
-            // If a symbol name is needed, use `static_addr_of_mut` so we can give it unique symbol names.
-            let value = self.static_addr_of_mut(init, alloc.align, None);
-            if alloc.mutability.is_not() {
-                llvm::set_global_constant(value, true);
-            }
-
-            // Even though we're generating with internal linkage, this symbol name still needs to
-            // be globally unique. LTO can rename symbol names if there are duplicates, but the
-            // names inserted into global asm as text cannot be updated.
-            let name = self.generate_global_symbol_name();
-            llvm::set_value_name(value, name.as_bytes());
-            llvm::set_linkage(value, llvm::Linkage::InternalLinkage);
-            return Ok(value);
-        }
-
         let value = match alloc.mutability {
             Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
-            _ => self.static_addr_of_impl(init, alloc.align, None),
+            Mutability::Not => self.static_addr_of_impl(init, alloc.align, None),
         };
         if !self.sess().fewer_names() && llvm::get_value_name(value).is_empty() {
             let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
@@ -421,7 +404,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                 let (prov, offset) = ptr.prov_and_relative_offset();
                 let global_alloc = self.tcx.global_alloc(prov.alloc_id());
                 let base_addr_space = global_alloc.address_space(self);
-                let base_addr = match self.alloc_to_backend(global_alloc, false, schema) {
+                let base_addr = match self.alloc_to_backend(global_alloc, schema) {
                     Ok(base_addr) => base_addr,
                     Err(base_addr) => {
                         let val = base_addr.wrapping_add(offset.bytes());
