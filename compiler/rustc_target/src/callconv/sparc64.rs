@@ -39,7 +39,7 @@ fn classify<'a, Ty, C>(
     match arg_layout.backend_repr {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
             Primitive::Float(float) => {
-                if offset.is_aligned(Ord::min(*float.align(cx), Align::EIGHT)) {
+                if offset.is_aligned(Ord::min(float.align(cx), Align::EIGHT)) {
                     let index = offset.bytes_usize() / 8;
                     match float {
                         Float::F128 => {
