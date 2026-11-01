@@ -163,7 +163,6 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::saturating_sub
         | sym::select_unpredictable
         | sym::sin
-        | sym::size_of
         | sym::size_of_type_id
         | sym::sqrt
         | sym::sub_with_overflow
@@ -266,7 +265,7 @@ pub(crate) fn check_intrinsic_type(
         sym::unreachable => (0, 0, vec![], tcx.types.never),
         sym::breakpoint | sym::resumable_breakpoint => (0, 0, vec![], tcx.types.unit),
         sym::codeview_annotation => (1, 0, vec![], tcx.types.unit),
-        sym::size_of | sym::align_of | sym::variant_count => (1, 0, vec![], tcx.types.usize),
+        sym::align_of | sym::variant_count => (1, 0, vec![], tcx.types.usize),
         sym::size_of_val | sym::align_of_val => {
             (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], tcx.types.usize)
         }
