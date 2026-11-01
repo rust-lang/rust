@@ -14,8 +14,8 @@ features! {
     /// The feature names are mostly taken from their FEAT_* definitions in the [ARM Architecture
     /// Reference Manual][docs].
     ///
-    /// Currently most features are only supported on linux-based platforms: on other platforms the
-    /// runtime check will always return `false`.
+    /// The implementation of the runtime check differs depending on the platform.
+    /// On platforms where this macro has no implementation, it always expands to `false`.
     ///
     /// ## Supported arguments
     ///
