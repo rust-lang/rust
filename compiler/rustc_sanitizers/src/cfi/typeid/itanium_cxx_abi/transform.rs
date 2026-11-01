@@ -673,6 +673,8 @@ pub(crate) fn transform_instance<'tcx>(
         // FIXME: account for async-drop-glue (see the FutureDropPollShims and AsyncDropGlueShims
         //   above).
         ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(..)) => instance,
+
+        ty::InstanceKind::Shim(ty::ShimKind::TailCall(..)) => instance,
     }
 }
 

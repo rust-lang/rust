@@ -2136,6 +2136,29 @@ impl Target {
         }
     }
 
+    /// Can this target lower a guaranteed tail call?
+    ///
+    /// True when the target, given the enabled `target_features`, can `musttail` a call.
+    pub fn supports_guaranteed_tail_calls(&self, _target_features: &FxIndexSet<Symbol>) -> bool {
+        // FIXME: evaluate what targets we want to use the fallback by default.
+        //
+        // // Some architectures just fundamentally cannot guarantee tail calls.
+        // match self.arch {
+        //     Arch::PowerPC | Arch::PowerPC64 | Arch::S390x => return false,
+        //
+        //     // FIXME(explicit_tail_calls) LLVM lies about its support, so we must
+        //     // validate support across targets manually.
+        //     _ => {}
+        // }
+        //
+        // // On wasm, guaranteed tail calls require the `tail-call` feature.
+        // if self.is_like_wasm {
+        //     return target_features.contains(&sym::tail_call);
+        // }
+
+        true
+    }
+
     /// Is this target single-threaded?
     ///
     /// This affects both optimizations (e.g., atomics can be lowered to regular operations) and

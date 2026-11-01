@@ -42,6 +42,15 @@ fn fn_sig_for_fn_abi<'tcx>(
         return tcx.mk_fn_sig_safe_rust_abi([], tcx.thread_local_ptr_ty(instance.def_id()));
     }
 
+    if let InstanceKind::Shim(ShimKind::TailCall(..)) = instance.def {
+        let sig = tcx.instantiate_bound_regions_with_erased(
+            tcx.fn_sig(instance.def_id()).instantiate(tcx, instance.args).skip_norm_wip(),
+        );
+        let args_tuple = Ty::new_tup(tcx, sig.inputs());
+        let tail_next_ty = Ty::new_tail_next(tcx, args_tuple, sig.output());
+        return tcx.mk_fn_sig_safe_rust_abi([args_tuple], tail_next_ty);
+    }
+
     let ty = instance.ty(tcx, typing_env);
     match *ty.kind() {
         ty::FnDef(def_id, args) => {

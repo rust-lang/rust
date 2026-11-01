@@ -94,6 +94,9 @@ pub(super) fn mangle<'tcx>(
         ty::InstanceKind::Shim(ty::ShimKind::VTable(..)) => {
             p.write_str("{{vtable-shim}}").unwrap();
         }
+        ty::InstanceKind::Shim(ty::ShimKind::TailCall(..)) => {
+            p.write_str("{{tail-call-shim}}").unwrap();
+        }
         ty::InstanceKind::Shim(ty::ShimKind::Reify(_, reason)) => {
             p.write_str("{{reify-shim").unwrap();
             match reason {

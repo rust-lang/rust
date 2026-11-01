@@ -764,7 +764,8 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         | InstanceKind::Shim(ShimKind::Clone(..))
         | InstanceKind::Shim(ShimKind::ThreadLocal(..))
         | InstanceKind::Shim(ShimKind::FnPtrAsPtr(..))
-        | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..)) => return Ok(()),
+        | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..))
+        | InstanceKind::Shim(ShimKind::TailCall(..)) => return Ok(()),
     }
 
     if inliner.tcx().is_constructor(callee_def_id) {

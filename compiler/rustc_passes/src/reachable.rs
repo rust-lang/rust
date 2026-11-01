@@ -44,6 +44,9 @@ fn recursively_reachable(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     tcx.generics_of(def_id).requires_monomorphization(tcx)
         || tcx.cross_crate_inlinable(def_id)
         || tcx.is_const_fn(def_id)
+        || (tcx.sess.use_tail_call_fallback()
+            && tcx.def_kind(def_id).is_fn_like()
+            && tcx.contains_tail_call(def_id))
 }
 
 // Information needed while computing reachability.

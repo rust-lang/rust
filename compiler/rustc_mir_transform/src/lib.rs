@@ -207,6 +207,7 @@ declare_passes! {
     mod sroa : ScalarReplacementOfAggregates;
     mod strip_debuginfo : StripDebugInfo;
     mod ssa_range_prop: SsaRangePropagation;
+    mod tail_call : LowerTailCall;
     mod tail_copy_to_move : TailCopyToMove;
     mod unreachable_enum_branching : UnreachableEnumBranching;
     mod unreachable_prop : UnreachablePropagation;
@@ -216,6 +217,7 @@ declare_passes! {
 pub fn provide(providers: &mut Providers) {
     coverage::query::provide(providers);
     ffi_unwind_calls::provide(&mut providers.queries);
+    tail_call::provide(&mut providers.queries);
     shim::provide(&mut providers.queries);
     cross_crate_inline::provide(&mut providers.queries);
     providers.hooks.find_noop_landing_pads_for_instance =
@@ -227,6 +229,7 @@ pub fn provide(providers: &mut Providers) {
         mir_promoted,
         mir_drops_elaborated_and_const_checked,
         mir_for_ctfe,
+        tail_call_shim_source,
         mir_coroutine_witnesses: coroutine::mir_coroutine_witnesses,
         optimized_mir,
         check_liveness: liveness::check_liveness,
@@ -467,6 +470,11 @@ fn mir_promoted(
     // the `trivial_const` query uses mir_built, so make sure it is run.
     tcx.ensure_done().trivial_const(def);
 
+    // The `contains_tail_call` query uses mir_built, so make sure it is run.
+    if tcx.sess.use_tail_call_fallback() {
+        tcx.ensure_done().contains_tail_call(def);
+    }
+
     let mut body = tcx.mir_built(def).steal();
     if let Some(error_reported) = const_qualifs.tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);
@@ -601,6 +609,14 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     tcx.alloc_steal_mir(body)
 }
 
+fn tail_call_shim_source(tcx: TyCtxt<'_>, def: LocalDefId) -> Option<Body<'_>> {
+    if !tcx.sess.use_tail_call_fallback() || !tcx.contains_tail_call(def.to_def_id()) {
+        return None;
+    }
+    let body = tcx.mir_drops_elaborated_and_const_checked(def).borrow().clone();
+    Some(remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst))
+}
+
 // Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
 // by custom rustc drivers, running all the steps by themselves. See #114628.
 pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -707,6 +723,8 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &check_alignment::CheckAlignment,
             &check_null::CheckNull,
             &check_enums::CheckEnums,
+            // Desugar tail calls.
+            &tail_call::LowerTailCall,
             // Before inlining: trim down MIR with passes to reduce inlining work.
 
             // Has to be done before inlining, otherwise actual call will be almost always inlined.
@@ -806,6 +824,11 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         None => {}
         Some(other) => panic!("do not use `optimized_mir` for constants: {other:?}"),
     }
+
+    // Run the `tail_call_shim_source` query, which depends on
+    // `mir_drops_elaborated_and_const_checked` which is stolen right below.
+    tcx.ensure_done().tail_call_shim_source(did);
+
     debug!("about to call mir_drops_elaborated...");
     let body = tcx.mir_drops_elaborated_and_const_checked(did).steal();
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);

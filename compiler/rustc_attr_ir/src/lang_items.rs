@@ -405,6 +405,12 @@ language_item_table! {
     AsyncIteratorPollNext,   sym::async_iterator_poll_next, async_iterator_poll_next, Target::Method(MethodKind::Trait { body: false }), GenericRequirement::Exact(0);
     IntoAsyncIterIntoIter,   sym::into_async_iter_into_iter, into_async_iter_into_iter, Target::Method(MethodKind::Trait { body: false }), GenericRequirement::Exact(0);
 
+    TailNext,                sym::tail_next,           tail_next,                  Target::Enum,           GenericRequirement::None;
+    TailNextDone,            sym::tail_next_done,      tail_next_done_variant,     Target::Variant,        GenericRequirement::None;
+    TailNextCall,            sym::tail_next_call,      tail_next_call_variant,     Target::Variant,        GenericRequirement::None;
+    TailEval,                sym::tail_eval,           tail_eval_fn,               Target::Fn,             GenericRequirement::Exact(2);
+    TailShim,                sym::tail_shim,           tail_shim_fn,               Target::Fn,             GenericRequirement::Exact(3);
+
     Option,                  sym::Option,              option_type,                Target::Enum,           GenericRequirement::None;
     OptionSome,              sym::Some,                option_some_variant,        Target::Variant,        GenericRequirement::None;
     OptionNone,              sym::None,                option_none_variant,        Target::Variant,        GenericRequirement::None;
