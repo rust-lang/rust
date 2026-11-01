@@ -1,7 +1,7 @@
 #![deny(dead_code)]
 //~^ NOTE: the lint level is defined here
-
-use std::marker::PhantomData;
+#![feature(phantom_variance_markers)]
+use std::marker::*;
 
 const LEN: usize = 4;
 
@@ -43,4 +43,25 @@ fn main() {
     let gv = GoodVoid(Void);
 
     let _ = (gu, gp, gv);
+
+    let _ = Markers::<()> {
+        data: PhantomData,
+        cov: PhantomCovariant,
+        contra: PhantomContravariant,
+        inv: PhantomInvariant,
+        cov_lt: PhantomCovariantLifetime,
+        contra_lt: PhantomContravariantLifetime,
+        inv_lt: PhantomInvariantLifetime,
+    };
+}
+
+// Named fields exercise the phantom exemption independently of the tuple ZST exemption.
+struct Markers<'a, T> {
+    data: PhantomData<T>,
+    cov: PhantomCovariant<T>,
+    contra: PhantomContravariant<T>,
+    inv: PhantomInvariant<T>,
+    cov_lt: PhantomCovariantLifetime<'a>,
+    contra_lt: PhantomContravariantLifetime<'a>,
+    inv_lt: PhantomInvariantLifetime<'a>,
 }

@@ -2310,7 +2310,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
 #[rustc_pub_transparent]
-pub struct UnsafeCell<#[rustc_assert_variance(invariant)] T: ?Sized> {
+pub struct UnsafeCell<#[unsafe(rustc_force_variance(invariant))] T: ?Sized> {
     value: T,
 }
 

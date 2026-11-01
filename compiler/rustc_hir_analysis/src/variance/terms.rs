@@ -12,6 +12,7 @@
 use std::fmt;
 
 use rustc_arena::DroplessArena;
+use rustc_attr_ir::{RustcVarianceKind, find_attr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap};
 use rustc_middle::ty::{self, TyCtxt};
@@ -50,10 +51,8 @@ pub(crate) struct TermsContext<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub arena: &'a DroplessArena,
 
-    /// For marker types, `UnsafeCell`, and other lang items where
-    /// variance is hardcoded, records the item-id and the hardcoded
-    /// variance.
-    pub lang_items: Vec<(LocalDefId, Vec<ty::Variance>)>,
+    /// Explicit variance overrides from attributes.
+    pub explicit_variances: Vec<(InferredIndex, ty::Variance)>,
 
     /// Maps from the node id of an item to the first inferred index
     /// used for its type & region parameters.
@@ -72,8 +71,7 @@ pub(crate) fn determine_parameters_to_be_inferred<'a, 'tcx>(
         arena,
         inferred_starts: Default::default(),
         inferred_terms: vec![],
-
-        lang_items: lang_items(tcx),
+        explicit_variances: vec![],
     };
 
     // See the following for a discussion on dep-graph management.
@@ -106,28 +104,12 @@ pub(crate) fn determine_parameters_to_be_inferred<'a, 'tcx>(
     terms_cx
 }
 
-fn lang_items(tcx: TyCtxt<'_>) -> Vec<(LocalDefId, Vec<ty::Variance>)> {
-    let lang_items = tcx.lang_items();
-    let all = [
-        (lang_items.phantom_data(), vec![ty::Covariant]),
-        (lang_items.unsafe_cell_type(), vec![ty::Invariant]),
-        (lang_items.covariant_unsafe_cell_type(), vec![ty::Covariant]),
-    ];
-
-    all.into_iter() // iterating over (Option<DefId>, Variance)
-        .filter_map(|(d, v)| {
-            let def_id = d?.as_local()?; // LocalDefId
-            Some((def_id, v))
-        })
-        .collect()
-}
-
 impl<'a, 'tcx> TermsContext<'a, 'tcx> {
     fn add_inferreds_for_item(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
-        let count = tcx.generics_of(def_id).count();
+        let generics = tcx.generics_of(def_id);
 
-        if count == 0 {
+        if generics.count() == 0 {
             return;
         }
 
@@ -136,13 +118,30 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         let newly_added = self.inferred_starts.insert(def_id, InferredIndex(start)).is_none();
         assert!(newly_added);
 
+        // Record any parameters with overridden variance.
+        for param in &generics.own_params {
+            if let Some(variance) =
+                find_attr!(tcx, param.def_id, RustcForceVariance(variance) => *variance)
+            {
+                let variance = match variance {
+                    RustcVarianceKind::Covariant => ty::Covariant,
+                    RustcVarianceKind::Contravariant => ty::Contravariant,
+                    RustcVarianceKind::Invariant => ty::Invariant,
+                    RustcVarianceKind::Bivariant => ty::Bivariant,
+                };
+                self.explicit_variances
+                    .push((InferredIndex(start + param.index as usize), variance));
+            }
+        }
+
         // N.B., in the code below for writing the results back into the
         // `CrateVariancesMap`, we rely on the fact that all inferreds
         // for a particular item are assigned continuous indices.
 
         let arena = self.arena;
         self.inferred_terms.extend(
-            (start..(start + count)).map(|i| &*arena.alloc(InferredTerm(InferredIndex(i)))),
+            (start..(start + generics.count()))
+                .map(|i| &*arena.alloc(InferredTerm(InferredIndex(i)))),
         );
     }
 }
