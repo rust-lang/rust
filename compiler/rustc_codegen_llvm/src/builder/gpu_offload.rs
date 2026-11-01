@@ -368,7 +368,7 @@ pub(crate) fn gen_define_handling<'ll>(
     let offload_entry_ty = offload_globals.offload_entry_ty;
 
     let (sizes, transfer): (Vec<_>, Vec<_>) =
-        metadata.iter().map(|m| (m.payload_size, m.mode)).unzip();
+        metadata.iter().map(|m| (m.payload_size, m.mode)).collect();
     // Our begin mapper should only see simplified information about which args have to be
     // transferred to the device, the end mapper only about which args should be transferred back.
     // Any information beyond that makes it harder for LLVM's opt pass to evaluate whether it can
