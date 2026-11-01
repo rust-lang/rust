@@ -4,7 +4,11 @@ error: `/invalid-utf8-binary-file.bin` wasn't a utf-8 file
 LL | #![doc = include_str!(concat!(env!("INVALID_UTF8_BIN")))]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: invalid utf-8 at byte `$BYTE`
+note: byte `144` is not valid utf-8
+  --> $DIR/invalid-utf8-binary-file.bin:1:3
+   |
+LL | MZ�␀
+   |   ^
 
 error: aborting due to 1 previous error
 

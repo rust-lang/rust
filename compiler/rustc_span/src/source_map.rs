@@ -283,6 +283,11 @@ impl SourceMap {
         Ok(self.new_source_file(filename, src))
     }
 
+    /// Reads the file at `path`, without adding it to the `SourceMap`.
+    pub fn read_binary_file(&self, path: &Path) -> io::Result<Arc<[u8]>> {
+        self.file_loader.read_binary_file(path)
+    }
+
     /// Loads source file as a binary blob.
     ///
     /// Unlike `load_file`, guarantees that no normalization like BOM-removal
@@ -416,6 +421,7 @@ impl SourceMap {
             unnormalized_source_len,
             lines: file_local_lines,
             multibyte_chars,
+            may_contain_tabs: true,
             normalized_pos,
             stable_id,
             cnum,
