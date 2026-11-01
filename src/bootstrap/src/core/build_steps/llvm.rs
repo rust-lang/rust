@@ -2443,6 +2443,17 @@ impl CommandLineStep for Tpde {
         try_link_with_in_tree_lld(builder, target, &llvm, &mut cfg, &mut ldflags);
         configure_cmake(builder, target, &mut cfg, true, ldflags, CcFlags::default(), &[]);
 
+        if builder.config.llvm_clang {
+            let clang_bin_dir = llvm.llvm_config().parent().map(Path::to_path_buf).unwrap();
+            let clang = clang_bin_dir.join(exe("clang", target));
+            let clangxx = clang_bin_dir.join(exe("clang++", target));
+
+            cfg.define("CMAKE_C_COMPILER", &clang)
+                .define("CMAKE_CXX_COMPILER", &clangxx)
+                .define("CMAKE_ASM_COMPILER", &clang)
+                .define("CMAKE_PROGRAM_PATH", &clang_bin_dir); // This makes TPDE encodegen use the locally built clang instead of the system clang
+        }
+
         if builder.config.dry_run() {
             return output;
         }
