@@ -55,6 +55,39 @@ impl fmt::Display for AllocError {
 /// allocator does not support this (like jemalloc) or responds by returning a null pointer
 /// (such as `libc::malloc`), this must be caught by the implementation.
 ///
+/// # Examples
+///
+/// ```
+/// use std::alloc::{AllocError, Allocator, Layout, System};
+/// use std::cell::Cell;
+/// use std::ptr::NonNull;
+///
+/// struct MyCustomAllocator {
+///     live_allocs: Cell<usize>,
+/// }
+///
+/// unsafe impl Allocator for MyCustomAllocator {
+///     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+///         let ptr = System.allocate(layout)?;
+///         self.live_allocs.set(self.live_allocs.get() + 1);
+///         Ok(ptr)
+///     }
+///
+///     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+///         // SAFETY: the caller guarantees `ptr` was allocated by this allocator with `layout`,
+///         // and every block from this allocator was allocated by `System` with the same layout.
+///         unsafe { System.deallocate(ptr, layout) };
+///         self.live_allocs.set(self.live_allocs.get() - 1);
+///     }
+/// }
+///
+/// let my_custom_allocator = MyCustomAllocator { live_allocs: Cell::new(0) };
+/// // The Box allocates through our allocator.
+/// let new_box = Box::new_in(10, &my_custom_allocator);
+/// assert_eq!(my_custom_allocator.live_allocs.get(), 1);
+/// drop(new_box);
+/// assert_eq!(my_custom_allocator.live_allocs.get(), 0);
+/// ```
 /// In order to be usable in a flexible manner while still being sound, implementors of the trait
 /// must uphold very detailed semantics as explained below; the following terms are thus provided
 /// as vocabulary for allocator safety and implementation requirements:
