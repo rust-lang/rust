@@ -3252,7 +3252,7 @@ pub(crate) enum RawBorrowViaReferenceSuggestion<'a> {
         #[suggestion_part(code = "&raw {mutbl} ")]
         left: Span,
         #[suggestion_part(code = "")]
-        right: Span,
+        right: Option<Span>,
         mutbl: &'a str,
     },
     #[help("consider using `&raw {$mutbl}` for a safer and more explicit raw pointer")]
