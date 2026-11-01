@@ -640,6 +640,66 @@ impl<T> Sender<T> {
     pub fn is_disconnected(&self) -> bool {
         self.inner.is_disconnected()
     }
+
+    /// Returns `true` if the channel is empty.
+    ///
+    /// Note: Zero-capacity channels are always empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpsc_channel_len)]
+    ///
+    /// use std::sync::mpsc;
+    /// use std::thread;
+    ///
+    /// let (send, _recv) = mpsc::channel();
+    ///
+    /// let tx1 = send.clone();
+    /// let tx2 = send.clone();
+    ///
+    /// assert!(tx1.is_empty());
+    ///
+    /// let handle = thread::spawn(move || {
+    ///     tx2.send(1u8).unwrap();
+    /// });
+    ///
+    /// handle.join().unwrap();
+    ///
+    /// assert!(!tx1.is_empty());
+    /// ```
+    #[unstable(feature = "mpsc_channel_len", issue = "165247")]
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    /// Returns the number of messages in the channel.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpsc_channel_len)]
+    ///
+    /// use std::sync::mpsc;
+    /// use std::thread;
+    ///
+    /// let (send, _recv) = mpsc::channel();
+    /// let (tx1, tx2) = (send.clone(), send.clone());
+    ///
+    /// assert_eq!(tx1.len(), 0);
+    ///
+    /// let handle = thread::spawn(move || {
+    ///     tx2.send(1u8).unwrap();
+    /// });
+    ///
+    /// handle.join().unwrap();
+    ///
+    /// assert_eq!(tx1.len(), 1);
+    /// ```
+    #[unstable(feature = "mpsc_channel_len", issue = "165247")]
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -776,6 +836,65 @@ impl<T> SyncSender<T> {
     #[doc(hidden)]
     pub fn send_timeout(&self, t: T, timeout: Duration) -> Result<(), mpmc::SendTimeoutError<T>> {
         self.inner.send_timeout(t, timeout)
+    }
+
+    /// Returns `true` if the channel is empty.
+    ///
+    /// Note: Zero-capacity channels are always empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpsc_channel_len)]
+    ///
+    /// use std::sync::mpsc;
+    /// use std::thread;
+    ///
+    /// let (send, _recv) = mpsc::sync_channel(1);
+    ///
+    /// let tx1 = send.clone();
+    /// let tx2 = send.clone();
+    ///
+    /// assert!(tx1.is_empty());
+    ///
+    /// let handle = thread::spawn(move || {
+    ///     tx2.send(1u8).unwrap();
+    /// });
+    ///
+    /// handle.join().unwrap();
+    ///
+    /// assert!(!tx1.is_empty());
+    /// ```
+    #[unstable(feature = "mpsc_channel_len", issue = "165247")]
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    /// Returns the number of messages in the channel.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpsc_channel_len)]
+    ///
+    /// use std::sync::mpsc;
+    ///
+    /// let (tx, rx) = mpsc::sync_channel(2);
+    ///
+    /// assert_eq!(tx.len(), 0);
+    ///
+    /// tx.send(1u8).unwrap();
+    /// tx.send(2u8).unwrap();
+    ///
+    /// assert_eq!(tx.len(), 2);
+    ///
+    /// rx.recv().unwrap();
+    ///
+    /// assert_eq!(tx.len(), 1);
+    /// ```
+    #[unstable(feature = "mpsc_channel_len", issue = "165247")]
+    pub fn len(&self) -> usize {
+        self.inner.len()
     }
 }
 
@@ -1101,6 +1220,60 @@ impl<T> Receiver<T> {
     #[unstable(feature = "mpsc_is_disconnected", issue = "153668")]
     pub fn is_disconnected(&self) -> bool {
         self.inner.is_disconnected()
+    }
+
+    /// Returns `true` if the channel is empty.
+    ///
+    /// Note: Zero-capacity channels are always empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpsc_channel_len)]
+    ///
+    /// use std::sync::mpsc;
+    /// use std::thread;
+    ///
+    /// let (send, recv) = mpsc::channel();
+    ///
+    /// assert!(recv.is_empty());
+    ///
+    /// let handle = thread::spawn(move || {
+    ///     send.send(1u8).unwrap();
+    /// });
+    ///
+    /// handle.join().unwrap();
+    ///
+    /// assert!(!recv.is_empty());
+    /// ```
+    #[unstable(feature = "mpsc_channel_len", issue = "165247")]
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    /// Returns the number of messages in the channel.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpsc_channel_len)]
+    ///
+    /// use std::sync::mpsc;
+    ///
+    /// let (tx, rx) = mpsc::channel();
+    ///
+    /// assert_eq!(rx.len(), 0);
+    ///
+    /// tx.send(1u8).unwrap();
+    /// tx.send(2u8).unwrap();
+    /// assert_eq!(rx.len(), 2);
+    ///
+    /// rx.recv().unwrap();
+    /// assert_eq!(rx.len(), 1);
+    /// ```
+    #[unstable(feature = "mpsc_channel_len", issue = "165247")]
+    pub fn len(&self) -> usize {
+        self.inner.len()
     }
 }
 
