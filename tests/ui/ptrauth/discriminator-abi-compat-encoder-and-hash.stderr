@@ -1,0 +1,530 @@
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:47:1
+   |
+LL | extern "C" fn g1_a(_: *const i32) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:47:1
+   |
+LL | extern "C" fn g1_a(_: *const i32) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:49:1
+   |
+LL | extern "C" fn g1_b(_: *mut i32) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:49:1
+   |
+LL | extern "C" fn g1_b(_: *mut i32) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:51:1
+   |
+LL | extern "C" fn g1_c(_: &i32) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:51:1
+   |
+LL | extern "C" fn g1_c(_: &i32) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:53:1
+   |
+LL | extern "C" fn g1_d(_: &mut i32) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:53:1
+   |
+LL | extern "C" fn g1_d(_: &mut i32) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:55:1
+   |
+LL | extern "C" fn g1_e(_: Box<i32>) {} // expect: "FvPE" 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:55:1
+   |
+LL | extern "C" fn g1_e(_: Box<i32>) {} // expect: "FvPE" 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:57:1
+   |
+LL | extern "C" fn g1_f(_: NonNull<i32>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:57:1
+   |
+LL | extern "C" fn g1_f(_: NonNull<i32>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:59:1
+   |
+LL | extern "C" fn g1_g(_: *const SomeStruct) {} // expect: "FvPE" 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:59:1
+   |
+LL | extern "C" fn g1_g(_: *const SomeStruct) {} // expect: "FvPE" 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv3BoxE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:72:1
+   |
+LL | extern "C" fn g1_box_alloc_neg(_: Box<i32, MyAlloc>) {} // expect: "Fv3BoxE": 3916 (0xf4c)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 3916 (0xf4c)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:72:1
+   |
+LL | extern "C" fn g1_box_alloc_neg(_: Box<i32, MyAlloc>) {} // expect: "Fv3BoxE": 3916 (0xf4c)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:79:1
+   |
+LL | extern "C" fn g2_a(_: i32) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:79:1
+   |
+LL | extern "C" fn g2_a(_: i32) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:81:1
+   |
+LL | extern "C" fn g2_b(_: u64) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:81:1
+   |
+LL | extern "C" fn g2_b(_: u64) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:83:1
+   |
+LL | extern "C" fn g2_c(_: usize) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:83:1
+   |
+LL | extern "C" fn g2_c(_: usize) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:85:1
+   |
+LL | extern "C" fn g2_d(_: isize) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:85:1
+   |
+LL | extern "C" fn g2_d(_: isize) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:87:1
+   |
+LL | extern "C" fn g2_e(_: char) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:87:1
+   |
+LL | extern "C" fn g2_e(_: char) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:89:1
+   |
+LL | extern "C" fn g2_f(_: bool) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:89:1
+   |
+LL | extern "C" fn g2_f(_: bool) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:97:1
+   |
+LL | extern "C" fn g3_a(_: ()) {} // expect: "FvvE": 61000 (0xee48)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:97:1
+   |
+LL | extern "C" fn g3_a(_: ()) {} // expect: "FvvE": 61000 (0xee48)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:99:1
+   |
+LL | extern "C" fn g3_b(_: Unit) {} // expect: "FvvE": 61000 (0xee48)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:99:1
+   |
+LL | extern "C" fn g3_b(_: Unit) {} // expect: "FvvE": 61000 (0xee48)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:101:1
+   |
+LL | extern "C" fn g3_c(_: PhantomData<i32>) {} // expect: "FvvE": 61000 (0xee48)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:101:1
+   |
+LL | extern "C" fn g3_c(_: PhantomData<i32>) {} // expect: "FvvE": 61000 (0xee48)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:103:1
+   |
+LL | extern "C" fn g3_d(_: [u8; 0]) {} // expect: "FvvE": 61000 (0xee48)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:103:1
+   |
+LL | extern "C" fn g3_d(_: [u8; 0]) {} // expect: "FvvE": 61000 (0xee48)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:105:1
+   |
+LL | extern "C" fn g3_e(_: OneVariant) {} // expect: "FvvE": 61000 (0xee48)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:105:1
+   |
+LL | extern "C" fn g3_e(_: OneVariant) {} // expect: "FvvE": 61000 (0xee48)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv13AlignedMarkerE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:110:1
+   |
+LL | extern "C" fn g3_neg(_: AlignedMarker) {} // expect: "Fv13AlignedMarkerE": 49590 (0xc1b6)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 49590 (0xc1b6)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:110:1
+   |
+LL | extern "C" fn g3_neg(_: AlignedMarker) {} // expect: "Fv13AlignedMarkerE": 49590 (0xc1b6)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:120:1
+   |
+LL | extern "C" fn g4_a(_: i32) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:120:1
+   |
+LL | extern "C" fn g4_a(_: i32) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:122:1
+   |
+LL | extern "C" fn g4_b(_: Wrapper) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:122:1
+   |
+LL | extern "C" fn g4_b(_: Wrapper) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:124:1
+   |
+LL | extern "C" fn g4_c(_: WrapperWithZst) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:124:1
+   |
+LL | extern "C" fn g4_c(_: WrapperWithZst) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv14NotTransparentE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:128:1
+   |
+LL | extern "C" fn g4_neg(_: NotTransparent) {} // expect: "Fv14NotTransparentE": 37756 (0x937c)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 37756 (0x937c)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:128:1
+   |
+LL | extern "C" fn g4_neg(_: NotTransparent) {} // expect: "Fv14NotTransparentE": 37756 (0x937c)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:133:1
+   |
+LL | extern "C" fn g5_a(_: i32) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:133:1
+   |
+LL | extern "C" fn g5_a(_: i32) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:135:1
+   |
+LL | extern "C" fn g5_b(_: NonZero<i32>) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:135:1
+   |
+LL | extern "C" fn g5_b(_: NonZero<i32>) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:137:1
+   |
+LL | extern "C" fn g5_c(_: i16) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:137:1
+   |
+LL | extern "C" fn g5_c(_: i16) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:139:1
+   |
+LL | extern "C" fn g5_d(_: NonZero<i16>) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:139:1
+   |
+LL | extern "C" fn g5_d(_: NonZero<i16>) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:154:1
+   |
+LL | extern "C" fn g6_ref_a(_: &i32) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:154:1
+   |
+LL | extern "C" fn g6_ref_a(_: &i32) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:156:1
+   |
+LL | extern "C" fn g6_ref_b(_: Option<&i32>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:156:1
+   |
+LL | extern "C" fn g6_ref_b(_: Option<&i32>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:159:1
+   |
+LL | extern "C" fn g6_fn_a(_: fn()) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:159:1
+   |
+LL | extern "C" fn g6_fn_a(_: fn()) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:161:1
+   |
+LL | extern "C" fn g6_fn_b(_: Option<fn()>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:161:1
+   |
+LL | extern "C" fn g6_fn_b(_: Option<fn()>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:164:1
+   |
+LL | extern "C" fn g6_nn_a(_: NonNull<i32>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:164:1
+   |
+LL | extern "C" fn g6_nn_a(_: NonNull<i32>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:166:1
+   |
+LL | extern "C" fn g6_nn_b(_: Option<NonNull<i32>>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:166:1
+   |
+LL | extern "C" fn g6_nn_b(_: Option<NonNull<i32>>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:168:1
+   |
+LL | extern "C" fn g6_nn_c(_: MyOption<NonNull<i32>>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:168:1
+   |
+LL | extern "C" fn g6_nn_c(_: MyOption<NonNull<i32>>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:171:1
+   |
+LL | extern "C" fn g6_box_a(_: Box<i32>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:171:1
+   |
+LL | extern "C" fn g6_box_a(_: Box<i32>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:173:1
+   |
+LL | extern "C" fn g6_box_b(_: Option<Box<i32>>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:173:1
+   |
+LL | extern "C" fn g6_box_b(_: Option<Box<i32>>) {} // expect: "FvPE": 10942 (0x2abe)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:177:1
+   |
+LL | extern "C" fn g6_nz_a(_: NonZero<i32>) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:177:1
+   |
+LL | extern "C" fn g6_nz_a(_: NonZero<i32>) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:179:1
+   |
+LL | extern "C" fn g6_nz_b(_: Option<NonZero<i32>>) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:179:1
+   |
+LL | extern "C" fn g6_nz_b(_: Option<NonZero<i32>>) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv6OptionE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:184:1
+   |
+LL | extern "C" fn g6_neg(_: Option<i32>) {} // expect: "Fv6OptionE": 20395 (0x4fab)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 20395 (0x4fab)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:184:1
+   |
+LL | extern "C" fn g6_neg(_: Option<i32>) {} // expect: "Fv6OptionE": 20395 (0x4fab)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv14WithExtraFieldE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:193:1
+   |
+LL | extern "C" fn g6_multifield_neg(_: WithExtraField) {} // expect: "Fv14WithExtraFieldE": 34575 (0x870f)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 34575 (0x870f)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:193:1
+   |
+LL | extern "C" fn g6_multifield_neg(_: WithExtraField) {} // expect: "Fv14WithExtraFieldE": 34575 (0x870f)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv13ThreeVariantsE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:202:1
+   |
+LL | extern "C" fn g6_arity_neg(_: ThreeVariants) {} // expect: "Fv13ThreeVariantsE": 9871 (0x268f)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 9871 (0x268f)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:202:1
+   |
+LL | extern "C" fn g6_arity_neg(_: ThreeVariants) {} // expect: "Fv13ThreeVariantsE": 9871 (0x268f)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:213:1
+   |
+LL | extern "C" fn g7_a(_: i32) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:213:1
+   |
+LL | extern "C" fn g7_a(_: i32) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:215:1
+   |
+LL | extern "C-unwind" fn g7_b(_: i32) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat-encoder-and-hash.rs:215:1
+   |
+LL | extern "C-unwind" fn g7_b(_: i32) {} // expect: "FviE": 2712 (0xa98)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 88 previous errors
+

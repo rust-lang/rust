@@ -27,6 +27,7 @@ pub mod hir_id_validator;
 pub mod input_stats;
 pub mod layout_test;
 mod lib_features;
+pub mod ptrauth_test;
 mod reachable;
 pub mod stability;
 mod upvars;
