@@ -126,6 +126,33 @@ impl OptLevel {
             _ => 2,
         }
     }
+
+    /// Maps a general opt-level onto the objective it is trying to achieve.
+    pub fn objective(&self) -> OptimizationObjective {
+        match self {
+            OptLevel::No => OptimizationObjective::None,
+            OptLevel::Less => OptimizationObjective::Balanced,
+            OptLevel::More | OptLevel::Aggressive => OptimizationObjective::Speed,
+            OptLevel::Size | OptLevel::SizeMin => OptimizationObjective::Size,
+        }
+    }
+}
+
+/// What a compilation, or a single item, is being asked to optimize *for*.
+///
+/// Unlike [`OptLevel`], speed and size are alternatives here rather than degrees of the same
+/// thing. Sites that map a level onto an LLVM or linker flag, where `s` and `z` produce different
+/// flags, still match on [`OptLevel`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OptimizationObjective {
+    /// Nothing is optimized, so there is no objective (`-Copt-level=0`).
+    None,
+    /// Optimize, without a strong preference for speed over size (`-Copt-level=1`).
+    Balanced,
+    /// Favor runtime speed over binary size (`-Copt-level=2`/`3`, `#[optimize(speed)]`).
+    Speed,
+    /// Favor binary size over runtime speed (`-Copt-level=s`/`z`, `#[optimize(size)]`).
+    Size,
 }
 
 /// This is what the `LtoCli` values get mapped to after resolving defaults and
@@ -1568,10 +1595,9 @@ impl Options {
     pub fn share_generics(&self) -> bool {
         match self.unstable_opts.share_generics {
             Some(setting) => setting,
-            None => match self.optimize {
-                OptLevel::No | OptLevel::Less | OptLevel::Size | OptLevel::SizeMin => true,
-                OptLevel::More | OptLevel::Aggressive => false,
-            },
+            // Sharing instantiations means fewer copies, at the cost of leaving them opaque to
+            // speed optimizations. That is a good trade unless speed is what is asked for.
+            None => self.optimize.objective() != OptimizationObjective::Speed,
         }
     }
 

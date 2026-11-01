@@ -1707,6 +1707,7 @@ fn gen_fn<'a, 'll, 'tcx>(
     let llfn = cx.declare_fn(name, fn_abi, None);
     cx.set_frame_pointer_type(llfn);
     cx.apply_target_cpu_attr(llfn);
+    cx.apply_default_optimisation_attrs(llfn);
     // FIXME(eddyb) find a nicer way to do this.
     llvm::set_linkage(llfn, llvm::Linkage::InternalLinkage);
     let llbb = Builder::append_block(cx, llfn, "entry-block");

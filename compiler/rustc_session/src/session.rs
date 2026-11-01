@@ -988,6 +988,11 @@ impl Session {
         self.opts.unstable_opts.mir_opt_level.unwrap_or_else(|| self.opts.optimize.mir_opt_level())
     }
 
+    /// What this compilation optimizes for; see [`config::OptimizationObjective`].
+    pub fn optimization_objective(&self) -> config::OptimizationObjective {
+        self.opts.optimize.objective()
+    }
+
     /// Calculates the flavor of LTO to use for this compilation.
     pub fn lto(&self) -> config::Lto {
         // If our target has codegen requirements ignore the command line

@@ -1066,6 +1066,11 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &attrs);
     }
 
+    fn apply_default_optimisation_attrs(&self, llfn: &'ll Value) {
+        let attrs = attributes::default_optimisation_attrs(self, self.sess());
+        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &attrs);
+    }
+
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
         let entry_name = self.sess().target.entry_name.as_ref();
         if self.get_declared_value(entry_name).is_none() {
