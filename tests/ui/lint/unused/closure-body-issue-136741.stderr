@@ -28,16 +28,13 @@ LL +     let _ = (0..).find(|n| n % 2 == 0);
    |
 
 error: unnecessary parentheses around closure body
-  --> $DIR/closure-body-issue-136741.rs:25:28
+  --> $DIR/closure-body-issue-136741.rs:26:28
    |
-LL |        let _ = (0..).find(|n| (
-   |  _____________________________^
-LL | |          n % 2 == 0
-   | | ________^__________^
-   | ||________|
-   |  |
-LL |  |     ));
-   |  |_____^
+LL |     let _ = (0..).find(|n| (
+   |                            ^
+LL |         n % 2 == 0
+LL |     ));
+   |     ^
    |
 help: remove these parentheses
    |
@@ -48,7 +45,7 @@ LL +     let _ = (0..).find(|n| n % 2 == 0);
    |
 
 error: unnecessary parentheses around block return value
-  --> $DIR/closure-body-issue-136741.rs:31:9
+  --> $DIR/closure-body-issue-136741.rs:32:9
    |
 LL |         (0 == 0)
    |         ^      ^
