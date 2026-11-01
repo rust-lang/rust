@@ -718,6 +718,14 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         print_indented!(self, "}", depth_lvl);
     }
 
+    fn print_fieldpat(&mut self, field_pat: &FieldPat<'tcx>, depth_lvl: usize) {
+        print_indented!(self, "FieldPat {", depth_lvl);
+        print_indented!(self, format!("field: {}", field_pat.field.as_u32()), depth_lvl + 1);
+        print_indented!(self, "pattern:", depth_lvl + 1);
+        self.print_pat(&field_pat.pattern, depth_lvl + 1);
+        print_indented!(self, "}", depth_lvl);
+    }
+
     fn print_pat_kind(&mut self, pat_kind: &PatKind<'tcx>, depth_lvl: usize) {
         print_indented!(self, "kind: PatKind {", depth_lvl);
 
@@ -760,7 +768,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 if subpatterns.len() > 0 {
                     print_indented!(self, "subpatterns: [", depth_lvl + 2);
                     for field_pat in subpatterns.iter() {
-                        self.print_pat(&field_pat.pattern, depth_lvl + 3);
+                        self.print_fieldpat(field_pat, depth_lvl + 3);
                     }
                     print_indented!(self, "]", depth_lvl + 2);
                 } else {
@@ -773,7 +781,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, "Leaf { ", depth_lvl + 1);
                 print_indented!(self, "subpatterns: [", depth_lvl + 2);
                 for field_pat in subpatterns.iter() {
-                    self.print_pat(&field_pat.pattern, depth_lvl + 3);
+                    self.print_fieldpat(field_pat, depth_lvl + 3);
                 }
                 print_indented!(self, "]", depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
