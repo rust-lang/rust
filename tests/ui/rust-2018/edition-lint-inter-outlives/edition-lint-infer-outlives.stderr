@@ -283,10 +283,10 @@ LL |     struct TeeIsDebugOutlivesAyBee<'a, 'b, T: Debug + 'a + 'b>(&'a &'b T);
    |                                                    ^^^^^^^^^^ help: remove these bounds
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives.rs:256:45
+  --> $DIR/edition-lint-infer-outlives.rs:256:44
    |
 LL |     struct TeeWhereOutlivesAy<'a, T>(&'a T) where T: 'a;
-   |                                             ^^^^^^^^^^^ help: remove this bound
+   |                                            ^^^^^^^^^^^^ help: remove this bound
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives.rs:259:61
@@ -301,10 +301,10 @@ LL |     struct TeeWhereIsDebugOutlivesAy<'a, T>(&'a T) where T: Debug + 'a;
    |                                                                  ^^^^^ help: remove this bound
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives.rs:265:56
+  --> $DIR/edition-lint-infer-outlives.rs:265:55
    |
 LL |     struct TeeWhereOutlivesAyBee<'a, 'b, T>(&'a &'b T) where T: 'a + 'b;
-   |                                                        ^^^^^^^^^^^^^^^^ help: remove these bounds
+   |                                                       ^^^^^^^^^^^^^^^^^ help: remove these bounds
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives.rs:268:72
@@ -367,10 +367,10 @@ LL |     struct TeeOutlivesAyBeeYooIsDebug<'a, 'b, T: 'a + 'b, U: Debug>(&'a &'b
    |                                                ^^^^^^^^^ help: remove these bounds
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives.rs:298:54
+  --> $DIR/edition-lint-infer-outlives.rs:298:53
    |
 LL |     struct TeeYooWhereOutlivesAy<'a, T, U>(T, &'a U) where U: 'a;
-   |                                                      ^^^^^^^^^^^ help: remove this bound
+   |                                                     ^^^^^^^^^^^^ help: remove this bound
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives.rs:301:70
@@ -391,10 +391,10 @@ LL |     struct TeeOutlivesAyYooWhereIsDebug<'a, T: 'a, U>(&'a T, U) where U: De
    |                                              ^^^^ help: remove this bound
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives.rs:310:65
+  --> $DIR/edition-lint-infer-outlives.rs:310:64
    |
 LL |     struct TeeYooWhereOutlivesAyBee<'a, 'b, T, U>(T, &'a &'b U) where U: 'a + 'b;
-   |                                                                 ^^^^^^^^^^^^^^^^ help: remove these bounds
+   |                                                                ^^^^^^^^^^^^^^^^^ help: remove these bounds
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives.rs:313:81
@@ -433,10 +433,10 @@ LL |     struct BeeOutlivesAy<'a, 'b: 'a>(&'a &'b ());
    |                                ^^^^ help: remove this bound
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives.rs:331:51
+  --> $DIR/edition-lint-infer-outlives.rs:331:50
    |
 LL |     struct BeeWhereOutlivesAy<'a, 'b>(&'a &'b ()) where 'b: 'a;
-   |                                                   ^^^^^^^^^^^^ help: remove this bound
+   |                                                  ^^^^^^^^^^^^^ help: remove this bound
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives.rs:334:35
@@ -445,22 +445,22 @@ LL |     struct BeeOutlivesAyTee<'a, 'b: 'a, T>(&'a &'b T);
    |                                   ^^^^ help: remove this bound
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives.rs:337:56
+  --> $DIR/edition-lint-infer-outlives.rs:337:55
    |
 LL |     struct BeeWhereOutlivesAyTee<'a, 'b, T>(&'a &'b T) where 'b: 'a;
-   |                                                        ^^^^^^^^^^^^ help: remove this bound
+   |                                                       ^^^^^^^^^^^^^ help: remove this bound
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives.rs:340:64
+  --> $DIR/edition-lint-infer-outlives.rs:340:63
    |
 LL |     struct BeeWhereOutlivesAyTeeWhereBee<'a, 'b, T>(&'a &'b T) where 'b: 'a, T: 'b;
-   |                                                                ^^^^^^^^^^^^^^^^^^^ help: remove these bounds
+   |                                                               ^^^^^^^^^^^^^^^^^^^^ help: remove these bounds
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives.rs:343:66
+  --> $DIR/edition-lint-infer-outlives.rs:343:65
    |
 LL |     struct BeeWhereOutlivesAyTeeWhereAyBee<'a, 'b, T>(&'a &'b T) where 'b: 'a, T: 'a + 'b;
-   |                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove these bounds
+   |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove these bounds
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives.rs:346:40
