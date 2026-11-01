@@ -4,12 +4,12 @@ error: expected one of `extern`, `fn`, `safe`, or `unsafe`, found keyword `const
 LL | pub async const fn x() {}
    |           ^^^^^ expected one of `extern`, `fn`, `safe`, or `unsafe`
    |
-   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
 help: `const` must come before `async`
    |
 LL - pub async const fn x() {}
 LL + pub const async fn x() {}
    |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
 
 error: functions cannot be both `const` and `async`
   --> $DIR/no-async-const.rs:4:5

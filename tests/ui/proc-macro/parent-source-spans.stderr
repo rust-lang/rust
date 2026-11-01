@@ -147,12 +147,12 @@ LL |     one!("hello", "world");
    |
 note: similarly named tuple variant `Ok` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
-   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a tuple variant with a similar name exists
    |
 LL -     parent_source_spans!($($tokens)*);
 LL +     Ok;
    |
+   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `ok` in this scope
   --> $DIR/parent-source-spans.rs:30:5
@@ -165,12 +165,12 @@ LL |     two!("yay", "rust");
    |
 note: similarly named tuple variant `Ok` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
-   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a tuple variant with a similar name exists
    |
 LL -     parent_source_spans!($($tokens)*);
 LL +     Ok;
    |
+   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `ok` in this scope
   --> $DIR/parent-source-spans.rs:30:5
@@ -183,12 +183,12 @@ LL |     three!("hip", "hop");
    |
 note: similarly named tuple variant `Ok` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
-   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `three` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a tuple variant with a similar name exists
    |
 LL -     parent_source_spans!($($tokens)*);
 LL +     Ok;
    |
+   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `three` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 21 previous errors
 

@@ -384,15 +384,15 @@ LL |     want::<&Foo<foo>>(f);
    |
    = note: expected reference `&Foo<_>`
                  found struct `Foo<_>`
+help: consider borrowing here
+   |
+LL |     want::<&Foo<foo>>(&f);
+   |                       +
 note: function defined here
   --> $DIR/type-mismatch.rs:14:4
    |
 LL | fn want<T>(t: T) {}
    |    ^^^^    ----
-help: consider borrowing here
-   |
-LL |     want::<&Foo<foo>>(&f);
-   |                       +
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:48:26
@@ -564,15 +564,15 @@ LL |     want::<&Foo<foo, B>>(f);
    |
    = note: expected reference `&Foo<_, _>`
                  found struct `Foo<_, _>`
+help: consider borrowing here
+   |
+LL |     want::<&Foo<foo, B>>(&f);
+   |                          +
 note: function defined here
   --> $DIR/type-mismatch.rs:14:4
    |
 LL | fn want<T>(t: T) {}
    |    ^^^^    ----
-help: consider borrowing here
-   |
-LL |     want::<&Foo<foo, B>>(&f);
-   |                          +
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:65:19

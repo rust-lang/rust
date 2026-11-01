@@ -105,11 +105,11 @@ LL |         let PAT = v1;
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
-   = note: the matched value is of type `u32`
 help: introduce a variable instead
    |
 LL |         let PAT_var = v1;
    |                ++++
+   = note: the matched value is of type `u32`
 
 error: aborting due to 7 previous errors
 

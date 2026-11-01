@@ -24,6 +24,10 @@ LL | struct Inline<T>
 LL |     let dst = Inline::<dyn Debug>::new(0);
    |                                    ^^^ associated function or constant cannot be called on `Inline<dyn Debug>` due to unsatisfied trait bounds
    |
+help: consider relaxing the type parameter's implicit `Sized` bound
+   |
+LL | impl<T: ?Sized> Inline<T>
+   |       ++++++++
 note: trait bound `dyn Debug: Sized` was not satisfied
   --> $DIR/issue-80742.rs:18:6
    |
@@ -31,10 +35,6 @@ LL | impl<T> Inline<T>
    |      ^  ---------
    |      |
    |      unsatisfied trait bound introduced here
-help: consider relaxing the type parameter's implicit `Sized` bound
-   |
-LL | impl<T: ?Sized> Inline<T>
-   |       ++++++++
 
 error: aborting due to 2 previous errors
 

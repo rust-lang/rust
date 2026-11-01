@@ -15,11 +15,11 @@ error[E0574]: expected struct, variant or union type, found enum `Request`
 LL |         static instance: Request = Request { bar: 17 };
    |                                    ^^^^^^^ not a struct, variant or union type
    |
-   = note: 'std::error::Request' is unstable, add `#![feature(error_generic_member_access)]` to the crate attributes to enable
 help: consider importing this struct instead
    |
 LL + use std::error::Request;
    |
+   = note: 'std::error::Request' is unstable, add `#![feature(error_generic_member_access)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 

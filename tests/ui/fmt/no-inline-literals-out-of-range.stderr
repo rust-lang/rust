@@ -5,7 +5,6 @@ LL |     format_args!("{}", 0x8f_i8); // issue #115423
    |                        ^^^^^^^
    |
    = note: the literal `0x8f_i8` (decimal `143`) does not fit into the type `i8` and will become `-113i8`
-   = note: `#[deny(overflowing_literals)]` on by default
 help: consider using the type `u8` instead
    |
 LL -     format_args!("{}", 0x8f_i8); // issue #115423
@@ -16,6 +15,7 @@ help: to use as a negative number (decimal `-113`), consider using the type `u8`
 LL -     format_args!("{}", 0x8f_i8); // issue #115423
 LL +     format_args!("{}", 0x8f_u8.cast_signed()); // issue #115423
    |
+   = note: `#[deny(overflowing_literals)]` on by default
 
 error: literal out of range for `u8`
   --> $DIR/no-inline-literals-out-of-range.rs:6:24

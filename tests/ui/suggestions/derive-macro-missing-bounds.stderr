@@ -24,6 +24,10 @@ LL |     #[derive(Debug)]
 LL |     struct Outer<T>(Inner<T>);
    |                     ^^^^^^^^ the trait `c::Trait` is not implemented for `T`
    |
+help: consider restricting type parameter `T` with trait `Trait`
+   |
+LL |     struct Outer<T: c::Trait>(Inner<T>);
+   |                   ++++++++++
 note: required for `c::Inner<T>` to implement `Debug`
   --> $DIR/derive-macro-missing-bounds.rs:34:28
    |
@@ -34,10 +38,6 @@ LL |     impl<T: Debug + Trait> Debug for Inner<T> {
    = note: 1 redundant requirement hidden
    = note: required for `&c::Inner<T>` to implement `Debug`
    = note: required for the cast from `&&c::Inner<T>` to `&dyn Debug`
-help: consider restricting type parameter `T` with trait `Trait`
-   |
-LL |     struct Outer<T: c::Trait>(Inner<T>);
-   |                   ++++++++++
 
 error[E0277]: the trait bound `T: d::Trait` is not satisfied
   --> $DIR/derive-macro-missing-bounds.rs:56:21
@@ -47,6 +47,10 @@ LL |     #[derive(Debug)]
 LL |     struct Outer<T>(Inner<T>);
    |                     ^^^^^^^^ the trait `d::Trait` is not implemented for `T`
    |
+help: consider restricting type parameter `T` with trait `Trait`
+   |
+LL |     struct Outer<T: d::Trait>(Inner<T>);
+   |                   ++++++++++
 note: required for `d::Inner<T>` to implement `Debug`
   --> $DIR/derive-macro-missing-bounds.rs:49:13
    |
@@ -55,10 +59,6 @@ LL |     impl<T> Debug for Inner<T> where T: Debug, T: Trait {
    = note: 1 redundant requirement hidden
    = note: required for `&d::Inner<T>` to implement `Debug`
    = note: required for the cast from `&&d::Inner<T>` to `&dyn Debug`
-help: consider restricting type parameter `T` with trait `Trait`
-   |
-LL |     struct Outer<T: d::Trait>(Inner<T>);
-   |                   ++++++++++
 
 error[E0277]: the trait bound `T: e::Trait` is not satisfied
   --> $DIR/derive-macro-missing-bounds.rs:71:21
@@ -68,6 +68,10 @@ LL |     #[derive(Debug)]
 LL |     struct Outer<T>(Inner<T>);
    |                     ^^^^^^^^ the trait `e::Trait` is not implemented for `T`
    |
+help: consider restricting type parameter `T` with trait `Trait`
+   |
+LL |     struct Outer<T: e::Trait>(Inner<T>);
+   |                   ++++++++++
 note: required for `e::Inner<T>` to implement `Debug`
   --> $DIR/derive-macro-missing-bounds.rs:64:13
    |
@@ -76,10 +80,6 @@ LL |     impl<T> Debug for Inner<T> where T: Debug + Trait {
    = note: 1 redundant requirement hidden
    = note: required for `&e::Inner<T>` to implement `Debug`
    = note: required for the cast from `&&e::Inner<T>` to `&dyn Debug`
-help: consider restricting type parameter `T` with trait `Trait`
-   |
-LL |     struct Outer<T: e::Trait>(Inner<T>);
-   |                   ++++++++++
 
 error[E0277]: the trait bound `T: f::Trait` is not satisfied
   --> $DIR/derive-macro-missing-bounds.rs:86:21
@@ -89,6 +89,10 @@ LL |     #[derive(Debug)]
 LL |     struct Outer<T>(Inner<T>);
    |                     ^^^^^^^^ the trait `f::Trait` is not implemented for `T`
    |
+help: consider restricting type parameter `T` with trait `Trait`
+   |
+LL |     struct Outer<T: f::Trait>(Inner<T>);
+   |                   ++++++++++
 note: required for `f::Inner<T>` to implement `Debug`
   --> $DIR/derive-macro-missing-bounds.rs:79:20
    |
@@ -97,10 +101,6 @@ LL |     impl<T: Debug> Debug for Inner<T> where T: Trait {
    = note: 1 redundant requirement hidden
    = note: required for `&f::Inner<T>` to implement `Debug`
    = note: required for the cast from `&&f::Inner<T>` to `&dyn Debug`
-help: consider restricting type parameter `T` with trait `Trait`
-   |
-LL |     struct Outer<T: f::Trait>(Inner<T>);
-   |                   ++++++++++
 
 error: aborting due to 5 previous errors
 

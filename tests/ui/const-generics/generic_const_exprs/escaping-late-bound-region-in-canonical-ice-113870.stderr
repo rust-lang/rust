@@ -21,11 +21,11 @@ error[E0261]: use of undeclared lifetime name `'a`
 LL |     for<'b> [u8; foo::<'a, 'b>()]: Sized,
    |                        ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL |     for<'a, 'b> [u8; foo::<'a, 'b>()]: Sized,
    |         +++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'a` here
    |
 LL | const fn allow<'a, 'b, 'b>() -> usize

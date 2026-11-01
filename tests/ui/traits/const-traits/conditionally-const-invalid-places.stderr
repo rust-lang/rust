@@ -296,11 +296,11 @@ error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` t
 LL | union Union<T: [const] Trait> { field: T }
    |                                 ^^^^^^^^
    |
-   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 help: wrap the field type in `ManuallyDrop<...>`
    |
 LL | union Union<T: [const] Trait> { field: std::mem::ManuallyDrop<T> }
    |                                        +++++++++++++++++++++++ +
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 
 error[E0275]: overflow evaluating the requirement `(): Trait`
   --> $DIR/conditionally-const-invalid-places.rs:33:35

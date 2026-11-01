@@ -182,15 +182,15 @@ error[E0107]: function takes 2 lifetime arguments but 0 lifetime arguments were 
 LL |         reuse foo::<A, B, C> as xd;
    |               ^^^ expected 2 lifetime arguments
    |
+help: add missing lifetime arguments
+   |
+LL |         reuse foo::<'a, 'b, A, B, C> as xd;
+   |                     +++++++
 note: function defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/generics-gen-args-errors.rs:6:8
    |
 LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
    |        ^^^ --      --
-help: add missing lifetime arguments
-   |
-LL |         reuse foo::<'a, 'b, A, B, C> as xd;
-   |                     +++++++
 
 error: inferred lifetimes are not allowed in delegations as we need to inherit signature
   --> $DIR/generics-gen-args-errors.rs:32:15
@@ -204,15 +204,15 @@ error[E0107]: function takes 2 lifetime arguments but 0 lifetime arguments were 
 LL |     reuse foo::<String, String> as bar2;
    |           ^^^ expected 2 lifetime arguments
    |
+help: add missing lifetime arguments
+   |
+LL |     reuse foo::<'a, 'b, String, String> as bar2;
+   |                 +++++++
 note: function defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/generics-gen-args-errors.rs:42:8
    |
 LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
    |        ^^^ --      --
-help: add missing lifetime arguments
-   |
-LL |     reuse foo::<'a, 'b, String, String> as bar2;
-   |                 +++++++
 
 error[E0107]: function takes 3 generic arguments but 2 generic arguments were supplied
   --> $DIR/generics-gen-args-errors.rs:46:11
@@ -222,15 +222,15 @@ LL |     reuse foo::<String, String> as bar2;
    |           |
    |           expected 3 generic arguments
    |
+help: add missing generic argument
+   |
+LL |     reuse foo::<String, String, N> as bar2;
+   |                               +++
 note: function defined here, with 3 generic parameters: `T`, `U`, `N`
   --> $DIR/generics-gen-args-errors.rs:42:8
    |
 LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
    |        ^^^                 -         -         --------------
-help: add missing generic argument
-   |
-LL |     reuse foo::<String, String, N> as bar2;
-   |                               +++
 
 error: inferred lifetimes are not allowed in delegations as we need to inherit signature
   --> $DIR/generics-gen-args-errors.rs:46:11
@@ -258,15 +258,15 @@ error[E0107]: function takes 3 generic arguments but 1 generic argument was supp
 LL |     reuse foo::<'static, _, 'asdasd, 'static, 'static, 'static, _> as bar3;
    |           ^^^ expected 3 generic arguments                      - supplied 1 generic argument
    |
+help: add missing generic arguments
+   |
+LL |     reuse foo::<'static, _, 'asdasd, 'static, 'static, 'static, _, U, N> as bar3;
+   |                                                                  ++++++
 note: function defined here, with 3 generic parameters: `T`, `U`, `N`
   --> $DIR/generics-gen-args-errors.rs:42:8
    |
 LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
    |        ^^^                 -         -         --------------
-help: add missing generic arguments
-   |
-LL |     reuse foo::<'static, _, 'asdasd, 'static, 'static, 'static, _, U, N> as bar3;
-   |                                                                  ++++++
 
 error[E0107]: function takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/generics-gen-args-errors.rs:57:11
@@ -276,15 +276,15 @@ LL |     reuse foo::<String, 'static, 123, asdasd> as bar4;
    |           |
    |           expected 2 lifetime arguments
    |
+help: add missing lifetime argument
+   |
+LL |     reuse foo::<String, 'static, 'static, 123, asdasd> as bar4;
+   |                       +++++++++
 note: function defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/generics-gen-args-errors.rs:42:8
    |
 LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
    |        ^^^ --      --
-help: add missing lifetime argument
-   |
-LL |     reuse foo::<String, 'static, 'static, 123, asdasd> as bar4;
-   |                       +++++++++
 
 error: inferred lifetimes are not allowed in delegations as we need to inherit signature
   --> $DIR/generics-gen-args-errors.rs:57:11
@@ -298,15 +298,15 @@ error[E0107]: function takes 2 lifetime arguments but 0 lifetime arguments were 
 LL |     reuse foo::<1, 2, _, 4, 5, _> as bar5;
    |           ^^^ expected 2 lifetime arguments
    |
+help: add missing lifetime arguments
+   |
+LL |     reuse foo::<'a, 'b, 1, 2, _, 4, 5, _> as bar5;
+   |                 +++++++
 note: function defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/generics-gen-args-errors.rs:42:8
    |
 LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
    |        ^^^ --      --
-help: add missing lifetime arguments
-   |
-LL |     reuse foo::<'a, 'b, 1, 2, _, 4, 5, _> as bar5;
-   |                 +++++++
 
 error[E0107]: function takes 3 generic arguments but 6 generic arguments were supplied
   --> $DIR/generics-gen-args-errors.rs:62:11
@@ -334,15 +334,15 @@ error[E0107]: function takes 2 lifetime arguments but 0 lifetime arguments were 
 LL |     reuse foo::<1, 2,asd,String, { let x = 0; }> as bar6;
    |           ^^^ expected 2 lifetime arguments
    |
+help: add missing lifetime arguments
+   |
+LL |     reuse foo::<'a, 'b, 1, 2,asd,String, { let x = 0; }> as bar6;
+   |                 +++++++
 note: function defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/generics-gen-args-errors.rs:42:8
    |
 LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
    |        ^^^ --      --
-help: add missing lifetime arguments
-   |
-LL |     reuse foo::<'a, 'b, 1, 2,asd,String, { let x = 0; }> as bar6;
-   |                 +++++++
 
 error[E0107]: function takes 3 generic arguments but 5 generic arguments were supplied
   --> $DIR/generics-gen-args-errors.rs:67:11
@@ -382,15 +382,15 @@ error[E0107]: function takes 2 lifetime arguments but 0 lifetime arguments were 
 LL |     reuse foo::<{}, {}, {}> as bar8;
    |           ^^^ expected 2 lifetime arguments
    |
+help: add missing lifetime arguments
+   |
+LL |     reuse foo::<'a, 'b, {}, {}, {}> as bar8;
+   |                 +++++++
 note: function defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/generics-gen-args-errors.rs:42:8
    |
 LL |     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
    |        ^^^ --      --
-help: add missing lifetime arguments
-   |
-LL |     reuse foo::<'a, 'b, {}, {}, {}> as bar8;
-   |                 +++++++
 
 error: inferred lifetimes are not allowed in delegations as we need to inherit signature
   --> $DIR/generics-gen-args-errors.rs:79:11
@@ -404,15 +404,15 @@ error[E0107]: trait takes 3 lifetime arguments but 0 lifetime arguments were sup
 LL |     reuse Trait::<asd, asd, asd, asd, asd, asdasa>::foo as bar1;
    |           ^^^^^ expected 3 lifetime arguments
    |
+help: add missing lifetime arguments
+   |
+LL |     reuse Trait::<'b, 'c, 'a, asd, asd, asd, asd, asd, asdasa>::foo as bar1;
+   |                   +++++++++++
 note: trait defined here, with 3 lifetime parameters: `'b`, `'c`, `'a`
   --> $DIR/generics-gen-args-errors.rs:86:11
    |
 LL |     trait Trait<'b, 'c, 'a, T, const N: usize>: Sized {
    |           ^^^^^ --  --  --
-help: add missing lifetime arguments
-   |
-LL |     reuse Trait::<'b, 'c, 'a, asd, asd, asd, asd, asd, asdasa>::foo as bar1;
-   |                   +++++++++++
 
 error[E0107]: trait takes 2 generic arguments but 6 generic arguments were supplied
   --> $DIR/generics-gen-args-errors.rs:90:11
@@ -442,15 +442,15 @@ LL |     reuse Trait::<'static, 'static>::foo as bar2;
    |           |
    |           expected 3 lifetime arguments
    |
+help: add missing lifetime argument
+   |
+LL |     reuse Trait::<'static, 'static, 'static>::foo as bar2;
+   |                                   +++++++++
 note: trait defined here, with 3 lifetime parameters: `'b`, `'c`, `'a`
   --> $DIR/generics-gen-args-errors.rs:86:11
    |
 LL |     trait Trait<'b, 'c, 'a, T, const N: usize>: Sized {
    |           ^^^^^ --  --  --
-help: add missing lifetime argument
-   |
-LL |     reuse Trait::<'static, 'static, 'static>::foo as bar2;
-   |                                   +++++++++
 
 error: inferred lifetimes are not allowed in delegations as we need to inherit signature
   --> $DIR/generics-gen-args-errors.rs:101:11
@@ -470,15 +470,15 @@ error[E0107]: trait takes 3 lifetime arguments but 0 lifetime arguments were sup
 LL |     reuse Trait::<1, 2, 3, 4, 5>::foo as bar3;
    |           ^^^^^ expected 3 lifetime arguments
    |
+help: add missing lifetime arguments
+   |
+LL |     reuse Trait::<'b, 'c, 'a, 1, 2, 3, 4, 5>::foo as bar3;
+   |                   +++++++++++
 note: trait defined here, with 3 lifetime parameters: `'b`, `'c`, `'a`
   --> $DIR/generics-gen-args-errors.rs:86:11
    |
 LL |     trait Trait<'b, 'c, 'a, T, const N: usize>: Sized {
    |           ^^^^^ --  --  --
-help: add missing lifetime arguments
-   |
-LL |     reuse Trait::<'b, 'c, 'a, 1, 2, 3, 4, 5>::foo as bar3;
-   |                   +++++++++++
 
 error[E0107]: trait takes 2 generic arguments but 5 generic arguments were supplied
   --> $DIR/generics-gen-args-errors.rs:105:11
@@ -506,15 +506,15 @@ error[E0107]: trait takes 3 lifetime arguments but 0 lifetime arguments were sup
 LL |     reuse Trait::<1, 2, true>::foo as bar4;
    |           ^^^^^ expected 3 lifetime arguments
    |
+help: add missing lifetime arguments
+   |
+LL |     reuse Trait::<'b, 'c, 'a, 1, 2, true>::foo as bar4;
+   |                   +++++++++++
 note: trait defined here, with 3 lifetime parameters: `'b`, `'c`, `'a`
   --> $DIR/generics-gen-args-errors.rs:86:11
    |
 LL |     trait Trait<'b, 'c, 'a, T, const N: usize>: Sized {
    |           ^^^^^ --  --  --
-help: add missing lifetime arguments
-   |
-LL |     reuse Trait::<'b, 'c, 'a, 1, 2, true>::foo as bar4;
-   |                   +++++++++++
 
 error[E0107]: trait takes 2 generic arguments but 3 generic arguments were supplied
   --> $DIR/generics-gen-args-errors.rs:110:11
@@ -544,15 +544,15 @@ LL |     reuse Trait::<'static>::foo as bar5;
    |           |
    |           expected 3 lifetime arguments
    |
+help: add missing lifetime arguments
+   |
+LL |     reuse Trait::<'static, 'static, 'static>::foo as bar5;
+   |                          ++++++++++++++++++
 note: trait defined here, with 3 lifetime parameters: `'b`, `'c`, `'a`
   --> $DIR/generics-gen-args-errors.rs:86:11
    |
 LL |     trait Trait<'b, 'c, 'a, T, const N: usize>: Sized {
    |           ^^^^^ --  --  --
-help: add missing lifetime arguments
-   |
-LL |     reuse Trait::<'static, 'static, 'static>::foo as bar5;
-   |                          ++++++++++++++++++
 
 error: inferred lifetimes are not allowed in delegations as we need to inherit signature
   --> $DIR/generics-gen-args-errors.rs:115:11
@@ -574,15 +574,15 @@ LL |     reuse Trait::<1, 2, 'static, DDDD>::foo::<1, 2, 3, 4, 5, 6> as bar6;
    |           |
    |           expected 3 lifetime arguments
    |
+help: add missing lifetime arguments
+   |
+LL |     reuse Trait::<1, 'static, 'static, 2, 'static, DDDD>::foo::<1, 2, 3, 4, 5, 6> as bar6;
+   |                    ++++++++++++++++++
 note: trait defined here, with 3 lifetime parameters: `'b`, `'c`, `'a`
   --> $DIR/generics-gen-args-errors.rs:86:11
    |
 LL |     trait Trait<'b, 'c, 'a, T, const N: usize>: Sized {
    |           ^^^^^ --  --  --
-help: add missing lifetime arguments
-   |
-LL |     reuse Trait::<1, 'static, 'static, 2, 'static, DDDD>::foo::<1, 2, 3, 4, 5, 6> as bar6;
-   |                    ++++++++++++++++++
 
 error[E0107]: trait takes 2 generic arguments but 3 generic arguments were supplied
   --> $DIR/generics-gen-args-errors.rs:120:11
@@ -610,15 +610,15 @@ error[E0107]: method takes 1 lifetime argument but 0 lifetime arguments were sup
 LL |     reuse Trait::<1, 2, 'static, DDDD>::foo::<1, 2, 3, 4, 5, 6> as bar6;
    |                                         ^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL |     reuse Trait::<1, 2, 'static, DDDD>::foo::<'d, 1, 2, 3, 4, 5, 6> as bar6;
+   |                                               +++
 note: method defined here, with 1 lifetime parameter: `'d`
   --> $DIR/generics-gen-args-errors.rs:87:12
    |
 LL |         fn foo<'d: 'd, U, const M: bool>(self) {}
    |            ^^^ --
-help: add missing lifetime argument
-   |
-LL |     reuse Trait::<1, 2, 'static, DDDD>::foo::<'d, 1, 2, 3, 4, 5, 6> as bar6;
-   |                                               +++
 
 error[E0107]: method takes 2 generic arguments but 6 generic arguments were supplied
   --> $DIR/generics-gen-args-errors.rs:120:41
@@ -648,15 +648,15 @@ LL |     reuse Trait::<Trait, Clone, _, 'static, dyn Send, _>::foo::<1, 2, 3, _,
    |           |
    |           expected 3 lifetime arguments
    |
+help: add missing lifetime argument
+   |
+LL |     reuse Trait::<Trait, Clone, 'a, _, 'static, dyn Send, _>::foo::<1, 2, 3, _, 6> as bar7;
+   |                               ++++
 note: trait defined here, with 3 lifetime parameters: `'b`, `'c`, `'a`
   --> $DIR/generics-gen-args-errors.rs:86:11
    |
 LL |     trait Trait<'b, 'c, 'a, T, const N: usize>: Sized {
    |           ^^^^^ --  --  --
-help: add missing lifetime argument
-   |
-LL |     reuse Trait::<Trait, Clone, 'a, _, 'static, dyn Send, _>::foo::<1, 2, 3, _, 6> as bar7;
-   |                               ++++
 
 error[E0107]: trait takes 2 generic arguments but 4 generic arguments were supplied
   --> $DIR/generics-gen-args-errors.rs:129:11
@@ -684,15 +684,15 @@ error[E0107]: method takes 1 lifetime argument but 0 lifetime arguments were sup
 LL |     reuse Trait::<Trait, Clone, _, 'static, dyn Send, _>::foo::<1, 2, 3, _, 6> as bar7;
    |                                                           ^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL |     reuse Trait::<Trait, Clone, _, 'static, dyn Send, _>::foo::<'a, 1, 2, 3, _, 6> as bar7;
+   |                                                                 +++
 note: method defined here, with 1 lifetime parameter: `'d`
   --> $DIR/generics-gen-args-errors.rs:87:12
    |
 LL |         fn foo<'d: 'd, U, const M: bool>(self) {}
    |            ^^^ --
-help: add missing lifetime argument
-   |
-LL |     reuse Trait::<Trait, Clone, _, 'static, dyn Send, _>::foo::<'a, 1, 2, 3, _, 6> as bar7;
-   |                                                                 +++
 
 error[E0107]: method takes 2 generic arguments but 5 generic arguments were supplied
   --> $DIR/generics-gen-args-errors.rs:129:59

@@ -4,11 +4,11 @@ error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` t
 LL |     a: str,
    |     ^^^^^^
    |
-   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 help: wrap the field type in `ManuallyDrop<...>`
    |
 LL |     a: std::mem::ManuallyDrop<str>,
    |        +++++++++++++++++++++++   +
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/union-unsized.rs:2:8
@@ -34,11 +34,11 @@ error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` t
 LL |     b: str,
    |     ^^^^^^
    |
-   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 help: wrap the field type in `ManuallyDrop<...>`
    |
 LL |     b: std::mem::ManuallyDrop<str>,
    |        +++++++++++++++++++++++   +
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/union-unsized.rs:11:8

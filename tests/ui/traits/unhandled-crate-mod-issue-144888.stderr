@@ -80,6 +80,10 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL | trait Foo<T>: Super<Assoc = T>
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
+help: consider further restricting `Self`
+   |
+LL | trait Foo<T>: Super<Assoc = T> + Sized
+   |                                +++++++
 note: required for `Self` to implement `Mirror`
   --> $DIR/unhandled-crate-mod-issue-144888.rs:29:28
    |
@@ -87,10 +91,6 @@ LL | impl<T: Super<Assoc = ()>> Mirror for T {}
    |      -                     ^^^^^^     ^
    |      |
    |      unsatisfied trait bound implicitly introduced here
-help: consider further restricting `Self`
-   |
-LL | trait Foo<T>: Super<Assoc = T> + Sized
-   |                                +++++++
 
 error[E0046]: not all trait items implemented, missing: `Assoc`
   --> $DIR/unhandled-crate-mod-issue-144888.rs:29:1
@@ -126,6 +126,10 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn transmute(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
+help: consider further restricting `Self`
+   |
+LL |     fn transmute(&self) where Self: Sized {}
+   |                         +++++++++++++++++
 note: required for `Self` to implement `Mirror`
   --> $DIR/unhandled-crate-mod-issue-144888.rs:29:28
    |
@@ -133,10 +137,6 @@ LL | impl<T: Super<Assoc = ()>> Mirror for T {}
    |      -                     ^^^^^^     ^
    |      |
    |      unsatisfied trait bound implicitly introduced here
-help: consider further restricting `Self`
-   |
-LL |     fn transmute(&self) where Self: Sized {}
-   |                         +++++++++++++++++
 
 error: aborting due to 9 previous errors
 

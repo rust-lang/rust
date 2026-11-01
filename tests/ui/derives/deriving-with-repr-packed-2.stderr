@@ -28,12 +28,12 @@ LL | #[derive(Copy, Clone, Default, PartialEq, Eq)]
 LL | #[repr(packed)]
 LL | pub struct Foo<T>(T, T, T);
    |                ^ type parameter would need to implement `Clone`
-   = help: consider manually implementing the trait to avoid undesired bounds
 help: consider annotating `NonCopy` with `#[derive(Clone, Copy)]`
    |
 LL + #[derive(Clone, Copy)]
 LL | struct NonCopy;
    |
+   = help: consider manually implementing the trait to avoid undesired bounds
 
 error: aborting due to 1 previous error
 

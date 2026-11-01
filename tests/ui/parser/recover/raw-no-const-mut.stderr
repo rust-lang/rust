@@ -30,17 +30,17 @@ error: expected `{`, found `z`
 LL |     if x == &raw z {}
    |                  ^ expected `{`
    |
-note: the `if` expression is missing a block after this condition
-  --> $DIR/raw-no-const-mut.rs:12:8
-   |
-LL |     if x == &raw z {}
-   |        ^^^^^^^^^
 help: `&raw` must be followed by `const` or `mut` to be a raw reference expression
    |
 LL |     if x == &raw const z {}
    |                  +++++
 LL |     if x == &raw mut z {}
    |                  +++
+note: the `if` expression is missing a block after this condition
+  --> $DIR/raw-no-const-mut.rs:12:8
+   |
+LL |     if x == &raw z {}
+   |        ^^^^^^^^^
 
 error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `const`, `mut`, `{`, or an operator, found `2`
   --> $DIR/raw-no-const-mut.rs:17:12

@@ -4,16 +4,16 @@ error: unnecessary parentheses around `return` value
 LL |     return (1);
    |            ^ ^
    |
-note: the lint level is defined here
-  --> $DIR/lint-unnecessary-parens.rs:4:9
-   |
-LL | #![deny(unused_parens)]
-   |         ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     return (1);
 LL +     return 1;
    |
+note: the lint level is defined here
+  --> $DIR/lint-unnecessary-parens.rs:4:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
 
 error: unnecessary parentheses around `return` value
   --> $DIR/lint-unnecessary-parens.rs:17:12

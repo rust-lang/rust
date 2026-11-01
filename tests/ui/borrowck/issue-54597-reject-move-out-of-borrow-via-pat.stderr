@@ -4,6 +4,11 @@ error[E0507]: cannot move out of `*array` which is behind a shared reference
 LL |             *array
    |             ^^^^^^ move occurs because `*array` has type `Vec<Value>`, which does not implement the `Copy` trait
    |
+help: consider removing the dereference here
+   |
+LL -             *array
+LL +             array
+   |
 note: if `Value` implemented `Clone`, you could clone the value
   --> $DIR/issue-54597-reject-move-out-of-borrow-via-pat.rs:4:1
    |
@@ -12,11 +17,6 @@ LL | struct Value;
 ...
 LL |             *array
    |             ------ you could clone this value
-help: consider removing the dereference here
-   |
-LL -             *array
-LL +             array
-   |
 
 error: aborting due to 1 previous error
 

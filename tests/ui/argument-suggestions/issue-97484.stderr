@@ -8,15 +8,15 @@ LL |     foo(&&A, B, C, D, E, F, G);
    |              |  unexpected argument #3 of type `C`
    |              unexpected argument #2 of type `B`
    |
+help: consider borrowing here
+   |
+LL |     foo(&&A, B, C, D, &E, F, G);
+   |                       +
 note: function defined here
   --> $DIR/issue-97484.rs:9:4
    |
 LL | fn foo(a: &A, d: D, e: &E, g: G) {}
    |    ^^^              -----
-help: consider borrowing here
-   |
-LL |     foo(&&A, B, C, D, &E, F, G);
-   |                       +
 help: remove the extra arguments
    |
 LL -     foo(&&A, B, C, D, E, F, G);

@@ -4,15 +4,15 @@ error[E0107]: missing generics for associated type `MapLike::VRefCont`
 LL |         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
    |                                    ^^^^^^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL |         as Box<dyn MapLike<u8, u8, VRefCont<'a> = dyn RefCont<'_, u8>>>;
+   |                                            ++++
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/issue-79422.rs:18:10
    |
 LL |     type VRefCont<'a>: RefCont<'a, V>
    |          ^^^^^^^^ --
-help: add missing lifetime argument
-   |
-LL |         as Box<dyn MapLike<u8, u8, VRefCont<'a> = dyn RefCont<'_, u8>>>;
-   |                                            ++++
 
 error[E0038]: the trait `MapLike` is not dyn compatible
   --> $DIR/issue-79422.rs:45:20

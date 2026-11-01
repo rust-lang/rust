@@ -18,15 +18,15 @@ error[E0107]: associated type takes 1 generic argument but 0 generic arguments w
 LL |     type FErr1 = Self::E<'static, 'static>;
    |                        ^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL |     type FErr1 = Self::E<'static, 'static, T>;
+   |                                          +++
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/parameter_number_and_kind.rs:8:10
    |
 LL |     type E<'a, T>;
    |          ^     -
-help: add missing generic argument
-   |
-LL |     type FErr1 = Self::E<'static, 'static, T>;
-   |                                          +++
 
 error[E0107]: associated type takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/parameter_number_and_kind.rs:14:27

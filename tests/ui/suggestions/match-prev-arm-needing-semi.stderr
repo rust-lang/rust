@@ -13,15 +13,15 @@ LL | |         false => async_dummy(),
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
+help: consider `await`ing on the `Future`
+   |
+LL |         false => async_dummy().await,
+   |                               ++++++
 note: calling an async function returns a future
   --> $DIR/match-prev-arm-needing-semi.rs:26:18
    |
 LL |         false => async_dummy(),
    |                  ^^^^^^^^^^^^^
-help: consider `await`ing on the `Future`
-   |
-LL |         false => async_dummy().await,
-   |                               ++++++
 help: consider removing this semicolon
    |
 LL -             async_dummy();
@@ -43,15 +43,15 @@ LL | |         false => async_dummy2(),
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
+help: consider `await`ing on the `Future`
+   |
+LL |         false => async_dummy2().await,
+   |                                ++++++
 note: calling an async function returns a future
   --> $DIR/match-prev-arm-needing-semi.rs:39:18
    |
 LL |         false => async_dummy2(),
    |                  ^^^^^^^^^^^^^^
-help: consider `await`ing on the `Future`
-   |
-LL |         false => async_dummy2().await,
-   |                                ++++++
 help: consider removing this semicolon and boxing the expressions
    |
 LL ~             Box::new(async_dummy())
@@ -74,13 +74,13 @@ LL | |         false => async_dummy2(),
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: distinct uses of `impl Trait` result in different opaque types
 help: consider `await`ing on both `Future`s
    |
 LL ~         true => async_dummy().await,
 LL |
 LL ~         false => async_dummy2().await,
    |
+   = note: distinct uses of `impl Trait` result in different opaque types
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/match-prev-arm-needing-semi.rs:11:18

@@ -7,13 +7,13 @@ LL |     // parameter
 LL |     VA(W),
    |        ^ doesn't have a size known at compile-time
    |
-   = note: no field of an enum variant may have a dynamically sized type
-   = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 LL + enum E<W, X: ?Sized, Y: ?Sized, Z: ?Sized> {
    |
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
    |
 LL |     VA(&W),
@@ -32,13 +32,13 @@ LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 LL |     VB{x: X},
    |           ^ doesn't have a size known at compile-time
    |
-   = note: no field of an enum variant may have a dynamically sized type
-   = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 LL + enum E<W: ?Sized, X, Y: ?Sized, Z: ?Sized> {
    |
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
    |
 LL |     VB{x: &X},
@@ -57,13 +57,13 @@ LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 LL |     VC(isize, Y),
    |               ^ doesn't have a size known at compile-time
    |
-   = note: no field of an enum variant may have a dynamically sized type
-   = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 LL + enum E<W: ?Sized, X: ?Sized, Y, Z: ?Sized> {
    |
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
    |
 LL |     VC(isize, &Y),
@@ -82,13 +82,13 @@ LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 LL |     VD{u: isize, x: Z},
    |                     ^ doesn't have a size known at compile-time
    |
-   = note: no field of an enum variant may have a dynamically sized type
-   = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 LL + enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z> {
    |
+   = note: no field of an enum variant may have a dynamically sized type
+   = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
    |
 LL |     VD{u: isize, x: &Z},

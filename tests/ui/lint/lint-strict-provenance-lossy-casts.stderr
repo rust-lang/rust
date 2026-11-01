@@ -6,16 +6,16 @@ LL |     let addr: usize = &x as *const u8 as usize;
    |
    = help: if conforming to strict provenance is not possible, use `.expose_provenance()`
    = note: for more information, visit <https://doc.rust-lang.org/std/ptr/index.html#provenance>
-note: the lint level is defined here
-  --> $DIR/lint-strict-provenance-lossy-casts.rs:2:9
-   |
-LL | #![deny(implicit_provenance_casts)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 help: use `.addr()` to obtain the address of a pointer
    |
 LL -     let addr: usize = &x as *const u8 as usize;
 LL +     let addr: usize = (&x as *const u8).addr();
    |
+note: the lint level is defined here
+  --> $DIR/lint-strict-provenance-lossy-casts.rs:2:9
+   |
+LL | #![deny(implicit_provenance_casts)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cast from `*const u8` to `u32` implicitly exposes pointer provenance
   --> $DIR/lint-strict-provenance-lossy-casts.rs:9:22

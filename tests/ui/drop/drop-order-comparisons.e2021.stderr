@@ -202,9 +202,6 @@ help: the value is now dropped here in Edition 2024
    |
 LL |     }, e.mark(2), e.ok(3));
    |     ^
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
-   = note: `#[warn(if_let_rescope)]` implied by `#[warn(rust_2024_compatibility)]`
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~     _ = (match e.ok(4).as_ref() { Ok(_) => {
@@ -213,6 +210,9 @@ LL |
 LL |             e.mark(1);
 LL ~     } _ => {}}, e.mark(2), e.ok(3));
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
+   = note: `#[warn(if_let_rescope)]` implied by `#[warn(rust_2024_compatibility)]`
 
 warning: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/drop-order-comparisons.rs:147:13
@@ -232,8 +232,6 @@ help: the value is now dropped here in Edition 2024
    |
 LL |     _ = (if let Ok(_) = e.err(4).as_ref() {} else {
    |                                            ^
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~     _ = (match e.err(4).as_ref() { Ok(_) => {} _ => {
@@ -242,6 +240,8 @@ LL |
 LL |             e.mark(1);
 LL ~     }}, e.mark(2), e.ok(3));
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 
 warning: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/drop-order-comparisons.rs:249:12
@@ -261,8 +261,6 @@ help: the value is now dropped here in Edition 2024
    |
 LL |         if let Ok(_) = e.err(4).as_ref() {} else {
    |                                           ^
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(4).as_ref() { Ok(_) => {} _ => {
@@ -271,6 +269,8 @@ LL |
 LL |             e.mark(1);
 LL ~         }}
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 
 warning: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/drop-order-comparisons.rs:320:12
@@ -290,8 +290,6 @@ help: the value is now dropped here in Edition 2024
    |
 LL |         if let true = e.err(9).is_ok() {} else {
    |                                         ^
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(9).is_ok() { true => {} _ => {
@@ -300,6 +298,8 @@ LL |
 LL |             e.mark(3);
 LL ~         }}}}}}}}};
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 
 warning: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/drop-order-comparisons.rs:323:12
@@ -319,8 +319,6 @@ help: the value is now dropped here in Edition 2024
    |
 LL |         if let Ok(_v) = e.err(8) {} else {
    |                                   ^
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(8) { Ok(_v) => {} _ => {
@@ -329,6 +327,8 @@ LL |
 LL |             e.mark(3);
 LL ~         }}}}}}}}};
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 
 warning: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/drop-order-comparisons.rs:326:12
@@ -348,8 +348,6 @@ help: the value is now dropped here in Edition 2024
    |
 LL |         if let Ok(_) = e.err(7) {} else {
    |                                  ^
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(7) { Ok(_) => {} _ => {
@@ -358,6 +356,8 @@ LL |
 LL |             e.mark(3);
 LL ~         }}}}}}}}};
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 
 warning: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/drop-order-comparisons.rs:329:12
@@ -377,8 +377,6 @@ help: the value is now dropped here in Edition 2024
    |
 LL |         if let Ok(_) = e.err(6).as_ref() {} else {
    |                                           ^
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(6).as_ref() { Ok(_) => {} _ => {
@@ -387,6 +385,8 @@ LL |
 LL |             e.mark(3);
 LL ~         }}}}}}}}};
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 
 warning: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/drop-order-comparisons.rs:333:12
@@ -406,8 +406,6 @@ help: the value is now dropped here in Edition 2024
    |
 LL |         if let Ok(_v) = e.err(5) {} else {
    |                                   ^
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(5) { Ok(_v) => {} _ => {
@@ -416,6 +414,8 @@ LL |
 LL |             e.mark(3);
 LL ~         }}}}}}}}};
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 
 warning: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/drop-order-comparisons.rs:336:12
@@ -435,8 +435,6 @@ help: the value is now dropped here in Edition 2024
    |
 LL |         if let Ok(_) = e.err(4) {} else {
    |                                  ^
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(4) { Ok(_) => {} _ => {
@@ -445,6 +443,8 @@ LL |
 LL |             e.mark(3);
 LL ~         }}}}}}}}};
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 
 warning: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/drop-order-comparisons.rs:372:12
@@ -464,8 +464,6 @@ help: the value is now dropped here in Edition 2024
    |
 LL |         if let Ok(_) = e.err(4).as_ref() {} else {
    |                                           ^
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: a `match` with a single arm can preserve the drop order up to Edition 2021
    |
 LL ~         match e.err(4).as_ref() { Ok(_) => {} _ => {
@@ -474,6 +472,8 @@ LL |
 LL |             e.mark(3);
 LL ~         }}}}}}}}};
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-if-let-scope.html>
 
 warning: 15 warnings emitted
 

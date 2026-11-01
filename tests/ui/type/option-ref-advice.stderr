@@ -8,16 +8,16 @@ LL |     takes_option(&None);
    |
    = note:   expected enum `Option<&String>`
            found reference `&Option<_>`
-note: function defined here
-  --> $DIR/option-ref-advice.rs:3:4
-   |
-LL | fn takes_option(_arg: Option<&String>) {}
-   |    ^^^^^^^^^^^^ ---------------------
 help: consider removing the borrow
    |
 LL -     takes_option(&None);
 LL +     takes_option(None);
    |
+note: function defined here
+  --> $DIR/option-ref-advice.rs:3:4
+   |
+LL | fn takes_option(_arg: Option<&String>) {}
+   |    ^^^^^^^^^^^^ ---------------------
 
 error[E0308]: mismatched types
   --> $DIR/option-ref-advice.rs:10:18
@@ -29,16 +29,16 @@ LL |     takes_option(&res);
    |
    = note:   expected enum `Option<&String>`
            found reference `&Option<String>`
-note: function defined here
-  --> $DIR/option-ref-advice.rs:3:4
-   |
-LL | fn takes_option(_arg: Option<&String>) {}
-   |    ^^^^^^^^^^^^ ---------------------
 help: try using `.as_ref()` to convert `&Option<String>` to `Option<&String>`
    |
 LL -     takes_option(&res);
 LL +     takes_option(res.as_ref());
    |
+note: function defined here
+  --> $DIR/option-ref-advice.rs:3:4
+   |
+LL | fn takes_option(_arg: Option<&String>) {}
+   |    ^^^^^^^^^^^^ ---------------------
 
 error: aborting due to 2 previous errors
 

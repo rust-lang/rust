@@ -4,16 +4,16 @@ error: unused variable: `j`
 LL |         A { i, j } | B { i, j } => {
    |                ^            ^
    |
+help: try ignoring the field
+   |
+LL |         A { i, j: _ } | B { i, j: _ } => {
+   |                 +++             +++
 note: the lint level is defined here
   --> $DIR/issue-67691-unused-field-in-or-pattern.rs:4:9
    |
 LL | #![deny(unused)]
    |         ^^^^^^
    = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
-help: try ignoring the field
-   |
-LL |         A { i, j: _ } | B { i, j: _ } => {
-   |                 +++             +++
 
 error: unused variable: `j`
   --> $DIR/issue-67691-unused-field-in-or-pattern.rs:30:16

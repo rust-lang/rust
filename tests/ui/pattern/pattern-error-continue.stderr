@@ -7,16 +7,16 @@ LL |     D
 LL |         A::D(_) => (),
    |         ^^^^^^^
    |
-note: similarly named tuple variant `B` defined here
-  --> $DIR/pattern-error-continue.rs:6:5
-   |
-LL |     B(isize, isize),
-   |     ^^^^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         A::D(_) => (),
 LL +         A::D => (),
    |
+note: similarly named tuple variant `B` defined here
+  --> $DIR/pattern-error-continue.rs:6:5
+   |
+LL |     B(isize, isize),
+   |     ^^^^^^^^^^^^^^^
 help: a tuple variant with a similar name exists
    |
 LL -         A::D(_) => (),

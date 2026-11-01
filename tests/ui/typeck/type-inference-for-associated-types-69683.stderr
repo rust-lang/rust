@@ -4,6 +4,11 @@ error[E0284]: type annotations needed
 LL |     0u16.foo(b);
    |          ^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     0u16.foo(b);
+LL +     <u16 as Foo<I>>::foo(0u16, b);
+   |
    = note: cannot satisfy `<u8 as Element<_>>::Array == [u8; 3]`
 note: multiple `impl`s satisfying `u8: Element<_>` found
   --> $DIR/type-inference-for-associated-types-69683.rs:6:1
@@ -22,11 +27,6 @@ LL |     u8: Element<I>,
    |         ^^^^^^^^^^ required by this bound in `Foo::foo`
 LL | {
 LL |     fn foo(self, x: <u8 as Element<I>>::Array);
-   |
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     0u16.foo(b);
-LL +     <u16 as Foo<I>>::foo(0u16, b);
    |
 
 error: aborting due to 1 previous error

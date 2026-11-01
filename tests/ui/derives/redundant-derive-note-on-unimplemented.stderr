@@ -7,6 +7,11 @@ LL |     println!("{:?}", S(X));
    |               required by this formatting parameter
    |
    = help: the trait `Debug` is not implemented for `X`
+help: consider annotating `X` with `#[derive(Debug)]`
+   |
+LL + #[derive(Debug)]
+LL | struct X;
+   |
 help: the trait `Debug` is conditionally implemented for `S<T>`
   --> $DIR/redundant-derive-note-on-unimplemented.rs:8:10
    |
@@ -21,11 +26,6 @@ LL | #[derive(Debug)]
    |          ----- in this derive macro expansion
 LL | struct S<T>(T);
    |        ^ - type parameter would need to implement `Debug`
-help: consider annotating `X` with `#[derive(Debug)]`
-   |
-LL + #[derive(Debug)]
-LL | struct X;
-   |
 
 error: aborting due to 1 previous error
 

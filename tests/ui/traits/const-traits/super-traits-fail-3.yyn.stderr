@@ -27,11 +27,11 @@ error: `[const]` can only be applied to `const` traits
 LL | const fn foo<T: [const] Bar>(x: &T) {
    |                 ^^^^^^^ can't be applied to `Bar`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: mark `Bar` as `const` to allow it to have `const` implementations
    |
 LL | #[cfg(any(yyn, ynn, nyn, nnn))] const trait Bar: [const] Foo {}
    |                                 +++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `T: [const] Foo` is not satisfied
   --> $DIR/super-traits-fail-3.rs:38:7

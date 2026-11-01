@@ -180,13 +180,6 @@ LL | |     self.0
 LL | | }
    | |_^ expected `F`, found `()`
    |
-note: type in trait
-  --> $DIR/target-expr-removal-defs-inside.rs:4:25
-   |
-LL |     fn static_self() -> F { F }
-   |                         ^
-   = note: expected signature `fn() -> F`
-              found signature `fn() -> ()`
 help: change the output type to match the trait
    |
 LL - reuse impl Trait for S {
@@ -208,6 +201,13 @@ LL -     self.0
 LL - }
 LL +  -> F
    |
+note: type in trait
+  --> $DIR/target-expr-removal-defs-inside.rs:4:25
+   |
+LL |     fn static_self() -> F { F }
+   |                         ^
+   = note: expected signature `fn() -> F`
+              found signature `fn() -> ()`
 
 error[E0050]: method `static_value` has 0 parameters but the declaration in trait `Trait::static_value` has 1
   --> $DIR/target-expr-removal-defs-inside.rs:16:1
@@ -254,13 +254,6 @@ LL | |     self.0
 LL | | }
    | |_^ expected `F`, found `()`
    |
-note: type in trait
-  --> $DIR/target-expr-removal-defs-inside.rs:4:25
-   |
-LL |     fn static_self() -> F { F }
-   |                         ^
-   = note: expected signature `fn() -> F`
-              found signature `fn() -> ()`
 help: change the output type to match the trait
    |
 LL - reuse impl Trait for S1 {
@@ -286,6 +279,13 @@ LL -     self.0
 LL - }
 LL +  -> F
    |
+note: type in trait
+  --> $DIR/target-expr-removal-defs-inside.rs:4:25
+   |
+LL |     fn static_self() -> F { F }
+   |                         ^
+   = note: expected signature `fn() -> F`
+              found signature `fn() -> ()`
 
 error[E0050]: method `static_value` has 0 parameters but the declaration in trait `Trait::static_value` has 1
   --> $DIR/target-expr-removal-defs-inside.rs:35:1
@@ -332,13 +332,6 @@ LL | |     self.0
 LL | | }
    | |_^ expected `F`, found `()`
    |
-note: type in trait
-  --> $DIR/target-expr-removal-defs-inside.rs:4:25
-   |
-LL |     fn static_self() -> F { F }
-   |                         ^
-   = note: expected signature `fn() -> F`
-              found signature `fn() -> ()`
 help: change the output type to match the trait
    |
 LL - reuse impl Trait for S2 {
@@ -360,6 +353,13 @@ LL -     self.0
 LL - }
 LL +  -> F
    |
+note: type in trait
+  --> $DIR/target-expr-removal-defs-inside.rs:4:25
+   |
+LL |     fn static_self() -> F { F }
+   |                         ^
+   = note: expected signature `fn() -> F`
+              found signature `fn() -> ()`
 
 error[E0050]: method `static_value` has 0 parameters but the declaration in trait `Trait::static_value` has 1
   --> $DIR/target-expr-removal-defs-inside.rs:58:1

@@ -7,12 +7,12 @@ LL |     let _ = f == a;
    = note: the address of the same function can vary between different codegen units
    = note: furthermore, different functions could have the same address after being merged together
    = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
-   = note: `#[warn(unpredictable_function_pointer_comparisons)]` on by default
 help: refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
    |
 LL -     let _ = f == a;
 LL +     let _ = std::ptr::fn_addr_eq(f, a as fn());
    |
+   = note: `#[warn(unpredictable_function_pointer_comparisons)]` on by default
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
   --> $DIR/fn-ptr-comparisons.rs:27:13

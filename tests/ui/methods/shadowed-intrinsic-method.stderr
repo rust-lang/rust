@@ -12,13 +12,13 @@ LL | use std::borrow::Borrow;
 ...
 LL |     a.borrow(());
    |       ^^^^^^ refers to `std::borrow::Borrow::borrow`
-note: method defined here
-  --> $SRC_DIR/core/src/borrow.rs:LL:COL
 help: you might have meant to call the other method; you can use the fully-qualified path to call it explicitly
    |
 LL -     a.borrow(());
 LL +     A::borrow(&mut a, ());
    |
+note: method defined here
+  --> $SRC_DIR/core/src/borrow.rs:LL:COL
 help: remove the extra argument
    |
 LL -     a.borrow(());
@@ -39,13 +39,13 @@ LL | use std::borrow::Borrow;
 ...
 LL |     b.borrow(());
    |       ^^^^^^ refers to `std::borrow::Borrow::borrow`
-note: method defined here
-  --> $SRC_DIR/core/src/borrow.rs:LL:COL
 help: you might have meant to call the other method; you can use the fully-qualified path to call it explicitly
    |
 LL -     b.borrow(());
 LL +     B::borrow(&mut b, ());
    |
+note: method defined here
+  --> $SRC_DIR/core/src/borrow.rs:LL:COL
 help: remove the extra argument
    |
 LL -     b.borrow(());
@@ -66,13 +66,13 @@ LL | use std::borrow::Borrow;
 ...
 LL |     c.borrow(());
    |       ^^^^^^ refers to `std::borrow::Borrow::borrow`
-note: method defined here
-  --> $SRC_DIR/core/src/borrow.rs:LL:COL
 help: you might have meant to call the other method; you can use the fully-qualified path to call it explicitly
    |
 LL -     c.borrow(());
 LL +     C::borrow(&mut c, ());
    |
+note: method defined here
+  --> $SRC_DIR/core/src/borrow.rs:LL:COL
 help: remove the extra argument
    |
 LL -     c.borrow(());
@@ -93,13 +93,13 @@ LL | use std::borrow::Borrow;
 ...
 LL |     b.borrow(());
    |       ^^^^^^ refers to `std::borrow::Borrow::borrow`
-note: method defined here
-  --> $SRC_DIR/core/src/borrow.rs:LL:COL
 help: you might have meant to call the other method; you can use the fully-qualified path to call it explicitly
    |
 LL -     b.borrow(());
 LL +     B::borrow(&mut b, ());
    |
+note: method defined here
+  --> $SRC_DIR/core/src/borrow.rs:LL:COL
 help: remove the extra argument
    |
 LL -     b.borrow(());

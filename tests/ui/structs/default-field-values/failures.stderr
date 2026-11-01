@@ -32,12 +32,12 @@ LL |     bar: S = Self::S,
    |              ^^^^^^^ this can't be const-evaluated until use
    |
    = help: structs and enums with type and const parameters only evaluate their default field values during construction, not eagerly when declared
-   = note: `#[warn(unevaluated_default_field_value)]` on by default
 help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
    |
 LL + #[expect(unevaluated_default_field_value)]
 LL | pub struct Qux<const C: i32> {
    |
+   = note: `#[warn(unevaluated_default_field_value)]` on by default
 
 warning: field `baz` has a default value that is only checked when a value of `Qux` is constructed
   --> $DIR/failures.rs:23:16

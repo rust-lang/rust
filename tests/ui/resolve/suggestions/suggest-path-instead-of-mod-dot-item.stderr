@@ -44,16 +44,16 @@ LL |     a::b.J
    |        ^
    |
    = note: a module named `a::b` exists in another namespace
-note: similarly named constant `I` defined here
-  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:5:5
-   |
-LL |     pub const I: i32 = 1;
-   |     ^^^^^^^^^^^^^^^^^^^^^
 help: use the path separator to refer to an item
    |
 LL -     a::b.J
 LL +     a::b::J
    |
+note: similarly named constant `I` defined here
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:5:5
+   |
+LL |     pub const I: i32 = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists
    |
 LL -     a::b.J
@@ -98,16 +98,16 @@ LL |     a::b.f()
    |        ^
    |
    = note: a module named `a::b` exists in another namespace
-note: similarly named constant `I` defined here
-  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:5:5
-   |
-LL |     pub const I: i32 = 1;
-   |     ^^^^^^^^^^^^^^^^^^^^^
 help: use the path separator to refer to an item
    |
 LL -     a::b.f()
 LL +     a::b::f()
    |
+note: similarly named constant `I` defined here
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:5:5
+   |
+LL |     pub const I: i32 = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists
    |
 LL -     a::b.f()

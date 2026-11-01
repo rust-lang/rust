@@ -26,15 +26,15 @@ error[E0107]: missing generics for associated type `Trait::Assoc`
 LL | fn produce() -> impl for<T> Trait<(), Assoc = impl Trait<T>> {
    |                                       ^^^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL | fn produce() -> impl for<T> Trait<(), Assoc<'a> = impl Trait<T>> {
+   |                                            ++++
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/late-bound-assoc-type.rs:8:10
    |
 LL |     type Assoc<'a> = i32;
    |          ^^^^^ --
-help: add missing lifetime argument
-   |
-LL | fn produce() -> impl for<T> Trait<(), Assoc<'a> = impl Trait<T>> {
-   |                                            ++++
 
 error[E0107]: missing generics for associated type `Trait::Assoc`
   --> $DIR/late-bound-assoc-type.rs:12:39
@@ -42,16 +42,16 @@ error[E0107]: missing generics for associated type `Trait::Assoc`
 LL | fn produce() -> impl for<T> Trait<(), Assoc = impl Trait<T>> {
    |                                       ^^^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL | fn produce() -> impl for<T> Trait<(), Assoc<'a> = impl Trait<T>> {
+   |                                            ++++
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/late-bound-assoc-type.rs:8:10
    |
 LL |     type Assoc<'a> = i32;
    |          ^^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: add missing lifetime argument
-   |
-LL | fn produce() -> impl for<T> Trait<(), Assoc<'a> = impl Trait<T>> {
-   |                                            ++++
 
 error[E0277]: the trait bound `{integer}: Trait<()>` is not satisfied
   --> $DIR/late-bound-assoc-type.rs:12:17

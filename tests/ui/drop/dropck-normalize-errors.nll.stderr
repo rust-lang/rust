@@ -47,16 +47,16 @@ note: required because it appears within the type `BDecoder`
    |
 LL | pub struct BDecoder {
    |            ^^^^^^^^
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Decoder: ?Sized;
+   |                 ++++++++
 note: required by a bound in `Decode::Decoder`
   --> $DIR/dropck-normalize-errors.rs:9:5
    |
 LL | trait Decode<'a> {
 LL |     type Decoder;
    |     ^^^^^^^^^^^^^ required by this bound in `Decode::Decoder`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL |     type Decoder: ?Sized;
-   |                 ++++++++
 
 error[E0277]: the trait bound `NonImplementedStruct: NonImplementedTrait` is not satisfied
   --> $DIR/dropck-normalize-errors.rs:32:22

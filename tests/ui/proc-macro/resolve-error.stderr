@@ -97,41 +97,41 @@ note: similarly named derive macro `Clona` defined here
    |
 LL | pub fn derive_clonea(input: TokenStream) -> TokenStream {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: a derive macro with a similar name exists
    |
 LL - #[derive(Dlona)]
 LL + #[derive(Clona)]
    |
-
-error: cannot find derive macro `Dlone` in this scope
-  --> $DIR/resolve-error.rs:35:10
-   |
-LL | #[derive(Dlone)]
-   |          ^^^^^
-   |
-note: similarly named derive macro `Clone` defined here
-  --> $SRC_DIR/core/src/clone.rs:LL:COL
-help: a derive macro with a similar name exists
-   |
-LL - #[derive(Dlone)]
-LL + #[derive(Clone)]
-   |
-
-error: cannot find derive macro `Dlone` in this scope
-  --> $DIR/resolve-error.rs:35:10
-   |
-LL | #[derive(Dlone)]
-   |          ^^^^^
-   |
-note: similarly named derive macro `Clone` defined here
-  --> $SRC_DIR/core/src/clone.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: cannot find derive macro `Dlone` in this scope
+  --> $DIR/resolve-error.rs:35:10
+   |
+LL | #[derive(Dlone)]
+   |          ^^^^^
+   |
+note: similarly named derive macro `Clone` defined here
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
 help: a derive macro with a similar name exists
    |
 LL - #[derive(Dlone)]
 LL + #[derive(Clone)]
    |
+
+error: cannot find derive macro `Dlone` in this scope
+  --> $DIR/resolve-error.rs:35:10
+   |
+LL | #[derive(Dlone)]
+   |          ^^^^^
+   |
+note: similarly named derive macro `Clone` defined here
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
+help: a derive macro with a similar name exists
+   |
+LL - #[derive(Dlone)]
+LL + #[derive(Clone)]
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: cannot find attribute `FooWithLongNan` in this scope
   --> $DIR/resolve-error.rs:32:3
@@ -184,12 +184,12 @@ note: similarly named derive macro `FooWithLongName` defined here
    |
 LL | pub fn derive_foo(input: TokenStream) -> TokenStream {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: a derive macro with a similar name exists
    |
 LL - #[derive(FooWithLongNan)]
 LL + #[derive(FooWithLongName)]
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 14 previous errors
 

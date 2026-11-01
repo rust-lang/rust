@@ -9,12 +9,12 @@ LL |     let _ptr: *const u8 = unsafe { core::mem::transmute::<usize, *const u8>
    = help: for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
    = help: for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
    = help: if you truly mean to create a pointer without provenance, use `core::ptr::without_provenance_mut`
-   = note: `#[warn(integer_to_ptr_transmutes)]` on by default
 help: use `core::ptr::with_exposed_provenance` instead to use a previously exposed provenance
    |
 LL -     let _ptr: *const u8 = unsafe { core::mem::transmute::<usize, *const u8>(a) };
 LL +     let _ptr: *const u8 = unsafe { core::ptr::with_exposed_provenance::<u8>(a) };
    |
+   = note: `#[warn(integer_to_ptr_transmutes)]` on by default
 
 warning: transmuting an integer to a pointer creates a pointer without provenance
   --> $DIR/int_to_ptr-no_std.rs:12:34

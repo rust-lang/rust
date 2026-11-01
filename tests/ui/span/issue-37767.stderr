@@ -9,16 +9,16 @@ note: candidate #1 is defined in the trait `A`
    |
 LL |     fn foo(&mut self) {}
    |     ^^^^^^^^^^^^^^^^^
-note: candidate #2 is defined in the trait `B`
-  --> $DIR/issue-37767.rs:6:5
-   |
-LL |     fn foo(&mut self) {}
-   |     ^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     a.foo()
 LL +     A::foo(&mut a)
    |
+note: candidate #2 is defined in the trait `B`
+  --> $DIR/issue-37767.rs:6:5
+   |
+LL |     fn foo(&mut self) {}
+   |     ^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #2
    |
 LL -     a.foo()
@@ -36,16 +36,16 @@ note: candidate #1 is defined in the trait `C`
    |
 LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^
-note: candidate #2 is defined in the trait `D`
-  --> $DIR/issue-37767.rs:18:5
-   |
-LL |     fn foo(&self) {}
-   |     ^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     a.foo()
 LL +     C::foo(&a)
    |
+note: candidate #2 is defined in the trait `D`
+  --> $DIR/issue-37767.rs:18:5
+   |
+LL |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^
 help: disambiguate the method for candidate #2
    |
 LL -     a.foo()
@@ -63,16 +63,16 @@ note: candidate #1 is defined in the trait `E`
    |
 LL |     fn foo(self) {}
    |     ^^^^^^^^^^^^
-note: candidate #2 is defined in the trait `F`
-  --> $DIR/issue-37767.rs:30:5
-   |
-LL |     fn foo(self) {}
-   |     ^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     a.foo()
 LL +     E::foo(a)
    |
+note: candidate #2 is defined in the trait `F`
+  --> $DIR/issue-37767.rs:30:5
+   |
+LL |     fn foo(self) {}
+   |     ^^^^^^^^^^^^
 help: disambiguate the method for candidate #2
    |
 LL -     a.foo()

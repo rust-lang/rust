@@ -10,15 +10,15 @@ error[E0107]: missing generics for struct `Local`
 LL | impl<T> Local {
    |         ^^^^^ expected 2 generic arguments
    |
+help: add missing generic arguments
+   |
+LL | impl<T> Local<T, U> {
+   |              ++++++
 note: struct defined here, with 2 generic parameters: `T`, `U`
   --> $DIR/issue-109768.rs:5:8
    |
 LL | struct Local<T, U>(T, U);
    |        ^^^^^ -  -
-help: add missing generic arguments
-   |
-LL | impl<T> Local<T, U> {
-   |              ++++++
 
 error[E0658]: inherent associated types are unstable
   --> $DIR/issue-109768.rs:8:5

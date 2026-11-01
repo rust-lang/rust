@@ -82,16 +82,16 @@ note: required because it appears within the type `SalsaStorage`
    |
 LL | struct SalsaStorage {
    |        ^^^^^^^^^^^^
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Storage: ?Sized;
+   |                 ++++++++
 note: required by a bound in `Database::Storage`
   --> $DIR/cycle-cache-err-60010.rs:7:5
    |
 LL | trait Database {
 LL |     type Storage;
    |     ^^^^^^^^^^^^^ required by this bound in `Database::Storage`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL |     type Storage: ?Sized;
-   |                 ++++++++
 
 error: aborting due to 2 previous errors
 

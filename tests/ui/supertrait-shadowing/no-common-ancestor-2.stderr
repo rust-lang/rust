@@ -9,36 +9,36 @@ note: candidate #1 is defined in an impl of the trait `A` for the type `T`
    |
 LL |     fn hello(&self) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/no-common-ancestor-2.rs:20:5
-   |
-LL |     fn hello(&self) -> &'static str {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: candidate #3 is defined in an impl of the trait `C` for the type `T`
-  --> $DIR/no-common-ancestor-2.rs:32:5
-   |
-LL |     fn hello(&self) -> &'static str {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: candidate #4 is defined in an impl of the trait `D` for the type `T`
-  --> $DIR/no-common-ancestor-2.rs:48:5
-   |
-LL |     fn hello(&self) -> &'static str {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     ().hello();
 LL +     A::hello(&());
    |
+note: candidate #2 is defined in an impl of the trait `B` for the type `T`
+  --> $DIR/no-common-ancestor-2.rs:20:5
+   |
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #2
    |
 LL -     ().hello();
 LL +     B::hello(&());
    |
+note: candidate #3 is defined in an impl of the trait `C` for the type `T`
+  --> $DIR/no-common-ancestor-2.rs:32:5
+   |
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #3
    |
 LL -     ().hello();
 LL +     C::hello(&());
    |
+note: candidate #4 is defined in an impl of the trait `D` for the type `T`
+  --> $DIR/no-common-ancestor-2.rs:48:5
+   |
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #4
    |
 LL -     ().hello();

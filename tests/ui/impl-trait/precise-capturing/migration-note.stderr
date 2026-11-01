@@ -307,16 +307,16 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let y = capture_apit(&x);
    |             ^^^^^^^^^^^^^^^^
-note: you could use a `use<...>` bound to explicitly specify captures, but argument-position `impl Trait`s are not nameable
-  --> $DIR/migration-note.rs:191:21
-   |
-LL | fn capture_apit(x: &impl Sized) -> impl Sized {}
-   |                     ^^^^^^^^^^
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL - fn capture_apit(x: &impl Sized) -> impl Sized {}
 LL + fn capture_apit<T: Sized>(x: &T) -> impl Sized + use<T> {}
    |
+note: you could use a `use<...>` bound to explicitly specify captures, but argument-position `impl Trait`s are not nameable
+  --> $DIR/migration-note.rs:191:21
+   |
+LL | fn capture_apit(x: &impl Sized) -> impl Sized {}
+   |                     ^^^^^^^^^^
 help: consider cloning the value if the performance cost is acceptable
    |
 LL |     let y = capture_apit(&x.clone());

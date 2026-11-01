@@ -4,13 +4,13 @@ error[E0061]: this method takes 0 arguments but 1 argument was supplied
 LL |     Ok(42).unwrap("wow");
    |            ^^^^^^ ----- unexpected argument of type `&'static str`
    |
-note: method defined here
-  --> $SRC_DIR/core/src/result.rs:LL:COL
 help: did you mean to use `expect`?
    |
 LL -     Ok(42).unwrap("wow");
 LL +     Ok(42).expect("wow");
    |
+note: method defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
 
 error[E0061]: this method takes 0 arguments but 1 argument was supplied
   --> $DIR/expect-instead-of-unwrap.rs:4:14
@@ -18,13 +18,13 @@ error[E0061]: this method takes 0 arguments but 1 argument was supplied
 LL |     Some(42).unwrap("wow");
    |              ^^^^^^ ----- unexpected argument of type `&'static str`
    |
-note: method defined here
-  --> $SRC_DIR/core/src/option.rs:LL:COL
 help: did you mean to use `expect`?
    |
 LL -     Some(42).unwrap("wow");
 LL +     Some(42).expect("wow");
    |
+note: method defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error: aborting due to 2 previous errors
 

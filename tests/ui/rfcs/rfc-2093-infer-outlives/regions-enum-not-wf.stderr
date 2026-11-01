@@ -46,11 +46,11 @@ LL | enum RefDouble<'a, 'b, T> {
 LL |     RefDoubleVariant1(&'a RequireOutlives<'b, T>),
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit lifetime bound
    |
 LL | enum RefDouble<'a, 'b, T: 'b> {
    |                         ++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors
 

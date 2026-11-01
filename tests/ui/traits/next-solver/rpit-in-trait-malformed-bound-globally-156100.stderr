@@ -15,11 +15,11 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
 LL |     fn into_iter(&self) -> impl Iterator<X> {
    |                                 ^^^^^^^^ expected 0 generic arguments
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: turn the generic argument into an associated item binding
    |
 LL |     fn into_iter(&self) -> impl Iterator<Item = X> {
    |                                          ++++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/rpit-in-trait-malformed-bound-globally-156100.rs:6:33
@@ -27,11 +27,11 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
 LL |     fn into_iter(&self) -> impl Iterator<X> {
    |                                 ^^^^^^^^ expected 0 generic arguments
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: turn the generic argument into an associated item binding
    |
 LL |     fn into_iter(&self) -> impl Iterator<Item = X> {
    |                                          ++++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/rpit-in-trait-malformed-bound-globally-156100.rs:6:33
@@ -39,11 +39,11 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
 LL |     fn into_iter(&self) -> impl Iterator<X> {
    |                                 ^^^^^^^^ expected 0 generic arguments
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: turn the generic argument into an associated item binding
    |
 LL |     fn into_iter(&self) -> impl Iterator<Item = X> {
    |                                          ++++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0275]: overflow evaluating the requirement `impl Iterator == _`
   --> $DIR/rpit-in-trait-malformed-bound-globally-156100.rs:6:28

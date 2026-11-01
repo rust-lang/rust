@@ -25,15 +25,15 @@ LL |     bar(async move || {});
    = note: expected struct `Box<(dyn FnOnce() -> _ + 'static)>`
              found closure `{async closure@$DIR/dont-suggest-boxing-async-closure-body.rs:11:9: 11:22}`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     bar(Box::new(async move || {}));
+   |         +++++++++                +
 note: function defined here
   --> $DIR/dont-suggest-boxing-async-closure-body.rs:6:4
    |
 LL | fn bar<X>(x: Box<dyn FnOnce() -> X>) {}
    |    ^^^    -------------------------
-help: store this in the heap by calling `Box::new`
-   |
-LL |     bar(Box::new(async move || {}));
-   |         +++++++++                +
 
 error: aborting due to 2 previous errors
 

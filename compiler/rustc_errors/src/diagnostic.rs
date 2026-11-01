@@ -274,6 +274,19 @@ impl DiagInner {
         self.args.swap_remove(name);
     }
 
+    pub fn retain_children(&mut self, mut f: impl FnMut(&Subdiag) -> bool) {
+        let mut kept = Vec::with_capacity(self.children.len());
+        for child in &self.children {
+            kept.push(f(child));
+        }
+        for suggestion in self.suggestions.as_mut_slice() {
+            let end = suggestion.children_before.min(kept.len());
+            suggestion.children_before = kept[..end].iter().filter(|&&k| k).count();
+        }
+        let mut kept = kept.into_iter();
+        self.children.retain(|_| kept.next().unwrap());
+    }
+
     pub fn emitted_at_sub_diag(&self) -> Subdiag {
         let track = format!("-Ztrack-diagnostics: created at {}", self.emitted_at);
         Subdiag {
@@ -809,6 +822,7 @@ impl<'a> Diag<'a> {
             msg: msg.into(),
             style,
             applicability,
+            children_before: self.children.len(),
         });
         self
     }
@@ -889,6 +903,7 @@ impl<'a> Diag<'a> {
             msg: msg.into(),
             style,
             applicability,
+            children_before: self.children.len(),
         });
         self
     } }
@@ -954,6 +969,7 @@ impl<'a> Diag<'a> {
             msg: msg.into(),
             style,
             applicability,
+            children_before: self.children.len(),
         });
         self
     }
@@ -998,6 +1014,7 @@ impl<'a> Diag<'a> {
             msg: msg.into(),
             style: SuggestionStyle::ShowAlways,
             applicability,
+            children_before: self.children.len(),
         });
         self
     }

@@ -23,6 +23,10 @@ LL |         foo
    |
    = note: expected mutable reference `&mut _`
                         found fn item `fn() -> F {foo}`
+help: consider mutably borrowing here
+   |
+LL |         &mut foo
+   |         ++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:12:8
    |
@@ -30,10 +34,6 @@ LL | trait Trait: Sized {
 LL |     fn by_value(self) -> i32 { 1 }
 LL |     fn by_mut_ref(&mut self) -> i32 { 2 }
    |        ^^^^^^^^^^ ---------
-help: consider mutably borrowing here
-   |
-LL |         &mut foo
-   |         ++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:46:9
@@ -46,6 +46,10 @@ LL |         foo
    |
    = note: expected reference `&_`
                 found fn item `fn() -> F {foo}`
+help: consider borrowing here
+   |
+LL |         &foo
+   |         +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:13:8
    |
@@ -53,10 +57,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn by_ref(&self) -> i32 { 3 }
    |        ^^^^^^ -----
-help: consider borrowing here
-   |
-LL |         &foo
-   |         +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:85:22
@@ -69,6 +69,10 @@ LL |     reuse Trait::* { &mut self.0 }
    = note:         expected struct `Box<_>`
            found mutable reference `&mut F`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     reuse Trait::* { Box::new(&mut self.0) }
+   |                      +++++++++           +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -76,10 +80,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
-help: store this in the heap by calling `Box::new`
-   |
-LL |     reuse Trait::* { Box::new(&mut self.0) }
-   |                      +++++++++           +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:85:22
@@ -91,6 +91,10 @@ LL |     reuse Trait::* { &mut self.0 }
    |
    = note:         expected struct `Arc<_>`
            found mutable reference `&mut F`
+help: call `Into::into` on this expression to convert `&mut F` into `Arc<_>`
+   |
+LL |     reuse Trait::* { (&mut self.0).into() }
+   |                      +           ++++++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -98,10 +102,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
-help: call `Into::into` on this expression to convert `&mut F` into `Arc<_>`
-   |
-LL |     reuse Trait::* { (&mut self.0).into() }
-   |                      +           ++++++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:85:22
@@ -113,6 +113,10 @@ LL |     reuse Trait::* { &mut self.0 }
    |
    = note:         expected struct `Rc<_>`
            found mutable reference `&mut F`
+help: call `Into::into` on this expression to convert `&mut F` into `Rc<_>`
+   |
+LL |     reuse Trait::* { (&mut self.0).into() }
+   |                      +           ++++++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -120,10 +124,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
-help: call `Into::into` on this expression to convert `&mut F` into `Rc<_>`
-   |
-LL |     reuse Trait::* { (&mut self.0).into() }
-   |                      +           ++++++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:85:22
@@ -135,6 +135,10 @@ LL |     reuse Trait::* { &mut self.0 }
    |
    = note:         expected struct `Pin<Box<_>>`
            found mutable reference `&mut F`
+help: you need to pin and box this expression
+   |
+LL |     reuse Trait::* { Box::pin(&mut self.0) }
+   |                      +++++++++           +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -142,10 +146,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
-help: you need to pin and box this expression
-   |
-LL |     reuse Trait::* { Box::pin(&mut self.0) }
-   |                      +++++++++           +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:85:22
@@ -212,6 +212,10 @@ LL |     reuse Trait::* { &self.0 }
    = note: expected struct `Box<_>`
            found reference `&F`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     reuse Trait::* { Box::new(&self.0) }
+   |                      +++++++++       +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -219,10 +223,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
-help: store this in the heap by calling `Box::new`
-   |
-LL |     reuse Trait::* { Box::new(&self.0) }
-   |                      +++++++++       +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:101:22
@@ -234,6 +234,10 @@ LL |     reuse Trait::* { &self.0 }
    |
    = note: expected struct `Arc<_>`
            found reference `&F`
+help: call `Into::into` on this expression to convert `&F` into `Arc<_>`
+   |
+LL |     reuse Trait::* { (&self.0).into() }
+   |                      +       ++++++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -241,10 +245,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
-help: call `Into::into` on this expression to convert `&F` into `Arc<_>`
-   |
-LL |     reuse Trait::* { (&self.0).into() }
-   |                      +       ++++++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:101:22
@@ -256,6 +256,10 @@ LL |     reuse Trait::* { &self.0 }
    |
    = note: expected struct `Rc<_>`
            found reference `&F`
+help: call `Into::into` on this expression to convert `&F` into `Rc<_>`
+   |
+LL |     reuse Trait::* { (&self.0).into() }
+   |                      +       ++++++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -263,10 +267,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
-help: call `Into::into` on this expression to convert `&F` into `Rc<_>`
-   |
-LL |     reuse Trait::* { (&self.0).into() }
-   |                      +       ++++++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:101:22
@@ -278,6 +278,10 @@ LL |     reuse Trait::* { &self.0 }
    |
    = note: expected struct `Pin<Box<_>>`
            found reference `&F`
+help: you need to pin and box this expression
+   |
+LL |     reuse Trait::* { Box::pin(&self.0) }
+   |                      +++++++++       +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -285,10 +289,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
-help: you need to pin and box this expression
-   |
-LL |     reuse Trait::* { Box::pin(&self.0) }
-   |                      +++++++++       +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:101:22
@@ -355,6 +355,10 @@ LL |     reuse Trait::* { &&&&self.0 }
    = note: expected struct `Box<_>`
            found reference `&&&&F`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     reuse Trait::* { Box::new(&&&&self.0) }
+   |                      +++++++++          +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -362,10 +366,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
-help: store this in the heap by calling `Box::new`
-   |
-LL |     reuse Trait::* { Box::new(&&&&self.0) }
-   |                      +++++++++          +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:116:22
@@ -377,6 +377,10 @@ LL |     reuse Trait::* { &&&&self.0 }
    |
    = note: expected struct `Arc<_>`
            found reference `&&&&F`
+help: call `Into::into` on this expression to convert `&&&&F` into `Arc<_>`
+   |
+LL |     reuse Trait::* { (&&&&self.0).into() }
+   |                      +          ++++++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -384,10 +388,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
-help: call `Into::into` on this expression to convert `&&&&F` into `Arc<_>`
-   |
-LL |     reuse Trait::* { (&&&&self.0).into() }
-   |                      +          ++++++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:116:22
@@ -399,6 +399,10 @@ LL |     reuse Trait::* { &&&&self.0 }
    |
    = note: expected struct `Rc<_>`
            found reference `&&&&F`
+help: call `Into::into` on this expression to convert `&&&&F` into `Rc<_>`
+   |
+LL |     reuse Trait::* { (&&&&self.0).into() }
+   |                      +          ++++++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -406,10 +410,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
-help: call `Into::into` on this expression to convert `&&&&F` into `Rc<_>`
-   |
-LL |     reuse Trait::* { (&&&&self.0).into() }
-   |                      +          ++++++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:116:22
@@ -421,6 +421,10 @@ LL |     reuse Trait::* { &&&&self.0 }
    |
    = note: expected struct `Pin<Box<_>>`
            found reference `&&&&F`
+help: you need to pin and box this expression
+   |
+LL |     reuse Trait::* { Box::pin(&&&&self.0) }
+   |                      +++++++++          +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -428,10 +432,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
-help: you need to pin and box this expression
-   |
-LL |     reuse Trait::* { Box::pin(&&&&self.0) }
-   |                      +++++++++          +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:116:22
@@ -497,6 +497,11 @@ LL |     reuse Trait::* { self.0.as_ref() }
    |
    = note: expected struct `Box<_>`
            found reference `&F`
+help: try removing the method call
+   |
+LL -     reuse Trait::* { self.0.as_ref() }
+LL +     reuse Trait::* { self.0 }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -504,11 +509,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
-help: try removing the method call
-   |
-LL -     reuse Trait::* { self.0.as_ref() }
-LL +     reuse Trait::* { self.0 }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:131:22
@@ -520,6 +520,10 @@ LL |     reuse Trait::* { self.0.as_ref() }
    |
    = note: expected struct `Arc<_>`
            found reference `&F`
+help: call `Into::into` on this expression to convert `&F` into `Arc<_>`
+   |
+LL |     reuse Trait::* { self.0.as_ref().into() }
+   |                                     +++++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -527,10 +531,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
-help: call `Into::into` on this expression to convert `&F` into `Arc<_>`
-   |
-LL |     reuse Trait::* { self.0.as_ref().into() }
-   |                                     +++++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:131:22
@@ -542,6 +542,10 @@ LL |     reuse Trait::* { self.0.as_ref() }
    |
    = note: expected struct `Rc<_>`
            found reference `&F`
+help: call `Into::into` on this expression to convert `&F` into `Rc<_>`
+   |
+LL |     reuse Trait::* { self.0.as_ref().into() }
+   |                                     +++++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -549,10 +553,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
-help: call `Into::into` on this expression to convert `&F` into `Rc<_>`
-   |
-LL |     reuse Trait::* { self.0.as_ref().into() }
-   |                                     +++++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:131:22
@@ -564,6 +564,10 @@ LL |     reuse Trait::* { self.0.as_ref() }
    |
    = note: expected struct `Pin<Box<_>>`
            found reference `&F`
+help: you need to pin and box this expression
+   |
+LL |     reuse Trait::* { Box::pin(self.0.as_ref()) }
+   |                      +++++++++               +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -571,10 +575,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
-help: you need to pin and box this expression
-   |
-LL |     reuse Trait::* { Box::pin(self.0.as_ref()) }
-   |                      +++++++++               +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:131:22
@@ -641,6 +641,10 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
    = note:         expected struct `Box<_>`
            found mutable reference `&mut &mut &mut F`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     reuse Trait::* { Box::new(&mut &mut &mut self.0) }
+   |                      +++++++++                     +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -648,10 +652,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
-help: store this in the heap by calling `Box::new`
-   |
-LL |     reuse Trait::* { Box::new(&mut &mut &mut self.0) }
-   |                      +++++++++                     +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:146:22
@@ -663,6 +663,10 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |
    = note:         expected struct `Arc<_>`
            found mutable reference `&mut &mut &mut F`
+help: call `Into::into` on this expression to convert `&mut &mut &mut F` into `Arc<_>`
+   |
+LL |     reuse Trait::* { (&mut &mut &mut self.0).into() }
+   |                      +                     ++++++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -670,10 +674,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
-help: call `Into::into` on this expression to convert `&mut &mut &mut F` into `Arc<_>`
-   |
-LL |     reuse Trait::* { (&mut &mut &mut self.0).into() }
-   |                      +                     ++++++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:146:22
@@ -685,6 +685,10 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |
    = note:         expected struct `Rc<_>`
            found mutable reference `&mut &mut &mut F`
+help: call `Into::into` on this expression to convert `&mut &mut &mut F` into `Rc<_>`
+   |
+LL |     reuse Trait::* { (&mut &mut &mut self.0).into() }
+   |                      +                     ++++++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -692,10 +696,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
-help: call `Into::into` on this expression to convert `&mut &mut &mut F` into `Rc<_>`
-   |
-LL |     reuse Trait::* { (&mut &mut &mut self.0).into() }
-   |                      +                     ++++++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:146:22
@@ -707,6 +707,10 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
    |
    = note:         expected struct `Pin<Box<_>>`
            found mutable reference `&mut &mut &mut F`
+help: you need to pin and box this expression
+   |
+LL |     reuse Trait::* { Box::pin(&mut &mut &mut self.0) }
+   |                      +++++++++                     +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -714,10 +718,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
-help: you need to pin and box this expression
-   |
-LL |     reuse Trait::* { Box::pin(&mut &mut &mut self.0) }
-   |                      +++++++++                     +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:146:22
@@ -784,6 +784,10 @@ LL |     reuse Trait::* { &&mut self.0 }
    = note: expected struct `Box<_>`
            found reference `&&mut F`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     reuse Trait::* { Box::new(&&mut self.0) }
+   |                      +++++++++            +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -791,10 +795,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
-help: store this in the heap by calling `Box::new`
-   |
-LL |     reuse Trait::* { Box::new(&&mut self.0) }
-   |                      +++++++++            +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:162:22
@@ -806,6 +806,10 @@ LL |     reuse Trait::* { &&mut self.0 }
    |
    = note: expected struct `Arc<_>`
            found reference `&&mut F`
+help: call `Into::into` on this expression to convert `&&mut F` into `Arc<_>`
+   |
+LL |     reuse Trait::* { (&&mut self.0).into() }
+   |                      +            ++++++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -813,10 +817,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
-help: call `Into::into` on this expression to convert `&&mut F` into `Arc<_>`
-   |
-LL |     reuse Trait::* { (&&mut self.0).into() }
-   |                      +            ++++++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:162:22
@@ -828,6 +828,10 @@ LL |     reuse Trait::* { &&mut self.0 }
    |
    = note: expected struct `Rc<_>`
            found reference `&&mut F`
+help: call `Into::into` on this expression to convert `&&mut F` into `Rc<_>`
+   |
+LL |     reuse Trait::* { (&&mut self.0).into() }
+   |                      +            ++++++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -835,10 +839,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
-help: call `Into::into` on this expression to convert `&&mut F` into `Rc<_>`
-   |
-LL |     reuse Trait::* { (&&mut self.0).into() }
-   |                      +            ++++++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:162:22
@@ -850,6 +850,10 @@ LL |     reuse Trait::* { &&mut self.0 }
    |
    = note: expected struct `Pin<Box<_>>`
            found reference `&&mut F`
+help: you need to pin and box this expression
+   |
+LL |     reuse Trait::* { Box::pin(&&mut self.0) }
+   |                      +++++++++            +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -857,10 +861,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
-help: you need to pin and box this expression
-   |
-LL |     reuse Trait::* { Box::pin(&&mut self.0) }
-   |                      +++++++++            +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:162:22
@@ -926,6 +926,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Arc<_>`
               found struct `Box<F>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -933,11 +938,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:179:22
@@ -949,6 +949,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Rc<_>`
               found struct `Box<F>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -956,11 +961,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:179:22
@@ -972,6 +972,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Pin<Box<_>>`
               found struct `Box<F>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -979,11 +984,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:179:22
@@ -995,6 +995,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Pin<Rc<_>>`
               found struct `Box<F>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
@@ -1002,11 +1007,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:179:22
@@ -1018,6 +1018,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Pin<Arc<_>>`
               found struct `Box<F>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
@@ -1025,11 +1030,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:179:22
@@ -1055,6 +1055,11 @@ LL | struct X6(Box<F>);
    |        this struct is accessible through auto-deref
    = note: expected struct `Box<Box<_>>`
               found struct `Box<F>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
@@ -1062,11 +1067,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:191:22
@@ -1078,6 +1078,10 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Arc<_>`
               found struct `Box<Arc<Box<F>>>`
+help: consider unboxing the value
+   |
+LL |     reuse Trait::* { *self.0 }
+   |                      +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -1085,10 +1089,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
-help: consider unboxing the value
-   |
-LL |     reuse Trait::* { *self.0 }
-   |                      +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:191:22
@@ -1100,6 +1100,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Rc<_>`
               found struct `Box<Arc<Box<F>>>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -1107,11 +1112,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:191:22
@@ -1123,6 +1123,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Pin<Box<_>>`
               found struct `Box<Arc<Box<F>>>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -1130,11 +1135,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:191:22
@@ -1146,6 +1146,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Pin<Rc<_>>`
               found struct `Box<Arc<Box<F>>>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
@@ -1153,11 +1158,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:191:22
@@ -1169,6 +1169,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Pin<Arc<_>>`
               found struct `Box<Arc<Box<F>>>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
@@ -1176,11 +1181,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:191:22
@@ -1206,6 +1206,11 @@ LL | struct X7(Box<Arc<Box<F>>>);
    |        this struct is accessible through auto-deref
    = note: expected struct `Box<Box<_>>`
               found struct `Box<Arc<Box<F>>>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
@@ -1213,11 +1218,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:206:22
@@ -1243,6 +1243,11 @@ LL | struct X8(Pin<Box<F>>);
    |        this struct is accessible through auto-deref
    = note: expected struct `Box<_>`
               found struct `Pin<Box<F>>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -1250,11 +1255,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:206:22
@@ -1266,6 +1266,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Arc<_>`
               found struct `Pin<Box<F>>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -1273,11 +1278,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:206:22
@@ -1289,6 +1289,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Rc<_>`
               found struct `Pin<Box<F>>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -1296,11 +1301,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:206:22
@@ -1312,6 +1312,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Pin<Rc<_>>`
               found struct `Pin<Box<F>>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
@@ -1319,11 +1324,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:206:22
@@ -1335,6 +1335,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Pin<Arc<_>>`
               found struct `Pin<Box<F>>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
@@ -1342,11 +1347,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:206:22
@@ -1372,6 +1372,11 @@ LL | struct X8(Pin<Box<F>>);
    |        this struct is accessible through auto-deref
    = note: expected struct `Box<Box<_>>`
               found struct `Pin<Box<F>>`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
@@ -1379,11 +1384,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0277]: the trait bound `OtherStruct: Trait` is not satisfied
   --> $DIR/self-coercion-errors.rs:222:22
@@ -1414,6 +1414,10 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected mutable reference `&mut _`
                          found struct `OtherStruct`
+help: consider mutably borrowing here
+   |
+LL |     reuse Trait::* { &mut self.0 }
+   |                      ++++
 note: method defined here
   --> $DIR/self-coercion-errors.rs:12:8
    |
@@ -1421,10 +1425,6 @@ LL | trait Trait: Sized {
 LL |     fn by_value(self) -> i32 { 1 }
 LL |     fn by_mut_ref(&mut self) -> i32 { 2 }
    |        ^^^^^^^^^^ ---------
-help: consider mutably borrowing here
-   |
-LL |     reuse Trait::* { &mut self.0 }
-   |                      ++++
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:222:22
@@ -1436,6 +1436,10 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected reference `&_`
                  found struct `OtherStruct`
+help: consider borrowing here
+   |
+LL |     reuse Trait::* { &self.0 }
+   |                      +
 note: method defined here
   --> $DIR/self-coercion-errors.rs:13:8
    |
@@ -1443,10 +1447,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn by_ref(&self) -> i32 { 3 }
    |        ^^^^^^ -----
-help: consider borrowing here
-   |
-LL |     reuse Trait::* { &self.0 }
-   |                      +
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:222:22
@@ -1472,6 +1472,11 @@ LL | struct X9(OtherStruct);
    |        this struct is accessible through auto-deref
    = note: expected struct `Box<_>`
               found struct `OtherStruct`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
@@ -1479,11 +1484,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:222:22
@@ -1495,6 +1495,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Arc<_>`
               found struct `OtherStruct`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
@@ -1502,11 +1507,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:222:22
@@ -1518,6 +1518,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Rc<_>`
               found struct `OtherStruct`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
@@ -1525,11 +1530,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:222:22
@@ -1541,6 +1541,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Pin<Box<_>>`
               found struct `OtherStruct`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
@@ -1548,11 +1553,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:222:22
@@ -1564,6 +1564,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Pin<Rc<_>>`
               found struct `OtherStruct`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
@@ -1571,11 +1576,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:222:22
@@ -1587,6 +1587,11 @@ LL |     reuse Trait::* { self.0 }
    |
    = note: expected struct `Pin<Arc<_>>`
               found struct `OtherStruct`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
@@ -1594,11 +1599,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-errors.rs:222:22
@@ -1624,6 +1624,11 @@ LL | struct X9(OtherStruct);
    |        this struct is accessible through auto-deref
    = note: expected struct `Box<Box<_>>`
               found struct `OtherStruct`
+help: consider removing the tuple struct field `0`
+   |
+LL -     reuse Trait::* { self.0 }
+LL +     reuse Trait::* { self }
+   |
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
@@ -1631,11 +1636,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
-help: consider removing the tuple struct field `0`
-   |
-LL -     reuse Trait::* { self.0 }
-LL +     reuse Trait::* { self }
-   |
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/self-coercion-errors.rs:61:9
@@ -1689,11 +1689,11 @@ error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
 LL |         &mut x
    |         ^^^^^^ cannot borrow as mutable
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider changing this to be mutable
    |
 LL |         let mut x = foo();
    |             +++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/self-coercion-errors.rs:74:9
@@ -1701,11 +1701,11 @@ error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
 LL |         &mut x
    |         ^^^^^^ cannot borrow as mutable
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider changing this to be mutable
    |
 LL |         let mut x = foo();
    |             +++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0507]: cannot move out of a mutable reference
   --> $DIR/self-coercion-errors.rs:85:22
@@ -1984,14 +1984,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |              ^^^^
-note: if `F` implemented `Clone`, you could clone the value
-  --> $DIR/self-coercion-errors.rs:23:1
-   |
-LL | struct F;
-   | ^^^^^^^^ consider implementing `Clone` for this type
-...
-LL |     reuse Trait::* { self.0 }
-   |                      ------ you could clone this value
 help: you could `clone` the value and consume it, if the `F: Clone` trait bound could be satisfied
    |
 LL |     reuse Trait::* { <Box<F> as Clone>::clone(&self.0) }
@@ -2001,6 +1993,14 @@ help: consider annotating `F` with `#[derive(Clone)]`
 LL + #[derive(Clone)]
 LL | struct F;
    |
+note: if `F` implemented `Clone`, you could clone the value
+  --> $DIR/self-coercion-errors.rs:23:1
+   |
+LL | struct F;
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     reuse Trait::* { self.0 }
+   |                      ------ you could clone this value
 
 error[E0507]: cannot move out of dereference of `Pin<Box<F>>`
   --> $DIR/self-coercion-errors.rs:206:22
@@ -2048,14 +2048,6 @@ LL | trait Trait: Sized {
 ...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |                ^^^^
-note: if `F` implemented `Clone`, you could clone the value
-  --> $DIR/self-coercion-errors.rs:23:1
-   |
-LL | struct F;
-   | ^^^^^^^^ consider implementing `Clone` for this type
-...
-LL |     reuse Trait::* { self.0 }
-   |                      ------ you could clone this value
 help: you could `clone` the value and consume it, if the `F: Clone` trait bound could be satisfied
    |
 LL |     reuse Trait::* { <Pin<Box<F>> as Clone>::clone(&self.0) }
@@ -2065,6 +2057,14 @@ help: consider annotating `F` with `#[derive(Clone)]`
 LL + #[derive(Clone)]
 LL | struct F;
    |
+note: if `F` implemented `Clone`, you could clone the value
+  --> $DIR/self-coercion-errors.rs:23:1
+   |
+LL | struct F;
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     reuse Trait::* { self.0 }
+   |                      ------ you could clone this value
 
 error: aborting due to 100 previous errors
 

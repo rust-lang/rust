@@ -15,11 +15,11 @@ error: `[const]` can only be applied to `const` traits
 LL | const fn perform<T: [const] NonConst>() {}
    |                     ^^^^^^^ can't be applied to `NonConst`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: mark `NonConst` as `const` to allow it to have `const` implementations
    |
 LL | const trait NonConst {}
    | +++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `const` can only be applied to `const` traits
   --> $DIR/const-bounds-non-const-trait.rs:10:15

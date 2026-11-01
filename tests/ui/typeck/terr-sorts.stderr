@@ -8,15 +8,15 @@ LL |     want_foo(b);
    |
    = note: expected struct `Foo`
               found struct `Box<Foo>`
+help: consider unboxing the value
+   |
+LL |     want_foo(*b);
+   |              +
 note: function defined here
   --> $DIR/terr-sorts.rs:10:4
    |
 LL | fn want_foo(f: Foo) {}
    |    ^^^^^^^^ ------
-help: consider unboxing the value
-   |
-LL |     want_foo(*b);
-   |              +
 
 error: aborting due to 1 previous error
 

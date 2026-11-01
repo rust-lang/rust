@@ -22,11 +22,11 @@ LL |     v.push(0);
 LL |     v.push(0);
    |     - cannot borrow as mutable
    |
-   = note: ...and 5 other attempted mutable borrows
 help: consider changing this to be mutable
    |
 LL |     let mut v = Vec::new();
    |         +++
+   = note: ...and 5 other attempted mutable borrows
 
 error: aborting due to 1 previous error
 

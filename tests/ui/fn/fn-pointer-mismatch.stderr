@@ -35,9 +35,9 @@ LL |     b = Box::new(bar);
    = note: expected fn item `fn(_) -> _ {foo}`
               found fn item `fn(_) -> _ {bar}`
    = note: different fn items have unique types, even if their signatures are the same
+   = help: consider casting both fn items to fn pointers using `as fn(u32) -> u32`
 note: associated function defined here
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
-   = help: consider casting both fn items to fn pointers using `as fn(u32) -> u32`
 
 error[E0308]: mismatched types
   --> $DIR/fn-pointer-mismatch.rs:38:29

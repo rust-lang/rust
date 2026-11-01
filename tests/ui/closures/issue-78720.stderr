@@ -42,7 +42,6 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn map2<F>(self, f: F) -> Map2<F> {}
    |                ^^^^ doesn't have a size known at compile-time
    |
-   = help: unsized fn params are gated as an unstable feature
 help: consider further restricting `Self`
    |
 LL |     fn map2<F>(self, f: F) -> Map2<F> where Self: Sized {}
@@ -51,6 +50,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL |     fn map2<F>(&self, f: F) -> Map2<F> {}
    |                +
+   = help: unsized fn params are gated as an unstable feature
 
 error: aborting due to 5 previous errors
 

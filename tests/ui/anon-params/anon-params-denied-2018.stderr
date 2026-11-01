@@ -4,7 +4,6 @@ error: expected one of `:`, `@`, or `|`, found `)`
 LL |     fn foo(i32);
    |               ^ expected one of `:`, `@`, or `|`
    |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: if this is a `self` type, give it a parameter name
    |
 LL |     fn foo(self: i32);
@@ -17,6 +16,7 @@ help: if this is a type, explicitly ignore the parameter name
    |
 LL |     fn foo(_: i32);
    |            ++
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 
 error: expected one of `:`, `@`, or `|`, found `)`
   --> $DIR/anon-params-denied-2018.rs:9:29
@@ -24,7 +24,6 @@ error: expected one of `:`, `@`, or `|`, found `)`
 LL |     fn foo_with_ref(&mut i32);
    |                             ^ expected one of `:`, `@`, or `|`
    |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: if this is a `self` type, give it a parameter name
    |
 LL |     fn foo_with_ref(self: &mut i32);
@@ -38,6 +37,7 @@ help: if this is a type, explicitly ignore the parameter name
    |
 LL |     fn foo_with_ref(_: &mut i32);
    |                     ++
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 
 error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
   --> $DIR/anon-params-denied-2018.rs:12:47
@@ -45,11 +45,11 @@ error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)
 LL |     fn foo_with_qualified_path(<Bar as T>::Baz);
    |                                               ^ expected one of 8 possible tokens
    |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: explicitly ignore the parameter name
    |
 LL |     fn foo_with_qualified_path(_: <Bar as T>::Baz);
    |                                ++
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 
 error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
   --> $DIR/anon-params-denied-2018.rs:15:56
@@ -57,11 +57,11 @@ error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)
 LL |     fn foo_with_qualified_path_and_ref(&<Bar as T>::Baz);
    |                                                        ^ expected one of 8 possible tokens
    |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: explicitly ignore the parameter name
    |
 LL |     fn foo_with_qualified_path_and_ref(_: &<Bar as T>::Baz);
    |                                        ++
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 
 error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `,`
   --> $DIR/anon-params-denied-2018.rs:18:57
@@ -69,11 +69,11 @@ error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `,
 LL |     fn foo_with_multiple_qualified_paths(<Bar as T>::Baz, <Bar as T>::Baz);
    |                                                         ^ expected one of 8 possible tokens
    |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: explicitly ignore the parameter name
    |
 LL |     fn foo_with_multiple_qualified_paths(_: <Bar as T>::Baz, <Bar as T>::Baz);
    |                                          ++
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 
 error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
   --> $DIR/anon-params-denied-2018.rs:18:74
@@ -81,11 +81,11 @@ error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)
 LL |     fn foo_with_multiple_qualified_paths(<Bar as T>::Baz, <Bar as T>::Baz);
    |                                                                          ^ expected one of 8 possible tokens
    |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: explicitly ignore the parameter name
    |
 LL |     fn foo_with_multiple_qualified_paths(<Bar as T>::Baz, _: <Bar as T>::Baz);
    |                                                           ++
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 
 error: expected one of `:`, `@`, or `|`, found `,`
   --> $DIR/anon-params-denied-2018.rs:22:36
@@ -93,7 +93,6 @@ error: expected one of `:`, `@`, or `|`, found `,`
 LL |     fn bar_with_default_impl(String, String) {}
    |                                    ^ expected one of `:`, `@`, or `|`
    |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: if this is a `self` type, give it a parameter name
    |
 LL |     fn bar_with_default_impl(self: String, String) {}
@@ -106,6 +105,7 @@ help: if this is a type, explicitly ignore the parameter name
    |
 LL |     fn bar_with_default_impl(_: String, String) {}
    |                              ++
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 
 error: expected one of `:`, `@`, or `|`, found `)`
   --> $DIR/anon-params-denied-2018.rs:22:44
@@ -113,7 +113,6 @@ error: expected one of `:`, `@`, or `|`, found `)`
 LL |     fn bar_with_default_impl(String, String) {}
    |                                            ^ expected one of `:`, `@`, or `|`
    |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: if this is a parameter name, give it a type
    |
 LL |     fn bar_with_default_impl(String, String: TypeName) {}
@@ -122,6 +121,7 @@ help: if this is a type, explicitly ignore the parameter name
    |
 LL |     fn bar_with_default_impl(String, _: String) {}
    |                                      ++
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 
 error: expected one of `:`, `@`, or `|`, found `,`
   --> $DIR/anon-params-denied-2018.rs:27:22
@@ -129,7 +129,6 @@ error: expected one of `:`, `@`, or `|`, found `,`
 LL |     fn baz(a:usize, b, c: usize) -> usize {
    |                      ^ expected one of `:`, `@`, or `|`
    |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: if this is a parameter name, give it a type
    |
 LL |     fn baz(a:usize, b: TypeName, c: usize) -> usize {
@@ -138,6 +137,7 @@ help: if this is a type, explicitly ignore the parameter name
    |
 LL |     fn baz(a:usize, _: b, c: usize) -> usize {
    |                     ++
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 
 error: aborting due to 9 previous errors
 

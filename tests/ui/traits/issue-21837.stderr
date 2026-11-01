@@ -4,15 +4,15 @@ error[E0277]: the trait bound `T: Bound` is not satisfied
 LL | impl<T> Trait2 for Foo<T> {}
    |                    ^^^^^^ the trait `Bound` is not implemented for `T`
    |
+help: consider restricting type parameter `T` with trait `Bound`
+   |
+LL | impl<T: Bound> Trait2 for Foo<T> {}
+   |       +++++++
 note: required by a bound in `Foo`
   --> $DIR/issue-21837.rs:2:19
    |
 LL | pub struct Foo<T: Bound>(T);
    |                   ^^^^^ required by this bound in `Foo`
-help: consider restricting type parameter `T` with trait `Bound`
-   |
-LL | impl<T: Bound> Trait2 for Foo<T> {}
-   |       +++++++
 
 error: aborting due to 1 previous error
 

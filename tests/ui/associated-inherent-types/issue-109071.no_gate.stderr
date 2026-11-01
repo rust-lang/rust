@@ -10,15 +10,15 @@ error[E0107]: missing generics for struct `Windows`
 LL | impl<T> Windows {
    |         ^^^^^^^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL | impl<T> Windows<T> {
+   |                +++
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/issue-109071.rs:5:8
    |
 LL | struct Windows<T> { t: T }
    |        ^^^^^^^ -
-help: add missing generic argument
-   |
-LL | impl<T> Windows<T> {
-   |                +++
 
 error[E0223]: ambiguous associated type
   --> $DIR/issue-109071.rs:15:22

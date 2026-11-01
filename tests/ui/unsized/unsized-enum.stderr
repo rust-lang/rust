@@ -6,6 +6,11 @@ LL | fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
    |         |
    |         this type parameter needs to be `Sized`
    |
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
+LL + fn foo2<T>() { not_sized::<Foo<T>>() }
+   |
 note: required by an implicit `Sized` bound in `Foo`
   --> $DIR/unsized-enum.rs:4:10
    |
@@ -18,11 +23,6 @@ LL | enum Foo<U> { FooSome(U), FooNone }
    |          ^            - ...if indirection were used here: `Box<U>`
    |          |
    |          this could be changed to `U: ?Sized`...
-help: consider removing the `?Sized` bound to make the type parameter `Sized`
-   |
-LL - fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
-LL + fn foo2<T>() { not_sized::<Foo<T>>() }
-   |
 
 error: aborting due to 1 previous error
 

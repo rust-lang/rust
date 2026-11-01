@@ -16,11 +16,11 @@ LL |     fn foo<T: Default>() -> Self::E {
 LL |         (S::default(), T::default())
    |         ---------------------------- return type was inferred to be `(S, T)` here
    |
-   = note: required because it appears within the type `(S, T)`
 help: consider further restricting type parameter `S` with trait `Copy`
    |
 LL | impl<S: Default + std::marker::Copy> Bar for S {
    |                 +++++++++++++++++++
+   = note: required because it appears within the type `(S, T)`
 
 error[E0277]: the trait bound `T: Copy` is not satisfied in `(S, T)`
   --> $DIR/issue-55872-1.rs:12:29
@@ -31,11 +31,11 @@ LL |     fn foo<T: Default>() -> Self::E {
 LL |         (S::default(), T::default())
    |         ---------------------------- return type was inferred to be `(S, T)` here
    |
-   = note: required because it appears within the type `(S, T)`
 help: consider further restricting type parameter `T` with trait `Copy`
    |
 LL |     fn foo<T: Default + std::marker::Copy>() -> Self::E {
    |                       +++++++++++++++++++
+   = note: required because it appears within the type `(S, T)`
 
 error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
   --> $DIR/issue-55872-1.rs:12:29

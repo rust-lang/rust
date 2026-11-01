@@ -9,15 +9,15 @@ LL |                 $a == $b
 LL |         cmp!(a, b);
    |         ---------- in this macro invocation
    |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |         let _ = cmp!(a, b);
+   |         +++++++
 note: the lint level is defined here
   --> $DIR/must-use-macros.rs:9:9
    |
 LL | #![warn(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |         let _ = cmp!(a, b);
-   |         +++++++
 
 warning: unused comparison that must be used
   --> $DIR/must-use-macros.rs:41:17

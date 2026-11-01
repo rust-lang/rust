@@ -7,16 +7,16 @@ LL |     let closure = move || {
 LL |     closure.clone();
    |             ^^^^^ within `{closure@$DIR/closure-clone-requires-captured-clone.rs:14:19: 14:26}`, the trait `Clone` is not implemented for `NonClone`
    |
-note: required because `captured_value` is used within this closure
-  --> $DIR/closure-clone-requires-captured-clone.rs:15:17
-   |
-LL |         let _ = captured_value.0;
-   |                 ^^^^^^^^^^^^^^
 help: consider annotating `NonClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
 LL | struct NonClone(i32);
    |
+note: required because `captured_value` is used within this closure
+  --> $DIR/closure-clone-requires-captured-clone.rs:15:17
+   |
+LL |         let _ = captured_value.0;
+   |                 ^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

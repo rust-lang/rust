@@ -6,12 +6,12 @@ LL |     let _x: (i32,) = (5);
    |             |
    |             expected due to this
    |
-   = note: expected tuple `(i32,)`
-               found type `{integer}`
 help: use a trailing comma to create a tuple with one element
    |
 LL |     let _x: (i32,) = (5,);
    |                        +
+   = note: expected tuple `(i32,)`
+               found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/issue-86100-tuple-paren-comma.rs:13:9
@@ -21,6 +21,10 @@ LL |     foo((Some(3)));
    |     |
    |     arguments to this function are incorrect
    |
+help: use a trailing comma to create a tuple with one element
+   |
+LL |     foo((Some(3),));
+   |                 +
    = note: expected tuple `(_,)`
                found enum `Option<{integer}>`
 note: function defined here
@@ -28,10 +32,6 @@ note: function defined here
    |
 LL | fn foo<T>(_t: (T,)) {}
    |    ^^^    --------
-help: use a trailing comma to create a tuple with one element
-   |
-LL |     foo((Some(3),));
-   |                 +
 
 error[E0308]: mismatched types
   --> $DIR/issue-86100-tuple-paren-comma.rs:17:22
@@ -39,12 +39,12 @@ error[E0308]: mismatched types
 LL |     let _s = S { _s: ("abc".to_string()) };
    |                      ^^^^^^^^^^^^^^^^^^^ expected `(String,)`, found `String`
    |
-   = note: expected tuple `(String,)`
-             found struct `String`
 help: use a trailing comma to create a tuple with one element
    |
 LL |     let _s = S { _s: ("abc".to_string(),) };
    |                                        +
+   = note: expected tuple `(String,)`
+             found struct `String`
 
 error[E0308]: mismatched types
   --> $DIR/issue-86100-tuple-paren-comma.rs:23:22

@@ -4,6 +4,10 @@ error[E0277]: `T` cannot be sent between threads safely
 LL |     let a = &t as &dyn Gettable<T>;
    |             ^^ `T` cannot be sent between threads safely
    |
+help: consider restricting type parameter `T` with trait `Send`
+   |
+LL | fn f<T: std::marker::Send>(val: T) {
+   |       +++++++++++++++++++
 note: required for `S<T>` to implement `Gettable<T>`
   --> $DIR/copy-bounds-impl-type-params.rs:14:32
    |
@@ -12,10 +16,6 @@ LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
    |         |
    |         unsatisfied trait bound introduced here
    = note: required for the cast from `&S<T>` to `&dyn Gettable<T>`
-help: consider restricting type parameter `T` with trait `Send`
-   |
-LL | fn f<T: std::marker::Send>(val: T) {
-   |       +++++++++++++++++++
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/copy-bounds-impl-type-params.rs:18:13
@@ -23,6 +23,10 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     let a = &t as &dyn Gettable<T>;
    |             ^^ the trait `Copy` is not implemented for `T`
    |
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | fn f<T: std::marker::Copy>(val: T) {
+   |       +++++++++++++++++++
 note: required for `S<T>` to implement `Gettable<T>`
   --> $DIR/copy-bounds-impl-type-params.rs:14:32
    |
@@ -31,10 +35,6 @@ LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
    |                |
    |                unsatisfied trait bound introduced here
    = note: required for the cast from `&S<T>` to `&dyn Gettable<T>`
-help: consider restricting type parameter `T` with trait `Copy`
-   |
-LL | fn f<T: std::marker::Copy>(val: T) {
-   |       +++++++++++++++++++
 
 error[E0277]: `T` cannot be sent between threads safely
   --> $DIR/copy-bounds-impl-type-params.rs:25:31
@@ -42,6 +42,10 @@ error[E0277]: `T` cannot be sent between threads safely
 LL |     let a: &dyn Gettable<T> = &t;
    |                               ^^ `T` cannot be sent between threads safely
    |
+help: consider restricting type parameter `T` with trait `Send`
+   |
+LL | fn g<T: std::marker::Send>(val: T) {
+   |       +++++++++++++++++++
 note: required for `S<T>` to implement `Gettable<T>`
   --> $DIR/copy-bounds-impl-type-params.rs:14:32
    |
@@ -50,10 +54,6 @@ LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
    |         |
    |         unsatisfied trait bound introduced here
    = note: required for the cast from `&S<T>` to `&dyn Gettable<T>`
-help: consider restricting type parameter `T` with trait `Send`
-   |
-LL | fn g<T: std::marker::Send>(val: T) {
-   |       +++++++++++++++++++
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/copy-bounds-impl-type-params.rs:25:31
@@ -61,6 +61,10 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     let a: &dyn Gettable<T> = &t;
    |                               ^^ the trait `Copy` is not implemented for `T`
    |
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | fn g<T: std::marker::Copy>(val: T) {
+   |       +++++++++++++++++++
 note: required for `S<T>` to implement `Gettable<T>`
   --> $DIR/copy-bounds-impl-type-params.rs:14:32
    |
@@ -69,10 +73,6 @@ LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
    |                |
    |                unsatisfied trait bound introduced here
    = note: required for the cast from `&S<T>` to `&dyn Gettable<T>`
-help: consider restricting type parameter `T` with trait `Copy`
-   |
-LL | fn g<T: std::marker::Copy>(val: T) {
-   |       +++++++++++++++++++
 
 error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/copy-bounds-impl-type-params.rs:38:13
@@ -102,6 +102,11 @@ error[E0277]: the trait bound `Foo: Copy` is not satisfied
 LL |     let a: Box<dyn Gettable<Foo>> = t;
    |                                     ^ the trait `Copy` is not implemented for `Foo`
    |
+help: consider annotating `Foo` with `#[derive(Copy)]`
+   |
+LL +     #[derive(Copy)]
+LL |     struct Foo; // does not impl Copy
+   |
 help: the trait `Gettable<T>` is conditionally implemented for `S<T>`
   --> $DIR/copy-bounds-impl-type-params.rs:14:1
    |
@@ -117,11 +122,6 @@ LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
    |                |
    |                unsatisfied trait bound introduced here
    = note: required for the cast from `Box<S<Foo>>` to `Box<dyn Gettable<Foo>>`
-help: consider annotating `Foo` with `#[derive(Copy)]`
-   |
-LL +     #[derive(Copy)]
-LL |     struct Foo; // does not impl Copy
-   |
 
 error: lifetime may not live long enough
   --> $DIR/copy-bounds-impl-type-params.rs:32:13

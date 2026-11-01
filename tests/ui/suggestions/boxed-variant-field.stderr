@@ -8,15 +8,15 @@ LL |         Ty::List(elem) => foo(elem),
    |
    = note: expected enum `Ty`
             found struct `Box<Ty>`
+help: consider unboxing the value
+   |
+LL |         Ty::List(elem) => foo(*elem),
+   |                               +
 note: function defined here
   --> $DIR/boxed-variant-field.rs:6:4
    |
 LL | fn foo(x: Ty) -> Ty {
    |    ^^^ -----
-help: consider unboxing the value
-   |
-LL |         Ty::List(elem) => foo(*elem),
-   |                               +
 
 error: aborting due to 1 previous error
 

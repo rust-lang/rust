@@ -37,7 +37,6 @@ LL | |     }
    |
    = note: expected unit type `()`
                    found enum `Result<(), std::fmt::Error>`
-   = note: this error originates in the macro `writeln` which comes from the expansion of the macro `baz` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you might have meant to return this value
    |
 LL |         return baz!(w);
@@ -46,6 +45,7 @@ help: use the `?` operator to extract the `Result<(), std::fmt::Error>` value, p
    |
 LL |         writeln!($w, "but not here")?
    |                                     +
+   = note: this error originates in the macro `writeln` which comes from the expansion of the macro `baz` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

@@ -19,12 +19,12 @@ LL | impl<T: Grault> Grault for (T,)
 ...
 LL |     Self::A: Baz,
    |              --- unsatisfied trait bound introduced here
-   = note: 1 redundant requirement hidden
-   = note: required for `(T,)` to implement `Grault`
 help: associated type for the current `impl` cannot be restricted in `where` clauses, remove this bound
    |
 LL -     Self::A: Baz,
    |
+   = note: 1 redundant requirement hidden
+   = note: required for `(T,)` to implement `Grault`
 
 error: aborting due to 1 previous error
 

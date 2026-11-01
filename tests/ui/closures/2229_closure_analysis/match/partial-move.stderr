@@ -7,6 +7,10 @@ LL |
 LL |         match x {
    |               - `x.0` is borrowed here
    |
+help: to force the closure to take ownership of `x.0` (and any other referenced variables), use the `move` keyword
+   |
+LL |     move || {
+   |     ++++
 note: closure is returned here
   --> $DIR/partial-move.rs:35:5
    |
@@ -17,10 +21,6 @@ LL | |             Enum::A(a, b) => {
 ...  |
 LL | |     }
    | |_____^
-help: to force the closure to take ownership of `x.0` (and any other referenced variables), use the `move` keyword
-   |
-LL |     move || {
-   |     ++++
 
 error[E0373]: closure may outlive the current function, but it borrows `x.0`, which is owned by the current function
   --> $DIR/partial-move.rs:47:5
@@ -31,6 +31,10 @@ LL |
 LL |         match x {
    |               - `x.0` is borrowed here
    |
+help: to force the closure to take ownership of `x.0` (and any other referenced variables), use the `move` keyword
+   |
+LL |     move || {
+   |     ++++
 note: closure is returned here
   --> $DIR/partial-move.rs:47:5
    |
@@ -41,10 +45,6 @@ LL | |             Enum::A(a, b) => {
 ...  |
 LL | |     }
    | |_____^
-help: to force the closure to take ownership of `x.0` (and any other referenced variables), use the `move` keyword
-   |
-LL |     move || {
-   |     ++++
 
 error[E0373]: closure may outlive the current function, but it borrows `x.0`, which is owned by the current function
   --> $DIR/partial-move.rs:59:5
@@ -55,6 +55,10 @@ LL |
 LL |         match x {
    |               - `x.0` is borrowed here
    |
+help: to force the closure to take ownership of `x.0` (and any other referenced variables), use the `move` keyword
+   |
+LL |     move || {
+   |     ++++
 note: closure is returned here
   --> $DIR/partial-move.rs:59:5
    |
@@ -65,10 +69,6 @@ LL | |             Struct(a, b) => {
 ...  |
 LL | |     }
    | |_____^
-help: to force the closure to take ownership of `x.0` (and any other referenced variables), use the `move` keyword
-   |
-LL |     move || {
-   |     ++++
 
 error: aborting due to 3 previous errors
 

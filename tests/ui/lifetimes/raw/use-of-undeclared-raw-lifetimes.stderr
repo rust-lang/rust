@@ -26,12 +26,12 @@ error[E0261]: use of undeclared lifetime name `'r#fn`
 LL |   where T: for<'a> Trait1<T> + 'r#fn { }
    |                                ^^^^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'r#fn` lifetime
    |
 LL -   where T: for<'a> Trait1<T> + 'r#fn { }
 LL +   where for<'r#fn, 'a> T: Trait1<T> + 'r#fn { }
    |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'r#fn` here
    |
 LL | trait Trait1<'r#fn, T>

@@ -9,13 +9,13 @@ LL |     let _ = Struct::<A>::new().clone();
 LL | pub struct Struct<A>(A);
    | -------------------- doesn't satisfy `struct_69725::Struct<A>: Clone`
    |
-   = note: the following trait bounds were not satisfied:
-           `A: Clone`
-           which is required by `struct_69725::Struct<A>: Clone`
 help: consider restricting the type parameter to satisfy the trait bound
    |
 LL | fn crash<A>() where A: Clone {
    |               ++++++++++++++
+   = note: the following trait bounds were not satisfied:
+           `A: Clone`
+           which is required by `struct_69725::Struct<A>: Clone`
 
 error: aborting due to 1 previous error
 

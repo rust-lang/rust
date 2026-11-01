@@ -8,16 +8,16 @@ LL |         Empty1() => ()
    |         ^^^^^^^^
    |
    = note: a struct named `Empty1` exists in another namespace
-note: similarly named tuple struct `XEmpty6` defined here
-  --> $DIR/auxiliary/empty-struct.rs:3:1
-   |
-LL | pub struct XEmpty6();
-   | ^^^^^^^^^^^^^^^^^^
 help: use struct pattern syntax instead
    |
 LL -         Empty1() => ()
 LL +         Empty1 {} => ()
    |
+note: similarly named tuple struct `XEmpty6` defined here
+  --> $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | ^^^^^^^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL -         Empty1() => ()
@@ -36,16 +36,16 @@ LL | pub struct XEmpty1 {}
    | ------------------ `XEmpty1` defined here
    |
    = note: a struct named `XEmpty1` exists in another namespace
-note: similarly named tuple struct `XEmpty6` defined here
-  --> $DIR/auxiliary/empty-struct.rs:3:1
-   |
-LL | pub struct XEmpty6();
-   | ^^^^^^^^^^^^^^^^^^
 help: use struct pattern syntax instead
    |
 LL -         XEmpty1() => ()
 LL +         XEmpty1 {} => ()
    |
+note: similarly named tuple struct `XEmpty6` defined here
+  --> $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | ^^^^^^^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL -         XEmpty1() => ()
@@ -62,16 +62,16 @@ LL |         Empty1(..) => ()
    |         ^^^^^^^^^^
    |
    = note: a struct named `Empty1` exists in another namespace
-note: similarly named tuple struct `XEmpty6` defined here
-  --> $DIR/auxiliary/empty-struct.rs:3:1
-   |
-LL | pub struct XEmpty6();
-   | ^^^^^^^^^^^^^^^^^^
 help: use struct pattern syntax instead
    |
 LL -         Empty1(..) => ()
 LL +         Empty1 {} => ()
    |
+note: similarly named tuple struct `XEmpty6` defined here
+  --> $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | ^^^^^^^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL -         Empty1(..) => ()
@@ -90,16 +90,16 @@ LL | pub struct XEmpty1 {}
    | ------------------ `XEmpty1` defined here
    |
    = note: a struct named `XEmpty1` exists in another namespace
-note: similarly named tuple struct `XEmpty6` defined here
-  --> $DIR/auxiliary/empty-struct.rs:3:1
-   |
-LL | pub struct XEmpty6();
-   | ^^^^^^^^^^^^^^^^^^
 help: use struct pattern syntax instead
    |
 LL -         XEmpty1(..) => ()
 LL +         XEmpty1 {} => ()
    |
+note: similarly named tuple struct `XEmpty6` defined here
+  --> $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | ^^^^^^^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL -         XEmpty1(..) => ()

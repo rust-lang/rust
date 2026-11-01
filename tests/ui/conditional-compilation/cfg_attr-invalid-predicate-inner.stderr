@@ -22,12 +22,12 @@ LL | #![cfg_attr(a())]
    |             valid arguments are `any`, `all`, `not` or `target`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: must be of the form
    |
 LL - #![cfg_attr(a())]
 LL + #![cfg_attr(predicate, attr1, attr2, ...)]
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

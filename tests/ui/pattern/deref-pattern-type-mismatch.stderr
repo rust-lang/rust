@@ -4,11 +4,11 @@ error[E0261]: use of undeclared lifetime name `'a`
 LL | struct X(dyn Iterator<Item = &'a ()>);
    |                               ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL | struct X(dyn for<'a> Iterator<Item = &'a ()>);
    |              +++++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'a` here
    |
 LL | struct X<'a>(dyn Iterator<Item = &'a ()>);

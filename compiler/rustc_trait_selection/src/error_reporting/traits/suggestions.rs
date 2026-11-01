@@ -2871,7 +2871,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         err.code(E0746);
         err.primary_message("return type cannot be a trait object without pointer indirection");
-        err.children.clear();
+        err.retain_children(|_| false);
 
         let mut span = obligation.cause.span;
         let mut is_async_fn_return = false;

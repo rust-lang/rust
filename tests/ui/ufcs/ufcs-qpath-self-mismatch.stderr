@@ -31,6 +31,11 @@ LL |     <i32 as Add<i32>>::add(1u32, 2);
    |     |
    |     arguments to this function are incorrect
    |
+help: change the type of the numeric literal from `u32` to `i32`
+   |
+LL -     <i32 as Add<i32>>::add(1u32, 2);
+LL +     <i32 as Add<i32>>::add(1i32, 2);
+   |
 help: the return type of this call is `u32` due to the type of the argument passed
   --> $DIR/ufcs-qpath-self-mismatch.rs:7:5
    |
@@ -46,11 +51,6 @@ note: method provided through this `impl`
    |
    = note: in this macro invocation
    = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: change the type of the numeric literal from `u32` to `i32`
-   |
-LL -     <i32 as Add<i32>>::add(1u32, 2);
-LL +     <i32 as Add<i32>>::add(1i32, 2);
-   |
 
 error[E0308]: mismatched types
   --> $DIR/ufcs-qpath-self-mismatch.rs:9:31
@@ -59,6 +59,11 @@ LL |     <i32 as Add<i32>>::add(1, 2u32);
    |     ----------------------    ^^^^ expected `i32`, found `u32`
    |     |
    |     arguments to this function are incorrect
+   |
+help: change the type of the numeric literal from `u32` to `i32`
+   |
+LL -     <i32 as Add<i32>>::add(1, 2u32);
+LL +     <i32 as Add<i32>>::add(1, 2i32);
    |
 help: the return type of this call is `u32` due to the type of the argument passed
   --> $DIR/ufcs-qpath-self-mismatch.rs:9:5
@@ -75,11 +80,6 @@ note: method provided through this `impl`
    |
    = note: in this macro invocation
    = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: change the type of the numeric literal from `u32` to `i32`
-   |
-LL -     <i32 as Add<i32>>::add(1, 2u32);
-LL +     <i32 as Add<i32>>::add(1, 2i32);
-   |
 
 error[E0277]: cannot add `u32` to `i32`
   --> $DIR/ufcs-qpath-self-mismatch.rs:4:5

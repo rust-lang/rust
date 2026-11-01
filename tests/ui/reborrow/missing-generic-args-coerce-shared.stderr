@@ -15,15 +15,15 @@ error[E0107]: missing generics for struct `CustomMut`
 LL | struct CustomRef<'a, T>(&'a CustomMut);
    |                             ^^^^^^^^^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL | struct CustomRef<'a, T>(&'a CustomMut<T>);
+   |                                      +++
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/missing-generic-args-coerce-shared.rs:12:8
    |
 LL | struct CustomMut<'a, T>(&'a mut T);
    |        ^^^^^^^^^     -
-help: add missing generic argument
-   |
-LL | struct CustomRef<'a, T>(&'a CustomMut<T>);
-   |                                      +++
 
 error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
   --> $DIR/missing-generic-args-coerce-shared.rs:17:25

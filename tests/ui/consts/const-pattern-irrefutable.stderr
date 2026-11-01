@@ -9,11 +9,11 @@ LL |     let a = 4;
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
-   = note: the matched value is of type `u8`
 help: introduce a variable instead
    |
 LL |     let a_var = 4;
    |          ++++
+   = note: the matched value is of type `u8`
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/const-pattern-irrefutable.rs:36:9
@@ -26,12 +26,12 @@ LL |     let c = 4;
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
-   = note: the matched value is of type `u8`
 help: introduce a variable instead
    |
 LL -     let c = 4;
 LL +     let b_var = 4;
    |
+   = note: the matched value is of type `u8`
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/const-pattern-irrefutable.rs:40:9
@@ -44,11 +44,11 @@ LL |     let d = (4, 4);
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
-   = note: the matched value is of type `(u8, u8)`
 help: introduce a variable instead
    |
 LL |     let d_var = (4, 4);
    |          ++++
+   = note: the matched value is of type `(u8, u8)`
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/const-pattern-irrefutable.rs:44:9
@@ -61,16 +61,16 @@ LL |     let e = S {
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+help: introduce a variable instead
+   |
+LL |     let e_var = S {
+   |          ++++
 note: `S` defined here
   --> $DIR/const-pattern-irrefutable.rs:23:8
    |
 LL | struct S {
    |        ^
    = note: the matched value is of type `S`
-help: introduce a variable instead
-   |
-LL |     let e_var = S {
-   |          ++++
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/const-pattern-irrefutable.rs:50:9
@@ -83,12 +83,12 @@ LL |     let r#g = 4;
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
-   = note: the matched value is of type `u8`
 help: introduce a variable instead
    |
 LL -     let r#g = 4;
 LL +     let g_var = 4;
    |
+   = note: the matched value is of type `u8`
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/const-pattern-irrefutable.rs:54:9
@@ -101,12 +101,12 @@ LL |     let r#fn = 4;
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
-   = note: the matched value is of type `u8`
 help: introduce a variable instead
    |
 LL -     let r#fn = 4;
 LL +     let fn_var = 4;
    |
+   = note: the matched value is of type `u8`
 
 error: aborting due to 6 previous errors
 

@@ -20,17 +20,17 @@ LL | }
    | in Rust 2018, `t1` is dropped here, but in Rust 2021, only `t1.0` will be dropped here as part of the closure
    | in Rust 2018, `t2` is dropped here, but in Rust 2021, only `t2.0` will be dropped here as part of the closure
    |
+help: add a dummy let to cause `t`, `t1`, `t2` to be fully captured
+   |
+LL ~     let c = || {
+LL +         let _ = (&t, &t1, &t2);
+   |
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 note: the lint level is defined here
   --> $DIR/significant_drop.rs:3:9
    |
 LL | #![deny(rust_2021_incompatible_closure_captures)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: add a dummy let to cause `t`, `t1`, `t2` to be fully captured
-   |
-LL ~     let c = || {
-LL +         let _ = (&t, &t1, &t2);
-   |
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/significant_drop.rs:51:13
@@ -50,12 +50,12 @@ LL | }
    | in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.0` will be dropped here as part of the closure
    | in Rust 2018, `t1` is dropped here, but in Rust 2021, only `t1.0` will be dropped here as part of the closure
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t`, `t1` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = (&t, &t1);
    |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/significant_drop.rs:72:13
@@ -69,12 +69,12 @@ LL |         let _t = t.0;
 LL | }
    | - in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.0` will be dropped here as part of the closure
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = &t;
    |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/significant_drop.rs:92:13
@@ -88,12 +88,12 @@ LL |         let _t = t.0;
 LL | }
    | - in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.0` will be dropped here as part of the closure
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = &t;
    |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/significant_drop.rs:110:13
@@ -107,12 +107,12 @@ LL |         let _t = t.0;
 LL | }
    | - in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.0` will be dropped here as part of the closure
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = &t;
    |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/significant_drop.rs:126:13
@@ -126,12 +126,12 @@ LL |         let _t = t.1;
 LL | }
    | - in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.1` will be dropped here as part of the closure
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
    |
 LL ~     let c = || {
 LL +         let _ = &t;
    |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/significant_drop.rs:144:13
@@ -150,12 +150,12 @@ LL | }
    | in Rust 2018, `t1` is dropped here, but in Rust 2021, only `t1.1` will be dropped here as part of the closure
    | in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.1` will be dropped here as part of the closure
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t1`, `t` to be fully captured
    |
 LL ~     let c = move || {
 LL +         let _ = (&t1, &t);
    |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/significant_drop.rs:164:21
@@ -169,12 +169,12 @@ LL |                 tuple.0;
 LL |         }
    |         - in Rust 2018, `tuple` is dropped here, but in Rust 2021, only `tuple.0` will be dropped here as part of the closure
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `tuple` to be fully captured
    |
 LL ~             let c = || {
 LL +                 let _ = &tuple;
    |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/significant_drop.rs:182:17
@@ -188,12 +188,12 @@ LL |             tuple.0;
 LL |     };
    |     - in Rust 2018, `tuple` is dropped here, but in Rust 2021, only `tuple.0` will be dropped here as part of the closure
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `tuple` to be fully captured
    |
 LL ~         let c = || {
 LL +             let _ = &tuple;
    |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 
 error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/significant_drop.rs:202:18
@@ -204,11 +204,11 @@ LL |         let _c = || tup.0;
 LL | }
    | - in Rust 2018, `tup` is dropped here, but in Rust 2021, only `tup.0` will be dropped here as part of the closure
    |
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `tup` to be fully captured
    |
 LL |         let _c = || { let _ = &tup; tup.0 };
    |                     +++++++++++++++       +
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 
 error: aborting due to 10 previous errors
 

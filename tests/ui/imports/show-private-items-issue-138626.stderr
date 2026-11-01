@@ -6,16 +6,16 @@ LL |     pub use crate::two::foo::Foo;
    |                              |
    |                              no `Foo` in `two::foo`
    |
-note: struct `two::foo::bar::Foo` exists but is inaccessible
-  --> $DIR/show-private-items-issue-138626.rs:13:13
-   |
-LL |             pub struct Foo;
-   |             ^^^^^^^^^^^^^^^ not accessible
 help: consider importing this struct through its public re-export instead
    |
 LL -     pub use crate::two::foo::Foo;
 LL +     pub use one::Foo;
    |
+note: struct `two::foo::bar::Foo` exists but is inaccessible
+  --> $DIR/show-private-items-issue-138626.rs:13:13
+   |
+LL |             pub struct Foo;
+   |             ^^^^^^^^^^^^^^^ not accessible
 
 error: aborting due to 1 previous error
 

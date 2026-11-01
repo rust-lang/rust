@@ -29,15 +29,15 @@ LL |     test(&y);
    |
    = note: expected mutable reference `&mut String`
                       found reference `&String`
+help: consider using `&mut` instead
+   |
+LL |     test(&mut y);
+   |           +++
 note: function defined here
   --> $DIR/coerce-suggestions.rs:1:4
    |
 LL | fn test(_x: &mut String) {}
    |    ^^^^ ---------------
-help: consider using `&mut` instead
-   |
-LL |     test(&mut y);
-   |           +++
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:15:10
@@ -49,16 +49,16 @@ LL |     test(&raw const y);
    |
    = note: expected mutable reference `&mut String`
                     found raw pointer `*const String`
-note: function defined here
-  --> $DIR/coerce-suggestions.rs:1:4
-   |
-LL | fn test(_x: &mut String) {}
-   |    ^^^^ ---------------
 help: consider using `&mut` instead
    |
 LL -     test(&raw const y);
 LL +     test(&mut y);
    |
+note: function defined here
+  --> $DIR/coerce-suggestions.rs:1:4
+   |
+LL | fn test(_x: &mut String) {}
+   |    ^^^^ ---------------
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:17:10
@@ -70,16 +70,16 @@ LL |     test(&raw mut y);
    |
    = note: expected mutable reference `&mut String`
                     found raw pointer `*mut String`
-note: function defined here
-  --> $DIR/coerce-suggestions.rs:1:4
-   |
-LL | fn test(_x: &mut String) {}
-   |    ^^^^ ---------------
 help: consider using `&mut` instead
    |
 LL -     test(&raw mut y);
 LL +     test(&mut y);
    |
+note: function defined here
+  --> $DIR/coerce-suggestions.rs:1:4
+   |
+LL | fn test(_x: &mut String) {}
+   |    ^^^^ ---------------
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:19:11
@@ -113,16 +113,16 @@ LL |     test3(&raw const s);
    |
    = note: expected raw pointer `*mut String`
               found raw pointer `*const String`
-note: function defined here
-  --> $DIR/coerce-suggestions.rs:5:4
-   |
-LL | fn test3(_x: *mut String) {}
-   |    ^^^^^ ---------------
 help: consider using `&raw mut` instead
    |
 LL -     test3(&raw const s);
 LL +     test3(&raw mut s);
    |
+note: function defined here
+  --> $DIR/coerce-suggestions.rs:5:4
+   |
+LL | fn test3(_x: *mut String) {}
+   |    ^^^^^ ---------------
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:27:11
@@ -134,15 +134,15 @@ LL |     test3(&s);
    |
    = note: expected raw pointer `*mut String`
                 found reference `&String`
+help: consider using `&mut` instead
+   |
+LL |     test3(&mut s);
+   |            +++
 note: function defined here
   --> $DIR/coerce-suggestions.rs:5:4
    |
 LL | fn test3(_x: *mut String) {}
    |    ^^^^^ ---------------
-help: consider using `&mut` instead
-   |
-LL |     test3(&mut s);
-   |            +++
 
 error: aborting due to 9 previous errors
 

@@ -4,15 +4,15 @@ error[E0107]: missing generics for associated type `CollectionFamily::Member`
 LL |     Box::new(Family) as &dyn CollectionFamily<Member=usize>
    |                                               ^^^^^^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL |     Box::new(Family) as &dyn CollectionFamily<Member<T>=usize>
+   |                                                     +++
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/issue-78671.rs:2:10
    |
 LL |     type Member<T>;
    |          ^^^^^^ -
-help: add missing generic argument
-   |
-LL |     Box::new(Family) as &dyn CollectionFamily<Member<T>=usize>
-   |                                                     +++
 
 error[E0038]: the trait `CollectionFamily` is not dyn compatible
   --> $DIR/issue-78671.rs:5:30

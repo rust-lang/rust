@@ -16,12 +16,12 @@ error[E0229]: associated item constraints are not allowed here
 LL | fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
    |                         ^^^^^^^ associated item constraint not allowed here
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider removing this associated item binding
    |
 LL - fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
 LL + fn baz<I>(x: &<I as Foo>::A) {}
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0229]: associated item constraints are not allowed here
   --> $DIR/E0229.rs:13:25
@@ -29,12 +29,12 @@ error[E0229]: associated item constraints are not allowed here
 LL | fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
    |                         ^^^^^^^ associated item constraint not allowed here
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider removing this associated item binding
    |
 LL - fn baz<I>(x: &<I as Foo<A = Bar>>::A) {}
 LL + fn baz<I>(x: &<I as Foo>::A) {}
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `I: Foo` is not satisfied
   --> $DIR/E0229.rs:13:15

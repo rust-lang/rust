@@ -4,6 +4,10 @@ error[E0277]: the trait bound `<T as Base>::Base<C>: Functor<C>` is not satisfie
 LL |     input.fmap(f1).fmap(f2)
    |                    ^^^^ the trait `Functor<C>` is not implemented for `<T as Base>::Base<C>`
    |
+help: consider further restricting the associated type
+   |
+LL |     T::Base<B>: Functor<B, Base<C> = T::Base<C>>, <T as Base>::Base<C>: Functor<C>
+   |                                                   ++++++++++++++++++++++++++++++++
 note: the method call chain might not have had the expected associated types
   --> $DIR/method-chain-gats.rs:13:29
    |
@@ -17,10 +21,6 @@ LL |     fn fmap<B>(self, f: impl Fn(A) -> B) -> Self::Base<B>
 LL |     where
 LL |         Self::Base<B>: Functor<B>;
    |                        ^^^^^^^^^^ required by this bound in `Functor::fmap`
-help: consider further restricting the associated type
-   |
-LL |     T::Base<B>: Functor<B, Base<C> = T::Base<C>>, <T as Base>::Base<C>: Functor<C>
-   |                                                   ++++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

@@ -37,11 +37,6 @@ error: value assigned to `object` is never read
 LL |    object = &object2;
    |    ^^^^^^^^^^^^^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:2:9
-   |
-LL | #![deny(unused_assignments)]
-   |         ^^^^^^^^^^^^^^^^^^
 help: you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding
    |
 LL ~ fn change_object2(object: &mut Object) {
@@ -49,6 +44,11 @@ LL |
 LL |    let object2 = Object;
 LL ~    *object = object2;
    |
+note: the lint level is defined here
+  --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:2:9
+   |
+LL | #![deny(unused_assignments)]
+   |         ^^^^^^^^^^^^^^^^^^
 
 error[E0596]: cannot borrow `object2` as mutable, as it is not declared as mutable
   --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:22:14

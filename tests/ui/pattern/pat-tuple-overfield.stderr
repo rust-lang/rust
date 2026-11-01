@@ -19,16 +19,16 @@ LL | struct Z0;
 LL |         Z0() => {}
    |         ^^^^
    |
-note: similarly named tuple struct `Z1` defined here
-  --> $DIR/pat-tuple-overfield.rs:11:1
-   |
-LL | struct Z1();
-   | ^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         Z0() => {}
 LL +         Z0 => {}
    |
+note: similarly named tuple struct `Z1` defined here
+  --> $DIR/pat-tuple-overfield.rs:11:1
+   |
+LL | struct Z1();
+   | ^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL -         Z0() => {}
@@ -44,16 +44,16 @@ LL | struct Z0;
 LL |         Z0(_) => {}
    |         ^^^^^
    |
-note: similarly named tuple struct `Z1` defined here
-  --> $DIR/pat-tuple-overfield.rs:11:1
-   |
-LL | struct Z1();
-   | ^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         Z0(_) => {}
 LL +         Z0 => {}
    |
+note: similarly named tuple struct `Z1` defined here
+  --> $DIR/pat-tuple-overfield.rs:11:1
+   |
+LL | struct Z1();
+   | ^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL -         Z0(_) => {}
@@ -69,16 +69,16 @@ LL | struct Z0;
 LL |         Z0(_, _) => {}
    |         ^^^^^^^^
    |
-note: similarly named tuple struct `Z1` defined here
-  --> $DIR/pat-tuple-overfield.rs:11:1
-   |
-LL | struct Z1();
-   | ^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         Z0(_, _) => {}
 LL +         Z0 => {}
    |
+note: similarly named tuple struct `Z1` defined here
+  --> $DIR/pat-tuple-overfield.rs:11:1
+   |
+LL | struct Z1();
+   | ^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL -         Z0(_, _) => {}
@@ -94,16 +94,16 @@ LL |     Z0,
 LL |         E1::Z0() => {}
    |         ^^^^^^^^
    |
-note: similarly named tuple variant `Z1` defined here
-  --> $DIR/pat-tuple-overfield.rs:14:5
-   |
-LL |     Z1(),
-   |     ^^^^
 help: use this syntax instead
    |
 LL -         E1::Z0() => {}
 LL +         E1::Z0 => {}
    |
+note: similarly named tuple variant `Z1` defined here
+  --> $DIR/pat-tuple-overfield.rs:14:5
+   |
+LL |     Z1(),
+   |     ^^^^
 help: a tuple variant with a similar name exists
    |
 LL -         E1::Z0() => {}
@@ -119,16 +119,16 @@ LL |     Z0,
 LL |         E1::Z0(_) => {}
    |         ^^^^^^^^^
    |
-note: similarly named tuple variant `Z1` defined here
-  --> $DIR/pat-tuple-overfield.rs:14:5
-   |
-LL |     Z1(),
-   |     ^^^^
 help: use this syntax instead
    |
 LL -         E1::Z0(_) => {}
 LL +         E1::Z0 => {}
    |
+note: similarly named tuple variant `Z1` defined here
+  --> $DIR/pat-tuple-overfield.rs:14:5
+   |
+LL |     Z1(),
+   |     ^^^^
 help: a tuple variant with a similar name exists
    |
 LL -         E1::Z0(_) => {}
@@ -144,16 +144,16 @@ LL |     Z0,
 LL |         E1::Z0(_, _) => {}
    |         ^^^^^^^^^^^^
    |
-note: similarly named tuple variant `Z1` defined here
-  --> $DIR/pat-tuple-overfield.rs:14:5
-   |
-LL |     Z1(),
-   |     ^^^^
 help: use this syntax instead
    |
 LL -         E1::Z0(_, _) => {}
 LL +         E1::Z0 => {}
    |
+note: similarly named tuple variant `Z1` defined here
+  --> $DIR/pat-tuple-overfield.rs:14:5
+   |
+LL |     Z1(),
+   |     ^^^^
 help: a tuple variant with a similar name exists
    |
 LL -         E1::Z0(_, _) => {}
@@ -169,15 +169,15 @@ LL |     Z1(),
 LL |         E1::Z1 => {}
    |         ^^^^^^
    |
+help: use the tuple variant pattern syntax instead
+   |
+LL |         E1::Z1() => {}
+   |               ++
 note: similarly named unit variant `Z0` defined here
   --> $DIR/pat-tuple-overfield.rs:13:5
    |
 LL |     Z0,
    |     ^^
-help: use the tuple variant pattern syntax instead
-   |
-LL |         E1::Z1() => {}
-   |               ++
 help: a unit variant with a similar name exists
    |
 LL -         E1::Z1 => {}

@@ -9,6 +9,10 @@ help: the trait `From<<A as MaybeFallible>::Error>` is not implemented for `MyEr
    |
 LL | struct MyError;
    | ^^^^^^^^^^^^^^
+help: consider extending the `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL |     <A::Error as MaybeError>::ComposeWithOther: From<B>, MyError: From<<A as MaybeFallible>::Error>
+   |                                                          ++++++++++++++++++++++++++++++++++++++++++
 note: required by a bound in `MaybeError`
   --> $DIR/confusing-diagnostic-due-to-best-obligation-visitor.rs:15:14
    |
@@ -16,10 +20,6 @@ LL | trait MaybeError: Sized
 LL | where
 LL |     MyError: From<Self>,
    |              ^^^^^^^^^^ required by this bound in `MaybeError`
-help: consider extending the `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL |     <A::Error as MaybeError>::ComposeWithOther: From<B>, MyError: From<<A as MaybeFallible>::Error>
-   |                                                          ++++++++++++++++++++++++++++++++++++++++++
 
 error[E0277]: the trait bound `MyError: From<<Self as MaybeFallible>::Error>` is not satisfied
   --> $DIR/confusing-diagnostic-due-to-best-obligation-visitor.rs:10:17

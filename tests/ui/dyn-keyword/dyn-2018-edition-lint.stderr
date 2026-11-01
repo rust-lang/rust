@@ -4,6 +4,10 @@ error: trait objects without an explicit `dyn` are deprecated
 LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
    |                 ^^^^^^^^^
    |
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL | fn function(x: &dyn SomeTrait, y: Box<SomeTrait>) {
+   |                 +++
    = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 note: the lint level is defined here
@@ -11,10 +15,6 @@ note: the lint level is defined here
    |
 LL | #[deny(bare_trait_objects)]
    |        ^^^^^^^^^^^^^^^^^^
-help: if this is a dyn-compatible trait, use `dyn`
-   |
-LL | fn function(x: &dyn SomeTrait, y: Box<SomeTrait>) {
-   |                 +++
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/dyn-2018-edition-lint.rs:4:35
@@ -22,12 +22,12 @@ error: trait objects without an explicit `dyn` are deprecated
 LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
    |                                   ^^^^^^^^^
    |
-   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
    |                                   +++
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: trait objects without an explicit `dyn` are deprecated
   --> $DIR/dyn-2018-edition-lint.rs:9:14
@@ -35,12 +35,12 @@ error: trait objects without an explicit `dyn` are deprecated
 LL |     let _x: &SomeTrait = todo!();
    |              ^^^^^^^^^
    |
-   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: if this is a dyn-compatible trait, use `dyn`
    |
 LL |     let _x: &dyn SomeTrait = todo!();
    |              +++
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: aborting due to 3 previous errors
 

@@ -99,15 +99,15 @@ LL |     reuse trait_to_reuse::{value, r#ref, mut_ref, static_empty, static_one_
    |
    = note: expected reference `&_`
                  found struct `S`
+help: consider borrowing here
+   |
+LL |     reuse trait_to_reuse::{value, r#ref, mut_ref, static_empty, static_one_param} { &self.0 }
+   |                                                                                     +
 note: function defined here
   --> $DIR/delegation-first-arg.rs:45:12
    |
 LL |     pub fn r#ref(_: &impl Trait) {}
    |            ^^^^^ --------------
-help: consider borrowing here
-   |
-LL |     reuse trait_to_reuse::{value, r#ref, mut_ref, static_empty, static_one_param} { &self.0 }
-   |                                                                                     +
 
 error[E0308]: mismatched types
   --> $DIR/delegation-first-arg.rs:54:85
@@ -119,15 +119,15 @@ LL |     reuse trait_to_reuse::{value, r#ref, mut_ref, static_empty, static_one_
    |
    = note: expected mutable reference `&mut _`
                          found struct `S`
+help: consider mutably borrowing here
+   |
+LL |     reuse trait_to_reuse::{value, r#ref, mut_ref, static_empty, static_one_param} { &mut self.0 }
+   |                                                                                     ++++
 note: function defined here
   --> $DIR/delegation-first-arg.rs:46:12
    |
 LL |     pub fn mut_ref(_: &mut impl Trait) {}
    |            ^^^^^^^ ------------------
-help: consider mutably borrowing here
-   |
-LL |     reuse trait_to_reuse::{value, r#ref, mut_ref, static_empty, static_one_param} { &mut self.0 }
-   |                                                                                     ++++
 
 error[E0609]: no field `0` on type `impl Trait`
   --> $DIR/delegation-first-arg.rs:61:90

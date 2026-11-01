@@ -4,11 +4,11 @@ error[E0261]: use of undeclared lifetime name `'a`
 LL | impl dyn TraitA<'_> where (): TraitA<'a, K = 0> {}
    |                                      ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL | impl dyn TraitA<'_> where (): for<'a> TraitA<'a, K = 0> {}
    |                               +++++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL | impl dyn TraitA<'_> where for<'a> (): TraitA<'a, K = 0> {}

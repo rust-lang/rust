@@ -29,11 +29,11 @@ error[E0277]: the trait bound `T: Foo` is not satisfied
 LL |     fn method() {}
    |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider further restricting type parameter `T` with trait `Foo`
    |
 LL |     <T as Foo>::Assoc: Sized, T: Foo
    |                               ++++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `T: Foo` is not satisfied
   --> $DIR/deep-norm-pending.rs:13:5
@@ -41,11 +41,11 @@ error[E0277]: the trait bound `T: Foo` is not satisfied
 LL |     fn method() {}
    |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider further restricting type parameter `T` with trait `Foo`
    |
 LL |     <T as Foo>::Assoc: Sized, T: Foo
    |                               ++++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the trait bound `T: Foo` is not satisfied
   --> $DIR/deep-norm-pending.rs:13:5
@@ -53,11 +53,11 @@ error[E0277]: the trait bound `T: Foo` is not satisfied
 LL |     fn method() {}
    |     ^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider further restricting type parameter `T` with trait `Foo`
    |
 LL |     <T as Foo>::Assoc: Sized, T: Foo
    |                               ++++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 5 previous errors
 

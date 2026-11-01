@@ -28,11 +28,11 @@ LL |     extern "rust-call" fn call_once(#[rustc_splat] self) {}
    |                                                    ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn FnOnce(T) + 'static)`
-   = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL |     extern "rust-call" fn call_once(#[rustc_splat] &self) {}
    |                                                    +
+   = help: unsized fn params are gated as an unstable feature
 
 error: aborting due to 4 previous errors
 

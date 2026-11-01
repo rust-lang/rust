@@ -4,15 +4,15 @@ error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
    |                                          ^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL |     type Bar<'a>: Deref<Target = <Self>::Bar<'a, Target = Self>>;
+   |                                              +++
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/issue-85347.rs:3:10
    |
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
    |          ^^^ --
-help: add missing lifetime argument
-   |
-LL |     type Bar<'a>: Deref<Target = <Self>::Bar<'a, Target = Self>>;
-   |                                              +++
 
 error[E0229]: associated item constraints are not allowed here
   --> $DIR/issue-85347.rs:3:46
@@ -32,16 +32,16 @@ error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
    |                                          ^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL |     type Bar<'a>: Deref<Target = <Self>::Bar<'a, Target = Self>>;
+   |                                              +++
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/issue-85347.rs:3:10
    |
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
    |          ^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: add missing lifetime argument
-   |
-LL |     type Bar<'a>: Deref<Target = <Self>::Bar<'a, Target = Self>>;
-   |                                              +++
 
 error[E0229]: associated item constraints are not allowed here
   --> $DIR/issue-85347.rs:3:46
@@ -49,12 +49,12 @@ error[E0229]: associated item constraints are not allowed here
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
    |                                              ^^^^^^^^^^^^^ associated item constraint not allowed here
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider removing this associated item binding
    |
 LL -     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
 LL +     type Bar<'a>: Deref<Target = <Self>::Bar>;
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors
 

@@ -6,6 +6,10 @@ LL |         take_u32(x)
    |         |
    |         arguments to this function are incorrect
    |
+help: consider `await`ing on the `Future`
+   |
+LL |         take_u32(x.await)
+   |                   ++++++
 note: calling an async function returns a future
   --> $DIR/suggest-missing-await-closure.rs:14:18
    |
@@ -16,10 +20,6 @@ note: function defined here
    |
 LL | fn take_u32(_x: u32) {}
    |    ^^^^^^^^ -------
-help: consider `await`ing on the `Future`
-   |
-LL |         take_u32(x.await)
-   |                   ++++++
 
 error: aborting due to 1 previous error
 

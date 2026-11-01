@@ -39,12 +39,12 @@ LL | type Y where i32: Foo = ();
    = note: this is a known limitation of the type checker that may be lifted in a future edition.
            see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
    = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics
-   = note: `#[warn(type_alias_bounds)]` on by default
 help: remove this where clause
    |
 LL - type Y where i32: Foo = ();
 LL + type Y  = ();
    |
+   = note: `#[warn(type_alias_bounds)]` on by default
 
 warning: trait bound i32: Foo does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:26:28

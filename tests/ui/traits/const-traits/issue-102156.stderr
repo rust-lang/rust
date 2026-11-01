@@ -16,12 +16,12 @@ error[E0433]: cannot find `core` in the crate root
 LL | use core::convert::{From, TryFrom};
    |     ^^^^ you might be missing crate `core`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: try using `std` instead of `core`
    |
 LL - use core::convert::{From, TryFrom};
 LL + use std::convert::{From, TryFrom};
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

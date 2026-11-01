@@ -21,11 +21,11 @@ LL |         self.bar = Box::new(|baz| Box::new(f(baz)));
    |         the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` must be valid for the static lifetime...
    |         ...so that the type `impl for<'a> Fn(&'a usize) -> Box<I>` will meet its required lifetime bounds
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit lifetime bound
    |
 LL |     pub fn ack<I>(&mut self, f: impl for<'a> Fn(&'a usize) -> Box<I> + 'static) {
    |                                                                      +++++++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0310]: the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` may not live long enough
   --> $DIR/unconstrained-closure-lifetime-generic.rs:10:20
@@ -78,11 +78,11 @@ LL |         self.bar = Box::new(|baz| Box::new(f(baz)));
    |                                   the parameter type `I` must be valid for the static lifetime...
    |                                   ...so that the type `I` will meet its required lifetime bounds
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit lifetime bound
    |
 LL |     pub fn ack<I: 'static>(&mut self, f: impl for<'a> Fn(&'a usize) -> Box<I>) {
    |                 +++++++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0597]: `f` does not live long enough
   --> $DIR/unconstrained-closure-lifetime-generic.rs:10:44

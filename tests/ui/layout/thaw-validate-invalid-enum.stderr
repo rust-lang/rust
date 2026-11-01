@@ -14,11 +14,11 @@ error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` t
 LL |         e: E,
    |         ^^^^
    |
-   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 help: wrap the field type in `ManuallyDrop<...>`
    |
 LL |         e: std::mem::ManuallyDrop<E>,
    |            +++++++++++++++++++++++ +
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 
 error: aborting due to 2 previous errors
 

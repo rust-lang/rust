@@ -62,12 +62,12 @@ error[E0053]: method `call` has an incompatible type for trait
 LL |     extern "rust-call" fn call(self, args: ()) -> () {}
    |                                ^^^^ expected `&Foo`, found `Foo`
    |
-   = note: expected signature `extern "rust-call" fn(&Foo, ()) -> _`
-              found signature `extern "rust-call" fn(Foo, ()) -> ()`
 help: change the self-receiver type to match the trait
    |
 LL |     extern "rust-call" fn call(&self, args: ()) -> () {}
    |                                +
+   = note: expected signature `extern "rust-call" fn(&Foo, ()) -> _`
+              found signature `extern "rust-call" fn(Foo, ()) -> ()`
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:26:6
@@ -154,12 +154,12 @@ error[E0053]: method `call_mut` has an incompatible type for trait
 LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
    |                                    ^^^^^ types differ in mutability
    |
-   = note: expected signature `extern "rust-call" fn(&mut Bar, ()) -> _`
-              found signature `extern "rust-call" fn(&Bar, ()) -> ()`
 help: change the self-receiver type to match the trait
    |
 LL |     extern "rust-call" fn call_mut(&mut self, args: ()) -> () {}
    |                                     +++
+   = note: expected signature `extern "rust-call" fn(&mut Bar, ()) -> _`
+              found signature `extern "rust-call" fn(&Bar, ()) -> ()`
 
 error[E0277]: expected `FnOnce()` signature, found `Bar`
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:26:20

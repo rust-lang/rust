@@ -39,16 +39,16 @@ LL |     let _: () = |b| move || b;
 LL | }
    | - in Rust 2018, `b` is dropped here along with the closure, but in Rust 2021 `b` is not part of the closure
    |
+help: add a dummy let to cause `b` to be fully captured
+   |
+LL |     let _: () = |b| move || { let _ = &b; b };
+   |                             +++++++++++++   +
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 note: the lint level is defined here
   --> $DIR/incompatible-captures-without-drop-location.rs:18:12
    |
 LL |     #[warn(rust_2021_incompatible_closure_captures)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: add a dummy let to cause `b` to be fully captured
-   |
-LL |     let _: () = |b| move || { let _ = &b; b };
-   |                             +++++++++++++   +
 
 error[E0308]: mismatched types
   --> $DIR/incompatible-captures-without-drop-location.rs:15:19

@@ -4,16 +4,16 @@ error: unnecessary parentheses around `break` value
 LL |         break (a + b);
    |               ^     ^
    |
-note: the lint level is defined here
-  --> $DIR/unused-parens-assign-expr-in-ret-issue-131989.rs:2:9
-   |
-LL | #![deny(unused_parens)]
-   |         ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -         break (a + b);
 LL +         break a + b;
    |
+note: the lint level is defined here
+  --> $DIR/unused-parens-assign-expr-in-ret-issue-131989.rs:2:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
 
 error: unnecessary parentheses around `if` condition
   --> $DIR/unused-parens-assign-expr-in-ret-issue-131989.rs:18:12

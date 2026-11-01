@@ -15,11 +15,11 @@ error: cannot find derive macro `Serialize` in this scope
 LL | #[derive(Serialize)]
    |          ^^^^^^^^^
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider importing this derive macro
    |
 LL + use derive_serialize::Serialize;
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

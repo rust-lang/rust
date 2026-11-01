@@ -113,12 +113,12 @@ error: expected `,`, found end of `cfg_attr` input
 LL | #[cfg_attr(true)]
    |                ^ expected `,`
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: must be of the form
    |
 LL - #[cfg_attr(true)]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: expected identifier, found `3`
   --> $DIR/cfg_attr-attr-syntax-validation.rs:49:33
@@ -126,12 +126,12 @@ error: expected identifier, found `3`
 LL | #[cfg_attr(true, cfg_attr(true, 3))]
    |                                 ^ expected identifier
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: must be of the form
    |
 LL - #[cfg_attr(true, cfg_attr(true, 3))]
 LL + #[cfg_attr(true, cfg_attr(predicate, attr1, attr2, ...))]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
   --> $DIR/cfg_attr-attr-syntax-validation.rs:30:30
@@ -144,12 +144,12 @@ LL |         #[cfg_attr(feature = $expr)]
 LL | generate_s10!(concat!("nonexistent"));
    | ------------------------------------- in this macro invocation
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: must be of the form
    |
 LL -         #[cfg_attr(feature = $expr)]
 LL +         #[cfg_attr(predicate, attr1, attr2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: cannot find attribute `unknown_attribute` in this scope
   --> $DIR/cfg_attr-attr-syntax-validation.rs:41:18

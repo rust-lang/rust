@@ -25,15 +25,15 @@ LL |     is_thin::<Opaque>();
    |
    = note:    expected unit type `()`
            found associated type `<Opaque as Pointee>::Metadata`
+help: consider constraining the associated type `<Opaque as Pointee>::Metadata` to `()`
+   |
+LL | type Opaque = impl std::fmt::Debug<Metadata = ()> + ?Sized;
+   |                                   +++++++++++++++
 note: required by a bound in `is_thin`
   --> $DIR/pointee-tail-is-generic-errors.rs:21:33
    |
 LL | fn is_thin<T: std::ptr::Pointee<Metadata = ()> + ?Sized>() {}
    |                                 ^^^^^^^^^^^^^ required by this bound in `is_thin`
-help: consider constraining the associated type `<Opaque as Pointee>::Metadata` to `()`
-   |
-LL | type Opaque = impl std::fmt::Debug<Metadata = ()> + ?Sized;
-   |                                   +++++++++++++++
 
 error: aborting due to 2 previous errors
 

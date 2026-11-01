@@ -4,6 +4,11 @@ error[E0433]: cannot find module or crate `a` in this scope
 LL |     a::bar();
    |     ^ use of unresolved module or unlinked crate `a`
    |
+help: there is a crate or module with a similar name
+   |
+LL -     a::bar();
+LL +     b::bar();
+   |
 note: found an item that was configured out
   --> $DIR/macro-inner-attributes.rs:7:7
    |
@@ -11,11 +16,6 @@ LL | test!(a,
    |       ^
 LL |       #[cfg(false)],
    |             ----- the item is gated here
-help: there is a crate or module with a similar name
-   |
-LL -     a::bar();
-LL +     b::bar();
-   |
 
 error: aborting due to 1 previous error
 

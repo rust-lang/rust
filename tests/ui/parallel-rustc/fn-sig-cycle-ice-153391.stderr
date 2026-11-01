@@ -4,7 +4,6 @@ error[E0782]: expected a type, found a trait
 LL |     fn bar(&self, x: &A);
    |                       ^
    |
-   = note: `A` is dyn-incompatible, otherwise a trait object could be used
 help: use a new generic type parameter, constrained by `A`
    |
 LL -     fn bar(&self, x: &A);
@@ -14,6 +13,7 @@ help: you can also use an opaque type, but users won't be able to specify the ty
    |
 LL |     fn bar(&self, x: &impl A);
    |                       ++++
+   = note: `A` is dyn-incompatible, otherwise a trait object could be used
 
 error[E0782]: expected a type, found a trait
   --> $DIR/fn-sig-cycle-ice-153391.rs:7:15

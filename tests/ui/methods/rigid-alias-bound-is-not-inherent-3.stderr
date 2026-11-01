@@ -9,16 +9,16 @@ note: candidate #1 is defined in an impl of the trait `Trait1` for the type `T`
    |
 LL |     fn call_me(&self) {}
    |     ^^^^^^^^^^^^^^^^^
-note: candidate #2 is defined in an impl of the trait `Trait2` for the type `T`
-  --> $DIR/rigid-alias-bound-is-not-inherent-3.rs:10:5
-   |
-LL |     fn call_me(&self) {}
-   |     ^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     x.call_me();
 LL +     Trait1::call_me(&x);
    |
+note: candidate #2 is defined in an impl of the trait `Trait2` for the type `T`
+  --> $DIR/rigid-alias-bound-is-not-inherent-3.rs:10:5
+   |
+LL |     fn call_me(&self) {}
+   |     ^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #2
    |
 LL -     x.call_me();

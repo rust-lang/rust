@@ -4,11 +4,11 @@ error[E0433]: cannot find type `TryFrom` in this scope
 LL |     let _i: i16 = TryFrom::try_from(0_i32).unwrap();
    |                   ^^^^^^^ use of undeclared type `TryFrom`
    |
-   = note: 'std::convert::TryFrom' is included in the prelude starting in Edition 2021
 help: consider importing this trait
    |
 LL + use std::convert::TryFrom;
    |
+   = note: 'std::convert::TryFrom' is included in the prelude starting in Edition 2021
 
 error[E0433]: cannot find type `TryInto` in this scope
   --> $DIR/suggest-tryinto-edition-change.rs:15:19
@@ -16,11 +16,11 @@ error[E0433]: cannot find type `TryInto` in this scope
 LL |     let _i: i16 = TryInto::try_into(0_i32).unwrap();
    |                   ^^^^^^^ use of undeclared type `TryInto`
    |
-   = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
 help: consider importing this trait
    |
 LL + use std::convert::TryInto;
    |
+   = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
 
 error[E0433]: cannot find type `FromIterator` in this scope
   --> $DIR/suggest-tryinto-edition-change.rs:20:22
@@ -50,11 +50,11 @@ LL |     let _i: i16 = 0_i32.try_into().unwrap();
    = note: the method is available for `i32` here
    |
    = help: items from traits can only be used if the trait is in scope
-   = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
 help: trait `TryInto` which provides `try_into` is implemented but not in scope; perhaps you want to import it
    |
 LL + use std::convert::TryInto;
    |
+   = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
 help: there is a method `into` with a similar name
    |
 LL -     let _i: i16 = 0_i32.try_into().unwrap();

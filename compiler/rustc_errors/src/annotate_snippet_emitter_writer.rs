@@ -82,6 +82,9 @@ impl Emitter for AnnotateSnippetEmitter {
     fn emit_diagnostic(&mut self, mut diag: DiagInner) {
         if self.track_diagnostics && diag.span.has_primary_spans() && !diag.span.is_dummy() {
             diag.children.insert(0, diag.emitted_at_sub_diag());
+            for suggestion in diag.suggestions.as_mut_slice() {
+                suggestion.children_before += 1;
+            }
         }
 
         let mut suggestions = diag.suggestions.unwrap_tag();
@@ -116,6 +119,11 @@ impl Emitter for AnnotateSnippetEmitter {
     fn supports_color(&self) -> bool {
         false
     }
+}
+
+enum SubItem<'a> {
+    Child(&'a Subdiag),
+    Suggestion(CodeSuggestion),
 }
 
 fn annotation_level_for_level(level: Level) -> annotate_snippets::level::Level<'static> {
@@ -253,174 +261,201 @@ impl AnnotateSnippetEmitter {
             }
         }
 
-        for c in children {
-            let level = annotation_level_for_sublevel(c.level);
-
-            // If at least one portion of the message is styled, we need to
-            // "pre-style" the message
-            let msg = if c.messages.iter().any(|(_, style)| style != &crate::Style::NoStyle) {
-                self.pre_style_msgs(&c.messages, args)
-            } else {
-                format_diag_messages(&c.messages, args)
-            };
-
-            // This is a secondary message with no span info
-            if !c.span.has_primary_spans() && !c.span.has_span_labels() {
-                group = group.element(level.clone().message(msg));
-                continue;
+        let mut suggestions = suggestions.into_iter().peekable();
+        let mut items = Vec::with_capacity(children.len() + suggestions.len());
+        for (i, c) in children.iter().enumerate() {
+            while let Some(s) = suggestions.next_if(|s| s.children_before <= i) {
+                items.push(SubItem::Suggestion(s));
             }
-
-            report.push(std::mem::replace(
-                &mut group,
-                Group::with_title(level.clone().secondary_title(msg)),
-            ));
-
-            let mut file_ann = collect_annotations(args, &c.span, sm);
-            let primary_span = c.span.primary_span().unwrap_or_default();
-            if !primary_span.is_dummy() {
-                let primary_lo = sm.lookup_char_pos(primary_span.lo());
-                if let Ok(pos) =
-                    file_ann.binary_search_by(|(f, _)| f.name.cmp(&primary_lo.file.name))
-                {
-                    file_ann.swap(0, pos);
-                }
-            }
-
-            for (file_idx, (file, annotations)) in file_ann.into_iter().enumerate() {
-                if should_show_source_code(&self.ignored_directories_in_source_blocks, sm, &file) {
-                    if let Some(snippet) = self.annotated_snippet(annotations, &file.name, sm) {
-                        group = group.element(snippet);
-                    }
-                // we can't annotate anything if the source is unavailable.
-                } else if !self.short_message {
-                    // We'll just print unannotated messages
-                    group = self.unannotated_messages(
-                        annotations,
-                        &file.name,
-                        sm,
-                        file_idx,
-                        &mut report,
-                        group,
-                        &level,
-                    );
-                }
-            }
+            items.push(SubItem::Child(c));
         }
+        items.extend(suggestions.map(SubItem::Suggestion));
 
-        for suggestion in suggestions {
-            match suggestion.style {
-                SuggestionStyle::CompletelyHidden => {
-                    // do not display this suggestion, it is meant only for tools
-                }
-                SuggestionStyle::HideCodeAlways => {
-                    let msg = format_diag_message(&suggestion.msg, args).into_owned();
-                    group = group.element(annotate_snippets::Level::HELP.message(msg));
-                }
-                SuggestionStyle::HideCodeInline
-                | SuggestionStyle::ShowCode
-                | SuggestionStyle::ShowAlways => {
-                    let substitutions = suggestion
-                        .substitutions
-                        .into_iter()
-                        .filter(|subst| {
-                            // Suggestions coming from macros can have malformed spans. This is a heavy
-                            // handed approach to avoid ICEs by ignoring the suggestion outright.
-                            let invalid =
-                                subst.parts.iter().any(|item| sm.is_valid_span(item.span).is_err());
-                            if invalid {
-                                debug!("suggestion contains an invalid span: {:?}", subst);
-                            }
-                            !invalid
-                        })
-                        .filter_map(|mut subst| {
-                            // Assumption: all spans are in the same file, and all spans
-                            // are disjoint. Sort in ascending order.
-                            subst.parts.sort_by_key(|part| part.span.lo());
-                            // Verify the assumption that all spans are disjoint
-                            debug_assert_eq!(
-                                subst.parts.array_windows().find(|[a, b]| a.span.overlaps(b.span)),
-                                None,
-                                "all spans must be disjoint",
-                            );
+        for item in items {
+            match item {
+                SubItem::Child(c) => {
+                    let level = annotation_level_for_sublevel(c.level);
 
-                            let lo = subst.parts.iter().map(|part| part.span.lo()).min()?;
-                            let lo_file = sm.lookup_source_file(lo);
-                            let hi = subst.parts.iter().map(|part| part.span.hi()).max()?;
-                            let hi_file = sm.lookup_source_file(hi);
+                    // If at least one portion of the message is styled, we need to
+                    // "pre-style" the message
+                    let msg = if c.messages.iter().any(|(_, style)| style != &crate::Style::NoStyle)
+                    {
+                        self.pre_style_msgs(&c.messages, args)
+                    } else {
+                        format_diag_messages(&c.messages, args)
+                    };
 
-                            // The different spans might belong to different contexts, if so ignore suggestion.
-                            if lo_file.stable_id != hi_file.stable_id {
-                                return None;
-                            }
-
-                            // We can't splice anything if the source is unavailable.
-                            if !sm.ensure_source_file_source_present(&lo_file) {
-                                return None;
-                            }
-
-                            // Account for cases where we are suggesting the same code that's already
-                            // there. This shouldn't happen often, but in some cases for multipart
-                            // suggestions it's much easier to handle it here than in the origin.
-                            subst.parts.retain(|p| is_different(sm, &p.snippet, p.span));
-
-                            if subst.parts.is_empty() { None } else { Some(subst) }
-                        })
-                        .collect::<Vec<_>>();
-
-                    if substitutions.is_empty() {
+                    // This is a secondary message with no span info
+                    if !c.span.has_primary_spans() && !c.span.has_span_labels() {
+                        group = group.element(level.clone().message(msg));
                         continue;
                     }
-                    let mut msg = format_diag_message(&suggestion.msg, args).to_string();
 
-                    let lo = substitutions
-                        .iter()
-                        .find_map(|sub| sub.parts.first().map(|p| p.span.lo()))
-                        .unwrap();
-                    let file = sm.lookup_source_file(lo);
+                    report.push(std::mem::replace(
+                        &mut group,
+                        Group::with_title(level.clone().secondary_title(msg)),
+                    ));
 
-                    let filename =
-                        sm.filename_for_diagnostics(&file.name).to_string_lossy().to_string();
+                    let mut file_ann = collect_annotations(args, &c.span, sm);
+                    let primary_span = c.span.primary_span().unwrap_or_default();
+                    if !primary_span.is_dummy() {
+                        let primary_lo = sm.lookup_char_pos(primary_span.lo());
+                        if let Ok(pos) =
+                            file_ann.binary_search_by(|(f, _)| f.name.cmp(&primary_lo.file.name))
+                        {
+                            file_ann.swap(0, pos);
+                        }
+                    }
 
-                    let other_suggestions = substitutions.len().saturating_sub(MAX_SUGGESTIONS);
-
-                    let subs = substitutions
-                        .into_iter()
-                        .take(MAX_SUGGESTIONS)
-                        .filter_map(|sub| {
-                            let mut confusion_type = ConfusionType::None;
-                            for part in &sub.parts {
-                                let part_confusion =
-                                    detect_confusion_type(sm, &part.snippet, part.span);
-                                confusion_type = confusion_type.combine(part_confusion);
+                    for (file_idx, (file, annotations)) in file_ann.into_iter().enumerate() {
+                        if should_show_source_code(
+                            &self.ignored_directories_in_source_blocks,
+                            sm,
+                            &file,
+                        ) {
+                            if let Some(snippet) =
+                                self.annotated_snippet(annotations, &file.name, sm)
+                            {
+                                group = group.element(snippet);
                             }
-
-                            if !matches!(confusion_type, ConfusionType::None) {
-                                msg.push_str(confusion_type.label_text());
-                            }
-
-                            let mut parts = sub
-                                .parts
+                        // we can't annotate anything if the source is unavailable.
+                        } else if !self.short_message {
+                            // We'll just print unannotated messages
+                            group = self.unannotated_messages(
+                                annotations,
+                                &file.name,
+                                sm,
+                                file_idx,
+                                &mut report,
+                                group,
+                                &level,
+                            );
+                        }
+                    }
+                }
+                SubItem::Suggestion(suggestion) => {
+                    match suggestion.style {
+                        SuggestionStyle::CompletelyHidden => {
+                            // do not display this suggestion, it is meant only for tools
+                        }
+                        SuggestionStyle::HideCodeAlways => {
+                            let msg = format_diag_message(&suggestion.msg, args).into_owned();
+                            group = group.element(annotate_snippets::Level::HELP.message(msg));
+                        }
+                        SuggestionStyle::HideCodeInline
+                        | SuggestionStyle::ShowCode
+                        | SuggestionStyle::ShowAlways => {
+                            let substitutions = suggestion
+                                .substitutions
                                 .into_iter()
-                                .filter_map(|p| {
-                                    if is_different(sm, &p.snippet, p.span) {
-                                        Some((p.span, p.snippet))
-                                    } else {
-                                        None
+                                .filter(|subst| {
+                                    // Suggestions coming from macros can have malformed spans. This is a heavy
+                                    // handed approach to avoid ICEs by ignoring the suggestion outright.
+                                    let invalid = subst
+                                        .parts
+                                        .iter()
+                                        .any(|item| sm.is_valid_span(item.span).is_err());
+                                    if invalid {
+                                        debug!("suggestion contains an invalid span: {:?}", subst);
                                     }
+                                    !invalid
+                                })
+                                .filter_map(|mut subst| {
+                                    // Assumption: all spans are in the same file, and all spans
+                                    // are disjoint. Sort in ascending order.
+                                    subst.parts.sort_by_key(|part| part.span.lo());
+                                    // Verify the assumption that all spans are disjoint
+                                    debug_assert_eq!(
+                                        subst
+                                            .parts
+                                            .array_windows()
+                                            .find(|[a, b]| a.span.overlaps(b.span)),
+                                        None,
+                                        "all spans must be disjoint",
+                                    );
+
+                                    let lo = subst.parts.iter().map(|part| part.span.lo()).min()?;
+                                    let lo_file = sm.lookup_source_file(lo);
+                                    let hi = subst.parts.iter().map(|part| part.span.hi()).max()?;
+                                    let hi_file = sm.lookup_source_file(hi);
+
+                                    // The different spans might belong to different contexts, if so ignore suggestion.
+                                    if lo_file.stable_id != hi_file.stable_id {
+                                        return None;
+                                    }
+
+                                    // We can't splice anything if the source is unavailable.
+                                    if !sm.ensure_source_file_source_present(&lo_file) {
+                                        return None;
+                                    }
+
+                                    // Account for cases where we are suggesting the same code that's already
+                                    // there. This shouldn't happen often, but in some cases for multipart
+                                    // suggestions it's much easier to handle it here than in the origin.
+                                    subst.parts.retain(|p| is_different(sm, &p.snippet, p.span));
+
+                                    if subst.parts.is_empty() { None } else { Some(subst) }
                                 })
                                 .collect::<Vec<_>>();
 
-                            if parts.is_empty() {
-                                None
-                            } else {
-                                let spans = parts.iter().map(|(span, _)| *span).collect::<Vec<_>>();
-                                // The suggestion adds an entire line of code, ending on a newline, so we'll also
-                                // print the *following* line, to provide context of what we're advising people to
-                                // do. Otherwise you would only see contextless code that can be confused for
-                                // already existing code, despite the colors and UI elements.
-                                // We special case `#[derive(_)]\n` and other attribute suggestions, because those
-                                // are the ones where context is most useful.
-                                let fold = if let [(p, snippet)] = &mut parts[..]
+                            if substitutions.is_empty() {
+                                continue;
+                            }
+                            let mut msg = format_diag_message(&suggestion.msg, args).to_string();
+
+                            let lo = substitutions
+                                .iter()
+                                .find_map(|sub| sub.parts.first().map(|p| p.span.lo()))
+                                .unwrap();
+                            let file = sm.lookup_source_file(lo);
+
+                            let filename = sm
+                                .filename_for_diagnostics(&file.name)
+                                .to_string_lossy()
+                                .to_string();
+
+                            let other_suggestions =
+                                substitutions.len().saturating_sub(MAX_SUGGESTIONS);
+
+                            let subs = substitutions
+                                .into_iter()
+                                .take(MAX_SUGGESTIONS)
+                                .filter_map(|sub| {
+                                    let mut confusion_type = ConfusionType::None;
+                                    for part in &sub.parts {
+                                        let part_confusion =
+                                            detect_confusion_type(sm, &part.snippet, part.span);
+                                        confusion_type = confusion_type.combine(part_confusion);
+                                    }
+
+                                    if !matches!(confusion_type, ConfusionType::None) {
+                                        msg.push_str(confusion_type.label_text());
+                                    }
+
+                                    let mut parts = sub
+                                        .parts
+                                        .into_iter()
+                                        .filter_map(|p| {
+                                            if is_different(sm, &p.snippet, p.span) {
+                                                Some((p.span, p.snippet))
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                        .collect::<Vec<_>>();
+
+                                    if parts.is_empty() {
+                                        None
+                                    } else {
+                                        let spans =
+                                            parts.iter().map(|(span, _)| *span).collect::<Vec<_>>();
+                                        // The suggestion adds an entire line of code, ending on a newline, so we'll also
+                                        // print the *following* line, to provide context of what we're advising people to
+                                        // do. Otherwise you would only see contextless code that can be confused for
+                                        // already existing code, despite the colors and UI elements.
+                                        // We special case `#[derive(_)]\n` and other attribute suggestions, because those
+                                        // are the ones where context is most useful.
+                                        let fold = if let [(p, snippet)] = &mut parts[..]
                                     && snippet.trim().starts_with("#[")
                                     // This allows for spaces to come between the attribute and the newline
                                     && snippet.trim().ends_with("]")
@@ -429,83 +464,91 @@ impl AnnotateSnippetEmitter {
                                     && let Ok(b) = sm.span_to_prev_source(*p)
                                     && let b = b.rsplit_once('\n').unwrap_or_else(|| ("", &b)).1
                                     && b.trim().is_empty()
-                                {
-                                    // FIXME: This is a hack:
-                                    // The span for attribute suggestions often times points to the
-                                    // beginning of an item, disregarding leading whitespace. This
-                                    // causes the attribute to be properly indented, but leaves original
-                                    // item without indentation when rendered.
-                                    // This fixes that problem by adjusting the span to point to the start
-                                    // of the whitespace, and adds the whitespace to the replacement.
-                                    //
-                                    // Source: "    extern "custom" fn negate(a: i64) -> i64 {\n"
-                                    // Span: 4..4
-                                    // Replacement: "#[unsafe(naked)]\n"
-                                    //
-                                    // Before:
-                                    // help: convert this to an `#[unsafe(naked)]` function
-                                    //    |
-                                    // LL +     #[unsafe(naked)]
-                                    // LL | extern "custom" fn negate(a: i64) -> i64 {
-                                    //    |
-                                    //
-                                    // After
-                                    // help: convert this to an `#[unsafe(naked)]` function
-                                    //    |
-                                    // LL +     #[unsafe(naked)]
-                                    // LL |     extern "custom" fn negate(a: i64) -> i64 {
-                                    //    |
-                                    if !b.is_empty() && !snippet.ends_with(b) {
-                                        snippet.insert_str(0, b);
-                                        let offset = BytePos(b.len() as u32);
-                                        *p = p.with_lo(p.lo() - offset).shrink_to_lo();
+                                        {
+                                            // FIXME: This is a hack:
+                                            // The span for attribute suggestions often times points to the
+                                            // beginning of an item, disregarding leading whitespace. This
+                                            // causes the attribute to be properly indented, but leaves original
+                                            // item without indentation when rendered.
+                                            // This fixes that problem by adjusting the span to point to the start
+                                            // of the whitespace, and adds the whitespace to the replacement.
+                                            //
+                                            // Source: "    extern "custom" fn negate(a: i64) -> i64 {\n"
+                                            // Span: 4..4
+                                            // Replacement: "#[unsafe(naked)]\n"
+                                            //
+                                            // Before:
+                                            // help: convert this to an `#[unsafe(naked)]` function
+                                            //    |
+                                            // LL +     #[unsafe(naked)]
+                                            // LL | extern "custom" fn negate(a: i64) -> i64 {
+                                            //    |
+                                            //
+                                            // After
+                                            // help: convert this to an `#[unsafe(naked)]` function
+                                            //    |
+                                            // LL +     #[unsafe(naked)]
+                                            // LL |     extern "custom" fn negate(a: i64) -> i64 {
+                                            //    |
+                                            if !b.is_empty() && !snippet.ends_with(b) {
+                                                snippet.insert_str(0, b);
+                                                let offset = BytePos(b.len() as u32);
+                                                *p = p.with_lo(p.lo() - offset).shrink_to_lo();
+                                            }
+                                            false
+                                        } else {
+                                            true
+                                        };
+
+                                        if let Some((bounding_span, source, line_offset)) =
+                                            shrink_file(spans.as_slice(), &file.name, sm)
+                                        {
+                                            let adj_lo = bounding_span.lo().to_usize();
+                                            Some(
+                                                Snippet::source(source)
+                                                    .line_start(line_offset)
+                                                    .path(filename.clone())
+                                                    .fold(fold)
+                                                    .patches(parts.into_iter().map(
+                                                        |(span, replacement)| {
+                                                            let lo = span
+                                                                .lo()
+                                                                .to_usize()
+                                                                .saturating_sub(adj_lo);
+                                                            let hi = span
+                                                                .hi()
+                                                                .to_usize()
+                                                                .saturating_sub(adj_lo);
+
+                                                            Patch::new(lo..hi, replacement)
+                                                        },
+                                                    )),
+                                            )
+                                        } else {
+                                            None
+                                        }
                                     }
-                                    false
-                                } else {
-                                    true
-                                };
+                                })
+                                .collect::<Vec<_>>();
+                            if !subs.is_empty() {
+                                report.push(std::mem::replace(
+                                    &mut group,
+                                    Group::with_title(
+                                        annotate_snippets::Level::HELP.secondary_title(msg),
+                                    ),
+                                ));
 
-                                if let Some((bounding_span, source, line_offset)) =
-                                    shrink_file(spans.as_slice(), &file.name, sm)
-                                {
-                                    let adj_lo = bounding_span.lo().to_usize();
-                                    Some(
-                                        Snippet::source(source)
-                                            .line_start(line_offset)
-                                            .path(filename.clone())
-                                            .fold(fold)
-                                            .patches(parts.into_iter().map(
-                                                |(span, replacement)| {
-                                                    let lo =
-                                                        span.lo().to_usize().saturating_sub(adj_lo);
-                                                    let hi =
-                                                        span.hi().to_usize().saturating_sub(adj_lo);
-
-                                                    Patch::new(lo..hi, replacement)
-                                                },
-                                            )),
-                                    )
-                                } else {
-                                    None
+                                group = group.elements(subs);
+                                if other_suggestions > 0 {
+                                    group = group.element(
+                                        annotate_snippets::Level::NOTE.no_name().message(format!(
+                                            "and {} other candidate{}",
+                                            other_suggestions,
+                                            pluralize!(other_suggestions)
+                                        )),
+                                    );
                                 }
                             }
-                        })
-                        .collect::<Vec<_>>();
-                    if !subs.is_empty() {
-                        report.push(std::mem::replace(
-                            &mut group,
-                            Group::with_title(annotate_snippets::Level::HELP.secondary_title(msg)),
-                        ));
-
-                        group = group.elements(subs);
-                        if other_suggestions > 0 {
-                            group = group.element(
-                                annotate_snippets::Level::NOTE.no_name().message(format!(
-                                    "and {} other candidate{}",
-                                    other_suggestions,
-                                    pluralize!(other_suggestions)
-                                )),
-                            );
                         }
                     }
                 }

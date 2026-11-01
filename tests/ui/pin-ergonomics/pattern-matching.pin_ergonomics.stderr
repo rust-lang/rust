@@ -8,16 +8,16 @@ LL |     (&mut x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
    |
    = note:         expected struct `Foo<T, U>`
            found mutable reference `&mut _`
-note: to declare a mutable binding use: `mut x`
-  --> $DIR/pattern-matching.rs:115:6
-   |
-LL |     (&mut x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
-   |      ^^^^^^
 help: consider removing `&mut` from the pattern
    |
 LL -     (&mut x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
 LL +     (x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
    |
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/pattern-matching.rs:115:6
+   |
+LL |     (&mut x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
+   |      ^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/pattern-matching.rs:121:5

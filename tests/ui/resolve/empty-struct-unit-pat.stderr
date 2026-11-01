@@ -7,16 +7,16 @@ LL | struct Empty2;
 LL |         Empty2() => ()
    |         ^^^^^^^^
    |
-note: similarly named tuple struct `XEmpty6` defined here
-  --> $DIR/auxiliary/empty-struct.rs:3:1
-   |
-LL | pub struct XEmpty6();
-   | ^^^^^^^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         Empty2() => ()
 LL +         Empty2 => ()
    |
+note: similarly named tuple struct `XEmpty6` defined here
+  --> $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | ^^^^^^^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL -         Empty2() => ()
@@ -34,16 +34,16 @@ LL |         XEmpty2() => ()
 LL | pub struct XEmpty2;
    | ------------------ `XEmpty2` defined here
    |
-note: similarly named tuple struct `XEmpty6` defined here
-  --> $DIR/auxiliary/empty-struct.rs:3:1
-   |
-LL | pub struct XEmpty6();
-   | ^^^^^^^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         XEmpty2() => ()
 LL +         XEmpty2 => ()
    |
+note: similarly named tuple struct `XEmpty6` defined here
+  --> $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | ^^^^^^^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL -         XEmpty2() => ()
@@ -59,16 +59,16 @@ LL | struct Empty2;
 LL |         Empty2(..) => ()
    |         ^^^^^^^^^^
    |
-note: similarly named tuple struct `XEmpty6` defined here
-  --> $DIR/auxiliary/empty-struct.rs:3:1
-   |
-LL | pub struct XEmpty6();
-   | ^^^^^^^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         Empty2(..) => ()
 LL +         Empty2 => ()
    |
+note: similarly named tuple struct `XEmpty6` defined here
+  --> $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | ^^^^^^^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL -         Empty2(..) => ()
@@ -86,16 +86,16 @@ LL |         XEmpty2(..) => ()
 LL | pub struct XEmpty2;
    | ------------------ `XEmpty2` defined here
    |
-note: similarly named tuple struct `XEmpty6` defined here
-  --> $DIR/auxiliary/empty-struct.rs:3:1
-   |
-LL | pub struct XEmpty6();
-   | ^^^^^^^^^^^^^^^^^^
 help: use this syntax instead
    |
 LL -         XEmpty2(..) => ()
 LL +         XEmpty2 => ()
    |
+note: similarly named tuple struct `XEmpty6` defined here
+  --> $DIR/auxiliary/empty-struct.rs:3:1
+   |
+LL | pub struct XEmpty6();
+   | ^^^^^^^^^^^^^^^^^^
 help: a tuple struct with a similar name exists
    |
 LL -         XEmpty2(..) => ()
@@ -122,16 +122,16 @@ LL |         XE::XEmpty4() => (),
 LL |     XEmpty4,
    |     ------- `XE::XEmpty4` defined here
    |
-note: similarly named tuple variant `XEmpty5` defined here
-  --> $DIR/auxiliary/empty-struct.rs:8:5
-   |
-LL |     XEmpty5(),
-   |     ^^^^^^^
 help: use this syntax instead
    |
 LL -         XE::XEmpty4() => (),
 LL +         XE::XEmpty4 => (),
    |
+note: similarly named tuple variant `XEmpty5` defined here
+  --> $DIR/auxiliary/empty-struct.rs:8:5
+   |
+LL |     XEmpty5(),
+   |     ^^^^^^^
 help: a tuple variant with a similar name exists
    |
 LL -         XE::XEmpty4() => (),
@@ -158,16 +158,16 @@ LL |         XE::XEmpty4(..) => (),
 LL |     XEmpty4,
    |     ------- `XE::XEmpty4` defined here
    |
-note: similarly named tuple variant `XEmpty5` defined here
-  --> $DIR/auxiliary/empty-struct.rs:8:5
-   |
-LL |     XEmpty5(),
-   |     ^^^^^^^
 help: use this syntax instead
    |
 LL -         XE::XEmpty4(..) => (),
 LL +         XE::XEmpty4 => (),
    |
+note: similarly named tuple variant `XEmpty5` defined here
+  --> $DIR/auxiliary/empty-struct.rs:8:5
+   |
+LL |     XEmpty5(),
+   |     ^^^^^^^
 help: a tuple variant with a similar name exists
    |
 LL -         XE::XEmpty4(..) => (),

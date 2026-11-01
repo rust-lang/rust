@@ -66,15 +66,15 @@ LL |     foo(B, g, D, E, F, G)
    |         |     unexpected argument #3 of type `D`
    |         unexpected argument #1 of type `B`
    |
+help: consider borrowing here
+   |
+LL |     foo(B, g, D, E, F, &G)
+   |                        +
 note: function defined here
   --> $DIR/disjoint-spans-issue-151607.rs:8:4
    |
 LL | fn foo(g: F, y: F, e: &E) {
    |    ^^^             -----
-help: consider borrowing here
-   |
-LL |     foo(B, g, D, E, F, &G)
-   |                        +
 help: remove the extra arguments
    |
 LL -     foo(B, g, D, E, F, G)

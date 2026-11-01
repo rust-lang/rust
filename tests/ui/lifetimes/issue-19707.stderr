@@ -5,11 +5,11 @@ LL | type Foo = fn(&u8, &u8) -> &u8;
    |               ---  ---     ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the type lifetime-generic with a new `'a` lifetime
    |
 LL | type Foo = for<'a> fn(&'a u8, &'a u8) -> &'a u8;
    |            +++++++     ++      ++         ++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing a named lifetime parameter
    |
 LL | type Foo<'a> = fn(&'a u8, &'a u8) -> &'a u8;

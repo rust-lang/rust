@@ -103,11 +103,6 @@ error: unused variable: `Ban`
 LL |         (Foo, Bar) | (Ban, Foo) => {}
    |                       ^^^
    |
-note: the lint level is defined here
-  --> $DIR/binding-typo-2.rs:3:9
-   |
-LL | #![deny(unused_variables)]
-   |         ^^^^^^^^^^^^^^^^
 help: you might have meant to pattern match on the similarly named variant `Bar`
    |
 LL -         (Foo, Bar) | (Ban, Foo) => {}
@@ -117,6 +112,11 @@ help: if this is intentional, prefix it with an underscore
    |
 LL |         (Foo, Bar) | (_Ban, Foo) => {}
    |                       +
+note: the lint level is defined here
+  --> $DIR/binding-typo-2.rs:3:9
+   |
+LL | #![deny(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
 
 error: unused variable: `Ban`
   --> $DIR/binding-typo-2.rs:26:21

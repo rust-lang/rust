@@ -6,11 +6,11 @@ LL |     drop(std::mem::ManuallyDrop::new(S));
    |          |
    |          argument has type `ManuallyDrop<S>`
    |
-   = note: `#[deny(undropped_manually_drops)]` on by default
 help: use `std::mem::ManuallyDrop::into_inner` to get the inner value
    |
 LL |     drop(std::mem::ManuallyDrop::into_inner(std::mem::ManuallyDrop::new(S)));
    |          +++++++++++++++++++++++++++++++++++                              +
+   = note: `#[deny(undropped_manually_drops)]` on by default
 
 error: calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
   --> $DIR/undropped_manually_drops.rs:11:5

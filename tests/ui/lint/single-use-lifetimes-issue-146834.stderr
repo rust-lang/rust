@@ -31,12 +31,12 @@ LL | fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) {
    |      |
    |      this lifetime...
    |
-   = note: requested on the command line with `-W single-use-lifetimes`
 help: elide the single-use lifetime
    |
 LL - fn f<'a, 'b>(a: &'a i32, b: &'b i32) -> (&i32, &i32) {
 LL + fn f<'b>(a: &i32, b: &'b i32) -> (&i32, &i32) {
    |
+   = note: requested on the command line with `-W single-use-lifetimes`
 
 warning: lifetime parameter `'b` only used once
   --> $DIR/single-use-lifetimes-issue-146834.rs:11:10

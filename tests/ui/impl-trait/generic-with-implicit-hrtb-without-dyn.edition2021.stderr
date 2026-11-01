@@ -15,11 +15,11 @@ error[E0782]: expected a type, found a trait
 LL | fn ice() -> impl AsRef<Fn(&())> {
    |                        ^^^^^^^
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: you can add the `dyn` keyword if you want a trait object
    |
 LL | fn ice() -> impl AsRef<dyn Fn(&())> {
    |                        +++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

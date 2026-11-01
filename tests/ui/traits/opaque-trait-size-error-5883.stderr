@@ -20,7 +20,6 @@ LL |     r: dyn A + 'static
    |        ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
-   = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |
 LL -     r: dyn A + 'static
@@ -30,6 +29,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL |     r: &dyn A + 'static
    |        +
+   = help: unsized fn params are gated as an unstable feature
 
 error: aborting due to 2 previous errors
 

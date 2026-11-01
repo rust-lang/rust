@@ -17,15 +17,15 @@ LL |     foo();
    |     ^^^ not found in this scope
    |
    = note: a module named `foo` exists in another namespace
+help: consider importing this function instead
+   |
+LL + use foo::foo;
+   |
 note: function `m1::foo` exists but is inaccessible
   --> $DIR/issue-4366-2.rs:22:5
    |
 LL |     fn foo() {}
    |     ^^^^^^^^ not accessible
-help: consider importing this function instead
-   |
-LL + use foo::foo;
-   |
 
 error: aborting due to 2 previous errors
 

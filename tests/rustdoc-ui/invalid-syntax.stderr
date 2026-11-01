@@ -7,14 +7,14 @@ LL | | /// \__________pkt->size___________/          \_result->size_/ \__pkt->si
 LL | | /// ```
    | |_______^
    |
-   = note: error from rustc: unknown start of token: \
-   = note: error from rustc: unknown start of token: \
-   = note: error from rustc: unknown start of token: \
-   = note: `#[warn(rustdoc::invalid_rust_codeblocks)]` on by default
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
    |        ++++
+   = note: error from rustc: unknown start of token: \
+   = note: error from rustc: unknown start of token: \
+   = note: error from rustc: unknown start of token: \
+   = note: `#[warn(rustdoc::invalid_rust_codeblocks)]` on by default
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:9:5
@@ -27,12 +27,12 @@ LL | | ///    |     ^^^^^^ did you mean `baz::foobar`?
 LL | | /// ```
    | |_______^
    |
-   = note: error from rustc: unknown start of token: `
-   = note: error from rustc: unknown start of token: `
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
    |        ++++
+   = note: error from rustc: unknown start of token: `
+   = note: error from rustc: unknown start of token: `
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:21:5
@@ -43,11 +43,11 @@ LL | | /// \_
 LL | | /// ```
    | |_______^
    |
-   = note: error from rustc: unknown start of token: \
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
    |        ++++
+   = note: error from rustc: unknown start of token: \
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:35:5
@@ -143,11 +143,11 @@ LL | | /// "invalid
 LL | | /// ```
    | |_______^
    |
-   = note: error from rustc: unterminated double quote string
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
    |        ++++
+   = note: error from rustc: unterminated double quote string
 
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:103:5
@@ -158,11 +158,11 @@ LL | | /// fn wook_at_my_beautifuw_bwaces_plz() {);
 LL | | /// ```
    | |_______^
    |
-   = note: error from rustc: mismatched closing delimiter: `)`
 help: mark blocks that do not contain Rust code as text
    |
 LL | /// ```text
    |        ++++
+   = note: error from rustc: mismatched closing delimiter: `)`
 
 warning: 13 warnings emitted
 

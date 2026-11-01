@@ -10,14 +10,6 @@ note: similarly named unit struct `Baz` defined here
    |
 LL |     pub struct Baz;
    |     ^^^^^^^^^^^^^^^
-note: these functions exist but are inaccessible
-  --> $DIR/privacy-ns1.rs:15:5
-   |
-LL |     fn Bar() { }
-   |     ^^^^^^^^ `foo1::Bar`: not accessible
-...
-LL |     fn Bar() { }
-   |     ^^^^^^^^ `foo3::Bar`: not accessible
 help: a unit struct with a similar name exists
    |
 LL -     Bar();
@@ -27,6 +19,14 @@ help: consider importing this function instead
    |
 LL + use foo2::Bar;
    |
+note: these functions exist but are inaccessible
+  --> $DIR/privacy-ns1.rs:15:5
+   |
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo1::Bar`: not accessible
+...
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo3::Bar`: not accessible
 
 error[E0425]: cannot find function, tuple struct or tuple variant `Bar` in this scope
   --> $DIR/privacy-ns1.rs:52:5
@@ -39,14 +39,6 @@ note: similarly named unit struct `Baz` defined here
    |
 LL |     pub struct Baz;
    |     ^^^^^^^^^^^^^^^
-note: these functions exist but are inaccessible
-  --> $DIR/privacy-ns1.rs:15:5
-   |
-LL |     fn Bar() { }
-   |     ^^^^^^^^ `foo1::Bar`: not accessible
-...
-LL |     fn Bar() { }
-   |     ^^^^^^^^ `foo3::Bar`: not accessible
 help: a unit struct with a similar name exists
    |
 LL -     Bar();
@@ -56,6 +48,14 @@ help: consider importing this function
    |
 LL + use foo2::Bar;
    |
+note: these functions exist but are inaccessible
+  --> $DIR/privacy-ns1.rs:15:5
+   |
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo1::Bar`: not accessible
+...
+LL |     fn Bar() { }
+   |     ^^^^^^^^ `foo3::Bar`: not accessible
 
 error[E0425]: cannot find type `Bar` in this scope
   --> $DIR/privacy-ns1.rs:53:17
@@ -68,14 +68,6 @@ note: similarly named struct `Baz` defined here
    |
 LL |     pub struct Baz;
    |     ^^^^^^^^^^^^^^^
-note: these traits exist but are inaccessible
-  --> $DIR/privacy-ns1.rs:26:5
-   |
-LL |     trait Bar {
-   |     ^^^^^^^^^ `foo2::Bar`: not accessible
-...
-LL |     trait Bar {
-   |     ^^^^^^^^^ `foo3::Bar`: not accessible
 help: a struct with a similar name exists
    |
 LL -     let _x: Box<Bar>;
@@ -85,6 +77,14 @@ help: consider importing this trait
    |
 LL + use foo1::Bar;
    |
+note: these traits exist but are inaccessible
+  --> $DIR/privacy-ns1.rs:26:5
+   |
+LL |     trait Bar {
+   |     ^^^^^^^^^ `foo2::Bar`: not accessible
+...
+LL |     trait Bar {
+   |     ^^^^^^^^^ `foo3::Bar`: not accessible
 
 error[E0747]: constant provided when a type was expected
   --> $DIR/privacy-ns1.rs:36:17

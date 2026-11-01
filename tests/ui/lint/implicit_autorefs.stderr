@@ -12,11 +12,11 @@ note: autoref is being applied to this expression, resulting in: `&[u8]`
    |
 LL |     let _ = (*ptr)[..16];
    |             ^^^^^^
-   = note: `#[deny(dangerous_implicit_autorefs)]` on by default
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     let _ = (&(*ptr))[..16];
    |             ++      +
+   = note: `#[deny(dangerous_implicit_autorefs)]` on by default
 
 error: implicit autoref creates a reference to the dereference of a raw pointer
   --> $DIR/implicit_autorefs.rs:19:13

@@ -20,11 +20,11 @@ LL | trait Trait {
    | ^^^^^^^^^^^ this trait is not const
 LL |     fn foo(self);
    |     ------------- this method is not const
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 help: consider making trait `Trait` const
    |
 LL | const trait Trait {
    | +++++
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 2 previous errors
 

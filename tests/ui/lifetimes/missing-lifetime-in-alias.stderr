@@ -50,15 +50,15 @@ error[E0107]: missing generics for associated type `Trait::Bar`
 LL | type C<'a, 'b> = <A<'a> as Trait>::Bar;
    |                                    ^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL | type C<'a, 'b> = <A<'a> as Trait>::Bar<'a>;
+   |                                       ++++
 note: associated type defined here, with 1 lifetime parameter: `'b`
   --> $DIR/missing-lifetime-in-alias.rs:4:10
    |
 LL |     type Bar<'b>
    |          ^^^ --
-help: add missing lifetime argument
-   |
-LL | type C<'a, 'b> = <A<'a> as Trait>::Bar<'a>;
-   |                                       ++++
 
 error: aborting due to 4 previous errors
 

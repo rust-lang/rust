@@ -4,11 +4,6 @@ error[E0107]: associated function takes 0 generic arguments but 1 generic argume
 LL |     let _ = A::foo::<S>();
    |                ^^^ expected 0 generic arguments
    |
-note: associated function defined here, with 0 generic parameters
-  --> $DIR/issue-89064.rs:4:8
-   |
-LL |     fn foo() {}
-   |        ^^^
 help: consider moving this generic argument to the `A` trait, which takes up to 1 argument
    |
 LL -     let _ = A::foo::<S>();
@@ -19,6 +14,11 @@ help: remove the unnecessary generics
 LL -     let _ = A::foo::<S>();
 LL +     let _ = A::foo();
    |
+note: associated function defined here, with 0 generic parameters
+  --> $DIR/issue-89064.rs:4:8
+   |
+LL |     fn foo() {}
+   |        ^^^
 
 error[E0107]: associated function takes 0 generic arguments but 2 generic arguments were supplied
   --> $DIR/issue-89064.rs:22:16
@@ -26,11 +26,6 @@ error[E0107]: associated function takes 0 generic arguments but 2 generic argume
 LL |     let _ = B::bar::<S, S>();
    |                ^^^ expected 0 generic arguments
    |
-note: associated function defined here, with 0 generic parameters
-  --> $DIR/issue-89064.rs:8:8
-   |
-LL |     fn bar() {}
-   |        ^^^
 help: consider moving these generic arguments to the `B` trait, which takes up to 2 arguments
    |
 LL -     let _ = B::bar::<S, S>();
@@ -41,6 +36,11 @@ help: remove the unnecessary generics
 LL -     let _ = B::bar::<S, S>();
 LL +     let _ = B::bar();
    |
+note: associated function defined here, with 0 generic parameters
+  --> $DIR/issue-89064.rs:8:8
+   |
+LL |     fn bar() {}
+   |        ^^^
 
 error[E0107]: associated function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-89064.rs:27:21

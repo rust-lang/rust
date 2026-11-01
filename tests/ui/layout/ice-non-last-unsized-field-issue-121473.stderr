@@ -76,11 +76,11 @@ error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` t
 LL |     field2: str, // Unsized
    |     ^^^^^^^^^^^
    |
-   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 help: wrap the field type in `ManuallyDrop<...>`
    |
 LL |     field2: std::mem::ManuallyDrop<str>, // Unsized
    |             +++++++++++++++++++++++   +
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/ice-non-last-unsized-field-issue-121473.rs:46:13

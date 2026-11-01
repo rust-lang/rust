@@ -18,15 +18,15 @@ error: expected `{`, found `'a`
 LL |     if let () = () 'a {}
    |                    ^^ expected `{`
    |
+help: you might have meant to write this as part of a block
+   |
+LL |     if let () = () { 'a {} }
+   |                    +       +
 note: the `if` expression is missing a block after this condition
   --> $DIR/label-after-block-like.rs:2:8
    |
 LL |     if let () = () 'a {}
    |        ^^^^^^^^^^^
-help: you might have meant to write this as part of a block
-   |
-LL |     if let () = () { 'a {} }
-   |                    +       +
 
 error: labeled expression must be followed by `:`
   --> $DIR/label-after-block-like.rs:8:13
@@ -48,15 +48,15 @@ error: expected `{`, found `'a`
 LL |     if true 'a {}
    |             ^^ expected `{`
    |
+help: you might have meant to write this as part of a block
+   |
+LL |     if true { 'a {} }
+   |             +       +
 note: the `if` expression is missing a block after this condition
   --> $DIR/label-after-block-like.rs:8:8
    |
 LL |     if true 'a {}
    |        ^^^^
-help: you might have meant to write this as part of a block
-   |
-LL |     if true { 'a {} }
-   |             +       +
 
 error: labeled expression must be followed by `:`
   --> $DIR/label-after-block-like.rs:14:10

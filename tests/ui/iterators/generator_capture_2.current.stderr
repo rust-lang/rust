@@ -10,15 +10,15 @@ LL |     let mut i = f();
 LL |     let mut i = f();
    |                 ^ value used here after move
    |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let mut i = f.clone()();
+   |                  ++++++++
 note: this value implements `FnOnce`, which causes it to be moved when called
   --> $DIR/generator_capture_2.rs:21:17
    |
 LL |     let mut i = f();
    |                 ^
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |     let mut i = f.clone()();
-   |                  ++++++++
 
 error: aborting due to 1 previous error
 

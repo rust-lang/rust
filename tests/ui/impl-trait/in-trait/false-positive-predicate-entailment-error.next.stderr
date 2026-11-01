@@ -7,6 +7,10 @@ LL | |     where
 LL | |         F: Callback<Self::CallbackArg>,
    | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`
    |
+help: consider further restricting type parameter `F` with trait `MyFn`
+   |
+LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
+   |                                        +++++++++++
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:19:21
    |
@@ -14,10 +18,6 @@ LL | impl<A, F: MyFn<A>> Callback<A> for F {
    |            -------  ^^^^^^^^^^^     ^
    |            |
    |            unsatisfied trait bound introduced here
-help: consider further restricting type parameter `F` with trait `MyFn`
-   |
-LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
-   |                                        +++++++++++
 
 error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:40:5
@@ -28,6 +28,10 @@ LL | |     where
 LL | |         F: Callback<Self::CallbackArg>,
    | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`
    |
+help: consider further restricting type parameter `F` with trait `MyFn`
+   |
+LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
+   |                                        +++++++++++
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:19:21
    |
@@ -36,10 +40,6 @@ LL | impl<A, F: MyFn<A>> Callback<A> for F {
    |            |
    |            unsatisfied trait bound introduced here
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider further restricting type parameter `F` with trait `MyFn`
-   |
-LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
-   |                                        +++++++++++
 
 error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:40:5
@@ -50,6 +50,10 @@ LL | |     where
 LL | |         F: Callback<Self::CallbackArg>,
    | |_______________________________________^ the trait `MyFn<i32>` is not implemented for `F`
    |
+help: consider further restricting type parameter `F` with trait `MyFn`
+   |
+LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
+   |                                        +++++++++++
 note: required for `F` to implement `Callback<i32>`
   --> $DIR/false-positive-predicate-entailment-error.rs:19:21
    |
@@ -58,10 +62,6 @@ LL | impl<A, F: MyFn<A>> Callback<A> for F {
    |            |
    |            unsatisfied trait bound introduced here
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider further restricting type parameter `F` with trait `MyFn`
-   |
-LL |         F: Callback<Self::CallbackArg> + MyFn<i32>,
-   |                                        +++++++++++
 
 error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
    |

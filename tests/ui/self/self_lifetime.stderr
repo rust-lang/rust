@@ -7,11 +7,11 @@ LL |     fn foo<'b>(self: &'b Foo<'a>) -> &() { self.0 }
    |                       the lifetime is named here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
-   = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
 help: consistently use `'b`
    |
 LL |     fn foo<'b>(self: &'b Foo<'a>) -> &'b () { self.0 }
    |                                       ++
+   = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
 
 warning: eliding a lifetime that's named elsewhere is confusing
   --> $DIR/self_lifetime.rs:13:46

@@ -71,11 +71,11 @@ note: matching on a reference type with a non-reference pattern implicitly borro
    |
 LL |     let [bind_ref!(y)] = &[0];
    |         ^^^^^^^^^^^^^^ this non-reference pattern matches on a reference type `&_`
-   = note: this error originates in the macro `bind_ref` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: match on the reference with a reference pattern to avoid implicitly borrowing
    |
 LL |     let &[bind_ref!(y)] = &[0];
    |         +
+   = note: this error originates in the macro `bind_ref` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/mixed-editions.rs:61:21

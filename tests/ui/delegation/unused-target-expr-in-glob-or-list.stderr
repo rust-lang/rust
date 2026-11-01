@@ -171,6 +171,11 @@ LL |                 reuse <F as Trait>::static_self { self.0 }
 LL |     delegation!();
    |     ------------- in this macro invocation
    |
+help: change the output type to match the trait
+   |
+LL -                 reuse <F as Trait>::static_self { self.0 }
+LL +                 reuse <F as Trait>:: -> F { self.0 }
+   |
 note: type in trait
   --> $DIR/unused-target-expr-in-glob-or-list.rs:4:25
    |
@@ -178,11 +183,6 @@ LL |     fn static_self() -> F { F }
    |                         ^
    = note: expected signature `fn() -> F`
               found signature `fn() -> ()`
-help: change the output type to match the trait
-   |
-LL -                 reuse <F as Trait>::static_self { self.0 }
-LL +                 reuse <F as Trait>:: -> F { self.0 }
-   |
 
 error[E0053]: method `static_self` has an incompatible type for trait
   --> $DIR/unused-target-expr-in-glob-or-list.rs:127:33
@@ -195,6 +195,11 @@ LL |             reuse <F as Trait>::static_self { self.0 }
 LL |         delegation2!();
    |         -------------- in this macro invocation
    |
+help: change the output type to match the trait
+   |
+LL -             reuse <F as Trait>::static_self { self.0 }
+LL +             reuse <F as Trait>:: -> F { self.0 }
+   |
 note: type in trait
   --> $DIR/unused-target-expr-in-glob-or-list.rs:4:25
    |
@@ -202,11 +207,6 @@ LL |     fn static_self() -> F { F }
    |                         ^
    = note: expected signature `fn() -> F`
               found signature `fn() -> ()`
-help: change the output type to match the trait
-   |
-LL -             reuse <F as Trait>::static_self { self.0 }
-LL +             reuse <F as Trait>:: -> F { self.0 }
-   |
 
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/unused-target-expr-in-glob-or-list.rs:107:37

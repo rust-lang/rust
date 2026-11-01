@@ -272,11 +272,11 @@ error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` t
 LL |     foo: F,
    |     ^^^^^^
    |
-   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 help: wrap the field type in `ManuallyDrop<...>`
    |
 LL |     foo: std::mem::ManuallyDrop<F>,
    |          +++++++++++++++++++++++ +
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for traits
   --> $DIR/bad-assoc-ty.rs:83:29

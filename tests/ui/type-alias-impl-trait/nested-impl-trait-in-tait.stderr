@@ -4,11 +4,11 @@ error[E0261]: use of undeclared lifetime name `'db`
 LL | pub type Tait = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;
    |                                        ^^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'db` lifetime
    |
 LL | pub type Tait = impl for<'db> Iterator<Item = (&'db LocalKey, impl Iterator)>;
    |                      ++++++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'db` here
    |
 LL | pub type Tait<'db> = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;

@@ -4,11 +4,11 @@ error: expected item, found `;`
 LL | ;
    | ^
    |
-   = help: function declarations are not followed by a semicolon
 help: remove this semicolon
    |
 LL - ;
    |
+   = help: function declarations are not followed by a semicolon
 
 error: aborting due to 1 previous error
 

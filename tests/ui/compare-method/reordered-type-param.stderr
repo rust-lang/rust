@@ -7,6 +7,11 @@ LL |   fn b<F:Clone,G>(&self, _x: G) -> G { panic!() }
    |        |       found type parameter
    |        expected type parameter
    |
+help: change the parameter type to match the trait
+   |
+LL -   fn b<F:Clone,G>(&self, _x: G) -> G { panic!() }
+LL +   fn b<F:Clone,G>(&self, _x: F) -> G { panic!() }
+   |
 note: type in trait
   --> $DIR/reordered-type-param.rs:7:29
    |
@@ -16,11 +21,6 @@ LL |   fn b<C:Clone,D>(&self, x: C) -> C;
               found signature `fn(&E, G) -> G`
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
-help: change the parameter type to match the trait
-   |
-LL -   fn b<F:Clone,G>(&self, _x: G) -> G { panic!() }
-LL +   fn b<F:Clone,G>(&self, _x: F) -> G { panic!() }
-   |
 
 error: aborting due to 1 previous error
 

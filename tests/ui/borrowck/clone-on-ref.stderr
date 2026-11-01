@@ -32,6 +32,10 @@ LL |
 LL |     println!("{b}");
    |                - borrow later used here
    |
+help: consider further restricting type parameter `T` with trait `Clone`
+   |
+LL | fn bar<T: std::fmt::Display + Clone>(x: T) {
+   |                             +++++++
 help: if `T` implemented `Clone`, you could clone the value
   --> $DIR/clone-on-ref.rs:11:8
    |
@@ -39,10 +43,6 @@ LL | fn bar<T: std::fmt::Display>(x: T) {
    |        ^ consider constraining this type parameter with `Clone`
 LL |     let a = &x;
    |              - you could clone this value
-help: consider further restricting type parameter `T` with trait `Clone`
-   |
-LL | fn bar<T: std::fmt::Display + Clone>(x: T) {
-   |                             +++++++
 
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/clone-on-ref.rs:23:10
@@ -59,6 +59,11 @@ LL |
 LL |     println!("{b:?}");
    |                - borrow later used here
    |
+help: consider annotating `A` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct A;
+   |
 note: if `A` implemented `Clone`, you could clone the value
   --> $DIR/clone-on-ref.rs:19:1
    |
@@ -67,11 +72,6 @@ LL | struct A;
 LL | fn qux(x: A) {
 LL |     let a = &x;
    |              - you could clone this value
-help: consider annotating `A` with `#[derive(Clone)]`
-   |
-LL + #[derive(Clone)]
-LL | struct A;
-   |
 
 error: aborting due to 3 previous errors
 

@@ -16,15 +16,15 @@ error[E0107]: missing generics for type alias `Alias`
 LL |     Tuple(Alias),
    |           ^^^^^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL |     Tuple(Alias<U>),
+   |                +++
 note: type alias defined here, with 1 generic parameter: `U`
   --> $DIR/bad-tait-no-substs.rs:5:6
    |
 LL | type Alias<'a, U> = impl Trait<U>;
    |      ^^^^^     -
-help: add missing generic argument
-   |
-LL |     Tuple(Alias<U>),
-   |                +++
 
 error[E0004]: non-exhaustive patterns: `UninhabitedVariants::Tuple(_)` not covered
   --> $DIR/bad-tait-no-substs.rs:15:11

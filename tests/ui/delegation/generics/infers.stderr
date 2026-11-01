@@ -410,15 +410,15 @@ error[E0107]: function takes 1 lifetime argument but 0 lifetime arguments were s
 LL |         reuse foo::('_, _, _, _) as bar;
    |               ^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL |         reuse foo::('b, '_, _, _, _) as bar;
+   |                     +++
 note: function defined here, with 1 lifetime parameter: `'b`
   --> $DIR/infers.rs:52:12
    |
 LL |         fn foo<'a, 'b: 'b, 'c, X, const M: usize, Y>(_: &'a &'b &'c ()) {}
    |            ^^^     --
-help: add missing lifetime argument
-   |
-LL |         reuse foo::('b, '_, _, _, _) as bar;
-   |                     +++
 
 error[E0107]: function takes 3 generic arguments but 4 generic arguments were supplied
   --> $DIR/infers.rs:54:15
@@ -500,15 +500,15 @@ error[E0107]: function takes 3 generic arguments but 0 generic arguments were su
 LL |     reuse foo::<_> as foo9;
    |           ^^^ expected 3 generic arguments
    |
+help: add missing generic arguments
+   |
+LL |     reuse fooX, M, Y::<_> as foo9;
+   |              +++++++
 note: function defined here, with 3 generic parameters: `X`, `M`, `Y`
   --> $DIR/infers.rs:79:8
    |
 LL |     fn foo<'a, 'b: 'b, 'c, X, const M: usize, Y>(_: &'a &'b &'c ()) {}
    |        ^^^                 -  --------------  -
-help: add missing generic arguments
-   |
-LL |     reuse fooX, M, Y::<_> as foo9;
-   |              +++++++
 
 error[E0107]: function takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/infers.rs:110:11
@@ -516,15 +516,15 @@ error[E0107]: function takes 1 lifetime argument but 0 lifetime arguments were s
 LL |     reuse foo::<Vec<'_>, _, _, ()> as foo10;
    |           ^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL |     reuse foo::<'b, Vec<'_>, _, _, ()> as foo10;
+   |                 +++
 note: function defined here, with 1 lifetime parameter: `'b`
   --> $DIR/infers.rs:79:8
    |
 LL |     fn foo<'a, 'b: 'b, 'c, X, const M: usize, Y>(_: &'a &'b &'c ()) {}
    |        ^^^     --
-help: add missing lifetime argument
-   |
-LL |     reuse foo::<'b, Vec<'_>, _, _, ()> as foo10;
-   |                 +++
 
 error[E0107]: function takes 3 generic arguments but 4 generic arguments were supplied
   --> $DIR/infers.rs:110:11
@@ -571,15 +571,15 @@ error[E0107]: function takes 1 lifetime argument but 0 lifetime arguments were s
 LL |     reuse foo::<Vec<_>, _, _, ()> as foo11;
    |           ^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL |     reuse foo::<'b, Vec<_>, _, _, ()> as foo11;
+   |                 +++
 note: function defined here, with 1 lifetime parameter: `'b`
   --> $DIR/infers.rs:79:8
    |
 LL |     fn foo<'a, 'b: 'b, 'c, X, const M: usize, Y>(_: &'a &'b &'c ()) {}
    |        ^^^     --
-help: add missing lifetime argument
-   |
-LL |     reuse foo::<'b, Vec<_>, _, _, ()> as foo11;
-   |                 +++
 
 error[E0107]: function takes 3 generic arguments but 4 generic arguments were supplied
   --> $DIR/infers.rs:117:11
@@ -633,15 +633,15 @@ LL |     reuse foo::<_, _, _> as foo15;
    |           expected 3 generic arguments
    |           supplied 2 generic arguments
    |
+help: add missing generic argument
+   |
+LL |     reuse fooY::<_, _, _> as foo15;
+   |              +
 note: function defined here, with 3 generic parameters: `X`, `M`, `Y`
   --> $DIR/infers.rs:79:8
    |
 LL |     fn foo<'a, 'b: 'b, 'c, X, const M: usize, Y>(_: &'a &'b &'c ()) {}
    |        ^^^                 -  --------------  -
-help: add missing generic argument
-   |
-LL |     reuse fooY::<_, _, _> as foo15;
-   |              +
 
 error[E0207]: the type parameter `Some` is not constrained by the impl trait, self type, or predicates
   --> $DIR/infers.rs:146:18
@@ -703,15 +703,15 @@ error[E0107]: method takes 3 generic arguments but 0 generic arguments were supp
 LL |         reuse Trait::foo::<_> as foo9;
    |                      ^^^ expected 3 generic arguments
    |
+help: add missing generic arguments
+   |
+LL |         reuse Trait::fooXX, M, YY::<_> as foo9;
+   |                         +++++++++
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
-help: add missing generic arguments
-   |
-LL |         reuse Trait::fooXX, M, YY::<_> as foo9;
-   |                         +++++++++
 
 error[E0107]: method takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/infers.rs:182:22
@@ -719,15 +719,15 @@ error[E0107]: method takes 1 lifetime argument but 0 lifetime arguments were sup
 LL |         reuse Trait::foo::<Vec<'_>, _, _, ()> as foo10;
    |                      ^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL |         reuse Trait::foo::<'a, Vec<'_>, _, _, ()> as foo10;
+   |                            +++
 note: method defined here, with 1 lifetime parameter: `'bb`
   --> $DIR/infers.rs:142:12
    |
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^      ---
-help: add missing lifetime argument
-   |
-LL |         reuse Trait::foo::<'a, Vec<'_>, _, _, ()> as foo10;
-   |                            +++
 
 error[E0107]: method takes 3 generic arguments but 4 generic arguments were supplied
   --> $DIR/infers.rs:182:22
@@ -774,15 +774,15 @@ error[E0107]: method takes 1 lifetime argument but 0 lifetime arguments were sup
 LL |         reuse Trait::foo::<Vec<_>, _, _, ()> as foo11;
    |                      ^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL |         reuse Trait::foo::<'a, Vec<_>, _, _, ()> as foo11;
+   |                            +++
 note: method defined here, with 1 lifetime parameter: `'bb`
   --> $DIR/infers.rs:142:12
    |
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^      ---
-help: add missing lifetime argument
-   |
-LL |         reuse Trait::foo::<'a, Vec<_>, _, _, ()> as foo11;
-   |                            +++
 
 error[E0107]: method takes 3 generic arguments but 4 generic arguments were supplied
   --> $DIR/infers.rs:189:22
@@ -836,15 +836,15 @@ LL |         reuse Trait::foo::<_, _, _> as foo15;
    |                      expected 3 generic arguments
    |                      supplied 2 generic arguments
    |
+help: add missing generic argument
+   |
+LL |         reuse Trait::fooYY::<_, _, _> as foo15;
+   |                         ++
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
-help: add missing generic argument
-   |
-LL |         reuse Trait::fooYY::<_, _, _> as foo15;
-   |                         ++
 
 error[E0107]: trait takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/infers.rs:218:15
@@ -854,15 +854,15 @@ LL |         reuse Trait::<'_, (), _, '_, _>::foo as foo3;
    |               |
    |               expected 2 lifetime arguments
    |
+help: add missing lifetime argument
+   |
+LL |         reuse Trait::<'_, (), _, '_, _>::foo, 'a as foo3;
+   |                                             ++++
 note: trait defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/infers.rs:141:15
    |
 LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
    |               ^^^^^ --  --
-help: add missing lifetime argument
-   |
-LL |         reuse Trait::<'_, (), _, '_, _>::foo, 'a as foo3;
-   |                                             ++++
 
 error[E0107]: trait takes 3 generic arguments but 4 generic arguments were supplied
   --> $DIR/infers.rs:218:15
@@ -890,15 +890,15 @@ error[E0107]: trait takes 3 generic arguments but 0 generic arguments were suppl
 LL |         reuse Trait::<_, _>::foo as foo5;
    |               ^^^^^ expected 3 generic arguments
    |
+help: add missing generic arguments
+   |
+LL |         reuse Trait::<_, _>::foo, X, C, Y as foo5;
+   |                                 +++++++++
 note: trait defined here, with 3 generic parameters: `X`, `C`, `Y`
   --> $DIR/infers.rs:141:15
    |
 LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
    |               ^^^^^         -  --------------  -
-help: add missing generic arguments
-   |
-LL |         reuse Trait::<_, _>::foo, X, C, Y as foo5;
-   |                                 +++++++++
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/infers.rs:231:15
@@ -952,15 +952,15 @@ LL |         reuse Trait::<'static, 'static, _>::foo as foo12;
    |               |
    |               expected 3 generic arguments
    |
+help: add missing generic arguments
+   |
+LL |         reuse Trait::<'static, 'static, _>::foo, C, Y as foo12;
+   |                                                ++++++
 note: trait defined here, with 3 generic parameters: `X`, `C`, `Y`
   --> $DIR/infers.rs:141:15
    |
 LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
    |               ^^^^^         -  --------------  -
-help: add missing generic arguments
-   |
-LL |         reuse Trait::<'static, 'static, _>::foo, C, Y as foo12;
-   |                                                ++++++
 
 error[E0107]: trait takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/infers.rs:260:15
@@ -970,15 +970,15 @@ LL |         reuse Trait::<'_, (), _, '_, _>::foo::<'static, String, _, _> as fo
    |               |
    |               expected 2 lifetime arguments
    |
+help: add missing lifetime argument
+   |
+LL |         reuse Trait::<'_, (), _, '_, _>::foo, 'a::<'static, String, _, _> as foo3;
+   |                                             ++++
 note: trait defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/infers.rs:141:15
    |
 LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
    |               ^^^^^ --  --
-help: add missing lifetime argument
-   |
-LL |         reuse Trait::<'_, (), _, '_, _>::foo, 'a::<'static, String, _, _> as foo3;
-   |                                             ++++
 
 error[E0107]: trait takes 3 generic arguments but 4 generic arguments were supplied
   --> $DIR/infers.rs:260:15
@@ -1006,15 +1006,15 @@ error[E0107]: trait takes 3 generic arguments but 0 generic arguments were suppl
 LL |         reuse Trait::<_, _>::foo::<'_, '_, '_, _, _, _,> as foo5;
    |               ^^^^^ expected 3 generic arguments
    |
+help: add missing generic arguments
+   |
+LL |         reuse Trait::<_, _>::foo, X, C, Y::<'_, '_, '_, _, _, _,> as foo5;
+   |                                 +++++++++
 note: trait defined here, with 3 generic parameters: `X`, `C`, `Y`
   --> $DIR/infers.rs:141:15
    |
 LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
    |               ^^^^^         -  --------------  -
-help: add missing generic arguments
-   |
-LL |         reuse Trait::<_, _>::foo, X, C, Y::<'_, '_, '_, _, _, _,> as foo5;
-   |                                 +++++++++
 
 error[E0107]: method takes 3 generic arguments but 5 generic arguments were supplied
   --> $DIR/infers.rs:268:30
@@ -1082,15 +1082,15 @@ error[E0107]: method takes 3 generic arguments but 0 generic arguments were supp
 LL |         reuse Trait::<'static, 'static, _, _, _>::foo::<_> as foo9;
    |                                                   ^^^ expected 3 generic arguments
    |
+help: add missing generic arguments
+   |
+LL |         reuse Trait::<'static, 'static, _, _, _>::fooXX, M, YY::<_> as foo9;
+   |                                                      +++++++++
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
-help: add missing generic arguments
-   |
-LL |         reuse Trait::<'static, 'static, _, _, _>::fooXX, M, YY::<_> as foo9;
-   |                                                      +++++++++
 
 error[E0107]: trait takes 3 generic arguments but 7 generic arguments were supplied
   --> $DIR/infers.rs:298:15
@@ -1110,15 +1110,15 @@ error[E0107]: method takes 1 lifetime argument but 0 lifetime arguments were sup
 LL |         reuse Trait::<'static, 'static, _, _, _, _, _, _, _>::foo::<Vec<'_>, _, _, ()> as foo10;
    |                                                               ^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL |         reuse Trait::<'static, 'static, _, _, _, _, _, _, _>::foo::<'bb, Vec<'_>, _, _, ()> as foo10;
+   |                                                                     ++++
 note: method defined here, with 1 lifetime parameter: `'bb`
   --> $DIR/infers.rs:142:12
    |
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^      ---
-help: add missing lifetime argument
-   |
-LL |         reuse Trait::<'static, 'static, _, _, _, _, _, _, _>::foo::<'bb, Vec<'_>, _, _, ()> as foo10;
-   |                                                                     ++++
 
 error[E0107]: method takes 3 generic arguments but 4 generic arguments were supplied
   --> $DIR/infers.rs:298:63
@@ -1179,15 +1179,15 @@ error[E0107]: method takes 1 lifetime argument but 0 lifetime arguments were sup
 LL |         reuse Trait::<'static, 'static, '_,'_, '_, '_, '_, '_>::foo::<Vec<_>, _, _, ()> as foo11;
    |                                                                 ^^^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL |         reuse Trait::<'static, 'static, '_,'_, '_, '_, '_, '_>::foo::<'bb, Vec<_>, _, _, ()> as foo11;
+   |                                                                       ++++
 note: method defined here, with 1 lifetime parameter: `'bb`
   --> $DIR/infers.rs:142:12
    |
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^      ---
-help: add missing lifetime argument
-   |
-LL |         reuse Trait::<'static, 'static, '_,'_, '_, '_, '_, '_>::foo::<'bb, Vec<_>, _, _, ()> as foo11;
-   |                                                                       ++++
 
 error[E0107]: method takes 3 generic arguments but 4 generic arguments were supplied
   --> $DIR/infers.rs:306:65
@@ -1223,15 +1223,15 @@ LL |         reuse Trait::<'static, 'static, _>::foo::<'____, ___, _, ___> as fo
    |               |
    |               expected 3 generic arguments
    |
+help: add missing generic arguments
+   |
+LL |         reuse Trait::<'static, 'static, _>::foo, C, Y::<'____, ___, _, ___> as foo12;
+   |                                                ++++++
 note: trait defined here, with 3 generic parameters: `X`, `C`, `Y`
   --> $DIR/infers.rs:141:15
    |
 LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
    |               ^^^^^         -  --------------  -
-help: add missing generic arguments
-   |
-LL |         reuse Trait::<'static, 'static, _>::foo, C, Y::<'____, ___, _, ___> as foo12;
-   |                                                ++++++
 
 error[E0308]: mismatched types
   --> $DIR/infers.rs:338:42

@@ -25,6 +25,10 @@ LL |     Box::new(|| {
 LL |         *x
    |         -- `x` is borrowed here
    |
+help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |     Box::new(move || {
+   |              ++++
 note: closure is returned here
   --> $DIR/suggest-lt-on-ty-alias-w-generics.rs:5:5
    |
@@ -34,10 +38,6 @@ LL | |
 LL | |         *x
 LL | |     })
    | |______^
-help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
-   |
-LL |     Box::new(move || {
-   |              ++++
 
 error: aborting due to 2 previous errors
 

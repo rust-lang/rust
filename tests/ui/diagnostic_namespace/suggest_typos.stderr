@@ -4,15 +4,15 @@ error: unknown diagnostic attribute
 LL | #[diagnostic::onunimplemented]
    |               ^^^^^^^^^^^^^^^
    |
+help: an attribute with a similar name exists
+   |
+LL | #[diagnostic::on_unimplemented]
+   |                 +
 note: the lint level is defined here
   --> $DIR/suggest_typos.rs:2:9
    |
 LL | #![deny(unknown_diagnostic_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: an attribute with a similar name exists
-   |
-LL | #[diagnostic::on_unimplemented]
-   |                 +
 
 error: unknown diagnostic attribute
   --> $DIR/suggest_typos.rs:9:15

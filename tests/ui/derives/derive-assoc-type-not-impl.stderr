@@ -17,12 +17,12 @@ LL | #[derive(Clone)]
    |          ----- in this derive macro expansion
 LL | struct Bar<T: Foo> {
    |            ^ type parameter would need to implement `Clone`
-   = help: consider manually implementing the trait to avoid undesired bounds
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
 LL | struct NotClone;
    |
+   = help: consider manually implementing the trait to avoid undesired bounds
 
 error: aborting due to 1 previous error
 

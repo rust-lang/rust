@@ -4,17 +4,17 @@ error[E0277]: the trait bound `MyStruct: Default` is not satisfied
 LL |     default type MyType = MyStruct;
    |                           ^^^^^^^^ the trait `Default` is not implemented for `MyStruct`
    |
+help: consider annotating `MyStruct` with `#[derive(Default)]`
+   |
+LL + #[derive(Default)]
+LL | struct MyStruct {}
+   |
 note: required by a bound in `MyTrait::MyType`
   --> $DIR/issue-59435.rs:7:18
    |
 LL | trait MyTrait {
 LL |     type MyType: Default;
    |                  ^^^^^^^ required by this bound in `MyTrait::MyType`
-help: consider annotating `MyStruct` with `#[derive(Default)]`
-   |
-LL + #[derive(Default)]
-LL | struct MyStruct {}
-   |
 
 error: aborting due to 1 previous error
 

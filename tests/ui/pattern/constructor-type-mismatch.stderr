@@ -7,15 +7,15 @@ LL |     Bar(i32),
 LL |         Foo::Bar => {}
    |         ^^^^^^^^
    |
+help: use the tuple variant pattern syntax instead
+   |
+LL |         Foo::Bar(_) => {}
+   |                 +++
 note: similarly named unit variant `Baz` defined here
   --> $DIR/constructor-type-mismatch.rs:4:5
    |
 LL |     Baz
    |     ^^^
-help: use the tuple variant pattern syntax instead
-   |
-LL |         Foo::Bar(_) => {}
-   |                 +++
 help: a unit variant with a similar name exists
    |
 LL -         Foo::Bar => {}

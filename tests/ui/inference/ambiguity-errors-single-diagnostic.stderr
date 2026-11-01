@@ -6,6 +6,10 @@ LL |     as_input(Default::default());
    |     |
    |     cannot infer type of the type parameter `T` declared on the function `as_input`
    |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     as_input::</* Type */>(Default::default());
+   |             ++++++++++++++
    = note: the type must implement `Trait`
 help: the following types implement trait `Trait`
   --> $DIR/ambiguity-errors-single-diagnostic.rs:8:1
@@ -21,10 +25,6 @@ note: required by a bound in `as_input`
    |
 LL | fn as_input<T: Trait>(_: T) {}
    |                ^^^^^ required by this bound in `as_input`
-help: consider specifying a concrete type for the type parameter `T`
-   |
-LL |     as_input::</* Type */>(Default::default());
-   |             ++++++++++++++
 
 error[E0283]: type annotations needed
   --> $DIR/ambiguity-errors-single-diagnostic.rs:21:5
@@ -34,6 +34,10 @@ LL |     constrained(Default::default());
    |     |
    |     cannot infer type of the type parameter `T` declared on the function `constrained`
    |
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     constrained::</* Type */>(Default::default());
+   |                ++++++++++++++
    = note: the type must implement `Trait`
 help: the following types implement trait `Trait`
   --> $DIR/ambiguity-errors-single-diagnostic.rs:8:1
@@ -55,10 +59,6 @@ note: required by a bound in `constrained`
    |
 LL | fn constrained<T: Trait + Clone>(_: T) {}
    |                           ^^^^^ required by this bound in `constrained`
-help: consider specifying a concrete type for the type parameter `T`
-   |
-LL |     constrained::</* Type */>(Default::default());
-   |                ++++++++++++++
 
 error: aborting due to 2 previous errors
 

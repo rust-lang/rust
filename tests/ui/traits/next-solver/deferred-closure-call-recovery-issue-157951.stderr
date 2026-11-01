@@ -5,11 +5,11 @@ LL |     let f = |f: dyn Fn()| f;
    |                 ^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Fn() + 'static)`
-   = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL |     let f = |f: &dyn Fn()| f;
    |                 +
+   = help: unsized fn params are gated as an unstable feature
 
 error[E0746]: return type cannot be a trait object without pointer indirection
   --> $DIR/deferred-closure-call-recovery-issue-157951.rs:5:27

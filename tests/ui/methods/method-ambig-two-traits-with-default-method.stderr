@@ -9,16 +9,16 @@ note: candidate #1 is defined in an impl of the trait `Bar` for the type `usize`
    |
 LL | trait Bar { fn method(&self) {} }
    |             ^^^^^^^^^^^^^^^^
-note: candidate #2 is defined in an impl of the trait `Foo` for the type `usize`
-  --> $DIR/method-ambig-two-traits-with-default-method.rs:5:13
-   |
-LL | trait Foo { fn method(&self) {} }
-   |             ^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     1_usize.method();
 LL +     Bar::method(&1_usize);
    |
+note: candidate #2 is defined in an impl of the trait `Foo` for the type `usize`
+  --> $DIR/method-ambig-two-traits-with-default-method.rs:5:13
+   |
+LL | trait Foo { fn method(&self) {} }
+   |             ^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #2
    |
 LL -     1_usize.method();

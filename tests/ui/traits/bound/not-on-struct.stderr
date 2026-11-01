@@ -157,16 +157,16 @@ LL | fn g() -> Traitor + 'static {
    |           -------   ^^^^^^^ ...because of this bound
    |           |
    |           expected this type to be a trait...
-note: similarly named trait `Trait` defined here
-  --> $DIR/not-on-struct.rs:35:1
-   |
-LL | trait Trait {}
-   | ^^^^^^^^^^^
 help: if you meant to use a type and not a trait here, remove the bounds
    |
 LL - fn g() -> Traitor + 'static {
 LL + fn g() -> Traitor {
    |
+note: similarly named trait `Trait` defined here
+  --> $DIR/not-on-struct.rs:35:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
 help: a trait with a similar name exists
    |
 LL - fn g() -> Traitor + 'static {

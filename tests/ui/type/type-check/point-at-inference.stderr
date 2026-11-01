@@ -13,15 +13,15 @@ LL |     bar(foo);
    |
    = note: expected struct `Vec<i32>`
               found struct `Vec<&{integer}>`
+help: consider dereferencing the borrow
+   |
+LL |         foo.push(*i);
+   |                  +
 note: function defined here
   --> $DIR/point-at-inference.rs:2:4
    |
 LL | fn bar(_: Vec<i32>) {}
    |    ^^^ -----------
-help: consider dereferencing the borrow
-   |
-LL |         foo.push(*i);
-   |                  +
 
 error: aborting due to 1 previous error
 

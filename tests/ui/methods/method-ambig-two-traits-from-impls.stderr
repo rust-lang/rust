@@ -9,16 +9,16 @@ note: candidate #1 is defined in an impl of the trait `A` for the type `AB`
    |
 LL |     fn foo(self) {}
    |     ^^^^^^^^^^^^
-note: candidate #2 is defined in an impl of the trait `B` for the type `AB`
-  --> $DIR/method-ambig-two-traits-from-impls.rs:11:5
-   |
-LL |     fn foo(self) {}
-   |     ^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     AB {}.foo();
 LL +     A::foo(AB {});
    |
+note: candidate #2 is defined in an impl of the trait `B` for the type `AB`
+  --> $DIR/method-ambig-two-traits-from-impls.rs:11:5
+   |
+LL |     fn foo(self) {}
+   |     ^^^^^^^^^^^^
 help: disambiguate the method for candidate #2
    |
 LL -     AB {}.foo();

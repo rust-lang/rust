@@ -6,15 +6,15 @@ LL |     Foo::<isize>::new();
    |     |
    |     expected at least 2 generic arguments
    |
+help: add missing generic argument
+   |
+LL |     Foo::<isize, B>::new();
+   |                +++
 note: struct defined here, with at least 2 generic parameters: `A`, `B`
   --> $DIR/generic-impl-less-params-with-defaults.rs:3:8
    |
 LL | struct Foo<A, B, C = (A, B)>(
    |        ^^^ -  -
-help: add missing generic argument
-   |
-LL |     Foo::<isize, B>::new();
-   |                +++
 
 error: aborting due to 1 previous error
 

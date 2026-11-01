@@ -55,11 +55,11 @@ note: the associated constant is defined here
 LL | pub trait Parse {
 LL |     const MODE: Mode;
    |     ^^^^^^^^^^^^^^^^
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding braces here
    |
 LL | pub trait CoolStuff: Parse<MODE = { Mode::Cool }> {}
    |                                   +            +
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: expected constant, found type
   --> $DIR/unbraced-enum-variant.rs:13:35
@@ -75,11 +75,11 @@ note: the associated constant is defined here
 LL | pub trait Parse {
 LL |     const MODE: Mode;
    |     ^^^^^^^^^^^^^^^^
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding braces here
    |
 LL | pub trait CoolStuff: Parse<MODE = { Mode::Cool }> {}
    |                                   +            +
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 5 previous errors
 

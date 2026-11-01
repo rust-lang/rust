@@ -4,11 +4,11 @@ error[E0261]: use of undeclared lifetime name `'a`
 LL | type Return<A> = impl WithAssoc<A, AssocType = impl SomeTrait + 'a>;
    |                                                                 ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL | type Return<A> = impl for<'a> WithAssoc<A, AssocType = impl SomeTrait + 'a>;
    |                       +++++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'a` here
    |
 LL | type Return<'a, A> = impl WithAssoc<A, AssocType = impl SomeTrait + 'a>;

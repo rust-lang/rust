@@ -12,11 +12,6 @@ LL | trait DynIncompatible {
    |       --------------- this trait is not dyn compatible...
 LL |     fn foo() -> Self;
    |        ^^^ ...because associated function `foo` has no `self` parameter
-   = help: the following types implement `DynIncompatible`:
-             A
-             B
-           consider defining an enum where each variant holds one of these types,
-           implementing `DynIncompatible` for this new enum and using it instead
 help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn foo(&self) -> Self;
@@ -25,6 +20,11 @@ help: alternatively, consider constraining `foo` so it is explicitly marked as n
    |
 LL |     fn foo() -> Self where Self: Sized;
    |                      +++++++++++++++++
+   = help: the following types implement `DynIncompatible`:
+             A
+             B
+           consider defining an enum where each variant holds one of these types,
+           implementing `DynIncompatible` for this new enum and using it instead
 
 error[E0746]: return type cannot be a trait object without pointer indirection
   --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:22:13
@@ -62,11 +62,6 @@ LL | trait DynIncompatible {
    |       --------------- this trait is not dyn compatible...
 LL |     fn foo() -> Self;
    |        ^^^ ...because associated function `foo` has no `self` parameter
-   = help: the following types implement `DynIncompatible`:
-             A
-             B
-           consider defining an enum where each variant holds one of these types,
-           implementing `DynIncompatible` for this new enum and using it instead
 help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn foo(&self) -> Self;
@@ -75,6 +70,11 @@ help: alternatively, consider constraining `foo` so it is explicitly marked as n
    |
 LL |     fn foo() -> Self where Self: Sized;
    |                      +++++++++++++++++
+   = help: the following types implement `DynIncompatible`:
+             A
+             B
+           consider defining an enum where each variant holds one of these types,
+           implementing `DynIncompatible` for this new enum and using it instead
 
 error[E0038]: the trait `DynIncompatible` is not dyn compatible
   --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:22:17
@@ -82,24 +82,19 @@ error[E0038]: the trait `DynIncompatible` is not dyn compatible
 LL | fn car() -> dyn DynIncompatible {
    |                 ^^^^^^^^^^^^^^^ `DynIncompatible` is not dyn compatible
    |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:4:8
-   |
-LL | trait DynIncompatible {
-   |       --------------- this trait is not dyn compatible...
-LL |     fn foo() -> Self;
-   |        ^^^ ...because associated function `foo` has no `self` parameter
-   = help: the following types implement `DynIncompatible`:
-             A
-             B
-           consider defining an enum where each variant holds one of these types,
-           implementing `DynIncompatible` for this new enum and using it instead
 help: consider using an opaque type instead
    |
 LL - fn car() -> dyn DynIncompatible {
 LL + fn car() -> impl DynIncompatible {
    |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:4:8
+   |
+LL | trait DynIncompatible {
+   |       --------------- this trait is not dyn compatible...
+LL |     fn foo() -> Self;
+   |        ^^^ ...because associated function `foo` has no `self` parameter
 help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn foo(&self) -> Self;
@@ -108,12 +103,22 @@ help: alternatively, consider constraining `foo` so it is explicitly marked as n
    |
 LL |     fn foo() -> Self where Self: Sized;
    |                      +++++++++++++++++
+   = help: the following types implement `DynIncompatible`:
+             A
+             B
+           consider defining an enum where each variant holds one of these types,
+           implementing `DynIncompatible` for this new enum and using it instead
 
 error[E0038]: the trait `DynIncompatible` is not dyn compatible
   --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:22:17
    |
 LL | fn car() -> dyn DynIncompatible {
    |                 ^^^^^^^^^^^^^^^ `DynIncompatible` is not dyn compatible
+   |
+help: consider using an opaque type instead
+   |
+LL - fn car() -> dyn DynIncompatible {
+LL + fn car() -> impl DynIncompatible {
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
@@ -123,25 +128,20 @@ LL | trait DynIncompatible {
    |       --------------- this trait is not dyn compatible...
 LL |     fn foo() -> Self;
    |        ^^^ ...because associated function `foo` has no `self` parameter
+help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
+   |
+LL |     fn foo(&self) -> Self;
+   |            +++++
+help: alternatively, consider constraining `foo` so it is explicitly marked as not applying to trait objects
+   |
+LL |     fn foo() -> Self where Self: Sized;
+   |                      +++++++++++++++++
    = help: the following types implement `DynIncompatible`:
              A
              B
            consider defining an enum where each variant holds one of these types,
            implementing `DynIncompatible` for this new enum and using it instead
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider using an opaque type instead
-   |
-LL - fn car() -> dyn DynIncompatible {
-LL + fn car() -> impl DynIncompatible {
-   |
-help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
-   |
-LL |     fn foo(&self) -> Self;
-   |            +++++
-help: alternatively, consider constraining `foo` so it is explicitly marked as not applying to trait objects
-   |
-LL |     fn foo() -> Self where Self: Sized;
-   |                      +++++++++++++++++
 
 error: aborting due to 5 previous errors
 

@@ -142,6 +142,10 @@ LL |         fn use_self(&'static self) -> &() { panic!() }
 ...
 LL |     impl MyTrait for dyn ObjectTrait {}
    |                          ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                                      ++++
 note: `'static` lifetime requirement from `v::MyTrait::use_self` introduced here
   --> $DIR/static-impl-obligation.rs:251:31
    |
@@ -149,10 +153,6 @@ LL |     trait MyTrait where Self: 'static {
    |                               ^^^^^^^ lifetime requirement introduced here
 LL |         fn use_self(&'static self) -> &() { panic!() }
    |                     ^^^^^^^^^^^^^ lifetime requirement introduced here
-help: consider relaxing the implicit `'static` requirement
-   |
-LL |     impl MyTrait for dyn ObjectTrait + '_ {}
-   |                                      ++++
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/static-impl-obligation.rs:9:9

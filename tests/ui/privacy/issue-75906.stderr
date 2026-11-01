@@ -5,15 +5,15 @@ LL |     let y = Bar(12);
    |             ^^^
    |
    = note: a struct named `Bar` exists in another namespace
+help: consider making the field publicly accessible
+   |
+LL |     pub struct Bar(pub u8);
+   |                    +++
 note: constructor is not visible here due to private fields
   --> $DIR/issue-75906.rs:4:20
    |
 LL |     pub struct Bar(u8);
    |                    ^^ private field
-help: consider making the field publicly accessible
-   |
-LL |     pub struct Bar(pub u8);
-   |                    +++
 
 error: aborting due to 1 previous error
 

@@ -79,11 +79,11 @@ error: expected identifier, found keyword `unsafe`
 LL | #[unsafe(allow(unsafe(dead_code)))]
    |                ^^^^^^ expected identifier, found keyword
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: escape `unsafe` to use it as an identifier
    |
 LL | #[unsafe(allow(r#unsafe(dead_code)))]
    |                ++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0452]: malformed lint attribute input
   --> $DIR/proc-unsafe-attributes.rs:29:16
@@ -170,11 +170,11 @@ error: expected identifier, found keyword `unsafe`
 LL | #[unsafe(allow(unsafe(dead_code)))]
    |                ^^^^^^ expected identifier, found keyword
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: escape `unsafe` to use it as an identifier
    |
 LL | #[unsafe(allow(r#unsafe(dead_code)))]
    |                ++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0452]: malformed lint attribute input
   --> $DIR/proc-unsafe-attributes.rs:29:16

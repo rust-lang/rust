@@ -4,7 +4,6 @@ error[E0782]: expected a type, found a trait
 LL |     fn g(new: B) -> B;
    |               ^
    |
-   = note: `B` is dyn-incompatible, otherwise a trait object could be used
 help: use a new generic type parameter, constrained by `B`
    |
 LL -     fn g(new: B) -> B;
@@ -14,6 +13,7 @@ help: you can also use an opaque type, but users won't be able to specify the ty
    |
 LL |     fn g(new: impl B) -> B;
    |               ++++
+   = note: `B` is dyn-incompatible, otherwise a trait object could be used
 
 error[E0782]: expected a type, found a trait
   --> $DIR/ice-return-unsized-can-impl.rs:10:21

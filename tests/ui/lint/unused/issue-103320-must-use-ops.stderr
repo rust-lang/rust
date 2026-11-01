@@ -5,15 +5,15 @@ LL |     x.add(4);
    |     ^^^^^^^^
    |
    = note: this returns the result of the operation, without modifying the original
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |     let _ = x.add(4);
+   |     +++++++
 note: the lint level is defined here
   --> $DIR/issue-103320-must-use-ops.rs:3:9
    |
 LL | #![warn(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
-help: use `let _ = ...` to ignore the resulting value
-   |
-LL |     let _ = x.add(4);
-   |     +++++++
 
 warning: unused return value of `sub` that must be used
   --> $DIR/issue-103320-must-use-ops.rs:17:5

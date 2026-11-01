@@ -6,14 +6,14 @@ LL | fn test1<T: ?Sized + Foo>(t: &T) {
 LL |     let u: &dyn Foo = t;
    |                       ^ within `T`, the trait `Sized` is not implemented for `T`
    |
-   = note: required because it appears within the type `T`
-   = note: required for `&T` to implement `CoerceUnsized<&dyn Foo>`
-   = note: required for the cast from `&T` to `&dyn Foo`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn test1<T: ?Sized + Foo>(t: &T) {
 LL + fn test1<T: Foo>(t: &T) {
    |
+   = note: required because it appears within the type `T`
+   = note: required for `&T` to implement `CoerceUnsized<&dyn Foo>`
+   = note: required for the cast from `&T` to `&dyn Foo`
 
 error[E0277]: the trait bound `&T: CoerceUnsized<&dyn Foo>` is not satisfied in `T`
   --> $DIR/dst-object-from-unsized-type.rs:17:23
@@ -23,14 +23,14 @@ LL | fn test2<T: ?Sized + Foo>(t: &T) {
 LL |     let v: &dyn Foo = t as &dyn Foo;
    |                       ^ within `T`, the trait `Sized` is not implemented for `T`
    |
-   = note: required because it appears within the type `T`
-   = note: required for `&T` to implement `CoerceUnsized<&dyn Foo>`
-   = note: required for the cast from `&T` to `&dyn Foo`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn test2<T: ?Sized + Foo>(t: &T) {
 LL + fn test2<T: Foo>(t: &T) {
    |
+   = note: required because it appears within the type `T`
+   = note: required for `&T` to implement `CoerceUnsized<&dyn Foo>`
+   = note: required for the cast from `&T` to `&dyn Foo`
 
 error[E0277]: the trait bound `&str: CoerceUnsized<&dyn Foo>` is not satisfied in `str`
   --> $DIR/dst-object-from-unsized-type.rs:23:28

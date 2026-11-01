@@ -82,12 +82,12 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `std::mem::size_of`
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 help: consider further restricting `Self`
    |
 LL | trait Foo<T>: Sized {
    |             +++++++
+note: required by an implicit `Sized` bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/bound-suggestions.rs:51:46
@@ -95,12 +95,12 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `std::mem::size_of`
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 help: consider further restricting `Self`
    |
 LL | trait Bar: std::fmt::Display + Sized {
    |                              +++++++
+note: required by an implicit `Sized` bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/bound-suggestions.rs:57:46
@@ -108,12 +108,12 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `std::mem::size_of`
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 help: consider further restricting `Self`
    |
 LL | trait Baz: Sized where Self: std::fmt::Display {
    |          +++++++
+note: required by an implicit `Sized` bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/bound-suggestions.rs:63:46
@@ -121,12 +121,12 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `std::mem::size_of`
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 help: consider further restricting `Self`
    |
 LL | trait Qux<T>: Sized where Self: std::fmt::Display {
    |             +++++++
+note: required by an implicit `Sized` bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/bound-suggestions.rs:69:46
@@ -134,12 +134,12 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
    |
-note: required by an implicit `Sized` bound in `std::mem::size_of`
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 help: consider further restricting `Self`
    |
 LL | trait Bat<T>: std::fmt::Display + Sized {
    |                                 +++++++
+note: required by an implicit `Sized` bound in `std::mem::size_of`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error: aborting due to 11 previous errors
 

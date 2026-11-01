@@ -38,15 +38,15 @@ note: the binding is already a mutable borrow
    |
 LL |     fn bar(self: &mut Self) {
    |                  ^^^^^^^^^
+help: consider making the binding mutable if you need to reborrow multiple times
+   |
+LL |     fn bar(mut self: &mut Self) {
+   |            +++
 help: try removing `&mut` here
   --> $DIR/issue-31424.rs:17:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^
-help: consider making the binding mutable if you need to reborrow multiple times
-   |
-LL |     fn bar(mut self: &mut Self) {
-   |            +++
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

@@ -4,14 +4,14 @@ warning: unexpected `cfg` condition name: `FALSE`
 LL | #[cfg(FALSE)]
    |       ^^^^^
    |
-   = help: to expect this configuration use `--check-cfg=cfg(FALSE)`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
-   = note: `#[warn(unexpected_cfgs)]` on by default
 help: you may have meant to use `false` (notice the capitalization). Doing so makes this predicate evaluate to `false` unconditionally
    |
 LL - #[cfg(FALSE)]
 LL + #[cfg(false)]
    |
+   = help: to expect this configuration use `--check-cfg=cfg(FALSE)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition name: `False`
   --> $DIR/false.rs:13:7
@@ -19,13 +19,13 @@ warning: unexpected `cfg` condition name: `False`
 LL | #[cfg(False)]
    |       ^^^^^
    |
-   = help: to expect this configuration use `--check-cfg=cfg(False)`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 help: you may have meant to use `false` (notice the capitalization). Doing so makes this predicate evaluate to `false` unconditionally (notice the capitalization)
    |
 LL - #[cfg(False)]
 LL + #[cfg(false)]
    |
+   = help: to expect this configuration use `--check-cfg=cfg(False)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `r#false`
   --> $DIR/false.rs:19:7
@@ -51,13 +51,13 @@ warning: unexpected `cfg` condition name: `TRUE`
 LL | #[cfg(TRUE)]
    |       ^^^^
    |
-   = help: to expect this configuration use `--check-cfg=cfg(TRUE)`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 help: you may have meant to use `true` (notice the capitalization). Doing so makes this predicate evaluate to `true` unconditionally
    |
 LL - #[cfg(TRUE)]
 LL + #[cfg(true)]
    |
+   = help: to expect this configuration use `--check-cfg=cfg(TRUE)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `True`
   --> $DIR/false.rs:40:7
@@ -65,13 +65,13 @@ warning: unexpected `cfg` condition name: `True`
 LL | #[cfg(True)]
    |       ^^^^
    |
-   = help: to expect this configuration use `--check-cfg=cfg(True)`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 help: you may have meant to use `true` (notice the capitalization). Doing so makes this predicate evaluate to `true` unconditionally
    |
 LL - #[cfg(True)]
 LL + #[cfg(true)]
    |
+   = help: to expect this configuration use `--check-cfg=cfg(True)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `r#true`
   --> $DIR/false.rs:46:7

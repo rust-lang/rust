@@ -27,15 +27,15 @@ LL |     iterate(graph);
    |
    = note: expected reference `&_`
                  found struct `Vec<Stuff>`
+help: consider borrowing here
+   |
+LL |     iterate(&graph);
+   |             +
 note: function defined here
   --> $DIR/issue-13853.rs:26:4
    |
 LL | fn iterate<N: Node, G: Graph<N>>(graph: &G) {
    |    ^^^^^^^                       ---------
-help: consider borrowing here
-   |
-LL |     iterate(&graph);
-   |             +
 
 error: aborting due to 3 previous errors
 

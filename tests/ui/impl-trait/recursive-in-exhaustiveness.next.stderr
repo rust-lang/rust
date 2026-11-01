@@ -4,15 +4,15 @@ error[E0282]: type annotations needed for `(_,)`
 LL |     let (x,) = (build(x),);
    |         ^^^^
    |
+help: consider giving this pattern a type, where the placeholder `_` is specified
+   |
+LL |     let (x,): (_,) = (build(x),);
+   |             ++++++
 note: cannot infer type of hidden type of opaque
   --> $DIR/recursive-in-exhaustiveness.rs:17:22
    |
 LL | fn build<T>(x: T) -> impl Sized {
    |                      ^^^^^^^^^^
-help: consider giving this pattern a type, where the placeholder `_` is specified
-   |
-LL |     let (x,): (_,) = (build(x),);
-   |             ++++++
 
 error[E0282]: type annotations needed for `((_,),)`
   --> $DIR/recursive-in-exhaustiveness.rs:29:9
@@ -20,15 +20,15 @@ error[E0282]: type annotations needed for `((_,),)`
 LL |     let (x,) = (build2(x),);
    |         ^^^^
    |
+help: consider giving this pattern a type, where the placeholder `_` is specified
+   |
+LL |     let (x,): ((_,),) = (build2(x),);
+   |             +++++++++
 note: cannot infer type of hidden type of opaque
   --> $DIR/recursive-in-exhaustiveness.rs:27:23
    |
 LL | fn build2<T>(x: T) -> impl Sized {
    |                       ^^^^^^^^^^
-help: consider giving this pattern a type, where the placeholder `_` is specified
-   |
-LL |     let (x,): ((_,),) = (build2(x),);
-   |             +++++++++
 
 error[E0282]: type annotations needed
   --> $DIR/recursive-in-exhaustiveness.rs:37:23

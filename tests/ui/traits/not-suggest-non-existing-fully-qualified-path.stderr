@@ -4,6 +4,11 @@ error[E0283]: type annotations needed
 LL |     a.method();
    |       ^^^^^^
    |
+help: try using a fully qualified path to specify the expected types
+   |
+LL -     a.method();
+LL +     <A<B> as V<U>>::method(a);
+   |
 note: multiple `impl`s satisfying `B: I<_>` found
   --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:5:1
    |
@@ -19,11 +24,6 @@ LL | impl<T, U> V<U> for A<T>
 LL | where
 LL |     T: I<U>,
    |        ---- unsatisfied trait bound introduced here
-help: try using a fully qualified path to specify the expected types
-   |
-LL -     a.method();
-LL +     <A<B> as V<U>>::method(a);
-   |
 
 error: aborting due to 1 previous error
 

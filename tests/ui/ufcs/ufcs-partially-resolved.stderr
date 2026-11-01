@@ -9,16 +9,16 @@ note: similarly named associated type `Y` defined here
    |
 LL |     type Y = u16;
    |     ^^^^^^^^^^^^^
-note: associated type `Y` defined here
-  --> $DIR/ufcs-partially-resolved.rs:4:5
-   |
-LL |     type Y = u16;
-   |     ^^^^^^^^^^^^^
 help: an associated type with a similar name exists
    |
 LL -     let _: <u8 as Tr>::N;
 LL +     let _: <u8 as Tr>::Y;
    |
+note: associated type `Y` defined here
+  --> $DIR/ufcs-partially-resolved.rs:4:5
+   |
+LL |     type Y = u16;
+   |     ^^^^^^^^^^^^^
 help: maybe you meant this associated type
    |
 LL -     let _: <u8 as Tr>::N;
@@ -61,16 +61,16 @@ note: similarly named associated function `Y` defined here
    |
 LL |     fn Y() {}
    |     ^^^^^^
-note: associated function `Y` defined here
-  --> $DIR/ufcs-partially-resolved.rs:5:5
-   |
-LL |     fn Y() {}
-   |     ^^^^^^
 help: an associated function with a similar name exists
    |
 LL -     <u8 as Tr>::N;
 LL +     <u8 as Tr>::Y;
    |
+note: associated function `Y` defined here
+  --> $DIR/ufcs-partially-resolved.rs:5:5
+   |
+LL |     fn Y() {}
+   |     ^^^^^^
 help: maybe you meant this associated function
    |
 LL -     <u8 as Tr>::N;
@@ -139,16 +139,16 @@ note: similarly named associated type `Y` defined here
    |
 LL |     type Y = u16;
    |     ^^^^^^^^^^^^^
-note: associated type `Y` defined here
-  --> $DIR/ufcs-partially-resolved.rs:4:5
-   |
-LL |     type Y = u16;
-   |     ^^^^^^^^^^^^^
 help: an associated type with a similar name exists
    |
 LL -     let _: <u8 as Tr>::N::NN;
 LL +     let _: <u8 as Tr>::Y::NN;
    |
+note: associated type `Y` defined here
+  --> $DIR/ufcs-partially-resolved.rs:4:5
+   |
+LL |     type Y = u16;
+   |     ^^^^^^^^^^^^^
 help: maybe you meant this associated type
    |
 LL -     let _: <u8 as Tr>::N::NN;
@@ -191,16 +191,16 @@ note: similarly named associated type `Y` defined here
    |
 LL |     type Y = u16;
    |     ^^^^^^^^^^^^^
-note: associated type `Y` defined here
-  --> $DIR/ufcs-partially-resolved.rs:4:5
-   |
-LL |     type Y = u16;
-   |     ^^^^^^^^^^^^^
 help: an associated type with a similar name exists
    |
 LL -     <u8 as Tr>::N::NN;
 LL +     <u8 as Tr>::Y::NN;
    |
+note: associated type `Y` defined here
+  --> $DIR/ufcs-partially-resolved.rs:4:5
+   |
+LL |     type Y = u16;
+   |     ^^^^^^^^^^^^^
 help: maybe you meant this associated type
    |
 LL -     <u8 as Tr>::N::NN;
@@ -330,16 +330,16 @@ note: similarly named associated type `X` defined here
    |
 LL |     type X = u16;
    |     ^^^^^^^^^^^^^
-note: associated type `X` defined here
-  --> $DIR/ufcs-partially-resolved.rs:10:5
-   |
-LL |     type X = u16;
-   |     ^^^^^^^^^^^^^
 help: an associated type with a similar name exists
    |
 LL -     let _: <u8 as Dr>::Z;
 LL +     let _: <u8 as Dr>::X;
    |
+note: associated type `X` defined here
+  --> $DIR/ufcs-partially-resolved.rs:10:5
+   |
+LL |     type X = u16;
+   |     ^^^^^^^^^^^^^
 help: maybe you meant this associated type
    |
 LL -     let _: <u8 as Dr>::Z;
@@ -358,16 +358,16 @@ note: similarly named associated function `Z` defined here
    |
 LL |     fn Z() {}
    |     ^^^^^^
-note: associated function `Z` defined here
-  --> $DIR/ufcs-partially-resolved.rs:11:5
-   |
-LL |     fn Z() {}
-   |     ^^^^^^
 help: an associated function with a similar name exists
    |
 LL -     <u8 as Dr>::X;
 LL +     <u8 as Dr>::Z;
    |
+note: associated function `Z` defined here
+  --> $DIR/ufcs-partially-resolved.rs:11:5
+   |
+LL |     fn Z() {}
+   |     ^^^^^^
 help: maybe you meant this associated function
    |
 LL -     <u8 as Dr>::X;
@@ -386,16 +386,16 @@ note: similarly named associated type `X` defined here
    |
 LL |     type X = u16;
    |     ^^^^^^^^^^^^^
-note: associated type `X` defined here
-  --> $DIR/ufcs-partially-resolved.rs:10:5
-   |
-LL |     type X = u16;
-   |     ^^^^^^^^^^^^^
 help: an associated type with a similar name exists
    |
 LL -     let _: <u8 as Dr>::Z::N;
 LL +     let _: <u8 as Dr>::X::N;
    |
+note: associated type `X` defined here
+  --> $DIR/ufcs-partially-resolved.rs:10:5
+   |
+LL |     type X = u16;
+   |     ^^^^^^^^^^^^^
 help: maybe you meant this associated type
    |
 LL -     let _: <u8 as Dr>::Z::N;

@@ -18,16 +18,16 @@ error[E0603]: module `bar` is private
 LL |         crate::foo::bar::S::f();
    |                     ^^^ private module
    |
-note: the module `bar` is defined here
-  --> $DIR/privacy-in-paths.rs:4:5
-   |
-LL |     mod bar {
-   |     ^^^^^^^
 help: consider importing this struct through its public re-export instead
    |
 LL -         crate::foo::bar::S::f();
 LL +         foo::S::f();
    |
+note: the module `bar` is defined here
+  --> $DIR/privacy-in-paths.rs:4:5
+   |
+LL |     mod bar {
+   |     ^^^^^^^
 
 error[E0603]: trait `T` is private
   --> $DIR/privacy-in-paths.rs:27:28

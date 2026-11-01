@@ -13,13 +13,13 @@ LL |     assert_eq!((*arc_v)[2], 3);
    |                  ^^^^^ value borrowed here after move
    |
    = note: consider using `Arc::clone`
-   = note: borrow occurs due to deref coercion to `Vec<i32>`
 help: consider cloning the value before moving it into the closure
    |
 LL ~     let value = arc_v.clone();
 LL ~     thread::spawn(move|| {
 LL ~         assert_eq!((*value)[3], 4);
    |
+   = note: borrow occurs due to deref coercion to `Vec<i32>`
 
 error: aborting due to 1 previous error
 

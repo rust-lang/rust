@@ -9,6 +9,10 @@ LL |     reuse S::<(), 123>::by_box { self.get_s() }
    = note: expected struct `Box<S<_, _>>`
               found struct `S<_, _>`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     reuse S::<(), 123>::by_box { Box::new(self.get_s()) }
+   |                                  +++++++++            +
 note: method defined here
   --> $DIR/inherent-impls-self-replacement.rs:14:8
    |
@@ -16,10 +20,6 @@ LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
 ...
 LL |     fn by_box<'d: 'd, 'e, T, const B: bool>(self: Box<Self>) {}
    |        ^^^^^^                               ----
-help: store this in the heap by calling `Box::new`
-   |
-LL |     reuse S::<(), 123>::by_box { Box::new(self.get_s()) }
-   |                                  +++++++++            +
 
 error[E0308]: mismatched types
   --> $DIR/inherent-impls-self-replacement.rs:33:33
@@ -31,6 +31,10 @@ LL |     reuse S::<(), 123>::by_rc { self.get_s() }
    |
    = note: expected struct `Rc<S<_, _>>`
               found struct `S<_, _>`
+help: call `Into::into` on this expression to convert `S<(), 123>` into `Rc<S<(), 123>>`
+   |
+LL |     reuse S::<(), 123>::by_rc { self.get_s().into() }
+   |                                             +++++++
 note: method defined here
   --> $DIR/inherent-impls-self-replacement.rs:15:8
    |
@@ -38,10 +42,6 @@ LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
 ...
 LL |     fn by_rc<'d: 'd, 'e, T, const B: bool>(self: Rc<Self>) {}
    |        ^^^^^                               ----
-help: call `Into::into` on this expression to convert `S<(), 123>` into `Rc<S<(), 123>>`
-   |
-LL |     reuse S::<(), 123>::by_rc { self.get_s().into() }
-   |                                             +++++++
 
 error[E0308]: mismatched types
   --> $DIR/inherent-impls-self-replacement.rs:36:34
@@ -53,6 +53,10 @@ LL |     reuse S::<(), 123>::by_pin { self.get_s() }
    |
    = note: expected struct `Pin<Box<S<(), 123>>>`
               found struct `S<(), 123>`
+help: you need to pin and box this expression
+   |
+LL |     reuse S::<(), 123>::by_pin { Box::pin(self.get_s()) }
+   |                                  +++++++++            +
 note: method defined here
   --> $DIR/inherent-impls-self-replacement.rs:16:8
    |
@@ -60,10 +64,6 @@ LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
 ...
 LL |     fn by_pin<'d: 'd, 'e, T, const B: bool>(self: Pin<Box<Self>>) {}
    |        ^^^^^^                               ----
-help: you need to pin and box this expression
-   |
-LL |     reuse S::<(), 123>::by_pin { Box::pin(self.get_s()) }
-   |                                  +++++++++            +
 
 error[E0599]: no method named `get_s` found for type parameter `Self` in the current scope
   --> $DIR/inherent-impls-self-replacement.rs:41:41

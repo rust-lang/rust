@@ -554,12 +554,12 @@ LL |     foo!();
    |     ------ in this macro invocation
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
-   = note: this error originates in the macro `cfg` which comes from the expansion of the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: must be of the form
    |
 LL -         cfg!($crate);
 LL +         cfg!(predicate);
    |
+   = note: this error originates in the macro `cfg` which comes from the expansion of the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0565]: malformed `cfg` macro input
   --> $DIR/path-kw-as-cfg-pred.rs:67:5

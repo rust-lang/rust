@@ -27,16 +27,16 @@ error: unused macro definition: `unused`
 LL |     macro_rules! unused {
    |                  ^^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/unused-macros.rs:25:12
-   |
-LL |     #[deny(unused_macros)]
-   |            ^^^^^^^^^^^^^
 help: consider annotating the enclosing module with `#[macro_use]`
    |
 LL + #[macro_use]
 LL | mod bar {
    |
+note: the lint level is defined here
+  --> $DIR/unused-macros.rs:25:12
+   |
+LL |     #[deny(unused_macros)]
+   |            ^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

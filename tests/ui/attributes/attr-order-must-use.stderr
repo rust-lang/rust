@@ -24,11 +24,11 @@ LL |     must_use();
    |     ^^^^^^^^^^
    |
    = note: AAA
-   = note: `#[deny(unused_must_use)]` implied by `#[deny(unused)]`
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = must_use();
    |     +++++++
+   = note: `#[deny(unused_must_use)]` implied by `#[deny(unused)]`
 
 error: aborting due to 2 previous errors
 

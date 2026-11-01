@@ -8,7 +8,6 @@ LL |     boo().await;
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
-   = note: required for `()` to implement `IntoFuture`
 help: remove the `.await`
    |
 LL -     boo().await;
@@ -18,6 +17,7 @@ help: alternatively, consider making `fn boo` asynchronous
    |
 LL | async fn boo() {}
    | +++++
+   = note: required for `()` to implement `IntoFuture`
 
 error[E0277]: `()` is not a future
   --> $DIR/unnecessary-await.rs:28:10
@@ -27,12 +27,12 @@ LL |     e!().await;
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
-   = note: required for `()` to implement `IntoFuture`
 help: remove the `.await`
    |
 LL -     e!().await;
 LL +     e!();
    |
+   = note: required for `()` to implement `IntoFuture`
 
 error[E0277]: `()` is not a future
   --> $DIR/unnecessary-await.rs:22:15
@@ -60,12 +60,12 @@ LL |     for x in [] {}.await
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
-   = note: required for `()` to implement `IntoFuture`
 help: remove the `.await`
    |
 LL -     for x in [] {}.await
 LL +     for x in [] {}
    |
+   = note: required for `()` to implement `IntoFuture`
 
 error: aborting due to 4 previous errors
 

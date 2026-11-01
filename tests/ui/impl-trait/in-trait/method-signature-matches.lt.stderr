@@ -6,6 +6,11 @@ LL |     fn early<'late, T>(_: &'late ()) {}
    |                     |
    |                     expected this type parameter
    |
+help: change the parameter type to match the trait
+   |
+LL -     fn early<'late, T>(_: &'late ()) {}
+LL +     fn early<'late, T>(_: &'early T) {}
+   |
 note: type in trait
   --> $DIR/method-signature-matches.rs:50:28
    |
@@ -13,11 +18,6 @@ LL |     fn early<'early, T>(x: &'early T) -> impl Sized;
    |                            ^^^^^^^^^
    = note: expected signature `fn(&'early T)`
               found signature `fn(&())`
-help: change the parameter type to match the trait
-   |
-LL -     fn early<'late, T>(_: &'late ()) {}
-LL +     fn early<'late, T>(_: &'early T) {}
-   |
 
 error: aborting due to 1 previous error
 

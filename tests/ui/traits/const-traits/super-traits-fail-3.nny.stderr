@@ -65,11 +65,11 @@ error: `[const]` can only be applied to `const` traits
 LL | #[cfg(any(yyy, yny, nyy, nny))] const trait Bar: [const] Foo {}
    |                                                  ^^^^^^^ can't be applied to `Foo`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `const` to allow it to have `const` implementations
    |
 LL | #[cfg(any(yny, ynn, nny, nnn))] const trait Foo { fn a(&self); }
    |                                 +++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `const` traits
   --> $DIR/super-traits-fail-3.rs:19:50
@@ -77,11 +77,11 @@ error: `[const]` can only be applied to `const` traits
 LL | #[cfg(any(yyy, yny, nyy, nny))] const trait Bar: [const] Foo {}
    |                                                  ^^^^^^^ can't be applied to `Foo`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `const` to allow it to have `const` implementations
    |
 LL | #[cfg(any(yny, ynn, nny, nnn))] const trait Foo { fn a(&self); }
    |                                 +++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `const` traits
   --> $DIR/super-traits-fail-3.rs:19:50
@@ -89,11 +89,11 @@ error: `[const]` can only be applied to `const` traits
 LL | #[cfg(any(yyy, yny, nyy, nny))] const trait Bar: [const] Foo {}
    |                                                  ^^^^^^^ can't be applied to `Foo`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `const` to allow it to have `const` implementations
    |
 LL | #[cfg(any(yny, ynn, nny, nnn))] const trait Foo { fn a(&self); }
    |                                 +++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `[const]` can only be applied to `const` traits
   --> $DIR/super-traits-fail-3.rs:19:50
@@ -101,11 +101,11 @@ error: `[const]` can only be applied to `const` traits
 LL | #[cfg(any(yyy, yny, nyy, nny))] const trait Bar: [const] Foo {}
    |                                                  ^^^^^^^ can't be applied to `Foo`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `const` to allow it to have `const` implementations
    |
 LL | #[cfg(any(yny, ynn, nny, nnn))] const trait Foo { fn a(&self); }
    |                                 +++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions
   --> $DIR/super-traits-fail-3.rs:38:7
@@ -121,11 +121,11 @@ LL | #[cfg(any(yny, ynn, nny, nnn))] trait Foo { fn a(&self); }
    |                                 |
    |                                 this trait is not const
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable const traits
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 help: consider making trait `Foo` const
    |
 LL | #[cfg(any(yny, ynn, nny, nnn))] const trait Foo { fn a(&self); }
    |                                 +++++
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 11 previous errors
 

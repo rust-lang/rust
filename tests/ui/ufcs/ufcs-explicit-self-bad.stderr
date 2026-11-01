@@ -4,6 +4,11 @@ error[E0053]: method `dummy2` has an incompatible type for trait
 LL |     fn dummy2(self: &Bar<T>) {}
    |                     ^^^^^^^ expected `&'a Bar<T>`, found `Bar<T>`
    |
+help: change the self-receiver type to match the trait
+   |
+LL -     fn dummy2(self: &Bar<T>) {}
+LL +     fn dummy2(&self) {}
+   |
 note: type in trait
   --> $DIR/ufcs-explicit-self-bad.rs:31:15
    |
@@ -11,11 +16,6 @@ LL |     fn dummy2(&self);
    |               ^^^^^
    = note: expected signature `fn(&&'a Bar<_>)`
               found signature `fn(&Bar<_>)`
-help: change the self-receiver type to match the trait
-   |
-LL -     fn dummy2(self: &Bar<T>) {}
-LL +     fn dummy2(&self) {}
-   |
 
 error[E0307]: invalid `self` parameter type: `isize`
   --> $DIR/ufcs-explicit-self-bad.rs:8:18

@@ -14,11 +14,11 @@ warning: unexpected `cfg` condition name: `featur`
 LL | #[cfg(featur = "foo")]
    |       ^^^^^^^^^^^^^^
    |
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 help: there is a config with a similar name and value
    |
 LL | #[cfg(feature = "foo")]
    |             +
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `featur`
   --> $DIR/diagnotics.rs:17:7
@@ -27,12 +27,12 @@ LL | #[cfg(featur = "fo")]
    |       ^^^^^^^^^^^^^
    |
    = help: expected values for `feature` are: `foo`
-   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 help: there is a config with a similar name and different values
    |
 LL - #[cfg(featur = "fo")]
 LL + #[cfg(feature = "foo")]
    |
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `no_value`
   --> $DIR/diagnotics.rs:24:7
@@ -53,17 +53,17 @@ warning: unexpected `cfg` condition name: `no_value`
 LL | #[cfg(no_value = "foo")]
    |       ^^^^^^^^^^^^^^^^
    |
+help: there is a config with a similar name and no value
+   |
+LL - #[cfg(no_value = "foo")]
+LL + #[cfg(no_values)]
+   |
    = help: consider using a Cargo feature instead
    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
             [lints.rust]
             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(no_value, values("foo"))'] }
    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(no_value, values(\"foo\"))");` to the top of the `build.rs`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
-help: there is a config with a similar name and no value
-   |
-LL - #[cfg(no_value = "foo")]
-LL + #[cfg(no_values)]
-   |
 
 warning: unexpected `cfg` condition value: `bar`
   --> $DIR/diagnotics.rs:32:7

@@ -27,11 +27,11 @@ note: closure with signature `fn(&'0 mut V)` must implement `FnOnce<(&mut V,)>`,
 LL | struct B<T>(Rc<T>);
    |          ^ required by this bound in `B`
    = note: ...but it actually implements `FnOnce<(&'1 mut V,)>`, for some specific lifetime `'1`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     A(B(C::new(D::new(move |st: &mut V| f(st)))))
    |                               ++++++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: higher-ranked subtype error
   --> $DIR/ice-106874.rs:8:5

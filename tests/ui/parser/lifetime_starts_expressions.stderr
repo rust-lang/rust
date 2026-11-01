@@ -37,11 +37,11 @@ LL | |
 LL | |             loop { break 42; };
    | |______________________________^
    |
-   = note: `#[warn(break_with_label_and_loop)]` on by default
 help: wrap this expression in parentheses
    |
 LL |             (loop { break 42; });
    |             +                  +
+   = note: `#[warn(break_with_label_and_loop)]` on by default
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

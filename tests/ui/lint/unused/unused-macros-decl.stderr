@@ -16,16 +16,16 @@ error: unused macro definition: `unused`
 LL |     macro unused {
    |           ^^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/unused-macros-decl.rs:16:12
-   |
-LL |     #[deny(unused_macros)]
-   |            ^^^^^^^^^^^^^
 help: consider annotating the enclosing module with `#[macro_use]`
    |
 LL + #[macro_use]
 LL | mod bar {
    |
+note: the lint level is defined here
+  --> $DIR/unused-macros-decl.rs:16:12
+   |
+LL |     #[deny(unused_macros)]
+   |            ^^^^^^^^^^^^^
 
 error: unused macro definition: `unused`
   --> $DIR/unused-macros-decl.rs:23:22

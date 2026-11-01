@@ -4,15 +4,15 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
 LL |         F: for<'a> FnOnce(<F as Output<i32>>::Type),
    |                                 ^^^^^^ expected 0 generic arguments
    |
+help: turn the generic argument into an associated item binding
+   |
+LL |         F: for<'a> FnOnce(<F as Output<Type = i32>>::Type),
+   |                                        ++++++
 note: trait defined here, with 0 generic parameters
   --> $DIR/generic_param_mismatch_in_unsatisfied_projection.rs:9:7
    |
 LL | trait Output<'a> {
    |       ^^^^^^
-help: turn the generic argument into an associated item binding
-   |
-LL |         F: for<'a> FnOnce(<F as Output<Type = i32>>::Type),
-   |                                        ++++++
 
 error: aborting due to 1 previous error
 

@@ -38,7 +38,6 @@ error: expected one of `:`, `@`, or `|`, found `)`
 LL |     fn is_even(value) -> bool {
    |                     ^ expected one of `:`, `@`, or `|`
    |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 help: if this is a `self` type, give it a parameter name
    |
 LL |     fn is_even(self: value) -> bool {
@@ -51,6 +50,7 @@ help: if this is a type, explicitly ignore the parameter name
    |
 LL |     fn is_even(_: value) -> bool {
    |                ++
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
 
 error: aborting due to 3 previous errors
 

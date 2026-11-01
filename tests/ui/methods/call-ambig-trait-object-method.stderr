@@ -9,16 +9,16 @@ note: candidate #1 is defined in the trait `T`
    |
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
-note: candidate #2 is defined in an impl for the type `(dyn T + 'a)`
-  --> $DIR/call-ambig-trait-object-method.rs:10:5
-   |
-LL |     fn foo(&self) {}
-   |     ^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     x.foo();
 LL +     T::foo(&x);
    |
+note: candidate #2 is defined in an impl for the type `(dyn T + 'a)`
+  --> $DIR/call-ambig-trait-object-method.rs:10:5
+   |
+LL |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

@@ -10,15 +10,15 @@ error[E0107]: struct takes 1 generic argument but 0 generic arguments were suppl
 LL |     let x: Box<Bar()> = panic!();
    |                ^^^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL |     let x: Box<Bar(A)> = panic!();
+   |                    +
 note: struct defined here, with 1 generic parameter: `A`
   --> $DIR/unboxed-closure-sugar-used-on-struct-1.rs:3:8
    |
 LL | struct Bar<A> {
    |        ^^^ -
-help: add missing generic argument
-   |
-LL |     let x: Box<Bar(A)> = panic!();
-   |                    +
 
 error: aborting due to 2 previous errors
 

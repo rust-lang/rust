@@ -24,11 +24,11 @@ LL | struct Foo {
 LL |     foo: Nonexistent,
 LL |     other: str
    |     ^^^^^^^^^^ required by this field
-   = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL |     async fn frob(&self) {}
    |                   +
+   = help: unsized fn params are gated as an unstable feature
 
 error: aborting due to 3 previous errors
 

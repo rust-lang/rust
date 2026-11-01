@@ -13,16 +13,16 @@ note: candidate #1 is defined in the trait `Foo`
    |
 LL |     fn foo();
    |     ^^^^^^^^^
-note: candidate #2 is defined in the trait `FooBar`
-  --> $DIR/method-ambiguity-no-rcvr.rs:8:5
-   |
-LL |     fn foo() {}
-   |     ^^^^^^^^
 help: disambiguate the associated function for candidate #1
    |
 LL -     Qux.foo();
 LL +     <Qux as Foo>::foo();
    |
+note: candidate #2 is defined in the trait `FooBar`
+  --> $DIR/method-ambiguity-no-rcvr.rs:8:5
+   |
+LL |     fn foo() {}
+   |     ^^^^^^^^
 help: disambiguate the associated function for candidate #2
    |
 LL -     Qux.foo();

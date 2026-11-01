@@ -15,11 +15,11 @@ error[E0277]: the trait bound `Self: Get` is not satisfied
 LL |     fn uhoh<U: Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Sized {}
    |                                         ^^^^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `Self`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider further restricting `Self`
    |
 LL |     fn uhoh<U: Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Sized, Self: Get {}
    |                                                                                +++++++++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

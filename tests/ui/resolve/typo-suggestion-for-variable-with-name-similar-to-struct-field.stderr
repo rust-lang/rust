@@ -50,15 +50,15 @@ error[E0425]: cannot find value `bah` in this scope
 LL |         bah;
    |         ^^^
    |
+help: you might have meant to refer to the associated function
+   |
+LL |         Self::bah;
+   |         ++++++
 note: similarly named function `ba` defined here
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:42:1
    |
 LL | fn ba() {}
    | ^^^^^^^
-help: you might have meant to refer to the associated function
-   |
-LL |         Self::bah;
-   |         ++++++
 help: a function with a similar name exists
    |
 LL -         bah;
@@ -71,15 +71,15 @@ error[E0425]: cannot find value `BAR` in this scope
 LL |         BAR;
    |         ^^^
    |
+help: you might have meant to use the associated `const`
+   |
+LL |         Self::BAR;
+   |         ++++++
 note: similarly named constant `BARR` defined here
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:43:1
    |
 LL | const BARR: u32 = 3;
    | ^^^^^^^^^^^^^^^^^^^^
-help: you might have meant to use the associated `const`
-   |
-LL |         Self::BAR;
-   |         ++++++
 help: a constant with a similar name exists
    |
 LL |         BARR;
@@ -91,15 +91,15 @@ error[E0425]: cannot find type `Baz` in this scope
 LL |         let foo: Baz = "".to_string();
    |                  ^^^
    |
+help: you might have meant to use the associated type
+   |
+LL |         let foo: Self::Baz = "".to_string();
+   |                  ++++++
 note: similarly named type alias `Bar` defined here
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:44:1
    |
 LL | type Bar = String;
    | ^^^^^^^^^^^^^^^^^^
-help: you might have meant to use the associated type
-   |
-LL |         let foo: Self::Baz = "".to_string();
-   |                  ++++++
 help: a type alias with a similar name exists
    |
 LL -         let foo: Baz = "".to_string();
@@ -112,15 +112,15 @@ error[E0425]: cannot find function `baz` in this scope
 LL |         baz();
    |         ^^^
    |
+help: you might have meant to call the method
+   |
+LL |         self.baz();
+   |         +++++
 note: similarly named function `ba` defined here
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:42:1
    |
 LL | fn ba() {}
    | ^^^^^^^
-help: you might have meant to call the method
-   |
-LL |         self.baz();
-   |         +++++
 help: a function with a similar name exists
    |
 LL -         baz();

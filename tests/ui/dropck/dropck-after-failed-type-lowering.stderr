@@ -4,15 +4,15 @@ error[E0107]: missing generics for associated type `B::C`
 LL |     h: Option<<G as B>::C>,
    |                         ^ expected 1 lifetime argument
    |
+help: add missing lifetime argument
+   |
+LL |     h: Option<<G as B>::C<'a>>,
+   |                          ++++
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/dropck-after-failed-type-lowering.rs:4:10
    |
 LL |     type C<'a>;
    |          ^ --
-help: add missing lifetime argument
-   |
-LL |     h: Option<<G as B>::C<'a>>,
-   |                          ++++
 
 error[E0277]: the trait bound `G: B` is not satisfied
   --> $DIR/dropck-after-failed-type-lowering.rs:11:8

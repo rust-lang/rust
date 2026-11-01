@@ -8,11 +8,11 @@ LL |     foo.borrow();
    |
    = note: the method is available for `Box<dyn Fn(bool) -> usize>` here
    |
-   = help: items from traits can only be used if the trait is in scope
 help: use parentheses to call this trait object
    |
 LL |     foo(/* bool */).borrow();
    |        ++++++++++++
+   = help: items from traits can only be used if the trait is in scope
 help: trait `Borrow` which provides `borrow` is implemented but not in scope; perhaps you want to import it
    |
 LL + use std::borrow::Borrow;
@@ -45,6 +45,11 @@ LL |     foo.take()
    |         `Box<dyn Fn(bool) -> usize>` is not an iterator
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+help: use associated function syntax instead
+   |
+LL -     foo.take()
+LL +     Box::<dyn Fn(bool) -> usize>::take(foo)
+   |
    = note: the candidate is defined in an impl for the type `Box<T, A>`
    = note: the following trait bounds were not satisfied:
            `dyn Fn(bool) -> usize: Iterator`
@@ -53,11 +58,6 @@ LL |     foo.take()
            which is required by `&mut Box<dyn Fn(bool) -> usize>: Iterator`
            `dyn Fn(bool) -> usize: Iterator`
            which is required by `&mut dyn Fn(bool) -> usize: Iterator`
-help: use associated function syntax instead
-   |
-LL -     foo.take()
-LL +     Box::<dyn Fn(bool) -> usize>::take(foo)
-   |
 
 error: aborting due to 3 previous errors
 

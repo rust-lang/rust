@@ -10,11 +10,11 @@ error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` t
 LL | union W { s: dyn Iterator<Item = Missing> }
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 help: wrap the field type in `ManuallyDrop<...>`
    |
 LL | union W { s: std::mem::ManuallyDrop<dyn Iterator<Item = Missing>> }
    |              +++++++++++++++++++++++                            +
+   = note: union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 
 error: aborting due to 2 previous errors
 

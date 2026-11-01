@@ -6,12 +6,12 @@ LL | fn test1<T: ?Sized + Foo>(t: &T) {
 LL |     let u: &dyn Foo = t;
    |                       ^ doesn't have a size known at compile-time
    |
-   = note: required for the cast from `&T` to `&dyn Foo`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn test1<T: ?Sized + Foo>(t: &T) {
 LL + fn test1<T: Foo>(t: &T) {
    |
+   = note: required for the cast from `&T` to `&dyn Foo`
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/dst-object-from-unsized-type.rs:17:23
@@ -21,12 +21,12 @@ LL | fn test2<T: ?Sized + Foo>(t: &T) {
 LL |     let v: &dyn Foo = t as &dyn Foo;
    |                       ^ doesn't have a size known at compile-time
    |
-   = note: required for the cast from `&T` to `&dyn Foo`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn test2<T: ?Sized + Foo>(t: &T) {
 LL + fn test2<T: Foo>(t: &T) {
    |
+   = note: required for the cast from `&T` to `&dyn Foo`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/dst-object-from-unsized-type.rs:23:28

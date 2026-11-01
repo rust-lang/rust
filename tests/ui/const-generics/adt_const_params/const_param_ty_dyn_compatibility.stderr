@@ -4,16 +4,16 @@ error[E0038]: the trait `ConstParamTy_` is not dyn compatible
 LL | fn foo(a: &dyn ConstParamTy_) {}
    |                ^^^^^^^^^^^^^ `ConstParamTy_` is not dyn compatible
    |
-note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   |
-   = note: the trait is not dyn compatible because it uses `Self` as a type parameter
 help: consider using an opaque type instead
    |
 LL - fn foo(a: &dyn ConstParamTy_) {}
 LL + fn foo(a: &impl ConstParamTy_) {}
    |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: the trait is not dyn compatible because it uses `Self` as a type parameter
 
 error: aborting due to 1 previous error
 

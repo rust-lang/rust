@@ -9,12 +9,12 @@ LL |
 LL |     fill_segment(state);
    |                  ^^^^^ value borrowed here after move
    |
-note: the `for` loop is desugared into a call to `std::iter::IntoIterator::into_iter`, which takes ownership of the receiver `self`, which moves `state`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: consider creating a fresh reborrow of `state` here
    |
 LL |     for _ in &mut *state {}
    |              ++++++
+note: the `for` loop is desugared into a call to `std::iter::IntoIterator::into_iter`, which takes ownership of the receiver `self`, which moves `state`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 
 error: aborting due to 1 previous error
 

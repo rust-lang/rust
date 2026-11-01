@@ -39,11 +39,11 @@ LL | async fn walk2<'a, T: 'a>(_: T)
 LL | {}
    | ^^ ...so that the type `F` will meet its required lifetime bounds
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit lifetime bound
    |
 LL |     for<F> F: 'a, F: 'a
    |                   +++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 3 previous errors
 

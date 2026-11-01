@@ -140,16 +140,16 @@ LL |         reuse Trait::method { self.0 }
    |
    = note: expected reference `&_`
               found unit type `()`
+help: consider borrowing here
+   |
+LL |         reuse Trait::method { &self.0 }
+   |                               +
 note: method defined here
   --> $DIR/self-mapping-output.rs:198:12
    |
 LL |     trait Trait {
 LL |         fn method(&self) -> ();
    |            ^^^^^^  ----
-help: consider borrowing here
-   |
-LL |         reuse Trait::method { &self.0 }
-   |                               +
 
 error[E0283]: type annotations needed
   --> $DIR/self-mapping-output.rs:215:22
@@ -177,6 +177,10 @@ LL |         reuse Trait::raw_S { self.0 }
    |
    = note: expected reference `&_`
               found unit type `()`
+help: consider borrowing here
+   |
+LL |         reuse Trait::raw_S { &self.0 }
+   |                              +
 note: method defined here
   --> $DIR/self-mapping-output.rs:200:12
    |
@@ -184,10 +188,6 @@ LL |     trait Trait {
 ...
 LL |         fn raw_S(&self) -> S { S }
    |            ^^^^^ -----
-help: consider borrowing here
-   |
-LL |         reuse Trait::raw_S { &self.0 }
-   |                              +
 
 error[E0308]: mismatched types
   --> $DIR/self-mapping-output.rs:223:31
@@ -199,16 +199,16 @@ LL |         reuse Trait::method { self.0 }
    |
    = note: expected reference `&_`
               found unit type `()`
+help: consider borrowing here
+   |
+LL |         reuse Trait::method { &self.0 }
+   |                               +
 note: method defined here
   --> $DIR/self-mapping-output.rs:198:12
    |
 LL |     trait Trait {
 LL |         fn method(&self) -> ();
    |            ^^^^^^  ----
-help: consider borrowing here
-   |
-LL |         reuse Trait::method { &self.0 }
-   |                               +
 
 error[E0283]: type annotations needed
   --> $DIR/self-mapping-output.rs:226:22
@@ -236,6 +236,10 @@ LL |         reuse Trait::raw_S { self.0 }
    |
    = note: expected reference `&_`
               found unit type `()`
+help: consider borrowing here
+   |
+LL |         reuse Trait::raw_S { &self.0 }
+   |                              +
 note: method defined here
   --> $DIR/self-mapping-output.rs:200:12
    |
@@ -243,10 +247,6 @@ LL |     trait Trait {
 ...
 LL |         fn raw_S(&self) -> S { S }
    |            ^^^^^ -----
-help: consider borrowing here
-   |
-LL |         reuse Trait::raw_S { &self.0 }
-   |                              +
 
 error[E0308]: mismatched types
   --> $DIR/self-mapping-output.rs:255:38

@@ -9,16 +9,16 @@ note: candidate #1 is defined in the trait `A`
    |
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
-note: candidate #2 is defined in the trait `B`
-  --> $DIR/disambiguate-multiple-trait-2.rs:10:5
-   |
-LL |     fn foo(&self);
-   |     ^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     t.foo();
 LL +     A::foo(&t);
    |
+note: candidate #2 is defined in the trait `B`
+  --> $DIR/disambiguate-multiple-trait-2.rs:10:5
+   |
+LL |     fn foo(&self);
+   |     ^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #2
    |
 LL -     t.foo();

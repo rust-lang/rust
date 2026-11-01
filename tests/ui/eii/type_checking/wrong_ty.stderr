@@ -9,6 +9,11 @@ note: expected this because of this attribute
    |
 LL | #[foo]
    | ^^^^^^
+help: change the parameter type to match the declaration
+   |
+LL - fn other(x: usize) -> u64 {
+LL + fn other(x: u64) -> u64 {
+   |
 note: type in declaration
   --> $DIR/wrong_ty.rs:13:20
    |
@@ -16,11 +21,6 @@ LL |     safe fn bar(x: u64) -> u64;
    |                    ^^^
    = note: expected signature `fn(u64) -> _`
               found signature `fn(usize) -> _`
-help: change the parameter type to match the declaration
-   |
-LL - fn other(x: usize) -> u64 {
-LL + fn other(x: u64) -> u64 {
-   |
 
 error: aborting due to 1 previous error
 

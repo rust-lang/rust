@@ -16,11 +16,6 @@ LL | fn repeated_macro<'a>(x: &'a u8) -> repeated!(Pair, Pair; &'_ u8) {
    |                           the lifetime is named here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
-note: the lint level is defined here
-  --> $DIR/macro.rs:3:9
-   |
-LL | #![deny(mismatched_lifetime_syntaxes)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consistently use `'a`
    |
 LL ~         ($($pair<'a, 'a>),+, $middle, $($pair<'a, 'a>),+)
@@ -29,6 +24,11 @@ LL |
 LL |
 LL ~ fn repeated_macro<'a>(x: &'a u8) -> repeated!(Pair, Pair; &'a u8) {
    |
+note: the lint level is defined here
+  --> $DIR/macro.rs:3:9
+   |
+LL | #![deny(mismatched_lifetime_syntaxes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

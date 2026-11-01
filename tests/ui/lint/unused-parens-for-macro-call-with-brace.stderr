@@ -4,16 +4,16 @@ error: unnecessary parentheses around assigned value
 LL |     let Some(_) = ((x!{})) else { return };
    |                   ^      ^
    |
-note: the lint level is defined here
-  --> $DIR/unused-parens-for-macro-call-with-brace.rs:3:9
-   |
-LL | #![deny(unused_parens)]
-   |         ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     let Some(_) = ((x!{})) else { return };
 LL +     let Some(_) = (x!{}) else { return };
    |
+note: the lint level is defined here
+  --> $DIR/unused-parens-for-macro-call-with-brace.rs:3:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
 
 error: unnecessary parentheses around pattern
   --> $DIR/unused-parens-for-macro-call-with-brace.rs:14:14

@@ -53,15 +53,15 @@ error[E0107]: missing generics for struct `W`
 LL | impl<T, U> Trait for W
    |                      ^ expected 1 generic argument
    |
+help: add missing generic argument
+   |
+LL | impl<T, U> Trait for W<T>
+   |                       +++
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/invalid-impl-assoc-type-hang-142834.rs:4:8
    |
 LL | struct W<T>(T);
    |        ^ -
-help: add missing generic argument
-   |
-LL | impl<T, U> Trait for W<T>
-   |                       +++
 
 error: aborting due to 6 previous errors
 

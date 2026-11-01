@@ -8,15 +8,15 @@ LL |     f(x)
    |
    = note: expected mutable reference `&mut isize`
                          found struct `Box<{integer}>`
+help: consider mutably borrowing here
+   |
+LL |     f(&mut x)
+   |       ++++
 note: function defined here
   --> $DIR/mut-cross-borrowing.rs:1:4
    |
 LL | fn f(_: &mut isize) {}
    |    ^ -------------
-help: consider mutably borrowing here
-   |
-LL |     f(&mut x)
-   |       ++++
 
 error: aborting due to 1 previous error
 

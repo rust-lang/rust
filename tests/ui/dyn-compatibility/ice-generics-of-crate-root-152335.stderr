@@ -114,6 +114,10 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
+help: consider further restricting `Self`
+   |
+LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T> + Sized
+   |                                                  +++++++
 note: required for `Self` to implement `Mirror`
   --> $DIR/ice-generics-of-crate-root-152335.rs:36:42
    |
@@ -121,10 +125,6 @@ LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |      -                                   ^^^^^^     ^
    |      |
    |      unsatisfied trait bound implicitly introduced here
-help: consider further restricting `Self`
-   |
-LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T> + Sized
-   |                                                  +++++++
 
 error[E0046]: not all trait items implemented, missing: `Assoc`
   --> $DIR/ice-generics-of-crate-root-152335.rs:36:1
@@ -165,6 +165,10 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn transmute(&self, t: T) -> <Self as B>::Assoc;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
+help: consider further restricting `Self`
+   |
+LL |     fn transmute(&self, t: T) -> <Self as B>::Assoc where Self: Sized;
+   |                                                     +++++++++++++++++
 note: required for `Self` to implement `Mirror`
   --> $DIR/ice-generics-of-crate-root-152335.rs:36:42
    |
@@ -172,10 +176,6 @@ LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |      -                                   ^^^^^^     ^
    |      |
    |      unsatisfied trait bound implicitly introduced here
-help: consider further restricting `Self`
-   |
-LL |     fn transmute(&self, t: T) -> <Self as B>::Assoc where Self: Sized;
-   |                                                     +++++++++++++++++
 
 error: aborting due to 12 previous errors
 

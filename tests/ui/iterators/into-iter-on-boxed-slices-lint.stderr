@@ -4,9 +4,6 @@ warning: this method call resolves to `<&Box<[T]> as IntoIterator>::into_iter` (
 LL |     boxed.into_iter();
    |           ^^^^^^^^^
    |
-   = warning: this changes meaning in Rust 2024
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/intoiterator-box-slice.html>
-   = note: `#[warn(boxed_slice_into_iter)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL -     boxed.into_iter();
@@ -17,6 +14,9 @@ help: or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicit
 LL -     boxed.into_iter();
 LL +     IntoIterator::into_iter(boxed);
    |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/intoiterator-box-slice.html>
+   = note: `#[warn(boxed_slice_into_iter)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 
 warning: this method call resolves to `<&Box<[T]> as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<Box<[T]> as IntoIterator>::into_iter` in Rust 2024
   --> $DIR/into-iter-on-boxed-slices-lint.rs:13:29

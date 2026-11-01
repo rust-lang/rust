@@ -25,15 +25,15 @@ LL |     bar(b);
    |     |
    |     required by a bound introduced by this call
    |
+help: consider borrowing here
+   |
+LL |     bar(&b);
+   |         +
 note: required by a bound in `bar`
   --> $DIR/issue-84973-negative.rs:5:11
    |
 LL | fn bar<T: Tr>(t: T) {}
    |           ^^ required by this bound in `bar`
-help: consider borrowing here
-   |
-LL |     bar(&b);
-   |         +
 
 error: aborting due to 2 previous errors
 

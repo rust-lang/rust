@@ -4,12 +4,12 @@ warning: use of deprecated constant `std::sync::atomic::ATOMIC_ISIZE_INIT`: the 
 LL | static FOO: AtomicIsize = ATOMIC_ISIZE_INIT;
    |                           ^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(deprecated)]` on by default
 help: replace the use of the deprecated constant
    |
 LL - static FOO: AtomicIsize = ATOMIC_ISIZE_INIT;
 LL + static FOO: AtomicIsize = AtomicIsize::new(0);
    |
+   = note: `#[warn(deprecated)]` on by default
 
 warning: 1 warning emitted
 

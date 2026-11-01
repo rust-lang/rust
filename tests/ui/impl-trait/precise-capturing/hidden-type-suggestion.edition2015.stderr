@@ -73,16 +73,16 @@ LL |
 LL |     y
    |     ^
    |
-note: you could use a `use<...>` bound to explicitly capture `'_`, but argument-position `impl Trait`s are not nameable
-  --> $DIR/hidden-type-suggestion.rs:31:21
-   |
-LL | fn no_params_yet(_: impl Sized, y: &()) -> impl Sized {
-   |                     ^^^^^^^^^^
 help: add a `use<...>` bound to explicitly capture `'_` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
    |
 LL - fn no_params_yet(_: impl Sized, y: &()) -> impl Sized {
 LL + fn no_params_yet<T: Sized>(_: T, y: &()) -> impl Sized + use<'_, T> {
    |
+note: you could use a `use<...>` bound to explicitly capture `'_`, but argument-position `impl Trait`s are not nameable
+  --> $DIR/hidden-type-suggestion.rs:31:21
+   |
+LL | fn no_params_yet(_: impl Sized, y: &()) -> impl Sized {
+   |                     ^^^^^^^^^^
 
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
   --> $DIR/hidden-type-suggestion.rs:39:5
@@ -95,16 +95,16 @@ LL |
 LL |     y
    |     ^
    |
-note: you could use a `use<...>` bound to explicitly capture `'a`, but argument-position `impl Trait`s are not nameable
-  --> $DIR/hidden-type-suggestion.rs:37:29
-   |
-LL | fn yes_params_yet<'a, T>(_: impl Sized, y: &'a ()) -> impl Sized {
-   |                             ^^^^^^^^^^
 help: add a `use<...>` bound to explicitly capture `'a` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
    |
 LL - fn yes_params_yet<'a, T>(_: impl Sized, y: &'a ()) -> impl Sized {
 LL + fn yes_params_yet<'a, T, U: Sized>(_: U, y: &'a ()) -> impl Sized + use<'a, T, U> {
    |
+note: you could use a `use<...>` bound to explicitly capture `'a`, but argument-position `impl Trait`s are not nameable
+  --> $DIR/hidden-type-suggestion.rs:37:29
+   |
+LL | fn yes_params_yet<'a, T>(_: impl Sized, y: &'a ()) -> impl Sized {
+   |                             ^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

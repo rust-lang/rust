@@ -6,12 +6,12 @@ LL |     std::mem::size_of_val(foo());
    |     |
    |     arguments to this function are incorrect
    |
-note: function defined here
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 help: consider borrowing here
    |
 LL |     std::mem::size_of_val(&foo());
    |                           +
+note: function defined here
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error: aborting due to 1 previous error
 

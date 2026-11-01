@@ -4,15 +4,15 @@ error[E0277]: `T` is not a tuple
 LL |     assert_is_tuple::<T>();
    |                       ^ the nightly-only, unstable trait `std::marker::Tuple` is not implemented for `T`
    |
+help: consider restricting type parameter `T` with unstable trait `Tuple`
+   |
+LL | fn from_param_env<T: std::marker::Tuple>() {
+   |                    ++++++++++++++++++++
 note: required by a bound in `assert_is_tuple`
   --> $DIR/builtin-fail.rs:3:23
    |
 LL | fn assert_is_tuple<T: std::marker::Tuple + ?Sized>() {}
    |                       ^^^^^^^^^^^^^^^^^^ required by this bound in `assert_is_tuple`
-help: consider restricting type parameter `T` with unstable trait `Tuple`
-   |
-LL | fn from_param_env<T: std::marker::Tuple>() {
-   |                    ++++++++++++++++++++
 
 error[E0277]: `i32` is not a tuple
   --> $DIR/builtin-fail.rs:13:23

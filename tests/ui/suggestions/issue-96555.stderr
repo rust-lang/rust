@@ -8,7 +8,6 @@ LL |     m::f1().await;
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
-   = note: required for `()` to implement `IntoFuture`
 help: remove the `.await`
    |
 LL -     m::f1().await;
@@ -18,6 +17,7 @@ help: alternatively, consider making `fn f1` asynchronous
    |
 LL |     pub async fn f1() {}
    |         +++++
+   = note: required for `()` to implement `IntoFuture`
 
 error[E0277]: `()` is not a future
   --> $DIR/issue-96555.rs:5:13
@@ -29,7 +29,6 @@ LL |     m::f2().await;
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
-   = note: required for `()` to implement `IntoFuture`
 help: remove the `.await`
    |
 LL -     m::f2().await;
@@ -39,6 +38,7 @@ help: alternatively, consider making `fn f2` asynchronous
    |
 LL |     pub(crate) async fn f2() {}
    |                +++++
+   = note: required for `()` to implement `IntoFuture`
 
 error[E0277]: `()` is not a future
   --> $DIR/issue-96555.rs:6:13
@@ -50,7 +50,6 @@ LL |     m::f3().await;
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
-   = note: required for `()` to implement `IntoFuture`
 help: remove the `.await`
    |
 LL -     m::f3().await;
@@ -60,6 +59,7 @@ help: alternatively, consider making `fn f3` asynchronous
    |
 LL |     pub async
    |         +++++
+   = note: required for `()` to implement `IntoFuture`
 
 error: aborting due to 3 previous errors
 

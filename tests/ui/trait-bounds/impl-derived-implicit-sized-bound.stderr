@@ -7,6 +7,10 @@ LL | struct Victim<'a, T: Perpetrator + ?Sized>
 LL |     self.getter().get();
    |                   ^^^ method cannot be called on `Victim<'_, Self>` due to unsatisfied trait bounds
    |
+help: consider relaxing the type parameter's implicit `Sized` bound
+   |
+LL | impl<'a, T: ?Sized + Perpetrator /*+ ?Sized*/> VictimTrait for Victim<'a, T> {
+   |             ++++++++
 note: trait bound `Self: Sized` was not satisfied
   --> $DIR/impl-derived-implicit-sized-bound.rs:15:10
    |
@@ -14,10 +18,6 @@ LL | impl<'a, T: Perpetrator /*+ ?Sized*/> VictimTrait for Victim<'a, T> {
    |          ^                            -----------     -------------
    |          |
    |          unsatisfied trait bound introduced here
-help: consider relaxing the type parameter's implicit `Sized` bound
-   |
-LL | impl<'a, T: ?Sized + Perpetrator /*+ ?Sized*/> VictimTrait for Victim<'a, T> {
-   |             ++++++++
 help: consider restricting the type parameter to satisfy the trait bound
    |
 LL |   Self: Sized, Self: Sized

@@ -12,7 +12,6 @@ LL | trait Tr {
    |       -- this trait is not dyn compatible...
 LL |     fn foo();
    |        ^^^ ...because associated function `foo` has no `self` parameter
-   = help: only type `St` implements `Tr`; consider using it directly instead.
 help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn foo(&self);
@@ -21,6 +20,7 @@ help: alternatively, consider constraining `foo` so it is explicitly marked as n
    |
 LL |     fn foo() where Self: Sized;
    |              +++++++++++++++++
+   = help: only type `St` implements `Tr`; consider using it directly instead.
 
 error: aborting due to 1 previous error
 

@@ -6,6 +6,11 @@ LL |     let _a = [0, 1, 2].iter().chain([3, 4, 5].into_iter());
    |                               |
    |                               required by a bound introduced by this call
    |
+help: consider not consuming the `[{integer}; 3]` to construct the `Iterator`
+   |
+LL -     let _a = [0, 1, 2].iter().chain([3, 4, 5].into_iter());
+LL +     let _a = [0, 1, 2].iter().chain([3, 4, 5].iter());
+   |
 note: the method call chain might not have had the expected associated types
   --> $DIR/into_iter-when-iter-was-intended.rs:5:47
    |
@@ -15,11 +20,6 @@ LL |     let _a = [0, 1, 2].iter().chain([3, 4, 5].into_iter());
    |                                     this expression has type `[{integer}; 3]`
 note: required by a bound in `std::iter::Iterator::chain`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-help: consider not consuming the `[{integer}; 3]` to construct the `Iterator`
-   |
-LL -     let _a = [0, 1, 2].iter().chain([3, 4, 5].into_iter());
-LL +     let _a = [0, 1, 2].iter().chain([3, 4, 5].iter());
-   |
 
 error[E0271]: type mismatch resolving `<Iter<'_, {integer}> as IntoIterator>::Item == {integer}`
   --> $DIR/into_iter-when-iter-was-intended.rs:6:42
@@ -29,6 +29,10 @@ LL |     let _b = [0, 1, 2].into_iter().chain([3, 4, 5].iter());
    |                                    |
    |                                    required by a bound introduced by this call
    |
+help: consider consuming the `&[{integer}]` to construct the `Iterator`
+   |
+LL |     let _b = [0, 1, 2].into_iter().chain([3, 4, 5].into_iter());
+   |                                                    +++++
 note: the method call chain might not have had the expected associated types
   --> $DIR/into_iter-when-iter-was-intended.rs:6:52
    |
@@ -38,10 +42,6 @@ LL |     let _b = [0, 1, 2].into_iter().chain([3, 4, 5].iter());
    |                                          this expression has type `[{integer}; 3]`
 note: required by a bound in `std::iter::Iterator::chain`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-help: consider consuming the `&[{integer}]` to construct the `Iterator`
-   |
-LL |     let _b = [0, 1, 2].into_iter().chain([3, 4, 5].into_iter());
-   |                                                    +++++
 
 error: aborting due to 2 previous errors
 

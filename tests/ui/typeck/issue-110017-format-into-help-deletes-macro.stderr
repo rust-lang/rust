@@ -22,11 +22,11 @@ LL |      Err(outer!(x))
    |
    = note: expected struct `Box<dyn std::error::Error>`
               found struct `String`
-   = note: this error originates in the macro `format` which comes from the expansion of the macro `outer` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: call `Into::into` on this expression to convert `String` into `Box<dyn std::error::Error>`
    |
 LL |          format!("error: {}", $x).into()
    |                                  +++++++
+   = note: this error originates in the macro `format` which comes from the expansion of the macro `outer` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/issue-110017-format-into-help-deletes-macro.rs:35:18
@@ -39,11 +39,11 @@ LL |  entire_fn_outer!();
    |
    = note: expected struct `Box<dyn std::error::Error>`
               found struct `String`
-   = note: this error originates in the macro `format` which comes from the expansion of the macro `entire_fn_outer` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: call `Into::into` on this expression to convert `String` into `Box<dyn std::error::Error>`
    |
 LL |              Err(format!("error: {x}").into())
    |                                       +++++++
+   = note: this error originates in the macro `format` which comes from the expansion of the macro `entire_fn_outer` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/issue-110017-format-into-help-deletes-macro.rs:45:13
@@ -56,11 +56,11 @@ LL |     nontrivial!(x)
    |
    = note: expected struct `Box<dyn std::error::Error>`
               found struct `String`
-   = note: this error originates in the macro `format` which comes from the expansion of the macro `nontrivial` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: call `Into::into` on this expression to convert `String` into `Box<dyn std::error::Error>`
    |
 LL |         Err(format!("error: {}", $x).into())
    |                                     +++++++
+   = note: this error originates in the macro `format` which comes from the expansion of the macro `nontrivial` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

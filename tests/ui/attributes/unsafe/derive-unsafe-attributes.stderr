@@ -29,11 +29,11 @@ error: expected identifier, found keyword `unsafe`
 LL | #[derive(unsafe(Debug))]
    |          ^^^^^^ expected identifier, found keyword
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: escape `unsafe` to use it as an identifier
    |
 LL | #[derive(r#unsafe(Debug))]
    |          ++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: expected identifier, found keyword `unsafe`
   --> $DIR/derive-unsafe-attributes.rs:1:10
@@ -41,11 +41,11 @@ error: expected identifier, found keyword `unsafe`
 LL | #[derive(unsafe(Debug))]
    |          ^^^^^^ expected identifier, found keyword
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: escape `unsafe` to use it as an identifier
    |
 LL | #[derive(r#unsafe(Debug))]
    |          ++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: cannot find derive macro `r#unsafe` in this scope
   --> $DIR/derive-unsafe-attributes.rs:1:10

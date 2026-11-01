@@ -137,6 +137,13 @@ impl Suggestions {
         }
     }
 
+    pub fn as_mut_slice(&mut self) -> &mut [CodeSuggestion] {
+        match self {
+            Suggestions::Enabled(suggestions) => suggestions,
+            Suggestions::Sealed(suggestions) => suggestions,
+            Suggestions::Disabled => &mut [],
+        }
+    }
     pub fn len(&self) -> usize {
         match self {
             Suggestions::Enabled(suggestions) => suggestions.len(),
@@ -185,6 +192,7 @@ pub struct CodeSuggestion {
     /// which are useful for users but not useful for
     /// tools like rustfix
     pub applicability: Applicability,
+    pub children_before: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
@@ -1332,7 +1340,7 @@ impl DiagCtxtInner {
                         }
                     }
                 };
-                diagnostic.children.retain(show_sub);
+                diagnostic.retain_children(show_sub);
                 if already_emitted {
                     let msg = "duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`";
                     diagnostic.sub(Sublevel::Note, msg, MultiSpan::new());

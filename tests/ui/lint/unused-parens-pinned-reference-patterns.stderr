@@ -4,16 +4,16 @@ warning: unnecessary parentheses around pattern
 LL |     let &pin const (_x) = pin_const;
    |                    ^  ^
    |
-note: the lint level is defined here
-  --> $DIR/unused-parens-pinned-reference-patterns.rs:6:9
-   |
-LL | #![warn(unused_parens)]
-   |         ^^^^^^^^^^^^^
 help: remove these parentheses
    |
 LL -     let &pin const (_x) = pin_const;
 LL +     let &pin const _x = pin_const;
    |
+note: the lint level is defined here
+  --> $DIR/unused-parens-pinned-reference-patterns.rs:6:9
+   |
+LL | #![warn(unused_parens)]
+   |         ^^^^^^^^^^^^^
 
 warning: unnecessary parentheses around pattern
   --> $DIR/unused-parens-pinned-reference-patterns.rs:16:20

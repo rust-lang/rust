@@ -13,15 +13,15 @@ LL | |         async_dummy()
 LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
+help: consider `await`ing on the `Future`
+   |
+LL |         async_dummy().await
+   |                      ++++++
 note: calling an async function returns a future
   --> $DIR/if-then-neeing-semi.rs:28:9
    |
 LL |         async_dummy()
    |         ^^^^^^^^^^^^^
-help: consider `await`ing on the `Future`
-   |
-LL |         async_dummy().await
-   |                      ++++++
 help: consider removing this semicolon
    |
 LL -         async_dummy();
@@ -43,15 +43,15 @@ LL | |         async_dummy2()
 LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
+help: consider `await`ing on the `Future`
+   |
+LL |         async_dummy2().await
+   |                       ++++++
 note: calling an async function returns a future
   --> $DIR/if-then-neeing-semi.rs:41:9
    |
 LL |         async_dummy2()
    |         ^^^^^^^^^^^^^^
-help: consider `await`ing on the `Future`
-   |
-LL |         async_dummy2().await
-   |                       ++++++
 help: consider removing this semicolon and boxing the expressions
    |
 LL ~         Box::new(async_dummy())
@@ -75,7 +75,6 @@ LL | |         async_dummy2()
 LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
-   = note: distinct uses of `impl Trait` result in different opaque types
 help: consider `await`ing on both `Future`s
    |
 LL ~         async_dummy().await
@@ -83,6 +82,7 @@ LL |
 LL |     } else {
 LL ~         async_dummy2().await
    |
+   = note: distinct uses of `impl Trait` result in different opaque types
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/if-then-neeing-semi.rs:13:9

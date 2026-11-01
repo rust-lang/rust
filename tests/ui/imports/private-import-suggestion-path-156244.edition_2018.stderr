@@ -60,6 +60,11 @@ error[E0603]: module import `inner` is private
 LL |     use crate::rename::inner::Item as Item1;
    |                        ^^^^^ private module import
    |
+help: consider importing this struct instead
+   |
+LL -     use crate::rename::inner::Item as Item1;
+LL +     use crate::outer::actual::Item as Item1;
+   |
 note: the module import `inner` is defined here...
   --> $DIR/private-import-suggestion-path-156244.rs:31:9
    |
@@ -70,11 +75,6 @@ note: ...and refers to the module `actual` which is defined here
    |
 LL |     pub mod actual {
    |     ^^^^^^^^^^^^^^ you could import this directly
-help: consider importing this struct instead
-   |
-LL -     use crate::rename::inner::Item as Item1;
-LL +     use crate::outer::actual::Item as Item1;
-   |
 
 error[E0603]: struct import `Hi` is private
   --> $DIR/private-import-suggestion-path-156244.rs:55:37

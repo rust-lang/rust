@@ -6,16 +6,16 @@ LL |         c(2usize).await;
    |         |
    |         arguments to this function are incorrect
    |
-note: closure parameter defined here
-  --> $DIR/arg-mismatch.rs:8:24
-   |
-LL |         let c = async |x| {};
-   |                        ^
 help: change the type of the numeric literal from `usize` to `i32`
    |
 LL -         c(2usize).await;
 LL +         c(2i32).await;
    |
+note: closure parameter defined here
+  --> $DIR/arg-mismatch.rs:8:24
+   |
+LL |         let c = async |x| {};
+   |                        ^
 
 error: aborting due to 1 previous error
 

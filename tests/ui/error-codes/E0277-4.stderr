@@ -6,6 +6,12 @@ LL |     ImplicitTrait::foo(x);
    |     |
    |     required by a bound introduced by this call
    |
+help: consider borrowing here
+   |
+LL |     ImplicitTrait::foo(&x);
+   |                        +
+LL |     ImplicitTrait::foo(&mut x);
+   |                        ++++
 note: required for `[u8]` to implement `ImplicitTrait`
   --> $DIR/E0277-4.rs:20:9
    |
@@ -13,12 +19,6 @@ LL | impl<T> ImplicitTrait for T {
    |      -  ^^^^^^^^^^^^^     ^
    |      |
    |      unsatisfied trait bound implicitly introduced here
-help: consider borrowing here
-   |
-LL |     ImplicitTrait::foo(&x);
-   |                        +
-LL |     ImplicitTrait::foo(&mut x);
-   |                        ++++
 
 error[E0277]: the trait bound `[u8]: ExplicitTrait` is not satisfied
   --> $DIR/E0277-4.rs:39:24
@@ -28,6 +28,12 @@ LL |     ExplicitTrait::foo(x);
    |     |
    |     required by a bound introduced by this call
    |
+help: consider borrowing here
+   |
+LL |     ExplicitTrait::foo(&x);
+   |                        +
+LL |     ExplicitTrait::foo(&mut x);
+   |                        ++++
 note: required for `[u8]` to implement `ExplicitTrait`
   --> $DIR/E0277-4.rs:25:16
    |
@@ -35,12 +41,6 @@ LL | impl<T: Sized> ExplicitTrait for T {
    |         -----  ^^^^^^^^^^^^^     ^
    |         |
    |         unsatisfied trait bound introduced here
-help: consider borrowing here
-   |
-LL |     ExplicitTrait::foo(&x);
-   |                        +
-LL |     ExplicitTrait::foo(&mut x);
-   |                        ++++
 
 error[E0277]: the trait bound `[u8]: UnimplementedTrait` is not satisfied
   --> $DIR/E0277-4.rs:43:29

@@ -11,15 +11,15 @@ help: the trait `Write` is implemented for `&mut [u8]`
    |
 LL | impl Write for &mut [u8] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
+help: convert the array to a `&mut [u8]` slice instead
+   |
+LL |     wants_write(&mut x[..]);
+   |                 ++++  ++++
 note: required by a bound in `wants_write`
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:10:24
    |
 LL | fn wants_write(_: impl Write) {}
    |                        ^^^^^ required by this bound in `wants_write`
-help: convert the array to a `&mut [u8]` slice instead
-   |
-LL |     wants_write(&mut x[..]);
-   |                 ++++  ++++
 
 error[E0277]: the trait bound `&mut [u8; 1]: Write` is not satisfied
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:16:17
@@ -34,15 +34,15 @@ help: the trait `Write` is implemented for `&mut [u8]`
    |
 LL | impl Write for &mut [u8] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
+help: convert the array to a `&mut [u8]` slice instead
+   |
+LL |     wants_write(&mut x[..]);
+   |                       ++++
 note: required by a bound in `wants_write`
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:10:24
    |
 LL | fn wants_write(_: impl Write) {}
    |                        ^^^^^ required by this bound in `wants_write`
-help: convert the array to a `&mut [u8]` slice instead
-   |
-LL |     wants_write(&mut x[..]);
-   |                       ++++
 
 error[E0277]: the trait bound `&mut [u8; 1]: Write` is not satisfied
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:21:17
@@ -57,15 +57,15 @@ help: the trait `Write` is implemented for `&mut [u8]`
    |
 LL | impl Write for &mut [u8] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
+help: convert the array to a `&mut [u8]` slice instead
+   |
+LL |     wants_write(&mut x[..]);
+   |                 ++++  ++++
 note: required by a bound in `wants_write`
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:10:24
    |
 LL | fn wants_write(_: impl Write) {}
    |                        ^^^^^ required by this bound in `wants_write`
-help: convert the array to a `&mut [u8]` slice instead
-   |
-LL |     wants_write(&mut x[..]);
-   |                 ++++  ++++
 
 error[E0277]: the trait bound `[u8; 1]: Write` is not satisfied
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:23:17
@@ -80,15 +80,15 @@ help: the trait `Write` is implemented for `&mut [u8]`
    |
 LL | impl Write for &mut [u8] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
+help: convert the array to a `&mut [u8]` slice instead
+   |
+LL |     wants_write(&mut *x[..]);
+   |                 ++++   ++++
 note: required by a bound in `wants_write`
   --> $DIR/issue-90528-unsizing-suggestion-4.rs:10:24
    |
 LL | fn wants_write(_: impl Write) {}
    |                        ^^^^^ required by this bound in `wants_write`
-help: convert the array to a `&mut [u8]` slice instead
-   |
-LL |     wants_write(&mut *x[..]);
-   |                 ++++   ++++
 
 error: aborting due to 4 previous errors
 

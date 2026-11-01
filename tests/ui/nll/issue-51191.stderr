@@ -21,15 +21,15 @@ note: the binding is already a mutable borrow
    |
 LL |     fn bar(self: &mut Self) {
    |                  ^^^^^^^^^
+help: consider making the binding mutable if you need to reborrow multiple times
+   |
+LL |     fn bar(mut self: &mut Self) {
+   |            +++
 help: try removing `&mut` here
   --> $DIR/issue-51191.rs:8:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^
-help: consider making the binding mutable if you need to reborrow multiple times
-   |
-LL |     fn bar(mut self: &mut Self) {
-   |            +++
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
   --> $DIR/issue-51191.rs:14:9

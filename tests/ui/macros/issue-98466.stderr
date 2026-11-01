@@ -6,11 +6,11 @@ LL |     println!("_x is {}", _x = 5);
    |                     |
    |                     this formatting argument uses named argument `_x` by position
    |
-   = note: `#[warn(named_arguments_used_positionally)]` on by default
 help: use the named argument by name to avoid ambiguity
    |
 LL |     println!("_x is {_x}", _x = 5);
    |                      ++
+   = note: `#[warn(named_arguments_used_positionally)]` on by default
 
 warning: named argument `y` is not used by name
   --> $DIR/issue-98466.rs:10:26

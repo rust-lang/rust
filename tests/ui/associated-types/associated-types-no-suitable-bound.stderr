@@ -15,11 +15,11 @@ error[E0277]: the trait bound `T: Get` is not satisfied
 LL |     fn uhoh<T>(foo: <T as Get>::Value) {}
    |                     ^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `T`
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider restricting type parameter `T` with trait `Get`
    |
 LL |     fn uhoh<T: Get>(foo: <T as Get>::Value) {}
    |              +++++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

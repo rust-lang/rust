@@ -18,12 +18,12 @@ error: expected `,`, found end of `cfg_attr` input
 LL | #[cfg_attr(true)]
    |                ^ expected `,`
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: must be of the form
    |
 LL - #[cfg_attr(true)]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: expected identifier, found `,`
   --> $DIR/cfg-attr-parse.rs:17:17
@@ -31,12 +31,12 @@ error: expected identifier, found `,`
 LL | #[cfg_attr(true,,)]
    |                 ^ expected identifier
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: must be of the form
    |
 LL - #[cfg_attr(true,,)]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: expected identifier, found `,`
   --> $DIR/cfg-attr-parse.rs:29:27
@@ -44,12 +44,12 @@ error: expected identifier, found `,`
 LL | #[cfg_attr(true, must_use,,)]
    |                           ^ expected identifier
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: must be of the form
    |
 LL - #[cfg_attr(true, must_use,,)]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: expected identifier, found `,`
   --> $DIR/cfg-attr-parse.rs:41:39
@@ -57,12 +57,12 @@ error: expected identifier, found `,`
 LL | #[cfg_attr(true, must_use, deprecated,,)]
    |                                       ^ expected identifier
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: must be of the form
    |
 LL - #[cfg_attr(true, must_use, deprecated,,)]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: wrong `cfg_attr` delimiters
   --> $DIR/cfg-attr-parse.rs:45:11
@@ -82,12 +82,12 @@ error: expected identifier, found `,`
 LL | #[cfg_attr[true,,]]
    |                 ^ expected identifier
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: must be of the form
    |
 LL - #[cfg_attr[true,,]]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: wrong `cfg_attr` delimiters
   --> $DIR/cfg-attr-parse.rs:51:11
@@ -107,12 +107,12 @@ error: expected identifier, found `,`
 LL | #[cfg_attr{true,,}]
    |                 ^ expected identifier
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: must be of the form
    |
 LL - #[cfg_attr{true,,}]
 LL + #[cfg_attr(predicate, attr1, attr2, ...)]
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 warning: `#[cfg_attr]` does not expand to any attributes
   --> $DIR/cfg-attr-parse.rs:12:1

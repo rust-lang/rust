@@ -56,15 +56,15 @@ LL |     f(|| panic!());
    |     | takes 0 arguments
    |     expected closure that takes 1 argument
    |
+help: consider changing the closure to take and ignore the expected argument
+   |
+LL |     f(|_| panic!());
+   |        +
 note: required by a bound in `f`
   --> $DIR/closure-arg-count.rs:3:9
    |
 LL | fn f<F: Fn<(usize,)>>(_: F) {}
    |         ^^^^^^^^^^^^ required by this bound in `f`
-help: consider changing the closure to take and ignore the expected argument
-   |
-LL |     f(|_| panic!());
-   |        +
 
 error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:15:5
@@ -75,15 +75,15 @@ LL |     f(  move    || panic!());
    |     |   takes 0 arguments
    |     expected closure that takes 1 argument
    |
+help: consider changing the closure to take and ignore the expected argument
+   |
+LL |     f(  move    |_| panic!());
+   |                  +
 note: required by a bound in `f`
   --> $DIR/closure-arg-count.rs:3:9
    |
 LL | fn f<F: Fn<(usize,)>>(_: F) {}
    |         ^^^^^^^^^^^^ required by this bound in `f`
-help: consider changing the closure to take and ignore the expected argument
-   |
-LL |     f(  move    |_| panic!());
-   |                  +
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
   --> $DIR/closure-arg-count.rs:18:53

@@ -23,6 +23,10 @@ LL |     qux(bar);
 LL |     let _baa = bar;
    |                ^^^ value used here after move
    |
+help: consider mutably borrowing `bar`
+   |
+LL |     qux(&mut bar);
+   |         ++++
 note: if `Bar` implemented `Clone`, you could clone the value
   --> $DIR/moved-value-on-as-ref-arg.rs:5:1
    |
@@ -31,10 +35,6 @@ LL | struct Bar;
 ...
 LL |     qux(bar);
    |         --- you could clone this value
-help: consider mutably borrowing `bar`
-   |
-LL |     qux(&mut bar);
-   |         ++++
 
 error[E0382]: use of moved value: `bar`
   --> $DIR/moved-value-on-as-ref-arg.rs:33:16
@@ -61,6 +61,10 @@ LL |     baz(bar);
 LL |     let _baa = bar;
    |                ^^^ value used here after move
    |
+help: consider mutably borrowing `bar`
+   |
+LL |     baz(&mut bar);
+   |         ++++
 note: if `Bar` implemented `Clone`, you could clone the value
   --> $DIR/moved-value-on-as-ref-arg.rs:5:1
    |
@@ -69,10 +73,6 @@ LL | struct Bar;
 ...
 LL |     baz(bar);
    |         --- you could clone this value
-help: consider mutably borrowing `bar`
-   |
-LL |     baz(&mut bar);
-   |         ++++
 
 error: aborting due to 4 previous errors
 

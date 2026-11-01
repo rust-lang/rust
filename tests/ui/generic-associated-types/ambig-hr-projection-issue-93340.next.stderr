@@ -4,15 +4,15 @@ error[E0282]: type annotations needed
 LL |     cmp_eq
    |     ^^^^^^ cannot infer type of the type parameter `A` declared on the function `cmp_eq`
    |
+help: consider specifying the generic arguments
+   |
+LL |     cmp_eq::<A, B, O>
+   |           +++++++++++
 note: cannot infer type of hidden type of opaque
   --> $DIR/ambig-hr-projection-issue-93340.rs:15:6
    |
 LL | ) -> impl Fn(A::RefType<'_>, B::RefType<'_>) -> O {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider specifying the generic arguments
-   |
-LL |     cmp_eq::<A, B, O>
-   |           +++++++++++
 
 error: aborting due to 1 previous error
 

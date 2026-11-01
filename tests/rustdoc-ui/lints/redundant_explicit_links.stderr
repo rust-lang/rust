@@ -8,16 +8,16 @@ LL | /// [dummy_target](dummy_target)
    |
    = note: when a link's destination is not specified,
            the label is used to resolve intra-doc links
-note: the lint level is defined here
-  --> $DIR/redundant_explicit_links.rs:3:9
-   |
-LL | #![deny(rustdoc::redundant_explicit_links)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: remove explicit link target
    |
 LL - /// [dummy_target](dummy_target)
 LL + /// [dummy_target]
    |
+note: the lint level is defined here
+  --> $DIR/redundant_explicit_links.rs:3:9
+   |
+LL | #![deny(rustdoc::redundant_explicit_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant explicit link target
   --> $DIR/redundant_explicit_links.rs:9:22

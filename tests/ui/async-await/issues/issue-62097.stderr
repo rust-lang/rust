@@ -28,15 +28,15 @@ LL |         foo(|| self.bar()).await;
    |             |
    |             may outlive borrowed value `self`
    |
+help: to force the closure to take ownership of `self` (and any other referenced variables), use the `move` keyword
+   |
+LL |         foo(move || self.bar()).await;
+   |             ++++
 note: function requires argument type to outlive `'static`
   --> $DIR/issue-62097.rs:13:9
    |
 LL |         foo(|| self.bar()).await;
    |         ^^^^^^^^^^^^^^^^^^
-help: to force the closure to take ownership of `self` (and any other referenced variables), use the `move` keyword
-   |
-LL |         foo(move || self.bar()).await;
-   |             ++++
 
 error: aborting due to 2 previous errors
 

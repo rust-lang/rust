@@ -4,13 +4,13 @@ warning: trait objects without an explicit `dyn` are deprecated
 LL |     Trait::nonexistent(());
    |     ^^^^^
    |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
-   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
 help: if this is a dyn-compatible trait, use `dyn`
    |
 LL |     <dyn Trait>::nonexistent(());
    |     ++++      +
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
 
 error[E0038]: the trait `Trait` is not dyn compatible
   --> $DIR/spurious-dyn-compat-errors-58734.rs:22:5
@@ -27,7 +27,6 @@ LL | trait Trait {
 ...
 LL |     fn dyn_incompatible() -> Self;
    |        ^^^^^^^^^^^^^^^^ ...because associated function `dyn_incompatible` has no `self` parameter
-   = help: only type `()` implements `Trait`; consider using it directly instead.
 help: consider turning `dyn_incompatible` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn dyn_incompatible(&self) -> Self;
@@ -36,6 +35,7 @@ help: alternatively, consider constraining `dyn_incompatible` so it is explicitl
    |
 LL |     fn dyn_incompatible() -> Self where Self: Sized;
    |                                   +++++++++++++++++
+   = help: only type `()` implements `Trait`; consider using it directly instead.
 
 error: aborting due to 1 previous error; 1 warning emitted
 

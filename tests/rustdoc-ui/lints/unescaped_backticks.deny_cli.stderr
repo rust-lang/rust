@@ -4,7 +4,6 @@ error: unescaped backtick
 LL | /// if you want your MIR to be modified by the full MIR pipeline, or `#![custom_mir(dialect =
    |                                                                      ^
    |
-   = note: requested on the command line with `-D rustdoc::unescaped-backticks`
 help: the closing backtick of an inline code may be missing
    |
 LL | /// "runtime", phase = "optimized")]` if you don't.
@@ -13,6 +12,7 @@ help: if you meant to use a literal backtick, escape it
    |
 LL | /// if you want your MIR to be modified by the full MIR pipeline, or \`#![custom_mir(dialect =
    |                                                                      +
+   = note: requested on the command line with `-D rustdoc::unescaped-backticks`
 
 error: unescaped backtick
   --> $DIR/unescaped_backticks.rs:237:13

@@ -6,11 +6,11 @@ LL |     --x;
    |
    = note: the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
    = note: use `-= 1` if you meant to decrement the value
-   = note: `#[warn(double_negations)]` on by default
 help: add parentheses for clarity
    |
 LL |     -(-x);
    |      +  +
+   = note: `#[warn(double_negations)]` on by default
 
 warning: use of a double negation
   --> $DIR/lint-double-negations.rs:7:6

@@ -9,11 +9,11 @@ LL |     const A: i32 = 2;
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
-   = note: the matched value is of type `i32`
 help: introduce a variable instead
    |
 LL |     let A_var = 3;
    |          ++++
+   = note: the matched value is of type `i32`
 
 error: aborting due to 1 previous error
 

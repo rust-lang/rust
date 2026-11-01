@@ -15,11 +15,11 @@ error[E0107]: missing generics for struct `Vec`
 LL | fn f<T>(data: &[T]) -> impl Iterator<Item = Vec> {
    |                                             ^^^ expected at least 1 generic argument
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: add missing generic argument
    |
 LL | fn f<T>(data: &[T]) -> impl Iterator<Item = Vec<T>> {
    |                                                +++
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 

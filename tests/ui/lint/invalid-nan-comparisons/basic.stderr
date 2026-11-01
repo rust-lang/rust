@@ -4,12 +4,12 @@ warning: incorrect NaN comparison, NaN cannot be directly compared to itself
 LL | const TEST: bool = 5f32 == f32::NAN;
    |                    ^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(invalid_nan_comparisons)]` on by default
 help: use the `is_nan` method instead
    |
 LL - const TEST: bool = 5f32 == f32::NAN;
 LL + const TEST: bool = <f32>::is_nan(5f32);
    |
+   = note: `#[warn(invalid_nan_comparisons)]` on by default
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
   --> $DIR/basic.rs:18:5

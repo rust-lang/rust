@@ -4,11 +4,11 @@ error[E0261]: use of undeclared lifetime name `'x`
 LL |   fn _f(arg : Box<dyn for<'a> X<Y<'x> = &'a [u32]>>) {}
    |                                   ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'x` lifetime
    |
 LL |   fn _f(arg : Box<dyn for<'x, 'a> X<Y<'x> = &'a [u32]>>) {}
    |                           +++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'x` here
    |
 LL |   fn _f<'x>(arg : Box<dyn for<'a> X<Y<'x> = &'a [u32]>>) {}

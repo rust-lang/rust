@@ -69,15 +69,15 @@ note: this has an implicit `'static` lifetime requirement
    |
 LL | impl E for (Box<dyn A>, Box<dyn A>) {}
    |                     ^
+help: consider relaxing the implicit `'static` requirement
+   |
+LL | impl E for (Box<dyn A + '_>, Box<dyn A>) {}
+   |                       ++++
 note: this has an implicit `'static` lifetime requirement
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:29:33
    |
 LL | impl E for (Box<dyn A>, Box<dyn A>) {}
    |                                 ^
-help: consider relaxing the implicit `'static` requirement
-   |
-LL | impl E for (Box<dyn A + '_>, Box<dyn A>) {}
-   |                       ++++
 help: consider relaxing the implicit `'static` requirement
    |
 LL | impl E for (Box<dyn A>, Box<dyn A + '_>) {}

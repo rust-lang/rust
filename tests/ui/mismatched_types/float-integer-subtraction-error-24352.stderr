@@ -5,6 +5,10 @@ LL |     1.0f64 - 1
    |            ^ no implementation for `f64 - {integer}`
    |
    = help: the trait `Sub<{integer}>` is not implemented for `f64`
+help: consider using a floating-point literal by writing it with `.0`
+   |
+LL |     1.0f64 - 1.0
+   |               ++
 help: the following other types implement trait `Sub<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
@@ -22,10 +26,6 @@ help: the following other types implement trait `Sub<Rhs>`
    |
    = note: `&f64` implements `Sub`
    = note: this error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider using a floating-point literal by writing it with `.0`
-   |
-LL |     1.0f64 - 1.0
-   |               ++
 
 error: aborting due to 1 previous error
 

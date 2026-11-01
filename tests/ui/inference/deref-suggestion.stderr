@@ -6,15 +6,15 @@ LL |     foo(s);
    |     |
    |     arguments to this function are incorrect
    |
+help: try using a conversion method
+   |
+LL |     foo(s.to_string());
+   |          ++++++++++++
 note: function defined here
   --> $DIR/deref-suggestion.rs:5:4
    |
 LL | fn foo(_: String) {}
    |    ^^^ ---------
-help: try using a conversion method
-   |
-LL |     foo(s.to_string());
-   |          ++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:14:10
@@ -24,15 +24,15 @@ LL |     foo3(u);
    |     |
    |     arguments to this function are incorrect
    |
+help: consider dereferencing the borrow
+   |
+LL |     foo3(*u);
+   |          +
 note: function defined here
   --> $DIR/deref-suggestion.rs:12:4
    |
 LL | fn foo3(_: u32) {}
    |    ^^^^ ------
-help: consider dereferencing the borrow
-   |
-LL |     foo3(*u);
-   |          +
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:30:9
@@ -42,16 +42,16 @@ LL |     foo(&"aaa".to_owned());
    |     |
    |     arguments to this function are incorrect
    |
-note: function defined here
-  --> $DIR/deref-suggestion.rs:5:4
-   |
-LL | fn foo(_: String) {}
-   |    ^^^ ---------
 help: consider removing the borrow
    |
 LL -     foo(&"aaa".to_owned());
 LL +     foo("aaa".to_owned());
    |
+note: function defined here
+  --> $DIR/deref-suggestion.rs:5:4
+   |
+LL | fn foo(_: String) {}
+   |    ^^^ ---------
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:32:9
@@ -61,16 +61,16 @@ LL |     foo(&mut "aaa".to_owned());
    |     |
    |     arguments to this function are incorrect
    |
-note: function defined here
-  --> $DIR/deref-suggestion.rs:5:4
-   |
-LL | fn foo(_: String) {}
-   |    ^^^ ---------
 help: consider removing the borrow
    |
 LL -     foo(&mut "aaa".to_owned());
 LL +     foo("aaa".to_owned());
    |
+note: function defined here
+  --> $DIR/deref-suggestion.rs:5:4
+   |
+LL | fn foo(_: String) {}
+   |    ^^^ ---------
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:34:10

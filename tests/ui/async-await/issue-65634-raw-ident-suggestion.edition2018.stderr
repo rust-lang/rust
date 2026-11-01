@@ -9,16 +9,16 @@ note: candidate #1 is defined in an impl of the trait `r#async` for the type `r#
    |
 LL |     fn r#struct(&self) {
    |     ^^^^^^^^^^^^^^^^^^
-note: candidate #2 is defined in an impl of the trait `r#await` for the type `r#fn`
-  --> $DIR/issue-65634-raw-ident-suggestion.rs:14:5
-   |
-LL |     fn r#struct(&self) {
-   |     ^^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     r#fn {}.r#struct();
 LL +     r#async::r#struct(&r#fn {});
    |
+note: candidate #2 is defined in an impl of the trait `r#await` for the type `r#fn`
+  --> $DIR/issue-65634-raw-ident-suggestion.rs:14:5
+   |
+LL |     fn r#struct(&self) {
+   |     ^^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #2
    |
 LL -     r#fn {}.r#struct();

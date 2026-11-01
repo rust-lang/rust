@@ -4,6 +4,10 @@ warning: `z` is parsed as a prefix in Rust 2021 and onward
 LL |     m2!(z"hey");
    |         ^
    |
+help: consider inserting whitespace here to avoid this
+   |
+LL |     m2!(z "hey");
+   |          +
    = warning: this changes meaning in Rust 2021
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
 note: the lint level is defined here
@@ -11,10 +15,6 @@ note: the lint level is defined here
    |
 LL | #![warn(rust_2021_prefixes_incompatible_syntax)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider inserting whitespace here to avoid this
-   |
-LL |     m2!(z "hey");
-   |          +
 
 warning: `prefix` is parsed as a prefix in Rust 2021 and onward
   --> $DIR/reserved-prefixes-migration.rs:19:9
@@ -22,12 +22,12 @@ warning: `prefix` is parsed as a prefix in Rust 2021 and onward
 LL |     m2!(prefix"hey");
    |         ^^^^^^
    |
-   = warning: this changes meaning in Rust 2021
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
 help: consider inserting whitespace here to avoid this
    |
 LL |     m2!(prefix "hey");
    |               +
+   = warning: this changes meaning in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
 
 warning: `hey` is parsed as a prefix in Rust 2021 and onward
   --> $DIR/reserved-prefixes-migration.rs:22:9
@@ -35,12 +35,12 @@ warning: `hey` is parsed as a prefix in Rust 2021 and onward
 LL |     m3!(hey#123);
    |         ^^^
    |
-   = warning: this changes meaning in Rust 2021
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
 help: consider inserting whitespace here to avoid this
    |
 LL |     m3!(hey #123);
    |            +
+   = warning: this changes meaning in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
 
 warning: `hey` is parsed as a prefix in Rust 2021 and onward
   --> $DIR/reserved-prefixes-migration.rs:25:9
@@ -48,12 +48,12 @@ warning: `hey` is parsed as a prefix in Rust 2021 and onward
 LL |     m3!(hey#hey);
    |         ^^^
    |
-   = warning: this changes meaning in Rust 2021
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
 help: consider inserting whitespace here to avoid this
    |
 LL |     m3!(hey #hey);
    |            +
+   = warning: this changes meaning in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
 
 warning: `kind` is parsed as a prefix in Rust 2021 and onward
   --> $DIR/reserved-prefixes-migration.rs:35:14
@@ -61,12 +61,12 @@ warning: `kind` is parsed as a prefix in Rust 2021 and onward
 LL |     #name = #kind#value
    |              ^^^^
    |
-   = warning: this changes meaning in Rust 2021
-   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
 help: consider inserting whitespace here to avoid this
    |
 LL |     #name = #kind #value
    |                  +
+   = warning: this changes meaning in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/reserving-syntax.html>
 
 warning: 5 warnings emitted
 

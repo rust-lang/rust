@@ -5,11 +5,6 @@ LL |     let _ = -1i32.abs();
    |             ^^^^^^^^^^^
    |
    = note: e.g. `-4.abs()` equals `-4`; while `(-4).abs()` equals `4`
-note: the lint level is defined here
-  --> $DIR/negative_literals.rs:3:9
-   |
-LL | #![deny(ambiguous_negative_literals)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: add parentheses around the `-` and the literal to call the method on a negative literal
    |
 LL |     let _ = (-1i32).abs();
@@ -18,6 +13,11 @@ help: add parentheses around the literal and the method call to keep the current
    |
 LL |     let _ = -(1i32.abs());
    |              +          +
+note: the lint level is defined here
+  --> $DIR/negative_literals.rs:3:9
+   |
+LL | #![deny(ambiguous_negative_literals)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `-` has lower precedence than method calls, which might be unexpected
   --> $DIR/negative_literals.rs:8:13

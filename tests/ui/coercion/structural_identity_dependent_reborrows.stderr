@@ -7,6 +7,10 @@ LL |
 LL |         expected::<&'a ()>(b);
    |                            - `b` is borrowed here
    |
+help: to force the closure to take ownership of `b` (and any other referenced variables), use the `move` keyword
+   |
+LL |     move || {
+   |     ++++
 note: closure is returned here
   --> $DIR/structural_identity_dependent_reborrows.rs:16:5
    |
@@ -15,10 +19,6 @@ LL | |
 LL | |         expected::<&'a ()>(b);
 LL | |     }
    | |_____^
-help: to force the closure to take ownership of `b` (and any other referenced variables), use the `move` keyword
-   |
-LL |     move || {
-   |     ++++
 
 error: aborting due to 1 previous error
 

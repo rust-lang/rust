@@ -29,6 +29,10 @@ LL |     B;
    |     ^
    |
    = note: an enum named `B` exists in another namespace
+help: you might have meant to use the following enum variant
+   |
+LL |     B::B1;
+   |      ++++
 note: the enum is defined here
   --> $DIR/glob-resolve1.rs:15:5
    |
@@ -36,10 +40,6 @@ LL | /     pub enum B {
 LL | |         B1,
 LL | |     }
    | |_____^
-help: you might have meant to use the following enum variant
-   |
-LL |     B::B1;
-   |      ++++
 
 error[E0425]: cannot find value `C` in this scope
   --> $DIR/glob-resolve1.rs:30:5
@@ -59,15 +59,15 @@ error[E0425]: cannot find function `import` in this scope
 LL |     import();
    |     ^^^^^^ not found in this scope
    |
+help: consider importing this function
+   |
+LL + use other::import;
+   |
 note: function `bar::import` exists but is inaccessible
   --> $DIR/glob-resolve1.rs:8:5
    |
 LL |     fn fpriv() {}
    |     ^^^^^^^^^^ not accessible
-help: consider importing this function
-   |
-LL + use other::import;
-   |
 
 error[E0425]: cannot find type `A` in this scope
   --> $DIR/glob-resolve1.rs:33:11
@@ -80,16 +80,16 @@ note: similarly named enum `B` defined here
    |
 LL |     pub enum B {
    |     ^^^^^^^^^^
-note: enum `bar::A` exists but is inaccessible
-  --> $DIR/glob-resolve1.rs:12:5
-   |
-LL |     enum A {
-   |     ^^^^^^ not accessible
 help: an enum with a similar name exists
    |
 LL -     foo::<A>();
 LL +     foo::<B>();
    |
+note: enum `bar::A` exists but is inaccessible
+  --> $DIR/glob-resolve1.rs:12:5
+   |
+LL |     enum A {
+   |     ^^^^^^ not accessible
 
 error[E0425]: cannot find type `C` in this scope
   --> $DIR/glob-resolve1.rs:34:11
@@ -102,16 +102,16 @@ note: similarly named enum `B` defined here
    |
 LL |     pub enum B {
    |     ^^^^^^^^^^
-note: struct `bar::C` exists but is inaccessible
-  --> $DIR/glob-resolve1.rs:19:5
-   |
-LL |     struct C;
-   |     ^^^^^^^^^ not accessible
 help: an enum with a similar name exists
    |
 LL -     foo::<C>();
 LL +     foo::<B>();
    |
+note: struct `bar::C` exists but is inaccessible
+  --> $DIR/glob-resolve1.rs:19:5
+   |
+LL |     struct C;
+   |     ^^^^^^^^^ not accessible
 
 error[E0425]: cannot find type `D` in this scope
   --> $DIR/glob-resolve1.rs:35:11
@@ -124,16 +124,16 @@ note: similarly named enum `B` defined here
    |
 LL |     pub enum B {
    |     ^^^^^^^^^^
-note: type alias `bar::D` exists but is inaccessible
-  --> $DIR/glob-resolve1.rs:21:5
-   |
-LL |     type D = isize;
-   |     ^^^^^^^^^^^^^^^ not accessible
 help: an enum with a similar name exists
    |
 LL -     foo::<D>();
 LL +     foo::<B>();
    |
+note: type alias `bar::D` exists but is inaccessible
+  --> $DIR/glob-resolve1.rs:21:5
+   |
+LL |     type D = isize;
+   |     ^^^^^^^^^^^^^^^ not accessible
 
 error: aborting due to 8 previous errors
 

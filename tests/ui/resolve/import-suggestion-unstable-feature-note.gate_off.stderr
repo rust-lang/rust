@@ -4,11 +4,11 @@ error[E0425]: cannot find type `BorrowedBuf` in this scope
 LL |     let _: BorrowedBuf;
    |            ^^^^^^^^^^^ not found in this scope
    |
-   = note: 'std::io::BorrowedBuf' is unstable, add `#![feature(core_io_borrowed_buf)]` to the crate attributes to enable
 help: consider importing this struct
    |
 LL + use std::io::BorrowedBuf;
    |
+   = note: 'std::io::BorrowedBuf' is unstable, add `#![feature(core_io_borrowed_buf)]` to the crate attributes to enable
 
 error[E0425]: cannot find type `HashMap` in this scope
   --> $DIR/import-suggestion-unstable-feature-note.rs:13:12

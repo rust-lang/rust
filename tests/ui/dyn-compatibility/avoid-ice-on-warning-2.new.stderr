@@ -4,7 +4,6 @@ error[E0782]: expected a type, found a trait
 LL | fn id<F>(f: Copy) -> usize {
    |             ^^^^
    |
-   = note: `Copy` is dyn-incompatible, otherwise a trait object could be used
 help: use a new generic type parameter, constrained by `Copy`
    |
 LL - fn id<F>(f: Copy) -> usize {
@@ -14,6 +13,7 @@ help: you can also use an opaque type, but users won't be able to specify the ty
    |
 LL | fn id<F>(f: impl Copy) -> usize {
    |             ++++
+   = note: `Copy` is dyn-incompatible, otherwise a trait object could be used
 
 error: aborting due to 1 previous error
 

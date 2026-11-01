@@ -5,11 +5,11 @@ LL | pub fn iter<'a>(v: Vec<(u32, &'a u32)>) -> impl DoubleEndedIterator<Item = 
    |                               -- the lifetime is named here                      ^^^^ the same lifetime is elided here
    |
    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
-   = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
 help: consistently use `'a`
    |
 LL | pub fn iter<'a>(v: Vec<(u32, &'a u32)>) -> impl DoubleEndedIterator<Item = (u32, &'a u32)> {
    |                                                                                   ++
+   = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
 
 warning: 1 warning emitted
 

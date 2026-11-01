@@ -7,6 +7,10 @@ LL |         lines.enumerate().filter_map(|(i, line)| {
 LL |             if self.start.line as usize <= i && i <= self.end.line as usize {
    |                --------------- `self.start.line` is borrowed here
    |
+help: to force the closure to take ownership of `self.start.line` (and any other referenced variables), use the `move` keyword
+   |
+LL |         lines.enumerate().filter_map(move |(i, line)| {
+   |                                      ++++
 note: function requires argument type to outlive `'static`
   --> $DIR/confusing-lifetime-error-issue-79033.rs:24:9
    |
@@ -17,10 +21,6 @@ LL | |             if self.start.line as usize <= i && i <= self.end.line as usi
 ...  |
 LL | |         })
    | |__________^
-help: to force the closure to take ownership of `self.start.line` (and any other referenced variables), use the `move` keyword
-   |
-LL |         lines.enumerate().filter_map(move |(i, line)| {
-   |                                      ++++
 
 error[E0373]: closure may outlive the current function, but it borrows `self.end.line`, which is owned by the current function
   --> $DIR/confusing-lifetime-error-issue-79033.rs:24:38
@@ -31,6 +31,10 @@ LL |         lines.enumerate().filter_map(|(i, line)| {
 LL |             if self.start.line as usize <= i && i <= self.end.line as usize {
    |                                                      ------------- `self.end.line` is borrowed here
    |
+help: to force the closure to take ownership of `self.end.line` (and any other referenced variables), use the `move` keyword
+   |
+LL |         lines.enumerate().filter_map(move |(i, line)| {
+   |                                      ++++
 note: function requires argument type to outlive `'static`
   --> $DIR/confusing-lifetime-error-issue-79033.rs:24:9
    |
@@ -41,10 +45,6 @@ LL | |             if self.start.line as usize <= i && i <= self.end.line as usi
 ...  |
 LL | |         })
    | |__________^
-help: to force the closure to take ownership of `self.end.line` (and any other referenced variables), use the `move` keyword
-   |
-LL |         lines.enumerate().filter_map(move |(i, line)| {
-   |                                      ++++
 
 error: aborting due to 2 previous errors
 

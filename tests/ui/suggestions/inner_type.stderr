@@ -4,15 +4,15 @@ error[E0599]: no method named `method` found for struct `RefCell<T>` in the curr
 LL |     other_item.method();
    |                ^^^^^^ method not found in `RefCell<Struct<u32>>`
    |
+help: use `.borrow()` to borrow the `Struct<u32>`, panicking if a mutable borrow exists
+   |
+LL |     other_item.borrow().method();
+   |               +++++++++
 note: the method `method` exists on the type `Struct<u32>`
   --> $DIR/inner_type.rs:9:5
    |
 LL |     pub fn method(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^
-help: use `.borrow()` to borrow the `Struct<u32>`, panicking if a mutable borrow exists
-   |
-LL |     other_item.borrow().method();
-   |               +++++++++
 
 error[E0599]: no method named `some_mutable_method` found for struct `RefCell<T>` in the current scope
   --> $DIR/inner_type.rs:21:16
@@ -20,15 +20,15 @@ error[E0599]: no method named `some_mutable_method` found for struct `RefCell<T>
 LL |     other_item.some_mutable_method();
    |                ^^^^^^^^^^^^^^^^^^^ method not found in `RefCell<Struct<u32>>`
    |
+help: use `.borrow_mut()` to mutably borrow the `Struct<u32>`, panicking if any borrows exist
+   |
+LL |     other_item.borrow_mut().some_mutable_method();
+   |               +++++++++++++
 note: the method `some_mutable_method` exists on the type `Struct<u32>`
   --> $DIR/inner_type.rs:11:5
    |
 LL |     pub fn some_mutable_method(&mut self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: use `.borrow_mut()` to mutably borrow the `Struct<u32>`, panicking if any borrows exist
-   |
-LL |     other_item.borrow_mut().some_mutable_method();
-   |               +++++++++++++
 
 error[E0599]: no method named `method` found for struct `std::sync::Mutex<T>` in the current scope
   --> $DIR/inner_type.rs:27:18
@@ -36,15 +36,15 @@ error[E0599]: no method named `method` found for struct `std::sync::Mutex<T>` in
 LL |     another_item.method();
    |                  ^^^^^^ method not found in `std::sync::Mutex<Struct<u32>>`
    |
+help: use `.lock().unwrap()` to borrow the `Struct<u32>`, blocking the current thread until it can be acquired
+   |
+LL |     another_item.lock().unwrap().method();
+   |                 ++++++++++++++++
 note: the method `method` exists on the type `Struct<u32>`
   --> $DIR/inner_type.rs:9:5
    |
 LL |     pub fn method(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^
-help: use `.lock().unwrap()` to borrow the `Struct<u32>`, blocking the current thread until it can be acquired
-   |
-LL |     another_item.lock().unwrap().method();
-   |                 ++++++++++++++++
 
 error[E0599]: no method named `method` found for struct `std::sync::RwLock<T>` in the current scope
   --> $DIR/inner_type.rs:33:18
@@ -52,15 +52,15 @@ error[E0599]: no method named `method` found for struct `std::sync::RwLock<T>` i
 LL |     another_item.method();
    |                  ^^^^^^ method not found in `std::sync::RwLock<Struct<u32>>`
    |
+help: use `.read().unwrap()` to borrow the `Struct<u32>`, blocking the current thread until it can be acquired
+   |
+LL |     another_item.read().unwrap().method();
+   |                 ++++++++++++++++
 note: the method `method` exists on the type `Struct<u32>`
   --> $DIR/inner_type.rs:9:5
    |
 LL |     pub fn method(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^
-help: use `.read().unwrap()` to borrow the `Struct<u32>`, blocking the current thread until it can be acquired
-   |
-LL |     another_item.read().unwrap().method();
-   |                 ++++++++++++++++
 
 error[E0599]: no method named `some_mutable_method` found for struct `std::sync::RwLock<T>` in the current scope
   --> $DIR/inner_type.rs:37:18
@@ -68,15 +68,15 @@ error[E0599]: no method named `some_mutable_method` found for struct `std::sync:
 LL |     another_item.some_mutable_method();
    |                  ^^^^^^^^^^^^^^^^^^^ method not found in `std::sync::RwLock<Struct<u32>>`
    |
+help: use `.write().unwrap()` to mutably borrow the `Struct<u32>`, blocking the current thread until it can be acquired
+   |
+LL |     another_item.write().unwrap().some_mutable_method();
+   |                 +++++++++++++++++
 note: the method `some_mutable_method` exists on the type `Struct<u32>`
   --> $DIR/inner_type.rs:11:5
    |
 LL |     pub fn some_mutable_method(&mut self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: use `.write().unwrap()` to mutably borrow the `Struct<u32>`, blocking the current thread until it can be acquired
-   |
-LL |     another_item.write().unwrap().some_mutable_method();
-   |                 +++++++++++++++++
 
 error: aborting due to 5 previous errors
 

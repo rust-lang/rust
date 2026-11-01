@@ -8,15 +8,15 @@ LL |     copy(r, w);
    |
    = note: consider using the `pin!` macro
            consider using `Box::pin` if you need to access the pinned value outside of the current scope
+help: consider restricting type parameter `T` with trait `Unpin`
+   |
+LL | fn f<T: std::marker::Unpin>(r: T) {
+   |       ++++++++++++++++++++
 note: required by a bound in `copy`
   --> $DIR/issue-90164.rs:1:12
    |
 LL | fn copy<R: Unpin, W>(_: R, _: W) {}
    |            ^^^^^ required by this bound in `copy`
-help: consider restricting type parameter `T` with trait `Unpin`
-   |
-LL | fn f<T: std::marker::Unpin>(r: T) {
-   |       ++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

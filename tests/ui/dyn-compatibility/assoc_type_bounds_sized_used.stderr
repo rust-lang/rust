@@ -6,6 +6,11 @@ LL | fn bop<T: Bop + ?Sized>() {
 LL |     let _ = <T as Bop>::Bar::default();
    |              ^ doesn't have a size known at compile-time
    |
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn bop<T: Bop + ?Sized>() {
+LL + fn bop<T: Bop>() {
+   |
 note: required by a bound in `Bop::Bar`
   --> $DIR/assoc_type_bounds_sized_used.rs:7:15
    |
@@ -14,11 +19,6 @@ LL |     type Bar: Default
 LL |     where
 LL |         Self: Sized;
    |               ^^^^^ required by this bound in `Bop::Bar`
-help: consider removing the `?Sized` bound to make the type parameter `Sized`
-   |
-LL - fn bop<T: Bop + ?Sized>() {
-LL + fn bop<T: Bop>() {
-   |
 
 error: aborting due to 1 previous error
 

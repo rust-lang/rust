@@ -6,6 +6,11 @@ LL | impl<X: ?Sized> S5<X> {
    |      |
    |      this type parameter needs to be `Sized`
    |
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - impl<X: ?Sized> S5<X> {
+LL + impl<X> S5<X> {
+   |
 note: required by an implicit `Sized` bound in `S5`
   --> $DIR/unsized-inherent-impl-self-type.rs:5:11
    |
@@ -18,11 +23,6 @@ LL | struct S5<Y>(Y);
    |           ^  - ...if indirection were used here: `Box<Y>`
    |           |
    |           this could be changed to `Y: ?Sized`...
-help: consider removing the `?Sized` bound to make the type parameter `Sized`
-   |
-LL - impl<X: ?Sized> S5<X> {
-LL + impl<X> S5<X> {
-   |
 
 error: aborting due to 1 previous error
 

@@ -5,11 +5,11 @@ LL |     let _x = "test" as &dyn (::std::any::Any);
    |              ^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: required for the cast from `&'static str` to `&(dyn Any + 'static)`
 help: consider borrowing the value, since `&&'static str` can be coerced into `&(dyn Any + 'static)`
    |
 LL |     let _x = &"test" as &dyn (::std::any::Any);
    |              +
+   = note: required for the cast from `&'static str` to `&(dyn Any + 'static)`
 
 error: aborting due to 1 previous error
 

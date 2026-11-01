@@ -9,12 +9,12 @@ LL |     fn test() -> &'a () {
    |
    = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
    = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
-   = note: `#[warn(refining_impl_trait_internal)]` (part of `#[warn(refining_impl_trait)]`) on by default
 help: replace the return type so that it matches the trait
    |
 LL -     fn test() -> &'a () {
 LL +     fn test() -> impl Sized {
    |
+   = note: `#[warn(refining_impl_trait_internal)]` (part of `#[warn(refining_impl_trait)]`) on by default
 
 error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
   --> $DIR/unconstrained-lt.rs:5:6

@@ -5,16 +5,16 @@ LL |     x.test();
    |       ^^^^ this is an associated function, not a method
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
-note: the candidate is defined in an impl for the type `Foo<T>`
-  --> $DIR/suggest-assoc-fn-call-deref.rs:8:5
-   |
-LL |     fn test() -> i32 { 1 }
-   |     ^^^^^^^^^^^^^^^^
 help: use associated function syntax instead
    |
 LL -     x.test();
 LL +     Foo::<i32>::test();
    |
+note: the candidate is defined in an impl for the type `Foo<T>`
+  --> $DIR/suggest-assoc-fn-call-deref.rs:8:5
+   |
+LL |     fn test() -> i32 { 1 }
+   |     ^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

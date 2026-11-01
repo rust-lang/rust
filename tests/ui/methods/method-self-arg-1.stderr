@@ -6,16 +6,16 @@ LL |     Foo::bar(x);
    |     |
    |     arguments to this function are incorrect
    |
+help: consider borrowing here
+   |
+LL |     Foo::bar(&x);
+   |              +
 note: method defined here
   --> $DIR/method-self-arg-1.rs:8:8
    |
 LL | impl Foo {
 LL |     fn bar(&self) {}
    |        ^^^ -----
-help: consider borrowing here
-   |
-LL |     Foo::bar(&x);
-   |              +
 
 error[E0308]: mismatched types
   --> $DIR/method-self-arg-1.rs:15:14

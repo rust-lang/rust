@@ -4,7 +4,6 @@ warning: ambiguous wide pointer comparison, the comparison includes metadata whi
 LL |     a == b
    |     ^^^^^^
    |
-   = note: `#[warn(ambiguous_wide_pointer_comparisons)]` on by default
 help: use `core::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
 LL -     a == b
@@ -15,6 +14,7 @@ help: use explicit `core::ptr::eq` method to compare metadata and addresses
 LL -     a == b
 LL +     core::ptr::eq(a, b)
    |
+   = note: `#[warn(ambiguous_wide_pointer_comparisons)]` on by default
 
 warning: 1 warning emitted
 

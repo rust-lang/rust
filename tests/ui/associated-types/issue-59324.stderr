@@ -68,7 +68,6 @@ LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
    |                             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn ThriftService<(), AssocType = _> + 'static)`
-   = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |
 LL - fn with_factory<H>(factory: dyn ThriftService<()>) {}
@@ -78,6 +77,7 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL | fn with_factory<H>(factory: &dyn ThriftService<()>) {}
    |                             +
+   = help: unsized fn params are gated as an unstable feature
 
 error: aborting due to 6 previous errors
 

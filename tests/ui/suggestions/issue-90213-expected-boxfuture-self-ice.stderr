@@ -9,16 +9,16 @@ LL |         Self::foo(None)
    = note: expected struct `Box<Option<S>>`
                 found enum `Option<_>`
    = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |         Self::foo(Box::new(None))
+   |                   +++++++++    +
 note: associated function defined here
   --> $DIR/issue-90213-expected-boxfuture-self-ice.rs:7:8
    |
 LL | impl S {
 LL |     fn foo(_: Box<Option<S>>) {}
    |        ^^^ -----------------
-help: store this in the heap by calling `Box::new`
-   |
-LL |         Self::foo(Box::new(None))
-   |                   +++++++++    +
 
 error: aborting due to 1 previous error
 

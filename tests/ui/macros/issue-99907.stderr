@@ -6,11 +6,11 @@ LL |     println!("Hello {:.1}!", f = 0.02f32);
    |                     |
    |                     this formatting argument uses named argument `f` by position
    |
-   = note: `#[warn(named_arguments_used_positionally)]` on by default
 help: use the named argument by name to avoid ambiguity
    |
 LL |     println!("Hello {f:.1}!", f = 0.02f32);
    |                      +
+   = note: `#[warn(named_arguments_used_positionally)]` on by default
 
 warning: named argument `f` is not used by name
   --> $DIR/issue-99907.rs:9:31

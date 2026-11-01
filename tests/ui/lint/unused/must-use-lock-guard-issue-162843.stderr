@@ -5,15 +5,15 @@ LL |     mutex.lock().unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: if unused the Mutex will immediately unlock
+help: use `let _unused = ...` to ignore the resulting value without dropping it immediately
+   |
+LL |     let _unused = mutex.lock().unwrap();
+   |     +++++++++++++
 note: the lint level is defined here
   --> $DIR/must-use-lock-guard-issue-162843.rs:4:9
    |
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
-help: use `let _unused = ...` to ignore the resulting value without dropping it immediately
-   |
-LL |     let _unused = mutex.lock().unwrap();
-   |     +++++++++++++
 
 error: unused return value of `guard` that must be used
   --> $DIR/must-use-lock-guard-issue-162843.rs:37:5

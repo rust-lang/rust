@@ -9,12 +9,12 @@ LL |     let _ = LazyCell::force(&A);
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
    = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
-   = note: `#[warn(const_item_interior_mutations)]` on by default
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: LazyCell<i32> = LazyCell::new(|| 0);
 LL +     static A: LazyCell<i32> = LazyCell::new(|| 0);
    |
+   = note: `#[warn(const_item_interior_mutations)]` on by default
 
 warning: mutation of an interior mutable `const` item with call to `set`
   --> $DIR/const-item-interior-mutations-const-cell.rs:22:13

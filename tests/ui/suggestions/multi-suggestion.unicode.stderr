@@ -36,12 +36,6 @@ LL │         wtf: Some(Box(U {
    │                   ━━━
    │
    ╰ note: a struct named `Box` exists in another namespace
-note: constructor is not visible here due to private fields
-   ╭▸ $SRC_DIR/alloc/src/boxed.rs:LL:COL
-   │
-   ├ note: private field
-   │
-   ╰ note: private field
 help: you might have meant to use an associated function to build this type
    ╭╴
 LL -         wtf: Some(Box(U {
@@ -77,6 +71,12 @@ LL -             x: (),
 LL -         })),
 LL +         wtf: Some(<Box as std::default::Default>::default()),
    ╰╴
+note: constructor is not visible here due to private fields
+   ╭▸ $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   │
+   ├ note: private field
+   │
+   ╰ note: private field
 
 error: cannot construct `HashMap<_, _, _, _>` with struct literal syntax due to private fields
    ╭▸ $DIR/multi-suggestion.rs:19:13

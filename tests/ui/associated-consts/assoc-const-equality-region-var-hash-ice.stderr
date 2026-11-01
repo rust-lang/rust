@@ -4,11 +4,11 @@ error[E0261]: use of undeclared lifetime name `'r`
 LL | fn foo() -> dyn Trait<'r, K = {}> {
    |                       ^^ undeclared lifetime
    |
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'r` lifetime
    |
 LL | fn foo() -> dyn for<'r> Trait<'r, K = {}> {
    |                 +++++++
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider introducing lifetime `'r` here
    |
 LL | fn foo<'r>() -> dyn Trait<'r, K = {}> {

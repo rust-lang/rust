@@ -6,11 +6,11 @@ LL |     println!("{b} {}", a=1, b=2);
    |                   |
    |                   this formatting argument uses named argument `a` by position
    |
-   = note: `#[warn(named_arguments_used_positionally)]` on by default
 help: use the named argument by name to avoid ambiguity
    |
 LL |     println!("{b} {a}", a=1, b=2);
    |                    +
+   = note: `#[warn(named_arguments_used_positionally)]` on by default
 
 warning: named argument `a` is not used by name
   --> $DIR/issue-99265.rs:9:35
