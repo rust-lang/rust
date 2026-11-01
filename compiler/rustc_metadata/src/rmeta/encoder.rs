@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
-use rustc_attr_ir::{AttributeKind, EncodeCrossCrate, find_attr};
+use rustc_attr_ir::{DocAttribute, EncodeCrossCrate, find_attr};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
@@ -929,44 +929,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 }
 
-struct AnalyzeAttrState {
-    is_exported: bool,
-    is_doc_hidden: bool,
-}
-
-/// Returns whether an attribute needs to be recorded in metadata, that is, if it's usable and
-/// useful in downstream crates. Local-only attributes are an obvious example, but some
-/// rustdoc-specific attributes can equally be of use while documenting the current crate only.
-///
-/// Removing these superfluous attributes speeds up compilation by making the metadata smaller.
-///
-/// Note: the `is_exported` parameter is used to cache whether the given `DefId` has a public
-/// visibility: this is a piece of data that can be computed once per defid, and not once per
-/// attribute. Some attributes would only be usable downstream if they are public.
-#[inline]
-fn analyze_attr(attr: &rustc_attr_ir::Attribute, state: &mut AnalyzeAttrState) -> bool {
-    let mut should_encode = false;
-    if let rustc_attr_ir::Attribute::Parsed(p) = attr
-        && p.encode_cross_crate() == EncodeCrossCrate::No
-    {
-    } else if let rustc_attr_ir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
-        // We keep all doc comments reachable to rustdoc because they might be "imported" into
-        // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
-        // their own.
-        if state.is_exported {
-            should_encode = true;
-        }
-    } else if let rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d)) = attr {
-        should_encode = true;
-        if d.hidden.is_some() {
-            state.is_doc_hidden = true;
-        }
-    } else {
-        should_encode = true;
-    }
-    should_encode
-}
-
 fn should_encode_span(def_kind: DefKind) -> bool {
     match def_kind {
         DefKind::Mod
@@ -1456,19 +1418,15 @@ fn should_encode_const(def_kind: DefKind) -> bool {
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
-        let mut state = AnalyzeAttrState {
-            is_exported: tcx.effective_visibilities(()).is_exported(def_id),
-            is_doc_hidden: false,
-        };
-        let attr_iter = tcx
-            .hir_attrs(tcx.local_def_id_to_hir_id(def_id))
-            .iter()
-            .filter(|attr| analyze_attr(*attr, &mut state));
+
+        let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
+        let attr_iter =
+            attrs.iter().filter(|attr| matches!(attr.encode_cross_crate(), EncodeCrossCrate::Yes));
 
         self.table_writer().attributes(def_id, attr_iter);
 
         let mut attr_flags = AttrFlags::empty();
-        if state.is_doc_hidden {
+        if find_attr!(attrs, Doc(DocAttribute { hidden: Some(_), .. })) {
             attr_flags |= AttrFlags::IS_DOC_HIDDEN;
         }
 
