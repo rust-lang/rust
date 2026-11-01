@@ -1,5 +1,3 @@
-//@ run-pass
-
 #![feature(coroutines, coroutine_trait)]
 
 use std::ops::{Coroutine, CoroutineState};
@@ -10,7 +8,7 @@ struct W<T>(T);
 // This impl isn't safe in general, but the coroutine used in this test is movable
 // so it won't cause problems.
 impl<T: Coroutine<(), Return = ()> + Unpin> Iterator for W<T> {
-    type Item = T::Yield;
+    type Item = T::Yield; //~ ERROR: missing generics for associated type `std::ops::Coroutine::Yield`
 
     fn next(&mut self) -> Option<Self::Item> {
         match Pin::new(&mut self.0).resume(()) {
@@ -20,7 +18,7 @@ impl<T: Coroutine<(), Return = ()> + Unpin> Iterator for W<T> {
     }
 }
 
-fn test() -> impl Coroutine<(), Return = (), Yield = u8> + Unpin {
+fn test() -> impl for<'y> Coroutine<(), Return = (), Yield<'y> = u8> + Unpin {
     #[coroutine]
     || {
         for i in 1..6 {

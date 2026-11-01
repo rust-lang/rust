@@ -1,12 +1,11 @@
-//@ check-pass
-
 #![feature(coroutines, coroutine_trait)]
 #![feature(type_alias_impl_trait)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
-type RandCoroutine<'a> = impl Coroutine<Return = (), Yield = u64> + 'a;
+type RandCoroutine<'a> = impl Coroutine<Return = (), Yield = u64> + 'a; //~ ERROR: missing generics for associated type `std::ops::Coroutine::Yield`
+                                                                        //~| ERROR: missing generics for associated type `std::ops::Coroutine::Yield`
 #[define_opaque(RandCoroutine)]
 fn rand_coroutine<'a>(rng: &'a ()) -> RandCoroutine<'a> {
     #[coroutine]
@@ -18,10 +17,12 @@ fn rand_coroutine<'a>(rng: &'a ()) -> RandCoroutine<'a> {
     }
 }
 
-pub type RandCoroutineWithIndirection<'c> = impl Coroutine<Return = (), Yield = u64> + 'c;
+pub type RandCoroutineWithIndirection<'c> = impl Coroutine<Return = (), Yield = u64> + 'c; //~ ERROR: missing generics for associated type `std::ops::Coroutine::Yield`
+                                                                                           //~| ERROR: missing generics for associated type `std::ops::Coroutine::Yield`
 #[define_opaque(RandCoroutineWithIndirection)]
 pub fn rand_coroutine_with_indirection<'a>(rng: &'a ()) -> RandCoroutineWithIndirection<'a> {
-    fn helper<'b>(rng: &'b ()) -> impl 'b + Coroutine<Return = (), Yield = u64> {
+    fn helper<'b>(rng: &'b ()) -> impl 'b + Coroutine<Return = (), Yield = u64> { //~ ERROR: missing generics for associated type `std::ops::Coroutine::Yield`
+                                                                                  //~| ERROR: missing generics for associated type `std::ops::Coroutine::Yield`
         #[coroutine]
         move || {
             let _rng = rng;

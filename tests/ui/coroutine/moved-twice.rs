@@ -12,7 +12,7 @@ impl Drop for Foo {
     fn drop(&mut self) {}
 }
 
-fn overlap_move_points() -> impl Coroutine<Yield = ()> {
+fn overlap_move_points() -> impl for<'y> Coroutine<Yield<'y> = ()> {
     #[coroutine] static || {
         let first = Foo([0; FOO_SIZE]);
         yield;

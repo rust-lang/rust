@@ -7,7 +7,7 @@
 
 use std::ops::Coroutine;
 
-fn coroutine<const C: usize>(array: [u8; C]) -> impl Coroutine<Yield = (), Return = ()> {
+fn coroutine<const C: usize>(array: [u8; C]) -> impl Coroutine<Yield<'static> = (), Return = ()> {
     #[coroutine]
     move |()| {
         yield ();

@@ -13,7 +13,7 @@ extern crate metadata_sufficient_for_layout;
 
 mod helper {
     use std::ops::Coroutine;
-    pub type F = impl Coroutine<(), Yield = (), Return = ()>;
+    pub type F = impl for<'y> Coroutine<(), Yield<'y> = (), Return = ()>;
 
     #[define_opaque(F)]
     fn f() -> F {

@@ -7,7 +7,7 @@
 use std::ops::Coroutine;
 
 pub fn want_cyclic_coroutine_return<T>(_: T)
-    where T: Coroutine<Yield = (), Return = T>
+    where T: for<'y> Coroutine<Yield<'y> = (), Return = T>
 {
 }
 
@@ -20,7 +20,7 @@ fn supply_cyclic_coroutine_return() {
 }
 
 pub fn want_cyclic_coroutine_yield<T>(_: T)
-    where T: Coroutine<Yield = T, Return = ()>
+    where T: for<'y> Coroutine<Yield<'y> = T, Return = ()>
 {
 }
 

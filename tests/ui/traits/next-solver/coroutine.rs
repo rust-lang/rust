@@ -11,7 +11,7 @@ struct A;
 struct B;
 struct C;
 
-fn needs_coroutine(_: impl Coroutine<A, Yield = B, Return = C>) {}
+fn needs_coroutine(_: impl for<'y> Coroutine<A, Yield<'y> = B, Return = C>) {}
 
 #[cfg(fail)]
 fn main() {

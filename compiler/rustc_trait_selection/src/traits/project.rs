@@ -12,7 +12,8 @@ use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, FieldInfo, Term, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
+    self, FieldInfo, GenericArg, Term, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
+    Upcast,
 };
 use rustc_span::{bug, span_bug, sym};
 use tracing::{debug, instrument};
@@ -1404,31 +1405,44 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
 
     let tcx = selcx.tcx();
 
-    let coroutine_def_id = tcx.require_lang_item(LangItem::Coroutine, obligation.cause.span);
+    let _coroutine_def_id = tcx.require_lang_item(LangItem::Coroutine, obligation.cause.span);
 
-    let (trait_ref, yield_ty, return_ty) = super::util::coroutine_trait_ref_and_outputs(
-        tcx,
-        coroutine_def_id,
-        obligation.predicate.self_ty(),
-        coroutine_sig,
-    );
+    assert!(!self_ty.has_escaping_bound_vars());
 
     let def_id = obligation.predicate.expect_projection_def_id();
-    let ty = if tcx.is_lang_item(def_id, LangItem::CoroutineReturn) {
-        return_ty
+    let predicate = if tcx.is_lang_item(def_id, LangItem::CoroutineReturn) {
+        let args = tcx.mk_args_from_iter(
+            [GenericArg::from(self_ty), coroutine_sig.resume_ty.into()].into_iter(),
+        );
+        ty::ProjectionClause {
+            projection_term: obligation.predicate.with_args(tcx, args),
+            term: coroutine_sig.return_ty.into(),
+        }
     } else if tcx.is_lang_item(def_id, LangItem::CoroutineYield) {
-        yield_ty
+        let args = tcx.mk_args_from_iter(
+            [
+                self_ty.into(),
+                coroutine_sig.resume_ty.into(),
+                obligation
+                    .predicate
+                    .args
+                    .iter()
+                    .filter(|a| a.as_region().is_some())
+                    .next()
+                    .unwrap(),
+            ]
+            .into_iter(),
+        );
+        ty::ProjectionClause {
+            projection_term: obligation.predicate.with_args(tcx, args),
+            term: coroutine_sig.yield_ty.into(),
+        }
     } else {
         span_bug!(
             tcx.def_span(def_id),
             "unexpected associated type: `Coroutine::{}`",
             tcx.item_name(def_id),
         );
-    };
-
-    let predicate = ty::ProjectionClause {
-        projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
-        term: ty.into(),
     };
 
     confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)

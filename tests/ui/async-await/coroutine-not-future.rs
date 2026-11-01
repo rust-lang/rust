@@ -9,7 +9,7 @@ async fn async_fn() {}
 fn returns_async_block() -> impl Future<Output = ()> {
     async {}
 }
-fn returns_coroutine() -> impl Coroutine<(), Yield = (), Return = ()> {
+fn returns_coroutine() -> impl for<'y> Coroutine<(), Yield<'y> = (), Return = ()> {
     #[coroutine]
     || {
         let _: () = yield ();
@@ -17,7 +17,7 @@ fn returns_coroutine() -> impl Coroutine<(), Yield = (), Return = ()> {
 }
 
 fn takes_future(_f: impl Future<Output = ()>) {}
-fn takes_coroutine<ResumeTy>(_g: impl Coroutine<ResumeTy, Yield = (), Return = ()>) {}
+fn takes_coroutine<ResumeTy>(_g: impl for<'y> Coroutine<ResumeTy, Yield<'y> = (), Return = ()>) {}
 
 fn main() {
     // okay:

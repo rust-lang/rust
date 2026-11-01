@@ -17,7 +17,7 @@ use std::rc::Rc;
 type Payload = Box<i32>;
 
 fn make_coro<'a>()
--> impl Coroutine<Yield = Rc<RefCell<Option<&'a Payload>>>, Return = ()> + 'static {
+-> impl for<'y> Coroutine<Yield<'y> = Rc<RefCell<Option<&'a Payload>>>, Return = ()> + 'static {
     #[coroutine]
     || {
         let storage: Rc<RefCell<Option<&'a Payload>>> = Rc::new(RefCell::new(None));
@@ -38,8 +38,8 @@ pub fn expand<'a>(payload: &'a Payload) -> &'static Payload {
 
 fn extract<
     'a,
-    F: Coroutine<Yield = Rc<RefCell<Option<&'a Payload>>>, Return = ()> + 'static,
-    G: Coroutine<Yield = Rc<RefCell<Option<&'static Payload>>>, Return = ()> + 'static,
+    F: for <'y> Coroutine<Yield<'y> = Rc<RefCell<Option<&'a Payload>>>, Return = ()> + 'static,
+    G: for <'y> Coroutine<Yield<'y> = Rc<RefCell<Option<&'static Payload>>>, Return = ()> + 'static,
 >(
     x: Pin<Box<F>>,
     _: G,
