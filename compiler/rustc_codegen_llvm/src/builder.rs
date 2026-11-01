@@ -1565,6 +1565,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let cold_inline = llvm::AttributeKind::Cold.create_attr(self.llcx);
         attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[cold_inline]);
     }
+
+    fn apply_attrs_to_cold_callsite(&mut self, llret: &'ll Value) {
+        let cold_attr = llvm::AttributeKind::Cold.create_attr(self.llcx);
+        attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[cold_attr]);
+    }
 }
 
 impl<'ll> StaticBuilderMethods for Builder<'_, 'll, '_> {

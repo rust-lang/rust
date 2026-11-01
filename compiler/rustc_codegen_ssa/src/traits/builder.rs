@@ -683,4 +683,8 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
     fn apply_attrs_to_cleanup_callsite(&mut self, llret: Self::Value);
+
+    fn apply_attrs_to_cold_callsite(&mut self, llret: Self::Value) {
+        self.apply_attrs_to_cleanup_callsite(llret);
+    }
 }
