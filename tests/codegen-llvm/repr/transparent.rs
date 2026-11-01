@@ -1,12 +1,17 @@
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 //@ ignore-riscv64 riscv64 has an i128 type used with test_Vector
 //@ ignore-s390x s390x with default march passes vector types per reference
-//@ ignore-loongarch64 see codegen/loongarch-abi for loongarch function call tests
+//@ ignore-loongarch64 see codegen-llvm/loongarch-abi for loongarch function call tests
+// 32-bit x86 manually returns `f32`/`f64` as `x86_fp80` to avoid LLVM codegen bugs.
+//@ revisions: not-x86 x86
+//@[not-x86] ignore-x86
+//@[x86] only-x86
 
 // This codegen test embeds assumptions about how certain "C" psABIs are handled
 // so it doesn't apply to all architectures or even all OS
-// For RISCV: see codegen/riscv-abi
-// For LoongArch: see codegen/loongarch-abi
+// For RISCV: see codegen-llvm/riscv-abi
+// For LoongArch: see codegen-llvm/loongarch-abi
+// For x86 `f32`/`f64`: float/x86-return-float-c.rs
 
 #![crate_type = "lib"]
 #![feature(repr_simd, transparent_unions, arm_target_feature, mips_target_feature)]
@@ -22,7 +27,8 @@ pub struct Zst2(());
 #[repr(transparent)]
 pub struct F32(f32);
 
-// CHECK: define{{.*}}float @test_F32(float noundef %_1)
+// not-x86: define{{.*}}float @test_F32(float noundef %_1)
+// x86: define{{.*}}x86_fp80 @test_F32(float noundef %_1)
 #[no_mangle]
 pub extern "C" fn test_F32(_: F32) -> F32 {
     loop {}
@@ -58,7 +64,8 @@ pub extern "C" fn test_WithZeroSizedArray(_: WithZeroSizedArray) -> WithZeroSize
 #[repr(transparent)]
 pub struct Generic<T>(T);
 
-// CHECK: define{{.*}}double @test_Generic(double noundef %_1)
+// not-x86: define{{.*}}double @test_Generic(double noundef %_1)
+// x86: define{{.*}}x86_fp80 @test_Generic(double noundef %_1)
 #[no_mangle]
 pub extern "C" fn test_Generic(_: Generic<f64>) -> Generic<f64> {
     loop {}
@@ -98,7 +105,8 @@ pub struct UnitPhantom<T, U> {
 
 pub struct Px;
 
-// CHECK: define{{.*}}float @test_UnitPhantom(float noundef %_1)
+// not-x86: define{{.*}}float @test_UnitPhantom(float noundef %_1)
+// x86: define{{.*}}x86_fp80 @test_UnitPhantom(float noundef %_1)
 #[no_mangle]
 pub extern "C" fn test_UnitPhantom(_: UnitPhantom<f32, Px>) -> UnitPhantom<f32, Px> {
     loop {}
@@ -116,7 +124,8 @@ pub extern "C" fn test_TwoZsts(_: TwoZsts) -> TwoZsts {
 #[repr(transparent)]
 pub struct Nested1(Zst2, Generic<f64>);
 
-// CHECK: define{{.*}}double @test_Nested1(double noundef %_1)
+// not-x86: define{{.*}}double @test_Nested1(double noundef %_1)
+// x86: define{{.*}}x86_fp80 @test_Nested1(double noundef %_1)
 #[no_mangle]
 pub extern "C" fn test_Nested1(_: Nested1) -> Nested1 {
     loop {}
@@ -125,7 +134,8 @@ pub extern "C" fn test_Nested1(_: Nested1) -> Nested1 {
 #[repr(transparent)]
 pub struct Nested2(Nested1, Zst1);
 
-// CHECK: define{{.*}}double @test_Nested2(double noundef %_1)
+// not-x86: define{{.*}}double @test_Nested2(double noundef %_1)
+// x86: define{{.*}}x86_fp80 @test_Nested2(double noundef %_1)
 #[no_mangle]
 pub extern "C" fn test_Nested2(_: Nested2) -> Nested2 {
     loop {}
@@ -157,7 +167,8 @@ impl<T: ?Sized> Mirror for T {
 #[repr(transparent)]
 pub struct StructWithProjection(<f32 as Mirror>::It);
 
-// CHECK: define{{.*}}float @test_Projection(float noundef %_1)
+// not-x86: define{{.*}}float @test_Projection(float noundef %_1)
+// x86: define{{.*}}x86_fp80 @test_Projection(float noundef %_1)
 #[no_mangle]
 pub extern "C" fn test_Projection(_: StructWithProjection) -> StructWithProjection {
     loop {}
@@ -168,7 +179,8 @@ pub enum EnumF32 {
     Variant(F32),
 }
 
-// CHECK: define{{.*}}float @test_EnumF32(float noundef %_1)
+// not-x86: define{{.*}}float @test_EnumF32(float noundef %_1)
+// x86: define{{.*}}x86_fp80 @test_EnumF32(float noundef %_1)
 #[no_mangle]
 pub extern "C" fn test_EnumF32(_: EnumF32) -> EnumF32 {
     loop {}
@@ -179,7 +191,8 @@ pub enum EnumF32WithZsts {
     Variant(Zst1, F32, Zst2),
 }
 
-// CHECK: define{{.*}}float @test_EnumF32WithZsts(float noundef %_1)
+// not-x86: define{{.*}}float @test_EnumF32WithZsts(float noundef %_1)
+// x86: define{{.*}}x86_fp80 @test_EnumF32WithZsts(float noundef %_1)
 #[no_mangle]
 pub extern "C" fn test_EnumF32WithZsts(_: EnumF32WithZsts) -> EnumF32WithZsts {
     loop {}
@@ -190,7 +203,8 @@ pub union UnionF32 {
     field: F32,
 }
 
-// CHECK: define{{.*}} float @test_UnionF32(float %_1)
+// not-x86: define{{.*}} float @test_UnionF32(float %_1)
+// x86: define{{.*}} x86_fp80 @test_UnionF32(float %_1)
 #[no_mangle]
 pub extern "C" fn test_UnionF32(_: UnionF32) -> UnionF32 {
     loop {}
@@ -203,7 +217,8 @@ pub union UnionF32WithZsts {
     zst2: Zst2,
 }
 
-// CHECK: define{{.*}}float @test_UnionF32WithZsts(float %_1)
+// not-x86: define{{.*}}float @test_UnionF32WithZsts(float %_1)
+// x86: define{{.*}}x86_fp80 @test_UnionF32WithZsts(float %_1)
 #[no_mangle]
 pub extern "C" fn test_UnionF32WithZsts(_: UnionF32WithZsts) -> UnionF32WithZsts {
     loop {}

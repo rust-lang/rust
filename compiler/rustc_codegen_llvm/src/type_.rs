@@ -188,6 +188,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMArrayType2(ty, len) }
     }
 
+    pub(crate) fn type_x86_fp80(&self) -> &'ll Type {
+        unsafe { llvm::LLVMX86FP80TypeInContext(self.llcx()) }
+    }
+
     /// Prefer more specific methods (e.g. `int_width`, `float_type`, `vector_element_type`) when
     /// possible.
     pub(crate) fn type_kind(&self, ty: &'ll Type) -> TypeKind {
