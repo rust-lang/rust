@@ -1,8 +1,6 @@
 error: layout_of(Univariant) = Layout {
            size: Size(1 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: Scalar(
                u8 is 0..=0,
            ),
@@ -55,9 +53,7 @@ LL | enum Univariant {
 
 error: layout_of(TwoVariants) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: ScalarPair {
                a: u8 is 0..=1,
                b: union u8,
@@ -130,9 +126,7 @@ LL | enum TwoVariants {
 
 error: layout_of(DeadBranchHasOtherField) = Layout {
            size: Size(16 bytes),
-           align: AbiAlign {
-               abi: Align(8 bytes),
-           },
+           align: Align(8 bytes),
            backend_repr: Memory {
                sized: true,
            },

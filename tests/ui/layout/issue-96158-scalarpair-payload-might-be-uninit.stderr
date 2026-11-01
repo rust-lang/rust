@@ -1,8 +1,6 @@
 error: layout_of(MissingPayloadField) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: ScalarPair {
                a: u8 is 0..=1,
                b: union u8,
@@ -69,9 +67,7 @@ LL | pub enum MissingPayloadField {
 
 error: layout_of(CommonPayloadField) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: ScalarPair {
                a: u8 is 0..=1,
                b: u8 is ..,
@@ -144,9 +140,7 @@ LL | pub enum CommonPayloadField {
 
 error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: ScalarPair {
                a: u8 is 0..=1,
                b: union u8,
@@ -219,9 +213,7 @@ LL | pub enum CommonPayloadFieldIsMaybeUninit {
 
 error: layout_of(NicheFirst) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: ScalarPair {
                a: u8 is 0..=4,
                b: union u8,
@@ -310,9 +302,7 @@ LL | pub enum NicheFirst {
 
 error: layout_of(NicheSecond) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: ScalarPair {
                a: u8 is 0..=4,
                b: union u8,

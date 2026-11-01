@@ -1,8 +1,6 @@
 error: layout_of(UnsignedAroundZero) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(2 bytes),
-           },
+           align: Align(2 bytes),
            backend_repr: Scalar(
                u16 is (..=1) | (65535..),
            ),
@@ -71,9 +69,7 @@ LL | enum UnsignedAroundZero {
 
 error: layout_of(SignedAroundZero) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(2 bytes),
-           },
+           align: Align(2 bytes),
            backend_repr: Scalar(
                i16 is -1..=1,
            ),

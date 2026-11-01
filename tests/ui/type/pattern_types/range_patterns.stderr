@@ -1,8 +1,6 @@
 error: layout_of(NonZero<u32>) = Layout {
            size: Size(4 bytes),
-           align: AbiAlign {
-               abi: Align(4 bytes),
-           },
+           align: Align(4 bytes),
            backend_repr: Scalar(
                u32 is 1..=4294967295,
            ),
@@ -37,9 +35,7 @@ LL | type X = std::num::NonZeroU32;
 
 error: layout_of(pattern_type!(u32 is 1..)) = Layout {
            size: Size(4 bytes),
-           align: AbiAlign {
-               abi: Align(4 bytes),
-           },
+           align: Align(4 bytes),
            backend_repr: Scalar(
                u32 is 1..=4294967295,
            ),
@@ -74,9 +70,7 @@ LL | type Y = pattern_type!(u32 is 1..);
 
 error: layout_of(Option<pattern_type!(u32 is 1..)>) = Layout {
            size: Size(4 bytes),
-           align: AbiAlign {
-               abi: Align(4 bytes),
-           },
+           align: Align(4 bytes),
            backend_repr: Scalar(
                u32 is ..,
            ),
@@ -143,9 +137,7 @@ LL | type Z = Option<pattern_type!(u32 is 1..)>;
 
 error: layout_of(Option<NonZero<u32>>) = Layout {
            size: Size(4 bytes),
-           align: AbiAlign {
-               abi: Align(4 bytes),
-           },
+           align: Align(4 bytes),
            backend_repr: Scalar(
                u32 is ..,
            ),
@@ -212,9 +204,7 @@ LL | type A = Option<std::num::NonZeroU32>;
 
 error: layout_of(NonZeroU32New) = Layout {
            size: Size(4 bytes),
-           align: AbiAlign {
-               abi: Align(4 bytes),
-           },
+           align: Align(4 bytes),
            backend_repr: Scalar(
                u32 is 1..=4294967295,
            ),
@@ -277,9 +267,7 @@ LL | type WRAP2 = pattern_type!(u32 is 5..2);
 
 error: layout_of(pattern_type!(i8 is -10..=10)) = Layout {
            size: Size(1 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: Scalar(
                i8 is -10..=10,
            ),
@@ -314,9 +302,7 @@ LL | type SIGN = pattern_type!(i8 is -10..=10);
 
 error: layout_of(pattern_type!(i8 is i8::MIN..=0)) = Layout {
            size: Size(1 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: Scalar(
                i8 is -128..=0,
            ),

@@ -24,9 +24,7 @@ LL |     const C: () = ();
 
 error: layout_of(E) = Layout {
            size: Size(12 bytes),
-           align: AbiAlign {
-               abi: Align(4 bytes),
-           },
+           align: Align(4 bytes),
            backend_repr: Memory {
                sized: true,
            },
@@ -93,9 +91,7 @@ LL | enum E { Foo, Bar(!, i32, i32) }
 
 error: layout_of(S) = Layout {
            size: Size(8 bytes),
-           align: AbiAlign {
-               abi: Align(4 bytes),
-           },
+           align: Align(4 bytes),
            backend_repr: ScalarPair {
                a: i32 is ..,
                b: i32 is ..,
@@ -130,9 +126,7 @@ LL | struct S { f1: i32, f2: (), f3: i32 }
 
 error: layout_of(U) = Layout {
            size: Size(8 bytes),
-           align: AbiAlign {
-               abi: Align(4 bytes),
-           },
+           align: Align(4 bytes),
            backend_repr: Memory {
                sized: true,
            },
@@ -156,9 +150,7 @@ LL | union U { f1: (i32, i32), f3: i32 }
 
 error: layout_of(Result<i32, i32>) = Layout {
            size: Size(8 bytes),
-           align: AbiAlign {
-               abi: Align(4 bytes),
-           },
+           align: Align(4 bytes),
            backend_repr: ScalarPair {
                a: u32 is 0..=1,
                b: i32 is ..,
@@ -231,9 +223,7 @@ LL | type Test = Result<i32, i32>;
 
 error: layout_of(i32) = Layout {
            size: Size(4 bytes),
-           align: AbiAlign {
-               abi: Align(4 bytes),
-           },
+           align: Align(4 bytes),
            backend_repr: Scalar(
                i32 is ..,
            ),
@@ -255,9 +245,7 @@ LL | type T = impl std::fmt::Debug;
 
 error: layout_of(V) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(2 bytes),
-           },
+           align: Align(2 bytes),
            backend_repr: Memory {
                sized: true,
            },
@@ -281,9 +269,7 @@ LL | pub union V {
 
 error: layout_of(W) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(2 bytes),
-           },
+           align: Align(2 bytes),
            backend_repr: Memory {
                sized: true,
            },
@@ -307,9 +293,7 @@ LL | pub union W {
 
 error: layout_of(Y) = Layout {
            size: Size(0 bytes),
-           align: AbiAlign {
-               abi: Align(2 bytes),
-           },
+           align: Align(2 bytes),
            backend_repr: Memory {
                sized: true,
            },
@@ -333,9 +317,7 @@ LL | pub union Y {
 
 error: layout_of(P1) = Layout {
            size: Size(4 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: Memory {
                sized: true,
            },
@@ -359,9 +341,7 @@ LL | union P1 { x: u32 }
 
 error: layout_of(P2) = Layout {
            size: Size(8 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: Memory {
                sized: true,
            },
@@ -385,9 +365,7 @@ LL | union P2 { x: (u32, u32) }
 
 error: layout_of(P3) = Layout {
            size: Size(16 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: Memory {
                sized: true,
            },
@@ -411,9 +389,7 @@ LL | union P3 { x: F32x4 }
 
 error: layout_of(P4) = Layout {
            size: Size(12 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: Memory {
                sized: true,
            },
@@ -437,9 +413,7 @@ LL | union P4 { x: E }
 
 error: layout_of(P5) = Layout {
            size: Size(1 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: Scalar(
                union u8,
            ),
@@ -463,9 +437,7 @@ LL | union P5 { zst: [u16; 0], byte: u8 }
 
 error: layout_of(MaybeUninit<u8>) = Layout {
            size: Size(1 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: Scalar(
                union u8,
            ),
@@ -510,9 +482,7 @@ LL | type TooGeneric<T> = T;
 
 error: layout_of(Option<bool>) = Layout {
            size: Size(1 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: Scalar(
                u8 is 0..=2,
            ),
@@ -585,9 +555,7 @@ LL | type OptBool = Option<bool>;
 
 error: layout_of(Option<char>) = Layout {
            size: Size(4 bytes),
-           align: AbiAlign {
-               abi: Align(4 bytes),
-           },
+           align: Align(4 bytes),
            backend_repr: Scalar(
                u32 is (..=1114111) | (4294967295..),
            ),

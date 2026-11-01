@@ -1,8 +1,6 @@
 error: layout_of(Aligned1) = Layout {
            size: Size(8 bytes),
-           align: AbiAlign {
-               abi: Align(8 bytes),
-           },
+           align: Align(8 bytes),
            backend_repr: Memory {
                sized: true,
            },
@@ -63,9 +61,7 @@ LL | pub enum Aligned1 {
 
 error: layout_of(Aligned2) = Layout {
            size: Size(1 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: Scalar(
                u8 is 0..=1,
            ),
