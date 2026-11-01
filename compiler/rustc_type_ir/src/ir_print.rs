@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::predicates::{Clause, Predicate};
 #[cfg(feature = "nightly")]
 use crate::{AliasConst, ClosureKind};
 use crate::{
@@ -64,6 +65,20 @@ where
     }
 }
 
+// Display is implemented where the representation is defined. Each frontend
+// provides the actual formatting through IrPrint.
+impl<I: Interner + IrPrint<Predicate<I>>> fmt::Display for Predicate<I> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <I as IrPrint<Self>>::print(self, fmt)
+    }
+}
+
+impl<I: Interner + IrPrint<Clause<I>>> fmt::Display for Clause<I> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <I as IrPrint<Self>>::print(self, fmt)
+    }
+}
+
 impl<I: Interner> fmt::Display for Const<I>
 where
     I: IrPrint<Const<I>>,
@@ -100,11 +115,36 @@ where
     }
 }
 
+/// Provides frontend-specific diagnostic formatting for predicates.
+///
+/// The frontend owns the type-printing context and long-type path handling.
+#[cfg(feature = "nightly")]
+pub trait PredicateDiagFormatter: Interner {
+    fn predicate_diag_string(
+        predicate: Predicate<Self>,
+        path: &mut Option<std::path::PathBuf>,
+    ) -> String;
+
+    fn clause_diag_string(clause: Clause<Self>, path: &mut Option<std::path::PathBuf>) -> String;
+}
+
 #[cfg(feature = "nightly")]
 mod into_diag_arg_impls {
     use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 
     use super::*;
+
+    impl<I: PredicateDiagFormatter> IntoDiagArg for Predicate<I> {
+        fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+            DiagArgValue::Str(I::predicate_diag_string(self, path).into())
+        }
+    }
+
+    impl<I: PredicateDiagFormatter> IntoDiagArg for Clause<I> {
+        fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+            DiagArgValue::Str(I::clause_diag_string(self, path).into())
+        }
+    }
 
     impl<I: Interner> IntoDiagArg for TraitRef<I> {
         fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue {

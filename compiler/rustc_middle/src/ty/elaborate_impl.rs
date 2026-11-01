@@ -23,26 +23,6 @@ impl<'tcx> Elaboratable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
     }
 }
 
-impl<'tcx> Elaboratable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
-    fn predicate(&self) -> ty::Predicate<'tcx> {
-        *self
-    }
-
-    fn child(&self, clause: ty::Clause<'tcx>) -> Self {
-        clause.as_predicate()
-    }
-
-    fn child_with_derived_cause(
-        &self,
-        clause: ty::Clause<'tcx>,
-        _span: Span,
-        _parent_trait_pred: ty::PolyTraitClause<'tcx>,
-        _index: usize,
-    ) -> Self {
-        clause.as_predicate()
-    }
-}
-
 impl<'tcx> Elaboratable<TyCtxt<'tcx>> for (ty::Predicate<'tcx>, Span) {
     fn predicate(&self) -> ty::Predicate<'tcx> {
         self.0

@@ -23,6 +23,7 @@ mod trait_goals;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
+use rustc_type_ir::predicates::Predicate;
 pub use rustc_type_ir::solve::*;
 use rustc_type_ir::transmute::Condition;
 use rustc_type_ir::{self as ty, Const, Interner, Region, TraitClause, TypeVisitableExt, Upcast};
@@ -434,7 +435,7 @@ pub struct GoalEvaluation<I: Interner> {
     /// `Vec<?y>: Trait`. If this goal is still ambiguous and we later resolve `?y` to `u32`,
     /// then reevaluating this goal now only needs to resolve `?y` while it would otherwise
     /// have to resolve both `?x` and `?y`,
-    pub goal: Goal<I, I::Predicate>,
+    pub goal: Goal<I, Predicate<I>>,
     pub certainty: Certainty,
     pub has_changed: HasChanged,
     /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed
@@ -448,7 +449,7 @@ pub fn flatten_answer_tree<I: Interner>(
     interner: I,
     predicate: TraitClause<I>,
     cond: Condition<Region<I>, I::Ty>,
-) -> ThinVec<I::Predicate> {
+) -> ThinVec<Predicate<I>> {
     match cond {
         // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
         // Not possible until the trait solver supports disjunctions of obligations
@@ -466,7 +467,7 @@ pub fn flatten_answer_tree<I: Interner>(
         }
         Condition::Outlives { long, short } => {
             let outlives = ty::OutlivesClause(long, short);
-            thin_vec![outlives.upcast(interner)]
+            thin_vec![ty::ClauseKind::RegionOutlives(outlives).upcast(interner)]
         }
         Condition::Transmutable { src, dst } => {
             let transmute_trait = predicate.def_id();

@@ -14,6 +14,7 @@ use std::iter;
 use canonicalizer::Canonicalizer;
 use rustc_index::IndexVec;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::predicates::Predicate;
 use rustc_type_ir::relate::{
     self, Relate, RelateResult, TypeRelation, VarianceDiagInfo, relate_args_invariantly,
 };
@@ -55,7 +56,7 @@ impl<I: Interner, T> ResponseT<I> for inspect::State<I, T> {
 /// This expects `goal` and `opaque_types` to be eager resolved.
 pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
-    goal: Goal<I, I::Predicate>,
+    goal: Goal<I, Predicate<I>>,
     opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
     typing_mode: TypingMode<I>,
 ) -> (ThinVec<I::GenericArg>, I::CanonicalInput)
