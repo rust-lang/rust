@@ -19,6 +19,7 @@ use minicore::simd::*;
 use minicore::*;
 
 type ptr = *mut u8;
+type nonnull = NonNull<u8>;
 
 #[cfg(target_feature = "sve")]
 #[rustc_scalable_vector(16)]
@@ -113,11 +114,14 @@ pub unsafe fn issue_75761() {
 
 macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal $modifier:literal) => {
-        // FIXME(f128): Change back to `$func(x: $ty) -> $ty` once arm64ec can pass and return
-        // `f128` without LLVM erroring.
+        check!($func $ty:$ty $class $mov $modifier);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $class:ident $mov:literal $modifier:literal) => {
+        // FIXME(f128): Change back to `$func(x: $in_ty) -> $out_ty` once arm64ec
+        // can pass and return `f128` without LLVM erroring.
         // LLVM issue: <https://github.com/llvm/llvm-project/issues/94434>
         #[no_mangle]
-        pub unsafe fn $func(inp: &$ty, out: &mut $ty) {
+        pub unsafe fn $func(inp: &$in_ty, out: &mut $out_ty) {
             let x = *inp;
             let y;
             asm!(
@@ -151,9 +155,12 @@ macro_rules! check_sve {
 
 macro_rules! check_reg {
     ($func:ident $ty:ident $reg:tt $mov:literal) => {
+        check_reg!($func $ty:$ty $reg $mov);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $reg:tt $mov:literal) => {
         // FIXME(f128): See FIXME in `check!`
         #[no_mangle]
-        pub unsafe fn $func(inp: &$ty, out: &mut $ty) {
+        pub unsafe fn $func(inp: &$in_ty, out: &mut $out_ty) {
             let x = *inp;
             let y;
             asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
@@ -229,6 +236,12 @@ check!(reg_f64 f64 reg "mov" "");
 // CHECK: //NO_APP
 check!(reg_ptr ptr reg "mov" "");
 
+// CHECK-LABEL: {{("#)?}}reg_nonnull{{"?}}
+// CHECK: //APP
+// CHECK: mov x{{[0-9]+}}, x{{[0-9]+}}
+// CHECK: //NO_APP
+check!(reg_nonnull nonnull:ptr reg "mov" "");
+
 // CHECK-LABEL: {{("#)?}}vreg_i8{{"?}}
 // CHECK: //APP
 // CHECK: fmov s{{[0-9]+}}, s{{[0-9]+}}
@@ -282,6 +295,12 @@ check!(vreg_f128 f128 vreg "fmov" "s");
 // CHECK: fmov s{{[0-9]+}}, s{{[0-9]+}}
 // CHECK: //NO_APP
 check!(vreg_ptr ptr vreg "fmov" "s");
+
+// CHECK-LABEL: {{("#)?}}vreg_nonnull{{"?}}
+// CHECK: //APP
+// CHECK: fmov s{{[0-9]+}}, s{{[0-9]+}}
+// CHECK: //NO_APP
+check!(vreg_nonnull nonnull:ptr vreg "fmov" "s");
 
 // CHECK-LABEL: {{("#)?}}vreg_i8x8{{"?}}
 // CHECK: //APP
@@ -414,6 +433,12 @@ check!(vreg_low16_f128 f128 vreg_low16 "fmov" "s");
 // CHECK: fmov s{{[0-9]+}}, s{{[0-9]+}}
 // CHECK: //NO_APP
 check!(vreg_low16_ptr ptr vreg_low16 "fmov" "s");
+
+// CHECK-LABEL: {{("#)?}}vreg_low16_nonnull{{"?}}
+// CHECK: //APP
+// CHECK: fmov s{{[0-9]+}}, s{{[0-9]+}}
+// CHECK: //NO_APP
+check!(vreg_low16_nonnull nonnull:ptr vreg_low16 "fmov" "s");
 
 // CHECK-LABEL: {{("#)?}}vreg_low16_i8x8{{"?}}
 // CHECK: //APP
@@ -637,6 +662,12 @@ check_reg!(x0_f64 f64 "x0" "mov");
 // CHECK: //NO_APP
 check_reg!(x0_ptr ptr "x0" "mov");
 
+// CHECK-LABEL: {{("#)?}}x0_nonnull{{"?}}
+// CHECK: //APP
+// CHECK: mov x{{[0-9]+}}, x{{[0-9]+}}
+// CHECK: //NO_APP
+check_reg!(x0_nonnull nonnull:ptr "x0" "mov");
+
 // CHECK-LABEL: {{("#)?}}v0_i8{{"?}}
 // CHECK: //APP
 // CHECK: fmov s0, s0
@@ -746,6 +777,12 @@ pub unsafe fn p0_bool(inp: &svbool_t, pred: &svbool_t) -> svbool_t {
 // CHECK: fmov s0, s0
 // CHECK: //NO_APP
 check_reg!(v0_ptr ptr "s0" "fmov");
+
+// CHECK-LABEL: {{("#)?}}v0_nonnull{{"?}}
+// CHECK: //APP
+// CHECK: fmov s0, s0
+// CHECK: //NO_APP
+check_reg!(v0_nonnull nonnull:ptr "s0" "fmov");
 
 // CHECK-LABEL: {{("#)?}}v0_i8x8{{"?}}
 // CHECK: //APP

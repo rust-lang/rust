@@ -19,6 +19,7 @@ use minicore::simd::*;
 use minicore::*;
 
 type ptr = *mut u8;
+type nonnull = NonNull<u8>;
 
 extern "C" {
     fn extern_func();
@@ -54,8 +55,11 @@ pub unsafe fn issue_82052() {
 
 macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal) => {
+        check!($func $ty:$ty $class $mov);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $class:ident $mov:literal) => {
         #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
             let y;
             asm!(concat!($mov, " {}, {}"), out($class) y, in($class) x);
             y
@@ -65,8 +69,11 @@ macro_rules! check {
 
 macro_rules! check_reg {
     ($func:ident $ty:ident $reg:tt $mov:literal) => {
+        check_reg!($func $ty:$ty $reg $mov);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $reg:tt $mov:literal) => {
         #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
             let y;
             asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
             y
@@ -110,6 +117,12 @@ check!(reg_f32 f32 reg "mov");
 // CHECK: @NO_APP
 check!(reg_ptr ptr reg "mov");
 
+// CHECK-LABEL: reg_nonnull:
+// CHECK: @APP
+// CHECK: mov {{[a-z0-9]+}}, {{[a-z0-9]+}}
+// CHECK: @NO_APP
+check!(reg_nonnull nonnull:ptr reg "mov");
+
 // CHECK-LABEL: sreg_i32:
 // CHECK: @APP
 // CHECK: vmov.f32 s{{[0-9]+}}, s{{[0-9]+}}
@@ -133,6 +146,12 @@ check!(sreg_f32 f32 sreg "vmov.f32");
 // CHECK: vmov.f32 s{{[0-9]+}}, s{{[0-9]+}}
 // CHECK: @NO_APP
 check!(sreg_ptr ptr sreg "vmov.f32");
+
+// CHECK-LABEL: sreg_nonnull:
+// CHECK: @APP
+// CHECK: vmov.f32 s{{[0-9]+}}, s{{[0-9]+}}
+// CHECK: @NO_APP
+check!(sreg_nonnull nonnull:ptr sreg "vmov.f32");
 
 // CHECK-LABEL: sreg_low16_i32:
 // CHECK: @APP
@@ -478,6 +497,12 @@ check_reg!(r0_f32 f32 "r0" "mov");
 // CHECK: @NO_APP
 check_reg!(r0_ptr ptr "r0" "mov");
 
+// CHECK-LABEL: r0_nonnull:
+// CHECK: @APP
+// CHECK: mov r0, r0
+// CHECK: @NO_APP
+check_reg!(r0_nonnull nonnull:ptr "r0" "mov");
+
 // CHECK-LABEL: s0_i32:
 // CHECK: @APP
 // CHECK: vmov.f32 s0, s0
@@ -501,6 +526,12 @@ check_reg!(s0_f32 f32 "s0" "vmov.f32");
 // CHECK: vmov.f32 s0, s0
 // CHECK: @NO_APP
 check_reg!(s0_ptr ptr "s0" "vmov.f32");
+
+// CHECK-LABEL: s0_nonnull:
+// CHECK: @APP
+// CHECK: vmov.f32 s0, s0
+// CHECK: @NO_APP
+check_reg!(s0_nonnull nonnull:ptr "s0" "vmov.f32");
 
 // FIXME(#126797): "d0" should work with `i64` and `f64` even when `d32` is disabled.
 // d32-LABEL: d0_i64:

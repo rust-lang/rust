@@ -1,0 +1,18 @@
+error: cannot use value of type `NonNull<T>` for inline assembly
+  --> $DIR/nonnull-output-fail.rs:9:35
+   |
+LL |         asm!("/* {} */", out(reg) p);
+   |                                   ^
+   |
+   = note: only integers, floats, SIMD vectors, scalable vectors, pointers and function pointers can be used as arguments for inline assembly
+
+error: cannot use value of type `NonNull<T>` for inline assembly
+  --> $DIR/nonnull-output-fail.rs:16:37
+   |
+LL |         asm!("/* {} */", inout(reg) p);
+   |                                     ^
+   |
+   = note: only integers, floats, SIMD vectors, scalable vectors, pointers and function pointers can be used as arguments for inline assembly
+
+error: aborting due to 2 previous errors
+

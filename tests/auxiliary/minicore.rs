@@ -175,6 +175,7 @@ impl<T> MaybeUninit<T> {
     }
 }
 
+#[lang = "non_null"]
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
 pub struct NonNull<T: ?Sized> {

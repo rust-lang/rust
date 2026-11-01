@@ -96,29 +96,40 @@ compile_error!("mips64r6 cfg mismatch");
 compile_error!("msa cfg mismatch");
 
 type ptr = *const i32;
+type nonnull = NonNull<i32>;
 
 extern "C" {
     fn extern_func();
     static extern_static: u8;
 }
 
-macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
-    #[unsafe(no_mangle)]
-    pub unsafe fn $func(x: $ty) -> $ty {
-        let y;
-        asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
-        y
-    }
-};}
+macro_rules! check {
+    ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
+        check!($func, $ty:$ty, $class, $mov);
+    };
+    ($func:ident, $in_ty:ty:$out_ty:ty, $class:ident, $mov:literal) => {
+        #[unsafe(no_mangle)]
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
+            let y;
+            asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
+            y
+        }
+    };
+}
 
-macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
-    #[unsafe(no_mangle)]
-    pub unsafe fn $func(x: $ty) -> $ty {
-        let y;
-        asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
-        y
-    }
-};}
+macro_rules! check_reg {
+    ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
+        check_reg!($func, $ty:$ty, $reg, $mov);
+    };
+    ($func:ident, $in_ty:ty:$out_ty:ty, $reg:tt, $mov:literal) => {
+        #[unsafe(no_mangle)]
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
+            let y;
+            asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
+            y
+        }
+    };
+}
 
 // mips32-LABEL: sym_static_32:
 // mips32: #APP
@@ -232,6 +243,12 @@ check_reg!(f0_f64, f64, "$f0", "mov.d");
 // CHECK: #NO_APP
 check!(reg_ptr, ptr, reg, "move");
 
+// CHECK-LABEL: reg_nonnull:
+// CHECK: #APP
+// CHECK: move ${{[0-9]+}}, ${{[0-9]+}}
+// CHECK: #NO_APP
+check!(reg_nonnull, nonnull:ptr, reg, "move");
+
 // CHECK-LABEL: reg_i32:
 // CHECK: #APP
 // CHECK: move ${{[0-9]+}}, ${{[0-9]+}}
@@ -287,6 +304,12 @@ check!(reg_i64, i64, reg, "move");
 // CHECK: move $8, $8
 // CHECK: #NO_APP
 check_reg!(r8_ptr, ptr, "$8", "move");
+
+// CHECK-LABEL: r8_nonnull:
+// CHECK: #APP
+// CHECK: move $8, $8
+// CHECK: #NO_APP
+check_reg!(r8_nonnull, nonnull:ptr, "$8", "move");
 
 // CHECK-LABEL: r8_i32:
 // CHECK: #APP
