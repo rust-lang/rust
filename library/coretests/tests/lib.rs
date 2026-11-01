@@ -133,6 +133,7 @@
 #![feature(uint_gather_scatter_bits)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
+#![feature(wrapping_funnel_shifts)]
 // tidy-alphabetical-end
 #![allow(incomplete_features)]
 #![allow(internal_features)]
