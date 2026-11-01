@@ -297,6 +297,9 @@ jobs:
           # Format changes
           ./miri toolchain
           ./miri fmt --check || (./miri fmt && git commit -am "fmt")
+          
+          # Configure remote URL to use the GitHub App token
+          git config remote.origin.url "https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
           # Create a PR
           BRANCH="rustup-$(date -u +%Y-%m-%d)"
