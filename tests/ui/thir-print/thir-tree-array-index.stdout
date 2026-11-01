@@ -129,6 +129,7 @@ body:
                                                     span: $DIR/thir-tree-array-index.rs:7:7: 7:9 (#0)
                                                     extra: PatExtra {
                                                         expanded_const: None
+                                                        expanded_const_value: None
                                                         ascriptions: [
                                                             Ascription { annotation: CanonicalUserTypeAnnotation { user_ty: Canonical { value: UserType { kind: Ty([usize; 5_usize]), bounds: [] }, max_universe: U0, var_kinds: [] }, span: $DIR/thir-tree-array-index.rs:7:11: 7:21 (#0), inferred_ty: [usize; 5_usize] }, variance: + }
                                                         ]
@@ -279,6 +280,7 @@ body:
                                                     span: $DIR/thir-tree-array-index.rs:8:7: 8:9 (#0)
                                                     extra: PatExtra {
                                                         expanded_const: None
+                                                        expanded_const_value: None
                                                         ascriptions: [
                                                             Ascription { annotation: CanonicalUserTypeAnnotation { user_ty: Canonical { value: UserType { kind: Ty([usize; 5_usize]), bounds: [] }, max_universe: U0, var_kinds: [] }, span: $DIR/thir-tree-array-index.rs:8:11: 8:21 (#0), inferred_ty: [usize; 5_usize] }, variance: + }
                                                         ]

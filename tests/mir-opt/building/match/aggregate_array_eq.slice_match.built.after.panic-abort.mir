@@ -1,0 +1,67 @@
+// MIR for `slice_match` after built
+
+fn slice_match(_1: &[u8]) -> bool {
+    debug x => _1;
+    let mut _0: bool;
+    let mut _2: usize;
+    let mut _3: usize;
+    let mut _4: bool;
+    let mut _5: &[u8];
+    let mut _6: *const [u8];
+    let mut _7: *const u8;
+    let mut _8: *const [u8];
+    let mut _9: *const u8;
+    let mut _10: usize;
+    let mut _11: i32;
+    scope 1 {
+    }
+
+    bb0: {
+        PlaceMention(_1);
+        _2 = PtrMetadata(copy _1);
+        _3 = const 4_usize;
+        _4 = Eq(move _2, move _3);
+        switchInt(move _4) -> [0: bb1, otherwise: bb4];
+    }
+
+    bb1: {
+        _0 = const false;
+        goto -> bb8;
+    }
+
+    bb2: {
+        falseEdge -> [real: bb7, imaginary: bb1];
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        _5 = const b"ABCD";
+        _6 = &raw const (*_1);
+        _7 = move _6 as *const u8 (PtrToPtr);
+        _8 = &raw const (*_5);
+        _9 = move _8 as *const u8 (PtrToPtr);
+        _10 = const 4_usize;
+        _11 = compare_bytes(move _7, move _9, move _10) -> [return: bb5, unwind unreachable];
+    }
+
+    bb5: {
+        switchInt(move _11) -> [0: bb2, otherwise: bb1];
+    }
+
+    bb6: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb7: {
+        _0 = const true;
+        goto -> bb8;
+    }
+
+    bb8: {
+        return;
+    }
+}

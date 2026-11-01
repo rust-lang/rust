@@ -171,6 +171,7 @@ body:
                                                                                             span: $DIR/thir-tree-match-for.rs:10:5: 10:9 (#0)
                                                                                             extra: PatExtra {
                                                                                                 expanded_const: None
+                                                                                                expanded_const_value: None
                                                                                                 ascriptions: []
                                                                                             }
                                                                                             kind: PatKind {
