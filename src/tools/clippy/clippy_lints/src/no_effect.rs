@@ -256,11 +256,9 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                     cx.qpath_res(qpath, callee.hir_id),
                     Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..)
                 );
-                if def_matched || is_range_literal(expr) {
-                    !expr_ty_has_significant_drop(cx, expr) && args.iter().all(|arg| has_no_effect(cx, arg))
-                } else {
-                    false
-                }
+                (def_matched || is_range_literal(expr))
+                    && !expr_ty_has_significant_drop(cx, expr)
+                    && args.iter().all(|arg| has_no_effect(cx, arg))
             } else {
                 false
             }

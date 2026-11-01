@@ -25,5 +25,6 @@ fn main() {
 
     #[doc(attribute = "repr")]
     //~^ ERROR this subset of the `doc` attribute is meant for internal use only [E0658]
+    //~| ERROR should be used on anonymous constants
     println!();
 }

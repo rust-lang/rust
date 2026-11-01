@@ -1,0 +1,26 @@
+error[E0594]: cannot assign to `*x`, which is behind a `&` reference
+  --> $DIR/diverging-inline-asm-input-place-copy-borrowck.rs:9:9
+   |
+LL | /         core::arch::asm!(
+LL | |
+LL | |             "/* {} {} */",
+LL | |             in(reg) *p,
+LL | |             out(reg) *x,
+LL | |         );
+   | |_________^ `x` is a `&` reference, so it cannot be written to
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | pub unsafe fn output(p: *const !, x: &mut usize) {
+   |                                       +++
+
+error[E0015]: inline assembly is not allowed in constant functions
+  --> $DIR/diverging-inline-asm-input-place-copy-borrowck.rs:22:9
+   |
+LL |         core::arch::asm!("/* {} */", in(reg) *p);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0015, E0594.
+For more information about an error, try `rustc --explain E0015`.

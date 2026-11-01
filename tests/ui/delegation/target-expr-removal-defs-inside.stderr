@@ -183,6 +183,7 @@ LL | | }
 note: type in trait
   --> $DIR/target-expr-removal-defs-inside.rs:4:25
    |
+LL | pub trait Trait: Sized {
 LL |     fn static_self() -> F { F }
    |                         ^
    = note: expected signature `fn() -> F`
@@ -257,6 +258,7 @@ LL | | }
 note: type in trait
   --> $DIR/target-expr-removal-defs-inside.rs:4:25
    |
+LL | pub trait Trait: Sized {
 LL |     fn static_self() -> F { F }
    |                         ^
    = note: expected signature `fn() -> F`
@@ -335,6 +337,7 @@ LL | | }
 note: type in trait
   --> $DIR/target-expr-removal-defs-inside.rs:4:25
    |
+LL | pub trait Trait: Sized {
 LL |     fn static_self() -> F { F }
    |                         ^
    = note: expected signature `fn() -> F`

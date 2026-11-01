@@ -13,7 +13,7 @@ use rustc_infer::traits::{
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, Binder, Const, DelayedSet, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, Binder, Const, DelayedSet, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode, may_use_unstable_feature,
 };
 use rustc_next_trait_solver::solve::TyOrConstInferVar;
@@ -1033,7 +1033,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
 /// Returns the set of inference variables contained in `args`.
 fn args_infer_vars<'tcx>(
     selcx: &SelectionContext<'_, 'tcx>,
-    args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
+    args: ty::Binder<'tcx, GenericArgs<'tcx>>,
 ) -> impl Iterator<Item = TyOrConstInferVar> {
     selcx
         .infcx

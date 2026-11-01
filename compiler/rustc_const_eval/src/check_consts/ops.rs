@@ -11,8 +11,8 @@ use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::CallSource;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, AssocContainer, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param, TraitRef,
-    Ty, suggest_constraining_type_param,
+    self, AssocContainer, Closure, FnDef, FnPtr, GenericArgKind, GenericArgs, Param, TraitRef, Ty,
+    suggest_constraining_type_param,
 };
 use rustc_session::diagnostics::add_feature_diagnostics;
 use rustc_span::{BytePos, Pos, Span, Symbol, span_bug, sym};
@@ -100,7 +100,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallCVariadic {
 #[derive(Debug)]
 pub(crate) struct ConditionallyConstCall<'tcx> {
     pub callee: DefId,
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
     pub span: Span,
     pub call_source: CallSource,
 }
@@ -140,7 +140,7 @@ impl<'tcx> NonConstOp<'tcx> for ConditionallyConstCall<'tcx> {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct FnCallNonConst<'tcx> {
     pub callee: DefId,
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
     pub span: Span,
     pub call_source: CallSource,
 }
@@ -218,7 +218,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 fn build_error_for_const_call<'tcx>(
     ccx: &ConstCx<'_, 'tcx>,
     callee: DefId,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
     span: Span,
     call_source: CallSource,
     non_or_conditionally: &'static str,

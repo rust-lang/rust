@@ -443,7 +443,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
 pub struct ModuleLlvm {
     llcx_raw: ptr::NonNull<llvm::ContextRaw>,
-    llmod_raw: *const llvm::Module,
+    llmod_raw: ptr::NonNull<llvm::ModuleRaw>,
 
     // This field is `ManuallyDrop` because it is important that the `TargetMachine`
     // is disposed prior to the `Context` being disposed otherwise UAFs can occur.
@@ -461,22 +461,15 @@ pub struct ModuleLlvm {
 // `ModuleLlvm` owns the context and only allows borrowing LLVM objects tied to the context.
 unsafe impl Send for ModuleLlvm {}
 
-/// Converts an unbranded pointer-to-context to a lifetime-branded [`llvm::Context`].
-///
-/// # Safety
-/// - The pointer must be a valid LLVM context.
-/// - If the context is passed to safe code, its caller-requested lifetime must be distinct
-///   from that of any other context, and must not outlive the underlying context.
-unsafe fn wrap_llcx<'ll>(llcx_raw: ptr::NonNull<llvm::ContextRaw>) -> llvm::Context<'ll> {
-    llvm::Context { llcx_raw, _invariant_ll: PhantomData }
-}
-
 /// Shared helper to call [`llvm::LLVMContextCreate`] and then configure
 /// [`llvm::LLVMContextSetDiscardValueNames`].
 fn create_context_and_set_fewer_names(fewer_names: bool) -> ptr::NonNull<llvm::ContextRaw> {
     unsafe {
         let llcx_raw = llvm::LLVMContextCreate();
-        llvm::LLVMContextSetDiscardValueNames(wrap_llcx(llcx_raw), fewer_names.to_llvm_bool());
+        llvm::LLVMContextSetDiscardValueNames(
+            llvm::wrap_llcx(llcx_raw),
+            fewer_names.to_llvm_bool(),
+        );
         llcx_raw
     }
 }
@@ -485,7 +478,8 @@ impl ModuleLlvm {
     pub(crate) fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
             let llcx_raw = create_context_and_set_fewer_names(tcx.sess.fewer_names());
-            let llmod_raw = context::create_module(tcx, wrap_llcx(llcx_raw), mod_name);
+            let llmod_raw =
+                context::create_module(tcx, llvm::wrap_llcx(llcx_raw), mod_name).llmod_raw();
             ModuleLlvm {
                 llmod_raw,
                 llcx_raw,
@@ -498,7 +492,8 @@ impl ModuleLlvm {
     pub(crate) fn new_metadata(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
             let llcx_raw = create_context_and_set_fewer_names(tcx.sess.fewer_names());
-            let llmod_raw = context::create_module(tcx, wrap_llcx(llcx_raw), mod_name);
+            let llmod_raw =
+                context::create_module(tcx, llvm::wrap_llcx(llcx_raw), mod_name).llmod_raw();
             ModuleLlvm {
                 llmod_raw,
                 llcx_raw,
@@ -517,7 +512,8 @@ impl ModuleLlvm {
     ) -> Self {
         unsafe {
             let llcx_raw = create_context_and_set_fewer_names(cgcx.fewer_names);
-            let llmod_raw = back::lto::parse_module(wrap_llcx(llcx_raw), name, buffer, dcx);
+            let llmod_raw =
+                back::lto::parse_module(llvm::wrap_llcx(llcx_raw), name, buffer, dcx).llmod_raw();
             let tm = tm_factory(dcx, TargetMachineFactoryConfig::new(cgcx, name.to_str().unwrap()));
 
             ModuleLlvm {
@@ -538,12 +534,9 @@ impl ModuleLlvm {
         &self,
         inner_fn: impl for<'ll> FnOnce(ModuleRefs<'ll>) -> R,
     ) -> R {
-        inner_fn(ModuleRefs {
-            llcx: unsafe { wrap_llcx(self.llcx_raw) },
-            llmod: unsafe { &*self.llmod_raw },
-            tm: self.tm.raw(),
-            _ph: PhantomData,
-        })
+        let llcx = unsafe { llvm::wrap_llcx(self.llcx_raw) };
+        let llmod = unsafe { llvm::wrap_llmod(llcx, self.llmod_raw) };
+        inner_fn(ModuleRefs { llcx, llmod, tm: self.tm.raw(), _ph: PhantomData })
     }
 }
 
@@ -560,7 +553,7 @@ impl Drop for ModuleLlvm {
 #[derive(Clone, Copy)]
 pub(crate) struct ModuleRefs<'ll> {
     pub(crate) llcx: llvm::Context<'ll>,
-    pub(crate) llmod: &'ll llvm::Module,
+    pub(crate) llmod: llvm::Module<'ll>,
     pub(crate) tm: &'ll llvm::TargetMachine,
     /// Make sure `'ll` is invariant, even if no fields happen to require that.
     ///

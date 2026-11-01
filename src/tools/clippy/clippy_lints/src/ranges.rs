@@ -149,21 +149,17 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust,no_run
-    /// fn main() {
-    ///     (10..=0).for_each(|x| println!("{}", x));
+    /// (10..=0).for_each(|x| println!("{}", x));
     ///
-    ///     let arr = [1, 2, 3, 4, 5];
-    ///     let sub = &arr[3..1];
-    /// }
+    /// let arr = [1, 2, 3, 4, 5];
+    /// let sub = &arr[3..1];
     /// ```
     /// Use instead:
     /// ```no_run
-    /// fn main() {
-    ///     (0..=10).rev().for_each(|x| println!("{}", x));
+    /// (0..=10).rev().for_each(|x| println!("{}", x));
     ///
-    ///     let arr = [1, 2, 3, 4, 5];
-    ///     let sub = &arr[1..3];
-    /// }
+    /// let arr = [1, 2, 3, 4, 5];
+    /// let sub = &arr[1..3];
     /// ```
     #[clippy::version = "1.45.0"]
     pub REVERSED_EMPTY_RANGES,

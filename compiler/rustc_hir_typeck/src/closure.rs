@@ -101,7 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let closure_args = ty::ClosureArgs::new(
                     tcx,
                     ty::ClosureArgsParts {
-                        parent_args,
+                        parent_args: parent_args.as_slice(),
                         closure_kind_ty,
                         closure_sig_as_fn_ptr_ty: Ty::new_fn_ptr(tcx, sig),
                         tupled_upvars_ty,
@@ -167,7 +167,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let coroutine_args = ty::CoroutineArgs::new(
                     tcx,
                     ty::CoroutineArgsParts {
-                        parent_args,
+                        parent_args: parent_args.as_slice(),
                         kind_ty,
                         resume_ty,
                         yield_ty,
@@ -212,7 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let closure_args = ty::CoroutineClosureArgs::new(
                     tcx,
                     ty::CoroutineClosureArgsParts {
-                        parent_args,
+                        parent_args: parent_args.as_slice(),
                         closure_kind_ty,
                         signature_parts_ty: Ty::new_fn_ptr(
                             tcx,
@@ -253,7 +253,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     closure_args.coroutine_closure_sig().map_bound(|sig| {
                         sig.to_coroutine(
                             tcx,
-                            parent_args,
+                            parent_args.as_slice(),
                             coroutine_kind_ty,
                             tcx.coroutine_for_closure(expr_def_id),
                             coroutine_upvars_ty,

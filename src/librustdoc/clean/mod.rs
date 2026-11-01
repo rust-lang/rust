@@ -46,9 +46,7 @@ use rustc_hir::{self as hir, HirId, PredicateOrigin};
 use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
 use rustc_middle::middle::resolve::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
-use rustc_middle::ty::{
-    self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
-};
+use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_span::{ExpnKind, bug, span_bug};
@@ -596,7 +594,7 @@ fn projection_to_path_segment<'tcx>(
         args: GenericArgs::AngleBracketed {
             args: clean_middle_generic_args(
                 cx,
-                proj.map_bound(|ty| &ty.args[generics.parent_count..]),
+                proj.map_bound(|ty| cx.tcx.mk_args(&ty.args.as_slice()[generics.parent_count..])),
                 false,
                 def_id,
             ),
@@ -2352,7 +2350,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                     args: GenericArgs::AngleBracketed {
                         args: clean_middle_generic_args(
                             cx,
-                            alias_ty.map_bound(|ty| ty.args.as_slice()),
+                            alias_ty.map_bound(|ty| ty.args),
                             true,
                             def_id,
                         ),
@@ -2428,7 +2426,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
 fn clean_middle_opaque_bounds<'tcx>(
     cx: &mut DocContext<'tcx>,
     impl_trait_def_id: DefId,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
 ) -> Type {
     let mut has_sized = false;
 
@@ -2578,7 +2576,7 @@ pub(crate) fn clean_variant_def(variant: &ty::VariantDef, cx: &mut DocContext<'_
 
 pub(crate) fn clean_variant_def_with_args<'tcx>(
     variant: &ty::VariantDef,
-    args: &GenericArgsRef<'tcx>,
+    args: &ty::GenericArgs<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Item {
     let discriminant = match variant.discr {

@@ -299,8 +299,14 @@ impl<I: Interner> AliasTerm<I> {
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
     /// then this function would return a `T: StreamingIterator` trait reference and
     /// `['a]` as the own args.
-    pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::GenericArgsSlice) {
-        interner.trait_ref_and_own_args_for_alias(self.expect_projection_def_id(), self.args)
+    pub fn trait_ref_and_own_args<'a>(
+        &'a self,
+        interner: I,
+    ) -> (ty::TraitRef<I>, I::GenericArgsSlice<'a>)
+    where
+        I: 'a,
+    {
+        interner.trait_ref_and_own_args_for_alias(self.expect_projection_def_id(), &self.args)
     }
 
     /// Extracts the underlying trait reference from this projection.
@@ -317,7 +323,7 @@ impl<I: Interner> AliasTerm<I> {
     /// Extract the own args from this projection.
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
     /// then this function would return the slice `['a]` as the own args.
-    pub fn own_args(self, interner: I) -> I::GenericArgsSlice {
+    pub fn own_args<'a>(&'a self, interner: I) -> I::GenericArgsSlice<'a> {
         self.trait_ref_and_own_args(interner).1
     }
 }

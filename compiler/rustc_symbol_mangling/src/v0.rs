@@ -78,14 +78,14 @@ pub(super) fn mangle<'tcx>(
             bug!();
         };
         let drop_ty = cor_args.first().unwrap().expect_ty();
-        p.print_def_path(def_id, tcx.mk_args(&[GenericArg::from(drop_ty)])).unwrap()
+        p.print_def_path(def_id, p.tcx().mk_args(&[GenericArg::from(drop_ty)])).unwrap()
     } else if let Some(shim_kind) = shim_kind {
         p.path_append_ns(|p| p.print_def_path(def_id, args), 'S', 0, shim_kind).unwrap()
     } else {
         p.print_def_path(def_id, args).unwrap()
     };
     if let Some(instantiating_crate) = instantiating_crate {
-        p.print_def_path(instantiating_crate.as_def_id(), &[]).unwrap();
+        p.print_def_path(instantiating_crate.as_def_id(), ty::GenericArgs::empty()).unwrap();
     }
     std::mem::take(&mut p.out)
 }
@@ -106,13 +106,24 @@ pub fn mangle_cgu<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum, cgu_name: Either<u64
     match cgu_name {
         Either::Left(cgu_index) => {
             // If we have a CGU index, we can easily encode this with the shim mechanism.
-            p.path_append_ns(|p| p.print_def_path(krate.as_def_id(), &[]), 'S', cgu_index, "cgu")
-                .unwrap();
+            p.path_append_ns(
+                |p| p.print_def_path(krate.as_def_id(), ty::GenericArgs::empty()),
+                'S',
+                cgu_index,
+                "cgu",
+            )
+            .unwrap();
         }
         Either::Right(name) => {
             // In incremental compilation we just have a name and no index. Encode this as a str-typed generic argument to cgu shim for now.
             p.out.push('I');
-            p.path_append_ns(|p| p.print_def_path(krate.as_def_id(), &[]), 'S', 0, "cgu").unwrap();
+            p.path_append_ns(
+                |p| p.print_def_path(krate.as_def_id(), ty::GenericArgs::empty()),
+                'S',
+                0,
+                "cgu",
+            )
+            .unwrap();
             p.push("KRe");
 
             for byte in name.as_bytes() {
@@ -160,7 +171,7 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
     p.path_append_ns(
         |p| {
             p.push("C");
-            p.push_disambiguator({
+            p.push_disambiguator_fixed_len({
                 let mut hasher = StableHasher::new();
                 // Incorporate the rustc version to ensure #[rustc_std_internal_symbol] functions
                 // get a different symbol name depending on the rustc version.
@@ -169,8 +180,7 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
                 // abi incompatibility with the standard library.
                 hasher.write(tcx.sess.cfg_version.as_bytes());
 
-                let hash: Hash64 = hasher.finish();
-                hash.as_u64()
+                hasher.finish()
             });
             p.push_ident("__rustc");
             Ok(())
@@ -199,7 +209,7 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
         binders: vec![],
         out: String::new(),
     };
-    p.print_def_path(trait_ref.def_id, &[]).unwrap();
+    p.print_def_path(trait_ref.def_id, ty::GenericArgs::empty()).unwrap();
     std::mem::take(&mut p.out)
 }
 
@@ -226,7 +236,7 @@ struct V0SymbolMangler<'tcx> {
     /// The length of the prefix in `out` (e.g. 2 for `_R`).
     start_offset: usize,
     /// The values are start positions in `out`, in bytes.
-    paths: FxHashMap<(DefId, &'tcx [GenericArg<'tcx>]), usize>,
+    paths: FxHashMap<(DefId, ty::GenericArgs<'tcx>), usize>,
     types: FxHashMap<Ty<'tcx>, usize>,
     consts: FxHashMap<ty::Const<'tcx>, usize>,
 }
@@ -258,6 +268,21 @@ impl<'tcx> V0SymbolMangler<'tcx> {
 
     fn push_disambiguator(&mut self, dis: u64) {
         self.push_opt_integer_62("s", dis);
+    }
+
+    /// Use instead of push_disambiguator when the disambiguator is a hash. The value of the hash
+    /// will be converted to a fixed-length base 62 integer, which ensures that the length of
+    /// mangled names is not occasionally shorter due to the hash value. This fixed-length encoding
+    /// prevents binary sizes from fluctuating between builds of the compiler.
+    fn push_disambiguator_fixed_len(&mut self, dis: Hash64) {
+        let x = dis.as_u64();
+        if let Some(x) = x.checked_sub(1) {
+            self.push("s");
+            if let Some(x) = x.checked_sub(1) {
+                self.out.push_str(&x.to_base_fixed_len(62));
+            }
+            self.out.push('_');
+        }
     }
 
     fn push_ident(&mut self, ident: &str) {
@@ -342,7 +367,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
     fn print_def_path(
         &mut self,
         def_id: DefId,
-        args: &'tcx [GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         if let Some(&i) = self.paths.get(&(def_id, args)) {
             return self.print_backref(i);
@@ -362,7 +387,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
     fn print_impl_path(
         &mut self,
         impl_def_id: DefId,
-        args: &'tcx [GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         let key = self.tcx.def_key(impl_def_id);
         let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
@@ -384,7 +409,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         // NOTE: We don't support mangling partially substituted but still polymorphic
         // instances, like `impl<A> Tr<A> for ()` where `A` is substituted w/ `(T,)`.
         let (typing_env, mut self_ty, mut impl_trait_ref) = if generics.count() > args.len()
-            || &args[..generics.count()]
+            || &args.as_slice()[..generics.count()]
                 == self
                     .tcx
                     .erase_and_anonymize_regions(ty::GenericArgs::identity_for_item(
@@ -439,7 +464,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             self.print_path_with_generic_args(
                 |this| {
                     this.path_append_ns(
-                        |p| p.print_def_path(parent_def_id, &[]),
+                        |p| p.print_def_path(parent_def_id, ty::GenericArgs::empty()),
                         'I',
                         key.disambiguated_data.disambiguator as u64,
                         "",
@@ -456,7 +481,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 }
             };
             self.push_disambiguator(disambiguator);
-            self.print_def_path(parent_def_id, &[])?;
+            self.print_def_path(parent_def_id, ty::GenericArgs::empty())?;
         }
 
         self_ty.print(self)?;
@@ -607,7 +632,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             }
 
             ty::Foreign(def_id) => {
-                self.print_def_path(def_id, &[])?;
+                self.print_def_path(def_id, ty::GenericArgs::empty())?;
             }
 
             ty::FnPtr(sig_tys, hdr) => {
@@ -729,7 +754,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                         }?;
                     }
                     ty::ExistentialPredicate::AutoTrait(def_id) => {
-                        p.print_def_path(*def_id, &[])?;
+                        p.print_def_path(*def_id, ty::GenericArgs::empty())?;
                     }
                 }
             }
@@ -877,7 +902,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 let variant_def = &def.variant(variant_idx);
 
                 self.push("V");
-                self.print_def_path(variant_def.def_id, args)?;
+                self.print_def_path(variant_def.def_id, *args)?;
 
                 match variant_def.ctor_kind() {
                     Some(CtorKind::Const) => {
@@ -922,7 +947,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         self.push("C");
         if !self.is_exportable {
             let stable_crate_id = self.tcx.stable_crate_id(cnum);
-            self.push_disambiguator(stable_crate_id.as_u64());
+            self.push_disambiguator_fixed_len(stable_crate_id.as_hash());
         }
         let name = self.tcx.crate_name(cnum);
         self.push_ident(name.as_str());
@@ -999,14 +1024,14 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
     fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-        args: &[GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         // Don't print any regions if they're all erased.
         let print_regions = args.iter().any(|arg| match arg.kind() {
             GenericArgKind::Lifetime(r) => !r.is_erased(),
             _ => false,
         });
-        let args = args.iter().cloned().filter(|arg| match arg.kind() {
+        let args = args.iter().filter(|arg| match arg.kind() {
             GenericArgKind::Lifetime(_) => print_regions,
             _ => true,
         });

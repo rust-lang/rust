@@ -1342,6 +1342,8 @@ pub(super) fn check_const_item<'tcx>(
         ));
     }
 
+    check_where_clauses(wfcx, def_id);
+
     res
 }
 

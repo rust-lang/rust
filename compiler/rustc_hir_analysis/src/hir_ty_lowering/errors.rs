@@ -265,7 +265,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         return self.dcx().emit_err(err);
                     }
 
-                    let trait_args = &ty::GenericArgs::identity_for_item(tcx, best_trait)[1..];
+                    let trait_args = ty::GenericArgs::identity_for_item(tcx, best_trait);
+                    let trait_args = &trait_args.as_slice()[1..];
                     let mut trait_ref = trait_name.clone();
                     let applicability = if let [arg, args @ ..] = trait_args {
                         use std::fmt::Write;

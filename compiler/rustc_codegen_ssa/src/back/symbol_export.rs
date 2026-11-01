@@ -15,7 +15,7 @@ use rustc_middle::middle::exported_symbols::{
 };
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgsRef, Instance, ShimKind, SymbolName, Ty, TyCtxt,
+    self, GenericArgKind, GenericArgs, Instance, ShimKind, SymbolName, Ty, TyCtxt,
 };
 use rustc_middle::util::Providers;
 use rustc_span::{Span, bug};
@@ -359,16 +359,15 @@ fn exported_generic_symbols_provider_local<'tcx>(
             is_local
         };
 
-        let is_instantiable_downstream =
-            |did: Option<DefId>, generic_args: GenericArgsRef<'tcx>| {
-                generic_args
-                    .types()
-                    .chain(did.into_iter().map(move |did| tcx.type_of(did).skip_binder()))
-                    .all(move |arg| {
-                        arg.walk()
-                            .all(|ty| ty.as_type().is_none_or(|ty| !is_local_to_current_crate(ty)))
-                    })
-            };
+        let is_instantiable_downstream = |did: Option<DefId>, generic_args: GenericArgs<'tcx>| {
+            generic_args
+                .types()
+                .chain(did.into_iter().map(move |did| tcx.type_of(did).skip_binder()))
+                .all(move |arg| {
+                    arg.walk()
+                        .all(|ty| ty.as_type().is_none_or(|ty| !is_local_to_current_crate(ty)))
+                })
+        };
 
         let is_offload_instance = |mono_item: &MonoItem<'tcx>| {
             if let MonoItem::Fn(instance) = mono_item {
@@ -413,7 +412,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
                     let should_export = if item_is_offload {
                         has_generics
                     } else {
-                        has_generics && is_instantiable_downstream(Some(def), &args)
+                        has_generics && is_instantiable_downstream(Some(def), args)
                     };
 
                     if should_export {
@@ -442,8 +441,8 @@ fn exported_generic_symbols_provider_local<'tcx>(
 
                     // Drop glue did is always going to be non-local outside of libcore, thus we don't need to check it's locality (which includes invoking `type_of` query).
                     let should_export = match ty.kind() {
-                        ty::Adt(_, args) => is_instantiable_downstream(None, args),
-                        ty::Closure(_, args) => is_instantiable_downstream(None, args),
+                        ty::Adt(_, args) => is_instantiable_downstream(None, *args),
+                        ty::Closure(_, args) => is_instantiable_downstream(None, *args),
                         _ => true,
                     };
 
@@ -505,7 +504,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
 fn upstream_monomorphizations_provider(
     tcx: TyCtxt<'_>,
     (): (),
-) -> DefIdMap<UnordMap<GenericArgsRef<'_>, CrateNum>> {
+) -> DefIdMap<UnordMap<GenericArgs<'_>, CrateNum>> {
     let cnums = tcx.crates(());
 
     let mut instances: DefIdMap<UnordMap<_, _>> = Default::default();
@@ -570,14 +569,14 @@ fn upstream_monomorphizations_provider(
 fn upstream_monomorphizations_for_provider(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Option<&UnordMap<GenericArgsRef<'_>, CrateNum>> {
+) -> Option<&UnordMap<GenericArgs<'_>, CrateNum>> {
     assert!(!def_id.is_local());
     tcx.upstream_monomorphizations(()).get(&def_id)
 }
 
 fn upstream_drop_glue_for_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
+    args: GenericArgs<'tcx>,
 ) -> Option<CrateNum> {
     let def_id = tcx.lang_items().drop_glue_fn()?;
     tcx.upstream_monomorphizations_for(def_id)?.get(&args).cloned()
@@ -585,7 +584,7 @@ fn upstream_drop_glue_for_provider<'tcx>(
 
 fn upstream_async_drop_glue_for_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
+    args: GenericArgs<'tcx>,
 ) -> Option<CrateNum> {
     let def_id = tcx.lang_items().async_drop_in_place_fn()?;
     tcx.upstream_monomorphizations_for(def_id)?.get(&args).cloned()

@@ -39,7 +39,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized, Variance};
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, span_bug, sym};
 use rustc_structures::CrateType;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
@@ -874,19 +874,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_doc_keyword_and_attribute(&self, span: Span, hir_id: HirId, attr_name: &'static str) {
-        let item_kind = match self.tcx.hir_node(hir_id) {
-            hir::Node::Item(item) => Some(&item.kind),
-            _ => None,
-        };
-        if let Some(ItemKind::Const(ident, _gen, _ty, _rhs)) = item_kind
-            && ident.name == kw::Underscore
-        {
-        } else {
-            self.dcx().emit_err(diagnostics::DocKeywordAttributeNotAnonConst { span, attr_name });
-        }
-    }
-
     /// Runs various checks on `#[doc]` attributes.
     fn check_doc_attrs(&self, attr: &DocAttribute, hir_id: HirId, target: Target) {
         let DocAttribute {
@@ -904,7 +891,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // already checked in attr_parsing
             auto_cfg_change: _,
             fake_variadic,
-            keyword,
+            // already checked in attr_parsing
+            keyword: _,
             masked,
             // FIXME: currently unchecked
             notable_trait: _,
@@ -927,18 +915,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             test_attrs: _,
             // already checked in attr_parsing
             no_crate_inject: _,
-            attribute,
+            // already checked in attr_parsing
+            attribute: _,
         } = attr;
 
         for (alias, span) in aliases {
             self.check_doc_alias_value(*span, hir_id, target, *alias);
-        }
-
-        if let Some((_, span)) = keyword {
-            self.check_doc_keyword_and_attribute(*span, hir_id, "keyword");
-        }
-        if let Some((_, span)) = attribute {
-            self.check_doc_keyword_and_attribute(*span, hir_id, "attribute");
         }
 
         if let Some(span) = fake_variadic {
@@ -1362,54 +1344,39 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_lint_check(&self, hir_id: HirId, lints: &[LintCheck]) {
-        for lint in lints {
-            let LintCheck {
-                tool: None,
-                lint_name,
-                lint_span,
-                kind: _,
-                reason: _,
-                attr_id: _,
-                attr_span: _,
-            } = *lint
-            else {
-                continue;
-            };
+        for LintCheck { lint_name, lint_span, .. } in lints {
+            if lint_name.is(sym::dead_code_pub_in_binary) {
+                if !self.tcx.crate_types().contains(&CrateType::Executable) {
+                    self.tcx.emit_node_span_lint(
+                        UNUSED_ATTRIBUTES,
+                        hir_id,
+                        *lint_span,
+                        diagnostics::Unused {
+                            attr_span: *lint_span,
+                            note: diagnostics::UnusedNote::NoEffectDeadCodePubInBinary,
+                        },
+                    );
+                }
+            }
 
-            match lint_name {
-                sym::dead_code_pub_in_binary => {
-                    if !self.tcx.crate_types().contains(&CrateType::Executable) {
-                        self.tcx.emit_node_span_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            lint_span,
-                            diagnostics::Unused {
-                                attr_span: lint_span,
-                                note: diagnostics::UnusedNote::NoEffectDeadCodePubInBinary,
-                            },
-                        );
-                    }
+            if lint_name.is(sym::linker_messages) | lint_name.is(sym::linker_info) {
+                if hir_id == CRATE_HIR_ID
+                    && self
+                        .tcx
+                        .crate_types()
+                        .iter()
+                        .all(|kind| matches!(kind, CrateType::Rlib | CrateType::StaticLib))
+                {
+                    self.tcx.emit_node_span_lint(
+                        UNUSED_ATTRIBUTES,
+                        hir_id,
+                        *lint_span,
+                        diagnostics::Unused {
+                            attr_span: *lint_span,
+                            note: diagnostics::UnusedNote::LinkerMessagesBinaryCrateOnly,
+                        },
+                    );
                 }
-                sym::linker_messages | sym::linker_info => {
-                    if hir_id == CRATE_HIR_ID
-                        && self
-                            .tcx
-                            .crate_types()
-                            .iter()
-                            .all(|kind| matches!(kind, CrateType::Rlib | CrateType::StaticLib))
-                    {
-                        self.tcx.emit_node_span_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            lint_span,
-                            diagnostics::Unused {
-                                attr_span: lint_span,
-                                note: diagnostics::UnusedNote::LinkerMessagesBinaryCrateOnly,
-                            },
-                        );
-                    }
-                }
-                _ => {}
             }
         }
     }
