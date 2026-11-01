@@ -511,6 +511,15 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: ll
         );
     }
 
+    if let Some(direct_access_external_data) = sess.direct_access_external_data() {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Max,
+            "direct-access-external-data",
+            direct_access_external_data as u32,
+        );
+    }
+
     match (sess.opts.unstable_opts.small_data_threshold, sess.target.small_data_threshold_support())
     {
         // Set up the small-data optimization limit for architectures that use
