@@ -686,6 +686,11 @@ where
     }
 }
 
+/// Defers to the pinned allocator. Requires that the smart pointer inside the
+/// [`Pin`](core::pin::Pin) is well-behaved.
+///
+/// This trait impl is unstable and only usable on nightly with `feature(allocator_ext)`.
+/// It may be changed or removed in the future.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 #[unstable_feature_bound(allocator_ext)]
@@ -743,6 +748,7 @@ where
     }
 }
 
+/// This trait impl is unstable and only usable on nightly with `feature(allocator_ext)`.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[unstable_feature_bound(allocator_ext)]
 impl<P> AllocatorNightly for core::pin::Pin<P> where
@@ -763,6 +769,9 @@ unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &mut A {}
 
 /// Allocator marker trait that is only implemented stably for `Global`.
 ///
+/// Enabling `feature(allocator_ext)` causes this trait to be implemented for all
+/// allocators in std, and for any downstream allocator that explicitly implements it.
+///
 /// This trait is used as a bound whenever a function constructing
 /// a type with an `#[unstable] A: Allocator = Global` parameter
 /// may be callable for `A != Global`.
@@ -772,14 +781,16 @@ unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &mut A {}
 ///
 /// Note that this trait *will* be removed in the future, but downstream
 /// allocators should still feel free to implement it on nightly, to
-/// allow use of all containers with unstable allocator support.
+/// allow their allocator to be used with all unstable allocator APIs.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 pub trait AllocatorNightly: Allocator {}
 
+/// This trait impl is unstable and only usable on nightly with `feature(allocator_ext)`.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[unstable_feature_bound(allocator_ext)]
 impl<A: Allocator + ?Sized> AllocatorNightly for &A {}
 
+/// This trait impl is unstable and only usable on nightly with `feature(allocator_ext)`.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[unstable_feature_bound(allocator_ext)]
 impl<A: Allocator + ?Sized> AllocatorNightly for &mut A {}
