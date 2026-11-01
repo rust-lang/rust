@@ -1348,6 +1348,13 @@ pub(crate) enum NonBindingLet {
         #[subdiagnostic]
         sub: NonBindingLetSub,
     },
+    #[diag("non-binding let on a `DropGuard`")]
+    DropGuard {
+        #[label("this `DropGuard` is not assigned to a binding and is immediately dropped")]
+        pat: Span,
+        #[subdiagnostic]
+        sub: NonBindingLetSub,
+    },
     #[diag("non-binding let on a type that has a destructor")]
     DropType {
         #[subdiagnostic]
