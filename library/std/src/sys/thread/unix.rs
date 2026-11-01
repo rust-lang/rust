@@ -165,6 +165,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             target_vendor = "apple",
             target_os = "cygwin",
             target_os = "redox",
+            target_os = "serenity",
             target_os = "wasi",
         ) => {
             #[allow(unused_assignments)]
@@ -367,7 +368,7 @@ pub fn current_os_id() -> Option<u64> {
             let id: libc::pid_t = unsafe { gettid() };
             Some(id as u64)
         }
-        any(target_os = "nto", target_os = "qnx") => {
+        any(target_os = "nto", target_os = "qnx", target_os = "serenity") => {
             // SAFETY: FFI call with no preconditions.
             let id: libc::pid_t = unsafe { libc::gettid() };
             Some(id as u64)
@@ -445,7 +446,8 @@ pub fn set_name(name: &CStr) {
     target_os = "freebsd",
     target_os = "dragonfly",
     target_os = "nuttx",
-    target_os = "cygwin"
+    target_os = "cygwin",
+    target_os = "serenity",
 ))]
 pub fn set_name(name: &CStr) {
     unsafe {
@@ -565,6 +567,7 @@ pub fn sleep(dur: Duration) {
             target_os = "hurd",
             target_os = "vxworks",
             target_os = "wasi",
+            target_os = "serenity",
         ) => {
             // POSIX specifies that `nanosleep` uses CLOCK_REALTIME, but is not
             // affected by clock adjustments. The timing of `sleep` however should
@@ -668,6 +671,7 @@ pub fn sleep(dur: Duration) {
     target_os = "hurd",
     target_os = "vxworks",
     target_os = "wasi",
+    target_os = "serenity",
 ))]
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;

@@ -315,7 +315,12 @@ fn debug_path_fd<'a, 'b>(
 }
 
 fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
-    #[cfg(any(target_os = "linux", target_os = "illumos", target_os = "solaris"))]
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "illumos",
+        target_os = "solaris",
+        target_os = "serenity"
+    ))]
     fn get_path(fd: c_int) -> Option<PathBuf> {
         let mut p = PathBuf::from("/proc/self/fd");
         p.push(&fd.to_string());
@@ -382,6 +387,7 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
         target_os = "netbsd",
         target_os = "illumos",
         target_os = "solaris",
+        target_os = "serenity",
         target_vendor = "apple",
     )))]
     fn get_path(_fd: c_int) -> Option<PathBuf> {
@@ -563,7 +569,8 @@ impl FileAttr {
     target_os = "qnx",
     target_os = "aix",
     target_os = "wasi",
-    target_os = "l4re"
+    target_os = "l4re",
+    target_os = "serenity"
 )))]
 impl FileAttr {
     #[cfg(not(any(
@@ -689,7 +696,13 @@ impl FileAttr {
     }
 }
 
-#[cfg(any(target_os = "nto", target_os = "qnx", target_os = "wasi", target_os = "l4re"))]
+#[cfg(any(
+    target_os = "nto",
+    target_os = "qnx",
+    target_os = "wasi",
+    target_os = "l4re",
+    target_os = "serenity"
+))]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_mtim.tv_sec, self.stat.st_mtim.tv_nsec.into())
@@ -1086,6 +1099,7 @@ impl DirEntry {
             target_os = "qnx",
             target_os = "vita",
             target_os = "l4re",
+            target_os = "serenity",
         )))]
         match self.entry.d_type {
             libc::DT_CHR => return Ok(FileType { mode: libc::S_IFCHR }),
@@ -1336,6 +1350,7 @@ impl File {
                 target_os = "haiku",
                 target_os = "android",
                 target_os = "redox",
+                target_os = "serenity",
                 target_vendor = "apple",
             ) => {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX) })?;
@@ -1360,6 +1375,7 @@ impl File {
                 target_os = "haiku",
                 target_os = "android",
                 target_os = "redox",
+                target_os = "serenity",
                 target_vendor = "apple",
             ) => {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH) })?;
@@ -1384,6 +1400,7 @@ impl File {
                 target_os = "haiku",
                 target_os = "android",
                 target_os = "redox",
+                target_os = "serenity",
                 target_vendor = "apple",
             ) => {
                 let result =
@@ -1420,6 +1437,7 @@ impl File {
                 target_os = "haiku",
                 target_os = "android",
                 target_os = "redox",
+                target_os = "serenity",
                 target_vendor = "apple",
             ) => {
                 let result =
@@ -1456,6 +1474,7 @@ impl File {
                 target_os = "haiku",
                 target_os = "android",
                 target_os = "redox",
+                target_os = "serenity",
                 target_vendor = "apple",
             ) => {
                 cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_UN) })?;
@@ -1999,7 +2018,8 @@ pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
         target_os = "netbsd",
         target_os = "dragonfly",
         target_os = "nto",
-        target_os = "qnx"
+        target_os = "qnx",
+        target_os = "serenity",
     ))]
     {
         res = cvt_r(|| unsafe {
