@@ -249,10 +249,22 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     deref.span,
                 )
             }
-            Adjust::Borrow(AutoBorrow::Ref(m)) => ExprKind::Borrow {
-                borrow_kind: m.to_borrow_kind(),
-                arg: self.thir.exprs.push(expr),
-            },
+            Adjust::Borrow(AutoBorrow::Ref(m)) => {
+                // Don't emit no-op &T -> &T reborrows
+                if let AutoBorrowMutability::Not { .. } = m
+                    && let ExprKind::Deref { arg: derefed_expr } = expr.kind
+                    && self.thir.exprs[derefed_expr].ty.ref_mutability()
+                        == Some(ty::Mutability::Not)
+                {
+                    assert_eq!(self.thir.exprs.last_index(), Some(derefed_expr));
+                    return self.thir.exprs.pop().unwrap();
+                } else {
+                    ExprKind::Borrow {
+                        borrow_kind: m.to_borrow_kind(),
+                        arg: self.thir.exprs.push(expr),
+                    }
+                }
+            }
             Adjust::Borrow(AutoBorrow::RawPtr(mutability)) => {
                 ExprKind::RawBorrow { mutability, arg: self.thir.exprs.push(expr) }
             }
@@ -1696,6 +1708,30 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
         match upvar_capture {
             ty::UpvarCapture::ByValue => captured_place_expr,
+            // FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
+            ty::UpvarCapture::ByCopy => {
+                let span = captured_place_expr.span;
+                let ty = captured_place_expr.ty;
+                let expr_id = self.thir.exprs.push(captured_place_expr);
+
+                let container_did = self
+                    .tcx
+                    .require_lang_item(rustc_attr_ir::LangItem::CopyClosureCaptureContainer, span);
+
+                Expr {
+                    temp_scope_id,
+                    ty: upvar_ty,
+                    span: closure_expr.span,
+                    kind: ExprKind::Adt(Box::new(AdtExpr {
+                        adt_def: self.tcx.adt_def(container_did),
+                        variant_index: VariantIdx::ZERO,
+                        args: self.tcx.mk_args(&[ty.into()]),
+                        user_ty: None,
+                        fields: Box::new([FieldExpr { name: FieldIdx::ZERO, expr: expr_id }]),
+                        base: AdtExprBase::None,
+                    })),
+                }
+            }
             ty::UpvarCapture::ByUse => {
                 let span = captured_place_expr.span;
                 let expr_id = self.thir.exprs.push(captured_place_expr);
@@ -1762,7 +1798,7 @@ impl ToBorrowKind for AutoBorrowMutability {
                     AllowTwoPhase::No => mir::MutBorrowKind::Default,
                 },
             },
-            AutoBorrowMutability::Not => BorrowKind::Shared,
+            AutoBorrowMutability::Not { .. } => BorrowKind::Shared,
         }
     }
 }

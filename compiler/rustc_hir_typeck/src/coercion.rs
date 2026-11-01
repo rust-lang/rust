@@ -516,26 +516,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         };
 
-        if coerced_a == a && mt_a.mutbl.is_not() && autoderef.step_count() == 1 {
-            // As a special case, if we would produce `&'a *x`, that's
-            // a total no-op. We end up with the type `&'a T` just as
-            // we started with. In that case, just skip it altogether.
-            //
-            // Unfortunately, this can actually effect capture analysis
-            // which in turn means this effects borrow checking. This can
-            // also effect diagnostics.
-            // FIXME(BoxyUwU): we should always emit reborrow coercions
-            //
-            // Note that for `&mut`, we DO want to reborrow --
-            // otherwise, this would be a move, which might be an
-            // error. For example `foo(self.x)` where `self` and
-            // `self.x` both have `&mut `type would be a move of
-            // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
-            // which is a borrow.
-            assert!(mutbl_b.is_not()); // can only coerce &T -> &U
-            return success(vec![], coerced_a, obligations);
-        }
-
         let InferOk { value: mut adjustments, obligations: o } =
             self.adjust_steps_as_infer_ok(&autoderef);
         obligations.extend(o);
@@ -547,10 +527,46 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             coerced_a
         );
 
-        // Now apply the autoref
-        let mutbl = AutoBorrowMutability::new(mutbl_b, self.allow_two_phase);
-        adjustments
-            .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)), target: coerced_a });
+        // As a special case, if we would produce `&'a *x`, that's
+        // a total no-op. We end up with the type `&'a T` just as
+        // we started with. In that case, just skip it altogether.
+
+        let can_skip_noop_reborrow = if mutbl_b.is_not() {
+            if matches!(
+                adjustments.last(),
+                Some(Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), .. })
+            ) {
+                // Last adjustment is a builtin deref adjustment.
+                // Check if that deref was applied to a shared reference
+
+                let mutbl_before_deref = if adjustments.len() >= 2 {
+                    *&adjustments[adjustments.len() - 2].target.ref_mutability()
+                } else {
+                    Some(mt_a.mutbl)
+                };
+
+                mutbl_before_deref == Some(ty::Mutability::Not)
+            } else {
+                // Last adjustment is not a builtin deref adjustment,
+                // so this can't be a shared ref reborrow.
+                false
+            }
+        } else {
+            // FIXME: Ideally we would also skip `&mut` -> `&mut` reborrow,
+            // and handle that in MIR.
+            false
+        };
+
+        if can_skip_noop_reborrow {
+            adjustments.pop();
+        } else {
+            // Now apply the autoref
+            let mutbl = AutoBorrowMutability::new(mutbl_b, self.allow_two_phase);
+            adjustments.push(Adjustment {
+                kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
+                target: coerced_a,
+            });
+        }
 
         debug!("coerce_to_ref: succeeded coerced_a={:?} adjustments={:?}", coerced_a, adjustments);
 
@@ -657,6 +673,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         self.commit_if_ok(|_| {
             // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
             let reborrow = match (source.kind(), target.kind()) {
+                // Don't emit a no-op shared -> shared reborrow.
+                (&ty::Ref(_, _, ty::Mutability::Not), &ty::Ref(_, _, ty::Mutability::Not)) => None,
                 (&ty::Ref(_, ty_a, mutbl_a), &ty::Ref(_, _, mutbl_b)) => {
                     coerce_mutbls(mutbl_a, mutbl_b)?;
 

@@ -25,8 +25,8 @@ use tracing::{debug, instrument, trace};
 use crate::{
     Adjust, Adjustment, AutoBorrow, Span,
     infer::{
-        ByRef, CaptureSourceStack, DerefPatBorrowMode, InferenceContext, PatAdjust, PatAdjustment,
-        UpvarCapture, closure::analysis::BorrowKind,
+        AutoBorrowMutability, ByRef, CaptureSourceStack, DerefPatBorrowMode, ForComparisonOp,
+        InferenceContext, PatAdjust, PatAdjustment, UpvarCapture, closure::analysis::BorrowKind,
     },
     method_resolution::CandidateId,
     next_solver::{ErrorGuaranteed, StoredTy, Ty, TyKind},
@@ -120,7 +120,6 @@ impl Place {
     /// Returns the type of this `Place` immediately before `projection_index`th projection
     /// is applied.
     pub fn ty_before_projection<'db>(&self, projection_index: usize) -> Ty<'db> {
-        assert!(projection_index < self.projections.len());
         if projection_index == 0 {
             self.base_ty.as_ref()
         } else {
@@ -327,6 +326,16 @@ pub(crate) trait Delegate<'db> {
         ctx: &mut InferenceContext<'db>,
     );
 
+    /// The value found at `place` is being implicitly borrowed immutably
+    /// as an operand of one of the comparison operators (`==`, `!=`, `<`, `<=`, `>`, `>=`).
+    fn borrow_for_comparison(
+        &mut self,
+        place_with_id: PlaceWithOrigin,
+        ctx: &mut InferenceContext<'db>,
+    ) {
+        self.borrow(place_with_id, BorrowKind::Immutable, ctx);
+    }
+
     /// The value found at `place` is being copied.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     ///
@@ -377,6 +386,14 @@ impl<'db, D: Delegate<'db>> Delegate<'db> for &mut D {
         ctx: &mut InferenceContext<'db>,
     ) {
         (**self).borrow(place_with_id, bk, ctx)
+    }
+
+    fn borrow_for_comparison(
+        &mut self,
+        place_with_id: PlaceWithOrigin,
+        ctx: &mut InferenceContext<'db>,
+    ) {
+        (**self).borrow_for_comparison(place_with_id, ctx)
     }
 
     fn copy(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
@@ -664,8 +681,13 @@ impl<'a, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'db, D> {
                 self.consume_expr(base)?;
             }
 
-            Expr::BinaryOp { lhs, rhs, op: None | Some(BinaryOp::Assignment { .. }) } => {
+            Expr::BinaryOp { lhs, rhs, op: None | Some(BinaryOp::Assignment { op: None }) } => {
                 self.consume_expr(lhs)?;
+                self.consume_expr(rhs)?;
+            }
+
+            Expr::BinaryOp { lhs, rhs, op: Some(BinaryOp::Assignment { op: Some(_) }) } => {
+                self.mutate_expr(lhs)?;
                 self.consume_expr(rhs)?;
             }
 
@@ -839,6 +861,12 @@ impl<'a, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'db, D> {
         debug!("walk_autoref(expr={:?} base_place={:?} autoref={:?})", expr, base_place, autoref);
 
         match *autoref {
+            AutoBorrow::Ref(AutoBorrowMutability::Not {
+                for_comparison_op: ForComparisonOp::Yes,
+            }) => {
+                self.delegate.borrow_for_comparison(base_place, self.cx);
+            }
+
             AutoBorrow::Ref(m) => {
                 self.delegate.borrow(base_place, BorrowKind::from_mutbl(m.into()), self.cx);
             }
@@ -1125,6 +1153,9 @@ impl<'a, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'db, D> {
                         }
                         UpvarCapture::ByRef(upvar_borrow) => {
                             self.delegate.borrow(place_with_id, upvar_borrow, self.cx);
+                        }
+                        UpvarCapture::ByCopy => {
+                            self.delegate.copy(place_with_id, self.cx);
                         }
                     }
                 }

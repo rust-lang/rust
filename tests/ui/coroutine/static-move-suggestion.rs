@@ -10,7 +10,7 @@ fn check() -> impl Sized {
     static || {
         //~^ ERROR E0373
         yield;
-        x
+        *&x
     }
 }
 
