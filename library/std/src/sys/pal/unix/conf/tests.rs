@@ -31,7 +31,7 @@ fn test_confstr() {
         let value_nohint = super::confstr(key, None).unwrap_or_else(|e| {
             panic!("confstr({key}, None) failed: {e:?}");
         });
-        let end = (value_nohint.len() + 1) * 2;
+        let end = (value_nohint.count_bytes() + 1) * 2;
         for hint in 0..end {
             assert_eq!(
                 super::confstr(key, Some(hint)).as_deref().ok(),

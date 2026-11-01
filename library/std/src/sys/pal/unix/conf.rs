@@ -6,20 +6,18 @@ pub fn page_size() -> usize {
     unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize }
 }
 
-/// Returns the value for [`confstr(key, ...)`][posix_confstr]. Currently only
-/// used on Darwin, but should work on any unix (in case we need to get
-/// `_CS_PATH` or `_CS_V[67]_ENV` in the future).
+/// Returns the value for [`confstr(key, ...)`][posix_confstr].
 ///
 /// [posix_confstr]:
 ///     https://pubs.opengroup.org/onlinepubs/9799919799/functions/confstr.html
-#[cfg(target_vendor = "apple")]
+#[cfg(any(target_vendor = "apple", all(target_os = "linux", target_env = "gnu")))]
 pub fn confstr(
     key: crate::ffi::c_int,
     size_hint: Option<usize>,
-) -> crate::io::Result<crate::ffi::OsString> {
-    use crate::ffi::OsString;
+) -> crate::io::Result<crate::ffi::CString> {
+    use alloc_crate::ffi::CString;
+
     use crate::io;
-    use crate::os::unix::ffi::OsStringExt;
 
     let mut buf: Vec<u8> = Vec::with_capacity(0);
     let mut bytes_needed_including_nul = size_hint
@@ -61,11 +59,17 @@ pub fn confstr(
     unsafe {
         buf.set_len(bytes_needed_including_nul);
         // Remove the NUL-terminator.
-        let last_byte = buf.pop();
+        let last_byte = buf.last();
         // ... and smoke-check that it *was* a NUL-terminator.
-        assert_eq!(last_byte, Some(0), "`confstr` provided a string which wasn't nul-terminated");
+        assert_eq!(
+            last_byte.copied(),
+            Some(0),
+            "`confstr` provided a string which wasn't nul-terminated"
+        );
     };
-    Ok(OsString::from_vec(buf))
+    // SAFETY: From above, we have confirmed that the buffer
+    // contains a nul terminating byte.
+    Ok(unsafe { CString::from_vec_with_nul_unchecked(buf) })
 }
 
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
