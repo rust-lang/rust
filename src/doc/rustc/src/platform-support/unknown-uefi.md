@@ -37,6 +37,14 @@ Windows uses (if the architecture is supported by Windows). The special
 elaborate section on the different supported calling-conventions, if more
 details are desired.
 
+With LLVM 24 or later, the `x86_64-unknown-uefi` and `aarch64-unknown-uefi`
+targets are lowered through LLVM's dedicated `x86_64-unknown-uefi` and
+`aarch64-unknown-uefi` targets. These dedicated UEFI triples share the calling
+convention, object format and CodeView debug information of the corresponding
+Windows targets, but leave out the features that only make sense with a Windows
+runtime, such as Control Flow Guard, the C runtime's stack probes and thread
+local storage.
+
 MMX, SSE, and other FP-units are disabled by default, to allow for compilation
 of core UEFI code that runs before they are set up. This can be overridden for
 individual compilations via rustc command-line flags. Not all firmwares

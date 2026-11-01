@@ -1,5 +1,7 @@
 // This defines the aarch64 target for UEFI systems as described in the UEFI specification. See the
 // uefi-base module for generic UEFI options.
+// The "aarch64-unknown-uefi" LLVM target is used with LLVM 24 and later, and the
+// "aarch64-unknown-windows" target with LLVM 23 and earlier.
 
 use crate::spec::{Arch, LinkerFlavor, Lld, Target, TargetMetadata, base};
 
@@ -11,7 +13,7 @@ pub(crate) fn target() -> Target {
     base.features = "+v8a".into();
 
     Target {
-        llvm_target: "aarch64-unknown-windows".into(),
+        llvm_target: "aarch64-unknown-uefi".into(),
         metadata: TargetMetadata {
             description: Some("ARM64 UEFI".into()),
             tier: Some(2),

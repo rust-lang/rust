@@ -6,7 +6,6 @@ use std::{fs, ptr, slice, str};
 
 use libc::{c_char, c_int, c_void, size_t};
 use rustc_codegen_ssa::back::link::ensure_removed;
-use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, InlineAsmError, ModuleConfig, SharedEmitter,
     TargetMachineFactoryConfig, TargetMachineFactoryFn,
@@ -197,7 +196,7 @@ pub(crate) fn target_machine_factory(
 
     let singlethread = sess.target.singlethread(&sess.internal_target_features);
 
-    let triple = SmallCStr::new(&versioned_llvm_target(sess));
+    let triple = SmallCStr::new(&llvm_util::llvm_target(sess));
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
     let features = CString::new(sess.global_backend_features.join(",")).unwrap();
     let abi = SmallCStr::new(sess.target.llvm_abiname.desc());

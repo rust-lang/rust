@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::ffi::{CStr, CString};
 use std::fmt::Write;
@@ -326,7 +327,7 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
     require_inited();
     let target_features = global_llvm_features(sess, /* for_cfg */ true);
 
-    let triple = SmallCStr::new(&versioned_llvm_target(sess));
+    let triple = SmallCStr::new(&llvm_target(sess));
     let cpu = SmallCStr::new(target_cpu(sess));
     let features = CString::new(target_features.join(",")).unwrap();
     let mc_subtarget_info = OwnedMCSubtargetInfo::new(&triple, &cpu, &features)
@@ -471,6 +472,18 @@ pub(crate) fn get_version() -> (u32, u32, u32) {
     let mut llvm_patch = 0;
     llvm::LLVMGetVersion(&mut llvm_major, &mut llvm_minor, &mut llvm_patch);
     (llvm_major, llvm_minor, llvm_patch)
+}
+
+/// The LLVM target triple to use for the session's target.
+///
+/// The UEFI targets are lowered through LLVM's `*-unknown-uefi` targets with
+/// LLVM 24 or later, and through the Windows targets with older LLVMs.
+pub(crate) fn llvm_target(sess: &EarlySession) -> Cow<'_, str> {
+    let triple = versioned_llvm_target(sess);
+    if sess.target.os == Os::Uefi && get_version() < (24, 0, 0) {
+        return triple.replace("-unknown-uefi", "-unknown-windows").into();
+    }
+    triple
 }
 
 pub(crate) fn print_passes() {
