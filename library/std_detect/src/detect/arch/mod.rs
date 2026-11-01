@@ -14,8 +14,6 @@ mod powerpc;
 #[macro_use]
 mod mips;
 #[macro_use]
-mod mips64;
-#[macro_use]
 mod loongarch;
 #[macro_use]
 mod s390x;
@@ -41,13 +39,14 @@ cfg_select! {
         #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
         pub use powerpc::*;
     }
-    target_arch = "mips" => {
+    any(
+        target_arch = "mips",
+        target_arch = "mips32r6",
+        target_arch = "mips64",
+        target_arch = "mips64r6"
+    ) => {
         #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
         pub use mips::*;
-    }
-    target_arch = "mips64" => {
-        #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
-        pub use mips64::*;
     }
     any(target_arch = "loongarch32", target_arch = "loongarch64") => {
         #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")]

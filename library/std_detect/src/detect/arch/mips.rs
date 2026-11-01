@@ -2,7 +2,12 @@
 
 features! {
     @TARGET: mips;
-    @CFG: target_arch = "mips";
+    @CFG: any(
+        target_arch = "mips",
+        target_arch = "mips32r6",
+        target_arch = "mips64",
+        target_arch = "mips64r6"
+    );
     @MACRO_NAME: is_mips_feature_detected;
     @MACRO_ATTRS:
     /// Check for the presence of a CPU feature at runtime.
