@@ -361,7 +361,7 @@ impl<'db> InferenceContext<'db> {
         let (capture_information, closure_kind, _origin) = self
             .process_collected_capture_information(capture_clause, &delegate.capture_information);
 
-        self.compute_min_captures(closure_expr_id, capture_information);
+        self.compute_min_captures(closure_expr_id, capture_information, false);
 
         // We now fake capture information for all variables that are mentioned within the closure
         // We do this after handling migrations so that min_captures computes before
@@ -384,7 +384,7 @@ impl<'db> InferenceContext<'db> {
             }
 
             // This will update the min captures based on this new fake information.
-            self.compute_min_captures(closure_expr_id, capture_information);
+            self.compute_min_captures(closure_expr_id, capture_information, true);
         }
 
         if infer_kind {
@@ -725,6 +725,7 @@ impl<'db> InferenceContext<'db> {
         &mut self,
         closure_def_id: ExprId,
         capture_information: InferredCaptureInformation,
+        for_imprecise_capture_truncation: bool,
     ) {
         if capture_information.is_empty() {
             return;
@@ -806,10 +807,21 @@ impl<'db> InferenceContext<'db> {
                                 &mut possible_ancestor.info,
                                 &mut dedup_sources_scratch,
                             );
-                            determine_capture_info(
-                                &mut possible_ancestor.info,
-                                &mut updated_capture_info,
-                            );
+
+                            // When we truncate the captures for edition ..=2018 imprecise captures,
+                            // we start with an inferred capture mode of ImmBorrow.
+                            // But for a closure like `|| x.use`, where `x` is a simple local
+                            // with no projections, we want a ByUse capture.
+                            // So we need a special case.
+                            if !(for_imprecise_capture_truncation
+                                && possible_ancestor.info.capture_kind == UpvarCapture::ByUse)
+                            {
+                                determine_capture_info(
+                                    &mut possible_ancestor.info,
+                                    &mut updated_capture_info,
+                                );
+                            }
+
                             possible_ancestor.info.sources = backup_path_sources;
 
                             // Only one related place will be in the list.
@@ -1393,13 +1405,13 @@ fn adjust_for_non_move_closure(mut place: Place, capture_info: &mut CaptureInfo)
         place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
 
     match capture_info.capture_kind {
-        UpvarCapture::ByValue | UpvarCapture::ByUse => {
+        UpvarCapture::ByValue => {
             if let Some(idx) = contains_deref {
                 truncate_place_to_len_and_update_capture_kind(&mut place, capture_info, idx);
             }
         }
 
-        UpvarCapture::ByRef(..) => {}
+        UpvarCapture::ByUse | UpvarCapture::ByRef(..) => {}
     }
 
     place
@@ -1409,10 +1421,9 @@ fn adjust_for_non_move_closure(mut place: Place, capture_info: &mut CaptureInfo)
 fn determine_capture_info(capture_info_a: &mut CaptureInfo, capture_info_b: &mut CaptureInfo) {
     // We select the CaptureKind which ranks higher based the following priority order:
     // (ByUse | ByValue) > MutBorrow > UniqueImmBorrow > ImmBorrow
-    match capture_info_a.capture_kind.partial_cmp(&capture_info_b.capture_kind) {
-        Some(cmp::Ordering::Equal) | Some(cmp::Ordering::Greater) => {}
-        Some(cmp::Ordering::Less) => mem::swap(capture_info_a, capture_info_b),
-        None => panic!("Same capture can't be ByUse and ByValue at the same time"),
+    match capture_info_a.capture_kind.cmp(&capture_info_b.capture_kind) {
+        cmp::Ordering::Equal | cmp::Ordering::Greater => {}
+        cmp::Ordering::Less => mem::swap(capture_info_a, capture_info_b),
     }
 }
 
@@ -1446,6 +1457,10 @@ fn truncate_place_to_len_and_update_capture_kind(
     info: &mut CaptureInfo,
     len: usize,
 ) {
+    if len == place.projections.len() {
+        return;
+    }
+
     let is_mut_ref = |ty: Ty<'_>| matches!(ty.kind(), TyKind::Ref(.., Mutability::Mut));
 
     // If the truncated part of the place contains `Deref` of a `&mut` then convert MutBorrow ->
@@ -1453,6 +1468,11 @@ fn truncate_place_to_len_and_update_capture_kind(
     // Note that if the place contained Deref of a raw pointer it would've not been MutBorrow, so
     // we don't need to worry about that case here.
     match info.capture_kind {
+        // Any truncation of a `.use` capture makes it become by-ref.
+        UpvarCapture::ByUse => {
+            info.capture_kind = UpvarCapture::ByRef(BorrowKind::Immutable);
+        }
+
         UpvarCapture::ByRef(BorrowKind::Mutable) => {
             for i in len..place.projections.len() {
                 if place.projections[i].kind == ProjectionKind::Deref
@@ -1464,8 +1484,7 @@ fn truncate_place_to_len_and_update_capture_kind(
             }
         }
 
-        UpvarCapture::ByRef(..) => {}
-        UpvarCapture::ByValue | UpvarCapture::ByUse => {}
+        UpvarCapture::ByRef(..) | UpvarCapture::ByValue => {}
     }
 
     // Now fix the sources, to point at the smaller place.
@@ -1542,6 +1561,10 @@ fn determine_place_ancestry_relation(place_a: &Place, place_b: &Place) -> PlaceA
 /// ```
 #[instrument(ret, level = "debug")]
 fn truncate_capture_for_optimization(mut place: Place, info: &mut CaptureInfo) -> Place {
+    let UpvarCapture::ByRef(_) = info.capture_kind else {
+        return place;
+    };
+
     let is_shared_ref = |ty: Ty<'_>| matches!(ty.kind(), TyKind::Ref(.., Mutability::Not));
 
     // Find the rightmost deref (if any). All the projections that come after this

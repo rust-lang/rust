@@ -63,12 +63,4 @@ fn main() {
         x?;
         Some(1)
     })();
-
-    #[expect(clippy::needless_return)]
-    (async use || return)();
-    (async use || {
-        let x: Option<i32> = None;
-        x?;
-        Some(1)
-    })();
 }

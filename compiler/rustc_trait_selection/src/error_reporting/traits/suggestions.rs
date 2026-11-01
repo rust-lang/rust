@@ -5022,6 +5022,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ObligationCauseCode::CompareEii { .. } => {
                 panic!("trait bounds on EII not yet supported ")
             }
+            ObligationCauseCode::UseExpr(span) => {
+                err.span_note(
+                    span,
+                    "`.use` expressions require the receiver to implement the `UseCloned` trait",
+                );
+            }
         }
     }
 

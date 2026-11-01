@@ -27,8 +27,8 @@ use rustc_hir::{ExprKind, HirId, QPath, is_range_literal};
 use rustc_hir_analysis::diagnostics::{NoFieldOnType, NoVariantNamed};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer::{self, RegionVariableOrigin};
-use rustc_infer::traits::WellFormedLoc;
 use rustc_infer::traits::query::NoSolution;
+use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, AdtKind, GenericArgs, Ty, TypeVisitableExt, Unnormalized};
@@ -374,7 +374,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Closure(closure) => self.check_expr_closure(closure, expr.span, expected),
             ExprKind::Block(body, _) => self.check_expr_block(body, expected),
             ExprKind::Call(callee, args) => self.check_expr_call(expr, callee, args, expected),
-            ExprKind::Use(used_expr, _) => self.check_expr_use(used_expr, expected),
+            ExprKind::Use(used_expr, use_span) => {
+                self.check_expr_use(used_expr, use_span, expected)
+            }
             ExprKind::MethodCall(segment, receiver, args, _) => {
                 self.check_expr_method_call(expr, segment, receiver, args, expected)
             }
@@ -1573,9 +1575,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_expr_use(
         &self,
         used_expr: &'tcx hir::Expr<'tcx>,
+        use_span: Span,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        self.check_expr_with_expectation(used_expr, expected)
+        let used_expr_ty = self.check_expr_with_expectation(used_expr, expected);
+
+        // FIXME(ergonomic_clones): remove condition once `Copy` implies `UseCloned`
+        if !self.type_is_copy_modulo_regions(self.param_env, used_expr_ty) {
+            self.register_bound(
+                used_expr_ty,
+                self.tcx.require_lang_item(LangItem::UseCloned, use_span),
+                ObligationCause::new(
+                    used_expr.span,
+                    self.body_def_id,
+                    ObligationCauseCode::UseExpr(use_span),
+                ),
+            );
+        }
+
+        used_expr_ty
     }
 
     fn check_expr_cast(

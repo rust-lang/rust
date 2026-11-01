@@ -1,16 +1,16 @@
 error[E0573]: cannot find type `x` in this scope
-  --> $DIR/local-type.rs:8:27
+  --> $DIR/local-type.rs:8:23
    |
-LL |     let _ = async use |x: x| x;
-   |                           ^ not found in this scope
+LL |     let _ = async |x: x| x.use;
+   |                       ^ not found in this scope
    |
    = note: a local variable named `x` exists in another namespace
 
 error[E0573]: cannot find type `x` in this scope
-  --> $DIR/local-type.rs:9:36
+  --> $DIR/local-type.rs:9:32
    |
-LL |     let _ = async use |x: bool| -> x { x };
-   |                                    ^ not found in this scope
+LL |     let _ = async |x: bool| -> x { x.use };
+   |                                ^ not found in this scope
    |
    = note: a local variable named `x` exists in another namespace
 

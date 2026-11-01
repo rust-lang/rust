@@ -1944,19 +1944,6 @@ pub(crate) struct AsyncMoveOrderIncorrect {
 }
 
 #[derive(Diagnostic)]
-#[diag("the order of `use` and `async` is incorrect")]
-pub(crate) struct AsyncUseOrderIncorrect {
-    #[primary_span]
-    #[suggestion(
-        "try switching the order",
-        style = "verbose",
-        code = "async use",
-        applicability = "maybe-incorrect"
-    )]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("expected `:` followed by trait or lifetime")]
 pub(crate) struct DoubleColonInBound {
     #[primary_span]
@@ -2157,13 +2144,6 @@ pub(crate) struct AsyncBlockIn2015 {
 #[derive(Diagnostic)]
 #[diag("`async move` blocks are only allowed in Rust 2018 or later")]
 pub(crate) struct AsyncMoveBlockIn2015 {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`async use` blocks are only allowed in Rust 2018 or later")]
-pub(crate) struct AsyncUseBlockIn2015 {
     #[primary_span]
     pub span: Span,
 }
