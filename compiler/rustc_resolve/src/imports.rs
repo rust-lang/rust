@@ -6,10 +6,10 @@ use std::mem;
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{Applicability, BufferedEarlyLint, Diagnostic};
+use rustc_errors::{Applicability, BufferedEarlyLint, Diagnostic, MultiSpan};
 use rustc_expand::base::SyntaxExtensionKind;
 use rustc_hir::def::{self, DefKind};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId, LocalDefIdMap};
 use rustc_lint_defs::LintId;
 use rustc_lint_defs::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, EXPORTED_PRIVATE_DEPENDENCIES, HIDDEN_GLOB_REEXPORTS,
@@ -20,7 +20,7 @@ use rustc_middle::ty::Visibility;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::{Ident, OrdSpan, Span, Symbol, kw, span_bug, sym};
+use rustc_span::{DUMMY_SP, Ident, OrdSpan, Span, Symbol, kw, span_bug, sym};
 use tracing::debug;
 
 use crate::Namespace::{self, *};
@@ -1685,10 +1685,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 diagnostic: diagnostic.into(),
             });
         } else if ns == TypeNS {
+            let def_id = decl.res().def_id();
+            let parent = if !def_id.is_crate_root() { self.def_span(def_id) } else { DUMMY_SP };
+            let descr = self.tcx().def_descr(def_id);
+
             if crate_private_reexport {
-                self.dcx().emit_err(CannotBeReexportedCratePublicNS { span: import.span, ident });
+                self.dcx().emit_err(CannotBeReexportedCratePublicNS {
+                    span: import.span,
+                    ident,
+                    parent,
+                    descr,
+                });
             } else {
-                self.dcx().emit_err(CannotBeReexportedPrivateNS { span: import.span, ident });
+                self.dcx().emit_err(CannotBeReexportedPrivateNS {
+                    span: import.span,
+                    ident,
+                    parent,
+                    descr,
+                });
             }
         } else {
             let mut err = if crate_private_reexport {
@@ -1708,7 +1722,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     err.subdiagnostic(ConsiderMarkingAsPubCrate { vis_span: import.vis_span });
                 }
                 _ => {
-                    err.subdiagnostic(ConsiderMarkingAsPub { span: import.span, ident });
+                    let mut span: MultiSpan = decl.span.into();
+                    let descr = if decl.is_import() {
+                        "re-export"
+                    } else if let Some(def_id) = decl.res().opt_def_id() {
+                        let parent = self.tcx().parent(def_id);
+
+                        if let DefKind::Variant = self.tcx().def_kind(parent) {
+                            // We had the DefId for the variant's constructor, but we want to point at the enum.
+                            span.push_span_context(
+                                self.def_span(self.tcx().parent(parent)).shrink_to_lo(),
+                            );
+                        } else if CRATE_DEF_ID.to_def_id() != parent {
+                            span.push_span_context(self.def_span(parent).shrink_to_lo());
+                        }
+                        self.tcx().def_descr(parent)
+                    } else {
+                        // unreachable, but provide fallback just in case
+                        debug_assert!(false, "we have a DefId in {decl:?} with no parent?");
+                        "module"
+                    };
+                    err.subdiagnostic(ConsiderMarkingAsPub { span, ident, descr });
                 }
             }
             err.emit();

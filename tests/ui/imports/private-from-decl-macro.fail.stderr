@@ -10,13 +10,12 @@ LL |     crate::m::mac_glob!();
    |     --------------------- in this macro invocation
    |
 note: consider marking `S` as `pub` in the imported module
-  --> $DIR/private-from-decl-macro.rs:18:13
+  --> $DIR/private-from-decl-macro.rs:10:5
    |
-LL |         use crate::m::*;
-   |             ^^^^^^^^^^^
+LL | mod m {
 ...
-LL |     crate::m::mac_glob!();
-   |     --------------------- in this macro invocation
+LL |     const S: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^
 
 error[E0423]: cannot find value `S` in this scope
   --> $DIR/private-from-decl-macro.rs:28:17

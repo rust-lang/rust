@@ -4,11 +4,12 @@ error[E0364]: `JuniorGrade` is private, and cannot be re-exported
 LL |     pub use self::Lieutenant::{JuniorGrade, Full};
    |                                ^^^^^^^^^^^
    |
-note: consider marking `JuniorGrade` as `pub` in the imported module
-  --> $DIR/issue-46209-private-enum-variant-reexport.rs:6:32
+note: consider marking `JuniorGrade` as `pub` in the imported variant
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:25:9
    |
-LL |     pub use self::Lieutenant::{JuniorGrade, Full};
-   |                                ^^^^^^^^^^^
+LL |     enum Lieutenant {
+LL |         JuniorGrade,
+   |         ^^^^^^^^^^^
 
 error[E0364]: `Full` is private, and cannot be re-exported
   --> $DIR/issue-46209-private-enum-variant-reexport.rs:6:45
@@ -16,11 +17,13 @@ error[E0364]: `Full` is private, and cannot be re-exported
 LL |     pub use self::Lieutenant::{JuniorGrade, Full};
    |                                             ^^^^
    |
-note: consider marking `Full` as `pub` in the imported module
-  --> $DIR/issue-46209-private-enum-variant-reexport.rs:6:45
+note: consider marking `Full` as `pub` in the imported variant
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:26:9
    |
-LL |     pub use self::Lieutenant::{JuniorGrade, Full};
-   |                                             ^^^^
+LL |     enum Lieutenant {
+LL |         JuniorGrade,
+LL |         Full,
+   |         ^^^^
 
 error: glob import doesn't reexport anything with visibility `pub` because no imported item is public enough
   --> $DIR/issue-46209-private-enum-variant-reexport.rs:3:13

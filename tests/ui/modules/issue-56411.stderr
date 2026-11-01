@@ -27,7 +27,14 @@ LL |             pub use self::$name;
 LL | import!(("issue-56411-aux.rs", issue_56411_aux));
    | ------------------------------------------------ in this macro invocation
    |
-   = note: consider declaring type or module `issue_56411_aux` with `pub`
+note: consider declaring module `issue_56411_aux` with `pub`
+  --> $DIR/issue-56411.rs:5:13
+   |
+LL |             mod $name;
+   |             ^^^^^^^^^^
+...
+LL | import!(("issue-56411-aux.rs", issue_56411_aux));
+   | ------------------------------------------------ in this macro invocation
 
 error: aborting due to 2 previous errors
 
