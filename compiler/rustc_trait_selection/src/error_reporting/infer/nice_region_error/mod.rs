@@ -95,9 +95,9 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
             return None;
         };
 
-if matches!(sub_origin, SubregionOrigin::Subtype(_)) {
-        return None;
-    }
+        if matches!(sub_origin, SubregionOrigin::Subtype(_)) {
+            return None;
+        }
 
         let span = var_origin.span();
 
