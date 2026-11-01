@@ -1,5 +1,6 @@
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::LocalDefId;
+use rustc_infer::infer::SubregionOrigin;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
 
@@ -69,6 +70,7 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
         self.try_report_named_anon_conflict()
             .or_else(|| self.try_report_placeholder_conflict())
             .or_else(|| self.try_report_placeholder_relation())
+            .or_else(|| self.try_report_placeholder_leak())
     }
 
     pub fn try_report(&self) -> Option<ErrorGuaranteed> {
@@ -80,6 +82,40 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
             .or_else(|| self.try_report_mismatched_static_lifetime())
     }
 
+    pub fn try_report_placeholder_leak(&self) -> Option<Diag<'tcx>> {
+        // Match UpperBoundUniverseConflict directly from self.error, bypassing self.regions()
+        let Some(RegionResolutionError::UpperBoundUniverseConflict(
+            _vid,
+            var_origin,
+            universe,
+            sub_origin,
+            sub_reg,
+        )) = self.error.as_ref()
+        else {
+            return None;
+        };
+
+        if matches!(sub_origin, SubregionOrigin::Subtype(_)) {
+            return None;
+        }
+
+        let span = var_origin.span();
+
+        let mut diag = self
+            .tcx()
+            .dcx()
+            .struct_span_err(span, "higher-ranked lifetime error: lifetime outlives placeholder");
+
+        diag.span_label(
+            span,
+            format!("`{sub_reg}` would have to outlive placeholder in universe `{universe:?}`"),
+        );
+
+        diag.note("outer lifetimes cannot depend on placeholders declared in a higher universe");
+
+        Some(diag)
+    }
+
     pub(super) fn regions(&self) -> Option<(Span, ty::Region<'tcx>, ty::Region<'tcx>)> {
         match (&self.error, self.regions) {
             (Some(RegionResolutionError::ConcreteFailure(origin, sub, sup)), None) => {
@@ -88,6 +124,8 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
             (Some(RegionResolutionError::SubSupConflict(_, _, origin, sub, _, sup, _)), None) => {
                 Some((origin.span(), *sub, *sup))
             }
+            // UpperBoundUniverseConflict is handled directly in try_report_placeholder_leak(),
+            // so it has been completely removed from here to prevent type mismatches.
             (None, Some((span, sub, sup))) => Some((span, sub, sup)),
             _ => None,
         }
