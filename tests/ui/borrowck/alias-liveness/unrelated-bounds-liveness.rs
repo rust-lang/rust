@@ -224,12 +224,9 @@ mod three_bounds {
     }
 }
 
-// If we have a 'static bound for an associated type, in theory that should be
-// enough that the associated type can be used within an `impl Trait` without
-// the self type needing to be live. In practice, this precision is tricky,
-// because to do this correctly, we would essentially need to ask "is there any
-// projection from a given type parameter that can end up in the hidden type of
-// an opaque type?", which is *hard*.
+// If we have a 'static bound for an associated type, that should is enough that
+// the associated type can be used within an `impl Trait` without the self type
+// needing to be live.
 mod static_associated_type {
     use super::{Debug, show};
 
@@ -256,7 +253,6 @@ mod static_associated_type {
         {
             let v: Vec<u8> = vec![42];
             escaped = make(&v[0]);
-            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);

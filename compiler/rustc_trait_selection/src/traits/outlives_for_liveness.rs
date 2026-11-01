@@ -1,17 +1,211 @@
+use std::debug_assert_matches;
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::region_constraints::GenericKind;
+use rustc_infer::infer::{SubregionOrigin, TyCtxtInferExt, TypeOutlivesConstraint};
 use rustc_middle::ty::{
     self, CallerBoundsIterator, Flags, ImplTraitInTraitData, Ty, TyCtxt, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_span::bug;
+use rustc_span::{DUMMY_SP, bug};
 use smallvec::SmallVec;
 
 use crate::infer::outlives::test_type_match;
 use crate::infer::region_constraints::VerifyIfEq;
-use crate::regions::region_known_to_outlive;
+use crate::regions::{
+    OutlivesEnvironmentBuildExt, region_known_to_outlive, test_region_obligations,
+};
+
+/// Given a known `param_env` and a set of well formed types, can we prove that
+/// `ty` outlives `region`.
+///
+/// Copied from `ty_known_to_outlive` without normalization for `ty` because we
+/// don't want trait solving in liveness queries.
+fn param_known_to_outlive<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    id: LocalDefId,
+    param_env: ty::ParamEnv<'tcx>,
+    wf_tys: &FxIndexSet<Ty<'tcx>>,
+    ty: Ty<'tcx>,
+    region: ty::Region<'tcx>,
+) -> bool {
+    debug_assert_matches!(ty.kind(), ty::Param(_));
+
+    test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
+        infcx.register_type_outlives_constraint_inner(TypeOutlivesConstraint {
+            sub_region: region,
+            sup_type: ty,
+            origin: SubregionOrigin::RelateParamBound(DUMMY_SP, ty, None),
+        });
+        Ok(())
+    })
+}
+
+fn has_param_and_non_static_region<'tcx>(
+    param: Ty<'tcx>,
+    value: impl TypeVisitable<TyCtxt<'tcx>>,
+) -> bool {
+    struct ContainsParamAndRegionVisitor<'tcx> {
+        param: Ty<'tcx>,
+        contains_param: bool,
+        has_region: bool,
+    }
+
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsParamAndRegionVisitor<'tcx> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) {
+            if t == self.param {
+                self.contains_param = true;
+            }
+            t.super_visit_with(self);
+        }
+
+        fn visit_region(&mut self, r: ty::Region<'tcx>) {
+            if !matches!(r.kind(), ty::ReStatic) {
+                self.has_region = true;
+            }
+        }
+    }
+
+    let mut visitor =
+        ContainsParamAndRegionVisitor { param, contains_param: false, has_region: false };
+    value.visit_with(&mut visitor);
+    visitor.contains_param && visitor.has_region
+}
+
+/// Okay, so the logic here is pretty "oh, I guess that works". The core idea is
+/// that we need to know if a param can end up in an alias (and therefore must be
+/// live). *Conservatively*, we could say that any *captured* param must be live,
+/// but that is imprecise and results in some breakage (see the
+/// `rpit-consumed-iterator-liveness` test, for example).
+///
+/// The simple case (handled elsewhere) is if the param outlives the *outlives
+/// bounds* of the alias itself. In that case, then it is obviously *okay* for
+/// it to end up in the hidden type and therefore must be live.
+///
+/// However, there is a more complicated case: aliases (and namely, projections).
+/// If we have a projection like `<T as Trait>::Assoc`, we can have a where
+/// clause like `T::Assoc: 'a`; then, that projection can end up in the hidden
+/// type of an alias that outlives `'a`. And because of that, `T` must be live,
+/// since loans within `T` can end up in the projection (and we don't have a
+/// way to say that `T::Assoc` is live directly):
+///
+/// ```ignore (illustrative)
+/// trait Trait { type Assoc; }
+/// impl<'q> Trait for &'q u8 { type Assoc = &'q u8; }
+/// ```
+///
+/// Naively, we could try to try to enumerate through all projections reachable
+/// through `T` and ask if we know if that projection outlives the alias bounds,
+/// and then mark `T` as live. That seems...difficult to get right. Instead, we
+/// do something a little bit more clever, but also less precise.
+///
+/// The first thing to recognize: a bound like `T::Assoc: 'static` *does not*
+/// mean that `T` must be live (even though that `T` lives longer than than some
+/// defined alias outlives bound), because `T::Assoc` cannot carry any loans). So,
+/// we can ignore `'static`.
+///
+/// Second, while we *could* further restrict lifetimes we care about to only
+/// those that *actually* be captured in the alias (like we do for captured
+/// regions), we can be a bit imprecise and just consider if the param outlives
+/// *any* non-static region.
+///
+/// Next, we can divide the cases we need to consider into three cases:
+/// 1) we can deduce that a projection from `T` outlives some lifetime `'a` from
+///    the ParamEnv directly (either because we have something like `T::Assoc:'a`
+///    in the bounds exactly, or this is implied from something like a
+///    `Struct<T::Assoc>: 'a` bound).
+/// 2) we can deduce that a projection from `T` outlives some lifetime `'a` from
+///    implied bounds from WF tys (you can think of this as a special case of the
+///    above)
+/// 3) some *unknown* projection from `T` outlives some lifetime `'a` -
+///    importantly, we know that projection must come from some some trait bound
+///    that *is* in the ParamEnv (even if indirectly). For example:
+///
+/// ```ignore (illustrative)
+/// trait Trait<'a> {
+///   type Assoc1: 'a; // Lifetime is present in the trait signature
+///   type Assoc2: 'static; // Contains no loans
+///   type Assoc3<'a>: 'a; // Present in alias signature
+/// }
+///
+/// trait Outer<'a> { type Assoc: Inner<'a>; }
+/// trait Inner<'a> { type Assoc: 'a; }
+/// ```
+///
+/// So, if we have a bound like `T: Trait<'a>`, then that can be used to deduce
+/// that `<T as Trait<'a>>::Assoc1: 'a`. We could do that by enumerating the
+/// type aliases on `Trait`, but we would need to be recursive (for the
+/// `Inner/Outer` example above) and that's not fun. You can also possibly
+/// imagine that `T` doesn't directly have to implement a trait that contains the
+/// alias outliving `'a` (though, I haven't tried really to come up with an
+/// example here).
+///
+/// So instead, we have a simple heuristic: if we have a trait bound that
+/// mentions both the param we're asking about and *any* non-static lifetime,
+/// then conservatively treat the param as live. We're actually a bit more
+/// conservative, see below comments for details.
+fn param_projection_can_outlive_non_static_region<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    env: &OutlivesEnvironment<'tcx>,
+    ty: Ty<'tcx>,
+) -> bool {
+    // This is for case (3)
+    param_env.caller_bounds().all_clauses(tcx).iter().any(|clause| {
+        match clause.kind().skip_binder() {
+        // The param outliving the pertinent alias bounds is already handled
+        // elsewhere more precisely and anything else is not relevant.
+        ty::ClauseKind::TypeOutlives(ty::OutlivesClause(subject, _)) if subject == ty => false,
+        // No param here
+        ty::ClauseKind::RegionOutlives(_) => false,
+        // Covers things like `Struct<T::Assoc>: 'a` (though, this would get
+        // covered by the `OutlivesEnvironment` below)
+        ty::ClauseKind::TypeOutlives(_)
+        | ty::ClauseKind::Trait(_)
+        // Something like `<T as Trait>::Assoc<'a> = &'a u8`
+        | ty::ClauseKind::Projection(_) => has_param_and_non_static_region(ty, clause),
+
+        // In practice, I don't think these really come up, but we can be conservative.
+        ty::ClauseKind::ConstArgHasType(..)
+        | ty::ClauseKind::WellFormed(..)
+        | ty::ClauseKind::ConstEvaluatable(..)
+        | ty::ClauseKind::HostEffect(..)
+        | ty::ClauseKind::UnstableFeature(..) => true,
+    }
+    }) || env.region_bound_pairs().iter().any(|bound| {
+        // This covers cases (1) and (2) generally; while the above
+        // `TypeOutlives` arm covers ParamEnv clauses, it does not cover WF tys
+        if let GenericKind::Alias(alias) = bound.0 {
+            has_param_and_non_static_region(ty, (alias, bound.1))
+        } else {
+            false
+        }
+    })
+}
+
+/// This is more a technical limitation than a logical one. In the implied
+/// bounds computation we replace universal regions with region vars. So if we
+/// equate regions during implied bounds computation (see the
+/// `equality-implied-liveness` test), then we can lose known constraints. We
+/// shouldn't need this if/when we change hir implied bounds computation to not
+/// replace universal regions with region vars (as mir implied bounds does).
+fn extend_wf_tys<'tcx>(wf_tys: &mut FxIndexSet<Ty<'tcx>>) {
+    for ty in wf_tys.clone() {
+        let mut walker = ty.walk();
+        while let Some(arg) = walker.next() {
+            let Some(subty) = arg.as_type() else { continue };
+            if subty.has_escaping_bound_vars() {
+                walker.skip_current_subtree();
+                continue;
+            }
+            wf_tys.insert(subty);
+        }
+    }
+}
 
 #[tracing::instrument(level = "debug", skip(tcx), ret)]
 pub(crate) fn captured_args_for_opaque<'tcx>(
@@ -236,7 +430,7 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
     // For implied bounds, we need the set of WF types from the parents.
     //  - For functions, this is all the input and output types.
     //  - For type alias, there are no implied bounds, so this is empty.
-    let (parent_def_id, wf_tys) = match tcx.opaque_ty_origin(def_id) {
+    let (parent_def_id, mut wf_tys) = match tcx.opaque_ty_origin(def_id) {
         rustc_hir::OpaqueTyOrigin::FnReturn { parent, .. }
         | rustc_hir::OpaqueTyOrigin::AsyncFn { parent, .. }
         | rustc_hir::OpaqueTyOrigin::TyAlias { parent, .. } => {
@@ -246,6 +440,7 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
             (parent, wf_tys)
         }
     };
+    extend_wf_tys(&mut wf_tys);
     let parent_param_env = tcx.param_env(parent_def_id);
     tracing::debug!(?parent_param_env);
 
@@ -280,6 +475,12 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
         parent_outlives_regions.push((parent_region, opaque_arg_idx));
     }
     tracing::debug!(?parent_outlives_regions);
+    if parent_outlives_regions.is_empty() {
+        return result;
+    }
+    let infcx = tcx.infer_ctxt().build(ty::TypingMode::non_body_analysis());
+    let outlives_env =
+        OutlivesEnvironment::new(&infcx, def_id, parent_param_env, wf_tys.iter().copied());
 
     // For every captured region, we want to consider outlived args from two sources:
     // 1) *Types*: These come from *parent* generics (and are not duplicated to the opaque)
@@ -296,12 +497,21 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
                 ty::GenericArgKind::Const(_) => continue,
                 // Lifetimes should be captured
                 ty::GenericArgKind::Lifetime(_) => continue,
-                // It would be *awesome* if we could be precise in the whether we treat type args as live or not. Turns
-                // out, this is very tricky because we can have an information (even non-locally!) about projections
-                // through a type arg that would mean that it can end up in an alias and enumerating that information is
-                // hard. See the numerous is examples in the `unrelated-bounds-liveness.rs` test for how this can go
-                // wrong and why we are pessimistic here.
-                ty::GenericArgKind::Type(_) => true,
+                ty::GenericArgKind::Type(t) => {
+                    param_known_to_outlive(
+                        tcx,
+                        def_id,
+                        parent_param_env,
+                        &wf_tys,
+                        t,
+                        *parent_outlived_region,
+                    ) || param_projection_can_outlive_non_static_region(
+                        tcx,
+                        parent_param_env,
+                        &outlives_env,
+                        t,
+                    )
+                }
             };
             if !type_outlives {
                 continue;
@@ -349,7 +559,15 @@ pub(crate) fn args_known_to_outlive_non_opaque_params<'tcx>(
     let self_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
     let param_env = tcx.param_env(def_id);
     tracing::debug!(?param_env);
-    let wf_tys = tcx.assumed_wf_types(def_id).iter().map(|(ty, _)| *ty).collect::<FxIndexSet<_>>();
+    if !self_identity_args.iter().any(|arg| arg.as_region().is_some()) {
+        return Vec::new();
+    }
+    let infcx = tcx.infer_ctxt().build(ty::TypingMode::non_body_analysis());
+    let mut wf_tys: FxIndexSet<_> =
+        tcx.assumed_wf_types(def_id).iter().map(|(ty, _)| *ty).collect();
+    extend_wf_tys(&mut wf_tys);
+    let outlives_env = OutlivesEnvironment::new(&infcx, def_id, param_env, wf_tys.iter().copied());
+
     let mut result = Vec::new();
     for (outlived_arg_idx, outlived_arg) in self_identity_args.iter().enumerate() {
         let Some(outlived_region) = outlived_arg.as_region() else {
@@ -361,12 +579,15 @@ pub(crate) fn args_known_to_outlive_non_opaque_params<'tcx>(
                 ty::GenericArgKind::Lifetime(r) => {
                     region_known_to_outlive(tcx, def_id, param_env, &wf_tys, r, outlived_region)
                 }
-                // It would be *awesome* if we could be precise in the whether we treat type args as live or not. Turns
-                // out, this is very tricky because we can have an information (even non-locally!) about projections
-                // through a type arg that would mean that it can end up in an alias and enumerating that information is
-                // hard. See the numerous is examples in the `unrelated-bounds-liveness.rs` test for how this can go
-                // wrong and why we are pessimistic here.
-                ty::GenericArgKind::Type(_) => true,
+                ty::GenericArgKind::Type(t) => {
+                    param_known_to_outlive(tcx, def_id, param_env, &wf_tys, t, outlived_region)
+                        || param_projection_can_outlive_non_static_region(
+                            tcx,
+                            param_env,
+                            &outlives_env,
+                            t,
+                        )
+                }
                 ty::GenericArgKind::Const(_) => false,
             };
             if outlives {

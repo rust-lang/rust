@@ -97,21 +97,7 @@ LL |         show(escaped, &reused);
    |              ------- borrow later used here
 
 error[E0597]: `v` does not live long enough
-  --> $DIR/unrelated-bounds-liveness.rs:258:29
-   |
-LL |             let v: Vec<u8> = vec![42];
-   |                 - binding `v` declared here
-LL |             escaped = make(&v[0]);
-   |                             ^ borrowed value does not live long enough
-LL |
-LL |         }
-   |         - `v` dropped here while still borrowed
-LL |         let reused: Vec<u8> = vec![7];
-LL |         show(escaped, &reused);
-   |              ------- borrow later used here
-
-error[E0597]: `v` does not live long enough
-  --> $DIR/unrelated-bounds-liveness.rs:284:40
+  --> $DIR/unrelated-bounds-liveness.rs:280:40
    |
 LL |             let v: Vec<u8> = vec![42];
    |                 - binding `v` declared here
@@ -125,7 +111,7 @@ LL |         show(escaped, &reused);
    |              ------- borrow later used here
 
 error[E0597]: `v` does not live long enough
-  --> $DIR/unrelated-bounds-liveness.rs:312:29
+  --> $DIR/unrelated-bounds-liveness.rs:308:29
    |
 LL |             let v: Vec<u8> = vec![42];
    |                 - binding `v` declared here
@@ -138,6 +124,6 @@ LL |         let reused: Vec<u8> = vec![7];
 LL |         show(escaped, &reused);
    |              ------- borrow later used here
 
-error: aborting due to 10 previous errors
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0597`.
