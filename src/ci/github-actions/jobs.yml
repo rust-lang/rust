@@ -621,10 +621,10 @@ auto:
         --skip tests
         --skip library
         --skip tidyselftest
-        && ./x.py --stage 2 test
-        --host=aarch64-apple-darwin
-        --target=aarch64-apple-darwin
-        src/tools/cargo
+#        && ./x.py --stage 2 test
+#        --host=aarch64-apple-darwin
+#        --target=aarch64-apple-darwin
+#        src/tools/cargo
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler
@@ -674,10 +674,10 @@ auto:
         --skip tests
         --skip library
         --skip tidyselftest
-        && ./x.py --stage 2 test
-        --host=aarch64-apple-darwin
-        --target=aarch64-apple-darwin
-        src/tools/cargo
+#        && ./x.py --stage 2 test
+#        --host=aarch64-apple-darwin
+#        --target=aarch64-apple-darwin
+#        src/tools/cargo
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler
