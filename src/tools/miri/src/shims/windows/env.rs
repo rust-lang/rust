@@ -219,7 +219,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let token = ecx.read_target_isize(token)?;
         let buf = ecx.read_pointer(buf)?;
-        let size = ecx.deref_pointer_as(size, ecx.machine.layouts.u32)?;
+        let size = ecx.deref_pointer(size)?;
 
         if token != -4 {
             throw_unsup_format!(

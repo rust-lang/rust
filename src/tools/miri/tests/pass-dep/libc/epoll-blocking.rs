@@ -1,7 +1,7 @@
 //@only-target: linux android illumos
 //@revisions: edge_triggered level_triggered
 // We need to control yielding.
-//@compile-flags: -Zmiri-deterministic-concurrency
+//@compile-flags: -Zmiri-fixed-schedule
 //@run-native
 
 use std::convert::TryInto;
@@ -18,7 +18,15 @@ use libc_utils::*;
 /// it's zero which means we perform level-triggered epolls.
 const EPOLLET_OR_ZERO: libc::c_int = if cfg!(edge_triggered) { EPOLLET } else { 0 };
 
-// This is a set of testcases for blocking epoll.
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(Duration::from_millis(10));
+    }
+}
 
 fn main() {
     test_epoll_block_without_notification();
@@ -89,7 +97,7 @@ fn test_epoll_block_then_unblock() {
     check_epoll_wait(epfd, &[Ev { events: EPOLLOUT, data: fds[0] }], -1);
 
     let thread1 = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(10));
+        yield_now();
         // Since we slept, we should only get here after the other thread blocks.
         write_all(fds[1], b"abcde").unwrap();
     });
@@ -168,7 +176,7 @@ fn test_epoll_race() {
                 eventfd::write_val(fd, 1).unwrap();
             });
             // Let the thread go first.
-            thread::sleep(Duration::from_millis(10));
+            yield_now();
 
             if variant == 1 {
                 // Register eventfd with the epoll instance.
@@ -202,7 +210,7 @@ fn wakeup_on_new_interest() {
         check_epoll_wait(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fds[1] }], -1);
     });
     // Ensure the thread is blocked.
-    thread::sleep(Duration::from_millis(10));
+    yield_now();
 
     // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLRDHUP (and EPOLLET if we're in the
     // `edge_triggered` revision).
@@ -247,7 +255,7 @@ fn multiple_events_wake_multiple_threads() {
         Ev { events: e.events.cast_signed(), data: e.u64.try_into().unwrap() }
     });
     // Yield so both threads are waiting now.
-    thread::sleep(Duration::from_millis(10));
+    yield_now();
 
     // Trigger the eventfd. This triggers two events at once!
     eventfd::write_val(fd1, 0).unwrap();
@@ -275,8 +283,8 @@ fn waiting_threads_unblocked_after_epoll_close() {
     epoll_ctl_add(epfd, fds[0], EPOLLIN | EPOLLET_OR_ZERO).unwrap();
 
     let t1 = thread::spawn(move || {
-        // Sleep 10ms to make sure the other thread is blocked.
-        thread::sleep(Duration::from_millis(10));
+        // Make sure the other thread is blocked.
+        yield_now();
 
         // Close epoll file descriptor.
         unsafe { errno_check(libc::close(epfd)) };
@@ -327,14 +335,14 @@ fn waiting_threads_unblocked_after_socketpair_close() {
             }
 
             // Let the threads go and do their setup.
-            thread::sleep(Duration::from_millis(10));
+            yield_now();
 
             // Once they did their setup, close fds[0] (will not really be closed since there is a
             // thread blocked on it).
             unsafe { errno_check(libc::close(fds[0])) };
 
             // This should *not* yet wake up anyone. So we wait a bit and check the flag.
-            thread::sleep(Duration::from_millis(10));
+            yield_now();
             assert_eq!(flag.load(Ordering::Relaxed), false);
 
             // ... and then write to fds[1] to make it readable.
@@ -349,10 +357,8 @@ fn waiting_threads_unblocked_after_socketpair_close() {
                 // updating the readiness. We still want to update readiness immediately in Miri as
                 // otherwise we'd have to give up on a nice strong invariant and disable a sanity check.
                 // So we give the native kernel a bit of time to update the readiness.
-                if !cfg!(miri) {
-                    // Give the kernel some time to process.
-                    thread::sleep(Duration::from_millis(10));
-                }
+                yield_now();
+
                 check_epoll_wait_noblock(epfd, &[Ev { events: EPOLLIN | EPOLLHUP, data: fds[1] }]);
             }
         });
@@ -377,7 +383,7 @@ fn epoll_blocking_watching_fd_that_is_being_closed() {
         });
 
         // Let the thread go and do its setup.
-        thread::sleep(Duration::from_millis(10));
+        yield_now();
 
         // Now that the thread is blocked, close the eventfd.
         unsafe { errno_check(libc::close(fd)) };
