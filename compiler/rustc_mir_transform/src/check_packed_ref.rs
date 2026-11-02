@@ -11,7 +11,9 @@ impl<'tcx> crate::MirLint<'tcx> for CheckPackedRef {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let typing_env = body.typing_env(tcx);
         let mut checker = PackedRefChecker { body, tcx, typing_env };
-        checker.visit_body(body);
+        for (bb, data) in body.basic_blocks.iter_enumerated() {
+            checker.visit_basic_block_data(bb, data);
+        }
     }
 }
 
