@@ -591,27 +591,30 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     &mut self,
                     generic_args: &'v hir::GenericArgs<'v>,
                 ) -> Self::Result {
-                    for (i, arg) in generic_args.constraints.iter().enumerate() {
-                        if arg.span == self.0 {
-                            if generic_args.args.len() == 0 && generic_args.constraints.len() == 1 {
-                                // We have `Trait<Param = Ty>`, we'll leave behind `Trait`.
-                                return ControlFlow::Break(generic_args.span_ext().unwrap());
-                            } else if let Some(next) = generic_args.constraints.get(i + 1) {
-                                // We have `Trait<Param = Ty, Other = Ty>`, we'll leave behind
-                                // `Trait<Other = Ty>`.
-                                return ControlFlow::Break(arg.span.until(next.span));
-                            } else if i > 0
-                                && let Some(prev) = generic_args.constraints.get(i - 1)
-                            {
-                                // We have `Trait<Other = Ty, Param = Ty>`, we'll leave behind
-                                // `Trait<Other = Ty>`.
-                                return ControlFlow::Break(prev.span.shrink_to_hi().to(arg.span));
-                            } else if let Some(prev) = generic_args.args.iter().last()
-                                && prev.span().hi() < arg.span.lo()
-                            {
-                                // We have `Trait<Other, Param = Ty>`, we'll leave `Trait<Other>`.
-                                return ControlFlow::Break(prev.span().shrink_to_hi().to(arg.span));
-                            }
+                    let mut spans: Vec<Span> = generic_args
+                        .args
+                        .iter()
+                        .map(|arg| arg.span())
+                        .chain(generic_args.constraints.iter().map(|c| c.span))
+                        .collect();
+                    spans.sort_by_key(|s| (s.lo(), s.hi()));
+                    if spans.len() == 1 {
+                        // We have `Trait<Param = Ty>`, we'll leave behind `Trait`.
+                        return ControlFlow::Break(generic_args.span_ext().unwrap());
+                    }
+                    if let Some((i, span)) =
+                        spans.iter().enumerate().find(|(_, span)| **span == self.0)
+                    {
+                        if let Some(next) = spans.get(i + 1) {
+                            // We have `Trait<Param = Ty, Other = Ty>`, we'll leave behind
+                            // `Trait<Other = Ty>`.
+                            return ControlFlow::Break(span.until(*next));
+                        } else if i > 0
+                            && let Some(prev) = spans.get(i - 1)
+                        {
+                            // We have `Trait<Other = Ty, Param = Ty>` or `Trait<Other, Param = Ty>`
+                            // we'll leave  `Trait<Other = Ty>` or `Trait<Other>`.
+                            return ControlFlow::Break(prev.shrink_to_hi().to(*span));
                         }
                     }
                     hir::intravisit::walk_generic_args(self, generic_args)
