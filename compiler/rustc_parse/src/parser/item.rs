@@ -1927,6 +1927,9 @@ impl<'a> Parser<'a> {
             (thin_vec![], Trailing::No)
         } else {
             self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |p| {
+                if p.recover_inner_attributes()? && p.check(exp![CloseBrace]) {
+                    return Ok(None);
+                }
                 p.parse_enum_variant(ident.span)
             })
             .map_err(|mut err| {
@@ -2165,6 +2168,9 @@ impl<'a> Parser<'a> {
         let mut recovered = Recovered::No;
         if self.eat(exp!(OpenBrace)) {
             while self.token != token::CloseBrace {
+                if self.recover_inner_attributes()? && self.check(exp![CloseBrace]) {
+                    break;
+                }
                 match self.parse_field_def(adt_ty, ident_span) {
                     Ok(field) => {
                         fields.push(field);

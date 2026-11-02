@@ -1,6 +1,8 @@
 error[E0532]: cannot find tuple struct or tuple variant `FooB` in this scope
   --> $DIR/issue-106862.rs:16:9
    |
+LL | enum Foo {
+LL |     FooA { opt_x: Option<i32>, y: i32 },
 LL |     FooB { x: i32, y: i32 }
    |     ----------------------- `FooB` defined here
 ...
@@ -17,6 +19,8 @@ LL +         FooB { x: a, y: b } => println!("{} {}", a, b),
 error[E0532]: cannot find tuple struct or tuple variant `FooB` in this scope
   --> $DIR/issue-106862.rs:22:9
    |
+LL | enum Foo {
+LL |     FooA { opt_x: Option<i32>, y: i32 },
 LL |     FooB { x: i32, y: i32 }
    |     ----------------------- `FooB` defined here
 ...
@@ -33,6 +37,7 @@ LL +         FooB { x, y } => println!("{} {}", x, y),
 error[E0532]: cannot find tuple struct or tuple variant `FooA` in this scope
   --> $DIR/issue-106862.rs:28:9
    |
+LL | enum Foo {
 LL |     FooA { opt_x: Option<i32>, y: i32 },
    |     ----------------------------------- `FooA` defined here
 ...
@@ -49,6 +54,8 @@ LL +         FooA { opt_x: Some(x), y } => println!("{} {}", x, y),
 error[E0532]: cannot find tuple struct or tuple variant `FooB` in this scope
   --> $DIR/issue-106862.rs:34:9
    |
+LL | enum Foo {
+LL |     FooA { opt_x: Option<i32>, y: i32 },
 LL |     FooB { x: i32, y: i32 }
    |     ----------------------- `FooB` defined here
 ...
@@ -65,6 +72,8 @@ LL +         FooB { x: a, y: _ } => println!("{}", a),
 error[E0532]: cannot find tuple struct or tuple variant `FooB` in this scope
   --> $DIR/issue-106862.rs:40:9
    |
+LL | enum Foo {
+LL |     FooA { opt_x: Option<i32>, y: i32 },
 LL |     FooB { x: i32, y: i32 }
    |     ----------------------- `FooB` defined here
 ...

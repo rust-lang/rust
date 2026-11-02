@@ -12,7 +12,7 @@ note: similarly named tuple struct `XEmpty6` defined here
    |
 LL | pub struct XEmpty6();
    | ^^^^^^^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         Empty2() => ()
 LL +         Empty2 => ()
@@ -39,7 +39,7 @@ note: similarly named tuple struct `XEmpty6` defined here
    |
 LL | pub struct XEmpty6();
    | ^^^^^^^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         XEmpty2() => ()
 LL +         XEmpty2 => ()
@@ -64,7 +64,7 @@ note: similarly named tuple struct `XEmpty6` defined here
    |
 LL | pub struct XEmpty6();
    | ^^^^^^^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         Empty2(..) => ()
 LL +         Empty2 => ()
@@ -91,7 +91,7 @@ note: similarly named tuple struct `XEmpty6` defined here
    |
 LL | pub struct XEmpty6();
    | ^^^^^^^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         XEmpty2(..) => ()
 LL +         XEmpty2 => ()
@@ -105,11 +105,18 @@ LL +         XEmpty6(..) => ()
 error[E0532]: expected tuple struct or tuple variant, found unit variant `E::Empty4`
   --> $DIR/empty-struct-unit-pat.rs:37:9
    |
+LL | enum E {
 LL |     Empty4
    |     ------ `E::Empty4` defined here
 ...
 LL |         E::Empty4() => ()
-   |         ^^^^^^^^^^^ help: use this syntax instead: `E::Empty4`
+   |         ^^^^^^^^^^^
+   |
+help: use the unit struct syntax instead
+   |
+LL -         E::Empty4() => ()
+LL +         E::Empty4 => ()
+   |
 
 error[E0532]: expected tuple struct or tuple variant, found unit variant `XE::XEmpty4`
   --> $DIR/empty-struct-unit-pat.rs:41:9
@@ -117,8 +124,10 @@ error[E0532]: expected tuple struct or tuple variant, found unit variant `XE::XE
 LL |         XE::XEmpty4() => (),
    |         ^^^^^^^^^^^^^
    |
-  ::: $DIR/auxiliary/empty-struct.rs:7:5
+  ::: $DIR/auxiliary/empty-struct.rs:5
    |
+LL | pub enum XE {
+LL |     XEmpty3 {},
 LL |     XEmpty4,
    |     ------- `XE::XEmpty4` defined here
    |
@@ -127,7 +136,7 @@ note: similarly named tuple variant `XEmpty5` defined here
    |
 LL |     XEmpty5(),
    |     ^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         XE::XEmpty4() => (),
 LL +         XE::XEmpty4 => (),
@@ -141,11 +150,18 @@ LL +         XE::XEmpty5() => (),
 error[E0532]: expected tuple struct or tuple variant, found unit variant `E::Empty4`
   --> $DIR/empty-struct-unit-pat.rs:46:9
    |
+LL | enum E {
 LL |     Empty4
    |     ------ `E::Empty4` defined here
 ...
 LL |         E::Empty4(..) => ()
-   |         ^^^^^^^^^^^^^ help: use this syntax instead: `E::Empty4`
+   |         ^^^^^^^^^^^^^
+   |
+help: use the unit struct syntax instead
+   |
+LL -         E::Empty4(..) => ()
+LL +         E::Empty4 => ()
+   |
 
 error[E0532]: expected tuple struct or tuple variant, found unit variant `XE::XEmpty4`
   --> $DIR/empty-struct-unit-pat.rs:50:9
@@ -153,8 +169,10 @@ error[E0532]: expected tuple struct or tuple variant, found unit variant `XE::XE
 LL |         XE::XEmpty4(..) => (),
    |         ^^^^^^^^^^^^^^^
    |
-  ::: $DIR/auxiliary/empty-struct.rs:7:5
+  ::: $DIR/auxiliary/empty-struct.rs:5
    |
+LL | pub enum XE {
+LL |     XEmpty3 {},
 LL |     XEmpty4,
    |     ------- `XE::XEmpty4` defined here
    |
@@ -163,7 +181,7 @@ note: similarly named tuple variant `XEmpty5` defined here
    |
 LL |     XEmpty5(),
    |     ^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         XE::XEmpty4(..) => (),
 LL +         XE::XEmpty4 => (),
