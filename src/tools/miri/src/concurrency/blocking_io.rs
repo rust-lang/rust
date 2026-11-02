@@ -292,19 +292,19 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         deadline: Option<Deadline>,
         callback: DynUnblockCallback<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // We always have to do this since the thread will de-register itself.
-        this.machine.blocking_io.add_blocked_thread(source_fd.id(), this.active_thread(), interest);
+        ecx.machine.blocking_io.add_blocked_thread(source_fd.id(), ecx.active_thread(), interest);
 
         if interest.is_fulfilled_by(&source_fd.get_readiness_mut()) {
             // The requested readiness is currently already fulfilled for the provided source.
             // Instead of actually blocking the thread, we just run the callback function.
-            callback.call(this, UnblockKind::Ready)
+            callback.call(ecx, UnblockKind::Ready)
         } else {
             // The I/O readiness is currently not fulfilled. We block the thread
             // until the readiness is fulfilled and execute the callback then.
-            this.block_thread(BlockReason::IO, deadline, callback);
+            ecx.block_thread(BlockReason::IO, deadline, callback);
             interp_ok(())
         }
     }
@@ -320,9 +320,9 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Unblocks all threads which are blocked on I/O and whose I/O interests
     /// are currently fulfilled.
     fn poll_and_unblock(&mut self, timeout: Option<Duration>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        match BlockingIoManager::poll(this, timeout)? {
+        match BlockingIoManager::poll(ecx, timeout)? {
             Ok(_) => interp_ok(()),
             // We can ignore errors originating from interrupts; that's just a spurious wakeup.
             Err(e) if e.kind() == io::ErrorKind::Interrupted => interp_ok(()),
@@ -334,8 +334,8 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
 
     /// Returns whether there exists any thread that is blocked on host I/O.
     fn any_thread_blocked_on_host(&self) -> bool {
-        let this = self.eval_context_ref();
-        this.machine.blocking_io.sources.values().any(|source| {
+        let ecx = self.eval_context_ref();
+        ecx.machine.blocking_io.sources.values().any(|source| {
             // There's two ways something could be blocked on this: directly,
             // or indirectly via a readiness watcher.
             source.blocked_threads.len() > 0

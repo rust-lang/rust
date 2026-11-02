@@ -1,6 +1,7 @@
 //@compile-flags: -Zmiri-disable-isolation
 //@ignore-target: windows # shim not supported
 //@ignore-host: windows # needs unix PermissionExt
+//@run-native
 
 use std::fs::{self, File};
 

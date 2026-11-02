@@ -15,6 +15,6 @@ fn main() {
         libc::pthread_condattr_destroy(attr.as_mut_ptr());
 
         libc::pthread_condattr_destroy(attr.as_mut_ptr());
-        //~^ ERROR: /Undefined Behavior: reading memory .*, but memory is uninitialized/
+        //~^ ERROR: has not been initialized
     }
 }

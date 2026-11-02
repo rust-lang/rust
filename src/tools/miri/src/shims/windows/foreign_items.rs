@@ -205,7 +205,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetUserProfileDirectoryW" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [token, buf, size] = &ecx.check_shim_sig(
-                    shim_sig!(extern "system" fn(winapi::HANDLE, *_, *_) -> winapi::BOOL),
+                    shim_sig!(extern "system" fn(winapi::HANDLE, *_, *u32) -> winapi::BOOL),
                     (link_name, abi, args),
                 )?;
                 let result = ecx.GetUserProfileDirectoryW(token, buf, size)?;
@@ -249,7 +249,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             winapi::HANDLE,
                             *_,
                             *_,
-                            *_,
+                            *winapi::IO_STATUS_BLOCK,
                             *_,
                             u32,
                             *_,
@@ -289,7 +289,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             winapi::HANDLE,
                             *_,
                             *_,
-                            *_,
+                            *winapi::IO_STATUS_BLOCK,
                             *_,
                             u32,
                             *_,
@@ -380,7 +380,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "GetFileInformationByHandle" => {
                 let [handle, info] = &ecx.check_shim_sig(
-                    shim_sig!(extern "system" fn(winapi::HANDLE, *_) -> winapi::BOOL),
+                    shim_sig!(
+                        extern "system" fn(
+                            winapi::HANDLE,
+                            *winapi::BY_HANDLE_FILE_INFORMATION,
+                        ) -> winapi::BOOL
+                    ),
                     (link_name, abi, args),
                 )?;
                 let res = ecx.GetFileInformationByHandle(handle, info)?;
@@ -420,7 +425,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "SetFilePointerEx" => {
                 let [file, distance_to_move, new_file_pointer, move_method] = &ecx.check_shim_sig(
                     // i64 is actually a LARGE_INTEGER union of {u32, i32} and {i64}
-                    shim_sig!(extern "system" fn(winapi::HANDLE, i64, *_, u32) -> winapi::BOOL),
+                    shim_sig!(extern "system" fn(winapi::HANDLE, i64, *i64, u32) -> winapi::BOOL),
                     (link_name, abi, args),
                 )?;
                 let res =
@@ -562,11 +567,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: This does not have a direct test (#3179).
                 // Also called from `page_size` crate.
                 let [system_info] = &ecx.check_shim_sig(
-                    shim_sig!(extern "system" fn(*_) -> ()),
+                    shim_sig!(extern "system" fn(*winapi::SYSTEM_INFO) -> ()),
                     (link_name, abi, args),
                 )?;
-                let system_info =
-                    ecx.deref_pointer_as(system_info, ecx.windows_ty_layout("SYSTEM_INFO"))?;
+                let system_info = ecx.deref_pointer(system_info)?;
                 // Initialize with `0`.
                 ecx.write_bytes_ptr(
                     system_info.ptr(),
@@ -719,7 +723,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetSystemTimeAsFileTime" | "GetSystemTimePreciseAsFileTime" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [filetime] = &ecx.check_shim_sig(
-                    shim_sig!(extern "system" fn(*_) -> ()),
+                    shim_sig!(extern "system" fn(*winapi::FILETIME) -> ()),
                     (link_name, abi, args),
                 )?;
                 ecx.GetSystemTimeAsFileTime(link_name.as_str(), filetime)?;
@@ -727,7 +731,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "QueryPerformanceCounter" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [performance_count] = &ecx.check_shim_sig(
-                    shim_sig!(extern "system" fn(*_) -> winapi::BOOL),
+                    shim_sig!(extern "system" fn(*i64) -> winapi::BOOL),
                     (link_name, abi, args),
                 )?;
                 let result = ecx.QueryPerformanceCounter(performance_count)?;
@@ -736,7 +740,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "QueryPerformanceFrequency" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [frequency] = &ecx.check_shim_sig(
-                    shim_sig!(extern "system" fn(*_) -> winapi::BOOL),
+                    shim_sig!(extern "system" fn(*i64) -> winapi::BOOL),
                     (link_name, abi, args),
                 )?;
                 let result = ecx.QueryPerformanceFrequency(frequency)?;
@@ -770,14 +774,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Synchronization primitives
             "InitOnceBeginInitialize" => {
                 let [ptr, flags, pending, context] = &ecx.check_shim_sig(
-                    shim_sig!(extern "system" fn(*_, u32, *_, *_) -> winapi::BOOL),
+                    shim_sig!(
+                        extern "system" fn(*winapi::INIT_ONCE, u32, *winapi::BOOL, *_) -> winapi::BOOL
+                    ),
                     (link_name, abi, args),
                 )?;
                 ecx.InitOnceBeginInitialize(ptr, flags, pending, context, dest)?;
             }
             "InitOnceComplete" => {
                 let [ptr, flags, context] = &ecx.check_shim_sig(
-                    shim_sig!(extern "system" fn(*_, u32, *_) -> winapi::BOOL),
+                    shim_sig!(extern "system" fn(*winapi::INIT_ONCE, u32, *_) -> winapi::BOOL),
                     (link_name, abi, args),
                 )?;
                 let result = ecx.InitOnceComplete(ptr, flags, context)?;
@@ -841,7 +847,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             *_,
                             *_,
                             u32,
-                            *_,
+                            *u32,
                         ) -> winapi::HANDLE
                     ),
                     (link_name, abi, args),
@@ -898,12 +904,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "GetThreadDescription" => {
                 let [handle, name_ptr] = &ecx.check_shim_sig(
-                    shim_sig!(extern "system" fn(winapi::HANDLE, *_) -> i32),
+                    shim_sig!(extern "system" fn(winapi::HANDLE, **u16) -> i32),
                     (link_name, abi, args),
                 )?;
 
                 let handle = ecx.read_handle(handle, "GetThreadDescription")?;
-                let name_ptr = ecx.deref_pointer_as(name_ptr, ecx.machine.layouts.unit_ptr_mut)?; // the pointer where we should store the ptr to the name
+                let name_ptr = ecx.deref_pointer(name_ptr)?; // the pointer where we should store the ptr to the name
 
                 let thread = match handle {
                     Handle::Thread(thread) => thread,
@@ -1052,7 +1058,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                 winapi::HANDLE,
                                 winapi::HANDLE,
                                 winapi::HANDLE,
-                                *_,
+                                *winapi::HANDLE,
                                 u32,
                                 winapi::BOOL,
                                 u32,

@@ -218,15 +218,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 }
 
-fn round_up_to_page_size(this: &MiriInterpCx<'_>, length: u64) -> Option<u64> {
+fn round_up_to_page_size(ecx: &MiriInterpCx<'_>, length: u64) -> Option<u64> {
     length
-        .checked_next_multiple_of(this.machine.page_size)
-        .filter(|length| *length <= this.target_isize_max().try_into().unwrap())
+        .checked_next_multiple_of(ecx.machine.page_size)
+        .filter(|length| *length <= ecx.target_isize_max().try_into().unwrap())
 }
 
-fn verify_prot<'tcx>(this: &mut MiriInterpCx<'tcx>, prot: i32) -> InterpResult<'tcx> {
-    let prot_read = this.eval_libc_i32("PROT_READ");
-    let prot_write = this.eval_libc_i32("PROT_WRITE");
+fn verify_prot<'tcx>(ecx: &mut MiriInterpCx<'tcx>, prot: i32) -> InterpResult<'tcx> {
+    let prot_read = ecx.eval_libc_i32("PROT_READ");
+    let prot_write = ecx.eval_libc_i32("PROT_WRITE");
 
     // Miri doesn't support protections other than PROT_READ|PROT_WRITE.
     if prot != prot_read | prot_write {

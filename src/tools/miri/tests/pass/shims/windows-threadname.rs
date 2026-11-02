@@ -1,4 +1,5 @@
 //@only-target: windows # this directly tests windows-only functions
+//@run-native
 
 use core::ffi::c_void;
 use std::ffi::OsStr;

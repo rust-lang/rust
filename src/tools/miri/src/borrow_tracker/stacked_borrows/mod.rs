@@ -599,28 +599,28 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
         new_tag: BorTag,
         retag_info: RetagInfo, // diagnostics info about this retag
     ) -> InterpResult<'tcx, Option<Provenance>> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        this.check_ptr_access(place.ptr(), size, CheckInAllocMsg::Dereferenceable("pointer"))?;
+        ecx.check_ptr_access(place.ptr(), size, CheckInAllocMsg::Dereferenceable("pointer"))?;
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
-        let log_creation = |this: &MiriInterpCx<'tcx>,
+        let log_creation = |ecx: &MiriInterpCx<'tcx>,
                             loc: Option<(AllocId, Size, ProvenanceExtra)>| // alloc_id, base_offset, orig_tag
          -> InterpResult<'tcx> {
-            let global = this.machine.borrow_tracker.as_ref().unwrap().borrow();
+            let global = ecx.machine.borrow_tracker.as_ref().unwrap().borrow();
             let ty = place.layout.ty;
             if global.tracked_pointer_tags.contains(&new_tag) {
                 let mut kind_str = String::new();
                 match new_perm {
                     NewPermission::Uniform { perm, .. } =>
                         write!(kind_str, "{perm:?} permission").unwrap(),
-                    NewPermission::FreezeSensitive { freeze_perm, .. } if ty.is_freeze(*this.tcx, this.typing_env()) =>
+                    NewPermission::FreezeSensitive { freeze_perm, .. } if ty.is_freeze(*ecx.tcx, ecx.typing_env()) =>
                         write!(kind_str, "{freeze_perm:?} permission").unwrap(),
                     NewPermission::FreezeSensitive { freeze_perm, nonfreeze_perm, .. }  =>
                         write!(kind_str, "{freeze_perm:?}/{nonfreeze_perm:?} permission for frozen/non-frozen parts").unwrap(),
                 }
                 write!(kind_str, " (pointee type {ty})").unwrap();
-                this.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
+                ecx.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
                     new_tag.inner(),
                     Some(kind_str),
                     loc.map(|(alloc_id, base_offset, orig_tag)| (alloc_id, alloc_range(base_offset, size), orig_tag)),
@@ -632,20 +632,20 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                 return interp_ok(())
             };
 
-            let alloc_kind = this.get_alloc_info(alloc_id).kind;
+            let alloc_kind = ecx.get_alloc_info(alloc_id).kind;
             match alloc_kind {
                 AllocKind::LiveData => {
                     // This should have alloc_extra data, but `get_alloc_extra` can still fail
                     // if converting this alloc_id from a global to a local one
                     // uncovers a non-supported `extern static`.
-                    let extra = this.get_alloc_extra(alloc_id)?;
+                    let extra = ecx.get_alloc_extra(alloc_id)?;
                     let mut stacked_borrows = extra
                         .borrow_tracker_sb()
                         .borrow_mut();
                     // Note that we create a *second* `DiagnosticCxBuilder` below for the actual retag.
                     // FIXME: can this be done cleaner?
                     let dcx = DiagnosticCxBuilder::retag(
-                        &this.machine,
+                        &ecx.machine,
                         retag_info,
                         new_tag,
                         orig_tag,
@@ -678,9 +678,9 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
             // attempt to use it for a non-zero-sized access.
             // Dangling slices are a common case here; it's valid to get their length but with raw
             // pointer tagging for example all calls to get_unchecked on them are invalid.
-            if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr(), 0)
+            if let Ok((alloc_id, base_offset, orig_tag)) = ecx.ptr_try_get_alloc_id(place.ptr(), 0)
             {
-                log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
+                log_creation(ecx, Some((alloc_id, base_offset, orig_tag)))?;
                 // Still give it the new provenance, it got retagged after all. If this was a
                 // wildcard pointer, this will fix the AllocId and make future accesses with this
                 // reference to other allocations UB, but that's fine: due to subobject provenance,
@@ -688,7 +688,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                 return interp_ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }));
             } else {
                 // This pointer doesn't come with an AllocId. :shrug:
-                log_creation(this, None)?;
+                log_creation(ecx, None)?;
                 // Provenance unchanged. Ideally we'd make this pointer UB to use like above,
                 // but there's no easy way to do that.
                 return interp_ok(place.ptr().provenance);
@@ -697,8 +697,8 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
 
         // The pointer *must* have a valid AllocId to continue, so we want to resolve this to
         // a concrete ID even for wildcard pointers.
-        let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr(), 0)?;
-        log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
+        let (alloc_id, base_offset, orig_tag) = ecx.ptr_get_alloc_id(place.ptr(), 0)?;
+        log_creation(ecx, Some((alloc_id, base_offset, orig_tag)))?;
 
         trace!(
             "reborrow: reference {:?} derived from {:?} (pointee {}) with permissions {new_perm:?}: {:?}, size {}",
@@ -711,14 +711,14 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
 
         if let Some(protect) = new_perm.protector() {
             // See comment in `Stack::item_invalidated` for why we store the tag twice.
-            this.frame_mut()
+            ecx.frame_mut()
                 .extra
                 .borrow_tracker
                 .as_mut()
                 .unwrap()
                 .protected_tags
                 .push((alloc_id, new_tag));
-            this.machine
+            ecx.machine
                 .borrow_tracker
                 .as_mut()
                 .unwrap()
@@ -734,7 +734,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                 // Here we can avoid `borrow()` calls because we have mutable references.
                 // Note that this asserts that the allocation is mutable -- but since we are creating a
                 // mutable pointer, that seems reasonable.
-                let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc_id)?;
+                let (alloc_extra, machine) = ecx.get_alloc_extra_mut(alloc_id)?;
                 let stacked_borrows = alloc_extra.borrow_tracker_sb_mut().get_mut();
                 let item = Item::new(new_tag, perm, protector.is_some());
                 let range = alloc_range(base_offset, size);
@@ -776,9 +776,9 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                 // We need a frozen-sensitive reborrow.
                 // We have to use shared references to alloc/memory_extra here since
                 // `visit_freeze_sensitive` needs to access the global state.
-                let alloc_extra = this.get_alloc_extra(alloc_id)?;
+                let alloc_extra = ecx.get_alloc_extra(alloc_id)?;
                 let mut stacked_borrows = alloc_extra.borrow_tracker_sb().borrow_mut();
-                this.visit_freeze_sensitive(place, size, |mut range, frozen| {
+                ecx.visit_freeze_sensitive(place, size, |mut range, frozen| {
                     // Adjust range.
                     range.start += base_offset;
                     // We are only ever `SharedReadOnly` inside the frozen bits.
@@ -788,9 +788,9 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                         (nonfreeze_perm, nonfreeze_access, None)
                     };
                     let item = Item::new(new_tag, perm, protector.is_some());
-                    let global = this.machine.borrow_tracker.as_ref().unwrap().borrow();
+                    let global = ecx.machine.borrow_tracker.as_ref().unwrap().borrow();
                     let dcx = DiagnosticCxBuilder::retag(
-                        &this.machine,
+                        &ecx.machine,
                         retag_info,
                         new_tag,
                         orig_tag,
@@ -809,7 +809,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                                 range,
                                 NaReadType::Retag,
                                 Some(place.layout.ty),
-                                &this.machine,
+                                &ecx.machine,
                             )?;
                         }
                     }
