@@ -75,6 +75,10 @@ fn main() {
         test_flock();
         test_symlink();
         test_hard_link();
+        // Uses different shims on apple that we do not support.
+        if cfg!(not(all(miri, target_vendor = "apple"))) {
+            test_copy();
+        }
 
         test_readv_writev();
         #[cfg(unix)]
@@ -850,4 +854,20 @@ fn test_directory_handle() {
 
     fs::create_dir(dirname.join("subdir")).unwrap();
     let _subdir = dir.open_dir("subdir").unwrap();
+}
+
+fn test_copy() {
+    // This efficiently allocates a lot of zeros, even in Miri.
+    let mut bytes = vec![0u8; 10_000];
+    // Make it not all-zero so we notice if some data goes missing.
+    for i in 0..200u8 {
+        bytes[(i as usize) * 47] = i;
+    }
+
+    let src_path = utils::prepare_with_content("miri_test_fs_copy_src.txt", &bytes);
+    let dst_path = utils::prepare("miri_test_fs_copy_dst.txt");
+    assert_eq!(fs::copy(&src_path, &dst_path).unwrap(), bytes.len() as u64);
+    assert_eq!(fs::read(&dst_path).unwrap(), bytes);
+    fs::remove_file(&src_path).unwrap();
+    fs::remove_file(&dst_path).unwrap();
 }

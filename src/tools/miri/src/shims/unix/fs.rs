@@ -497,8 +497,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 _ => {
                     let _unused = options;
 
-                    // Only support default mode for non-UNIX (i.e. Windows) host
-                    if mode != 0o666 {
+                    // Only support default mode for non-UNIX (i.e. Windows) host.
+                    // Ignore the "regular file" bit which is a NOP.
+                    let s_ifreg = ecx.eval_libc("S_IFREG");
+                    let s_ifreg = u32::try_from(s_ifreg.to_bits(s_ifreg.size())?).unwrap();
+                    if mode & !s_ifreg != 0o666 {
                         throw_unsup_format!(
                             "{open_name}: non-default mode 0o{:o} is not supported on non-Unix hosts",
                             mode
