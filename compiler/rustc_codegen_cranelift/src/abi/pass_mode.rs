@@ -330,7 +330,7 @@ pub(super) fn cvalue_for_param<'tcx>(
         PassMode::Indirect { attrs, address_space: _, mode: _ } => {
             assert_eq!(block_params.len(), 1, "{:?}", block_params);
             if let Some(pointee_align) = attrs.pointee_align
-                && pointee_align < arg_abi.layout.align.abi
+                && pointee_align < arg_abi.layout.align
                 && arg_abi.layout.is_sized()
                 && arg_abi.layout.size != Size::ZERO
             {

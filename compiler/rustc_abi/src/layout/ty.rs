@@ -49,7 +49,7 @@ impl<'a> Layout<'a> {
     }
 
     pub fn align(self) -> Align {
-        self.0.0.align.abi
+        self.0.0.align
     }
 
     pub fn size(self) -> Size {

@@ -52,7 +52,7 @@ where
         return;
     }
     let dl = cx.data_layout();
-    let align = arg.layout.align.abi.max(dl.i32_align).min(dl.i64_align);
+    let align = arg.layout.align.max(dl.i32_align).min(dl.i64_align);
 
     if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();

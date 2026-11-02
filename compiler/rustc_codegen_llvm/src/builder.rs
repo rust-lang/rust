@@ -719,7 +719,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         unsafe {
             let alloca = llvm::LLVMBuildAlloca(bx.llbuilder(), scalable_vector_ty, UNNAMED);
-            llvm::LLVMSetAlignment(alloca, layout.align.abi.bytes() as c_uint);
+            llvm::LLVMSetAlignment(alloca, layout.align.bytes() as c_uint);
             alloca
         }
     }

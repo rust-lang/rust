@@ -114,7 +114,7 @@ where
     let mut prefix = ArrayVec::new();
 
     // Detect need for padding
-    let align = Ord::clamp(arg.layout.align.abi, dl.i64_align, dl.i128_align);
+    let align = Ord::clamp(arg.layout.align, dl.i64_align, dl.i128_align);
     let pad_i32 = u8::from(!offset.is_aligned(align));
 
     if !arg.layout.is_aggregate() {

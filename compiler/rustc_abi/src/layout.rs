@@ -10,9 +10,9 @@ use rustc_index::bit_set::BitMatrix;
 use tracing::{debug, trace};
 
 use crate::{
-    AbiAlign, Align, BackendLaneCount, BackendRepr, FieldsShape, HasDataLayout, IndexSlice,
-    IndexVec, Integer, LayoutData, Niche, NicheOptimizations, NumScalableVectors, Primitive,
-    ReprOptions, Scalar, Size, StructKind, TagEncoding, TargetDataLayout, VariantLayout, Variants,
+    Align, BackendLaneCount, BackendRepr, FieldsShape, HasDataLayout, IndexSlice, IndexVec,
+    Integer, LayoutData, Niche, NicheOptimizations, NumScalableVectors, Primitive, ReprOptions,
+    Scalar, Size, StructKind, TagEncoding, TargetDataLayout, VariantLayout, Variants,
     WrappingRange,
 };
 
@@ -197,7 +197,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             align: element.align,
             size,
             max_repr_align: None,
-            unadjusted_abi_align: element.align.abi,
+            unadjusted_abi_align: element.align,
             repr_c: element.repr_c,
             randomization_seed: element.randomization_seed.wrapping_add(Hash64::new(count)),
         })
@@ -426,7 +426,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 return Err(LayoutCalculatorError::UnexpectedUnsized(*field));
             }
 
-            align = align.max(field.align.abi);
+            align = align.max(field.align);
             max_repr_align = max_repr_align.max(field.max_repr_align);
             size = cmp::max(size, field.size);
 
@@ -448,14 +448,14 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                         // have the same alignment
                         if !matches!(common_abi, BackendRepr::Memory { .. }) {
                             assert_eq!(
-                                common_align, field.align.abi,
+                                common_align, field.align,
                                 "non-Aggregate field with matching ABI but differing alignment"
                             );
                         }
                     }
                 } else {
                     // First non-ZST field: record its ABI and alignment
-                    common_non_zst_repr_and_align = Ok(Some((field_abi, field.align.abi)));
+                    common_non_zst_repr_and_align = Ok(Some((field_abi, field.align)));
                 }
             }
         }
@@ -517,7 +517,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             backend_repr,
             largest_niche: None,
             uninhabited: false,
-            align: AbiAlign::new(align),
+            align,
             size: size.align_to(align),
             max_repr_align,
             unadjusted_abi_align,
@@ -622,9 +622,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 .map(|v| {
                     let st = self.layout_of_univariant(v, repr, StructKind::AlwaysSized).ok()?;
 
-                    variants_info.push(VariantLayoutInfo { align_abi: st.align.abi });
+                    variants_info.push(VariantLayoutInfo { align_abi: st.align });
 
-                    align = align.max(st.align.abi);
+                    align = align.max(st.align);
                     max_repr_align = max_repr_align.max(st.max_repr_align);
                     unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
                     combined_seed = combined_seed.wrapping_add(st.randomization_seed);
@@ -750,7 +750,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 largest_niche,
                 uninhabited,
                 size,
-                align: AbiAlign::new(align),
+                align,
                 max_repr_align,
                 unadjusted_abi_align,
                 repr_c: repr.c(),
@@ -814,7 +814,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         if repr.c() {
             for fields in variants {
                 for field in fields {
-                    prefix_align = prefix_align.max(field.align.abi);
+                    prefix_align = prefix_align.max(field.align);
                 }
             }
         }
@@ -833,12 +833,12 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 for field_idx in st.fields.index_by_increasing_offset() {
                     let field = &field_layouts[FieldIdx::new(field_idx)];
                     if !field.is_1zst() {
-                        start_align = start_align.min(field.align.abi);
+                        start_align = start_align.min(field.align);
                         break;
                     }
                 }
                 size = cmp::max(size, st.size);
-                align = align.max(st.align.abi);
+                align = align.max(st.align);
                 max_repr_align = max_repr_align.max(st.max_repr_align);
                 unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
                 combined_seed = combined_seed.wrapping_add(st.randomization_seed);
@@ -1016,7 +1016,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 };
                 if pair_offsets[FieldIdx::new(0)] == Size::ZERO
                     && pair_offsets[FieldIdx::new(1)] == *offset
-                    && align == pair.align.abi
+                    && align == pair.align
                     && size == pair.size
                 {
                     // We can use `ScalarPair` only when it matches our
@@ -1058,7 +1058,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             largest_niche,
             uninhabited,
             backend_repr: abi,
-            align: AbiAlign::new(align),
+            align,
             size,
             max_repr_align,
             unadjusted_abi_align,
@@ -1157,7 +1157,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     // `alignment_group_key`, one or the other branch will be taken, so this is okay.
                     if let Some(pack) = pack {
                         // Return the packed alignment in bytes.
-                        layout.align.abi.min(pack).bytes()
+                        layout.align.min(pack).bytes()
                     } else {
                         // Returns `log2(effective-align)`. The calculation assumes that size is an
                         // integer multiple of align, except for ZSTs.
@@ -1276,13 +1276,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             }
 
             // Invariant: offset < dl.obj_size_bound() <= 1<<61
-            let field_align = if let Some(pack) = pack {
-                field.align.min(AbiAlign::new(pack))
-            } else {
-                field.align
-            };
-            offset = offset.align_to(field_align.abi);
-            align = align.max(field_align.abi);
+            let field_align =
+                if let Some(pack) = pack { field.align.min(pack) } else { field.align };
+            offset = offset.align_to(field_align);
+            align = align.max(field_align);
             max_repr_align = max_repr_align.max(field.max_repr_align);
 
             debug!("univariant offset: {:?} field: {:#?}", offset, field);
@@ -1341,7 +1338,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     layout_of_single_non_zst_field = Some(field);
 
                     // Field fills the struct and it has a scalar or scalar pair ABI.
-                    if offsets[i].bytes() == 0 && align == field.align.abi && size == field.size {
+                    if offsets[i].bytes() == 0 && align == field.align && size == field.size {
                         match field.backend_repr {
                             // For plain scalars, or vectors of them, we can't unpack
                             // newtypes for `#[repr(C)]`, as that affects C ABIs.
@@ -1388,7 +1385,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                             };
                             if offsets[i] == pair_offsets[FieldIdx::new(0)]
                                 && offsets[j] == pair_offsets[FieldIdx::new(1)]
-                                && align == pair.align.abi
+                                && align == pair.align
                                 && size == pair.size
                             {
                                 // We can use `ScalarPair` only when it matches our
@@ -1428,7 +1425,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             backend_repr: abi,
             largest_niche,
             uninhabited,
-            align: AbiAlign::new(align),
+            align,
             size,
             max_repr_align,
             unadjusted_abi_align,
@@ -1528,9 +1525,9 @@ where
         largest_niche: elt.largest_niche,
         uninhabited: false,
         size,
-        align: AbiAlign::new(align),
+        align,
         max_repr_align: None,
-        unadjusted_abi_align: elt.align.abi,
+        unadjusted_abi_align: elt.align,
         repr_c: false,
         randomization_seed: elt.randomization_seed.wrapping_add(Hash64::new(count.as_u64())),
     })
