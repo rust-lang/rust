@@ -897,7 +897,7 @@ fn ttl() {
 
 #[test]
 #[cfg_attr(target_env = "sgx", ignore)]
-#[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+#[cfg(any(target_family = "unix", target_os = "windows"))]
 fn hop_limit() {
     let hlim = 100;
 
