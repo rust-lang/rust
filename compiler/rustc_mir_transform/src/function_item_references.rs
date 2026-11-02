@@ -39,6 +39,10 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             fn_span: _,
         } = &terminator.kind
         {
+            if args.is_empty() {
+                // This lint is applied to function arguments, we have nothing to check here.
+                return;
+            }
             let source_info = terminator.source_info;
             let func_ty = func.ty(self.body, self.tcx);
             if let ty::FnDef(def_id, args_ref) = *func_ty.kind() {
