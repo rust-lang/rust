@@ -226,6 +226,11 @@ impl<'a> Iterator for Components<'a> {
         if !self.is_done() {
             match self.state {
                 State::Absolute => {
+                    // In the event that we are normalizing away forward trailing bytes of the
+                    // root directory (e.g. "///"), we can be reassured that `Components::normalize_front`
+                    // sets the `state` field to `State::Done`. It's also a neat optimization because we
+                    // perform a byte comparison on the `state` field rather than check if front == self.path.len()
+                    // to see if we just parsed `Component::RootDir`.
                     let end_ind = self.normalize_front(0);
                     self.path = if self.is_done() {
                         &[]
@@ -233,10 +238,6 @@ impl<'a> Iterator for Components<'a> {
                         self.state = State::Relative;
                         &self.path[end_ind..]
                     };
-
-                    if !self.is_done() {
-                        self.state = State::Relative;
-                    }
 
                     return Some(Component::RootDir);
                 }
@@ -256,6 +257,11 @@ impl<'a> Iterator for Components<'a> {
 impl<'a> DoubleEndedIterator for Components<'a> {
     fn next_back(&mut self) -> Option<Component<'a>> {
         if !self.is_done() {
+            // In the event that we are normalizing away backward trailing bytes of the
+            // root directory (e.g. "///"), we can be reassured that `Components::normalize_back`
+            // sets the `state` field to `State::Done`. It's also a neat optimization because we
+            // perform a byte comparison on the `state` field rather than check if back == 0
+            // to see if we just parsed `Component::RootDir`.
             let back = self.normalize_back();
             if self.is_done() {
                 self.path = &[];
@@ -323,7 +329,7 @@ pub fn eq_components(mut left: Components<'_>, mut right: Components<'_>) -> boo
         }
         Some((index, (&a, &b))) => {
             if a != b {
-                if is_sep_byte(a) && a != b'.' && is_sep_byte(b) && b != b'.' {
+                if !is_sep_byte(a) && a != b'.' && !is_sep_byte(b) && b != b'.' {
                     return false;
                 }
             }
@@ -394,7 +400,7 @@ pub fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -
         match left.path.iter().zip(right.path).enumerate().find(|(_, (a, b))| a != b) {
             None => left.path.len().min(right.path.len()),
             Some((index, (&a, &b))) => {
-                if is_sep_byte(a) && a != b'.' && is_sep_byte(b) && b != b'.' {
+                if !is_sep_byte(a) && a != b'.' && !is_sep_byte(b) && b != b'.' {
                     return a.cmp(&b);
                 }
                 index
@@ -442,10 +448,10 @@ pub fn push(self_path: &mut PathBuf, other_path: &Path) {
     // absolute `path` replaces `self`
     if need_clear {
         self_path.inner.clear();
-    } else if other_path.has_root() {
-        self_path.inner.truncate(0);
+    }
     // `path` is a pure relative path
-    } else if need_sep {
+    else if need_sep {
+        self_path.inner.reserve(size_of_val(MAIN_SEPARATOR_STR));
         self_path.inner.push(MAIN_SEPARATOR_STR);
     }
 
