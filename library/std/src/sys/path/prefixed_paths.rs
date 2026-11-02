@@ -95,10 +95,10 @@ impl<'a> Components<'a> {
     pub fn as_path(&self) -> &'a Path {
         let mut comps = self.clone();
         if comps.front == State::Body {
-            comps.trim_left();
+            comps.normalize_front();
         }
         if comps.back == State::Body {
-            comps.trim_right();
+            comps.normalize_back();
         }
         unsafe { Path::from_u8_slice(comps.path) }
     }
@@ -176,7 +176,7 @@ impl<'a> Components<'a> {
     }
 
     // trim away repeated separators (i.e., empty components) on the left
-    fn trim_left(&mut self) {
+    fn normalize_front(&mut self) {
         while !self.path.is_empty() {
             let (size, comp) = self.parse_next_component();
             if comp.is_some() {
@@ -188,7 +188,7 @@ impl<'a> Components<'a> {
     }
 
     // trim away repeated separators (i.e., empty components) on the right
-    fn trim_right(&mut self) {
+    fn normalize_back(&mut self) {
         while self.path.len() > self.len_before_body() {
             let (size, comp) = self.parse_next_component_back();
             if comp.is_some() {
