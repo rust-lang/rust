@@ -392,35 +392,38 @@ trait UnusedDelimLint {
         is_kw: bool,
     ) {
         let sm = cx.sess().source_map();
-        // If there is a comment or a line break between a delimiter and the inner value,
-        // point at the delimiter alone, and never suggest removing the comment.
-        let shrink = |span: Span, open: bool, keep_newlines: bool| {
-            let Ok(snip) = sm.span_to_snippet(span) else { return span };
+        // If there is a comment between a delimiter and the inner value, only point at and
+        // remove the delimiter itself, so the comment is kept.
+        let shrink = |span: Span, open: bool| {
+            if span.is_empty() {
+                return span;
+            }
             let (delim, gap) = if open {
-                (snip.starts_with(['(', '{']), snip.get(1..))
+                let delim = span.with_hi(span.lo() + BytePos(1));
+                (delim, span.with_lo(delim.hi()))
             } else {
-                (snip.ends_with([')', '}']), snip.get(..snip.len().saturating_sub(1)))
+                let delim = span.with_lo(span.hi() - BytePos(1));
+                (delim, span.with_hi(delim.lo()))
             };
-            let Some(gap) = gap.filter(|_| delim) else { return span };
-            if gap.trim().is_empty() && (keep_newlines || !gap.contains('\n')) {
-                span
-            } else if open {
-                span.with_hi(span.lo() + BytePos(1))
+            if sm.span_to_snippet(delim).is_ok_and(|s| matches!(&*s, "(" | ")" | "{" | "}"))
+                && sm.span_to_snippet(gap).is_ok_and(|s| !s.trim().is_empty())
+            {
+                delim
             } else {
-                span.with_lo(span.hi() - BytePos(1))
+                span
             }
         };
+        let spans = spans.map(|(lo, hi)| (shrink(lo, true), shrink(hi, false)));
         let primary_span = if let Some((lo, hi)) = spans {
             if hi.is_empty() {
                 // do not point at delims that do not exist
                 return;
             }
-            MultiSpan::from(vec![shrink(lo, true, false), shrink(hi, false, false)])
+            MultiSpan::from(vec![lo, hi])
         } else {
             MultiSpan::from(value_span)
         };
         let suggestion = spans.map(|(lo, hi)| {
-            let (lo, hi) = (shrink(lo, true, true), shrink(hi, false, true));
             let lo_replace = if (keep_space.0 || is_kw)
                 && let Ok(snip) = sm.span_to_prev_source(lo)
                 && !snip.ends_with(' ')

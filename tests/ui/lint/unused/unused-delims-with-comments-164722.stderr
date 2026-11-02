@@ -1,11 +1,12 @@
 warning: unnecessary parentheses around `if` condition
   --> $DIR/unused-delims-with-comments-164722.rs:11:8
    |
-LL |     if (
-   |        ^
-LL |         true // yay!
-LL |     ) {}
-   |     ^
+LL |       if (
+   |  ________^
+LL | |         true // yay!
+   | |________^
+LL |       ) {}
+   |       ^
    |
 note: the lint level is defined here
   --> $DIR/unused-delims-with-comments-164722.rs:4:9
@@ -45,11 +46,14 @@ LL +     while false /* b */ {}
 warning: unnecessary parentheses around `if` condition
   --> $DIR/unused-delims-with-comments-164722.rs:22:8
    |
-LL |     if (
-   |        ^
-LL |         true
-LL |     ) {}
-   |     ^
+LL |        if (
+   |  _________^
+LL | |          true
+   | | ________^____^
+   | ||________|
+   |  |
+LL |  |     ) {}
+   |  |_____^
    |
 help: remove these parentheses
    |

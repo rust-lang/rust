@@ -30,11 +30,14 @@ LL +     let _ = (0..).find(|n| n % 2 == 0);
 error: unnecessary parentheses around closure body
   --> $DIR/closure-body-issue-136741.rs:26:28
    |
-LL |     let _ = (0..).find(|n| (
-   |                            ^
-LL |         n % 2 == 0
-LL |     ));
-   |     ^
+LL |        let _ = (0..).find(|n| (
+   |  _____________________________^
+LL | |          n % 2 == 0
+   | | ________^__________^
+   | ||________|
+   |  |
+LL |  |     ));
+   |  |_____^
    |
 help: remove these parentheses
    |
