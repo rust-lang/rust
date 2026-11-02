@@ -3,8 +3,8 @@ use clippy_utils::macros::{find_assert_args, root_macro_call_first_node};
 use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::walk_span_to_context;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;
+use clippy_utils::{is_in_const_context, sym};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, UnOp};
@@ -81,29 +81,22 @@ impl<'tcx> LateLintPass<'tcx> for AssertIsEmpty {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         // `assert!` and `debug_assert!` expand to `if`; skip other expressions before walking the
         // macro backtrace.
-        if !matches!(expr.kind, ExprKind::If(..)) {
-            return;
+        if matches!(expr.kind, ExprKind::If(..))
+            && !is_in_const_context(cx)
+            && let Some((macro_name, condition, assert_span)) = assert_call(cx, expr)
+            && let Some((assertion_kind, receiver)) = emptiness_assertion(condition)
+            && let Some((receiver_suffix, empty_value)) = assertion_suggestion(cx, receiver)
+        {
+            emit_assertion_suggestion(
+                cx,
+                macro_name,
+                assert_span,
+                condition,
+                assertion_kind,
+                receiver,
+                (receiver_suffix, &empty_value),
+            );
         }
-
-        let Some((macro_name, condition, assert_span)) = assert_call(cx, expr) else {
-            return;
-        };
-        let Some((assertion_kind, receiver)) = emptiness_assertion(condition) else {
-            return;
-        };
-        let Some((receiver_suffix, empty_value)) = assertion_suggestion(cx, receiver) else {
-            return;
-        };
-
-        emit_assertion_suggestion(
-            cx,
-            macro_name,
-            assert_span,
-            condition,
-            assertion_kind,
-            receiver,
-            (receiver_suffix, &empty_value),
-        );
     }
 }
 

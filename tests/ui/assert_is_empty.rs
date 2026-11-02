@@ -110,3 +110,31 @@ fn main() {
     let not_debug = vec![NotDebug];
     assert!(not_debug.is_empty());
 }
+
+// TODO: turn into an MSRV aware lint after const traits are stable and `PartialEq` is const stable
+mod issue17930 {
+    const NOT_EMPTY: &str = "string";
+    const EMPTY: &str = "";
+    const X: () = assert!(!NOT_EMPTY.is_empty());
+    static Y: () = assert!(EMPTY.is_empty());
+
+    const fn in_constant_fn() {
+        assert!(EMPTY.is_empty())
+    }
+
+    fn in_constant() {
+        const {
+            assert!(!NOT_EMPTY.is_empty());
+        }
+    }
+
+    struct ImplWithConstMethod;
+
+    impl ImplWithConstMethod {
+        const Z: () = assert!(!NOT_EMPTY.is_empty());
+
+        const fn const_method(&self) {
+            assert!(EMPTY.is_empty());
+        }
+    }
+}
