@@ -389,8 +389,7 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
     //
     // That reasoning doesn't hold for the body coroutine of an `async fn` or `gen fn`: it is never
     // inlined into the function constructing it, yet its body was checked as part of that function.
-    // It always inherits, which makes `check_result` reject `#[inline(always)]` there just like it
-    // does on the function itself.
+    // It always inherits, so it is compiled with the same features as the function itself.
     if tcx.is_closure_like(did.to_def_id())
         && (codegen_fn_attrs.inline != InlineAttr::Always
             || matches!(
