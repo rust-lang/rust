@@ -60,13 +60,15 @@ pub(crate) fn check_legal_trait_for_method_call(
         // Allow calling `Drop::pin_drop` in `Drop::drop`
         && !tcx.is_lang_item(tcx.parent(body_def_id), LangItem::Drop)
     {
-        let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
-            diagnostics::ExplicitDestructorCallSugg::Snippet {
-                lo: expr_span.shrink_to_lo().to(receiver.shrink_to_lo()),
-                hi: receiver.shrink_to_hi().to(expr_span.shrink_to_hi()),
-            }
-        } else {
-            diagnostics::ExplicitDestructorCallSugg::Empty(span)
+        let sugg = match receiver.filter(|s| !s.is_empty()) {
+            Some(receiver) => receiver
+                .find_ancestor_inside_same_ctxt(expr_span)
+                .filter(|receiver| !receiver.is_empty())
+                .map(|receiver| diagnostics::ExplicitDestructorCallSugg::Snippet {
+                    lo: expr_span.shrink_to_lo().to(receiver.shrink_to_lo()),
+                    hi: receiver.shrink_to_hi().to(expr_span.shrink_to_hi()),
+                }),
+            None => Some(diagnostics::ExplicitDestructorCallSugg::Empty(span)),
         };
         return Err(tcx.dcx().emit_err(diagnostics::ExplicitDestructorCall { span, sugg }));
     }
