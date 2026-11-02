@@ -7,7 +7,7 @@
 
 use std::mem::MaybeUninit;
 use std::ptr::{self, addr_of};
-use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::atomic::*;
 use std::time::{Duration, Instant};
 use std::{io, thread};
 
@@ -153,8 +153,11 @@ fn wait_absolute_timeout() {
 fn wait_wake() {
     static mut FUTEX: i32 = 0;
 
+    // Make sure we start this before the thread starts sleeping.
+    let start = Instant::now();
+
     let t = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(50));
         unsafe {
             assert_eq!(
                 libc::syscall(
@@ -167,8 +170,6 @@ fn wait_wake() {
             );
         }
     });
-
-    let start = Instant::now();
 
     unsafe {
         assert_eq!(
@@ -183,13 +184,14 @@ fn wait_wake() {
         );
     }
 
-    assert!((100..1000).contains(&start.elapsed().as_millis()));
+    assert!((50..1000).contains(&start.elapsed().as_millis()));
     t.join().unwrap();
 }
 
 fn wait_wake_bitset() {
     static mut FUTEX: i32 = 0;
 
+    // Make sure we start this before the thread starts sleeping.
     let start = Instant::now();
 
     let t = thread::spawn(move || {
@@ -249,16 +251,19 @@ fn wait_wake_bitset() {
 fn concurrent_wait_wake() {
     const FREE: i32 = 0;
     const HELD: i32 = 1;
+    const ROUNDS: usize = 64;
 
-    static FUTEX: AtomicI32 = AtomicI32::new(0);
+    // new futex each round to start from a clean state
+    static FUTEX: [AtomicI32; ROUNDS] = [const { AtomicI32::new(0) }; ROUNDS];
     static mut DATA: i32 = 0;
-    static WOKEN: AtomicI32 = AtomicI32::new(0);
+    static WOKEN: AtomicUsize = AtomicUsize::new(0);
 
     let rounds = 64;
     for r in 0..rounds {
         unsafe { DATA = 0 }; // Reset
+        let futex = &FUTEX[r];
         // Suppose the main thread is holding a lock implemented using futex...
-        FUTEX.store(HELD, Ordering::Relaxed);
+        futex.store(HELD, Ordering::Relaxed);
 
         let t = thread::spawn(move || {
             // If this syscall runs first, then we'll be woken up by
@@ -266,12 +271,12 @@ fn concurrent_wait_wake() {
             //
             // If this sycall runs after the main thread's store
             // and FUTEX_WAKE, the syscall must observe that
-            // the FUTEX is FREE != HELD and return without waiting
+            // the futex is FREE != HELD and return without waiting
             // or we'll deadlock.
             unsafe {
                 let ret = libc::syscall(
                     libc::SYS_futex,
-                    addr_of!(FUTEX).cast::<u32>(),
+                    addr_of!(*futex).cast::<u32>(),
                     libc::FUTEX_WAIT,
                     HELD,
                     ptr::null::<libc::timespec>(),
@@ -290,10 +295,10 @@ fn concurrent_wait_wake() {
             yield_now();
         }
 
-        FUTEX.store(FREE, Ordering::Relaxed);
+        futex.store(FREE, Ordering::Relaxed);
         unsafe {
             DATA = 1;
-            libc::syscall(libc::SYS_futex, addr_of!(FUTEX).cast::<u32>(), libc::FUTEX_WAKE, 1);
+            libc::syscall(libc::SYS_futex, addr_of!(*futex).cast::<u32>(), libc::FUTEX_WAKE, 1);
         }
 
         t.join().unwrap();

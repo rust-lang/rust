@@ -274,9 +274,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Seems like this cannot return an error, so we just wake nobody.
             return interp_ok(());
         };
-        let futex_ref = futex.futex.clone();
-
-        ecx.futex_wake(&futex_ref, u32::MAX, 1)?;
+        ecx.futex_wake(&futex.futex.clone(), u32::MAX, 1)?;
 
         interp_ok(())
     }
@@ -292,9 +290,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Seems like this cannot return an error, so we just wake nobody.
             return interp_ok(());
         };
-        let futex_ref = futex.futex.clone();
-
-        ecx.futex_wake(&futex_ref, u32::MAX, usize::MAX)?;
+        ecx.futex_wake(&futex.futex.clone(), u32::MAX, usize::MAX)?;
 
         interp_ok(())
     }

@@ -85,7 +85,7 @@ fn wake_dangling() {
             libc::_umtx_op(
                 ptr as *const AtomicU32 as *mut _,
                 libc::UMTX_OP_WAKE_PRIVATE,
-                0,
+                1,
                 ptr::null_mut::<libc::c_void>(),
                 ptr::null_mut::<libc::c_void>(),
             ),

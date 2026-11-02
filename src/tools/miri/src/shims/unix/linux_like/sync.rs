@@ -190,23 +190,6 @@ pub fn futex<'tcx>(
         // FUTEX_WAKE_BITSET: (int *addr, int op = FUTEX_WAKE, int val, const timespect *_unused, int *_unused, unsigned int bitset)
         // Same as FUTEX_WAKE, but allows you to specify a bitset to select which threads to wake up.
         op if op == futex_wake || op == futex_wake_bitset => {
-            let futex = match ecx.try_get_meta::<LinuxFutex>(obj.ptr()) {
-                Ok(f) => f,
-                Err(GetMetaError::NoMem) => {
-                    // No AllocId, or no live allocation at that AllocId.
-                    // Return an error code. (That seems nicer than silently doing something non-intuitive.)
-                    // This means that if an address gets reused by a new allocation,
-                    // we'll use an independent futex queue for this... that seems acceptable.
-                    return ecx.set_errno_and_return_neg1(LibcError("EFAULT"), dest);
-                }
-                Err(GetMetaError::NoObj) => {
-                    // Nobody waiting here, nothing to do.
-                    ecx.write_int(0, dest)?;
-                    return interp_ok(());
-                }
-            };
-            let futex_ref = futex.futex.clone();
-
             let bitset = if op == futex_wake_bitset {
                 let ([timeout, uaddr2, bitset], _) = ecx.check_varargs(
                     shim_varargs![*libc::timespec, *u32, u32],
@@ -228,11 +211,29 @@ pub fn futex<'tcx>(
             if bitset == 0 {
                 return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
             }
-            // Together with the SeqCst fence in futex_wait, this makes sure that futex_wait
-            // will see the latest value on addr which could be changed by our caller
-            // before doing the syscall.
+
+            // Together with the SeqCst fence in futex_wait, this makes sure that futex_wait will
+            // see the latest value on addr which could be changed by our caller before doing the
+            // syscall. We must do this even if we don't find a futex below in case we are the ones
+            // to go first, and FUTEX_WAIT has not yet had a chance to create a `FutexRef`.
             ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
-            let woken = ecx.futex_wake(&futex_ref, bitset, val.try_into().unwrap())?;
+
+            let futex = match ecx.try_get_meta::<LinuxFutex>(obj.ptr()) {
+                Ok(f) => f,
+                Err(GetMetaError::NoMem) => {
+                    // No AllocId, or no live allocation at that AllocId.
+                    // Return an error code. (That seems nicer than silently doing something non-intuitive.)
+                    // This means that if an address gets reused by a new allocation,
+                    // we'll use an independent futex queue for this... that seems acceptable.
+                    return ecx.set_errno_and_return_neg1(LibcError("EFAULT"), dest);
+                }
+                Err(GetMetaError::NoObj) => {
+                    // Nobody waiting here, nothing to do.
+                    ecx.write_int(0, dest)?;
+                    return interp_ok(());
+                }
+            };
+            let woken = ecx.futex_wake(&futex.futex.clone(), bitset, val.try_into().unwrap())?;
             ecx.write_scalar(Scalar::from_target_isize(woken.try_into().unwrap(), ecx), dest)?;
         }
         op => throw_unsup_format!("Miri does not support `futex` syscall with op={}", op),
