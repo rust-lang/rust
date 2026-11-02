@@ -7,7 +7,8 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{
-    self, GenericClauses, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
+    self, GenericClauses, ImplTraitInTraitData, IncludeSizedImplicitBounds, Ty, TyCtxt,
+    TypeVisitable, TypeVisitor, Upcast,
 };
 use rustc_span::{DUMMY_SP, Ident, Span, bug, span_bug};
 use tracing::{debug, instrument, trace};
@@ -16,7 +17,6 @@ use super::item_bounds::explicit_item_bounds_with_filter;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
 use crate::delegation::inherit_clauses_for_delegation_item;
-use crate::hir_ty_lowering::bounds::IncludeSizedImplicitBound;
 use crate::hir_ty_lowering::{
     HirTyLowerer, ImpliedBoundsContext, OverlappingAsssocItemConstraints, PredicateFilter,
     RegionInferReason,
@@ -202,7 +202,7 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
             self_bounds,
             ImpliedBoundsContext::TraitDef(def_id),
             span,
-            IncludeSizedImplicitBound::Yes,
+            IncludeSizedImplicitBounds::Yes,
         );
         clauses.extend(bounds);
     }
@@ -235,7 +235,7 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
                     &[],
                     ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                     param.span,
-                    IncludeSizedImplicitBound::Yes,
+                    IncludeSizedImplicitBounds::Yes,
                 );
                 trace!(?bounds);
                 clauses.extend(bounds);
@@ -685,7 +685,7 @@ pub(super) fn implied_clauses_with_filter<'tcx>(
                 superbounds,
                 ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
-                IncludeSizedImplicitBound::Yes,
+                IncludeSizedImplicitBounds::Yes,
             );
         }
         //`ConstIfConst` is only interested in `[const]` bounds.
@@ -981,7 +981,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                             &[],
                             ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                             param.span,
-                            IncludeSizedImplicitBound::Yes,
+                            IncludeSizedImplicitBounds::Yes,
                         );
                     }
                     hir::GenericParamKind::Lifetime { .. }

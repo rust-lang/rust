@@ -12,8 +12,8 @@ use rustc_span::{DUMMY_SP, Span, Symbol, bug};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::CanonicalInputData;
 use rustc_type_ir::{
-    BoundVar, CollectAndApply, DebruijnIndex, Interner, RegionVid, TypeFoldable, Unnormalized,
-    VisitorResult, WithCachedTypeInfo, search_graph, try_visit,
+    BoundVar, CollectAndApply, DebruijnIndex, IncludeSizedImplicitBounds, Interner, RegionVid,
+    TypeFoldable, Unnormalized, VisitorResult, WithCachedTypeInfo, search_graph, try_visit,
 };
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
@@ -525,6 +525,14 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn is_default_trait(self, def_id: DefId) -> bool {
         self.is_default_trait(def_id)
+    }
+
+    fn is_implicit_trait(
+        self,
+        def_id: Self::TraitId,
+        including_sized: IncludeSizedImplicitBounds,
+    ) -> bool {
+        self.is_implicit_trait(def_id, including_sized)
     }
 
     fn is_sizedness_trait(self, def_id: DefId) -> bool {

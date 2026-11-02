@@ -2,8 +2,8 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::{
-    self, GenericArgs, PredicateProxy, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, Upcast, shift_vars,
+    self, GenericArgs, IncludeSizedImplicitBounds, PredicateProxy, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast, shift_vars,
 };
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{Span, bug, span_bug};
@@ -11,7 +11,6 @@ use tracing::{debug, instrument};
 
 use super::ItemCtxt;
 use super::clauses_of::assert_only_contains_clauses_from;
-use crate::hir_ty_lowering::bounds::IncludeSizedImplicitBound;
 use crate::hir_ty_lowering::{
     HirTyLowerer, ImpliedBoundsContext, OverlappingAsssocItemConstraints, PredicateFilter,
 };
@@ -61,7 +60,7 @@ fn associated_type_bounds<'tcx>(
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                    IncludeSizedImplicitBound::Yes,
+                    IncludeSizedImplicitBounds::Yes,
                 );
 
                 // Also collect `where Self::Assoc: Trait` from the parent trait's where clauses.
@@ -382,7 +381,7 @@ fn opaque_type_bounds<'tcx>(
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                    IncludeSizedImplicitBound::Yes,
+                    IncludeSizedImplicitBounds::Yes,
                 );
             }
             //`ConstIfConst` is only interested in `[const]` bounds.
