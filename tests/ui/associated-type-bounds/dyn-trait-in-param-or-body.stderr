@@ -93,7 +93,7 @@ LL |     fn f(_: impl C<T = (), bool>) {}
 help: consider being explicit about the bounds
    |
 LL -     fn f(_: impl C<T = (), bool>) {}
-LL +     fn f(_: impl C<, bool> + with_args_after::B<(bool,), T = ()> + with_args_after::module::A<((bool,),), T = ()>) {}
+LL +     fn f(_: impl C<bool> + with_args_after::B<(bool,), T = ()> + with_args_after::module::A<((bool,),), T = ()>) {}
    |
 
 error[E0222]: ambiguous associated type `T` in bounds of `with_args_mixed::C`
@@ -110,7 +110,7 @@ LL |     fn f(_: impl C<bool, T = (), bool>) {}
 help: consider being explicit about the bounds
    |
 LL -     fn f(_: impl C<bool, T = (), bool>) {}
-LL +     fn f(_: impl C<bool, , bool> + with_args_mixed::B<(bool,), T = ()> + with_args_mixed::module::A<((bool,),), T = ()>) {}
+LL +     fn f(_: impl C<bool, bool> + with_args_mixed::B<(bool,), T = ()> + with_args_mixed::module::A<((bool,),), T = ()>) {}
    |
 
 error[E0222]: ambiguous associated type `T` in bounds of `with_args_mingled::C`
@@ -127,7 +127,7 @@ LL |     fn f(_: impl C<bool, T = (), bool, K = ()>) {}
 help: consider being explicit about the bounds
    |
 LL -     fn f(_: impl C<bool, T = (), bool, K = ()>) {}
-LL +     fn f(_: impl C<bool, K = ()> + with_args_mingled::B<(bool,), T = ()> + with_args_mingled::module::A<((bool,),), T = ()>) {}
+LL +     fn f(_: impl C<bool, bool, K = ()> + with_args_mingled::B<(bool,), T = ()> + with_args_mingled::module::A<((bool,),), T = ()>) {}
    |
 
 error[E0222]: ambiguous associated type `K` in bounds of `with_args_mingled::C`
@@ -144,7 +144,7 @@ LL |     fn f(_: impl C<bool, T = (), bool, K = ()>) {}
 help: consider being explicit about the bounds
    |
 LL -     fn f(_: impl C<bool, T = (), bool, K = ()>) {}
-LL +     fn f(_: impl C<bool, T = ()> + with_args_mingled::B<(bool,), K = ()> + with_args_mingled::module::A<((bool,),), K = ()>) {}
+LL +     fn f(_: impl C<bool, T = (), bool> + with_args_mingled::B<(bool,), K = ()> + with_args_mingled::module::A<((bool,),), K = ()>) {}
    |
 
 error[E0222]: ambiguous associated type `T` in bounds of `without_args_and_padded_first::C`
