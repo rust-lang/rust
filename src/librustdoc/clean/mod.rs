@@ -2677,8 +2677,14 @@ fn clean_path<'tcx>(path: &hir::Path<'_>, cx: &mut DocContext<'tcx>) -> Path {
         res: path.res,
         segments: path.segments.iter().map(|x| clean_path_segment(x, cx)).collect(),
     };
-    if path.segments.last().is_some_and(|s| s.name == kw::SelfLower) {
-        path.segments.pop();
+    if path.segments.last().is_some_and(|last| last.name == kw::SelfLower) {
+        if path.segments.len() > 1 {
+            path.segments.pop();
+        } else if let Some(def_id) = path.res.opt_def_id()
+            && let Some(name) = cx.tcx.opt_item_name(def_id)
+        {
+            path.segments.last_mut().unwrap().name = name;
+        }
     }
     path
 }
