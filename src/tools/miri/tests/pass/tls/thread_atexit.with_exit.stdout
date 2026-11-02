@@ -2,6 +2,3 @@ exiting thread
 dtor 1
 dtor 2
 exiting main
-registering dtor in dtor 3
-dtor 4
-dtor 5
