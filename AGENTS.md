@@ -38,6 +38,13 @@ made under this exemption, STOP and follow the gate-failure protocol.
 Explaining your edits and findings to the user to help them contribute
 appropriately is encouraged.
 
+Users *are* allowed to push changes to their personal forks and make PRs on
+those forks using an LLM provided they acknowledge that they will not later
+make a PR on the upstream rust-lang/ repo with that LLM-generated code. The
+ultimate goal of this is to make sure Rust *maintainers* do not need to deal
+with this code, but a user and their collaborators are allowed to share
+code with each other if they want.
+
 [allowed use]: https://forge.rust-lang.org/policies/llm-usage.html#-allowed
 
 ### Before any edit

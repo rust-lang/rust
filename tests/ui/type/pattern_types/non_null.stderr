@@ -1,8 +1,6 @@
 error: layout_of(pattern_type!(*const T is !null)) = Layout {
            size: Size(8 bytes),
-           align: AbiAlign {
-               abi: Align(8 bytes),
-           },
+           align: Align(8 bytes),
            backend_repr: Scalar(
                pointer is 1..=18446744073709551615,
            ),
@@ -37,9 +35,7 @@ LL | type NonNull<T> = pattern_type!(*const T is !null);
 
 error: layout_of(Option<pattern_type!(*const () is !null)>) = Layout {
            size: Size(8 bytes),
-           align: AbiAlign {
-               abi: Align(8 bytes),
-           },
+           align: Align(8 bytes),
            backend_repr: Scalar(
                pointer is 0..=18446744073709551615,
            ),
@@ -106,9 +102,7 @@ LL | type Test = Option<NonNull<()>>;
 
 error: layout_of(pattern_type!(*const [u8] is !null)) = Layout {
            size: Size(16 bytes),
-           align: AbiAlign {
-               abi: Align(8 bytes),
-           },
+           align: Align(8 bytes),
            backend_repr: ScalarPair {
                a: pointer is 1..=18446744073709551615,
                b: u64 is ..,
