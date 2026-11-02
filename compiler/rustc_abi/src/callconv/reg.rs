@@ -71,7 +71,8 @@ impl Reg {
 }
 
 impl Reg {
-    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
+    /// Alignment used for the scratch space when this type is part of a `PassMode::Cast`.
+    pub fn scratch_align<C: HasDataLayout>(&self, cx: &C) -> Align {
         let dl = cx.data_layout();
         match self.kind {
             RegKind::Integer => match self.size.bits() {
