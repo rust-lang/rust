@@ -74,6 +74,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
 
+    defaults:
+      run:
+        shell: bash
+
     env:
       RA_TARGET: ${{ matrix.target }}
       ALLOCATOR_FLAG: ${{ matrix.allocator != 'system' && format('--{0}', matrix.allocator) || '' }}
@@ -113,7 +117,7 @@ jobs:
           rustup target add ${{ matrix.target }}
 
       - name: Dist
-        run: cargo xtask dist --client-patch-version ${{ github.run_number }} ${{ env.ALLOCATOR_FLAG }} ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
+        run: cargo xtask dist --client-patch-version ${GITHUB_RUN_NUMBER} ${{ env.ALLOCATOR_FLAG }} ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
 
       - run: npm ci
         working-directory: editors/code
@@ -179,7 +183,7 @@ jobs:
           persist-credentials: false
 
       - name: Dist
-        run: cargo xtask dist --client-patch-version ${{ github.run_number }} --jemalloc
+        run: cargo xtask dist --client-patch-version ${GITHUB_RUN_NUMBER} --jemalloc
 
       - run: npm ci
         working-directory: editors/code
