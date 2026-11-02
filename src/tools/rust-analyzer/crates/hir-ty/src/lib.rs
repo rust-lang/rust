@@ -116,6 +116,9 @@ pub mod closure_analysis {
     };
 }
 
+type ThinFxHashMap<K, V> = stdx::thin_map::ThinHashMap<K, V, FxBuildHasher>;
+type ThinFxHashSet<T> = stdx::thin_map::ThinHashSet<T, FxBuildHasher>;
+
 /// A constant can have reference to other things. Memory map job is holding
 /// the necessary bits of memory of the const eval session to keep the constant
 /// meaningful.
