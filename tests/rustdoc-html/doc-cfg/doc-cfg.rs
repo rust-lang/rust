@@ -1,5 +1,5 @@
 #![feature(doc_cfg)]
-#![feature(cfg_version)]
+#![feature(cfg_version)] // only for some test cases
 
 //@ has doc_cfg/struct.Portable.html
 //@ !has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' ''
@@ -100,20 +100,14 @@ pub fn uses_cfg_target_feature() {
 #[doc(cfg(y), cfg(z))]
 pub fn multiple_attrs() {}
 
-//@ has doc_cfg/fn.rust_version_assign.html \
+//@ has doc_cfg/fn.rust_version_predicate.html \
 //  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-//  'Available on Rust version at least 1.42.0 only.'
-#[doc(cfg(version = "1.42.0"))]
-pub fn rust_version_assign() {}
-
-//@ has doc_cfg/fn.rust_version_assign.html \
-//  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-//  'Available on Rust version at least 1.42.0 only.'
+//  'Available on Rust version 1.42.0 or later only.'
 #[doc(cfg(version("1.42.0")))]
 pub fn rust_version_predicate() {}
 
 //@ has doc_cfg/fn.unknown_rust_version.html \
 //  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-//  'Available on unknown future Rust version only.'
+//  'Available on unknown Rust version only.'
 #[doc(cfg(version("foo")))]
 pub fn unknown_rust_version() {}
