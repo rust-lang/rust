@@ -1,13 +1,24 @@
 error: expected one of `.`, `?`, `]`, or an operator, found `,`
-  --> $DIR/do-not-suggest-semicolon-before-index.rs:4:15
+  --> $DIR/do-not-suggest-semicolon-before-index.rs:9:18
    |
-LL |         .baz(),
-   |               ^ expected one of `.`, `?`, `]`, or an operator
+LL |         .method(),
+   |                  ^ expected one of `.`, `?`, `]`, or an operator
    |
 help: you might have meant to call a macro
    |
-LL |     (foo![
-   |         +
+LL |     indexee![
+   |            +
 
-error: aborting due to 1 previous error
+error: expected one of `.`, `?`, `]`, or an operator, found `,`
+  --> $DIR/do-not-suggest-semicolon-before-index.rs:16:18
+   |
+LL |         .method(),
+   |                  ^ expected one of `.`, `?`, `]`, or an operator
+   |
+help: you might have meant to call a macro
+   |
+LL |     (indexee![
+   |             +
+
+error: aborting due to 2 previous errors
 

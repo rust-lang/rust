@@ -1159,7 +1159,7 @@ impl<'a> Parser<'a> {
         let open_delim_span = self.token.span;
         self.bump(); // `[`
         let index = self.parse_expr()?;
-        self.suggest_missing_semicolon_before_array(prev_token.span, open_delim_span)?;
+        self.recover_from_missing_semicolon_before_array(prev_token.span, open_delim_span)?;
         self.expect(exp!(CloseBracket)).map_err(|mut err| {
             if prev_token.is_non_reserved_ident() {
                 err.span_suggestion_verbose(
@@ -2135,49 +2135,58 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn suggest_missing_semicolon_before_array(
+    fn recover_from_missing_semicolon_before_array(
         &self,
         prev_span: Span,
         open_delim_span: Span,
     ) -> PResult<'a, ()> {
-        if !self.may_recover() {
-            return Ok(());
-        }
-
-        if self.token == token::Comma {
+        if !self.may_recover()
+            || self.token != token::Comma
             // Only make this suggestion if the `[` is not on the same line as the last token of
             // the expression preceding it, which is a sign that it is not intended as an
             // index expression.
-            if !self.psess.source_map().is_multiline(prev_span.until(open_delim_span)) {
-                return Ok(());
+            || !self.psess.source_map().is_multiline(prev_span.until(open_delim_span))
+        {
+            return Ok(());
+        }
+
+        let mut snapshot = self.create_snapshot_for_diagnostic();
+        snapshot.bump();
+        match snapshot.parse_seq_to_before_end(
+            exp!(CloseBracket),
+            SeqSep::trailing_allowed(exp!(Comma)),
+            |p| p.parse_expr(),
+        ) {
+            Ok(_)
+                // When the close delim is `)`, `token.kind` is expected to be `token::CloseParen`,
+                // but the actual `token.kind` is `token::CloseBracket`. This is because the
+                // `token.kind` of the close delim is treated as the same as that of the open delim
+                // in `TokenTreesReader::parse_token_tree`, even if the delimiters of them are
+                // different. Therefore, `token.kind` should not be compared here.
+                if snapshot
+                    .span_to_snippet(snapshot.token.span)
+                    .is_ok_and(|snippet| snippet == "]") =>
+            {
+                // FIXME: This is way to assertive for a diagnostic with so many false positives!
+                //        Just `expect(Comma)` and modify the diagnostic with a note that says sth.
+                //        along the lines of "consider adding a `;` here if you meant the `[...]` to
+                //        denote an array instead of an index".
+                // FIXME: In most cases there certainly isn't a "missing `;`". E.g., if we're nested
+                //        in an expression like `(x[y, z])` or `match x[y, z] {}`. Requiring that
+                //        we're not under `Restriction::STMT_EXPR` isn't sufficient by the way since
+                //        we could still be part of a match arm body *and* it would prevent us from
+                //        suggesting a `;` in cases like `let x = y[z, w];`.
+                Err(self.dcx().create_err(crate::diagnostics::MissingSemicolonBeforeArray {
+                    open_delim: open_delim_span,
+                    semicolon: prev_span.shrink_to_hi(),
+                }))
             }
-            let mut snapshot = self.create_snapshot_for_diagnostic();
-            snapshot.bump();
-            match snapshot.parse_seq_to_before_end(
-                exp!(CloseBracket),
-                SeqSep::trailing_allowed(exp!(Comma)),
-                |p| p.parse_expr(),
-            ) {
-                Ok(_)
-                    // When the close delim is `)`, `token.kind` is expected to be `token::CloseParen`,
-                    // but the actual `token.kind` is `token::CloseBracket`.
-                    // This is because the `token.kind` of the close delim is treated as the same as
-                    // that of the open delim in `TokenTreesReader::parse_token_tree`, even if the delimiters of them are different.
-                    // Therefore, `token.kind` should not be compared here.
-                    if snapshot
-                        .span_to_snippet(snapshot.token.span)
-                        .is_ok_and(|snippet| snippet == "]") =>
-                {
-                    return Err(self.dcx().create_err(crate::diagnostics::MissingSemicolonBeforeArray {
-                        open_delim: open_delim_span,
-                        semicolon: prev_span.shrink_to_hi(),
-                    }));
-                }
-                Ok(_) => (),
-                Err(err) => err.cancel(),
+            Ok(_) => Ok(()),
+            Err(err) => {
+                err.cancel();
+                Ok(())
             }
         }
-        Ok(())
     }
 
     /// Parses a block or unsafe block.
