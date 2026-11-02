@@ -868,7 +868,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
         // Prepare a new block for code that should execute when call returns. We don't use
         // target block directly since it might have other predecessors.
         let data = BasicBlockData::new(
-            (Terminator { source_info: terminator.source_info, kind: TerminatorKind::goto(block) }),
+            Terminator { source_info: terminator.source_info, kind: TerminatorKind::goto(block) },
             caller_body[block].is_cleanup,
         );
         Some(caller_body.basic_blocks_mut().push(data))

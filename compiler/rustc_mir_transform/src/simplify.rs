@@ -214,7 +214,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             BasicBlockData {
                 ref statements,
                 terminator:
-                    ref mut terminator @ (Terminator { kind: TerminatorKind::Goto { .. }, .. }),
+                    ref mut terminator @ Terminator { kind: TerminatorKind::Goto { .. }, .. },
                 ..
             } if statements.is_empty() => terminator.take(),
             // if `terminator` is None, this means we are in a loop. In that

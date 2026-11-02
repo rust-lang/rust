@@ -167,14 +167,14 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
 
             // Create `bbEq` in example above
             let eq_switch = BasicBlockData::new(
-                (Terminator {
+                Terminator {
                     source_info: bbs[parent].terminator().source_info,
                     kind: TerminatorKind::SwitchInt {
                         // switch on the first discriminant, so we can mark the second one as dead
                         discr: parent_op,
                         targets: eq_targets,
                     },
-                }),
+                },
                 bbs[parent].is_cleanup,
             );
 

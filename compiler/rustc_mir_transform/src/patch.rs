@@ -89,10 +89,10 @@ impl<'tcx> MirPatch<'tcx> {
         }
 
         let bb = self.new_block(BasicBlockData::new(
-            (Terminator {
+            Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::UnwindResume,
-            }),
+            },
             true,
         ));
         self.resume_block = Some(bb);
@@ -105,10 +105,10 @@ impl<'tcx> MirPatch<'tcx> {
         }
 
         let bb = self.new_block(BasicBlockData::new(
-            (Terminator {
+            Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Unreachable,
-            }),
+            },
             true,
         ));
         self.unreachable_cleanup_block = Some(bb);
@@ -121,10 +121,10 @@ impl<'tcx> MirPatch<'tcx> {
         }
 
         let bb = self.new_block(BasicBlockData::new(
-            (Terminator {
+            Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Unreachable,
-            }),
+            },
             false,
         ));
         self.unreachable_no_cleanup_block = Some(bb);
@@ -139,10 +139,10 @@ impl<'tcx> MirPatch<'tcx> {
         }
 
         let bb = self.new_block(BasicBlockData::new(
-            (Terminator {
+            Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::UnwindTerminate(reason),
-            }),
+            },
             true,
         ));
         self.terminate_block = Some((bb, reason));

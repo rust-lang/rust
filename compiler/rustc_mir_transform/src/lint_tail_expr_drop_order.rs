@@ -129,7 +129,7 @@ impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
                     vacant_entry.insert(Rc::new(RefCell::new(dropped_local_here.borrow().clone()))),
                 ),
             };
-            if let (terminator) = &target.terminator
+            if let terminator = &target.terminator
                 && let TerminatorKind::Drop {
                     place: dropped_place,
                     target: _,

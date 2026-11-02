@@ -279,7 +279,7 @@ pub fn build_drop_shim<'tcx>(
     let return_block = BasicBlock::new(1);
     let mut blocks = IndexVec::with_capacity(2);
     let block = |blocks: &mut IndexVec<_, _>, kind| -> BasicBlock {
-        blocks.push(BasicBlockData::new((Terminator { source_info, kind }), false))
+        blocks.push(BasicBlockData::new(Terminator { source_info, kind }, false))
     };
     if ty.is_some() {
         block(&mut blocks, TerminatorKind::goto(return_block));
@@ -325,7 +325,7 @@ pub fn build_drop_shim<'tcx>(
                 ),
             ))),
         ));
-        start.terminator = (Terminator {
+        start.terminator = Terminator {
             source_info,
             kind: TerminatorKind::Call {
                 func: Operand::function_handle(
@@ -341,7 +341,7 @@ pub fn build_drop_shim<'tcx>(
                 call_source: CallSource::Misc,
                 fn_span: span,
             },
-        });
+        };
     } else {
         let patch = {
             let mut elaborator = DropShimElaborator {
@@ -493,7 +493,7 @@ fn build_thread_local_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) ->
                 Rvalue::ThreadLocalRef(def_id),
             ))),
         )],
-        (Terminator { source_info, kind: TerminatorKind::Return }),
+        Terminator { source_info, kind: TerminatorKind::Return },
         false,
     )]);
 
@@ -579,7 +579,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let source_info = self.source_info();
         self.blocks.push(BasicBlockData::new_stmts(
             statements,
-            (Terminator { source_info, kind }),
+            Terminator { source_info, kind },
             is_cleanup,
         ))
     }
@@ -761,7 +761,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let rvalue = Rvalue::Discriminant(src);
         let statement = self.make_statement(StatementKind::Assign(Box::new((temp, rvalue))));
         match &mut self.blocks[switch] {
-            BasicBlockData { statements, terminator: (Terminator { kind, .. }), .. } => {
+            BasicBlockData { statements, terminator: Terminator { kind, .. }, .. } => {
                 statements.push(statement);
                 *kind = TerminatorKind::SwitchInt {
                     discr: Operand::Move(temp),
@@ -932,7 +932,7 @@ fn build_call_shim<'tcx>(
     let block = |blocks: &mut IndexVec<_, _>, statements, kind, is_cleanup| {
         blocks.push(BasicBlockData::new_stmts(
             statements,
-            (Terminator { source_info, kind }),
+            Terminator { source_info, kind },
             is_cleanup,
         ))
     };
@@ -1059,7 +1059,7 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 
     let start_block = BasicBlockData::new_stmts(
         vec![statement],
-        (Terminator { source_info, kind: TerminatorKind::Return }),
+        Terminator { source_info, kind: TerminatorKind::Return },
         false,
     );
 
@@ -1142,7 +1142,7 @@ fn build_fn_ptr_as_ptr_shim<'tcx>(
 
     let start_block = BasicBlockData::new_stmts(
         statements,
-        (Terminator { source_info, kind: TerminatorKind::Return }),
+        Terminator { source_info, kind: TerminatorKind::Return },
         false,
     );
     let source = MirSource::from_shim(ty::ShimKind::FnPtrAsPtr(def_id, self_ty));
@@ -1177,7 +1177,7 @@ fn build_fn_ptr_from_ptr_shim<'tcx>(
 
     let start_block = BasicBlockData::new_stmts(
         statements,
-        (Terminator { source_info, kind: TerminatorKind::Return }),
+        Terminator { source_info, kind: TerminatorKind::Return },
         false,
     );
     let source = MirSource::from_shim(ty::ShimKind::FnPtrFromPtr(def_id, self_ty));
@@ -1275,7 +1275,7 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
     let statements = vec![stmt];
     let start_block = BasicBlockData::new_stmts(
         statements,
-        (Terminator { source_info, kind: TerminatorKind::Return }),
+        Terminator { source_info, kind: TerminatorKind::Return },
         false,
     );
 

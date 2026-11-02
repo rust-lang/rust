@@ -389,7 +389,7 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
         replace: false,
         drop: None,
     };
-    body.basic_blocks_mut()[call_bb].terminator = (Terminator { source_info, kind });
+    body.basic_blocks_mut()[call_bb].terminator = Terminator { source_info, kind };
 
     make_coroutine_state_argument_pinned(tcx, &mut body);
 
