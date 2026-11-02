@@ -383,9 +383,11 @@ jobs:
       - name: Conclusion
         run: |
           # Print the dependent jobs to see them in the CI log
-          jq -C <<< '${{ toJson(needs) }}'
+          jq -C <<< "${JSON_NEEDS}"
           # Check if all jobs that we depend on (in the needs array) were successful (or have been skipped).
-          jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}'
+          jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< "${JSON_NEEDS}"
+        env:
+          JSON_NEEDS: ${{ toJson(needs) }}
 
   cancel-if-matrix-failed:
     needs: rust
@@ -394,7 +396,7 @@ jobs:
     steps:
       - name: Cancel parallel jobs
         run: |
-          if jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< '${{ toJson(needs) }}'; then
+          if jq --exit-status 'all(.result == "success" or .result == "skipped")' <<< "${JSON_NEEDS}"; then
             exit 0
           fi
           # https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2022-11-28#cancel-a-workflow-run
@@ -405,4 +407,5 @@ jobs:
           -H "X-GitHub-Api-Version: 2022-11-28" \
           "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/cancel"
         env:
+          JSON_NEEDS: ${{ toJson(needs) }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
