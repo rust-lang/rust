@@ -195,6 +195,12 @@ use self::spec_extend::SpecExtend;
 #[cfg(not(no_global_oom_handling))]
 mod spec_extend;
 
+#[cfg(not(no_global_oom_handling))]
+use self::spec_extend_with::SpecExtendWith;
+
+#[cfg(not(no_global_oom_handling))]
+mod spec_extend_with;
+
 #[cfg(all(target_arch = "aarch64", target_feature = "sve"))]
 mod sve_retain;
 
@@ -1701,8 +1707,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     ///
-    /// No truncation occurs when `len` is greater than the vector's current
-    /// length:
+    /// No truncation occurs when `len` is greater than or equal to the
+    /// vector's current length:
     ///
     /// ```
     /// let mut vec = vec![1, 2, 3];
@@ -1728,16 +1734,13 @@ impl<T, A: Allocator> Vec<T, A> {
 
         // This is safe because:
         //
-        // * the slice passed to `drop_in_place` is valid; the `len > self.len`
+        // * the slice passed to `drop_in_place` is valid; the `len >= self.len`
         //   case avoids creating an invalid slice, and
         // * the `len` of the vector is shrunk before calling `drop_in_place`,
         //   such that no value will be dropped twice in case `drop_in_place`
         //   were to panic once (if it panics twice, the program aborts).
         unsafe {
-            // Note: It's intentional that this is `>` and not `>=`.
-            //       Changing it to `>=` has negative performance
-            //       implications in some cases. See #78884 for more.
-            if len > self.len {
+            if len >= self.len {
                 return;
             }
             let remaining_len = self.len - len;
@@ -3163,7 +3166,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// calling the closure `f`. The return values from `f` will end up
     /// in the `Vec` in the order they have been generated.
     ///
-    /// If `new_len` is less than `len`, the `Vec` is simply truncated.
+    /// If `new_len` is less than or equal to `len`, the `Vec` is simply
+    /// truncated.
     ///
     /// This method uses a closure to create new values on every push. If
     /// you'd rather [`Clone`] a given value, use [`Vec::resize`]. If you
@@ -3517,7 +3521,8 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     ///
     /// If `new_len` is greater than `len`, the `Vec` is extended by the
     /// difference, with each additional slot filled with `value`.
-    /// If `new_len` is less than `len`, the `Vec` is simply truncated.
+    /// If `new_len` is less than or equal to `len`, the `Vec` is simply
+    /// truncated.
     ///
     /// This method requires `T` to implement [`Clone`],
     /// in order to be able to clone the passed value.
@@ -3689,32 +3694,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     /// Extend the vector by `n` clones of value.
     fn extend_with(&mut self, n: usize, value: T) {
-        self.reserve(n);
-
-        // ignore-tidy-undocumented-unsafe
-        unsafe {
-            let mut ptr = self.as_mut_ptr().add(self.len());
-            // Use SetLenOnDrop to work around bug where compiler
-            // might not realize the store through `ptr` through self.set_len()
-            // don't alias.
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-            // Write all elements except the last one
-            for _ in 1..n {
-                ptr::write(ptr, value.clone());
-                ptr = ptr.add(1);
-                // Increment the length in every step in case clone() panics
-                local_len.increment_len(1);
-            }
-
-            if n > 0 {
-                // We can write the last element directly without cloning needlessly
-                ptr::write(ptr, value);
-                local_len.increment_len(1);
-            }
-
-            // len set by scope guard
-        }
+        self.spec_extend_with(n, value);
     }
 }
 

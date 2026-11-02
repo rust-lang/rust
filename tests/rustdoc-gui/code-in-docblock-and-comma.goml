@@ -1,0 +1,93 @@
+// This test ensures that `<code>` in docblocks are `display: inline` so comma are
+// "stuck" to them instead of going to next line on their own.
+// Regression test for <https://github.com/rust-lang/rust/issues/133075>.
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/inline_code/index.html"
+
+store-value: (height, 300)
+// Very precise width!
+store-value: (big_width, 588)
+store-value: (small_width, 584)
+set-window-size: (|big_width|, |height|)
+
+// Very annoying test as we can't query information about the comma itself, so instead
+// we're gonna look for the position of the `<code>` just before and after it.
+store-position: (
+    '//*[@class="docblock"]/p',
+    {"x": x_parent},
+)
+
+define-function: (
+    "test_initial_positions",
+    [],
+    block {
+        store-position: (
+            '//*[@class="docblock"]/p/code[text()="Color::srgba_u8"]',
+            {"x": x_before, "y": y_before},
+        )
+        store-position: (
+            '//*[@class="docblock"]/p/code[text()="blob"]',
+            {"x": x_after, "y": y_after},
+        )
+
+        // First we check that the "after" element is at the start of the line (so the same `x` position
+        // as its parent).
+        assert: |x_after| == |x_parent|
+        // Then we ensure that both `<code>` aren't on the same line.
+        assert: |y_before| < |y_after|
+    },
+)
+
+call-function: ("test_initial_positions", {})
+
+// We reduce the width of the screen a bit to force the first `<code>` (and the comma) to go on the
+// next line.
+set-window-size: (|small_width|, |height|)
+
+store-position: (
+    '//*[@class="docblock"]/p/code[text()="Color::srgba_u8"]',
+    {"x": x2_before, "y": y2_before},
+)
+store-position: (
+    '//*[@class="docblock"]/p/code[text()="blob"]',
+    {"x": x2_after, "y": y2_after},
+)
+
+// The "y" position of the second `<code>` shouldn't have changed.
+assert: |y_after| == |y2_after|
+// However its "x" position should have changed.
+assert: |x_after| < |x2_after|
+// And the first `<code>` should not be on the same line anymore.
+assert: |y_before| < |y2_before|
+// So the "x" position should now be the same as the parent.
+assert: |x2_before| == |x_parent|
+
+// And now we switch to `display: inline-block` and confirm that the comma was not "stuck" to the
+// `<code>` (although it should).
+set-window-size: (|big_width|, |height|)
+set-css: (
+    '//*[@class="docblock"]/p/code[text()="Color::srgba_u8"]',
+    {"display": "inline-block"},
+)
+
+call-function: ("test_initial_positions", {})
+
+// Now we reduce the width, and that's where the interesting part starts.
+set-window-size: (|small_width|, |height|)
+
+store-position: (
+    '//*[@class="docblock"]/p/code[text()="Color::srgba_u8"]',
+    {"x": x2_before, "y": y2_before},
+)
+store-position: (
+    '//*[@class="docblock"]/p/code[text()="blob"]',
+    {"x": x2_after, "y": y2_after},
+)
+
+// The "y" position of the second `<code>` shouldn't have changed.
+assert: |y_after| == |y2_after|
+// And its "x" position should also have changed (confirming that the comma is not on the same
+// line anymore).
+assert: |x_after| < |x2_after|
+// However unlike previously, the first `<code>` should still be on the same line.
+assert: |y_before| == |y2_before|

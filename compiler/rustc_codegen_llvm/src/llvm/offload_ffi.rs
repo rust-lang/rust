@@ -6,7 +6,7 @@ use super::ffi::{Module, Value};
 
 type LLVMRustOffloadMapperFn = unsafe extern "C" fn(&Value, &Value, *const &Value);
 type LLVMRustOffloadWrapImagesFn =
-    unsafe extern "C" fn(&Module, *const c_char, *const c_char) -> bool;
+    for<'ll> unsafe extern "C" fn(Module<'ll>, *const c_char, *const c_char) -> bool;
 
 use rustc_fs_util::path_to_c_string;
 use rustc_session::config::host_tuple;
@@ -56,9 +56,9 @@ impl RustOffloadWrapper {
         unsafe { (self.LLVMRustOffloadMapper)(v1, v2, vs.as_ptr()) }
     }
 
-    pub(crate) unsafe fn llvm_rust_offload_wrap_images(
+    pub(crate) unsafe fn llvm_rust_offload_wrap_images<'ll>(
         &self,
-        host_m: &Module,
+        host_m: Module<'ll>,
         device_bitcode_path: &CStr,
     ) -> bool {
         let lld_c = self.lld_path.as_deref().map(path_to_c_string).unwrap_or_default();

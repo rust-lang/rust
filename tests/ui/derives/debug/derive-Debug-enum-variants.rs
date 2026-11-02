@@ -13,6 +13,17 @@ enum Bar {
     D,
 }
 
+#[derive(Debug)]
+enum Large {
+    A,
+    Bar,
+    C,
+    Distance,
+    Emily,
+    F,
+    G,
+}
+
 pub fn main() {
     // Test variant with data
     let foo_a = Foo::A(22);
@@ -27,4 +38,13 @@ pub fn main() {
 
     // Test unit variant from different enum
     assert_eq!("D".to_string(), format!("{:?}", Bar::D));
+
+    // Test large c-like enum, those use a different implementation.
+    assert_eq!("A".to_string(), format!("{:?}", Large::A));
+    assert_eq!("Bar".to_string(), format!("{:?}", Large::Bar));
+    assert_eq!("C".to_string(), format!("{:?}", Large::C));
+    assert_eq!("Distance".to_string(), format!("{:?}", Large::Distance));
+    assert_eq!("Emily".to_string(), format!("{:?}", Large::Emily));
+    assert_eq!("F".to_string(), format!("{:?}", Large::F));
+    assert_eq!("G".to_string(), format!("{:?}", Large::G));
 }

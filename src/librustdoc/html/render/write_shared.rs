@@ -13,6 +13,7 @@
 //!    --resource-suffix flag and are emitted when --emit-type is empty (default)
 //!    or contains "html-non-static-files".
 
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
@@ -80,14 +81,20 @@ pub(crate) fn write_shared(
     )?;
 
     let crate_name = krate.name(cx.tcx());
-    let crate_name = crate_name.as_str(); // rand
+    let crate_name = crate_name.as_str(); // e.g. rand
     let crate_name_json = OrderedJson::serialize(crate_name).unwrap(); // "rand"
+    let all_crates_entry_json = OrderedJson::serialize(AllCratesEntry {
+        heading: Cow::Borrowed(&opt.crate_list_heading),
+        crate_name: Cow::Borrowed(crate_name),
+    })
+    .unwrap(); // e.g. {"c":"rand","h":"Some User-Specified Heading"}
+
     let external_crates = hack_get_external_crate_names(&cx.dst, &cx.shared.resource_suffix)?;
     let info = CrateInfo {
         version: CrateInfoVersion::V2,
         src_files_js: SourcesPart::get(cx, &crate_name_json)?,
         search_index,
-        all_crates: AllCratesPart::get(crate_name_json.clone(), &cx.shared.resource_suffix)?,
+        all_crates: AllCratesPart::get(all_crates_entry_json, &cx.shared.resource_suffix)?,
         crates_index: CratesIndexPart::get(crate_name, &external_crates)?,
         trait_impl: TraitAliasPart::get(cx, &crate_name_json)?,
         type_impl: TypeAliasPart::get(cx, krate, &crate_name_json)?,
@@ -489,6 +496,19 @@ impl AllCratesPart {
     }
 }
 
+/// Type of a serialized entry in the [`AllCratesPart`] JSON.
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+struct AllCratesEntry<'a> {
+    #[serde(rename = "c")]
+    crate_name: Cow<'a, str>,
+
+    /// If non-absent and non-empty, is the name of a section heading in the crate sidebar.
+    #[serde(rename = "h")]
+    #[serde(default)]
+    #[serde(skip_serializing_if = "str::is_empty")]
+    heading: Cow<'a, str>,
+}
+
 /// Reads `crates.js`, which seems like the best
 /// place to obtain the list of externally documented crates if the index
 /// page was disabled when documenting the deps.
@@ -509,9 +529,11 @@ fn hack_get_external_crate_names(
     if let Some(start) = content.find('[')
         && let Some(end) = content[start..].find(']')
     {
-        let content: Vec<String> =
+        let content: Vec<AllCratesEntry<'static>> =
             try_err!(serde_json::from_str(&content[start..=start + end]), &path);
-        Ok(content)
+        let crate_names: Vec<String> =
+            content.into_iter().map(|entry| entry.crate_name.into_owned()).collect();
+        Ok(crate_names)
     } else {
         Err(Error::new("could not find crates list in crates.js", path))
     }

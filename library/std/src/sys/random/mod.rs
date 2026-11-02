@@ -44,7 +44,7 @@ cfg_select! {
         mod hermit;
         pub use hermit::fill_bytes;
     }
-    any(target_os = "horizon", target_os = "cygwin") => {
+    any(target_os = "horizon", target_os = "cygwin", target_os = "redox") => {
         // FIXME(horizon): add arc4random_buf to shim-3ds
         mod getrandom;
         pub use getrandom::fill_bytes;
@@ -52,10 +52,6 @@ cfg_select! {
     any(target_os = "aix", target_os = "hurd", target_os = "nto", target_os = "qnx") => {
         mod unix_legacy;
         pub use unix_legacy::fill_bytes;
-    }
-    target_os = "redox" => {
-        mod redox;
-        pub use redox::fill_bytes;
     }
     target_os = "motor" => {
         mod motor;

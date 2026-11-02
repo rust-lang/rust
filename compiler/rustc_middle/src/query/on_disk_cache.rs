@@ -48,6 +48,9 @@ const SYMBOL_STR: u8 = 0;
 const SYMBOL_OFFSET: u8 = 1;
 const SYMBOL_PREDEFINED: u8 = 2;
 
+const DEF_ID_FULL: u8 = 0;
+const DEF_ID_OFFSET: u8 = 1;
+
 /// Provides an interface to incremental compilation data cached from the
 /// previous compilation session. This data will eventually include the results
 /// of a few selected queries (like `typeck` and `mir_optimized`) and
@@ -234,6 +237,7 @@ impl OnDiskCache {
                 encoder,
                 type_shorthands: Default::default(),
                 predicate_shorthands: Default::default(),
+                def_id_shorthands: Default::default(),
                 interpret_allocs: Default::default(),
                 caching_source_map_view: CachingSourceMapView::new(tcx.sess.source_map()),
                 file_to_file_index,
@@ -552,15 +556,19 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Vec<u8> {
 impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
     fn decode_syntax_context(&mut self) -> SyntaxContext {
         let syntax_contexts = self.syntax_contexts;
-        rustc_span::hygiene::decode_syntax_context(self, self.hygiene_context, |this, id| {
-            // This closure is invoked if we haven't already decoded the data for the `SyntaxContext` we are deserializing.
-            // We look up the position of the associated `SyntaxData` and decode it.
-            let pos = syntax_contexts.get(&id).unwrap();
-            this.with_position(pos.to_usize(), |decoder| {
-                let data: SyntaxContextKey = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
-                data
-            })
-        })
+        rustc_span::hygiene::decode_syntax_context(
+            self,
+            self.hygiene_context,
+            |this, external_ctxt| {
+                // This closure is invoked if we haven't already decoded the data for the `SyntaxContext` we are deserializing.
+                // We look up the position of the associated `SyntaxData` and decode it.
+                let pos = syntax_contexts.get(&external_ctxt.as_u32()).unwrap();
+                this.with_position(pos.to_usize(), |decoder| {
+                    let data: SyntaxContextKey = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
+                    data
+                })
+            },
+        )
     }
 
     fn decode_expn_id(&mut self) -> ExpnId {
@@ -655,7 +663,14 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
     // sessions, to map the old `DefId` to the new one.
     fn decode_def_id(&mut self) -> DefId {
         // Load the `DefPathHash` which is was we encoded the `DefId` as.
-        let def_path_hash = DefPathHash::decode(self);
+        let def_path_hash = match self.read_u8() {
+            DEF_ID_FULL => DefPathHash::decode(self),
+            DEF_ID_OFFSET => {
+                let pos = self.read_usize();
+                self.opaque.with_position(pos, |decoder| DefPathHash::decode(decoder))
+            }
+            _ => unreachable!(),
+        };
 
         // Using the `DefPathHash`, we can lookup the new `DefId`.
         // Subtle: We only encode a `DefId` as part of a query result.
@@ -751,6 +766,7 @@ pub struct CacheEncoder<'tcx> {
     encoder: FileEncoder<'static>,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
+    def_id_shorthands: FxHashMap<DefId, usize>,
     interpret_allocs: FxIndexSet<interpret::AllocId>,
     caching_source_map_view: CachingSourceMapView<'tcx>,
     file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
@@ -911,7 +927,19 @@ impl<'tcx> SpanEncoder for CacheEncoder<'tcx> {
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
-        self.tcx.def_path_hash(def_id).encode(self);
+        match self.def_id_shorthands.entry(def_id) {
+            Entry::Vacant(entry) => {
+                self.encoder.emit_u8(DEF_ID_FULL);
+                let pos = self.encoder.position();
+                entry.insert(pos);
+                self.tcx.def_path_hash(def_id).encode(self);
+            }
+            Entry::Occupied(entry) => {
+                let pos = *entry.get();
+                self.emit_u8(DEF_ID_OFFSET);
+                self.emit_usize(pos);
+            }
+        }
     }
 
     fn encode_def_index(&mut self, _def_index: DefIndex) {

@@ -49,7 +49,7 @@ impl<'a, T> Iter<'a, T> {
     ///
     /// assert_eq!(iter.as_slices(), (&[9, 10][..], &[0, 1][..]));
     /// ```
-    #[unstable(feature = "vec_deque_iter_as_slices", issue = "123947")]
+    #[unstable(feature = "vec_deque_iter_as_slices", issue = "133253")]
     pub fn as_slices(&self) -> (&'a [T], &'a [T]) {
         (self.i1.as_slice(), self.i2.as_slice())
     }

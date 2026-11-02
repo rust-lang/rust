@@ -16,3 +16,5 @@ extern "C" {
 }
 
 fn main() {}
+
+//@ reference: type.union.layout

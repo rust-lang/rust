@@ -717,7 +717,7 @@ impl File {
     fn readlink(&self) -> io::Result<PathBuf> {
         let mut space =
             Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize]);
-        let (_bytes, buf) = self.reparse_point(&mut space)?;
+        let (bytes, buf) = self.reparse_point(&mut space)?;
         unsafe {
             let (path_buffer, subst_off, subst_len, relative) = match (*buf).ReparseTag {
                 c::IO_REPARSE_TAG_SYMLINK => {
@@ -747,6 +747,17 @@ impl File {
                     ));
                 }
             };
+            // Check that the reparse point offsets and length stay within the data that
+            // was actually returned, before the slice is built from them. This keeps
+            // malformed filesystem data from causing an out-of-bounds access.
+            let path_offset = path_buffer.addr() - buf.addr();
+            let end = path_offset + (subst_off as usize * 2) + (subst_len as usize * 2);
+            if end > bytes as usize {
+                return Err(io::const_error!(
+                    io::ErrorKind::Uncategorized,
+                    "Invalid reparse point data",
+                ));
+            }
             let subst_ptr = path_buffer.add(subst_off.into());
             let subst = slice::from_raw_parts_mut(subst_ptr, subst_len as usize);
             // Absolute paths start with an NT internal namespace prefix `\??\`
@@ -871,6 +882,7 @@ impl File {
     /// `restart` is set to `true`.
     ///
     /// The returned bool indicates if there are more entries or not.
+    /// You must only iterate the buffer if this returned `true`!
     /// It is an error if `self` is not a directory.
     ///
     /// # Symlinks and other reparse points
@@ -892,6 +904,8 @@ impl File {
                 buffer.capacity() as _,
             );
             if result == 0 {
+                // Apparently ERROR_NO_MORE_FILES also means that the buffer is empty / was left
+                // unchanged. FIXME: find docs that say this.
                 let err = api::get_last_error();
                 if err.code == c::ERROR_NO_MORE_FILES { Ok(false) } else { Err(err) }
             } else {
@@ -961,8 +975,8 @@ impl<'a> Iterator for DirBuffIter<'a> {
             // While this is guaranteed to be aligned in documentation for
             // https://docs.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_both_dir_info
             // it does not seem that reality is so kind, and assuming this
-            // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530)
-            // presumably, this can be blamed on buggy filesystem drivers, but who knows.
+            // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530).
+            // Presumably, this can be blamed on buggy filesystem drivers, but who knows.
             let next_entry = (&raw const (*info).NextEntryOffset).read_unaligned() as usize;
             let length = (&raw const (*info).FileNameLength).read_unaligned() as usize;
             let attrs = (&raw const (*info).FileAttributes).read_unaligned();

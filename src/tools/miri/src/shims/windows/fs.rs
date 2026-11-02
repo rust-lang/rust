@@ -119,36 +119,36 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // ^ Returns HANDLE
         use CreationDisposition::*;
 
-        let this = self.eval_context_mut();
-        this.assert_target_os(Os::Windows, "CreateFileW");
-        this.check_no_isolation("`CreateFileW`")?;
+        let ecx = self.eval_context_mut();
+        ecx.assert_target_os(Os::Windows, "CreateFileW");
+        ecx.check_no_isolation("`CreateFileW`")?;
 
         // This function appears to always set the error to 0. This is important for some flag
         // combinations, which may set error code on success.
-        this.set_last_error(IoError::Raw(Scalar::from_i32(0)))?;
+        ecx.set_last_error(IoError::Raw(Scalar::from_i32(0)))?;
 
-        let file_name = this.read_path_from_wide_str(this.read_pointer(file_name)?)?;
-        let mut desired_access = this.read_scalar(desired_access)?.to_u32()?;
-        let share_mode = this.read_scalar(share_mode)?.to_u32()?;
-        let security_attributes = this.read_pointer(security_attributes)?;
-        let creation_disposition = this.read_scalar(creation_disposition)?.to_u32()?;
-        let flags_and_attributes = this.read_scalar(flags_and_attributes)?.to_u32()?;
-        let template_file = this.read_target_usize(template_file)?;
+        let file_name = ecx.read_path_from_wide_str(ecx.read_pointer(file_name)?)?;
+        let mut desired_access = ecx.read_scalar(desired_access)?.to_u32()?;
+        let share_mode = ecx.read_scalar(share_mode)?.to_u32()?;
+        let security_attributes = ecx.read_pointer(security_attributes)?;
+        let creation_disposition = ecx.read_scalar(creation_disposition)?.to_u32()?;
+        let flags_and_attributes = ecx.read_scalar(flags_and_attributes)?.to_u32()?;
+        let template_file = ecx.read_target_usize(template_file)?;
 
-        let generic_read = this.eval_windows_u32("c", "GENERIC_READ");
-        let generic_write = this.eval_windows_u32("c", "GENERIC_WRITE");
+        let generic_read = ecx.eval_windows_u32("c", "GENERIC_READ");
+        let generic_write = ecx.eval_windows_u32("c", "GENERIC_WRITE");
 
-        let file_share_delete = this.eval_windows_u32("c", "FILE_SHARE_DELETE");
-        let file_share_read = this.eval_windows_u32("c", "FILE_SHARE_READ");
-        let file_share_write = this.eval_windows_u32("c", "FILE_SHARE_WRITE");
+        let file_share_delete = ecx.eval_windows_u32("c", "FILE_SHARE_DELETE");
+        let file_share_read = ecx.eval_windows_u32("c", "FILE_SHARE_READ");
+        let file_share_write = ecx.eval_windows_u32("c", "FILE_SHARE_WRITE");
 
-        let creation_disposition = CreationDisposition::new(creation_disposition, this)?;
-        let attributes = FileAttributes::new(flags_and_attributes, this)?;
+        let creation_disposition = CreationDisposition::new(creation_disposition, ecx)?;
+        let attributes = FileAttributes::new(flags_and_attributes, ecx)?;
 
         if share_mode != (file_share_delete | file_share_read | file_share_write) {
             throw_unsup_format!("CreateFileW: Unsupported share mode: {share_mode}");
         }
-        if !this.ptr_is_null(security_attributes)? {
+        if !ecx.ptr_is_null(security_attributes)? {
             throw_unsup_format!("CreateFileW: Security attributes are not supported");
         }
         if template_file != 0 {
@@ -283,16 +283,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     if kind == io::ErrorKind::IsADirectory && desired_write {
                         // This can happen on Unix hosts when write permissions are requested.
                         // Windows uses a different error code in that case.
-                        this.set_last_error(IoError::WindowsError("ERROR_ACCESS_DENIED"))?;
+                        ecx.set_last_error(IoError::WindowsError("ERROR_ACCESS_DENIED"))?;
                     } else {
-                        this.set_last_error(err)?;
+                        ecx.set_last_error(err)?;
                     }
                     return interp_ok(Handle::Invalid);
                 }
                 Ok(Either::Right(dir)) => {
                     // BACKUP_SEMANTICS is how Windows calls the act of opening a directory handle.
                     if !attributes.contains(FileAttributes::BACKUP_SEMANTICS) {
-                        this.set_last_error(IoError::WindowsError("ERROR_ACCESS_DENIED"))?;
+                        ecx.set_last_error(IoError::WindowsError("ERROR_ACCESS_DENIED"))?;
                         return interp_ok(Handle::Invalid);
                     }
                     // We excluded this above.
@@ -300,7 +300,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         unreachable!()
                     }
 
-                    let fd_num = this.machine.fds.insert_new(DirHandle {
+                    let fd_num = ecx.machine.fds.insert_new(DirHandle {
                         dir,
                         #[cfg(bootstrap)]
                         fallback: file_name.canonicalize().unwrap(),
@@ -310,10 +310,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Ok(Either::Left(file)) => {
                     // CreateAlways | OpenAlways update the status code even on success.
                     if matches!(creation_disposition, CreateAlways | OpenAlways) && exists_already {
-                        this.set_last_error(IoError::WindowsError("ERROR_ALREADY_EXISTS"))?;
+                        ecx.set_last_error(IoError::WindowsError("ERROR_ALREADY_EXISTS"))?;
                     }
 
-                    let fd_num = this.machine.fds.insert_new(FileHandle {
+                    let fd_num = ecx.machine.fds.insert_new(FileHandle {
                         file,
                         writable: desired_write,
                         readable: desired_read,
@@ -330,27 +330,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         file_information: &OpTy<'tcx>, // LPBY_HANDLE_FILE_INFORMATION
     ) -> InterpResult<'tcx, Scalar> {
         // ^ Returns BOOL (i32 on Windows)
-        let this = self.eval_context_mut();
-        this.assert_target_os(Os::Windows, "GetFileInformationByHandle");
-        this.check_no_isolation("`GetFileInformationByHandle`")?;
+        let ecx = self.eval_context_mut();
+        ecx.assert_target_os(Os::Windows, "GetFileInformationByHandle");
+        ecx.check_no_isolation("`GetFileInformationByHandle`")?;
 
-        let file = this.read_handle(file, "GetFileInformationByHandle")?;
-        let file_information = this.deref_pointer_as(
+        let file = ecx.read_handle(file, "GetFileInformationByHandle")?;
+        let file_information = ecx.deref_pointer_as(
             file_information,
-            this.windows_ty_layout("BY_HANDLE_FILE_INFORMATION"),
+            ecx.windows_ty_layout("BY_HANDLE_FILE_INFORMATION"),
         )?;
 
-        let Handle::File(fd_num) = file else { this.invalid_handle("GetFileInformationByHandle")? };
+        let Handle::File(fd_num) = file else { ecx.invalid_handle("GetFileInformationByHandle")? };
 
-        let Some(desc) = this.machine.fds.get(fd_num) else {
-            this.invalid_handle("GetFileInformationByHandle")?
+        let Some(desc) = ecx.machine.fds.get(fd_num) else {
+            ecx.invalid_handle("GetFileInformationByHandle")?
         };
 
-        let metadata = match desc.metadata()? {
+        let metadata = match desc.metadata(ecx.machine.communicate())? {
             Either::Left(Ok(meta)) => meta,
             Either::Left(Err(e)) => {
-                this.set_last_error(e)?;
-                return interp_ok(this.eval_windows("c", "FALSE"));
+                ecx.set_last_error(e)?;
+                return interp_ok(ecx.eval_windows("c", "FALSE"));
             }
             Either::Right(_mode) =>
                 throw_unsup_format!(
@@ -362,28 +362,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let file_type = metadata.file_type();
         let attributes = if file_type.is_dir() {
-            this.eval_windows_u32("c", "FILE_ATTRIBUTE_DIRECTORY")
+            ecx.eval_windows_u32("c", "FILE_ATTRIBUTE_DIRECTORY")
         } else if file_type.is_file() {
             // Normal files seem to have the "archive" attribute. There's also
             // `FILE_ATTRIBUTE_NORMAL` but that's for files without any other attribute which,
             // apparently, is not normal.
-            this.eval_windows_u32("c", "FILE_ATTRIBUTE_ARCHIVE")
+            ecx.eval_windows_u32("c", "FILE_ATTRIBUTE_ARCHIVE")
         } else {
-            this.eval_windows_u32("c", "FILE_ATTRIBUTE_DEVICE")
+            ecx.eval_windows_u32("c", "FILE_ATTRIBUTE_DEVICE")
         };
 
         // Per the Windows documentation:
         // "If the underlying file system does not support the [...] time, this member is zero (0)."
         // https://learn.microsoft.com/en-us/windows/win32/api/fileapi/ns-fileapi-by_handle_file_information
-        let created = extract_windows_epoch(this, metadata.created())?.unwrap_or((0, 0));
-        let accessed = extract_windows_epoch(this, metadata.accessed())?.unwrap_or((0, 0));
-        let written = extract_windows_epoch(this, metadata.modified())?.unwrap_or((0, 0));
+        let created = extract_windows_epoch(ecx, metadata.created())?.unwrap_or((0, 0));
+        let accessed = extract_windows_epoch(ecx, metadata.accessed())?.unwrap_or((0, 0));
+        let written = extract_windows_epoch(ecx, metadata.modified())?.unwrap_or((0, 0));
 
-        this.write_int_fields_named(&[("dwFileAttributes", attributes.into())], &file_information)?;
-        write_filetime_field(this, &file_information, "ftCreationTime", created)?;
-        write_filetime_field(this, &file_information, "ftLastAccessTime", accessed)?;
-        write_filetime_field(this, &file_information, "ftLastWriteTime", written)?;
-        this.write_int_fields_named(
+        ecx.write_int_fields_named(&[("dwFileAttributes", attributes.into())], &file_information)?;
+        write_filetime_field(ecx, &file_information, "ftCreationTime", created)?;
+        write_filetime_field(ecx, &file_information, "ftLastAccessTime", accessed)?;
+        write_filetime_field(ecx, &file_information, "ftLastWriteTime", written)?;
+        ecx.write_int_fields_named(
             &[
                 ("dwVolumeSerialNumber", 0),
                 ("nFileSizeHigh", (size >> 32).into()),
@@ -395,7 +395,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             &file_information,
         )?;
 
-        interp_ok(this.eval_windows("c", "TRUE"))
+        interp_ok(ecx.eval_windows("c", "TRUE"))
     }
 
     fn SetFileInformationByHandle(
@@ -406,23 +406,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         buffer_size: &OpTy<'tcx>,      // DWORD
     ) -> InterpResult<'tcx, Scalar> {
         // ^ Returns BOOL (i32 on Windows)
-        let this = self.eval_context_mut();
-        this.assert_target_os(Os::Windows, "SetFileInformationByHandle");
-        this.check_no_isolation("`SetFileInformationByHandle`")?;
+        let ecx = self.eval_context_mut();
+        ecx.assert_target_os(Os::Windows, "SetFileInformationByHandle");
+        ecx.check_no_isolation("`SetFileInformationByHandle`")?;
 
-        let class = this.read_scalar(class)?.to_u32()?;
-        let buffer_size = this.read_scalar(buffer_size)?.to_u32()?;
-        let file_information = this.read_pointer(file_information)?;
-        this.check_ptr_access(
+        let class = ecx.read_scalar(class)?.to_u32()?;
+        let buffer_size = ecx.read_scalar(buffer_size)?.to_u32()?;
+        let file_information = ecx.read_pointer(file_information)?;
+        ecx.check_ptr_access(
             file_information,
             Size::from_bytes(buffer_size),
             CheckInAllocMsg::MemoryAccess,
         )?;
 
-        let file = this.read_handle(file, "SetFileInformationByHandle")?;
-        let Handle::File(fd_num) = file else { this.invalid_handle("SetFileInformationByHandle")? };
-        let Some(desc) = this.machine.fds.get(fd_num) else {
-            this.invalid_handle("SetFileInformationByHandle")?
+        let file = ecx.read_handle(file, "SetFileInformationByHandle")?;
+        let Handle::File(fd_num) = file else { ecx.invalid_handle("SetFileInformationByHandle")? };
+        let Some(desc) = ecx.machine.fds.get(fd_num) else {
+            ecx.invalid_handle("SetFileInformationByHandle")?
         };
         let file = desc.downcast::<FileHandle>().ok_or_else(|| {
             err_unsup_format!(
@@ -430,49 +430,49 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             )
         })?;
 
-        if class == this.eval_windows_u32("c", "FileEndOfFileInfo") {
-            let place = this
-                .ptr_to_mplace(file_information, this.windows_ty_layout("FILE_END_OF_FILE_INFO"));
+        if class == ecx.eval_windows_u32("c", "FileEndOfFileInfo") {
+            let place =
+                ecx.ptr_to_mplace(file_information, ecx.windows_ty_layout("FILE_END_OF_FILE_INFO"));
             let new_len =
-                this.read_scalar(&this.project_field_named(&place, "EndOfFile")?)?.to_i64()?;
+                ecx.read_scalar(&ecx.project_field_named(&place, "EndOfFile")?)?.to_i64()?;
             match file.file.set_len(new_len.try_into().unwrap()) {
-                Ok(_) => interp_ok(this.eval_windows("c", "TRUE")),
+                Ok(_) => interp_ok(ecx.eval_windows("c", "TRUE")),
                 Err(e) => {
-                    this.set_last_error(e)?;
-                    interp_ok(this.eval_windows("c", "FALSE"))
+                    ecx.set_last_error(e)?;
+                    interp_ok(ecx.eval_windows("c", "FALSE"))
                 }
             }
-        } else if class == this.eval_windows_u32("c", "FileAllocationInfo") {
+        } else if class == ecx.eval_windows_u32("c", "FileAllocationInfo") {
             // On Windows, files are somewhat similar to a `Vec` in that they have a separate
             // "length" (called "EOF position") and "capacity" (called "allocation size").
             // Growing the allocation size is largely a performance hint which we can
             // ignore -- it can also be directly queried, but we currently do not support that.
             // So we only need to do something if this operation shrinks the allocation size
             // so far that it affects the EOF position.
-            let place = this
-                .ptr_to_mplace(file_information, this.windows_ty_layout("FILE_ALLOCATION_INFO"));
-            let new_alloc_size: u64 = this
-                .read_scalar(&this.project_field_named(&place, "AllocationSize")?)?
+            let place =
+                ecx.ptr_to_mplace(file_information, ecx.windows_ty_layout("FILE_ALLOCATION_INFO"));
+            let new_alloc_size: u64 = ecx
+                .read_scalar(&ecx.project_field_named(&place, "AllocationSize")?)?
                 .to_i64()?
                 .try_into()
                 .unwrap();
             let old_len = match file.file.metadata() {
                 Ok(m) => m.len(),
                 Err(e) => {
-                    this.set_last_error(e)?;
-                    return interp_ok(this.eval_windows("c", "FALSE"));
+                    ecx.set_last_error(e)?;
+                    return interp_ok(ecx.eval_windows("c", "FALSE"));
                 }
             };
             if new_alloc_size < old_len {
                 match file.file.set_len(new_alloc_size) {
-                    Ok(_) => interp_ok(this.eval_windows("c", "TRUE")),
+                    Ok(_) => interp_ok(ecx.eval_windows("c", "TRUE")),
                     Err(e) => {
-                        this.set_last_error(e)?;
-                        interp_ok(this.eval_windows("c", "FALSE"))
+                        ecx.set_last_error(e)?;
+                        interp_ok(ecx.eval_windows("c", "FALSE"))
                     }
                 }
             } else {
-                interp_ok(this.eval_windows("c", "TRUE"))
+                interp_ok(ecx.eval_windows("c", "TRUE"))
             }
         } else {
             throw_unsup_format!(
@@ -487,13 +487,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         file: &OpTy<'tcx>, // HANDLE
     ) -> InterpResult<'tcx, Scalar> {
         // ^ returns BOOL (i32 on Windows)
-        let this = self.eval_context_mut();
-        this.assert_target_os(Os::Windows, "FlushFileBuffers");
+        let ecx = self.eval_context_mut();
+        ecx.assert_target_os(Os::Windows, "FlushFileBuffers");
 
-        let file = this.read_handle(file, "FlushFileBuffers")?;
-        let Handle::File(fd_num) = file else { this.invalid_handle("FlushFileBuffers")? };
-        let Some(desc) = this.machine.fds.get(fd_num) else {
-            this.invalid_handle("FlushFileBuffers")?
+        let file = ecx.read_handle(file, "FlushFileBuffers")?;
+        let Handle::File(fd_num) = file else { ecx.invalid_handle("FlushFileBuffers")? };
+        let Some(desc) = ecx.machine.fds.get(fd_num) else {
+            ecx.invalid_handle("FlushFileBuffers")?
         };
         let file = desc.downcast::<FileHandle>().ok_or_else(|| {
             err_unsup_format!(
@@ -502,15 +502,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })?;
 
         if !file.writable {
-            this.set_last_error(IoError::WindowsError("ERROR_ACCESS_DENIED"))?;
-            return interp_ok(this.eval_windows("c", "FALSE"));
+            ecx.set_last_error(IoError::WindowsError("ERROR_ACCESS_DENIED"))?;
+            return interp_ok(ecx.eval_windows("c", "FALSE"));
         }
 
         match file.file.sync_all() {
-            Ok(_) => interp_ok(this.eval_windows("c", "TRUE")),
+            Ok(_) => interp_ok(ecx.eval_windows("c", "TRUE")),
             Err(e) => {
-                this.set_last_error(e)?;
-                interp_ok(this.eval_windows("c", "FALSE"))
+                ecx.set_last_error(e)?;
+                interp_ok(ecx.eval_windows("c", "FALSE"))
             }
         }
     }
@@ -521,26 +521,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         new_name: &OpTy<'tcx>,
         flags: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let existing_name = this.read_path_from_wide_str(this.read_pointer(existing_name)?)?;
-        let new_name = this.read_path_from_wide_str(this.read_pointer(new_name)?)?;
+        let existing_name = ecx.read_path_from_wide_str(ecx.read_pointer(existing_name)?)?;
+        let new_name = ecx.read_path_from_wide_str(ecx.read_pointer(new_name)?)?;
 
-        let flags = this.read_scalar(flags)?.to_u32()?;
+        let flags = ecx.read_scalar(flags)?.to_u32()?;
 
         // Flag to indicate whether we should replace an existing file.
         // https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw
-        let movefile_replace_existing = this.eval_windows_u32("c", "MOVEFILE_REPLACE_EXISTING");
+        let movefile_replace_existing = ecx.eval_windows_u32("c", "MOVEFILE_REPLACE_EXISTING");
 
         if flags != movefile_replace_existing {
             throw_unsup_format!("MoveFileExW: Unsupported `dwFlags` value {}", flags);
         }
 
         match std::fs::rename(existing_name, new_name) {
-            Ok(_) => interp_ok(this.eval_windows("c", "TRUE")),
+            Ok(_) => interp_ok(ecx.eval_windows("c", "TRUE")),
             Err(e) => {
-                this.set_last_error(e)?;
-                interp_ok(this.eval_windows("c", "FALSE"))
+                ecx.set_last_error(e)?;
+                interp_ok(ecx.eval_windows("c", "FALSE"))
             }
         }
     }
@@ -550,16 +550,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         file_name: &OpTy<'tcx>, // LPCWSTR
     ) -> InterpResult<'tcx, Scalar> {
         // ^ Returns BOOL (i32 on Windows)
-        let this = self.eval_context_mut();
-        this.assert_target_os(Os::Windows, "DeleteFileW");
-        this.check_no_isolation("`DeleteFileW`")?;
+        let ecx = self.eval_context_mut();
+        ecx.assert_target_os(Os::Windows, "DeleteFileW");
+        ecx.check_no_isolation("`DeleteFileW`")?;
 
-        let file_name = this.read_path_from_wide_str(this.read_pointer(file_name)?)?;
+        let file_name = ecx.read_path_from_wide_str(ecx.read_pointer(file_name)?)?;
         match std::fs::remove_file(file_name) {
-            Ok(_) => interp_ok(this.eval_windows("c", "TRUE")),
+            Ok(_) => interp_ok(ecx.eval_windows("c", "TRUE")),
             Err(e) => {
-                this.set_last_error(e)?;
-                interp_ok(this.eval_windows("c", "FALSE"))
+                ecx.set_last_error(e)?;
+                interp_ok(ecx.eval_windows("c", "FALSE"))
             }
         }
     }
@@ -577,17 +577,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         key: &OpTy<'tcx>,             // PULONG
         dest: &MPlaceTy<'tcx>,        // return type: NTSTATUS
     ) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
-        let handle = this.read_handle(handle, "NtWriteFile")?;
-        let event = this.read_handle(event, "NtWriteFile")?;
-        let apc_routine = this.read_pointer(apc_routine)?;
-        let apc_ctx = this.read_pointer(apc_ctx)?;
-        let buf = this.read_pointer(buf)?;
-        let count = this.read_scalar(n)?.to_u32()?;
-        let byte_offset = this.read_target_usize(byte_offset)?; // is actually a pointer, but we only support null
-        let key = this.read_pointer(key)?;
+        let ecx = self.eval_context_mut();
+
+        let handle = ecx.read_handle(handle, "NtWriteFile")?;
+        let event = ecx.read_handle(event, "NtWriteFile")?;
+        let apc_routine = ecx.read_pointer(apc_routine)?;
+        let apc_ctx = ecx.read_pointer(apc_ctx)?;
+        let buf = ecx.read_pointer(buf)?;
+        let count = ecx.read_scalar(n)?.to_u32()?;
+        let byte_offset = ecx.read_target_usize(byte_offset)?; // is actually a pointer, but we only support null
+        let key = ecx.read_pointer(key)?;
         let io_status_block =
-            this.deref_pointer_as(io_status_block, this.windows_ty_layout("IO_STATUS_BLOCK"))?;
+            ecx.deref_pointer_as(io_status_block, ecx.windows_ty_layout("IO_STATUS_BLOCK"))?;
 
         if event != Handle::Null {
             throw_unsup_format!(
@@ -595,13 +596,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
-        if !this.ptr_is_null(apc_routine)? {
+        if !ecx.ptr_is_null(apc_routine)? {
             throw_unsup_format!(
                 "`NtWriteFile` `ApcRoutine` parameter is non-null, which is unsupported"
             );
         }
 
-        if !this.ptr_is_null(apc_ctx)? {
+        if !ecx.ptr_is_null(apc_ctx)? {
             throw_unsup_format!(
                 "`NtWriteFile` `ApcContext` parameter is non-null, which is unsupported"
             );
@@ -613,23 +614,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
-        if !this.ptr_is_null(key)? {
+        if !ecx.ptr_is_null(key)? {
             throw_unsup_format!("`NtWriteFile` `Key` parameter is non-null, which is unsupported");
         }
 
-        let Handle::File(fd) = handle else { this.invalid_handle("NtWriteFile")? };
+        let Handle::File(fd) = handle else { ecx.invalid_handle("NtWriteFile")? };
 
-        let Some(desc) = this.machine.fds.get(fd) else { this.invalid_handle("NtWriteFile")? };
+        let Some(desc) = ecx.machine.fds.get(fd) else { ecx.invalid_handle("NtWriteFile")? };
 
         // Windows writes the output code to IO_STATUS_BLOCK.Status, and number of bytes written
         // to IO_STATUS_BLOCK.Information.
         // The status block value and the returned value don't need to match - but
         // for the cases implemented by miri so far, we can choose to decide that they do.
         let io_status = {
-            let anon = this.project_field_named(&io_status_block, "Anonymous")?;
-            this.project_field_named(&anon, "Status")?
+            let anon = ecx.project_field_named(&io_status_block, "Anonymous")?;
+            ecx.project_field_named(&anon, "Status")?
         };
-        let io_status_info = this.project_field_named(&io_status_block, "Information")?;
+        let io_status_info = ecx.project_field_named(&io_status_block, "Information")?;
 
         // It seems like short writes are not a thing on Windows, so we don't truncate `count` here.
         // FIXME: if we are on a Unix host, short host writes are still visible to the program!
@@ -663,7 +664,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }}
             )
         };
-        desc.write(this.machine.communicate(), buf, count.try_into().unwrap(), this, finish)?;
+        desc.write(ecx.machine.communicate(), buf, count.try_into().unwrap(), ecx, finish)?;
 
         // Return status is written to `dest` and `io_status_block` on callback completion.
         interp_ok(())
@@ -682,29 +683,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         key: &OpTy<'tcx>,             // PULONG
         dest: &MPlaceTy<'tcx>,        // return type: NTSTATUS
     ) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
-        let handle = this.read_handle(handle, "NtReadFile")?;
-        let event = this.read_handle(event, "NtReadFile")?;
-        let apc_routine = this.read_pointer(apc_routine)?;
-        let apc_ctx = this.read_pointer(apc_ctx)?;
-        let buf = this.read_pointer(buf)?;
-        let count = this.read_scalar(n)?.to_u32()?;
-        let byte_offset = this.read_target_usize(byte_offset)?; // is actually a pointer, but we only support null
-        let key = this.read_pointer(key)?;
+        let ecx = self.eval_context_mut();
+
+        let handle = ecx.read_handle(handle, "NtReadFile")?;
+        let event = ecx.read_handle(event, "NtReadFile")?;
+        let apc_routine = ecx.read_pointer(apc_routine)?;
+        let apc_ctx = ecx.read_pointer(apc_ctx)?;
+        let buf = ecx.read_pointer(buf)?;
+        let count = ecx.read_scalar(n)?.to_u32()?;
+        let byte_offset = ecx.read_target_usize(byte_offset)?; // is actually a pointer, but we only support null
+        let key = ecx.read_pointer(key)?;
         let io_status_block =
-            this.deref_pointer_as(io_status_block, this.windows_ty_layout("IO_STATUS_BLOCK"))?;
+            ecx.deref_pointer_as(io_status_block, ecx.windows_ty_layout("IO_STATUS_BLOCK"))?;
 
         if event != Handle::Null {
             throw_unsup_format!("`NtReadFile` `Event` parameter is non-null, which is unsupported");
         }
 
-        if !this.ptr_is_null(apc_routine)? {
+        if !ecx.ptr_is_null(apc_routine)? {
             throw_unsup_format!(
                 "`NtReadFile` `ApcRoutine` parameter is non-null, which is unsupported"
             );
         }
 
-        if !this.ptr_is_null(apc_ctx)? {
+        if !ecx.ptr_is_null(apc_ctx)? {
             throw_unsup_format!(
                 "`NtReadFile` `ApcContext` parameter is non-null, which is unsupported"
             );
@@ -716,20 +718,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
-        if !this.ptr_is_null(key)? {
+        if !ecx.ptr_is_null(key)? {
             throw_unsup_format!("`NtReadFile` `Key` parameter is non-null, which is unsupported");
         }
 
         // See NtWriteFile above for commentary on this
         let io_status = {
-            let anon = this.project_field_named(&io_status_block, "Anonymous")?;
-            this.project_field_named(&anon, "Status")?
+            let anon = ecx.project_field_named(&io_status_block, "Anonymous")?;
+            ecx.project_field_named(&anon, "Status")?
         };
-        let io_status_info = this.project_field_named(&io_status_block, "Information")?;
+        let io_status_info = ecx.project_field_named(&io_status_block, "Information")?;
 
-        let Handle::File(fd) = handle else { this.invalid_handle("NtWriteFile")? };
+        let Handle::File(fd) = handle else { ecx.invalid_handle("NtWriteFile")? };
 
-        let Some(desc) = this.machine.fds.get(fd) else { this.invalid_handle("NtReadFile")? };
+        let Some(desc) = ecx.machine.fds.get(fd) else { ecx.invalid_handle("NtReadFile")? };
 
         // It seems like short reads are not a thing on Windows, so we don't truncate `count` here.
         // FIXME: if we are on a Unix host, short host reads are still visible to the program!
@@ -763,7 +765,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }}
             )
         };
-        desc.read(this.machine.communicate(), buf, count.try_into().unwrap(), this, finish)?;
+        desc.read(ecx.machine.communicate(), buf, count.try_into().unwrap(), ecx, finish)?;
 
         // See NtWriteFile for commentary on this
         interp_ok(())
@@ -777,21 +779,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         move_method: &OpTy<'tcx>,  // DWORD
     ) -> InterpResult<'tcx, Scalar> {
         // ^ Returns BOOL (i32 on Windows)
-        let this = self.eval_context_mut();
-        let file = this.read_handle(file, "SetFilePointerEx")?;
-        let dist_to_move = this.read_scalar(dist_to_move)?.to_i64()?;
-        let new_fp_ptr = this.read_pointer(new_fp)?;
-        let move_method = this.read_scalar(move_method)?.to_u32()?;
+        let ecx = self.eval_context_mut();
 
-        let Handle::File(fd) = file else { this.invalid_handle("SetFilePointerEx")? };
+        let file = ecx.read_handle(file, "SetFilePointerEx")?;
+        let dist_to_move = ecx.read_scalar(dist_to_move)?.to_i64()?;
+        let new_fp_ptr = ecx.read_pointer(new_fp)?;
+        let move_method = ecx.read_scalar(move_method)?.to_u32()?;
 
-        let Some(desc) = this.machine.fds.get(fd) else {
+        let Handle::File(fd) = file else { ecx.invalid_handle("SetFilePointerEx")? };
+
+        let Some(desc) = ecx.machine.fds.get(fd) else {
             throw_unsup_format!("`SetFilePointerEx` is only supported on file backed handles");
         };
 
-        let file_begin = this.eval_windows_u32("c", "FILE_BEGIN");
-        let file_current = this.eval_windows_u32("c", "FILE_CURRENT");
-        let file_end = this.eval_windows_u32("c", "FILE_END");
+        let file_begin = ecx.eval_windows_u32("c", "FILE_BEGIN");
+        let file_current = ecx.eval_windows_u32("c", "FILE_CURRENT");
+        let file_end = ecx.eval_windows_u32("c", "FILE_END");
 
         let seek = if move_method == file_begin {
             SeekFrom::Start(dist_to_move.try_into().unwrap())
@@ -803,19 +806,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("Invalid move method: {move_method}")
         };
 
-        match desc.seek(this.machine.communicate(), seek)? {
+        match desc.seek(ecx.machine.communicate(), seek)? {
             Ok(n) => {
-                if !this.ptr_is_null(new_fp_ptr)? {
-                    this.write_scalar(
+                if !ecx.ptr_is_null(new_fp_ptr)? {
+                    ecx.write_scalar(
                         Scalar::from_i64(n.try_into().unwrap()),
-                        &this.deref_pointer_as(new_fp, this.machine.layouts.i64)?,
+                        &ecx.deref_pointer_as(new_fp, ecx.machine.layouts.i64)?,
                     )?;
                 }
-                interp_ok(this.eval_windows("c", "TRUE"))
+                interp_ok(ecx.eval_windows("c", "TRUE"))
             }
             Err(e) => {
-                this.set_last_error(e)?;
-                interp_ok(this.eval_windows("c", "FALSE"))
+                ecx.set_last_error(e)?;
+                interp_ok(ecx.eval_windows("c", "FALSE"))
             }
         }
     }

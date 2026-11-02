@@ -96,6 +96,7 @@ impl Command {
             | Command::Build { .. }
             | Command::Check { .. }
             | Command::Test { .. }
+            | Command::TestPriroda { .. }
             | Command::Run { .. }
             | Command::Fmt { .. }
             | Command::Doc { .. }
@@ -109,6 +110,7 @@ impl Command {
             Command::Check { features, flags } => Self::check(features, flags),
             Command::Test { bless, target, coverage, features, flags } =>
                 Self::test(bless, target, coverage, features, flags),
+            Command::TestPriroda { bless, flags } => Self::test_priroda(bless, flags),
             Command::Run { dep, native, quiet, target, edition, features, flags } =>
                 Self::run(dep, native, quiet, target, edition, features, flags),
             Command::Doc { features, flags } => Self::doc(features, flags),
@@ -475,6 +477,30 @@ impl Command {
         if let Some(coverage) = &coverage {
             coverage.show_coverage_report(&e, &features)?;
         }
+
+        Ok(())
+    }
+
+    fn test_priroda(bless: bool, flags: Vec<String>) -> Result<()> {
+        let mut e = MiriEnv::new()?;
+
+        // Build cargo-miri and the local sysroot.
+        let features = ["priroda".to_owned()];
+        let quiet = false;
+        e.build_miri_sysroot(quiet, None::<&str>, &features)?;
+
+        // Forward information to test harness.
+        if bless {
+            e.sh.set_var("RUSTC_BLESS", "Gesundheit");
+        }
+
+        // `priroda` is a bin/test target of the `miri` package, so test it there.
+        let mut args = vec!["--test".to_owned(), "priroda".to_owned()];
+        // Pass flags as well. Make sure they are going to the test harness, not cargo.
+        args.push("--".to_owned());
+        args.extend(flags);
+
+        e.test(".", &features, &args)?;
 
         Ok(())
     }

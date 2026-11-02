@@ -52,7 +52,7 @@ error: lifetime may not live long enough
 LL |     take_foo(|a: &i32| a);
    |                  -   - ^ returning this value requires that `'1` must outlive `'2`
    |                  |   |
-   |                  |   return type of closure is &'2 i32
+   |                  |   return type of closure is `&'2 i32`
    |                  let's call the lifetime of this reference `'1`
 
 error[E0308]: mismatched types

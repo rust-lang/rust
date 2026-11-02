@@ -62,14 +62,15 @@ fn main() {
 
 ## Compile instructions
 It is important to use a clang compiler build on the same LLVM as rustc.
-Just calling clang without the full path will likely use your system clang, which probably will be incompatible.
+Just calling clang without the full path will likely use your system clang,
+which probably will be incompatible.
 So either substitute clang/lld invocations below with absolute path, or set your `PATH` accordingly.
 
 The compilation runs three passes:
 1. `HostMetadata`: compile the host code, writing a manifest that lists the kernel
    instantiations (including generic ones) required by the host code.
-2. `Device`: compile the kernels for the GPU, reading the manifest so the recorded generic
-   instantiations are codegened.
+2. `Device`: compile the kernels for the GPU,
+   reading the manifest so the recorded generic instantiations are codegened.
 3. `Host`: generate the final host code, embedding the device artifact.
 
 <div class="warning">
@@ -92,7 +93,8 @@ RUSTFLAGS="-Ctarget-cpu=gfx90a --emit=llvm-bc,llvm-ir -Zoffload=Device=/absolute
 
 Next we generate the host (CPU) code.
 ```
-RUSTFLAGS="--emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=Host=$PWD/target/amdgcn-amd-amdhsa/release/deps/device.bin -Zunstable-options" cargo +offload build -r
+DEVICE_BC=$(find $PWD/target/amdgcn-amd-amdhsa/release/build -name '<crate_name>.bc')
+RUSTFLAGS="-C lto=fat -C embed-bitcode=yes --emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=Host=$DEVICE_BC -Zunstable-options" cargo +offload build -r
 ```
 
 In the final step, you can now run your binary
@@ -102,8 +104,10 @@ In the final step, you can now run your binary
 all checks passed!
 ```
 
-These three steps will soon be wrapped into a single command, once we had more time to test all steps.
+These three steps will soon be wrapped into a single command,
+once we had more time to test all steps.
 
-To receive more information about the memory transfer, you can enable info printing by adding `LIBOMPTARGET_INFO=-1` ahead of your binary call.
+To receive more information about the memory transfer,
+you can enable info printing by adding `LIBOMPTARGET_INFO=-1` ahead of your binary call.
 
 [^list]: https://rocm.docs.amd.com/en/latest/reference/gpu-arch-specs.html or https://developer.nvidia.com/cuda/gpus. Alternatively, check `rustc --print target-cpus`.

@@ -3,6 +3,7 @@ error: the `track_caller` attribute cannot be used on structs
    |
 LL | #[track_caller]
    |   ^^^^^^^^^^^^
+LL | struct S;
    |
    = help: the `track_caller` attribute can only be applied to functions
 

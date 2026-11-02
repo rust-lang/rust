@@ -186,6 +186,8 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 ///
 /// This is an alias to [`str::from_utf8_unchecked_mut`].
 ///
+/// # Safety
+///
 /// See the immutable version, [`from_utf8_unchecked()`] for documentation and safety requirements.
 ///
 /// # Examples
@@ -219,6 +221,8 @@ pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
 /// If this might not be the case, use `str::from_utf8(slice::from_raw_parts(ptr, len))`,
 /// which will return an `Err` if the data isn't valid UTF-8.
 ///
+/// # Safety
+///
 /// This function is the `str` equivalent of [`slice::from_raw_parts`](crate::slice::from_raw_parts).
 /// See that function's documentation for safety concerns and examples.
 ///
@@ -236,6 +240,8 @@ pub const unsafe fn from_raw_parts<'a>(ptr: *const u8, len: usize) -> &'a str {
 /// The pointed-to bytes must be valid UTF-8.
 /// If this might not be the case, use `str::from_utf8_mut(slice::from_raw_parts_mut(ptr, len))`,
 /// which will return an `Err` if the data isn't valid UTF-8.
+///
+/// # Safety
 ///
 /// This function is the `str` equivalent of [`slice::from_raw_parts_mut`](crate::slice::from_raw_parts_mut).
 /// See that function's documentation for safety concerns and examples.

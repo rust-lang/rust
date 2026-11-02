@@ -4,7 +4,6 @@ error[E0658]: this subset of the `doc` attribute is meant for internal use only
 LL |     #[doc(search_unbox)]
    |           ^^^^^^^^^^^^
    |
-   = note: see issue #90418 <https://github.com/rust-lang/rust/issues/90418> for more information
    = help: add `#![feature(rustdoc_internals)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -14,7 +13,6 @@ error[E0658]: this subset of the `doc` attribute is meant for internal use only
 LL |     #[doc(fake_variadic)]
    |           ^^^^^^^^^^^^^
    |
-   = note: see issue #90418 <https://github.com/rust-lang/rust/issues/90418> for more information
    = help: add `#![feature(rustdoc_internals)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -24,9 +22,14 @@ error[E0658]: this subset of the `doc` attribute is meant for internal use only
 LL |     #[doc(attribute = "repr")]
    |           ^^^^^^^^^
    |
-   = note: see issue #90418 <https://github.com/rust-lang/rust/issues/90418> for more information
    = help: add `#![feature(rustdoc_internals)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `#[doc(attribute = "...")]` should be used on anonymous constants
+  --> $DIR/feature-gate-rustdoc_internals.rs:26:11
+   |
+LL |     #[doc(attribute = "repr")]
+   |           ^^^^^^^^^
 
 error[E0658]: this subset of the `doc` attribute is meant for internal use only
   --> $DIR/feature-gate-rustdoc_internals.rs:1:7
@@ -34,7 +37,6 @@ error[E0658]: this subset of the `doc` attribute is meant for internal use only
 LL | #[doc(keyword = "match")]
    |       ^^^^^^^
    |
-   = note: see issue #90418 <https://github.com/rust-lang/rust/issues/90418> for more information
    = help: add `#![feature(rustdoc_internals)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -44,7 +46,6 @@ error[E0658]: this subset of the `doc` attribute is meant for internal use only
 LL | #[doc(attribute = "repr")]
    |       ^^^^^^^^^
    |
-   = note: see issue #90418 <https://github.com/rust-lang/rust/issues/90418> for more information
    = help: add `#![feature(rustdoc_internals)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -54,7 +55,6 @@ error[E0658]: this subset of the `doc` attribute is meant for internal use only
 LL | #[doc(fake_variadic)]
    |       ^^^^^^^^^^^^^
    |
-   = note: see issue #90418 <https://github.com/rust-lang/rust/issues/90418> for more information
    = help: add `#![feature(rustdoc_internals)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -64,10 +64,9 @@ error[E0658]: this subset of the `doc` attribute is meant for internal use only
 LL | #[doc(search_unbox)]
    |       ^^^^^^^^^^^^
    |
-   = note: see issue #90418 <https://github.com/rust-lang/rust/issues/90418> for more information
    = help: add `#![feature(rustdoc_internals)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

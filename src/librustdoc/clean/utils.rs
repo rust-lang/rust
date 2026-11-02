@@ -14,7 +14,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
-use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgKind, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::ModId;
 use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::{debug, warn};
@@ -89,7 +89,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
 
 pub(crate) fn clean_middle_generic_args<'tcx>(
     cx: &mut DocContext<'tcx>,
-    args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
+    args: ty::Binder<'tcx, ty::GenericArgs<'tcx>>,
     mut has_self: bool,
     owner: DefId,
 ) -> ThinVec<GenericArg> {
@@ -106,20 +106,18 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     let generics = cx.tcx.generics_of(owner);
     let args = if !has_self && generics.has_own_self() {
         has_self = true;
-        [cx.tcx.types.trait_object_dummy_self.into()]
-            .into_iter()
-            .chain(args.iter().copied())
-            .collect::<Vec<_>>()
-            .into()
+        cx.tcx.mk_args_from_iter(
+            [cx.tcx.types.trait_object_dummy_self.into()].into_iter().chain(args.iter()),
+        )
     } else {
-        std::borrow::Cow::from(args)
+        args
     };
 
     let mut elision_has_failed_once_before = false;
 
     // Calculates where the parent trait's generic parameters end
     let index_offset = generics.count() - args.len();
-    let clean_arg = |(index, &arg): (usize, &ty::GenericArg<'tcx>)| {
+    let clean_arg = |(index, arg): (usize, ty::GenericArg<'tcx>)| {
         // Elide the self type.
         if has_self && index == 0 {
             return None;
@@ -215,7 +213,7 @@ fn clean_middle_generic_args_with_constraints<'tcx>(
     did: DefId,
     has_self: bool,
     mut constraints: ThinVec<AssocItemConstraint>,
-    args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
+    args: ty::Binder<'tcx, ty::GenericArgs<'tcx>>,
 ) -> GenericArgs {
     if cx.tcx.is_trait(did)
         && cx.tcx.trait_def(did).paren_sugar
@@ -235,7 +233,7 @@ fn clean_middle_generic_args_with_constraints<'tcx>(
         return GenericArgs::Parenthesized { inputs, output };
     }
 
-    let args = clean_middle_generic_args(cx, args.map_bound(|args| &args[..]), has_self, did);
+    let args = clean_middle_generic_args(cx, args, has_self, did);
 
     GenericArgs::AngleBracketed { args, constraints }
 }
@@ -245,7 +243,7 @@ pub(super) fn clean_middle_path<'tcx>(
     did: DefId,
     has_self: bool,
     constraints: ThinVec<AssocItemConstraint>,
-    args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
+    args: ty::Binder<'tcx, ty::GenericArgs<'tcx>>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
     let name = cx.tcx.opt_item_name(did).unwrap_or(sym::dummy);

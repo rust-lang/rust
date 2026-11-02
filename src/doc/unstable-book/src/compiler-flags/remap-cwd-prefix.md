@@ -1,6 +1,6 @@
 # `remap-cwd-prefix`
 
-The tracking issue for this feature is: [#87325](https://github.com/rust-lang/rust/issues/87325).
+The tracking issue for this feature is: [#89434](https://github.com/rust-lang/rust/issues/89434).
 
 ------------------------
 

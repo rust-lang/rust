@@ -3,7 +3,7 @@
 This page is about the test suite named `rustdoc-html` used to test the HTML output of `rustdoc`.
 For other rustdoc-specific test suites, see [Rustdoc test suites].
 
-Each test file in this test suite is simply a Rust source file `file.rs` sprinkled with
+Each test file in this test suite is simply a Rust source file sprinkled with
 so-called *directives* located inside normal Rust code comments.
 These come in two flavors: *Compiletest* and *HtmlDocCk*.
 
@@ -145,8 +145,8 @@ Checks that the directory given by `PATH` contains exactly `ENTRIES`.
 ## Compiletest Directives (Brief)
 
 As mentioned in the introduction, you also have access to [compiletest directives].
-Most importantly, they allow you to register auxiliary crates and
-to pass flags to the `rustdoc` binary under test.
+Most importantly,
+they allow you to register auxiliary crates and to pass flags to the `rustdoc` binary under test.
 It's *strongly recommended* to read that chapter if you don't know anything about them yet.
 
 Here are some details that are relevant to this test suite specifically:
@@ -177,9 +177,9 @@ the original negative check failing.
 
 **Note**: Please avoid the use of *negated* checks!
 
-**Tip**: If you can't avoid it, please **always** pair it with an analogous positive check in the
-immediate vicinity, so people changing "the shape" have a chance to notice and to update the
-negated check!
+**Tip**: If you can't avoid it,
+please **always** pair it with an analogous positive check in the immediate vicinity,
+so people changing "the shape" have a chance to notice and to update the negated check!
 
 ## Limitations
 

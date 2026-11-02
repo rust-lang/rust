@@ -185,8 +185,11 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
     /// This is either host metadata, or a non-file-backed-FD type.
     /// The latter is for now represented as a string storing the `libc` name of the mode so we only
     /// support that kind of metadata on Unix targets.
-    fn metadata<'tcx>(&self) -> InterpResult<'tcx, Either<io::Result<fs::Metadata>, &'static str>> {
-        throw_unsup_format!("obtaining metadata is only supported on file-backed file descriptors");
+    fn metadata<'tcx>(
+        &self,
+        _communicate_allowed: bool,
+    ) -> InterpResult<'tcx, Either<io::Result<fs::Metadata>, &'static str>> {
+        throw_unsup_format!("obtaining metadata is not supported on {}", self.name());
     }
 
     fn is_tty(&self, _communicate_allowed: bool) -> bool {
@@ -247,8 +250,17 @@ impl FileDescription for Stdin {
         finish.call(ecx, result)
     }
 
+    fn metadata<'tcx>(
+        &self,
+        communicate_allowed: bool,
+    ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
+        let ftype = if self.is_tty(communicate_allowed) { "S_IFCHR" } else { "S_IFIFO" };
+        interp_ok(Either::Right(ftype))
+    }
+
     fn is_tty(&self, communicate_allowed: bool) -> bool {
-        communicate_allowed && self.stdin.is_terminal()
+        // Without communication we assume that it is a terminal.
+        !communicate_allowed || self.stdin.is_terminal()
     }
 
     fn readiness_watched(&self) -> Option<&ReadinessWatched> {
@@ -306,8 +318,17 @@ impl FileDescription for Stdout {
         finish.call(ecx, result)
     }
 
+    fn metadata<'tcx>(
+        &self,
+        communicate_allowed: bool,
+    ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
+        let ftype = if self.is_tty(communicate_allowed) { "S_IFCHR" } else { "S_IFIFO" };
+        interp_ok(Either::Right(ftype))
+    }
+
     fn is_tty(&self, communicate_allowed: bool) -> bool {
-        communicate_allowed && self.stdout.is_terminal()
+        // Without communication we assume that it is a terminal.
+        !communicate_allowed || self.stdout.is_terminal()
     }
 
     fn readiness_watched(&self) -> Option<&ReadinessWatched> {
@@ -357,8 +378,17 @@ impl FileDescription for Stderr {
         finish.call(ecx, result)
     }
 
+    fn metadata<'tcx>(
+        &self,
+        communicate_allowed: bool,
+    ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
+        let ftype = if self.is_tty(communicate_allowed) { "S_IFCHR" } else { "S_IFIFO" };
+        interp_ok(Either::Right(ftype))
+    }
+
     fn is_tty(&self, communicate_allowed: bool) -> bool {
-        communicate_allowed && self.stderr.is_terminal()
+        // Without communication we assume that it is a terminal.
+        !communicate_allowed || self.stderr.is_terminal()
     }
 
     fn readiness_watched(&self) -> Option<&ReadinessWatched> {
@@ -404,6 +434,13 @@ impl FileDescription for NullOutput {
     ) -> InterpResult<'tcx> {
         // We just don't write anything, but report to the user that we did.
         finish.call(ecx, Ok(len))
+    }
+
+    fn metadata<'tcx>(
+        &self,
+        _communicate_allowed: bool,
+    ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
+        interp_ok(Either::Right("S_IFIFO"))
     }
 
     fn readiness_watched(&self) -> Option<&ReadinessWatched> {
@@ -491,12 +528,17 @@ impl FileDescription for FileHandle {
         interp_ok((&mut &self.file).seek(offset))
     }
 
-    fn metadata<'tcx>(&self) -> InterpResult<'tcx, Either<io::Result<fs::Metadata>, &'static str>> {
+    fn metadata<'tcx>(
+        &self,
+        communicate_allowed: bool,
+    ) -> InterpResult<'tcx, Either<io::Result<fs::Metadata>, &'static str>> {
+        assert!(communicate_allowed);
         interp_ok(Either::Left(self.file.metadata()))
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
-        communicate_allowed && self.file.is_terminal()
+        assert!(communicate_allowed);
+        self.file.is_terminal()
     }
 
     fn short_fd_operations(&self) -> bool {
@@ -525,7 +567,10 @@ impl FileDescription for DirHandle {
 
     fn metadata<'tcx>(
         &self,
+        communicate_allowed: bool,
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
+        assert!(communicate_allowed);
+
         #[cfg(bootstrap)]
         return interp_ok(Either::Left(self.dir.metadata()));
         #[cfg(not(bootstrap))]
@@ -687,12 +732,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Write data to a host `Write` type, with the bytes taken from machine memory.
     fn write_to_host(
-        &mut self,
+        &self,
         mut file: impl io::Write,
         len: usize,
         ptr: Pointer,
     ) -> InterpResult<'tcx, Result<usize, IoError>> {
-        let this = self.eval_context_mut();
+        let this = self.eval_context_ref();
 
         let bytes = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         let result = file.write(bytes);

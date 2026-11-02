@@ -25,7 +25,7 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgsRef, Ty, TyCtxt,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgs, Ty, TyCtxt,
     TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_mir_dataflow::move_paths::MoveData;
@@ -2509,7 +2509,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let src_ty = src_place.ty(self.body, tcx).ty;
 
         let ty::Adt(dst_adt, dst_args) = dst_ty.kind() else { bug!() };
-        let [dst_arg, ..] = ***dst_args else { bug!() };
+        let [dst_arg, ..] = *dst_args.as_slice() else { bug!() };
         let ty::GenericArgKind::Lifetime(dst_region) = dst_arg.kind() else { bug!() };
         constraints.liveness_constraints.add_location(dst_region.as_var(), location);
 
@@ -2596,8 +2596,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 };
                 // These field types can still contain projections from the source or target type
                 // and normalize them before handing them to `NllTypeRelating`
-                let dst_ty = self.normalize(dst_field.ty(tcx, dst_args), location.to_locations());
-                let src_ty = self.normalize(src_field.ty(tcx, src_args), location.to_locations());
+                let dst_ty = self.normalize(dst_field.ty(tcx, *dst_args), location.to_locations());
+                let src_ty = self.normalize(src_field.ty(tcx, *src_args), location.to_locations());
 
                 if let (
                     ty::Ref(src_region, _, Mutability::Mut),
@@ -2709,7 +2709,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         location: Location,
     ) -> ty::InstantiatedClauses<'tcx> {
         let root_def_id = self.infcx.root_def_id;
@@ -2728,16 +2728,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // FIXME(async_closures): It may be useful to add a debug assert here
                 // to actually call `type_of` and check the `parent_args` are the same
                 // length as the `typeck_root_args`.
-                &args[..typeck_root_args.len()]
+                tcx.mk_args(&args.as_slice()[..typeck_root_args.len()])
             }
             DefKind::AnonConst
                 if tcx.anon_const_kind(def_id) == ty::AnonConstKind::NonTypeSystemInline =>
             {
-                args.as_inline_const().parent_args()
+                tcx.mk_args(args.as_inline_const().parent_args())
             }
             other => bug!("unexpected item {:?}", other),
         };
-        let parent_args = tcx.mk_args(parent_args);
 
         assert_eq!(typeck_root_args.len(), parent_args.len());
         if let Err(_) = self.eq_args(

@@ -206,7 +206,7 @@ pub fn all_fields_implement_trait<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
     adt: AdtDef<'tcx>,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
     parent_cause: ObligationCause<'tcx>,
     lang_item: LangItem,
 ) -> Result<(), Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>> {

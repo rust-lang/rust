@@ -67,11 +67,7 @@ fn test_getrandom() {
 
 #[cfg(any(target_os = "freebsd", target_os = "illumos", target_os = "solaris"))]
 fn test_arc4random_buf() {
-    // FIXME: Use declaration from libc once <https://github.com/rust-lang/libc/pull/3944> lands.
-    extern "C" {
-        fn arc4random_buf(buf: *mut libc::c_void, size: libc::size_t);
-    }
     let mut buf = [0u8; 5];
-    unsafe { arc4random_buf(buf.as_mut_ptr() as _, buf.len()) };
+    unsafe { libc::arc4random_buf(buf.as_mut_ptr() as _, buf.len()) };
     assert!(buf != [0u8; 5]);
 }

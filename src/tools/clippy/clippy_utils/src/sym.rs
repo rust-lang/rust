@@ -1,7 +1,5 @@
 #![expect(non_upper_case_globals)]
 
-use rustc_span::symbol::PREDEFINED_SYMBOLS_COUNT;
-
 #[doc(no_inline)]
 pub use rustc_span::sym::*;
 
@@ -23,9 +21,26 @@ macro_rules! generate {
             )*
         ];
 
+        mod clippy_symbols {
+            use rustc_span::{Symbol, symbol::PREDEFINED_SYMBOLS_COUNT};
+            $(
+                pub const $name: Symbol = Symbol::new(PREDEFINED_SYMBOLS_COUNT + ${index()});
+            )*
+        }
+
         $(
-            pub const $name: rustc_span::Symbol = rustc_span::Symbol::new(PREDEFINED_SYMBOLS_COUNT + ${index()});
+            pub use clippy_symbols::$name;
         )*
+
+        #[allow(unused_imports)]
+        // Check that we don't have duplicate symbols with rustc.
+        // It's still checked by rustc's driver (at runtime) regardless,
+        // but it's nicer to fail at compile time instead.
+        const _: () = {
+            use rustc_span::sym::*; // First, glob import all of rustc's symbols
+            use clippy_symbols::*; // Then, glob import all of clippy's symbols
+            use { $($name),* }; // If a symbol is in both, an ambiguity error is raised
+        };
     };
 }
 
@@ -147,6 +162,7 @@ generate! {
     as_slice,
     as_str,
     assert_failed,
+    assert_matches,
     author,
     back,
     binary_heap_pop_if,
@@ -166,7 +182,6 @@ generate! {
     cast,
     cast_const,
     cast_mut,
-    ceil,
     ceil_char_boundary,
     chain,
     char_is_ascii,
@@ -213,6 +228,7 @@ generate! {
     cyclomatic_complexity,
     dbg_macro,
     de,
+    debug_assert_matches,
     debug_struct,
     deprecated_in_future,
     deref_mut_method,
@@ -225,6 +241,8 @@ generate! {
     enum_glob_use,
     enumerate,
     enumerate_method,
+    eprint,
+    eprintln,
     err,
     expect_err,
     expn_data,
@@ -276,10 +294,10 @@ generate! {
     first,
     flat_map,
     flatten,
-    floor,
     floor_char_boundary,
     fold,
     for_each,
+    format,
     from_be_bytes,
     from_bytes_with_nul,
     from_bytes_with_nul_unchecked,
@@ -479,8 +497,8 @@ generate! {
     pop_if,
     position,
     pow,
-    powf,
-    powi,
+    print,
+    println,
     process_abort,
     process_exit,
     product,
@@ -518,7 +536,6 @@ generate! {
     rfind,
     rmatch_indices,
     rmatches,
-    round,
     rposition,
     rsplit,
     rsplit_once,
@@ -566,7 +583,6 @@ generate! {
     split_whitespace,
     splitn,
     splitn_mut,
-    sqrt,
     starts_with,
     std_detect,
     step_by,
@@ -644,7 +660,6 @@ generate! {
     visit_str,
     visit_string,
     wake,
-    warnings,
     wildcard_imports,
     with_capacity,
     wrapping_neg,

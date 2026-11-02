@@ -466,21 +466,21 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
+                (def, Ty::new_adt(cx.tcx, def, ty::GenericArgs::empty()))
             }
             hir::ItemKind::Union(_, generics, _) => {
                 if !generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
+                (def, Ty::new_adt(cx.tcx, def, ty::GenericArgs::empty()))
             }
             hir::ItemKind::Enum(_, generics, _) => {
                 if !generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
+                (def, Ty::new_adt(cx.tcx, def, ty::GenericArgs::empty()))
             }
             _ => return,
         };
@@ -771,7 +771,7 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
                 AttrKind::DocComment(CommentKind::Block, _) => {
                     BuiltinUnusedDocCommentSub::BlockHelp
                 }
-                AttrKind::Synthetic(..) => unreachable!(),
+                AttrKind::Synthetic(..) | AttrKind::Generated(..) => unreachable!(),
             };
             cx.emit_span_lint(
                 UNUSED_DOC_COMMENTS,
@@ -1272,7 +1272,7 @@ impl TypeAliasBounds {
 }
 
 impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
-    fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &hir::Item<'tcx>) {
         let hir::ItemKind::TyAlias(_, generics, hir_ty) = item.kind else { return };
 
         // There must not be a where clause.
@@ -1316,7 +1316,6 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         }
 
         let mut ty = Some(hir_ty);
-        let enable_feat_help = cx.tcx.sess.is_nightly_build();
 
         if let [.., label_sp] = *where_spans {
             cx.emit_span_lint(
@@ -1325,10 +1324,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 BuiltinTypeAliasBounds {
                     in_where_clause: true,
                     label: label_sp,
-                    enable_feat_help,
                     suggestions: vec![(generics.where_clause_span, String::new())],
+                    def_id: item.owner_id.def_id,
                     preds: generics.predicates,
                     ty: ty.take(),
+                    tcx: cx.tcx,
                 },
             );
         }
@@ -1339,10 +1339,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 BuiltinTypeAliasBounds {
                     in_where_clause: false,
                     label: label_sp,
-                    enable_feat_help,
                     suggestions: inline_sugg,
+                    def_id: item.owner_id.def_id,
                     preds: generics.predicates,
                     ty,
+                    tcx: cx.tcx,
                 },
             );
         }
@@ -1485,7 +1486,7 @@ impl EarlyLintPass for DoubleNegations {
             && let ExprKind::Unary(UnOp::Neg, ref inner2) = inner.kind
             && !matches!(inner2.kind, ExprKind::Unary(UnOp::Neg, _))
             // Don't lint if this jumps macro expansion boundary (Issue #143980)
-            && expr.span.eq_ctxt(inner.span)
+            && expr.span.ctxt() == inner.span.ctxt()
         {
             cx.emit_span_lint(
                 DOUBLE_NEGATIONS,
@@ -2394,7 +2395,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             cx: &LateContext<'tcx>,
             ty: Ty<'tcx>,
             variant: &VariantDef,
-            args: ty::GenericArgsRef<'tcx>,
+            args: ty::GenericArgs<'tcx>,
             descr: &str,
             init: InitKind,
         ) -> Option<InitError> {
@@ -2493,7 +2494,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             cx,
                             ty,
                             adt_def.non_enum_variant(),
-                            args,
+                            *args,
                             "struct field",
                             init,
                         );
@@ -2503,7 +2504,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     let mut potential_variants = adt_def.variants().iter().filter_map(|variant| {
                         let definitely_inhabited = match variant
                             .inhabited_predicate(cx.tcx)
-                            .instantiate(cx.tcx, args)
+                            .instantiate(cx.tcx, *args)
                             .apply_any_module(cx.tcx, cx.typing_env())
                         {
                             // Entirely skip uninhabited variants.
@@ -2528,7 +2529,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             cx,
                             ty,
                             first_variant.0,
-                            args,
+                            *args,
                             "field of the only potentially inhabited enum variant",
                             init,
                         );

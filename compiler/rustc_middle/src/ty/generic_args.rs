@@ -1,8 +1,10 @@
 // Generic arguments.
 
 use core::intrinsics;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::num::NonZero;
+use std::ops::Index;
 use std::ptr::NonNull;
 
 use rustc_data_structures::intern::Interned;
@@ -41,32 +43,32 @@ pub struct GenericArg<'tcx> {
 
 impl<'tcx> rustc_type_ir::inherent::GenericArg<TyCtxt<'tcx>> for GenericArg<'tcx> {}
 
-impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArgsRef<'tcx> {
+impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArgs<'tcx> {
     fn rebase_onto(
         self,
         tcx: TyCtxt<'tcx>,
         source_ancestor: DefId,
-        target_args: GenericArgsRef<'tcx>,
-    ) -> GenericArgsRef<'tcx> {
-        self.rebase_onto(tcx, source_ancestor, target_args)
+        target_args: GenericArgs<'tcx>,
+    ) -> GenericArgs<'tcx> {
+        GenericArgs::rebase_onto(&self, tcx, source_ancestor, target_args)
     }
 
     #[track_caller]
     fn type_at(self, i: usize) -> Ty<'tcx> {
-        self.type_at(i)
+        GenericArgs::type_at(&self, i)
     }
 
     #[track_caller]
     fn region_at(self, i: usize) -> ty::Region<'tcx> {
-        self.region_at(i)
+        GenericArgs::region_at(&self, i)
     }
 
     #[track_caller]
     fn const_at(self, i: usize) -> ty::Const<'tcx> {
-        self.const_at(i)
+        GenericArgs::const_at(&self, i)
     }
 
-    fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::GenericArgsRef<'tcx> {
+    fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::GenericArgs<'tcx> {
         GenericArgs::identity_for_item(tcx, def_id)
     }
 
@@ -74,13 +76,13 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
         original_args: &[ty::GenericArg<'tcx>],
-    ) -> ty::GenericArgsRef<'tcx> {
+    ) -> ty::GenericArgs<'tcx> {
         ty::GenericArgs::extend_with_error(tcx, def_id, original_args)
     }
 
-    fn split_closure_args(self) -> ty::ClosureArgsParts<TyCtxt<'tcx>> {
-        match self[..] {
-            [ref parent_args @ .., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
+    fn split_closure_args<'a>(&'a self) -> ty::ClosureArgsParts<'a, TyCtxt<'tcx>> {
+        match self.as_slice() {
+            [parent_args @ .., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
                 ty::ClosureArgsParts {
                     parent_args,
                     closure_kind_ty: closure_kind_ty.expect_ty(),
@@ -92,10 +94,12 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
         }
     }
 
-    fn split_coroutine_closure_args(self) -> ty::CoroutineClosureArgsParts<TyCtxt<'tcx>> {
-        match self[..] {
+    fn split_coroutine_closure_args<'a>(
+        &'a self,
+    ) -> ty::CoroutineClosureArgsParts<'a, TyCtxt<'tcx>> {
+        match self.as_slice() {
             [
-                ref parent_args @ ..,
+                parent_args @ ..,
                 closure_kind_ty,
                 signature_parts_ty,
                 tupled_upvars_ty,
@@ -111,9 +115,9 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
         }
     }
 
-    fn split_coroutine_args(self) -> ty::CoroutineArgsParts<TyCtxt<'tcx>> {
-        match self[..] {
-            [ref parent_args @ .., kind_ty, resume_ty, yield_ty, return_ty, tupled_upvars_ty] => {
+    fn split_coroutine_args<'a>(&'a self) -> ty::CoroutineArgsParts<'a, TyCtxt<'tcx>> {
+        match self.as_slice() {
+            [parent_args @ .., kind_ty, resume_ty, yield_ty, return_ty, tupled_upvars_ty] => {
                 ty::CoroutineArgsParts {
                     parent_args,
                     kind_ty: kind_ty.expect_ty(),
@@ -374,19 +378,123 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for GenericArg<'tcx> {
     }
 }
 
-/// List of generic arguments that are gonna be used to replace generic parameters.
-pub type GenericArgs<'tcx> = List<GenericArg<'tcx>>;
+pub type GenericArgsUnsized<'tcx> = List<GenericArg<'tcx>>;
 
-pub type GenericArgsRef<'tcx> = &'tcx GenericArgs<'tcx>;
+/// List of generic arguments that are gonna be used to replace generic parameters.
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(TyEncodable, StableHash, TypeVisitable, Lift)]
+pub struct GenericArgs<'tcx>(&'tcx GenericArgsUnsized<'tcx>);
+
+impl<'tcx> Index<usize> for GenericArgs<'tcx> {
+    type Output = GenericArg<'tcx>;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.as_slice()[index]
+    }
+}
+
+impl<'tcx> Debug for GenericArgs<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
+    }
+}
+
+impl<'tcx> Default for GenericArgs<'tcx> {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
+impl<'tcx> AsRef<[GenericArg<'tcx>]> for GenericArgs<'tcx> {
+    fn as_ref(&self) -> &[GenericArg<'tcx>] {
+        self.as_slice()
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::SliceLike for GenericArgs<'tcx> {
+    type Item = GenericArg<'tcx>;
+    type IntoIter = <Self as IntoIterator>::IntoIter;
+
+    fn iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+
+    fn as_slice(&self) -> &[Self::Item] {
+        self.as_slice()
+    }
+}
+
+impl<'tcx> IntoIterator for GenericArgs<'tcx> {
+    type Item = GenericArg<'tcx>;
+    type IntoIter = std::iter::Copied<std::slice::Iter<'tcx, GenericArg<'tcx>>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
 
 impl<'tcx> GenericArgs<'tcx> {
+    #[inline]
+    pub fn empty() -> Self {
+        Self::from_args(List::empty())
+    }
+
+    /// Exposes the underlying pointer. Relying on this for equality won't always be supported.
+    /// Be careful.
+    #[deprecated = "do not call this"]
+    pub fn as_ptr(&self) -> *const () {
+        std::ptr::from_ref(self.0).cast()
+    }
+
+    #[inline]
+    pub fn iter(self) -> <Self as IntoIterator>::IntoIter {
+        self.into_iter()
+    }
+
+    #[inline]
+    pub fn get(self, idx: usize) -> Option<GenericArg<'tcx>> {
+        self.as_slice().get(idx).copied()
+    }
+
+    #[inline]
+    pub fn first(self) -> Option<GenericArg<'tcx>> {
+        self.as_slice().first().copied()
+    }
+
+    #[inline]
+    pub fn as_slice(&self) -> &[GenericArg<'tcx>] {
+        self.0.as_slice()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.as_slice().is_empty()
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.as_slice().len()
+    }
+
+    // FIXME: we cannot easily provide this anymore in the future if we store 1 element inline.
+    // Use as little as possible.
+    #[inline]
+    pub fn as_tcx_slice(&self) -> &'tcx [GenericArg<'tcx>] {
+        self.0.as_slice()
+    }
+
+    #[inline]
+    pub fn from_args(args: &'tcx GenericArgsUnsized<'tcx>) -> Self {
+        Self(args)
+    }
+
     /// Converts generic args to a type list.
     ///
     /// # Panics
     ///
     /// If any of the generic arguments are not types.
     pub fn into_type_list(&self, tcx: TyCtxt<'tcx>) -> &'tcx List<Ty<'tcx>> {
-        tcx.mk_type_list_from_iter(self.iter().map(|arg| match arg.kind() {
+        tcx.mk_type_list_from_iter(self.as_slice().iter().map(|arg| match arg.kind() {
             GenericArgKind::Type(ty) => ty,
             _ => bug!("`into_type_list` called on generic arg with non-types"),
         }))
@@ -396,7 +504,7 @@ impl<'tcx> GenericArgs<'tcx> {
     /// Closure args have a particular structure controlled by the
     /// compiler that encodes information like the signature and closure kind;
     /// see `ty::ClosureArgs` struct for more comments.
-    pub fn as_closure(&'tcx self) -> ClosureArgs<TyCtxt<'tcx>> {
+    pub fn as_closure(self) -> ClosureArgs<TyCtxt<'tcx>> {
         ClosureArgs { args: self }
     }
 
@@ -404,7 +512,7 @@ impl<'tcx> GenericArgs<'tcx> {
     /// Coroutine-closure args have a particular structure controlled by the
     /// compiler that encodes information like the signature and closure kind;
     /// see `ty::CoroutineClosureArgs` struct for more comments.
-    pub fn as_coroutine_closure(&'tcx self) -> CoroutineClosureArgs<TyCtxt<'tcx>> {
+    pub fn as_coroutine_closure(self) -> CoroutineClosureArgs<TyCtxt<'tcx>> {
         CoroutineClosureArgs { args: self }
     }
 
@@ -412,7 +520,7 @@ impl<'tcx> GenericArgs<'tcx> {
     /// Coroutine args have a particular structure controlled by the
     /// compiler that encodes information like the signature and coroutine kind;
     /// see `ty::CoroutineArgs` struct for more comments.
-    pub fn as_coroutine(&'tcx self) -> CoroutineArgs<TyCtxt<'tcx>> {
+    pub fn as_coroutine(self) -> CoroutineArgs<TyCtxt<'tcx>> {
         CoroutineArgs { args: self }
     }
 
@@ -420,12 +528,12 @@ impl<'tcx> GenericArgs<'tcx> {
     /// Inline const args have a particular structure controlled by the
     /// compiler that encodes information like the inferred type;
     /// see `ty::InlineConstArgs` struct for more comments.
-    pub fn as_inline_const(&'tcx self) -> InlineConstArgs<'tcx> {
+    pub fn as_inline_const(self) -> InlineConstArgs<'tcx> {
         InlineConstArgs { args: self }
     }
 
     /// Creates a [`GenericArgs`] that maps each generic parameter to itself.
-    pub fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: impl Into<DefId>) -> GenericArgsRef<'tcx> {
+    pub fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: impl Into<DefId>) -> GenericArgs<'tcx> {
         Self::for_item(tcx, def_id.into(), |param, _| tcx.mk_param_from_def(param))
     }
 
@@ -434,7 +542,7 @@ impl<'tcx> GenericArgs<'tcx> {
     /// The closures get to observe the [`GenericArgs`] as they're
     /// being built, which can be used to correctly
     /// replace defaults of generic parameters.
-    pub fn for_item<F>(tcx: TyCtxt<'tcx>, def_id: DefId, mut mk_kind: F) -> GenericArgsRef<'tcx>
+    pub fn for_item<F>(tcx: TyCtxt<'tcx>, def_id: DefId, mut mk_kind: F) -> GenericArgs<'tcx>
     where
         F: FnMut(&ty::GenericParamDef, &[GenericArg<'tcx>]) -> GenericArg<'tcx>,
     {
@@ -450,12 +558,15 @@ impl<'tcx> GenericArgs<'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
         mut mk_kind: F,
-    ) -> GenericArgsRef<'tcx>
+    ) -> GenericArgs<'tcx>
     where
         F: FnMut(&ty::GenericParamDef, &[GenericArg<'tcx>]) -> GenericArg<'tcx>,
     {
         Self::for_item(tcx, def_id, |param, args| {
-            self.get(param.index as usize).cloned().unwrap_or_else(|| mk_kind(param, args))
+            self.as_slice()
+                .get(param.index as usize)
+                .copied()
+                .unwrap_or_else(|| mk_kind(param, args))
         })
     }
 
@@ -495,7 +606,7 @@ impl<'tcx> GenericArgs<'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
         original_args: &[GenericArg<'tcx>],
-    ) -> GenericArgsRef<'tcx> {
+    ) -> GenericArgs<'tcx> {
         ty::GenericArgs::for_item(tcx, def_id, |def, _| {
             if let Some(arg) = original_args.get(def.index as usize) {
                 *arg
@@ -589,8 +700,8 @@ impl<'tcx> GenericArgs<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         source_ancestor: DefId,
-        target_args: GenericArgsRef<'tcx>,
-    ) -> GenericArgsRef<'tcx> {
+        target_args: GenericArgs<'tcx>,
+    ) -> GenericArgs<'tcx> {
         let defs = tcx.generics_of(source_ancestor);
         tcx.mk_args_from_iter(target_args.iter().chain(self.iter().skip(defs.count())))
     }
@@ -598,8 +709,8 @@ impl<'tcx> GenericArgs<'tcx> {
     /// Truncates this list of generic args to have at most the number of args in `generics`.
     ///
     /// You might be looking for [`TraitRef::from_assoc`](super::TraitRef::from_assoc).
-    pub fn truncate_to(&self, tcx: TyCtxt<'tcx>, generics: &ty::Generics) -> GenericArgsRef<'tcx> {
-        tcx.mk_args(&self[..generics.count()])
+    pub fn truncate_to(&self, tcx: TyCtxt<'tcx>, generics: &ty::Generics) -> GenericArgs<'tcx> {
+        tcx.mk_args(&self.as_slice()[..generics.count()])
     }
 
     pub fn print_as_list(&self) -> String {
@@ -608,26 +719,27 @@ impl<'tcx> GenericArgs<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArgsRef<'tcx> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArgs<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
+        let args = self.as_slice();
         // This code is hot enough that it's worth specializing for the most
         // common length lists, to avoid the overhead of `SmallVec` creation.
         // The match arms are in order of frequency. The 1, 2, and 0 cases are
         // typically hit in 90--99.99% of cases. When folding doesn't change
         // the args, it's faster to reuse the existing args rather than
         // calling `mk_args`.
-        match self.len() {
+        match args.len() {
             1 => {
-                let param0 = self[0].try_fold_with(folder)?;
-                if param0 == self[0] { Ok(self) } else { Ok(folder.cx().mk_args(&[param0])) }
+                let param0 = args[0].try_fold_with(folder)?;
+                if param0 == args[0] { Ok(self) } else { Ok(folder.cx().mk_args(&[param0])) }
             }
             2 => {
-                let param0 = self[0].try_fold_with(folder)?;
-                let param1 = self[1].try_fold_with(folder)?;
-                if param0 == self[0] && param1 == self[1] {
+                let param0 = args[0].try_fold_with(folder)?;
+                let param1 = args[1].try_fold_with(folder)?;
+                if param0 == args[0] && param1 == args[1] {
                     Ok(self)
                 } else {
                     Ok(folder.cx().mk_args(&[param0, param1]))
@@ -639,16 +751,17 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArgsRef<'tcx> {
     }
 
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        let args = self.as_slice();
         // See justification for this behavior in `try_fold_with`.
-        match self.len() {
+        match args.len() {
             1 => {
-                let param0 = self[0].fold_with(folder);
-                if param0 == self[0] { self } else { folder.cx().mk_args(&[param0]) }
+                let param0 = args[0].fold_with(folder);
+                if param0 == args[0] { self } else { folder.cx().mk_args(&[param0]) }
             }
             2 => {
-                let param0 = self[0].fold_with(folder);
-                let param1 = self[1].fold_with(folder);
-                if param0 == self[0] && param1 == self[1] {
+                let param0 = args[0].fold_with(folder);
+                let param1 = args[1].fold_with(folder);
+                if param0 == args[0] && param1 == args[1] {
                     self
                 } else {
                     folder.cx().mk_args(&[param0, param1])
@@ -665,7 +778,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        // This code is fairly hot, though not as hot as `GenericArgsRef`.
+        // This code is fairly hot, though not as hot as `GenericArgs`.
         //
         // When compiling stage 2, I get the following results:
         //
@@ -725,7 +838,7 @@ impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>> for &'tcx
 #[derive(StableHash, TypeFoldable, TypeVisitable, Lift)]
 pub struct UserArgs<'tcx> {
     /// The args for the item as given by the user.
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
 
     /// The self type, in the case of a `<T>::Item` path (when applied
     /// to an inherent impl). See `UserSelfTy` below.

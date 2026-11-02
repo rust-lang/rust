@@ -169,6 +169,7 @@ rm -r tests/run-make/export # something about rustc version mismatches
 rm tests/ui/compiletest-self-test/compile-flags-incremental.rs # needs compiletest compiled with panic=unwind
 rm tests/ui/extern/extern-types-field-offset.rs # expects /rustc/<hash> rather than /rustc/FAKE_PREFIX
 rm tests/ui/process/println-with-broken-pipe.rs # same
+rm -r tests/run-make/unspecified-edition # warning suppressed when extra args are passed to rustc
 
 # genuine bugs
 # ============
@@ -176,6 +177,8 @@ rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet suppo
 rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 rm -r tests/run-make/used-proc-macro # doesn't work on arm64 for some reason
 rm tests/ui/async-await/async-drop/async-drop-async-gen-return-pending.rs # rustc side fnsig issue
+rm -r tests/run-make/no-alloc-shim # undefined reference to nearbyint
+rm -r tests/run-make/remap-path-prefix-doctest-panic # wrong path remapping
 
 # bugs in the test suite
 # ======================

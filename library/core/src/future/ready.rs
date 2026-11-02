@@ -20,7 +20,7 @@ impl<T> Future for Ready<T> {
 
     #[inline]
     fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<T> {
-        Poll::Ready(self.0.take().expect("`Ready` polled after completion"))
+        Poll::Ready(self.0.take().expect("`Ready` should not be polled after completion"))
     }
 }
 
@@ -43,7 +43,7 @@ impl<T> Ready<T> {
     #[must_use]
     #[inline]
     pub fn into_inner(self) -> T {
-        self.0.expect("Called `into_inner()` on `Ready` after completion")
+        self.0.expect("`into_inner()` should not be called on `Ready` after completion")
     }
 }
 

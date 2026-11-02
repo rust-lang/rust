@@ -1433,7 +1433,7 @@ impl<'a> Parser<'a> {
             |p| p.parse_expr_res(restrictions.intersection(Restrictions::ALLOW_LET)),
         ) {
             Ok(x) => x,
-            Err(err) => {
+            Err(err) if self.may_recover() => {
                 return Ok(self.recover_seq_parse_error(
                     exp!(OpenParen),
                     exp!(CloseParen),
@@ -1441,6 +1441,7 @@ impl<'a> Parser<'a> {
                     err,
                 ));
             }
+            Err(err) => return Err(err),
         };
         let kind = if es.len() == 1 && matches!(trailing_comma, Trailing::No) {
             // `(e)` is parenthesized `e`.
@@ -2369,7 +2370,7 @@ impl<'a> Parser<'a> {
             let move_kw_span = self.prev_token.span;
             // Check for `move async` and recover
             if self.check_keyword(exp!(Async)) {
-                let move_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
+                let move_async_span = self.token.span.with_lo(self.prev_token.span.lo());
                 Err(self.dcx().create_err(crate::diagnostics::AsyncMoveOrderIncorrect {
                     span: move_async_span,
                 }))
@@ -2381,7 +2382,7 @@ impl<'a> Parser<'a> {
             self.psess.gated_spans.gate(sym::ergonomic_clones, use_kw_span);
             // Check for `use async` and recover
             if self.check_keyword(exp!(Async)) {
-                let use_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
+                let use_async_span = self.token.span.with_lo(self.prev_token.span.lo());
                 Err(self.dcx().create_err(crate::diagnostics::AsyncUseOrderIncorrect {
                     span: use_async_span,
                 }))
@@ -2609,6 +2610,13 @@ impl<'a> Parser<'a> {
             if self.prev_token == token::Or {
                 // This was part of a closure, the that part of the parser recover.
                 return Err(self.dcx().create_err(err));
+            } else if AssocOp::from_token(&self.prev_token).is_some()
+                || self.prev_token == token::Bang
+            {
+                // This was something like `- let`, we want to point at that.
+                let mut err = self.dcx().create_err(err);
+                err.span_label(self.prev_token.span, "expected an expression after this");
+                Recovered::Yes(err.emit_err())
             } else {
                 Recovered::Yes(self.dcx().emit_err(err))
             }
@@ -3748,7 +3756,9 @@ impl<'a> Parser<'a> {
                         // make sure the block is at the end by eating a `;`,
                         // we shouldn't report such diagnostic for `let a = foo{return 43;}+bar;`
                         // also skip the suggestion if the span cross macro boundaries
-                        if might_be_stmt && snapshot.eat(exp!(Semi)) && pth.span.eq_ctxt(open_span)
+                        if might_be_stmt
+                            && snapshot.eat(exp!(Semi))
+                            && pth.span.ctxt() == open_span.ctxt()
                         {
                             let span = pth.span.between(open_span);
                             e.subdiagnostic(crate::diagnostics::MissingElseInLet { span });
@@ -3894,8 +3904,6 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         self.recover_vcs_conflict_marker();
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
-            let lo = this.token.span;
-
             // Check if a colon exists one ahead. This means we're parsing a fieldname.
             let is_shorthand = !this.look_ahead(1, |t| t == &token::Colon || t == &token::Eq);
             // Proactively check whether parsing the field will be incorrect.
@@ -3914,22 +3922,25 @@ impl<'a> Parser<'a> {
                     token: pprust::token_to_string(&this.look_ahead(1, |t| *t)),
                 }));
             }
-            let (ident, expr) = if is_shorthand {
+            let (ident, expr, span) = if is_shorthand {
                 // Mimic `x: x` for the `x` field shorthand.
                 let ident = this.parse_ident_common(false)?;
                 let path = ast::Path::from_ident(ident);
-                (ident, this.mk_expr(ident.span, ExprKind::Path(None, path)))
+                (ident, this.mk_expr(ident.span, ExprKind::Path(None, path)), ident.span)
             } else {
                 let ident = this.parse_field_name()?;
+                let span = ident.span.to(this.token.span);
                 this.error_on_eq_field_init(ident);
                 this.bump(); // `:`
-                (ident, this.parse_expr()?)
+                let expr = this.parse_expr()?;
+                let span = span.to(expr.span);
+                (ident, expr, span)
             };
 
             Ok((
                 ast::ExprField {
                     ident,
-                    span: lo.to(expr.span),
+                    span,
                     expr,
                     is_shorthand,
                     attrs,

@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// Checks for manual implementations of the non-exhaustive pattern.
     ///
     /// ### Why is this bad?
-    /// Using the #[non_exhaustive] attribute expresses better the intent
+    /// Using the `#[non_exhaustive]` attribute expresses better the intent
     /// and allows possible optimizations when applied to enums.
     ///
     /// ### Example

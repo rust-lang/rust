@@ -32,3 +32,5 @@ pub fn main() {
     assert_eq!(unsafe { foo_holder.inner_foo.bar }, 4);
     drop(foo_holder);
 }
+
+//@ reference: items.union.fields.write-safety

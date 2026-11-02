@@ -2,12 +2,12 @@
 //! and related traits for the LLVM codegen backend.
 
 use std::any::Any;
+use std::cell::OnceCell;
 use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::path::PathBuf;
 use std::ptr;
-use std::sync::OnceLock;
 
 use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::ThinModule;
@@ -225,21 +225,20 @@ impl CodegenBackend for LlvmCodegenBackend {
                 sym::integer_max,
                 sym::integer_min,
 
-                // Fallback via libm, but the LLVM intrinsic is used instead.
+                // Fallback via libm/compiler-builtins, but the LLVM intrinsic is used instead.
                 sym::sin,
                 sym::cos,
-                sym::powf16, sym::powf32, sym::powf64,
+                sym::powf,
+                sym::powi,
+                sym::sqrt,
                 sym::exp,
                 sym::exp2,
                 sym::log,
                 sym::log10,
                 sym::log2,
-
-                // Fallback via f32 or f64, but the LLVM intrinsic is used instead.
-                sym::floorf16, sym::ceilf16, sym::truncf16,
-                sym::round_ties_even_f16, sym::roundf16,
-                sym::sqrtf16, sym::powif16,
-                sym::fmaf16,
+                sym::floor, sym::ceil, sym::trunc,
+                sym::round, sym::round_ties_even,
+                sym::fma,
 
                 sym::copysignf16, sym::copysignf32, sym::copysignf64, sym::copysignf128,
             ];
@@ -443,8 +442,8 @@ impl CodegenBackend for LlvmCodegenBackend {
 }
 
 pub struct ModuleLlvm {
-    llcx_raw: ptr::NonNull<llvm::Context>,
-    llmod_raw: *const llvm::Module,
+    llcx_raw: ptr::NonNull<llvm::ContextRaw>,
+    llmod_raw: ptr::NonNull<llvm::ModuleRaw>,
 
     // This field is `ManuallyDrop` because it is important that the `TargetMachine`
     // is disposed prior to the `Context` being disposed otherwise UAFs can occur.
@@ -452,20 +451,25 @@ pub struct ModuleLlvm {
 
     /// Saved ThinLTO buffer for embedding in the object file.
     ///
-    /// This is currently a `OnceLock` to avoid aliasing problems when writing to it
+    /// This is currently a `OnceCell` to avoid aliasing problems when writing to it
     /// from code that also wants to pass around a shared ref to `ModuleCodegen`.
-    pub(crate) thin_lto_buffer: OnceLock<Vec<u8>>,
+    pub(crate) thin_lto_buffer: OnceCell<Vec<u8>>,
 }
 
+// An LLVM context can only be used by one thread at a time. But we can move the entire context and
+// all objects inside it to another thread (needed for parallel codegen). This is sound because
+// `ModuleLlvm` owns the context and only allows borrowing LLVM objects tied to the context.
 unsafe impl Send for ModuleLlvm {}
-unsafe impl Sync for ModuleLlvm {}
 
 /// Shared helper to call [`llvm::LLVMContextCreate`] and then configure
 /// [`llvm::LLVMContextSetDiscardValueNames`].
-fn create_context_and_set_fewer_names(fewer_names: bool) -> ptr::NonNull<llvm::Context> {
+fn create_context_and_set_fewer_names(fewer_names: bool) -> ptr::NonNull<llvm::ContextRaw> {
     unsafe {
         let llcx_raw = llvm::LLVMContextCreate();
-        llvm::LLVMContextSetDiscardValueNames(llcx_raw.as_ref(), fewer_names.to_llvm_bool());
+        llvm::LLVMContextSetDiscardValueNames(
+            llvm::wrap_llcx(llcx_raw),
+            fewer_names.to_llvm_bool(),
+        );
         llcx_raw
     }
 }
@@ -474,12 +478,13 @@ impl ModuleLlvm {
     pub(crate) fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
             let llcx_raw = create_context_and_set_fewer_names(tcx.sess.fewer_names());
-            let llmod_raw = context::create_module(tcx, llcx_raw.as_ref(), mod_name);
+            let llmod_raw =
+                context::create_module(tcx, llvm::wrap_llcx(llcx_raw), mod_name).llmod_raw();
             ModuleLlvm {
                 llmod_raw,
                 llcx_raw,
                 tm: ManuallyDrop::new(create_target_machine(tcx, mod_name)),
-                thin_lto_buffer: OnceLock::new(),
+                thin_lto_buffer: OnceCell::new(),
             }
         }
     }
@@ -487,12 +492,13 @@ impl ModuleLlvm {
     pub(crate) fn new_metadata(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
             let llcx_raw = create_context_and_set_fewer_names(tcx.sess.fewer_names());
-            let llmod_raw = context::create_module(tcx, llcx_raw.as_ref(), mod_name);
+            let llmod_raw =
+                context::create_module(tcx, llvm::wrap_llcx(llcx_raw), mod_name).llmod_raw();
             ModuleLlvm {
                 llmod_raw,
                 llcx_raw,
                 tm: ManuallyDrop::new(create_informational_target_machine(tcx.sess)),
-                thin_lto_buffer: OnceLock::new(),
+                thin_lto_buffer: OnceCell::new(),
             }
         }
     }
@@ -506,14 +512,15 @@ impl ModuleLlvm {
     ) -> Self {
         unsafe {
             let llcx_raw = create_context_and_set_fewer_names(cgcx.fewer_names);
-            let llmod_raw = back::lto::parse_module(llcx_raw.as_ref(), name, buffer, dcx);
+            let llmod_raw =
+                back::lto::parse_module(llvm::wrap_llcx(llcx_raw), name, buffer, dcx).llmod_raw();
             let tm = tm_factory(dcx, TargetMachineFactoryConfig::new(cgcx, name.to_str().unwrap()));
 
             ModuleLlvm {
                 llmod_raw,
                 llcx_raw,
                 tm: ManuallyDrop::new(tm),
-                thin_lto_buffer: OnceLock::new(),
+                thin_lto_buffer: OnceCell::new(),
             }
         }
     }
@@ -527,12 +534,9 @@ impl ModuleLlvm {
         &self,
         inner_fn: impl for<'ll> FnOnce(ModuleRefs<'ll>) -> R,
     ) -> R {
-        inner_fn(ModuleRefs {
-            llcx: unsafe { self.llcx_raw.as_ref() },
-            llmod: unsafe { &*self.llmod_raw },
-            tm: self.tm.raw(),
-            _ph: PhantomData,
-        })
+        let llcx = unsafe { llvm::wrap_llcx(self.llcx_raw) };
+        let llmod = unsafe { llvm::wrap_llmod(llcx, self.llmod_raw) };
+        inner_fn(ModuleRefs { llcx, llmod, tm: self.tm.raw(), _ph: PhantomData })
     }
 }
 
@@ -548,8 +552,8 @@ impl Drop for ModuleLlvm {
 /// Bundle of references provided by [`ModuleLlvm::with_module_refs`].
 #[derive(Clone, Copy)]
 pub(crate) struct ModuleRefs<'ll> {
-    pub(crate) llcx: &'ll llvm::Context,
-    pub(crate) llmod: &'ll llvm::Module,
+    pub(crate) llcx: llvm::Context<'ll>,
+    pub(crate) llmod: llvm::Module<'ll>,
     pub(crate) tm: &'ll llvm::TargetMachine,
     /// Make sure `'ll` is invariant, even if no fields happen to require that.
     ///

@@ -86,7 +86,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         &mut self,
         closure_requirements: &ClosureRegionRequirements<'tcx>,
         closure_def_id: LocalDefId,
-        closure_args: ty::GenericArgsRef<'tcx>,
+        closure_args: ty::GenericArgs<'tcx>,
     ) {
         // Extract the values of the free regions in `closure_args`
         // into a vector. These are the regions that we will be

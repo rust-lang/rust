@@ -1306,7 +1306,11 @@ pub(super) fn check_const_item<'tcx>(
     if tcx.is_direct_const(def_id.into()) {
         if !tcx.features().const_param_ty_unchecked() {
             wfcx.register_bound(
-                ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(item_ty)),
+                ObligationCause::new(
+                    tcx.ty_span(def_id),
+                    def_id,
+                    ObligationCauseCode::ConstItemTy(item_ty),
+                ),
                 wfcx.param_env,
                 item_ty,
                 tcx.require_lang_item(LangItem::ConstParamTy, span),
@@ -1337,6 +1341,8 @@ pub(super) fn check_const_item<'tcx>(
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(norm_ct, item_ty)),
         ));
     }
+
+    check_where_clauses(wfcx, def_id);
 
     res
 }
@@ -2199,7 +2205,7 @@ fn report_bivariance<'tcx>(
     );
 
     if !usage_spans.is_empty() {
-        // First, check if the ADT/LTA is (probably) cyclical. We say probably here, since we're
+        // First, check if the ADT is (probably) cyclical. We say probably here, since we're
         // not actually looking into substitutions, just walking through fields / the "RHS".
         // We don't recurse into the hidden types of opaques or anything else fancy.
         let item_def_id = item.owner_id.to_def_id();
@@ -2207,7 +2213,7 @@ fn report_bivariance<'tcx>(
             IsProbablyCyclical { tcx, item_def_id, seen: Default::default() }
                 .visit_def(item_def_id)
                 .is_break();
-        // If the ADT/LTA is cyclical, then if at least one usage of the type parameter or
+        // If the ADT is cyclical, then if at least one usage of the type parameter or
         // the `Self` alias is present in the, then it's probably a cyclical struct/ type
         // alias, and we should call those parameter usages recursive rather than just saying
         // they're unused...
@@ -2247,8 +2253,8 @@ fn report_bivariance<'tcx>(
     }
 }
 
-/// Detects cases where an ADT/LTA is trivially cyclical -- we want to detect this so
-/// we only mention that its parameters are used cyclically if the ADT/LTA is truly
+/// Detects cases where an ADT is trivially cyclical -- we want to detect this so
+/// we only mention that its parameters are used cyclically if the ADT is truly
 /// cyclical.
 ///
 /// Notably, we don't consider substitutions here, so this may have false positives.
@@ -2380,7 +2386,16 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(super) fn check_test_binder_body(&self, body: TestBinderBody<'tcx>) {
-        let TestBinderBody { span, foralls, exists, constraints, predicates } = body;
+        let TestBinderBody { span, foralls, exists, region_equalities, constraints, predicates } =
+            body;
+        for (equality, span) in region_equalities {
+            let cause = traits::ObligationCause::misc(span, self.body_def_id);
+            self.infcx.register_region_eq_constraint(
+                equality,
+                ty::VisibleForLeakCheck::Yes,
+                &cause,
+            );
+        }
         if !predicates.is_empty() {
             for (predicate, span) in predicates {
                 let cause = traits::ObligationCause::misc(span, self.body_def_id);
@@ -2800,6 +2815,7 @@ pub(crate) struct TestBinderBody<'tcx> {
     pub span: Span,
     pub foralls: Vec<TestBinderForall<'tcx>>,
     pub exists: Vec<TestBinderExists<'tcx>>,
+    pub region_equalities: Vec<(ty::RegionEqPredicate<'tcx>, Span)>,
     /// Constraints to be inserted directly into constraint storage to be proven
     pub constraints: SolverRegionConstraint<'tcx>,
     /// Constraints declared using `where` syntax, used via `register_obligation`

@@ -1862,7 +1862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field = &variant.fields[FieldIdx::from_usize(i)];
-                let field_ty = self.field_ty(subpat.span, field, args);
+                let field_ty = self.field_ty(subpat.span, field, *args);
                 self.check_pat(subpat, field_ty, pat_info);
 
                 self.tcx.check_stability(
@@ -1956,7 +1956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the tuple struct pattern. Otherwise the args could get out of range on e.g.,
             // `let P() = U;` where `P != U` with `struct Box<T>(T);`.
             (ty::Adt(_, args), [field], Ok(())) => {
-                let field_ty = self.field_ty(pat_span, field, args);
+                let field_ty = self.field_ty(pat_span, field, *args);
                 match field_ty.kind() {
                     ty::Tuple(fields) => fields.len() == subpats.len(),
                     _ => false,
@@ -2129,7 +2129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .map(|(i, f)| {
                             self.write_field_index(field.hir_id, *i);
                             self.tcx.check_stability(f.did, Some(field.hir_id), span, None);
-                            self.field_ty(span, f, args)
+                            self.field_ty(span, f, *args)
                         })
                         .unwrap_or_else(|| {
                             inexistent_fields.push(field);
@@ -2159,7 +2159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &mut unmentioned_fields,
                 pat,
                 variant,
-                args,
+                *args,
             ))
         } else {
             None
@@ -2315,24 +2315,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &mut Vec<(&'tcx ty::FieldDef, Ident)>,
         pat: &'tcx Pat<'tcx>,
         variant: &ty::VariantDef,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> Diag<'a> {
         let tcx = self.tcx;
-        let (field_names, t, plural) = if let [field] = inexistent_fields {
-            (format!("a field named `{}`", field.ident), "this", "")
-        } else {
-            (
+        let (field_names, t, plural) = match inexistent_fields {
+            [field] => (format!("a field named `{}`", field.ident), "this", ""),
+            [fields @ .., last] => (
                 format!(
-                    "fields named {}",
-                    inexistent_fields
+                    "fields named {} and `{}`",
+                    fields
                         .iter()
                         .map(|field| format!("`{}`", field.ident))
                         .collect::<Vec<String>>()
-                        .join(", ")
+                        .join(", "),
+                    last.ident,
                 ),
                 "these",
                 "s",
-            )
+            ),
+            [] => unreachable!(),
         };
         let spans = inexistent_fields.iter().map(|field| field.ident.span).collect::<Vec<_>>();
         let mut err = struct_span_code_err!(
@@ -2630,23 +2631,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         have_inaccessible_fields: bool,
         fields: &'tcx [hir::PatField<'tcx>],
     ) -> Diag<'a> {
-        let inaccessible = if have_inaccessible_fields { " and inaccessible fields" } else { "" };
-        let field_names = if let [(_, field)] = unmentioned_fields {
-            format!("field `{field}`{inaccessible}")
-        } else {
-            let fields = unmentioned_fields
-                .iter()
-                .map(|(_, name)| format!("`{name}`"))
-                .collect::<Vec<String>>()
-                .join(", ");
-            format!("fields {fields}{inaccessible}")
+        let field_names = match unmentioned_fields {
+            [(_, field)] if have_inaccessible_fields => {
+                format!("field `{field}` and inaccessible fields")
+            }
+            [(_, field)] => format!("field `{field}`"),
+            fields if have_inaccessible_fields => format!(
+                "fields {} and inaccessible fields",
+                fields
+                    .iter()
+                    .map(|(_, name)| format!("`{name}`"))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            [fields @ .., (_, last)] => format!(
+                "fields {} and `{last}`",
+                fields
+                    .iter()
+                    .map(|(_, name)| format!("`{name}`"))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            [] => unreachable!("{pat:?} with unmentioned fields but no fields?"),
         };
         let mut err = struct_span_code_err!(
             self.dcx(),
             pat.span,
             E0027,
-            "pattern does not mention {}",
-            field_names
+            "pattern does not mention {field_names}",
         );
         err.span_label(pat.span, format!("missing {field_names}"));
         let len = unmentioned_fields.len();

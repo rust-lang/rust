@@ -10,7 +10,7 @@ use std::cell::RefCell;
 struct LoudDrop(i32);
 impl Drop for LoudDrop {
     fn drop(&mut self) {
-        eprintln!("Dropping {}", self.0);
+        panic!("Dropping {}", self.0);
     }
 }
 
@@ -19,8 +19,6 @@ thread_local! {
 }
 
 fn main() {
-    X.with(|x| *x.borrow_mut() = Some(LoudDrop(0)));
-
     // Set up a channel so that we can learn when the other thread initialized `X`
     // (so that we are sure there is something to drop).
     let (send, recv) = std::sync::mpsc::channel::<()>();

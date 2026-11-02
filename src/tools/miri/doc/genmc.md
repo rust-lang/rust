@@ -52,6 +52,7 @@ Note that `cargo miri test` in GenMC mode is currently not supported.
     - `debug2`:   Print the execution graph after every memory access.
     - `debug3`:   Print reads-from values considered by GenMC.
 - `-Zmiri-genmc-verbose`: Show more information, such as estimated number of executions, and time taken for verification.
+- `-Zmiri-genmc-weak-cas-spurious-failures`: Model spurious failures of `compare_exchange_weak`. This is off by default, since all retry loops around `compare_exchange_weak` then need to be bounded (see [below](#eliminating-unbounded-loops)), which is not possible for loops inside the standard library (e.g., in the runtime around `fn main`).
 - `-Zmiri-disable-weak-memory-emulation`: Disable any weak memory effects (effectively upgrading all atomic orderings in the program to `SeqCst`). This option may reduce the number of explored program executions, but any bugs related to weak memory effects will be missed. This option can help determine if an error is caused by weak memory effects (i.e., if it disappears with this option enabled).
 
 <!-- FIXME(genmc): explain Miri-GenMC specific functions. -->
@@ -60,9 +61,7 @@ Note that `cargo miri test` in GenMC mode is currently not supported.
 
 There are several limitations which can make GenMC miss bugs:
 - GenMC does not support re-using freed memory for new allocations, so any bugs related to that will be missed.
-- GenMC does not support `compare_exchange_weak`, so the consequences of spurious failures are not explored.
-  A warning will be emitted if this affects code you wrote (but not if it happens inside your dependencies).
-- GenMC does not support the separate failure ordering of `compare_exchange`. Miri will take the maximum of the success and failure ordering and use that for the access; outcomes that rely on the real ordering being weaker will not be explored.
+- By default, spurious failures of `compare_exchange_weak` are not explored (see `-Zmiri-genmc-weak-cas-spurious-failures`).
   A warning will be emitted if this affects code you wrote (but not if it happens inside your dependencies).
 - GenMC is incompatible with borrow tracking (Stacked/Tree Borrows). You need to set `-Zmiri-disable-stacked-borrows` to use GenMC.
 - Like all C++ memory model verification tools, GenMC has to solve the [out-of-thin-air problem](https://www.cl.cam.ac.uk/~pes20/cpp/notes42.html).

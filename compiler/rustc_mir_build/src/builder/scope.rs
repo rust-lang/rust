@@ -960,7 +960,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             tcx: self.tcx,
             typeck_results,
             module: self.tcx.parent_module(self.hir_id),
-            typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(
+            typing_env: ty::TypingEnv::post_typeck_through_borrowck_for_mir_build(
                 self.tcx,
                 self.def_id,
             ),

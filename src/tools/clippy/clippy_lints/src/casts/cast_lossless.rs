@@ -27,7 +27,7 @@ pub(super) fn check(
 
     // If the `as` is from a macro and the casting type is from macro input, whether it is lossless is
     // dependent on the input
-    if expr.span.from_expansion() && !cast_to_hir.span.eq_ctxt(expr.span) {
+    if expr.span.from_expansion() && cast_to_hir.span.ctxt() != expr.span.ctxt() {
         return;
     }
 
@@ -54,7 +54,7 @@ pub(super) fn check(
                 },
                 // Don't suggest `A<_>::B::From(x)` or `macro!()::from(x)`
                 kind if matches!(kind, TyKind::Path(QPath::Resolved(_, path)) if path.segments.iter().any(|s| s.args.is_some()))
-                    || !cast_to_hir.span.eq_ctxt(expr.span) =>
+                    || cast_to_hir.span.ctxt() != expr.span.ctxt() =>
                 {
                     diag.span_suggestion_verbose(
                         expr.span,

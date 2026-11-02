@@ -444,19 +444,18 @@ fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
         // `long double` is not IEEE binary128. See
         // <https://github.com/llvm/llvm-project/issues/44744>.
         //
-        // This rules out anything that doesn't have `long double` = `binary128`; <= 32 bits
-        // (ld is `f64`), anything other than Linux (Windows and MacOS use `f64`), and `x86`
-        // (ld is 80-bit extended precision).
-        //
+        // This rules out anything that doesn't have `long double` = `binary128`: <= 32 bits
+        // (`long double` is `f64`) and anything other than Linux (Windows and MacOS use `f64`).
+        // x86-64 would also be a problem, except there's a special fix for linux-gnu.
+        // We have to reject musl anyway because it doesn't have the symbols for f128 math.
+        _ if target_pointer_width <= 32 => false,
+        _ if *target_os != Os::Linux => false,
+        _ if *target_env != Env::Gnu => false,
         // On big-endian powerpc the symbol selection is correct, despite __ibmf128 being
         // long double on the target, but the f128 symbols are not defined.
-        //
-        // musl does not implement the symbols required for f128 math at all.
-        _ if *target_env == Env::Musl => false,
-        (Arch::X86_64, _) => false,
         (Arch::PowerPC | Arch::PowerPC64, _) if *target_endian == Endian::Big => false,
-        (_, Os::Linux) if target_pointer_width == 64 => true,
-        _ => false,
+        // After applying all these exceptions, the rest should work.
+        _ => true,
     } && cfg.has_reliable_f128;
 }
 

@@ -1,6 +1,7 @@
 use crate::lint_without_lint_pass::is_lint_ref_type;
 use clippy_utils::diagnostics::span_lint_and_help;
 use regex::Regex;
+use rustc_ast::attr::AttributeExt as _;
 use rustc_ast::token::DocFragmentKind;
 use rustc_attr_ir::Attribute;
 use rustc_hir::{Item, ItemKind, Mutability};
@@ -83,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for AlmostStandardFormulation {
 
 fn doc_attr(attr: &Attribute) -> Option<(Symbol, Span)> {
     match Attribute::doc_str_and_fragment_kind(attr) {
-        Some((symbol, DocFragmentKind::Raw(span))) => Some((symbol, span)),
+        Some((symbol, DocFragmentKind::Raw(span), _)) => Some((symbol, span)),
         _ => None,
     }
 }

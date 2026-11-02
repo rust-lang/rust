@@ -418,25 +418,23 @@ impl<'tcx> Context<'tcx> {
                 ExternalLocation::Unknown => return None,
             };
 
-            let href = RefCell::new(PathBuf::new());
+            let components = RefCell::new(Vec::new());
             sources::clean_path(
                 &src_root,
                 file,
                 |component| {
-                    href.borrow_mut().push(component);
+                    components.borrow_mut().push(component.to_string_lossy().into_owned());
                 },
                 || {
-                    href.borrow_mut().pop();
+                    components.borrow_mut().pop();
                 },
             );
 
-            path = href.into_inner().to_string_lossy().into_owned();
-
-            if let Some(c) = path.as_bytes().last()
-                && *c != b'/'
-            {
-                path.push('/');
-            }
+            path = components.into_inner().iter().fold(String::new(), |mut acc, component| {
+                acc.push_str(component);
+                acc.push('/');
+                acc
+            });
 
             let mut fname = file.file_name().expect("source has no filename").to_os_string();
             fname.push(".html");

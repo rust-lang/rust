@@ -79,6 +79,13 @@ fn cfg_select_comments_that_might_get_lost() {
         }
     }
     cfg_select! {
+        _ => {
+            /* after opening brace */
+            { x }
+            /* before closing brace */
+        }
+    }
+    cfg_select! {
         _ =>
         /* after => */
         {{ x }}

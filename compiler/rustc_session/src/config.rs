@@ -3406,7 +3406,7 @@ pub(crate) mod dep_tracking {
     use rustc_abi::Align;
     use rustc_ast::attr::version::RustcVersion;
     use rustc_data_structures::fx::FxIndexMap;
-    use rustc_data_structures::stable_hash::StableHasher;
+    use rustc_data_structures::stable_hash::{DummyStableHashCtxt, StableHash, StableHasher};
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
     use rustc_hashes::Hash64;
@@ -3469,73 +3469,73 @@ pub(crate) mod dep_tracking {
     }
 
     impl_dep_tracking_hash_via_hash!(
+        // tidy-alphabetical-start
         (),
+        Align,
         AnnotateMoves,
         AutoDiff,
-        Offload,
-        bool,
-        usize,
-        NonZero<usize>,
-        u64,
-        Hash64,
-        String,
-        PathBuf,
-        lint::Level,
-        WasiExecModel,
-        u32,
-        FramePointer,
-        RelocModel,
+        BranchProtection,
+        CFGuard,
+        CFProtection,
         CodeModel,
-        TlsModel,
-        InstrumentCoverage,
+        CodegenRetagOptions,
+        CollapseMacroDebuginfo,
         CoverageOptions,
+        CrateType,
+        DebugInfo,
+        DebugInfoCompression,
+        Edition,
+        FmtDebug,
+        FramePointer,
+        FunctionReturn,
+        Hash64,
+        InliningThreshold,
+        InstrumentCoverage,
         InstrumentMcount,
         InstrumentMcountOpts,
         InstrumentXRay,
-        CrateType,
-        MergeFunctions,
-        OnBrokenPipe,
-        PanicStrategy,
-        RelroLevel,
-        OptLevel,
-        LtoCli,
-        DebugInfo,
-        DebugInfoCompression,
-        MirStripDebugInfo,
-        CollapseMacroDebuginfo,
-        UnstableFeatures,
-        NativeLib,
-        SanitizerSet,
-        CFGuard,
-        CFProtection,
-        TargetTuple,
-        Edition,
+        LanguageIdentifier,
         LinkerPluginLto,
+        LocationDetail,
+        LtoCli,
+        MergeFunctions,
+        MirStripDebugInfo,
+        NativeLib,
+        NextSolverConfig,
+        NonZero<usize>,
+        Offload,
+        OnBrokenPipe,
+        OptLevel,
+        OutFileName,
+        OutputType,
+        PanicStrategy,
+        PatchableFunctionEntry,
+        PointerAuthOption,
+        Polonius,
+        RelocModel,
+        RelroLevel,
+        RemapPathScopeComponents,
         ResolveDocLinks,
+        RustcVersion,
+        SanitizerSet,
+        SourceFileHashAlgorithm,
         SplitDebuginfo,
         SplitDwarfKind,
         StackProtector,
+        String,
         SwitchWithOptPath,
         SymbolManglingVersion,
         SymbolVisibility,
-        RemapPathScopeComponents,
-        SourceFileHashAlgorithm,
-        OutFileName,
-        OutputType,
-        RealFileName,
-        LocationDetail,
-        FmtDebug,
-        BranchProtection,
-        LanguageIdentifier,
-        NextSolverConfig,
-        PatchableFunctionEntry,
-        Polonius,
-        InliningThreshold,
-        FunctionReturn,
-        Align,
-        CodegenRetagOptions,
-        RustcVersion,
-        PointerAuthOption,
+        TargetTuple,
+        TlsModel,
+        UnstableFeatures,
+        WasiExecModel,
+        bool,
+        lint::Level,
+        u32,
+        u64,
+        usize,
+        // tidy-alphabetical-end
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
@@ -3621,6 +3621,28 @@ pub(crate) mod dep_tracking {
                     DepTrackingHash::hash(val, hasher, error_format, for_crate_hash);
                 }
             }
+        }
+    }
+
+    impl DepTrackingHash for PathBuf {
+        fn hash(
+            &self,
+            hasher: &mut StableHasher,
+            _error_format: ErrorOutputType,
+            _for_crate_hash: bool,
+        ) {
+            self.stable_hash(&mut DummyStableHashCtxt, hasher);
+        }
+    }
+
+    impl DepTrackingHash for RealFileName {
+        fn hash(
+            &self,
+            hasher: &mut StableHasher,
+            _error_format: ErrorOutputType,
+            _for_crate_hash: bool,
+        ) {
+            self.stable_hash(&mut DummyStableHashCtxt, hasher);
         }
     }
 

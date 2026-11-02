@@ -6,7 +6,7 @@
 use hir::def_id::{DefId, LocalDefId};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgKind, GenericArgs, Ty, TyCtxt};
 use rustc_span::{bug, span_bug};
 use tracing::{debug, instrument};
 
@@ -182,7 +182,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn add_constraints_from_invariant_args(
         &mut self,
         current: &CurrentItem,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         variance: VarianceTermPtr<'a>,
     ) {
         // Trait are always invariant so we can take advantage of that.
@@ -350,7 +350,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         &mut self,
         current: &CurrentItem,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         variance: VarianceTermPtr<'a>,
     ) {
         debug!(

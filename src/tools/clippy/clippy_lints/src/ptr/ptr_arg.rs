@@ -15,7 +15,7 @@ use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, PredicateKind, Ty};
+use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, GenericArgs, PredicateKind, Ty};
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -177,7 +177,7 @@ impl<'tcx> DerefTy<'tcx> {
             Self::Path => Ty::new_adt(
                 cx.tcx,
                 cx.tcx.adt_def(cx.tcx.get_diagnostic_item(sym::Path).unwrap()),
-                List::empty(),
+                GenericArgs::empty(),
             ),
             Self::Slice(_, ty) => Ty::new_slice(cx.tcx, ty),
         }
@@ -306,11 +306,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
 }
 
 #[expect(clippy::too_many_lines)]
-fn check_ptr_arg_usage<'tcx>(
-    cx: &LateContext<'tcx>,
-    body: &Body<'tcx>,
-    args: &[PtrArg<'tcx>],
-) -> Vec<PtrArgResult> {
+fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[PtrArg<'tcx>]) -> Vec<PtrArgResult> {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
         /// Map from a local id to which argument it came from (index into `Self::args` and

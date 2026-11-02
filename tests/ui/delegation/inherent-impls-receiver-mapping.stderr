@@ -10,6 +10,7 @@ LL |         reuse X::add { self.0 }
 note: method defined here
   --> $DIR/inherent-impls-receiver-mapping.rs:45:12
    |
+LL |     impl X {
 LL |         fn add(self, other: Self) -> Self {
    |            ^^^       -----------
 

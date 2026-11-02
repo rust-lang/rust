@@ -13,7 +13,9 @@ error: expected expression, found `let` statement
   --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:15:26
    |
 LL |     let Some(n) = opt && let another = n else {
-   |                          ^^^
+   |                       -- ^^^
+   |                       |
+   |                       expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 

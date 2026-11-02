@@ -1,0 +1,11 @@
+error: attribute macro `diagnostic::on_unimplemented` is ambiguous
+  --> $DIR/existing_proc_macros.rs:18:7
+   |
+LL |     #[diagnostic::on_unimplemented]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ambiguous because of a name conflict with a tool namespace
+   = note: `diagnostic` could refer to a tool namespace
+
+error: aborting due to 1 previous error
+

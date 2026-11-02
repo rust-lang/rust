@@ -32,6 +32,7 @@
 #![feature(rustc_attrs)]
 #![feature(sized_hierarchy)]
 #![feature(thread_id_value)]
+#![feature(trait_alias)]
 #![feature(trusted_len)]
 #![feature(type_alias_impl_trait)]
 // tidy-alphabetical-end

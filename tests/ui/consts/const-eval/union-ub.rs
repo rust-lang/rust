@@ -40,3 +40,6 @@ const UNINIT_BOOL: bool = unsafe { DummyUnion { unit: () }.bool };
 const BAD_UNION: Foo = unsafe { Bar { u8: 42 }.foo };
 
 fn main() {}
+
+//@ reference: items.union.fields.intro
+//@ reference: items.union.fields.validity

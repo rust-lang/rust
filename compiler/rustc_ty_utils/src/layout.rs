@@ -1,12 +1,11 @@
 use std::range::{RangeFrom, RangeToInclusive};
 
-use rustc_abi as abi;
 use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
-    AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
-    LayoutCalculatorError, LayoutData, Niche, NicheOptimizations, ReprOptions, Scalar, Size,
-    StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
+    self as abi, AbiAlign, AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape,
+    HasDataLayout, Layout, LayoutCalculatorError, LayoutData, Niche, NicheOptimizations,
+    ReprOptions, Scalar, Size, StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
 };
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
@@ -85,7 +84,7 @@ fn layout_of<'tcx>(
         }
         ty::TypingMode::Coherence
         | ty::TypingMode::Typeck { .. }
-        | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+        | ty::TypingMode::PostTypeckThroughBorrowck { .. }
         | ty::TypingMode::PostBorrowck { .. }
         | ty::TypingMode::Reflection
         | ty::TypingMode::ErasedNotCoherence(_)
@@ -551,7 +550,7 @@ fn layout_of_uncached<'tcx>(
                 ty::TypingMode::Codegen => {}
                 ty::TypingMode::Coherence
                 | ty::TypingMode::Typeck { .. }
-                | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                | ty::TypingMode::PostTypeckThroughBorrowck { .. }
                 | ty::TypingMode::PostBorrowck { .. }
                 | ty::TypingMode::Reflection
                 | ty::TypingMode::ErasedNotCoherence(_)
@@ -820,14 +819,14 @@ fn layout_of_uncached<'tcx>(
             if tcx.is_lang_item(def.did(), LangItem::F16B) {
                 let bfloat = scalar_unit(Primitive::Float(abi::Float::F16B));
                 assert_eq!(layout.size, abi::Float::F16B.size());
-                layout.align = abi::Float::F16B.align(cx);
+                layout.align = AbiAlign::new(abi::Float::F16B.align(cx));
                 layout.backend_repr = BackendRepr::Scalar(bfloat);
             }
 
             if tcx.is_lang_item(def.did(), LangItem::PpcF128) {
                 let ppcf128 = scalar_unit(Primitive::Float(abi::Float::PpcF128));
                 assert_eq!(layout.size, abi::Float::PpcF128.size());
-                layout.align = abi::Float::PpcF128.align(cx);
+                layout.align = AbiAlign::new(abi::Float::PpcF128.align(cx));
                 layout.backend_repr = BackendRepr::Scalar(ppcf128);
             }
 
@@ -996,7 +995,7 @@ fn variant_info_for_coroutine<'tcx>(
     cx: &LayoutCx<'tcx>,
     layout: TyAndLayout<'tcx>,
     def_id: DefId,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
 ) -> (Vec<VariantInfo>, Option<Size>) {
     use itertools::Itertools;
 

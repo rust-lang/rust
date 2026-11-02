@@ -127,18 +127,15 @@ pub enum AttemptLocalParseRecovery {
 }
 
 impl AttemptLocalParseRecovery {
-    pub(super) fn yes(&self) -> bool {
+    pub(super) fn yes(&self, p: &Parser<'_>) -> bool {
         match self {
-            AttemptLocalParseRecovery::Yes => true,
+            AttemptLocalParseRecovery::Yes => p.may_recover(),
             AttemptLocalParseRecovery::No => false,
         }
     }
 
-    pub(super) fn no(&self) -> bool {
-        match self {
-            AttemptLocalParseRecovery::Yes => false,
-            AttemptLocalParseRecovery::No => true,
-        }
+    pub(super) fn no(&self, p: &Parser<'_>) -> bool {
+        !self.yes(p)
     }
 }
 

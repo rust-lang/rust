@@ -12,7 +12,6 @@ use rustc_codegen_ssa::back::write::{
     TargetMachineFactoryConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::wants_wasm_eh;
-use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -40,7 +39,7 @@ use crate::diagnostics::{
     UnsupportedCompression, WithLlvmError, WriteBytecode,
 };
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
-use crate::llvm::{self, DiagnosticInfo};
+use crate::llvm::{self, DiagnosticInfo, TypeKind};
 use crate::type_::llvm_type_ptr;
 use crate::{LlvmCodegenBackend, ModuleLlvm, attributes, base, common, llvm_util};
 
@@ -55,7 +54,7 @@ fn write_output_file<'ll>(
     dcx: DiagCtxtHandle<'_>,
     target: &'ll llvm::TargetMachine,
     no_builtins: bool,
-    m: &'ll llvm::Module,
+    m: llvm::Module<'ll>,
     output: &Path,
     dwo_output: Option<&Path>,
     file_type: llvm::FileType,
@@ -326,8 +325,8 @@ struct DiagnosticHandlerCallbackData<'a> {
     shared_emitter: &'a SharedEmitter,
 }
 
-pub(crate) struct DiagnosticHandlers<'a> {
-    llcx: &'a llvm::Context,
+pub(crate) struct DiagnosticHandlers<'a, 'll> {
+    llcx: llvm::Context<'ll>,
     old_handler: Option<ptr::NonNull<llvm::DiagnosticHandler>>,
 
     /// Ownership of the box-allocated data that was installed (as a pointer)
@@ -337,11 +336,11 @@ pub(crate) struct DiagnosticHandlers<'a> {
     diagnostic_handler_callback_data: *mut DiagnosticHandlerCallbackData<'a>,
 }
 
-impl<'a> DiagnosticHandlers<'a> {
+impl<'a, 'll> DiagnosticHandlers<'a, 'll> {
     pub(crate) fn new(
         cgcx: &'a CodegenContext,
         shared_emitter: &'a SharedEmitter,
-        llcx: &'a llvm::Context,
+        llcx: llvm::Context<'ll>,
         module: &ModuleCodegen<ModuleLlvm>,
         stage: CodegenDiagnosticsStage,
     ) -> Self {
@@ -396,7 +395,7 @@ impl<'a> DiagnosticHandlers<'a> {
     }
 }
 
-impl<'a> Drop for DiagnosticHandlers<'a> {
+impl<'a, 'll> Drop for DiagnosticHandlers<'a, 'll> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMRustContextSetDiagnosticHandler(self.llcx, self.old_handler);
@@ -408,7 +407,7 @@ impl<'a> Drop for DiagnosticHandlers<'a> {
 fn report_inline_asm(
     cgcx: &CodegenContext,
     msg: String,
-    level: llvm::DiagnosticLevel,
+    severity: llvm::DiagnosticSeverity,
     cookie: u64,
     source: Option<(String, Vec<InnerSpan>)>,
 ) -> InlineAsmError {
@@ -422,10 +421,10 @@ fn report_inline_asm(
         let hi = BytePos::from_u32((cookie >> 32) as u32);
         (lo, hi)
     };
-    let level = match level {
-        llvm::DiagnosticLevel::Error => Level::Error,
-        llvm::DiagnosticLevel::Warning => Level::Warning(None),
-        llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
+    let level = match severity {
+        llvm::DiagnosticSeverity::Error => Level::Error,
+        llvm::DiagnosticSeverity::Warning => Level::Warning(None),
+        llvm::DiagnosticSeverity::Note | llvm::DiagnosticSeverity::Remark => Level::Note,
     };
     let msg = msg.trim_prefix("error: ").to_string();
     InlineAsmError { lo, hi, msg, level, source }
@@ -456,7 +455,7 @@ fn diagnostic_handler_callback_inner(
             shared_emitter.inline_asm_error(report_inline_asm(
                 cgcx,
                 inline.message,
-                inline.level,
+                inline.severity,
                 inline.cookie,
                 inline.source,
             ));
@@ -479,21 +478,25 @@ fn diagnostic_handler_callback_inner(
                 message: &opt.message,
             });
         }
-        llvm::diagnostic::PGO(diagnostic_ref) | llvm::diagnostic::Linker(diagnostic_ref) => {
+
+        // FIXME(#164677): Don't ignore stack size warnings.
+        llvm::diagnostic::StackSize => {}
+
+        llvm::diagnostic::Other(diagnostic_ref) => {
             let message = llvm::build_string(|s| unsafe {
                 llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
             })
             .expect("non-UTF8 diagnostic");
-            dcx.emit_warn(FromLlvmDiag { message });
+            match diagnostic_ref.severity() {
+                llvm::DiagnosticSeverity::Error => {
+                    dcx.emit_err(FromLlvmDiag { message });
+                }
+                llvm::DiagnosticSeverity::Warning => {
+                    dcx.emit_warn(FromLlvmDiag { message });
+                }
+                _ => {}
+            };
         }
-        llvm::diagnostic::Unsupported(diagnostic_ref) => {
-            let message = llvm::build_string(|s| unsafe {
-                llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
-            })
-            .expect("non-UTF8 diagnostic");
-            dcx.emit_err(FromLlvmDiag { message });
-        }
-        llvm::diagnostic::UnknownDiagnostic(..) => {}
     }
 }
 
@@ -654,7 +657,7 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
         None
     };
 
-    fn handle_offload<'ll>(cx: &'ll SimpleCx<'_>, old_fn: &llvm::Value) {
+    fn handle_offload<'ll>(cx: &SimpleCx<'ll>, old_fn: &'ll llvm::Value) {
         let old_fn_ty = cx.get_type_of_global(old_fn);
         let old_param_types = cx.func_params_types(old_fn_ty);
         let old_param_count = old_param_types.len();
@@ -1205,10 +1208,10 @@ pub(crate) fn bitcode_section_name(cgcx: &CodegenContext) -> &'static CStr {
 }
 
 /// Embed the bitcode of an LLVM module for LTO in the LLVM module itself.
-fn embed_bitcode(
+fn embed_bitcode<'ll>(
     cgcx: &CodegenContext,
-    llcx: &llvm::Context,
-    llmod: &llvm::Module,
+    llcx: llvm::Context<'ll>,
+    llmod: llvm::Module<'ll>,
     bitcode: &[u8],
 ) {
     // We're adding custom sections to the output object file, but we definitely
@@ -1291,7 +1294,11 @@ fn embed_bitcode(
 // when using MSVC linker. We do this only for data, as linker can fix up
 // code references on its own.
 // See #26591, #27438
-fn create_msvc_imps(cgcx: &CodegenContext, llcx: &llvm::Context, llmod: &llvm::Module) {
+fn create_msvc_imps<'ll>(
+    cgcx: &CodegenContext,
+    llcx: llvm::Context<'ll>,
+    llmod: llvm::Module<'ll>,
+) {
     if !cgcx.msvc_imps_needed {
         return;
     }
@@ -1356,7 +1363,11 @@ fn record_artifact_size(
     }
 }
 
-fn record_llvm_cgu_instructions_stats(prof: &SelfProfilerRef, name: &str, llmod: &llvm::Module) {
+fn record_llvm_cgu_instructions_stats<'ll>(
+    prof: &SelfProfilerRef,
+    name: &str,
+    llmod: llvm::Module<'ll>,
+) {
     if !prof.enabled() {
         return;
     }

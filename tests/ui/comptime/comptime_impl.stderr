@@ -3,6 +3,8 @@ error: the `rustc_comptime` attribute cannot be used on trait impl blocks
    |
 LL | #[rustc_comptime]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | impl Foo for Bar {
    |
    = help: the `rustc_comptime` attribute can be applied to functions and inherent impl blocks
 

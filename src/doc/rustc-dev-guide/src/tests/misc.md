@@ -13,23 +13,25 @@ This is a bootstrap/compiler implementation detail, but it can also be useful fo
   can differ depending on whether the compiler is nightly or not.
 - `RUSTC_BOOTSTRAP=-allow-unstable-compiler-flags=<flags>` will force a given `rustc` to pretend it
   is a stable compiler, even if it's actually a nightly `rustc`.
-  However, the compiler will still accept the passed unstable compiler flags `<flags>` (the allowed flag
+  However,
+  the compiler will still accept the passed unstable compiler flags `<flags>` (the allowed flag
   should be separated by commas).
-  For example, if you use `RUSTC_BOOTSTRAP=-allow-unstable-compiler-flags=foo,bar`, it will be possible to
-  pass `-Zfoo` and `-Zbar` to the compiler.
-  This is useful for internal testing of the compiler, where we need to pass
-  unstable flags required by compiletest, but we also want to test the compiler's
-  behavior on the stable channel.
+  For example, if you use `RUSTC_BOOTSTRAP=-allow-unstable-compiler-flags=foo,bar`,
+  it will be possible to pass `-Zfoo` and `-Zbar` to the compiler.
+  This is useful for internal testing of the compiler,
+  where we need to pass unstable flags required by compiletest,
+  but we also want to test the compiler's behavior on the stable channel.
 
 ### UI tests
 
 Note that setting `RUSTC_BOOTSTRAP=-1` in ui tests (e.g. via `//@ rustc-env`) is pointless since ui
-tests inherit the bootstrap env var from bootstrap (so it's set to `1` by default), and since
-compiletest itself passes `-Z` flags (so `-1` breaks the test).
+tests inherit the bootstrap env var from bootstrap (so it's set to `1` by default),
+and since compiletest itself passes `-Z` flags (so `-1` breaks the test).
 
 To test stable-only behavior, use the `act-as-stable` directive, which will set
-`RUSTC_BOOTSTRAP=-allow-unstable-compiler-flags` with the flags required by compiletest for you. With this
-directive, the compiler will not allow using unstable language features or unstable flags that are not set by
+`RUSTC_BOOTSTRAP=-allow-unstable-compiler-flags` with the flags required by compiletest for you.
+With this directive,
+the compiler will not allow using unstable language features or unstable flags that are not set by
 compiletest.
 
 ### Run-make tests

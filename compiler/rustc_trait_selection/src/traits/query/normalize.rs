@@ -232,7 +232,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.infcx.typing_mode_raw().assert_not_erased() {
                     TypingMode::Typeck { .. }
-                    | TypingMode::PostTypeckUntilBorrowck { .. }
+                    | TypingMode::PostTypeckThroughBorrowck { .. }
                     | TypingMode::PostBorrowck { .. } => ty.try_super_fold_with(self)?,
 
                     TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {

@@ -154,7 +154,7 @@ struct PropagatedBorrowCheckResults<'tcx> {
     used_mut_upvars: SmallVec<[FieldIdx; 8]>,
 }
 
-type DeferredClosureRequirements<'tcx> = Vec<(LocalDefId, ty::GenericArgsRef<'tcx>, Locations)>;
+type DeferredClosureRequirements<'tcx> = Vec<(LocalDefId, ty::GenericArgs<'tcx>, Locations)>;
 
 /// After we borrow check a closure, we are left with various
 /// requirements that we have inferred between the free regions that
@@ -657,7 +657,7 @@ pub(crate) struct BorrowckInferCtxt<'tcx> {
 
 impl<'tcx> BorrowckInferCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId, root_def_id: LocalDefId) -> Self {
-        let typing_mode = if tcx.use_typing_mode_post_typeck_until_borrowck() {
+        let typing_mode = if tcx.use_typing_mode_post_typeck_through_borrowck() {
             TypingMode::borrowck(tcx, def_id)
         } else {
             TypingMode::analysis_in_body(tcx, def_id)
