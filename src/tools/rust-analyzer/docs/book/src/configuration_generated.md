@@ -1069,7 +1069,7 @@ Show generic type parameter name inlay hints.
 
 ## rust-analyzer.inlayHints.implicitDrops.enable {#inlayHints.implicitDrops.enable}
 
-Default: `false`
+Default: `"never"`
 
 Show implicit drop hints.
 

@@ -2401,8 +2401,18 @@
                 "properties": {
                     "rust-analyzer.inlayHints.implicitDrops.enable": {
                         "markdownDescription": "Show implicit drop hints.",
-                        "default": false,
-                        "type": "boolean"
+                        "default": "never",
+                        "type": "string",
+                        "enum": [
+                            "always",
+                            "never",
+                            "with_drop_glue"
+                        ],
+                        "enumDescriptions": [
+                            "Always show drop hints.",
+                            "Never show drop hints.",
+                            "Only show drop hints for values with drop glue."
+                        ]
                     }
                 }
             },
