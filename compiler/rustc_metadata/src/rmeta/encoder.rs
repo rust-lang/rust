@@ -945,26 +945,23 @@ struct AnalyzeAttrState {
 /// attribute. Some attributes would only be usable downstream if they are public.
 #[inline]
 fn analyze_attr(attr: &rustc_attr_ir::Attribute, state: &mut AnalyzeAttrState) -> bool {
-    let mut should_encode = false;
-    if let rustc_attr_ir::Attribute::Parsed(p) = attr
-        && p.encode_cross_crate() == EncodeCrossCrate::No
-    {
-    } else if let rustc_attr_ir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
-        // We keep all doc comments reachable to rustdoc because they might be "imported" into
-        // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
-        // their own.
-        if state.is_exported {
-            should_encode = true;
+    match attr {
+        Attribute::Parsed(AttributeKind::DocComment { .. }) => {
+            // We keep all doc comments reachable to rustdoc because they might be "imported" into
+            // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
+            // their own.
+            state.is_exported
         }
-    } else if let rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d)) = attr {
-        should_encode = true;
-        if d.hidden.is_some() {
-            state.is_doc_hidden = true;
+        Attribute::Parsed(AttributeKind::Doc(d)) => {
+            if d.hidden.is_some() {
+                state.is_doc_hidden = true;
+            }
+            true
         }
-    } else {
-        should_encode = true;
+        Attribute::Parsed(p) => p.encode_cross_crate() == EncodeCrossCrate::Yes,
+        Attribute::Tool(_) => true,
+        Attribute::DeriveHelper(_) => true,
     }
-    should_encode
 }
 
 fn should_encode_span(def_kind: DefKind) -> bool {
