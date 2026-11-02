@@ -41,7 +41,7 @@ use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
 use std::num::{NonZero, ParseIntError};
-use std::ops::{Add, AddAssign, Deref, Mul, Sub};
+use std::ops::{Add, AddAssign, Mul, Sub};
 use std::range::RangeInclusive;
 use std::str::FromStr;
 
@@ -1213,52 +1213,6 @@ impl Align {
     #[inline]
     pub fn restrict_for_offset(self, size: Size) -> Align {
         self.min(Align::max_aligned_factor(size))
-    }
-}
-
-/// A pair of alignments, ABI-mandated and preferred.
-///
-/// The "preferred" alignment is an LLVM concept that is virtually meaningless to Rust code:
-/// it is not exposed semantically to programmers nor can they meaningfully affect it.
-/// The only concern for us is that preferred alignment must not be less than the mandated alignment
-/// and thus in practice the two values are almost always identical.
-///
-/// An example of a rare thing actually affected by preferred alignment is aligning of statics.
-/// It is of effectively no consequence for layout in structs and on the stack.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(StableHash))]
-pub struct AbiAlign {
-    pub abi: Align,
-}
-
-impl fmt::Debug for AbiAlign {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.abi, f)
-    }
-}
-
-impl AbiAlign {
-    #[inline]
-    pub fn new(align: Align) -> AbiAlign {
-        AbiAlign { abi: align }
-    }
-
-    #[inline]
-    pub fn min(self, other: AbiAlign) -> AbiAlign {
-        AbiAlign { abi: self.abi.min(other.abi) }
-    }
-
-    #[inline]
-    pub fn max(self, other: AbiAlign) -> AbiAlign {
-        AbiAlign { abi: self.abi.max(other.abi) }
-    }
-}
-
-impl Deref for AbiAlign {
-    type Target = Align;
-
-    fn deref(&self) -> &Self::Target {
-        &self.abi
     }
 }
 
