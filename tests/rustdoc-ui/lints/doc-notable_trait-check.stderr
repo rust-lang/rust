@@ -28,28 +28,30 @@ LL | #[doc(notable_trait(check="red"))]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: expected either `doc(notable_trait)` or `doc(notable_trait(color="..."))`
-  --> $DIR/doc-notable_trait-check.rs:31:7
+  --> $DIR/doc-notable_trait-check.rs:31:21
    |
 LL | #[doc(notable_trait(color))]
-   |       ^^^^^^^^^^^^^
+   |                     ^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: expected either `doc(notable_trait)` or `doc(notable_trait(color="..."))`
-  --> $DIR/doc-notable_trait-check.rs:36:7
+error: unknown color in `doc(notable_trait(color="..."))`
+  --> $DIR/doc-notable_trait-check.rs:36:27
    |
 LL | #[doc(notable_trait(color="invalid_color"))]
-   |       ^^^^^^^^^^^^^
+   |                           ^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: expected grey, gray, red, green, yellow, blue, magenta, cyan, or transparent
 
 error: expected either `doc(notable_trait)` or `doc(notable_trait(color="..."))`
-  --> $DIR/doc-notable_trait-check.rs:41:7
+  --> $DIR/doc-notable_trait-check.rs:42:42
    |
 LL | #[doc(notable_trait(color="transparent", color="red"))]
-   |       ^^^^^^^^^^^^^
+   |                     -----                ^^^^^ multiple colors specified
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: only one color should be specified
 
 error: aborting due to 6 previous errors
 

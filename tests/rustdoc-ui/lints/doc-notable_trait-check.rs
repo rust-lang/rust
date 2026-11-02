@@ -34,11 +34,13 @@ trait InvalidKVArg {}
 trait InvalidAtomArg {}
 
 #[doc(notable_trait(color="invalid_color"))]
-//~^ ERROR
+//~^ ERROR unknown color in `doc(notable_trait(color="..."))`
 //~| WARN previously accepted by the compiler
+//~| HELP expected grey, gray, red, green, yellow, blue, magenta, cyan, or transparent
 trait InvalidColor {}
 
 #[doc(notable_trait(color="transparent", color="red"))]
 //~^ ERROR
 //~| WARN previously accepted by the compiler
+//~| HELP only one color should be specified
 trait InvalidMultiple {}
