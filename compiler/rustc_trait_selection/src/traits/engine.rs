@@ -227,8 +227,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .eq(DefineOpaqueTypes::Yes, expected, actual)
+            .eq_raw(cause, param_env, DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -241,8 +240,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .eq_trace(DefineOpaqueTypes::Yes, trace, expected, actual)
+            .eq_trace_raw(cause, param_env, DefineOpaqueTypes::Yes, trace, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
