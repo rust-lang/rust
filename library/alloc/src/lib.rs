@@ -202,6 +202,8 @@
 #![feature(coroutine_trait)]
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
+#![feature(f16)]
+#![feature(f128)]
 #![feature(fundamental)]
 #![feature(impl_restriction)]
 #![feature(intrinsics)]
