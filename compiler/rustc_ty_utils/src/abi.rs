@@ -306,8 +306,25 @@ fn fn_abi_of_instance_raw<'tcx>(
         // Apply attributes deduced from MIR body. This requires that an instance MIR is its optimized MIR.
         // For example, DropGlue(def_id, ty) MIR is compiler generated, while optimized MIR for def_id is
         // that of an empty placeholder function `drop_glue` from the standard library.
-        if let Some(Instance { def: InstanceKind::Item(fn_def_id), .. }) = params.instance {
+        let fn_abi = if let Some(Instance { def: InstanceKind::Item(fn_def_id), .. }) =
+            params.instance
+        {
             fn_abi_adjust_for_deduced_attrs(&params.layout_cx, fn_abi, params.sig.abi(), fn_def_id)
+        } else {
+            fn_abi
+        };
+        // The proof is about the body that will be emitted; a shim has one too, just not one
+        // reachable through a `DefId`.
+        let proven = fn_abi.can_unwind
+            && match params.instance.map(|instance| instance.def) {
+                Some(InstanceKind::Item(fn_def_id)) => tcx.cannot_unwind(fn_def_id),
+                Some(InstanceKind::Shim(shim)) => tcx.cannot_unwind_shim(shim),
+                _ => false,
+            };
+        if proven {
+            let mut fn_abi = fn_abi.clone();
+            fn_abi.can_unwind = false;
+            params.layout_cx.tcx().arena.alloc(fn_abi)
         } else {
             fn_abi
         }

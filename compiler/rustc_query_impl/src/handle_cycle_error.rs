@@ -95,6 +95,28 @@ fn check_representability_inner<'tcx>(tcx: TyCtxt<'tcx>, cycle: QueryCycle<'tcx>
     guar.raise_fatal()
 }
 
+pub(crate) fn cannot_unwind<'tcx>(
+    _tcx: TyCtxt<'tcx>,
+    _def_id: DefId,
+    _cycle: QueryCycle<'tcx>,
+    err: Diag<'_>,
+) -> bool {
+    // A cycle means a recursive function or a cycle through drop glue: no proof, no error.
+    err.cancel();
+    false
+}
+
+pub(crate) fn cannot_unwind_shim<'tcx>(
+    _tcx: TyCtxt<'tcx>,
+    _shim: ty::ShimKind<'tcx>,
+    _cycle: QueryCycle<'tcx>,
+    err: Diag<'_>,
+) -> bool {
+    // As above, one level down: the shim calls something that needs this shim's answer.
+    err.cancel();
+    false
+}
+
 pub(crate) fn variances_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
