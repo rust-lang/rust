@@ -70,6 +70,19 @@ use crate::{cmp, fmt};
 /// | `&&str`                  | is substring                              |
 /// | `&String`                | is substring                              |
 ///
+/// # Safety
+///
+/// Implementations must guarantee that the searcher returned by
+/// [`into_searcher`](Pattern::into_searcher) searches exactly the `haystack`
+/// that was passed to it: calling [`Searcher::haystack`] on the returned
+/// searcher must return a `&str` with the same pointer and length as
+/// `haystack`.
+///
+/// Methods such as [`str::split_once`] and [`str::trim_matches`] use the
+/// indices reported by the searcher to slice the string they were called on
+/// without any further checks. A searcher over a different string would make
+/// those slices out of bounds, which is undefined behavior.
+///
 /// # Examples
 ///
 /// ```
@@ -96,12 +109,15 @@ use crate::{cmp, fmt};
 /// assert_eq!("abcdef_z".find(|ch| ch > 'd' && ch < 'y'), Some(4));
 /// assert_eq!("abcddd_z".find(|ch| ch > 'd' && ch < 'y'), None);
 /// ```
-pub trait Pattern: Sized {
+pub unsafe trait Pattern: Sized {
     /// Associated searcher for this pattern
     type Searcher<'a>: Searcher<'a>;
 
     /// Constructs the associated searcher from
     /// `self` and the `haystack` to search in.
+    ///
+    /// The returned searcher must search exactly `haystack`; see the
+    /// [safety requirements](Pattern#safety) of this trait.
     fn into_searcher(self, haystack: &str) -> Self::Searcher<'_>;
 
     /// Checks whether the pattern matches anywhere in the haystack
@@ -134,7 +150,8 @@ pub trait Pattern: Sized {
                 "The first search step from Searcher \
                  must include the first character"
             );
-            // SAFETY: `Searcher` is known to return valid indices.
+            // SAFETY: `Searcher` is known to return valid indices for its haystack,
+            // and `Pattern` guarantees that haystack is `haystack`.
             unsafe { Some(haystack.get_unchecked(len..)) }
         } else {
             None
@@ -154,7 +171,8 @@ pub trait Pattern: Sized {
                 "The first search step from ReverseSearcher \
                  must include the last character"
             );
-            // SAFETY: `Searcher` is known to return valid indices.
+            // SAFETY: `Searcher` is known to return valid indices for its haystack,
+            // and `Pattern` guarantees that haystack is `haystack`.
             unsafe { Some(haystack.get_unchecked(..start)) }
         } else {
             None
@@ -559,7 +577,9 @@ impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
 /// ```
 /// assert_eq!("Hello world".find('o'), Some(4));
 /// ```
-impl Pattern for char {
+// SAFETY: `into_searcher` stores `haystack` in the returned `CharSearcher`, and
+// `CharSearcher::haystack` returns that field.
+unsafe impl Pattern for char {
     type Searcher<'a> = CharSearcher<'a>;
 
     #[inline]
@@ -672,7 +692,9 @@ struct MultiCharEqSearcher<'a, C: MultiCharEq> {
     char_indices: super::CharIndices<'a>,
 }
 
-impl<C: MultiCharEq> Pattern for MultiCharEqPattern<C> {
+// SAFETY: `into_searcher` stores `haystack` in the returned `MultiCharEqSearcher`, and
+// `MultiCharEqSearcher::haystack` returns that field.
+unsafe impl<C: MultiCharEq> Pattern for MultiCharEqPattern<C> {
     type Searcher<'a> = MultiCharEqSearcher<'a, C>;
 
     #[inline]
@@ -827,7 +849,9 @@ pub struct CharArrayRefSearcher<'a, 'b, const N: usize>(
 /// assert_eq!("Hello world".find(['o', 'l']), Some(2));
 /// assert_eq!("Hello world".find(['h', 'w']), Some(6));
 /// ```
-impl<const N: usize> Pattern for [char; N] {
+// SAFETY: `pattern_methods!` passes `haystack` unchanged to the underlying pattern's
+// `into_searcher`, and the wrapper searcher's `haystack` forwards to the underlying one.
+unsafe impl<const N: usize> Pattern for [char; N] {
     pattern_methods!('a, CharArraySearcher<'a, N>, MultiCharEqPattern, CharArraySearcher);
 }
 
@@ -849,7 +873,9 @@ impl<'a, const N: usize> DoubleEndedSearcher<'a> for CharArraySearcher<'a, N> {}
 /// assert_eq!("Hello world".find(&['o', 'l']), Some(2));
 /// assert_eq!("Hello world".find(&['h', 'w']), Some(6));
 /// ```
-impl<'b, const N: usize> Pattern for &'b [char; N] {
+// SAFETY: `pattern_methods!` passes `haystack` unchanged to the underlying pattern's
+// `into_searcher`, and the wrapper searcher's `haystack` forwards to the underlying one.
+unsafe impl<'b, const N: usize> Pattern for &'b [char; N] {
     pattern_methods!('a, CharArrayRefSearcher<'a, 'b, N>, MultiCharEqPattern, CharArrayRefSearcher);
 }
 
@@ -891,7 +917,9 @@ impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
 /// assert_eq!("Hello world".find(&['o', 'l'][..]), Some(2));
 /// assert_eq!("Hello world".find(&['h', 'w'][..]), Some(6));
 /// ```
-impl<'b> Pattern for &'b [char] {
+// SAFETY: `pattern_methods!` passes `haystack` unchanged to the underlying pattern's
+// `into_searcher`, and the wrapper searcher's `haystack` forwards to the underlying one.
+unsafe impl<'b> Pattern for &'b [char] {
     pattern_methods!('a, CharSliceSearcher<'a, 'b>, MultiCharEqPattern, CharSliceSearcher);
 }
 
@@ -940,7 +968,9 @@ impl<'a, F> DoubleEndedSearcher<'a> for CharPredicateSearcher<'a, F> where F: Fn
 /// assert_eq!("Hello world".find(char::is_uppercase), Some(0));
 /// assert_eq!("Hello world".find(|c| "aeiou".contains(c)), Some(1));
 /// ```
-impl<F> Pattern for F
+// SAFETY: `pattern_methods!` passes `haystack` unchanged to the underlying pattern's
+// `into_searcher`, and the wrapper searcher's `haystack` forwards to the underlying one.
+unsafe impl<F> Pattern for F
 where
     F: FnMut(char) -> bool,
 {
@@ -952,7 +982,9 @@ where
 /////////////////////////////////////////////////////////////////////////////
 
 /// Delegates to the `&str` impl.
-impl<'b, 'c> Pattern for &'c &'b str {
+// SAFETY: `pattern_methods!` passes `haystack` unchanged to the underlying pattern's
+// `into_searcher`, and the wrapper searcher's `haystack` forwards to the underlying one.
+unsafe impl<'b, 'c> Pattern for &'c &'b str {
     pattern_methods!('a, StrSearcher<'a, 'b>, |&s| s, |s| s);
 }
 
@@ -970,7 +1002,9 @@ impl<'b, 'c> Pattern for &'c &'b str {
 /// ```
 /// assert_eq!("Hello world".find("world"), Some(6));
 /// ```
-impl<'b> Pattern for &'b str {
+// SAFETY: `StrSearcher::new` stores `haystack` in the searcher, and
+// `StrSearcher::haystack` returns that field.
+unsafe impl<'b> Pattern for &'b str {
     type Searcher<'a> = StrSearcher<'a, 'b>;
 
     #[inline]

@@ -1651,7 +1651,7 @@ impl String {
                 // The stream of Match and Reject values up to a Done will
                 // contain index ranges that are adjacent, non-overlapping,
                 // covering the whole haystack, and laying on utf8
-                // boundaries.
+                // boundaries. Per `Pattern`, that haystack is `self`.
                 unsafe {
                     ptr::copy(ptr.add(start), ptr.add(len), count);
                 }
@@ -2740,7 +2740,9 @@ impl<'a> Extend<&'a core::ascii::Char> for String {
     reason = "API not fully fleshed out and ready to be stabilized",
     issue = "27721"
 )]
-impl<'b> Pattern for &'b String {
+// SAFETY: forwards `haystack` unchanged to the `&str` impl, whose searcher is
+// returned as is.
+unsafe impl<'b> Pattern for &'b String {
     type Searcher<'a> = <&'b str as Pattern>::Searcher<'a>;
 
     fn into_searcher(self, haystack: &str) -> <&'b str as Pattern>::Searcher<'_> {

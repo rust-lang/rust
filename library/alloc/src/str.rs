@@ -343,6 +343,8 @@ impl str {
             // SAFETY: `last_end` does not exceed `start`, and `start` does not exceed `self.len()`.
             // Therefore, `last_end..start` is within bounds of `self`.
             // For each iteration, `last_end` and `start` lie on UTF-8 sequence boundaries.
+            // `match_indices` yields indices into `self` because `Pattern` guarantees
+            // that the searcher's haystack is `self`.
             result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
@@ -389,6 +391,8 @@ impl str {
             // SAFETY: `last_end` does not exceed `start`, and `start` does not exceed `self.len()`.
             // Therefore, `last_end..start` is within bounds of `self`.
             // For each iteration, `last_end` and `start` lie on UTF-8 sequence boundaries.
+            // `match_indices` yields indices into `self` because `Pattern` guarantees
+            // that the searcher's haystack is `self`.
             result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();

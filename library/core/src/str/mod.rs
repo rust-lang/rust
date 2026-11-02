@@ -1669,6 +1669,8 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn split<P: Pattern>(&self, pat: P) -> Split<'_, P> {
+        // `end` is `self.len()`, which is in bounds for the searcher's haystack
+        // because `Pattern` guarantees that haystack is `self`.
         Split(SplitInternal {
             start: 0,
             end: self.len(),
@@ -1710,6 +1712,8 @@ impl str {
     #[stable(feature = "split_inclusive", since = "1.51.0")]
     #[inline]
     pub fn split_inclusive<P: Pattern>(&self, pat: P) -> SplitInclusive<'_, P> {
+        // `end` is `self.len()`, which is in bounds for the searcher's haystack
+        // because `Pattern` guarantees that haystack is `self`.
         SplitInclusive(SplitInternal {
             start: 0,
             end: self.len(),
@@ -1985,7 +1989,8 @@ impl str {
     #[inline]
     pub fn split_once<P: Pattern>(&self, delimiter: P) -> Option<(&'_ str, &'_ str)> {
         let (start, end) = delimiter.into_searcher(self).next_match()?;
-        // SAFETY: `Searcher` is known to return valid indices.
+        // SAFETY: `Searcher` is known to return valid indices for its haystack,
+        // and `Pattern` guarantees that haystack is `self`.
         unsafe { Some((self.get_unchecked(..start), self.get_unchecked(end..))) }
     }
 
@@ -2007,7 +2012,8 @@ impl str {
         for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
     {
         let (start, end) = delimiter.into_searcher(self).next_match_back()?;
-        // SAFETY: `Searcher` is known to return valid indices.
+        // SAFETY: `Searcher` is known to return valid indices for its haystack,
+        // and `Pattern` guarantees that haystack is `self`.
         unsafe { Some((self.get_unchecked(..start), self.get_unchecked(end..))) }
     }
 
@@ -2390,7 +2396,8 @@ impl str {
         if let Some((_, b)) = matcher.next_reject_back() {
             j = b;
         }
-        // SAFETY: `Searcher` is known to return valid indices.
+        // SAFETY: `Searcher` is known to return valid indices for its haystack,
+        // and `Pattern` guarantees that haystack is `self`.
         unsafe { self.get_unchecked(i..j) }
     }
 
@@ -2428,7 +2435,8 @@ impl str {
         if let Some((a, _)) = matcher.next_reject() {
             i = a;
         }
-        // SAFETY: `Searcher` is known to return valid indices.
+        // SAFETY: `Searcher` is known to return valid indices for its haystack,
+        // and `Pattern` guarantees that haystack is `self`.
         unsafe { self.get_unchecked(i..self.len()) }
     }
 
@@ -2646,7 +2654,8 @@ impl str {
         if let Some((_, b)) = matcher.next_reject_back() {
             j = b;
         }
-        // SAFETY: `Searcher` is known to return valid indices.
+        // SAFETY: `Searcher` is known to return valid indices for its haystack,
+        // and `Pattern` guarantees that haystack is `self`.
         unsafe { self.get_unchecked(0..j) }
     }
 
