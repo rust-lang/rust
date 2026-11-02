@@ -2859,84 +2859,70 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut next_ident = ident;
         while let Some((binding, path_to_binding_accessible)) = next_binding {
             let name = next_ident;
-            next_binding = match binding.kind {
-                _ if res == Res::Err => None,
-                DeclKind::Import { source_decl, .. } if source_decl.span.is_dummy() => None,
-                DeclKind::Import { source_decl, import, .. } => {
-                    let source = match import.kind {
-                        ImportKind::Single { source, .. } => Some(source),
-                        ImportKind::Glob { .. }
-                        | ImportKind::MacroUse { .. }
-                        | ImportKind::MacroExport => Some(next_ident),
-                        ImportKind::ExternCrate { .. } => None,
-                    };
-                    if let Some(source) = source {
-                        next_ident = source;
-                        let source_res = source_decl.res();
-                        let through_reexport = source_decl.is_import();
-                        let mut path_is_accessible = has_direct_suggestion && !through_reexport;
-                        if let Some(path) = self.import_source_suggestion_path(
-                            import,
-                            source,
-                            source_decl,
-                            &parent_scope,
-                        ) {
-                            path_is_accessible = true;
-                            sugg_paths.push((path, through_reexport));
-                        } else if !has_direct_suggestion && let Some(ns) = source_res.ns() {
-                            let candidate = self
-                                .lookup_import_candidates(source, ns, &parent_scope, |res| {
-                                    res == source_res
-                                })
-                                .into_iter()
-                                .filter(|candidate| candidate.accessible)
-                                .map(|mut candidate| {
-                                    self.shorten_candidate_path(
-                                        &mut candidate,
-                                        parent_scope.module,
-                                    );
-                                    candidate
-                                })
-                                .min_by_key(|candidate| {
-                                    (
-                                        candidate.path.segments.len(),
-                                        candidate.path.segments[0].ident.name == sym::core,
-                                    )
-                                });
-                            if let Some(candidate) = candidate {
-                                // The same item may have several re-exports. Only label this one
-                                // if the suggested path resolves to its binding.
-                                let segments = Segment::from_path(&candidate.path);
-                                path_is_accessible = if let Some((last, prefix)) =
-                                    segments.split_last()
-                                    && let PathResult::Module(module) = self
-                                        .cm()
-                                        .maybe_resolve_path(prefix, None, &parent_scope, None)
-                                {
-                                    self.cm()
-                                        .maybe_resolve_ident_in_module(
-                                            module,
-                                            last.ident,
-                                            ns,
-                                            &parent_scope,
-                                            None,
-                                        )
-                                        .is_ok_and(|decl| decl == source_decl)
-                                } else {
-                                    false
-                                };
-                                let path =
-                                    candidate.path.segments.iter().map(|seg| seg.ident).collect();
-                                sugg_paths.push((path, candidate.via_import));
-                            }
-                        }
-                        Some((source_decl, path_is_accessible))
-                    } else {
-                        None
+            next_binding = None;
+            if res != Res::Err
+                && let DeclKind::Import { source_decl, import, .. } = binding.kind
+                && !source_decl.span.is_dummy()
+                && let Some(source) = match import.kind {
+                    ImportKind::Single { source, .. } => Some(source),
+                    ImportKind::Glob { .. }
+                    | ImportKind::MacroUse { .. }
+                    | ImportKind::MacroExport => Some(next_ident),
+                    ImportKind::ExternCrate { .. } => None,
+                }
+            {
+                next_ident = source;
+                let source_res = source_decl.res();
+                let through_reexport = source_decl.is_import();
+                let mut path_is_accessible = has_direct_suggestion && !through_reexport;
+                if let Some(path) =
+                    self.import_source_suggestion_path(import, source, source_decl, &parent_scope)
+                {
+                    path_is_accessible = true;
+                    sugg_paths.push((path, through_reexport));
+                } else if !has_direct_suggestion && let Some(ns) = source_res.ns() {
+                    let candidate = self
+                        .lookup_import_candidates(source, ns, &parent_scope, |res| {
+                            res == source_res
+                        })
+                        .into_iter()
+                        .filter(|candidate| candidate.accessible)
+                        .map(|mut candidate| {
+                            self.shorten_candidate_path(&mut candidate, parent_scope.module);
+                            candidate
+                        })
+                        .min_by_key(|candidate| {
+                            (
+                                candidate.path.segments.len(),
+                                candidate.path.segments[0].ident.name == sym::core,
+                            )
+                        });
+                    if let Some(candidate) = candidate {
+                        // The same item may have several re-exports. Only label this one
+                        // if the suggested path resolves to its binding.
+                        let segments = Segment::from_path(&candidate.path);
+                        path_is_accessible = if let Some((last, prefix)) = segments.split_last()
+                            && let PathResult::Module(module) =
+                                self.cm().maybe_resolve_path(prefix, None, &parent_scope, None)
+                        {
+                            self.cm()
+                                .maybe_resolve_ident_in_module(
+                                    module,
+                                    last.ident,
+                                    ns,
+                                    &parent_scope,
+                                    None,
+                                )
+                                .is_ok_and(|decl| decl == source_decl)
+                        } else {
+                            false
+                        };
+                        let path = candidate.path.segments.iter().map(|seg| seg.ident).collect();
+                        sugg_paths.push((path, candidate.via_import));
                     }
                 }
-                _ => None,
-            };
+                next_binding = Some((source_decl, path_is_accessible));
+            }
             let first = binding == first_binding;
             let def_span = self.tcx.sess.source_map().guess_head_span(binding.span);
             let mut note_span = MultiSpan::from_span(def_span);
