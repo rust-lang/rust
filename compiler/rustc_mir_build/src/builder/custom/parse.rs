@@ -200,7 +200,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             StmtKind::Let { pattern, initializer: Some(initializer), .. } => {
                 let (var, ..) = self.parse_var(pattern)?;
                 let data = BasicBlockData::new(
-                    None,
+                    Terminator::none(),
                     parse_by_kind!(self, *initializer, _, "basic block declaration",
                         @variant(mir_basic_block, Normal) => false,
                         @variant(mir_basic_block, Cleanup) => true,
@@ -303,7 +303,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             ExprKind::Block { block } => &self.thir[*block],
         );
 
-        let mut data = BasicBlockData::new(None, is_cleanup);
+        let mut data = BasicBlockData::new(Terminator::none(), is_cleanup);
         for stmt_id in &*block.stmts {
             let stmt = self.statement_as_expr(*stmt_id)?;
             let span = self.thir[stmt].span;
@@ -315,10 +315,10 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         let Some(trailing) = block.expr else { return Err(self.expr_error(expr_id, "terminator")) };
         let span = self.thir[trailing].span;
         let terminator = self.parse_terminator(trailing)?;
-        data.terminator = Some(Terminator {
+        data.terminator = Terminator {
             source_info: SourceInfo { span, scope: self.source_scope },
             kind: terminator,
-        });
+        };
 
         Ok(data)
     }

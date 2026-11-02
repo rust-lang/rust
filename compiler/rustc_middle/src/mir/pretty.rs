@@ -836,7 +836,7 @@ impl<'a, 'tcx> MirWriter<'a, 'tcx> {
 
         // Terminator at the bottom.
         (self.extra_data)(PassWhere::BeforeLocation(current_location), w)?;
-        if data.terminator.is_some() {
+        if true {
             let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
             if self.options.include_extra_comments {
                 writeln!(

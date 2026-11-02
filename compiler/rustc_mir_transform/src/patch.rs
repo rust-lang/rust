@@ -89,7 +89,7 @@ impl<'tcx> MirPatch<'tcx> {
         }
 
         let bb = self.new_block(BasicBlockData::new(
-            Some(Terminator {
+            (Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::UnwindResume,
             }),
@@ -105,7 +105,7 @@ impl<'tcx> MirPatch<'tcx> {
         }
 
         let bb = self.new_block(BasicBlockData::new(
-            Some(Terminator {
+            (Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Unreachable,
             }),
@@ -121,7 +121,7 @@ impl<'tcx> MirPatch<'tcx> {
         }
 
         let bb = self.new_block(BasicBlockData::new(
-            Some(Terminator {
+            (Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Unreachable,
             }),
@@ -139,7 +139,7 @@ impl<'tcx> MirPatch<'tcx> {
         }
 
         let bb = self.new_block(BasicBlockData::new(
-            Some(Terminator {
+            (Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::UnwindTerminate(reason),
             }),

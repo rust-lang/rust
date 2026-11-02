@@ -1336,7 +1336,7 @@ pub struct BasicBlockData<'tcx> {
     /// exception is that certain passes, such as `simplify_cfg`, swap
     /// out the terminator temporarily with `None` while they continue
     /// to recurse over the set of basic blocks.
-    pub terminator: Option<Terminator<'tcx>>,
+    pub terminator: Terminator<'tcx>,
 
     /// If true, this block lies on an unwind path. This is used
     /// during codegen where distinct kinds of basic blocks may be
@@ -1346,13 +1346,13 @@ pub struct BasicBlockData<'tcx> {
 }
 
 impl<'tcx> BasicBlockData<'tcx> {
-    pub fn new(terminator: Option<Terminator<'tcx>>, is_cleanup: bool) -> BasicBlockData<'tcx> {
+    pub fn new(terminator: Terminator<'tcx>, is_cleanup: bool) -> BasicBlockData<'tcx> {
         BasicBlockData::new_stmts(Vec::new(), terminator, is_cleanup)
     }
 
     pub fn new_stmts(
         statements: Vec<Statement<'tcx>>,
-        terminator: Option<Terminator<'tcx>>,
+        terminator: Terminator<'tcx>,
         is_cleanup: bool,
     ) -> BasicBlockData<'tcx> {
         BasicBlockData {
@@ -1369,12 +1369,12 @@ impl<'tcx> BasicBlockData<'tcx> {
     /// provides a convenient way to reach the terminator.
     #[inline]
     pub fn terminator(&self) -> &Terminator<'tcx> {
-        self.terminator.as_ref().expect("invalid terminator state")
+        &self.terminator
     }
 
     #[inline]
     pub fn terminator_mut(&mut self) -> &mut Terminator<'tcx> {
-        self.terminator.as_mut().expect("invalid terminator state")
+        &mut self.terminator
     }
 
     /// Does the block have no statements and an unreachable terminator?
@@ -1696,7 +1696,7 @@ pub fn find_self_call<'tcx>(
     block: BasicBlock,
 ) -> Option<(DefId, GenericArgs<'tcx>)> {
     debug!("find_self_call(local={:?}): terminator={:?}", local, body[block].terminator);
-    if let Some(Terminator { kind: TerminatorKind::Call { func, args, .. }, .. }) =
+    if let Terminator { kind: TerminatorKind::Call { func, args, .. }, .. } =
         &body[block].terminator
         && let Operand::Constant(ConstOperand { const_, .. }) = func
         && let ty::FnDef(def_id, fn_args) = *const_.ty().kind()

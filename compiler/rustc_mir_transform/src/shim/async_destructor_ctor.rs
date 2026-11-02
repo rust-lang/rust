@@ -85,7 +85,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
     let return_block = BasicBlock::new(1);
     let mut blocks = IndexVec::with_capacity(2);
     let block = |blocks: &mut IndexVec<_, _>, kind| -> BasicBlock {
-        blocks.push(BasicBlockData::new(Some(Terminator { source_info, kind }), false))
+        blocks.push(BasicBlockData::new((Terminator { source_info, kind }), false))
     };
     block(
         &mut blocks,
@@ -386,7 +386,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
     // call Pin<FutTy>::new_unchecked(&mut impl_cor)
     blocks.push(BasicBlockData::new_stmts(
         statements,
-        Some(Terminator {
+        (Terminator {
             source_info,
             kind: TerminatorKind::Call {
                 func: Operand::function_handle(tcx, pin_fn, &[cor_ref.into()], span),
@@ -405,7 +405,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
     let poll_fn = tcx.require_lang_item(LangItem::FuturePoll, span);
     let resume_ctx = Place::from(Local::new(2));
     blocks.push(BasicBlockData::new(
-        Some(Terminator {
+        (Terminator {
             source_info,
             kind: TerminatorKind::Call {
                 func: Operand::function_handle(tcx, poll_fn, &[impl_ty.into()], span),
@@ -424,7 +424,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
         false,
     ));
     blocks.push(BasicBlockData::new(
-        Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        (Terminator { source_info, kind: TerminatorKind::Return }),
         false,
     ));
 

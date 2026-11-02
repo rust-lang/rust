@@ -428,6 +428,34 @@ pub struct Terminator<'tcx> {
 
 impl<'tcx> Terminator<'tcx> {
     #[inline]
+    pub fn none() -> Terminator<'tcx> {
+        Terminator {
+            source_info: SourceInfo::outermost(DUMMY_SP),
+            kind: TerminatorKind::Goto {
+                target: BasicBlock::MAX,
+                loop_hint_attrs: ThinVec::new(),
+            },
+        }
+    }
+
+    pub fn take(&mut self) -> Option<Terminator<'tcx>> {
+        if self.is_none() {
+            None
+        } else {
+            Some(std::mem::replace(self, Self::none()))
+        }
+    }
+
+    pub fn is_none(&self) -> bool {
+        matches!(self.kind, TerminatorKind::Goto { target: BasicBlock::MAX, .. })
+    }
+    pub fn is_some(&self) -> bool {
+        !self.is_none()
+    }
+}
+
+impl<'tcx> Terminator<'tcx> {
+    #[inline]
     pub fn successors(&self) -> Successors<'_> {
         self.kind.successors()
     }

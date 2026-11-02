@@ -4085,7 +4085,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
     fn explain_deref_coercion(&mut self, loan: &BorrowData<'tcx>, err: &mut Diag<'_>) {
         let tcx = self.infcx.tcx;
-        if let Some(Terminator { kind: TerminatorKind::Call { call_source, fn_span, .. }, .. }) =
+        if let Terminator { kind: TerminatorKind::Call { call_source, fn_span, .. }, .. } =
             &self.body[loan.reserve_location.block].terminator
             && let Some((method_did, method_args)) = mir::find_self_call(
                 tcx,

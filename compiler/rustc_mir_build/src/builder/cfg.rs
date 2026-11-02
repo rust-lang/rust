@@ -21,7 +21,7 @@ impl<'tcx> CFG<'tcx> {
     // it as #[inline(never)] to keep rustc's stack use in check.
     #[inline(never)]
     pub(crate) fn start_new_block(&mut self) -> BasicBlock {
-        self.basic_blocks.push(BasicBlockData::new(None, false))
+        self.basic_blocks.push(BasicBlockData::new(Terminator::none(), false))
     }
 
     pub(crate) fn start_new_cleanup_block(&mut self) -> BasicBlock {
@@ -117,8 +117,8 @@ impl<'tcx> CFG<'tcx> {
             block,
             self.block_data(block)
         );
-        self.block_data_mut(block).terminator = Some(Terminator { source_info, kind });
-        self.block_data_mut(block).terminator.as_mut().unwrap()
+        self.block_data_mut(block).terminator = Terminator { source_info, kind };
+        self.block_data_mut(block).terminator_mut()
     }
 
     /// In the `origin` block, push a `goto -> target` terminator.

@@ -247,7 +247,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
     context: hir::Constness,
 ) -> Body<'tcx> {
     for bb in body.basic_blocks.as_mut().iter_mut() {
-        let terminator = bb.terminator.as_mut().expect("invalid terminator");
+        let terminator = &mut bb.terminator;//.as_mut().expect("invalid terminator");
         match terminator.kind {
             TerminatorKind::Call {
                 func: Operand::Constant(ConstOperand { ref const_, .. }),

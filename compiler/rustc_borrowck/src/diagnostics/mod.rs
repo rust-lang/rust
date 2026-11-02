@@ -561,15 +561,15 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     );
                     if !is_terminator {
                         continue;
-                    } else if let Some(Terminator {
+                    } else if let Terminator {
                         kind:
-                            TerminatorKind::Call {
-                                func,
-                                call_source: CallSource::OverloadedOperator,
-                                ..
-                            },
+                        TerminatorKind::Call {
+                            func,
+                            call_source: CallSource::OverloadedOperator,
+                            ..
+                        },
                         ..
-                    }) = &bbd.terminator
+                    } = &bbd.terminator
                     {
                         if let Some(source) =
                             BorrowedContentSource::from_call(func.ty(self.body, tcx), tcx)
@@ -1082,9 +1082,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         debug!("move_spans: target_temp = {:?}", target_temp);
 
-        if let Some(Terminator {
-            kind: TerminatorKind::Call { fn_span, call_source, .. }, ..
-        }) = &self.body[location.block].terminator
+        if let Terminator { kind: TerminatorKind::Call { fn_span, call_source, .. }, .. } =
+            &self.body[location.block].terminator
         {
             let Some((method_did, method_args)) =
                 find_self_call(self.infcx.tcx, self.body, target_temp, location.block)

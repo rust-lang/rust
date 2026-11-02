@@ -742,7 +742,7 @@ fn get_or_split_edge<'tcx>(
     }
     let source_info = body.basic_blocks[pred].terminator().source_info;
     let split_bb = patcher.new_block(BasicBlockData::new(
-        Some(Terminator { source_info, kind: TerminatorKind::goto(succ) }),
+        (Terminator { source_info, kind: TerminatorKind::goto(succ) }),
         body.basic_blocks[succ].is_cleanup,
     ));
     patcher.mutate_terminator(body, pred, |kind| {

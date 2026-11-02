@@ -66,7 +66,7 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
         // This will filter to functions with `extern "C-unwind"` ABIs, for
         // example.
         for block in body.basic_blocks.as_mut() {
-            let Some(terminator) = &mut block.terminator else { continue };
+            let terminator = &mut block.terminator ;//else { continue };
             let span = terminator.source_info.span;
 
             // If we see an `UnwindResume` terminator inside a function then:
