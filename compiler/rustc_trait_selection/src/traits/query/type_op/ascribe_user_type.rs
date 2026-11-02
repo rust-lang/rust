@@ -9,6 +9,7 @@ use rustc_middle::ty::{
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
+use crate::infer::InferCtxt;
 use crate::infer::canonical::{CanonicalQueryInput, CanonicalQueryResponse};
 use crate::traits::ObligationCtxt;
 
@@ -16,7 +17,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for AscribeUserType<'tcx> {
     type QueryResponse = ();
 
     fn try_fast_path(
-        _tcx: TyCtxt<'tcx>,
+        _infcx: &InferCtxt<'tcx>,
         _key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
         None

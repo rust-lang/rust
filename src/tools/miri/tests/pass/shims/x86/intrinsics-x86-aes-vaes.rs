@@ -1,7 +1,7 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+aes,+vaes,+avx512f
-//@run-native
+//@run-native: ignore-output
 
 use core::mem::transmute;
 #[cfg(target_arch = "x86")]

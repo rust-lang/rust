@@ -1,8 +1,7 @@
-use super::needless_pass_by_value::requires_exact_signature;
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{inherits_cfg, is_from_proc_macro, is_self};
+use clippy_utils::{inherits_cfg, is_from_proc_macro, is_self, requires_exact_signature};
 use core::ops::ControlFlow;
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};

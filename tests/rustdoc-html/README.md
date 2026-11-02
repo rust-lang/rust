@@ -20,6 +20,10 @@ docs.
 
 Contains tests checking the rendering of `async` items.
 
+## `tests/rustdoc-html/attributes`
+
+Contains tests checking the rendering of attributes in the docs.
+
 ## `tests/rustdoc-html/auto`
 
 Contains tests related to auto traits implementations.
@@ -64,6 +68,10 @@ Contains tests for the rendering of enum types and in particular its variants.
 ## `tests/rustdoc-html/extern`
 
 Contains tests to check how extern items (like `extern "C"` functions) are rendered.
+
+## `tests/rustdoc-html/fn`
+
+Same as `tests/rustdoc-html/enum` but for function items.
 
 ## `tests/rustdoc-html/footnote`
 
@@ -151,6 +159,10 @@ Same as `tests/rustdoc-html/enum` but for struct items.
 ## `tests/rustdoc-html/synthetic_auto`
 
 Somewhat equivalent to the `auto` folder's tests. Both should likely be merged.
+
+## `tests/rustdoc-html/trait`
+
+Same as `tests/rustdoc-html/enum` but for trait items.
 
 ## `tests/rustdoc-html/typedef`
 

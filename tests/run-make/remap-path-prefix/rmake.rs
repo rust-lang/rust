@@ -76,7 +76,7 @@ fn main() {
     rmeta_contains("auxiliary");
     out_diagobj.run();
     rmeta_contains("/the/aux/lib.rs");
-    rmeta_contains("auxiliary");
+    rmeta_not_contains("auxiliary");
     out_diagdocobj.run();
     rmeta_contains("/the/aux/lib.rs");
     rmeta_not_contains("auxiliary");

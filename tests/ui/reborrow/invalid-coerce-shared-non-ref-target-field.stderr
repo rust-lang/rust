@@ -1,0 +1,32 @@
+error[E0308]: mismatched types
+  --> $DIR/invalid-coerce-shared-non-ref-target-field.rs:16:29
+   |
+LL | struct CustomRef<'a, T>([T; [16, 1usize]]);
+   |                             ^^^^^^^^^^^^ expected `usize`, found `[usize; 2]`
+   |
+   = note: array length can only be `usize`
+
+error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
+  --> $DIR/invalid-coerce-shared-non-ref-target-field.rs:16:25
+   |
+LL | struct CustomMut<'a, T>(&'a mut T);
+   |                         --------- source field `0` has type `&'a mut T`
+LL | impl<'a, T> Reborrow for CustomMut<'a, T> {}
+LL | impl<'a, T> CoerceShared<CustomRef<'a, T>> for CustomMut<'a, T> {}
+   | ------------------------------------------------------------------ required by this `CoerceShared` implementation
+LL |
+LL | struct CustomRef<'a, T>([T; [16, 1usize]]);
+   |                         ^^^^^^^^^^^^^^^^^ target field `0` has type `[T; [16, 1usize]]`
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/invalid-coerce-shared-non-ref-target-field.rs:16:18
+   |
+LL | struct CustomRef<'a, T>([T; [16, 1usize]]);
+   |                  ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0392.
+For more information about an error, try `rustc --explain E0308`.

@@ -1,3 +1,7 @@
+// tidy-alphabetical-start
+#![feature(default_field_values)]
+// tidy-alphabetical-end
+
 use std::borrow::Cow;
 use std::fmt::Display;
 
@@ -125,17 +129,15 @@ impl From<UnstableLintExpectationId> for LintExpectationId {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
 pub struct StableLintExpectationId {
     pub hir_id: HirId,
-    pub attr_index: u16,
     pub lint_index: u16,
 }
 
 impl StableHash for StableLintExpectationId {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        let StableLintExpectationId { hir_id, attr_index, lint_index } = self;
+        let StableLintExpectationId { hir_id, lint_index } = self;
 
         hir_id.stable_hash(hcx, hasher);
-        attr_index.stable_hash(hcx, hasher);
         lint_index.stable_hash(hcx, hasher);
     }
 }
@@ -284,30 +286,30 @@ pub struct Lint {
 
     /// Starting at the given edition, default to the given lint level. If this is `None`, then use
     /// `default_level`.
-    pub edition_lint_opts: Option<(Edition, Level)>,
+    pub edition_lint_opts: Option<(Edition, Level)> = None,
 
     /// `true` if this lint is reported even inside expansions of external macros.
-    pub report_in_external_macro: bool,
+    pub report_in_external_macro: bool = false,
 
-    pub future_incompatible: Option<FutureIncompatibleInfo>,
+    pub future_incompatible: Option<FutureIncompatibleInfo> = None,
 
     /// `true` if this lint is being loaded by another tool (e.g. Clippy).
-    pub is_externally_loaded: bool,
+    pub is_externally_loaded: bool = false,
 
     /// `Some` if this lint is feature gated, otherwise `None`.
-    pub feature_gate: Option<Symbol>,
+    pub feature_gate: Option<Symbol> = None,
 
-    pub crate_level_only: bool,
+    pub crate_level_only: bool = false,
 
     /// `true` if this lint should not be filtered out under any circustamces
     /// (e.g. the unknown_attributes lint)
-    pub eval_always: bool,
+    pub eval_always: bool = false,
 
     /// `true` if this lint is unaffected by `-D warnings`
-    pub ignore_deny_warnings: bool,
+    pub ignore_deny_warnings: bool = false,
 
     /// Used to avoid lints which would affect MSRV
-    pub rust_version: Option<RustcVersion>,
+    pub rust_version: Option<RustcVersion> = None,
 }
 
 /// Extra information for a future incompatibility lint.
@@ -320,7 +322,7 @@ pub struct FutureIncompatibleInfo {
     ///
     /// Set to false for lints that already include a more detailed
     /// explanation.
-    pub explain_reason: bool,
+    pub explain_reason: bool = true,
     /// If set to `true`, this will make future incompatibility warnings show up in cargo's
     /// reports.
     ///
@@ -332,7 +334,7 @@ pub struct FutureIncompatibleInfo {
     /// After a lint has been in this state for a while, consider setting this to true, so it
     /// warns for everyone. It is a good signal that it is ready if you can determine that all
     /// or most affected crates on crates.io have been updated.
-    pub report_in_deps: bool,
+    pub report_in_deps: bool = false,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -440,21 +442,6 @@ pub enum FutureIncompatibilityReason {
     /// equivalent to
     /// [`FutureIncompatibilityReason::FutureReleaseError`].
     Custom(&'static str, ReleaseFcw),
-
-    /// Using the declare_lint macro a reason always needs to be specified.
-    /// So, this case can't actually be reached but a variant needs to exist for it.
-    /// Any code panics on seeing this variant. Do not use.
-    Unreachable,
-}
-
-impl FutureIncompatibleInfo {
-    pub const fn default_fields_for_macro() -> Self {
-        FutureIncompatibleInfo {
-            reason: FutureIncompatibilityReason::Unreachable,
-            explain_reason: true,
-            report_in_deps: false,
-        }
-    }
 }
 
 impl FutureIncompatibilityReason {
@@ -468,7 +455,6 @@ impl FutureIncompatibilityReason {
             FutureIncompatibilityReason::FutureReleaseError(_)
             | FutureIncompatibilityReason::FutureReleaseSemanticsChange(_)
             | FutureIncompatibilityReason::Custom(_, _) => None,
-            Self::Unreachable => unreachable!(),
         }
     }
 
@@ -481,7 +467,6 @@ impl FutureIncompatibilityReason {
             | Self::EditionSemanticsChange(edition_fcw)
             | Self::EditionAndFutureReleaseError(edition_fcw)
             | Self::EditionAndFutureReleaseSemanticsChange(edition_fcw) => edition_fcw.to_string(),
-            Self::Unreachable => unreachable!(),
         }
     }
 }
@@ -511,23 +496,6 @@ impl Display for EditionFcw {
 }
 
 impl Lint {
-    pub const fn default_fields_for_macro() -> Self {
-        Lint {
-            name: "",
-            default_level: Level::Forbid,
-            desc: "",
-            edition_lint_opts: None,
-            is_externally_loaded: false,
-            report_in_external_macro: false,
-            future_incompatible: None,
-            feature_gate: None,
-            crate_level_only: false,
-            eval_always: false,
-            ignore_deny_warnings: false,
-            rust_version: None,
-        }
-    }
-
     // FIXME(const-hack): This is used so that `declare_lint` can declare an MSRV statically.
     // `RustcVersion::parse_str_strict` should ideally be used instead.
     pub const fn parse_rust_version(version: &str) -> RustcVersion {
@@ -714,18 +682,17 @@ macro_rules! declare_lint {
             name: stringify!($NAME),
             default_level: $crate::$Level,
             desc: $desc,
-            is_externally_loaded: false,
             $($v: true,)*
             $(feature_gate: Some(rustc_span::sym::$gate),)?
             $(future_incompatible: Some($crate::FutureIncompatibleInfo {
                 reason: $reason,
                 $($field: $val,)*
-                ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
+                ..
             }),)?
             $(edition_lint_opts: Some((::rustc_span::edition::Edition::$lint_edition, $crate::$edition_level)),)?
             $(eval_always: $eval_always,)?
             $(rust_version: Some($crate::Lint::parse_rust_version($msrv)),)?
-            ..$crate::Lint::default_fields_for_macro()
+            ..
         };
     );
 }
@@ -758,14 +725,11 @@ macro_rules! declare_tool_lint {
             name: &concat!(stringify!($tool), "::", stringify!($NAME)),
             default_level: $crate::$Level,
             desc: $desc,
-            edition_lint_opts: None,
             report_in_external_macro: $external,
-            future_incompatible: None,
             is_externally_loaded: true,
             $(feature_gate: Some(rustc_span::sym::$gate),)?
-            crate_level_only: false,
             $(eval_always: $eval_always,)?
-            ..$crate::Lint::default_fields_for_macro()
+            ..
         };
     );
 }
@@ -805,7 +769,7 @@ macro_rules! declare_lint_pass {
 #[macro_export]
 macro_rules! fcw {
     (FutureReleaseError # $issue_number: literal) => {
-       $crate:: FutureIncompatibilityReason::FutureReleaseError($crate::ReleaseFcw { issue_number: $issue_number })
+       $crate::FutureIncompatibilityReason::FutureReleaseError($crate::ReleaseFcw { issue_number: $issue_number })
     };
     (FutureReleaseSemanticsChange # $issue_number: literal) => {
         $crate::FutureIncompatibilityReason::FutureReleaseSemanticsChange($crate::ReleaseFcw {
@@ -841,13 +805,8 @@ macro_rules! fcw {
             page_slug: $page_slug,
         })
     };
-    (@edition 2024) => {
-        rustc_span::edition::Edition::Edition2024
-    };
-    (@edition 2021) => {
-        rustc_span::edition::Edition::Edition2021
-    };
-    (@edition 2018) => {
-        rustc_span::edition::Edition::Edition2018
-    };
+    (@edition future) => { rustc_span::edition::Edition::EditionFuture };
+    (@edition 2024) => { rustc_span::edition::Edition::Edition2024 };
+    (@edition 2021) => { rustc_span::edition::Edition::Edition2021 };
+    (@edition 2018) => { rustc_span::edition::Edition::Edition2018 };
 }

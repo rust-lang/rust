@@ -4,9 +4,11 @@ pub(crate) mod query_context;
 #[cfg(test)]
 mod tests;
 
+use rustc_middle::ty::transmute::{Answer, Condition, Reason};
+
+use crate::Map;
 use crate::layout::{self, Def, Dfa, Reference, Tree, dfa, union};
 use crate::maybe_transmutable::query_context::QueryContext;
-use crate::{Answer, Condition, Map, Reason};
 
 pub(crate) struct MaybeTransmutableQuery<L, C>
 where
@@ -295,67 +297,6 @@ where
             } else {
                 bytes_answer.and(refs_answer)
             }
-        }
-    }
-}
-
-impl<R, T> Answer<R, T> {
-    /// Requires both answers, combining their conditions into a conjunction.
-    fn and(self, rhs: Answer<R, T>) -> Answer<R, T> {
-        let lhs = self;
-        match (lhs, rhs) {
-            // Prefer a specific reason over generic bit incompatibility;
-            // otherwise, retain the left-hand reason.
-            (Answer::No(Reason::DstIsBitIncompatible), Answer::No(reason))
-            | (Answer::No(reason), Answer::No(_))
-            // If either is an error, return it
-            | (Answer::No(reason), _) | (_, Answer::No(reason)) => Answer::No(reason),
-            // If only one side has a condition, pass it along
-            (Answer::Yes, other) | (other, Answer::Yes) => other,
-            // If both sides have IfAll conditions, merge them
-            (Answer::If(Condition::IfAll(mut lhs)), Answer::If(Condition::IfAll(ref mut rhs))) => {
-                lhs.append(rhs);
-                Answer::If(Condition::IfAll(lhs))
-            }
-            // If only one side is an IfAll, add the other Condition to it
-            (Answer::If(cond), Answer::If(Condition::IfAll(mut conds)))
-            | (Answer::If(Condition::IfAll(mut conds)), Answer::If(cond)) => {
-                conds.push(cond);
-                Answer::If(Condition::IfAll(conds))
-            }
-            // Otherwise, both lhs and rhs conditions can be combined in a parent IfAll
-            (Answer::If(lhs), Answer::If(rhs)) => Answer::If(Condition::IfAll(vec![lhs, rhs])),
-        }
-    }
-
-    /// Combines alternative answers and collects their conditions in an `IfAny`.
-    ///
-    /// Currently, combining `Yes` with `If` retains the condition. This differs
-    /// from Boolean disjunction, where unconditional success would suffice.
-    fn or(self, rhs: Answer<R, T>) -> Answer<R, T> {
-        let lhs = self;
-        match (lhs, rhs) {
-            // Prefer a specific reason over generic bit incompatibility;
-            // otherwise, retain the left-hand reason.
-            (Answer::No(Reason::DstIsBitIncompatible), Answer::No(reason))
-            | (Answer::No(reason), Answer::No(_)) => Answer::No(reason),
-            // Otherwise, errors can be ignored for the rest of the pattern matching
-            (Answer::No(_), other) | (other, Answer::No(_)) => other.or(Answer::Yes),
-            // If only one side has a condition, pass it along
-            (Answer::Yes, other) | (other, Answer::Yes) => other,
-            // If both sides have IfAny conditions, merge them
-            (Answer::If(Condition::IfAny(mut lhs)), Answer::If(Condition::IfAny(ref mut rhs))) => {
-                lhs.append(rhs);
-                Answer::If(Condition::IfAny(lhs))
-            }
-            // If only one side is an IfAny, add the other Condition to it
-            (Answer::If(cond), Answer::If(Condition::IfAny(mut conds)))
-            | (Answer::If(Condition::IfAny(mut conds)), Answer::If(cond)) => {
-                conds.push(cond);
-                Answer::If(Condition::IfAny(conds))
-            }
-            // Otherwise, both lhs and rhs conditions can be combined in a parent IfAny
-            (Answer::If(lhs), Answer::If(rhs)) => Answer::If(Condition::IfAny(vec![lhs, rhs])),
         }
     }
 }

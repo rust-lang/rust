@@ -273,7 +273,7 @@ impl EarlyLintPass for FooFunctions {}
 ```
 
 [declare_clippy_lint]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L60
-[example_lint_page]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure
+[example_lint_page]: https://rust-lang.github.io/rust-clippy/main/index.html#redundant_closure
 [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
 [category_level_mapping]: ../index.html
 
@@ -376,7 +376,7 @@ an identifier must appear in a message or label, it should be surrounded with
 single grave accents \`.
 
 [check_fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html#method.check_fn
-[diagnostics]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/diagnostics.rs
+[diagnostics]: https://github.com/rust-lang/rust-clippy/blob/HEAD/clippy_utils/src/diagnostics.rs
 [the rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/diagnostics.html
 
 ## Adding the lint logic
@@ -485,6 +485,11 @@ if !self.msrv.meets(cx, msrvs::STR_STRIP_PREFIX) {
     return;
 }
 ```
+
+An important consideration is that `Msrv::meets` is relatively expensive to
+call if the crate has a `clippy::msrv` attribute, so you should typically
+match the MSRV at the end of an if let chain, after other short-circuiting
+checks.
 
 Early lint passes should instead use `MsrvStack` coupled with
 `extract_msrv_attr!()`
@@ -614,7 +619,7 @@ necessarily “bad” but are more of a style choice, then replace the
 Once your lint is merged, this documentation will show up in the [lint
 list][lint_list].
 
-[lint_list]: https://rust-lang.github.io/rust-clippy/master/index.html
+[lint_list]: https://rust-lang.github.io/rust-clippy/main/index.html
 
 ## Running rustfmt
 
@@ -761,10 +766,10 @@ for some users. Adding a configuration is done in the following steps:
 
    Run `cargo bless --test config-metadata` to generate documentation changes for the book.
 
-[`clippy_config::conf`]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_config/src/conf.rs
-[`clippy_lints` lib file]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/lib.rs
-[`tests/ui`]: https://github.com/rust-lang/rust-clippy/blob/master/tests/ui
-[`tests/ui-toml`]: https://github.com/rust-lang/rust-clippy/blob/master/tests/ui-toml
+[`clippy_config::conf`]: https://github.com/rust-lang/rust-clippy/blob/HEAD/clippy_config/src/conf.rs
+[`clippy_lints` lib file]: https://github.com/rust-lang/rust-clippy/blob/HEAD/clippy_lints/src/lib.rs
+[`tests/ui`]: https://github.com/rust-lang/rust-clippy/blob/HEAD/tests/ui
+[`tests/ui-toml`]: https://github.com/rust-lang/rust-clippy/blob/HEAD/tests/ui-toml
 
 ## Cheat Sheet
 

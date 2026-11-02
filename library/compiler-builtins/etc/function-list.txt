@@ -36,6 +36,9 @@ exp10
 exp10f
 exp2
 exp2f
+exp2m1
+exp2m1f
+exp2m1f16
 expf
 expm1
 expm1f

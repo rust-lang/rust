@@ -1,6 +1,6 @@
 //! Test that the feature gate is required for diagnostic_on_type_error
 
-#[diagnostic::on_type_error(note = "custom on_type_error note: expected {Expected}, found {Found}")]
+#[diagnostic::on_type_error(note = "custom on_type_error note: expected {expected}, found {found}")]
 //~^ WARN unknown diagnostic attribute
 //~| NOTE this is an experimental diagnostic attribute
 //~| NOTE `#[warn(unknown_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default

@@ -10,7 +10,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint_defs::{declare_lint_pass, declare_tool_lint};
-use rustc_middle::ty::{self, ClausePolarity, GenericArgsRef};
+use rustc_middle::ty::{self, ClausePolarity, GenericArgs};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -20,8 +20,8 @@ use crate::diagnostics::{
     AttributeKindInFindAttr, BadOptAccessDiag, DefaultHashTypesDiag,
     ImplicitSysrootCrateImportDiag, LintPassByHand, MissingGenericTypeVisitableDeriveDiag,
     NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked,
-    RustcMustMatchExhaustivelyNotExhaustive, SpanUseEqCtxtDiag, SymbolInternStringLiteralDiag,
-    TyQualified, TykindDiag, TykindKind, TypeIrDirectUse, TypeIrInherentUsage, TypeIrTraitUsage,
+    RustcMustMatchExhaustivelyNotExhaustive, SymbolInternStringLiteralDiag, TyQualified,
+    TykindDiag, TykindKind, TypeIrDirectUse, TypeIrInherentUsage, TypeIrTraitUsage,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for QueryStability {
 fn has_unstable_into_iter_predicate<'tcx>(
     cx: &LateContext<'tcx>,
     callee_def_id: DefId,
-    generic_args: GenericArgsRef<'tcx>,
+    generic_args: GenericArgs<'tcx>,
 ) -> bool {
     let Some(into_iterator_def_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator) else {
         return false;
@@ -173,7 +173,7 @@ fn has_unstable_into_iter_predicate<'tcx>(
 fn get_callee_span_generic_args_and_args<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
-) -> Option<(DefId, Span, GenericArgsRef<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
+) -> Option<(DefId, Span, GenericArgs<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
     if let ExprKind::Call(callee, args) = expr.kind
         && let callee_ty = cx.typeck_results().expr_ty(callee)
         && let ty::FnDef(callee_def_id, generic_args) = callee_ty.kind()
@@ -480,7 +480,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
                 NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT,
                 tree.prefix.span,
                 NonGlobImportTypeIrInherent {
-                    suggestion: lo.eq_ctxt(hi).then(|| lo.to(hi)),
+                    suggestion: (lo.ctxt() == hi.ctxt()).then(|| lo.to(hi)),
                     snippet,
                 },
             );
@@ -567,41 +567,6 @@ impl LateLintPass<'_> for BadOptAccess {
                 );
             }
         }
-    }
-}
-
-declare_tool_lint! {
-    pub rustc::SPAN_USE_EQ_CTXT,
-    Allow,
-    "forbid uses of `==` with `Span::ctxt`, suggest `Span::eq_ctxt` instead",
-    report_in_external_macro: true
-}
-
-declare_lint_pass!(SpanUseEqCtxt => [SPAN_USE_EQ_CTXT]);
-
-impl<'tcx> LateLintPass<'tcx> for SpanUseEqCtxt {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
-        if let hir::ExprKind::Binary(
-            hir::BinOp { node: hir::BinOpKind::Eq | hir::BinOpKind::Ne, .. },
-            lhs,
-            rhs,
-        ) = expr.kind
-        {
-            if is_span_ctxt_call(cx, lhs) && is_span_ctxt_call(cx, rhs) {
-                cx.emit_span_lint(SPAN_USE_EQ_CTXT, expr.span, SpanUseEqCtxtDiag);
-            }
-        }
-    }
-}
-
-fn is_span_ctxt_call(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-    match &expr.kind {
-        hir::ExprKind::MethodCall(..) => cx
-            .typeck_results()
-            .type_dependent_def_id(expr.hir_id)
-            .is_some_and(|call_did| cx.tcx.is_diagnostic_item(sym::SpanCtxt, call_did)),
-
-        _ => false,
     }
 }
 

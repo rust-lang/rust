@@ -5,7 +5,7 @@ mod simd;
 use std::iter;
 
 use gccjit::{CType, ComparisonOp, Function, FunctionType, RValue, ToRValue, Type, UnaryOp};
-use rustc_abi::{Align, BackendRepr, HasDataLayout, WrappingRange};
+use rustc_abi::{Align, BackendRepr, HasDataLayout};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::diagnostics::InvalidMonomorphization;
@@ -28,8 +28,6 @@ use rustc_session::config::OptLevel;
 use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::{ArgAbi, PassMode};
 
-#[cfg(feature = "master")]
-use crate::abi::FnAbiGccExt;
 use crate::abi::GccType;
 use crate::builder::Builder;
 use crate::common::{SignType, TypeReflection};
@@ -58,17 +56,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     name: Symbol,
 ) -> Option<Function<'gcc>> {
     let gcc_name = match name {
-        sym::sqrtf32 => "sqrtf",
-        sym::sqrtf64 => "sqrt",
-        sym::powif32 => "__builtin_powif",
-        sym::powif64 => "__builtin_powi",
-        sym::powf32 => "powf",
-        sym::powf64 => "pow",
-        sym::fmaf32 => "fmaf",
-        sym::fmaf64 => "fma",
-        // FIXME: calling `fma` from libc without FMA target feature uses expensive software emulation
-        sym::fmuladdf32 => "fmaf", // FIXME: use gcc intrinsic analogous to llvm.fmuladd.f32
-        sym::fmuladdf64 => "fma",  // FIXME: use gcc intrinsic analogous to llvm.fmuladd.f64
         sym::minimumf32 => return float_intrinsic(cx, cx.type_f32(), "fminimumf"),
         sym::minimumf64 => return float_intrinsic(cx, cx.type_f64(), "fminimum"),
         sym::minimumf128 => return float_intrinsic(cx, cx.type_f128(), "fminimumf128"),
@@ -77,17 +64,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::maximumf128 => return float_intrinsic(cx, cx.type_f128(), "fmaximumf128"),
         sym::copysignf32 => "copysignf",
         sym::copysignf64 => "copysign",
-        sym::floorf32 => "floorf",
-        sym::floorf64 => "floor",
-        sym::ceilf32 => "ceilf",
-        sym::ceilf64 => "ceil",
-        sym::truncf32 => "truncf",
-        sym::truncf64 => "trunc",
-        // We match the LLVM backend and lower this to `rint`.
-        sym::round_ties_even_f32 => "rintf",
-        sym::round_ties_even_f64 => "rint",
-        sym::roundf32 => "roundf",
-        sym::roundf64 => "round",
         _ => return None,
     };
     Some(cx.context.get_builtin_function(gcc_name))
@@ -99,31 +75,31 @@ fn get_simple_function_f128<'gcc, 'tcx>(
     name: Symbol,
 ) -> Function<'gcc> {
     let f128_type = cx.type_f128();
-    let func_name = match name {
-        sym::ceilf128 => "ceilf128",
-        sym::cos => "cosf128",
-        sym::fabs => "fabsf128",
-        sym::exp => "expf128",
-        sym::exp2 => "exp2f128",
-        sym::floorf128 => "floorf128",
-        sym::log => "logf128",
-        sym::log2 => "log2f128",
-        sym::log10 => "log10f128",
-        sym::truncf128 => "truncf128",
-        sym::roundf128 => "roundf128",
-        sym::round_ties_even_f128 => "roundevenf128",
-        sym::sin => "sinf128",
-        sym::sqrtf128 => "sqrtf128",
-        _ => span_bug!(span, "used get_simple_function_f128 for non-unary f128 intrinsic"),
+    let (func_name, args): (&str, &[gccjit::Type<'_>]) = match name {
+        sym::ceil => ("ceilf128", &[f128_type]),
+        sym::cos => ("cosf128", &[f128_type]),
+        sym::fabs => ("fabsf128", &[f128_type]),
+        sym::exp => ("expf128", &[f128_type]),
+        sym::exp2 => ("exp2f128", &[f128_type]),
+        sym::floor => ("floorf128", &[f128_type]),
+        sym::log => ("logf128", &[f128_type]),
+        sym::log2 => ("log2f128", &[f128_type]),
+        sym::log10 => ("log10f128", &[f128_type]),
+        sym::trunc => ("truncf128", &[f128_type]),
+        sym::round => ("roundf128", &[f128_type]),
+        sym::round_ties_even => ("roundevenf128", &[f128_type]),
+        sym::sin => ("sinf128", &[f128_type]),
+        sym::sqrt => ("sqrtf128", &[f128_type]),
+        sym::powf => ("powf128", &[f128_type, f128_type]),
+        sym::fma => ("fmaf128", &[f128_type, f128_type, f128_type]),
+        _ => span_bug!(span, "used get_simple_function_f128 for unsupported f128 intrinsic"),
     };
-    cx.context.new_function(
-        None,
-        FunctionType::Extern,
-        f128_type,
-        &[cx.context.new_parameter(None, f128_type, "a")],
-        func_name,
-        false,
-    )
+    let args: Vec<_> = args
+        .iter()
+        .enumerate()
+        .map(|(index, typ)| cx.context.new_parameter(None, *typ, format!("param{}", index)))
+        .collect();
+    cx.context.new_function(None, FunctionType::Extern, f128_type, &args, func_name, false)
 }
 
 fn f16_builtin<'gcc, 'tcx>(
@@ -133,22 +109,22 @@ fn f16_builtin<'gcc, 'tcx>(
 ) -> RValue<'gcc> {
     let f32_type = cx.type_f32();
     let builtin_name = match name {
-        sym::ceilf16 => "__builtin_ceilf",
+        sym::ceil => "__builtin_ceilf",
         sym::copysignf16 => "__builtin_copysignf",
         sym::cos => "cosf",
         sym::exp => "expf",
         sym::exp2 => "exp2f",
         sym::fabs => "fabsf",
-        sym::floorf16 => "__builtin_floorf",
+        sym::floor => "__builtin_floorf",
         sym::log => "logf",
         sym::log2 => "log2f",
         sym::log10 => "log10f",
-        sym::powf16 => "__builtin_powf",
-        sym::roundf16 => "__builtin_roundf",
-        sym::round_ties_even_f16 => "__builtin_rintf",
+        sym::powf => "__builtin_powf",
+        sym::round => "__builtin_roundf",
+        sym::round_ties_even => "__builtin_rintf",
         sym::sin => "sinf",
-        sym::sqrtf16 => "__builtin_sqrtf",
-        sym::truncf16 => "__builtin_truncf",
+        sym::sqrt => "__builtin_sqrtf",
+        sym::trunc => "__builtin_truncf",
         _ => unreachable!(),
     };
 
@@ -210,29 +186,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            sym::ceilf16
-            | sym::copysignf16
-            | sym::floorf16
-            | sym::powf16
-            | sym::roundf16
-            | sym::round_ties_even_f16
-            | sym::sqrtf16
-            | sym::truncf16 => f16_builtin(self, name, args),
-            sym::ceilf128
-            | sym::floorf128
-            | sym::truncf128
-            | sym::roundf128
-            | sym::round_ties_even_f128
-            | sym::sqrtf128
-                if self.cx.supports_f128_type =>
-            {
-                let func = get_simple_function_f128(span, self, name);
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
+            sym::copysignf16 => f16_builtin(self, name, args),
             sym::copysignf128 if self.cx.supports_f128_type => {
                 let f128_type = self.cx.type_f128();
                 let func = self.cx.context.new_function(
@@ -244,52 +198,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         self.cx.context.new_parameter(None, f128_type, "b"),
                     ],
                     "copysignf128",
-                    false,
-                );
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
-            sym::fmaf128 => {
-                let f128_type = self.cx.type_f128();
-                let func = self.cx.context.new_function(
-                    None,
-                    FunctionType::Extern,
-                    f128_type,
-                    &[
-                        self.cx.context.new_parameter(None, f128_type, "a"),
-                        self.cx.context.new_parameter(None, f128_type, "b"),
-                        self.cx.context.new_parameter(None, f128_type, "c"),
-                    ],
-                    "fmaf128",
-                    false,
-                );
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
-            sym::powif16 => {
-                let func = self.cx.context.get_builtin_function("__builtin_powif");
-                let arg0 = self.cx.context.new_cast(None, args[0].immediate(), self.cx.type_f32());
-                let args = [arg0, args[1].immediate()];
-                let result = self.cx.context.new_call(None, func, &args);
-                self.cx.context.new_cast(None, result, self.cx.type_f16())
-            }
-            sym::powif128 => {
-                let f128_type = self.cx.type_f128();
-                let func = self.cx.context.new_function(
-                    None,
-                    FunctionType::Extern,
-                    f128_type,
-                    &[
-                        self.cx.context.new_parameter(None, f128_type, "a"),
-                        self.cx.context.new_parameter(None, self.int_type, "b"),
-                    ],
-                    "__powitf2",
                     false,
                 );
                 self.cx.context.new_call(
@@ -314,7 +222,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 );
                 return IntrinsicResult::WroteIntoPlace;
             }
-            sym::breakpoint => {
+            sym::breakpoint | sym::resumable_breakpoint => {
                 unimplemented!();
             }
             sym::va_arg => {
@@ -410,13 +318,23 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 }
             }
             sym::fabs
+            | sym::sqrt
+            | sym::powf
+            | sym::fma
+            | sym::fmuladd
+            | sym::floor
+            | sym::ceil
+            | sym::trunc
+            | sym::round
+            | sym::round_ties_even
             | sym::exp
             | sym::exp2
             | sym::log
             | sym::log10
             | sym::log2
             | sym::sin
-            | sym::cos => 'float_unop: {
+            | sym::cos
+            | sym::powi => 'float_op: {
                 let ty = args[0].layout.ty;
                 let ty::Float(float_ty) = *ty.kind() else {
                     span_bug!(span, "expected float type for fabs intrinsic: {:?}", ty);
@@ -425,6 +343,60 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 let func = match (name, float_ty) {
                     (sym::fabs, F32) => self.context.get_builtin_function("fabsf"),
                     (sym::fabs, F64) => self.context.get_builtin_function("fabs"),
+
+                    (sym::sqrt, F32) => self.context.get_builtin_function("sqrtf"),
+                    (sym::sqrt, F64) => self.context.get_builtin_function("sqrt"),
+
+                    (sym::powf, F32) => self.context.get_builtin_function("powf"),
+                    (sym::powf, F64) => self.context.get_builtin_function("pow"),
+
+                    (sym::fma, F32) => self.context.get_builtin_function("fmaf"),
+                    (sym::fma, F64) => self.context.get_builtin_function("fma"),
+
+                    // FIXME: calling `fma` from libc without FMA target feature uses expensive
+                    // software emulation.
+                    // FIXME: use gcc intrinsics analogous to llvm.fmuladd.f32/f64.
+                    (sym::fmuladd, F32) => self.context.get_builtin_function("fmaf"),
+                    (sym::fmuladd, F64) => self.context.get_builtin_function("fma"),
+
+                    // These have no `f16` builtin and no `fmuladdf128`; use the fallback bodies.
+                    (sym::fma | sym::fmuladd, F16) | (sym::fmuladd, F128) => {
+                        let fallback = Instance::new_raw(instance.def_id(), instance.args);
+                        return IntrinsicResult::Fallback(fallback);
+                    }
+
+                    (sym::powi, F32) => self.context.get_builtin_function("__builtin_powif"),
+                    (sym::powi, F64) => self.context.get_builtin_function("__builtin_powi"),
+                    // No GCC builtin; the intrinsic's fallback uses `compiler-builtins`.
+                    (sym::powi, F128) => {
+                        let fallback = Instance::new_raw(instance.def_id(), instance.args);
+                        return IntrinsicResult::Fallback(fallback);
+                    }
+                    // `f16` can't go through `f16_builtin` due to the integer argument.
+                    (sym::powi, F16) => {
+                        let func = self.cx.context.get_builtin_function("__builtin_powif");
+                        let arg0 =
+                            self.cx.context.new_cast(None, args[0].immediate(), self.cx.type_f32());
+                        let args = [arg0, args[1].immediate()];
+                        let result = self.cx.context.new_call(None, func, &args);
+                        break 'float_op self.cx.context.new_cast(None, result, self.cx.type_f16());
+                    }
+
+                    (sym::floor, F32) => self.context.get_builtin_function("floorf"),
+                    (sym::floor, F64) => self.context.get_builtin_function("floor"),
+
+                    (sym::ceil, F32) => self.context.get_builtin_function("ceilf"),
+                    (sym::ceil, F64) => self.context.get_builtin_function("ceil"),
+
+                    (sym::trunc, F32) => self.context.get_builtin_function("truncf"),
+                    (sym::trunc, F64) => self.context.get_builtin_function("trunc"),
+
+                    (sym::round, F32) => self.context.get_builtin_function("roundf"),
+                    (sym::round, F64) => self.context.get_builtin_function("round"),
+
+                    // We match the LLVM backend and lower this to `rint`.
+                    (sym::round_ties_even, F32) => self.context.get_builtin_function("rintf"),
+                    (sym::round_ties_even, F64) => self.context.get_builtin_function("rint"),
 
                     (sym::exp, F32) => self.context.get_builtin_function("expf"),
                     (sym::exp, F64) => self.context.get_builtin_function("exp"),
@@ -449,7 +421,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
                     (_, F32 | F64) => unreachable!(),
 
-                    (_, F16) => break 'float_unop f16_builtin(self, name, args),
+                    (_, F16) => break 'float_op f16_builtin(self, name, args),
                     (_, F128) => {
                         if !self.cx.supports_f128_type {
                             // Fall back to default body
@@ -621,35 +593,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let fn_ptr = func.get_address(None);
         let fn_ty = fn_ptr.get_type();
 
-        let mut call_args = vec![];
-
-        for arg in args {
-            match arg.val {
-                OperandValue::ZeroSized => {}
-                OperandValue::Immediate(_) => call_args.push(arg.immediate()),
-                OperandValue::Pair(a, b) => {
-                    call_args.push(a);
-                    call_args.push(b);
-                }
-                OperandValue::Ref(op_place_val) => {
-                    let mut llval = op_place_val.llval;
-                    // We can't use `PlaceRef::load` here because the argument
-                    // may have a type we don't treat as immediate, but the ABI
-                    // used for this call is passing it by-value. In that case,
-                    // the load would just produce `OperandValue::Ref` instead
-                    // of the `OperandValue::Immediate` we need for the call.
-                    llval = self.load(self.backend_type(arg.layout), llval, op_place_val.align);
-                    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
-                        if scalar.is_bool() {
-                            self.range_metadata(llval, WrappingRange { start: 0, end: 1 });
-                        }
-                        // We store bools as `i8` so we need to truncate to `i1`.
-                        llval = self.to_immediate_scalar(llval, scalar);
-                    }
-                    call_args.push(llval);
-                }
-            }
-        }
+        let call_args = args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>();
 
         // FIXME directly use the llvm intrinsic adjustment functions here
         let llret =
@@ -1405,7 +1349,7 @@ fn codegen_gnu_try<'gcc, 'tcx>(
     dest: PlaceRef<'tcx, RValue<'gcc>>,
 ) {
     let cx: &CodegenCx<'gcc, '_> = bx.cx;
-    let (llty, func) = get_rust_try_fn(cx, &mut |mut bx| {
+    let func = get_rust_try_fn(cx, &mut |mut bx| {
         // Codegens the shims described above:
         //
         //   bx:
@@ -1464,12 +1408,12 @@ fn codegen_gnu_try<'gcc, 'tcx>(
         );
     });
 
-    let func = unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) };
+    let func = func.get_address(None);
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bx.call(
-        llty,
+        func.get_type(),
         None,
         None,
         func,
@@ -1489,7 +1433,7 @@ fn codegen_gnu_try<'gcc, 'tcx>(
 fn get_rust_try_fn<'a, 'gcc, 'tcx>(
     cx: &'a CodegenCx<'gcc, 'tcx>,
     codegen: &mut dyn FnMut(Builder<'a, 'gcc, 'tcx>),
-) -> (Type<'gcc>, Function<'gcc>) {
+) -> Function<'gcc> {
     if let Some(llfn) = cx.rust_try_fn.get() {
         return llfn;
     }
@@ -1534,9 +1478,8 @@ fn gen_fn<'a, 'gcc, 'tcx>(
     name: &str,
     rust_fn_sig: ty::PolyFnSig<'tcx>,
     codegen: &mut dyn FnMut(Builder<'a, 'gcc, 'tcx>),
-) -> (Type<'gcc>, Function<'gcc>) {
+) -> Function<'gcc> {
     let fn_abi = cx.fn_abi_of_fn_ptr(rust_fn_sig, ty::List::empty());
-    let return_type = fn_abi.gcc_type(cx).return_type;
     // FIXME(eddyb) find a nicer way to do this.
     cx.linkage.set(FunctionType::Internal);
     let func = cx.declare_fn(name, fn_abi);
@@ -1545,5 +1488,5 @@ fn gen_fn<'a, 'gcc, 'tcx>(
     let block = Builder::append_block(cx, func, "entry-block");
     let bx = Builder::build(cx, block);
     codegen(bx);
-    (return_type, func)
+    func
 }

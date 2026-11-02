@@ -2,7 +2,6 @@ use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_span::bug;
 use tracing::trace;
 
-use crate::ty::consts::ConstExt;
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
 
@@ -177,7 +176,7 @@ fn typetree_from_ty_impl_inner<'tcx>(
                 let mut types = Vec::new();
 
                 for (field_idx, field_def) in adt_def.all_fields().enumerate() {
-                    let field_ty = field_def.ty(tcx, args);
+                    let field_ty = field_def.ty(tcx, *args);
                     let field_tree = typetree_from_ty_impl_inner(
                         tcx,
                         field_ty.skip_norm_wip(),

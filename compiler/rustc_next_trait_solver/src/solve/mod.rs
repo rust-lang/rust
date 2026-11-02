@@ -22,8 +22,11 @@ mod trait_goals;
 
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::lang_items::SolverTraitLangItem;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Const, Interner, Region, TypeVisitableExt};
+use rustc_type_ir::transmute::Condition;
+use rustc_type_ir::{self as ty, Const, Interner, Region, TraitClause, TypeVisitableExt, Upcast};
+use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -54,7 +57,7 @@ pub enum HasChanged {
 
 // FIXME(trait-system-refactor-initiative#117): we don't detect whether a response
 // ended up pulling down any universes.
-fn has_no_inference_or_external_constraints<I: Interner>(
+pub(crate) fn has_no_inference_or_external_constraints<I: Interner>(
     response: ty::Canonical<I, Response<I>>,
 ) -> bool {
     let ExternalConstraintsData {
@@ -62,7 +65,7 @@ fn has_no_inference_or_external_constraints<I: Interner>(
         ref opaque_types,
         ref normalization_nested_goals,
     } = *response.value.external_constraints;
-    response.value.is_identity()
+    response.value.var_values_is_identity == IsIdentity::Yes
         && region_constraints.is_empty()
         && opaque_types.is_empty()
         && normalization_nested_goals.is_empty()
@@ -74,37 +77,9 @@ fn has_only_region_constraints<I: Interner>(response: ty::Canonical<I, Response<
         ref opaque_types,
         ref normalization_nested_goals,
     } = *response.value.external_constraints;
-    response.value.is_identity_modulo_regions()
+    response.value.var_values_is_identity >= IsIdentity::ModuloRegions
         && opaque_types.is_empty()
         && normalization_nested_goals.is_empty()
-}
-
-/// Whether two canonical responses are exactly equal except for their
-/// region constraints.
-fn equal_response_modulo_region_constraints<I: Interner>(
-    a: &CanonicalResponse<I>,
-    b: &CanonicalResponse<I>,
-) -> bool {
-    let CanonicalResponse {
-        max_universe: a_max_universe,
-        var_kinds: a_var_kinds,
-        value:
-            Response {
-                var_values: a_var_values,
-                certainty: a_certainty,
-                external_constraints: a_external_constraints,
-            },
-    } = a;
-
-    let ExternalConstraintsData { region_constraints: _, opaque_types, normalization_nested_goals } =
-        &**a_external_constraints;
-
-    a_max_universe == &b.max_universe
-        && a_var_kinds == &b.var_kinds
-        && a_var_values == &b.value.var_values
-        && a_certainty == &b.value.certainty
-        && opaque_types == &b.value.external_constraints.opaque_types
-        && normalization_nested_goals == &b.value.external_constraints.normalization_nested_goals
 }
 
 impl<'a, D, I> EvalCtxt<'a, D>
@@ -152,10 +127,12 @@ where
         let ty::OutlivesClause(a, b) = goal.predicate;
 
         if self.cx().assumptions_on_binders() {
-            use rustc_type_ir::region_constraint::{LeafRegionConstraint, RegionConstraint};
+            use rustc_type_ir::region_constraint::{
+                LeafRegionConstraint, NoSpan, RegionConstraint,
+            };
 
             let constraint =
-                RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(a, b, ()));
+                RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(a, b, NoSpan));
             self.register_solver_region_constraint(constraint);
         } else {
             self.register_region_outlives(a, b, VisibleForLeakCheck::Yes);
@@ -250,20 +227,9 @@ where
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
 
-            ty::ConstKind::Alias(ty::IsRigid::No, alias_const) => {
-                // We never return `NoSolution` here as `evaluate_const` emits an
-                // error itself when failing to evaluate, so emitting an additional fulfillment
-                // error in that case is unnecessary noise. This may change in the future once
-                // evaluation failures are allowed to impact selection, e.g. generic const
-                // expressions in impl headers or `where`-clauses.
-
-                // FIXME(generic_const_exprs): Implement handling for generic
-                // const expressions here.
-                if let Some(_normalized) = self.evaluate_const(param_env, alias_const)? {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                } else {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                }
+            ty::ConstKind::Alias(ty::IsRigid::No, _) => {
+                self.normalize(param_env, ty::Unnormalized::new(ct))?;
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
 
             // We can freely ICE here as:
@@ -286,14 +252,10 @@ where
 
         let ct_ty = match ct.kind() {
             ty::ConstKind::Infer(_) => {
-                return self
-                    .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                    .map_err(Into::into);
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
             }
             ty::ConstKind::Error(_) => {
-                return self
-                    .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    .map_err(Into::into);
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
             }
             ty::ConstKind::Alias(ty::IsRigid::Yes, alias_const) => {
                 alias_const.type_of(self.cx()).skip_norm_wip()
@@ -315,14 +277,8 @@ where
         };
 
         self.eq(goal.param_env, ct_ty, ty)?;
-        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes).map_err(Into::into)
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
-}
-
-#[derive(Debug)]
-enum MergeCandidateInfo {
-    AlwaysApplicable(usize),
-    EqualResponse,
 }
 
 impl<D, I> EvalCtxt<'_, D>
@@ -331,50 +287,44 @@ where
     I: Interner,
 {
     /// Try to merge multiple possible ways to prove a goal, if that is not possible returns `None`.
+    /// We only merge candidates which are equal modulo region constraints. Long-term, we want to
+    /// emit an OR of the constraints of all candidates, for now we fail with ambiguity unless all
+    /// candidates have the same constraints or one candidate has no region constraints at all.
     ///
     /// In this case we tend to flounder and return ambiguity by calling `[EvalCtxt::flounder]`.
     #[instrument(level = "trace", skip(self), ret)]
     fn try_merge_candidates(
         &mut self,
         candidates: &[Candidate<I>],
-    ) -> Option<(CanonicalResponse<I>, MergeCandidateInfo)> {
-        if candidates.is_empty() {
+    ) -> Option<CanonicalResponse<I>> {
+        let Some((first, rest)) = candidates.split_first() else {
             return None;
+        };
+
+        // If all candidates are equal, just return that result.
+        if rest.iter().all(|c| first.result == c.result) {
+            return Some(first.result);
         }
 
-        let always_applicable = candidates.iter().enumerate().find(|(_, candidate)| {
-            candidate.result.value.certainty == Certainty::Yes
-                && has_no_inference_or_external_constraints(candidate.result)
-        });
-
-        if let Some((i, candidate)) = always_applicable {
-            return Some((candidate.result, MergeCandidateInfo::AlwaysApplicable(i)));
-        }
-
-        let one: CanonicalResponse<I> = candidates[0].result;
-
-        if candidates[1..]
+        // If not, check whether one of the candidates has no region constraints.
+        // Long-term we likely want to also handle cases where one candidate has
+        // strictly weaker region constraints or emit an OR of the region constraints
+        // if candidates are otherwise equal.
+        //
+        // While we could also prefer candidates with weaker non-region constraints,
+        // that's currently not necessary. We intentionally do not prefer candidates
+        // if there's still am ambiguous candidate. We do so to potentially better
+        // handle region uniquification at the start of MIR borrowck, see #163928 for
+        // more details.
+        if let Some(choice) = candidates
             .iter()
-            .all(|candidate| equal_response_modulo_region_constraints(&one, &candidate.result))
+            .find(|c| c.result.value.external_constraints.region_constraints.is_empty())
         {
-            let region_constraints = &one.value.external_constraints.region_constraints;
-            if candidates[1..].iter().all(|candidate| {
-                &candidate.result.value.external_constraints.region_constraints
-                    == region_constraints
-            }) {
-                return Some((one, MergeCandidateInfo::EqualResponse));
-            }
-
-            // If candidates differ only in region constraints, their merged region
-            // constraints are an `Or` of their respective constraints. If one of them
-            // has no region constraints, the `Or` constraint evaluates to `true`.
-            //
-            // This is a special case of `-Zassumptions-on-binders` and should be
-            // replaced eventually.
-            if let Some(candidate) = candidates.iter().find(|candidate| {
-                candidate.result.value.external_constraints.region_constraints.is_empty()
-            }) {
-                return Some((candidate.result, MergeCandidateInfo::EqualResponse));
+            if candidates
+                .iter()
+                .all(|c| self.responses_equal_modulo_region_constraints(&choice.result, &c.result))
+            {
+                return Some(choice.result);
             }
         }
 
@@ -490,4 +440,43 @@ pub struct GoalEvaluation<I: Interner> {
     /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed
     /// before rerunning it.
     pub stalled_on: Option<GoalStalledOn<I>>,
+}
+
+/// Flatten the `Condition` tree into a conjunction of predicates.
+#[instrument(level = "debug", skip(interner, predicate))]
+pub fn flatten_answer_tree<I: Interner>(
+    interner: I,
+    predicate: TraitClause<I>,
+    cond: Condition<Region<I>, I::Ty>,
+) -> ThinVec<I::Predicate> {
+    match cond {
+        // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
+        // Not possible until the trait solver supports disjunctions of obligations
+        Condition::IfAll(conds) | Condition::IfAny(conds) => conds
+            .into_iter()
+            .flat_map(|cond| flatten_answer_tree(interner, predicate, cond))
+            .collect(),
+        Condition::Immutable { ty } => {
+            let trait_ref = ty::TraitRef::new(
+                interner,
+                interner.require_trait_lang_item(SolverTraitLangItem::Freeze),
+                [I::GenericArg::from(ty)],
+            );
+            thin_vec![trait_ref.upcast(interner)]
+        }
+        Condition::Outlives { long, short } => {
+            let outlives = ty::OutlivesClause(long, short);
+            thin_vec![outlives.upcast(interner)]
+        }
+        Condition::Transmutable { src, dst } => {
+            let transmute_trait = predicate.def_id();
+            let assume = predicate.trait_ref.args.const_at(2);
+            let trait_ref = ty::TraitRef::new(
+                interner,
+                transmute_trait,
+                [I::GenericArg::from(dst), I::GenericArg::from(src), I::GenericArg::from(assume)],
+            );
+            thin_vec![trait_ref.upcast(interner)]
+        }
+    }
 }

@@ -1,5 +1,5 @@
-// rustfmt-format_strings: true
-// rustfmt-hard_tabs: true
+//@ rustfmt-format_strings: true
+//@ rustfmt-hard_tabs: true
 
 macro_rules! test {
 	() => {

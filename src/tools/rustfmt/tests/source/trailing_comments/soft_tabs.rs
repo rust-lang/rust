@@ -1,5 +1,5 @@
-// rustfmt-style_edition: 2024
-// rustfmt-wrap_comments: true
+//@ rustfmt-style_edition: 2024
+//@ rustfmt-wrap_comments: true
 
 pub const IFF_MULTICAST: ::c_int = 0x0000000800; // Supports multicast
 // Multicast using broadcst. add.

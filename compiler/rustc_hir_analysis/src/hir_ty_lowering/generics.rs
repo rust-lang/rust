@@ -9,7 +9,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, GenericArg};
 use rustc_lint_defs::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_middle::ty::{
-    self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
+    self, GenericArgs, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
 };
 use rustc_span::kw;
 use rustc_trait_selection::traits;
@@ -195,7 +195,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
     self_ty: Option<Ty<'tcx>>,
     arg_count: &GenericArgCountResult,
     ctx: &mut impl GenericArgsLowerer<'a, 'tcx>,
-) -> GenericArgsRef<'tcx> {
+) -> GenericArgs<'tcx> {
     let tcx = cx.tcx();
     // Collect the segments of the path; we need to instantiate arguments
     // for parameters throughout the entire path (wherever there are
@@ -451,8 +451,11 @@ pub(crate) fn check_generic_arg_count(
         .iter()
         .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Type { synthetic: true, .. }))
         .count();
+    // arg position const params are supplied through call arguments, so they
+    // cannot be explicitly specified via turbofish.
+    let arg_const_param_count = gen_params.own_arg_pos_consts().count();
     let named_type_param_count = param_counts.types - has_self as usize - synth_type_param_count;
-    let named_const_param_count = param_counts.consts;
+    let named_const_param_count = param_counts.consts - arg_const_param_count;
     let infer_lifetimes =
         (gen_pos != GenericArgPosition::Type || seg.infer_args) && !gen_args.has_lifetime_args();
 
@@ -630,7 +633,7 @@ pub(crate) fn check_generic_arg_count(
         let expected_min = if seg.infer_args {
             0
         } else {
-            param_counts.consts + named_type_param_count
+            named_const_param_count + named_type_param_count
                 - default_counts.types
                 - default_counts.consts
         };

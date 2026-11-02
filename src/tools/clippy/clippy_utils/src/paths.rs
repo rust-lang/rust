@@ -23,9 +23,13 @@ use std::sync::OnceLock;
 /// arbitrary namespace
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum PathNS {
+    /// The [type namespace](TypeNS)
     Type,
+    /// The [value namespace](ValueNS)
     Value,
+    /// The [macro namespace](MacroNS)
     Macro,
+    /// A struct or enum-variant field. Not a real name resolution namespace
     Field,
 
     /// Resolves to the name in the first available namespace, e.g. for `std::vec` this would return

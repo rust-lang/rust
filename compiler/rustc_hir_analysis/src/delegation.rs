@@ -10,7 +10,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{DelegationSelfTyPropagationKind, PathSegment};
 use rustc_middle::ty::{
     self, ConstKind, EarlyBinder, GenericArg, GenericArgKind, RegionKind, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast,
 };
 use rustc_span::{ErrorGuaranteed, Span, kw};
 
@@ -23,46 +23,65 @@ struct ParamIndexRemapper<'tcx> {
     tcx: TyCtxt<'tcx>,
     remap_table: RemapTable,
     delegation_parent_consts: FxHashSet<ty::ParamConst>,
+    arg_kinds: Vec<ty::GenericArgKind<'tcx>>,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamIndexRemapper<'tcx> {
+impl<'tcx> ParamIndexRemapper<'tcx> {
+    fn try_remap(
+        &self,
+        source_index: u32,
+        expected_kind: ty::GenericArgKind<'tcx>,
+    ) -> Result<u32, ()> {
+        self.remap_table
+            .get(&source_index)
+            .copied()
+            .filter(|&idx| {
+                self.arg_kinds.get(idx as usize).is_some_and(|kind| {
+                    std::mem::discriminant(&expected_kind) == std::mem::discriminant(kind)
+                })
+            })
+            .ok_or(())
+    }
+}
+
+impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for ParamIndexRemapper<'tcx> {
+    type Error = ();
+
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         if !ty.has_param() {
-            return ty;
+            return Ok(ty);
         }
 
-        if let ty::Param(param) = ty.kind()
-            && let Some(index) = self.remap_table.get(&param.index)
-        {
-            return Ty::new_param(self.tcx, *index, param.name);
+        if let ty::Param(param) = ty.kind() {
+            let index = self.try_remap(param.index, ty::GenericArgKind::Type(ty))?;
+            return Ok(Ty::new_param(self.tcx, index, param.name));
         }
-        ty.super_fold_with(self)
+
+        ty.try_super_fold_with(self)
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::ReEarlyParam(param) = r.kind()
-            && let Some(index) = self.remap_table.get(&param.index).copied()
-        {
-            return ty::Region::new_early_param(
+    fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
+        if let ty::ReEarlyParam(param) = r.kind() {
+            let index = self.try_remap(param.index, ty::GenericArgKind::Lifetime(r))?;
+            return Ok(ty::Region::new_early_param(
                 self.tcx,
                 ty::EarlyParamRegion { index, name: param.name },
-            );
+            ));
         }
-        r
+        Ok(r)
     }
 
-    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Param(param) = ct.kind()
-            && let Some(idx) = self.remap_table.get(&param.index)
-        {
-            let param = ty::ParamConst::new(*idx, param.name);
-            return ty::Const::new_param(self.tcx, param);
+    fn try_fold_const(&mut self, ct: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
+        if let ty::ConstKind::Param(param) = ct.kind() {
+            let idx = self.try_remap(param.index, ty::GenericArgKind::Const(ct))?;
+            let param = ty::ParamConst::new(idx, param.name);
+            return Ok(ty::Const::new_param(self.tcx, param));
         }
-        ct.super_fold_with(self)
+        ct.try_super_fold_with(self)
     }
 }
 
@@ -389,19 +408,21 @@ fn create_generic_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig_id: DefId,
     def_id: LocalDefId,
-    mut parent_args: &[ty::GenericArg<'tcx>],
-    mut child_args: &[ty::GenericArg<'tcx>],
-) -> (Vec<ty::GenericArg<'tcx>>, &'tcx [ty::GenericArg<'tcx>]) {
+    mut parent_args: ty::GenericArgs<'tcx>,
+    mut child_args: ty::GenericArgs<'tcx>,
+) -> (Vec<ty::GenericArg<'tcx>>, ty::GenericArgs<'tcx>) {
     let delegation_generics = tcx.generics_of(def_id);
     let delegation_args = ty::GenericArgs::identity_for_item(tcx, def_id);
 
     let real_args_count = delegation_args.len() - delegation_generics.own_synthetic_params_count();
-    let synth_args = &delegation_args[real_args_count..];
+    let synth_args = &delegation_args.as_slice()[real_args_count..];
 
-    let mut delegation_parent_args =
-        &delegation_args[delegation_generics.has_self as usize..delegation_generics.parent_count];
+    let mut delegation_parent_args = tcx.mk_args(
+        &delegation_args.as_slice()
+            [delegation_generics.has_self as usize..delegation_generics.parent_count],
+    );
 
-    let delegation_args = &delegation_args[delegation_generics.parent_count..];
+    let delegation_args = &delegation_args.as_slice()[delegation_generics.parent_count..];
 
     let kinds @ (_, parent_kind) = fn_kinds(tcx, def_id, sig_id);
     if matches!(kinds, (FnKind::AssocTraitImpl, FnKind::AssocTrait)) {
@@ -413,10 +434,11 @@ fn create_generic_args<'tcx>(
         parent_args =
             tcx.impl_trait_header(parent).trait_ref.instantiate_identity().skip_norm_wip().args;
 
-        child_args =
-            &delegation_args[delegation_args.len() - delegation_generics.own_params.len()..];
+        child_args = tcx.mk_args(
+            &delegation_args[delegation_args.len() - delegation_generics.own_params.len()..],
+        );
 
-        delegation_parent_args = &[];
+        delegation_parent_args = ty::GenericArgs::empty();
     }
 
     let self_type = get_delegation_self_ty(tcx, def_id).map(ty::GenericArg::from);
@@ -426,7 +448,7 @@ fn create_generic_args<'tcx>(
             FnKind::AssocInherentImpl => parent_args,
             // Remove `Self` from parent args (it is always at the `0th` index) as it is
             // added manually.
-            FnKind::AssocTrait => &parent_args[1..],
+            FnKind::AssocTrait => tcx.mk_args(&parent_args.as_slice()[1..]),
             _ => unreachable!("if parent args are non-empty then the parent must exist"),
         }
     }
@@ -448,14 +470,14 @@ fn create_generic_args<'tcx>(
     let after_lifetimes_self = after_lifetimes_self.as_ref().into_iter();
 
     let args = zero_self
-        .chain(delegation_parent_args)
+        .copied()
+        .chain(delegation_parent_args.iter())
         .chain(parent_args.iter().filter(|a| a.as_region().is_some()))
         .chain(child_args.iter().filter(|a| a.as_region().is_some()))
-        .chain(after_lifetimes_self)
+        .chain(after_lifetimes_self.copied())
         .chain(parent_args.iter().filter(|a| a.as_region().is_none()))
         .chain(child_args.iter().filter(|a| a.as_region().is_none()))
-        .chain(synth_args)
-        .copied()
+        .chain(synth_args.iter().copied())
         .collect::<Vec<_>>();
 
     (args, delegation_parent_args)
@@ -479,7 +501,7 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
             mut self,
             f: impl Fn(DefId) -> ty::GenericClauses<'tcx>,
             def_id: DefId,
-        ) -> Self {
+        ) -> Result<Self, ()> {
             let clauses = f(def_id);
             let args = self.args.as_slice();
 
@@ -521,8 +543,9 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
                 // it came from delegation parent, and if so we do not process its `ConstArgHasType`
                 // clause.
                 // (Issue #158675).
+                let new_clause = clause.0.try_fold_with(&mut self.folder)?;
                 if let ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) =
-                    clause.0.as_predicate().fold_with(&mut self.folder).kind().skip_binder()
+                    new_clause.as_predicate().kind().skip_binder()
                 {
                     let unnorm_const = EarlyBinder::bind(self.tcx, ct).instantiate(self.tcx, args);
                     if let ty::ConstKind::Param(param) = unnorm_const.skip_norm_wip().kind()
@@ -532,7 +555,6 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
                     }
                 }
 
-                let new_clause = clause.0.fold_with(&mut self.folder);
                 self.clauses.push((
                     EarlyBinder::bind(self.tcx, new_clause)
                         .instantiate(self.tcx, args)
@@ -541,17 +563,17 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
                 ));
             }
 
-            self
+            Ok(self)
         }
 
         fn with_clauses(
             mut self,
             f: impl Fn(DefId) -> ty::GenericClauses<'tcx> + Copy,
             def_id: DefId,
-        ) -> Self {
+        ) -> Result<Self, ()> {
             let preds = f(def_id);
             if let Some(parent_def_id) = preds.parent {
-                self = self.with_own_clauses(f, parent_def_id);
+                self = self.with_own_clauses(f, parent_def_id)?;
             }
 
             self.with_own_clauses(f, def_id)
@@ -572,7 +594,7 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
     // `explicit_clauses_of` is used here to avoid copying `Self: Trait` clause.
     // Note: `clauses_of` query can also add inferred outlives clauses, but that
     // is not the case here as `sig_id` is either a trait or a function.
-    let clauses = match inh_kind {
+    let collector = match inh_kind {
         InheritanceKind::WithParent(false) => {
             collector.with_clauses(|def_id| tcx.explicit_clauses_of(def_id), sig_id)
         }
@@ -580,8 +602,39 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
             collector.with_clauses(|def_id| tcx.clauses_of(def_id), sig_id)
         }
         InheritanceKind::Own => collector.with_own_clauses(|def_id| tcx.clauses_of(def_id), sig_id),
-    }
-    .clauses;
+    };
+
+    let clauses = match collector {
+        Ok(collector) => collector.clauses,
+        Err(()) => {
+            tcx.dcx().emit_err(crate::diagnostics::DelegationInheritanceFailed {
+                span: tcx.def_span(def_id),
+                kind: "predicates",
+                callee_span: tcx.def_span(sig_id),
+            });
+
+            // Even on error, the delegated item's const parameters need their
+            // types in the parameter environment.
+            tcx.generics_of(def_id)
+                .own_params
+                .iter()
+                .filter_map(|param| {
+                    if !matches!(param.kind, ty::GenericParamDefKind::Const { .. }) {
+                        return None;
+                    }
+
+                    let ct =
+                        ty::Const::new_param(tcx, ty::ParamConst::new(param.index, param.name));
+                    let ct_ty = tcx.type_of(param.def_id).instantiate_identity().skip_norm_wip();
+
+                    Some((
+                        ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx),
+                        tcx.def_span(param.def_id),
+                    ))
+                })
+                .collect::<Vec<_>>()
+        }
+    };
 
     ty::GenericClauses { parent, clauses: tcx.arena.alloc_from_iter(clauses) }
 }
@@ -590,8 +643,8 @@ fn create_folder_and_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     sig_id: DefId,
-    parent_args: &'tcx [ty::GenericArg<'tcx>],
-    child_args: &'tcx [ty::GenericArg<'tcx>],
+    parent_args: ty::GenericArgs<'tcx>,
+    child_args: ty::GenericArgs<'tcx>,
 ) -> (ParamIndexRemapper<'tcx>, Vec<ty::GenericArg<'tcx>>) {
     let (args, delegation_parent_args) =
         create_generic_args(tcx, sig_id, def_id, parent_args, child_args);
@@ -607,7 +660,8 @@ fn create_folder_and_args<'tcx>(
         })
         .collect();
 
-    (ParamIndexRemapper { tcx, remap_table, delegation_parent_consts }, args)
+    let arg_kinds = args.iter().map(|arg| arg.kind()).collect();
+    (ParamIndexRemapper { tcx, remap_table, delegation_parent_consts, arg_kinds }, args)
 }
 
 fn check_constraints<'tcx>(
@@ -633,6 +687,16 @@ fn check_constraints<'tcx>(
     ret
 }
 
+fn error_sig_for_delegation<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sig_id: DefId,
+    err: ErrorGuaranteed,
+) -> &'tcx [Ty<'tcx>] {
+    let sig_len = tcx.fn_sig(sig_id).instantiate_identity().skip_binder().inputs().len() + 1;
+    let err_type = Ty::new_error(tcx, err);
+    tcx.arena.alloc_from_iter((0..sig_len).map(|_| err_type))
+}
+
 pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
@@ -640,14 +704,23 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     let sig_id = tcx.hir_opt_delegation_sig_id(def_id).expect("Delegation must have sig_id");
     let caller_sig = tcx.fn_sig(sig_id);
     if let Err(err) = check_constraints(tcx, def_id, sig_id) {
-        let sig_len = caller_sig.instantiate_identity().skip_binder().inputs().len() + 1;
-        let err_type = Ty::new_error(tcx, err);
-        return tcx.arena.alloc_from_iter((0..sig_len).map(|_| err_type));
+        return error_sig_for_delegation(tcx, sig_id, err);
     }
 
     let (parent_args, child_args) = tcx.delegation_user_specified_args(def_id);
     let (mut folder, args) = create_folder_and_args(tcx, def_id, sig_id, parent_args, child_args);
-    let caller_sig = EarlyBinder::bind(tcx, caller_sig.skip_binder().fold_with(&mut folder));
+    let folded_sig = match caller_sig.skip_binder().try_fold_with(&mut folder) {
+        Ok(sig) => sig,
+        Err(()) => {
+            let err = tcx.dcx().emit_err(crate::diagnostics::DelegationInheritanceFailed {
+                span: tcx.def_span(def_id),
+                kind: "signature",
+                callee_span: tcx.def_span(sig_id),
+            });
+            return error_sig_for_delegation(tcx, sig_id, err);
+        }
+    };
+    let caller_sig = EarlyBinder::bind(tcx, folded_sig);
 
     let sig = caller_sig.instantiate(tcx, args.as_slice()).skip_binder();
     let output = std::iter::once(sig.output());
@@ -667,7 +740,7 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig_id: DefId,
     def_id: LocalDefId,
-    parent_args: &[ty::GenericArg<'tcx>],
+    parent_args: ty::GenericArgs<'tcx>,
     sig: &mut [Ty<'tcx>],
 ) {
     if !tcx.is_method(sig_id) {
@@ -684,7 +757,7 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
     };
 
     for i in 0..sig.len() {
-        let to_replace = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
+        let to_replace = Ty::new_adt(tcx, *def, parent_args);
         let replacement = match def_kind {
             FnKind::Free => unreachable!(),
 
@@ -719,7 +792,7 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
 pub(crate) fn delegation_user_specified_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> (&'tcx [ty::GenericArg<'tcx>], &'tcx [ty::GenericArg<'tcx>]) {
+) -> (ty::GenericArgs<'tcx>, ty::GenericArgs<'tcx>) {
     let info = tcx.hir_delegation_info(def_id);
 
     let get_segment = |hir_id| -> Option<(&'tcx PathSegment<'tcx>, DefId)> {
@@ -742,10 +815,12 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
             let self_ty = (tcx.def_kind(def_id) == DefKind::Trait)
                 .then(|| Ty::new_param(tcx, 0, kw::SelfUpper));
 
-            lowerer
-                .lower_generic_args_of_path(segment.ident.span, def_id, &[], segment, self_ty)
-                .0
-                .as_slice()
+            tcx.mk_args(
+                lowerer
+                    .lower_generic_args_of_path(segment.ident.span, def_id, &[], segment, self_ty)
+                    .0
+                    .as_slice(),
+            )
         });
 
     let child_args = info.child_seg_id_for_sig.and_then(get_segment).map(|(segment, def_id)| {
@@ -754,19 +829,25 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
 
         let parent_args =
             if matches!(tcx.def_kind(parent), DefKind::Impl { of_trait: false } | DefKind::Trait) {
-                ty::GenericArgs::identity_for_item(tcx, parent).as_slice()
+                ty::GenericArgs::identity_for_item(tcx, parent)
             } else if let Some(parent_args) = parent_args {
                 parent_args
             } else {
-                &[]
+                ty::GenericArgs::empty()
             };
 
         let args = lowerer
-            .lower_generic_args_of_path(segment.ident.span, def_id, parent_args, segment, None)
+            .lower_generic_args_of_path(
+                segment.ident.span,
+                def_id,
+                parent_args.as_slice(),
+                segment,
+                None,
+            )
             .0;
 
         let synth_params_count = tcx.generics_of(def_id).own_synthetic_params_count();
-        &args[parent_args.len()..args.len() - synth_params_count]
+        tcx.mk_args(&args.as_slice()[parent_args.len()..args.len() - synth_params_count])
     });
 
     (parent_args.unwrap_or_default(), child_args.unwrap_or_default())

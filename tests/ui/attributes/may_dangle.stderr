@@ -11,6 +11,7 @@ error: the `may_dangle` attribute cannot be used on structs
    |
 LL | #[may_dangle]
    |   ^^^^^^^^^^
+LL | struct Dangling;
    |
    = help: the `may_dangle` attribute can be applied to lifetime parameters and type parameters
 
@@ -19,6 +20,7 @@ error: the `may_dangle` attribute cannot be used on trait impl blocks
    |
 LL | #[may_dangle]
    |   ^^^^^^^^^^
+LL | impl NotDrop for () {
    |
    = help: the `may_dangle` attribute can be applied to lifetime parameters and type parameters
 
@@ -27,6 +29,7 @@ error: the `may_dangle` attribute cannot be used on functions
    |
 LL | #[may_dangle]
    |   ^^^^^^^^^^
+LL | fn main() {
    |
    = help: the `may_dangle` attribute can be applied to lifetime parameters and type parameters
 
@@ -35,6 +38,7 @@ error: the `may_dangle` attribute cannot be used on statements
    |
 LL |     #[may_dangle]
    |       ^^^^^^^^^^
+LL |     let () = ();
    |
    = help: the `may_dangle` attribute can be applied to lifetime parameters and type parameters
 

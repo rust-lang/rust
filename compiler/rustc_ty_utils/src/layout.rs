@@ -1,12 +1,11 @@
 use std::range::{RangeFrom, RangeToInclusive};
 
-use rustc_abi as abi;
 use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
-    AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
-    LayoutCalculatorError, LayoutData, Niche, NicheOptimizations, ReprOptions, Scalar, Size,
-    StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
+    self as abi, AbiAlign, AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape,
+    HasDataLayout, Layout, LayoutCalculatorError, LayoutData, Niche, NicheOptimizations,
+    ReprOptions, Scalar, Size, StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
 };
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
@@ -41,20 +40,18 @@ fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
 ) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
-    let PseudoCanonicalInput { typing_env: original_typing_env, value: original_ty } = query;
+    let PseudoCanonicalInput { typing_env, value: original_ty } = query;
     debug!(?original_ty);
 
     // Optimization: We convert to TypingMode::PostAnalysis and convert opaque types in
     // the where bounds to their hidden types. This reduces overall uncached invocations
     // of `layout_of` and is thus a small performance improvement.
-    let typing_env = original_typing_env.with_post_analysis_normalized(tcx);
+    //
     // Switching to `PostAnalysis` typing mode will reveal opaque types that's marked
     // as rigid in the original typing env.
-    let unnormalized_ty = if typing_env != original_typing_env {
-        ty::set_aliases_to_non_rigid(tcx, original_ty)
-    } else {
-        ty::Unnormalized::new_wip(original_ty)
-    };
+    let PseudoCanonicalInput { typing_env, value: unnormalized_ty } =
+        typing_env.with_post_analysis_normalized_invalidating_rigid_aliases(tcx, original_ty);
+    let unnormalized_ty = ty::Unnormalized::new_wip(unnormalized_ty);
 
     // FIXME: We might want to have two different versions of `layout_of`:
     // One that can be called after typecheck has completed and can use
@@ -87,7 +84,7 @@ fn layout_of<'tcx>(
         }
         ty::TypingMode::Coherence
         | ty::TypingMode::Typeck { .. }
-        | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+        | ty::TypingMode::PostTypeckThroughBorrowck { .. }
         | ty::TypingMode::PostBorrowck { .. }
         | ty::TypingMode::Reflection
         | ty::TypingMode::ErasedNotCoherence(_)
@@ -553,7 +550,7 @@ fn layout_of_uncached<'tcx>(
                 ty::TypingMode::Codegen => {}
                 ty::TypingMode::Coherence
                 | ty::TypingMode::Typeck { .. }
-                | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                | ty::TypingMode::PostTypeckThroughBorrowck { .. }
                 | ty::TypingMode::PostBorrowck { .. }
                 | ty::TypingMode::Reflection
                 | ty::TypingMode::ErasedNotCoherence(_)
@@ -822,14 +819,14 @@ fn layout_of_uncached<'tcx>(
             if tcx.is_lang_item(def.did(), LangItem::F16B) {
                 let bfloat = scalar_unit(Primitive::Float(abi::Float::F16B));
                 assert_eq!(layout.size, abi::Float::F16B.size());
-                layout.align = abi::Float::F16B.align(cx);
+                layout.align = AbiAlign::new(abi::Float::F16B.align(cx));
                 layout.backend_repr = BackendRepr::Scalar(bfloat);
             }
 
             if tcx.is_lang_item(def.did(), LangItem::PpcF128) {
                 let ppcf128 = scalar_unit(Primitive::Float(abi::Float::PpcF128));
                 assert_eq!(layout.size, abi::Float::PpcF128.size());
-                layout.align = abi::Float::PpcF128.align(cx);
+                layout.align = AbiAlign::new(abi::Float::PpcF128.align(cx));
                 layout.backend_repr = BackendRepr::Scalar(ppcf128);
             }
 
@@ -998,7 +995,7 @@ fn variant_info_for_coroutine<'tcx>(
     cx: &LayoutCx<'tcx>,
     layout: TyAndLayout<'tcx>,
     def_id: DefId,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
 ) -> (Vec<VariantInfo>, Option<Size>) {
     use itertools::Itertools;
 

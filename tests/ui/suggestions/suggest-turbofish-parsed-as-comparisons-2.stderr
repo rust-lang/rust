@@ -1,0 +1,20 @@
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/suggest-turbofish-parsed-as-comparisons-2.rs:9:5
+   |
+LL |     set_alert(used < warning, used > current_limit());
+   |     ^^^^^^^^^                 ---------------------- unexpected argument #2 of type `bool`
+   |
+note: function defined here
+  --> $DIR/suggest-turbofish-parsed-as-comparisons-2.rs:1:4
+   |
+LL | fn set_alert(_: bool) {}
+   |    ^^^^^^^^^
+help: remove the extra argument
+   |
+LL -     set_alert(used < warning, used > current_limit());
+LL +     set_alert(used < warning);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

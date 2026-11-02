@@ -1,5 +1,4 @@
 use rustc_middle::mir::BinOp;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, span_bug, sym};
 use tracing::trace;
@@ -15,7 +14,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn eval_atomic_intrinsic(
         &mut self,
         intrinsic_name: Symbol,
-        generic_args: ty::GenericArgsRef<'tcx>,
+        generic_args: ty::GenericArgs<'tcx>,
         args: &[OpTy<'tcx, M::Provenance>],
         dest: &PlaceTy<'tcx, M::Provenance>,
         ret: Option<mir::BasicBlock>,

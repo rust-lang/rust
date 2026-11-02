@@ -53,8 +53,7 @@ If the feature is changed later, please add those PRs here as well.
 
 - [ ] ACP: rust-lang/libs-team#...
 - [ ] Implementation: #...
-- [ ] Final comment period (FCP)[^1]
-- [ ] Stabilization PR
+- [ ] Stabilization PR[^1]
 
 <!--
 Once the feature has gone through a few release cycles and there are no

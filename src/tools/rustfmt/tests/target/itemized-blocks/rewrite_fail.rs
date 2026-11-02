@@ -1,5 +1,5 @@
-// rustfmt-wrap_comments: true
-// rustfmt-max_width: 50
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-max_width: 50
 
 // This example shows how to configure fern to
 // output really nicely colored logs

@@ -10,6 +10,8 @@ note: `Trait` defines an item `method`, perhaps you need to implement it
    |
 LL | trait Trait: Sized {
    | ^^^^^^^^^^^^^^^^^^
+LL |     fn method(self) {}
+   |
 
 error[E0599]: no method named `method` found for reference `&impl Sized` in the current scope
   --> $DIR/would-constrain-opaque.rs:32:11
@@ -23,6 +25,8 @@ note: `Trait` defines an item `method`, perhaps you need to implement it
    |
 LL | trait Trait: Sized {
    | ^^^^^^^^^^^^^^^^^^
+LL |     fn method(self) {}
+   |
 
 error: aborting due to 2 previous errors
 

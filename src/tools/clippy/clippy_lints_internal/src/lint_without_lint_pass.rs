@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::{is_lint_allowed, sym};
 use rustc_ast::ast::LitKind;
+use rustc_attr_ir::AttrArgs;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -162,7 +163,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                         .owner_id
                         .def_id,
                 );
-                collector.visit_expr(&body.value);
+                collector.visit_expr(body.value);
             }
         }
     }
@@ -236,20 +237,14 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
 /// This function extracts the version value of a `clippy::version` attribute if the given value has
 /// one
 pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Option<Symbol> {
-    let attrs = cx.tcx.hir_attrs(item.hir_id());
-    attrs.iter().find_map(|attr| {
-        if let rustc_attr_ir::Attribute::Unparsed(attr_kind) = &attr
-            // Identify attribute
-            && let [tool_name, attr_name] = &attr_kind.path.segments[..]
-            && tool_name == &sym::clippy
-            && attr_name == &sym::version
-            && let Some(version) = attr.value_str()
-        {
-            Some(version)
-        } else {
-            None
-        }
-    })
+    let attr = cx
+        .tcx
+        .hir_tool_attrs(item.hir_id(), &[sym::clippy, sym::version])
+        .next()?;
+    let AttrArgs::Eq { expr, .. } = &attr.args else {
+        return None;
+    };
+    expr.value_as_str()
 }
 
 struct LintCollector<'a, 'tcx> {

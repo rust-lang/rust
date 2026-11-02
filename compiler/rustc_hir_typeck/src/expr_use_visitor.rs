@@ -316,7 +316,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             self.walk_pat(&param_place, param.pat, false)?;
         }
 
-        self.consume_expr(&body.value)?;
+        self.consume_expr(body.value)?;
 
         Ok(())
     }
@@ -689,7 +689,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         let field_place = self.cat_projection(
                             with_expr.hir_id,
                             with_place.clone(),
-                            with_field.ty(self.cx.tcx(), args).skip_norm_wip(),
+                            with_field.ty(self.cx.tcx(), *args).skip_norm_wip(),
                             ProjectionKind::Field(f_index, FIRST_VARIANT),
                         );
                         self.consume_or_copy(&field_place, field_place.hir_id);

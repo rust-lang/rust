@@ -29,6 +29,7 @@ pub mod diagnostic;
 pub mod diagnostic_items;
 mod encode_cross_crate;
 pub mod lang_items;
+pub mod lint;
 mod pretty_printing;
 mod stability;
 pub mod target;
@@ -131,7 +132,7 @@ macro_rules! find_attr {
                     $crate::Attribute::Parsed($pattern) $(if $guard)? => {
                         break 'done Some($e);
                     }
-                    $crate::Attribute::Unparsed(..) => {}
+                    $crate::Attribute::Tool(..) | $crate::Attribute::DeriveHelper(..)  => {}
                     // In lint emitting, there's a specific exception for this warning.
                     // It's not usually emitted from inside macros from other crates
                     // (see https://github.com/rust-lang/rust/issues/110613)

@@ -9,8 +9,8 @@ use std::sync::LazyLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast::{AttrStyle, MetaItemLit, Safety};
-use rustc_attr_ir::target::Target;
-use rustc_attr_ir::{AttrPath, Attribute, AttributeKind};
+use rustc_attr_ir::target::{AstTarget, Target};
+use rustc_attr_ir::{AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, DiagLocation, Diagnostic, Level, MultiSpan};
 use rustc_feature::AttributeStability;
@@ -43,6 +43,7 @@ use crate::attributes::dummy::*;
 use crate::attributes::inline::*;
 use crate::attributes::instruction_set::*;
 use crate::attributes::link_attrs::*;
+use crate::attributes::lint::*;
 use crate::attributes::lint_helpers::*;
 use crate::attributes::loop_match::*;
 use crate::attributes::macro_attrs::*;
@@ -166,6 +167,8 @@ attribute_parsers!(
         ConfusablesParser,
         ConstStabilityParser,
         DocParser,
+        InlineParser,
+        LintParser,
         MacroUseParser,
         NakedParser,
         OnConstParser,
@@ -211,7 +214,6 @@ attribute_parsers!(
         Single<DoNotRecommendParser>,
         Single<ExportNameParser>,
         Single<IgnoreParser>,
-        Single<InlineParser>,
         Single<InstructionSetParser>,
         Single<InstrumentFnParser>,
         Single<LangParser>,
@@ -232,6 +234,7 @@ attribute_parsers!(
         Single<ReexportTestHarnessMainParser>,
         Single<RustcAbiParser>,
         Single<RustcAllocatorZeroedVariantParser>,
+        Single<RustcAssertVarianceParser>,
         Single<RustcAutodiffParser>,
         Single<RustcBuiltinMacroParser>,
         Single<RustcDeprecatedSafe2024Parser>,
@@ -240,7 +243,6 @@ attribute_parsers!(
         Single<RustcDummyParser>,
         Single<RustcDumpDefPathParser>,
         Single<RustcDumpSymbolNameParser>,
-        Single<RustcForceInlineParser>,
         Single<RustcIfThisChangedParser>,
         Single<RustcLegacyConstGenericsParser>,
         Single<RustcLintOptDenyFieldAccessParser>,
@@ -249,6 +251,7 @@ attribute_parsers!(
         Single<RustcObjcClassParser>,
         Single<RustcObjcSelectorParser>,
         Single<RustcScalableVectorParser>,
+        Single<RustcShowSpans>,
         Single<RustcSimdMonomorphizeLaneLimitParser>,
         Single<RustcSkipDuringMethodDispatchParser>,
         Single<RustcTestMarkerParser>,
@@ -358,6 +361,7 @@ attribute_parsers!(
         Single<WithoutArgs<SplatParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
+        Single<WithoutArgs<UncheckedTypeAliasParser>>,
         // tidy-alphabetical-end
     ];
 );
@@ -386,6 +390,11 @@ pub struct AcceptContext<'f, 'sess> {
 
     /// Whether it is an inner or outer attribute.
     pub(crate) attr_style: AttrStyle,
+
+    /// Used for lint attributes.
+    ///
+    /// These should not end up in query results, as they cannot be deserialized from disk.
+    pub(crate) attr_id: Option<HashIgnoredAttrId>,
 
     /// A description of the thing we are parsing using this attribute parser.
     /// We are not only using these parsers for attributes, but also for macros such as the `cfg!()` macro.
@@ -795,6 +804,8 @@ pub struct SharedContext<'p, 'sess> {
     /// The span of the syntactical component this attribute was applied to
     pub(crate) target_span: Span,
     pub(crate) target: Target,
+    /// The AST item these attributes were applied to.
+    pub(crate) ast_target: AstTarget<'p>,
 
     pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, EmitAttribute),
 
@@ -854,10 +865,6 @@ pub(crate) struct FinalizeCheckContext<'p, 'sess> {
     ///
     /// Unlike [`all_attrs`](Self::all_attrs), this contains the fully parsed attributes.
     pub(crate) parsed_attrs: &'p [Attribute],
-
-    /// The AST item these attributes were applied to, when the target is an item.
-    /// Used by `finalize_check` to inspect item structure that is not encoded in [`Target`].
-    pub(crate) target_item: Option<&'p rustc_ast::ast::Item>,
 }
 
 impl<'p, 'sess: 'p> Deref for FinalizeCheckContext<'p, 'sess> {

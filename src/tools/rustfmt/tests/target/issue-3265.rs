@@ -1,4 +1,4 @@
-// rustfmt-newline_style: Windows
+//@ rustfmt-newline_style: Windows
 #[cfg(test)]
 mod test {
     summary_test! {

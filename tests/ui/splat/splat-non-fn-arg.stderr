@@ -3,6 +3,7 @@ error: the `rustc_splat` attribute cannot be used on functions
    |
 LL | #[rustc_splat]
    |   ^^^^^^^^^^^
+LL | fn tuple_args_bad((a, b): (u32, i8)) {}
    |
    = help: the `rustc_splat` attribute can only be applied to function params
 
@@ -11,6 +12,7 @@ error: the `rustc_splat` attribute cannot be used on traits
    |
 LL | #[rustc_splat]
    |   ^^^^^^^^^^^
+LL | trait FooTraitBad {
    |
    = help: the `rustc_splat` attribute can only be applied to function params
 
@@ -19,6 +21,7 @@ error: the `rustc_splat` attribute cannot be used on inherent impl blocks
    |
 LL | #[rustc_splat]
    |   ^^^^^^^^^^^
+LL | impl Foo {
    |
    = help: the `rustc_splat` attribute can only be applied to function params
 
@@ -27,6 +30,7 @@ error: the `rustc_splat` attribute cannot be used on inherent methods
    |
 LL |     #[rustc_splat]
    |       ^^^^^^^^^^^
+LL |     fn tuple_3_bad((a, b, c): (u32, i32, i8)) {}
    |
    = help: the `rustc_splat` attribute can only be applied to function params
 
@@ -35,6 +39,7 @@ error: the `rustc_splat` attribute cannot be used on inherent methods
    |
 LL |     #[rustc_splat]
    |       ^^^^^^^^^^^
+LL |     fn tuple_2_bad(self, (a, b): (u32, i8)) -> u32 {
    |
    = help: the `rustc_splat` attribute can only be applied to function params
 
@@ -43,6 +48,7 @@ error: the `rustc_splat` attribute cannot be used on trait impl blocks
    |
 LL | #[rustc_splat]
    |   ^^^^^^^^^^^
+LL | impl FooTraitBad for Foo {
    |
    = help: the `rustc_splat` attribute can only be applied to function params
 
@@ -51,6 +57,7 @@ error: the `rustc_splat` attribute cannot be used on foreign modules
    |
 LL | #[rustc_splat]
    |   ^^^^^^^^^^^
+LL | extern "C" {
    |
    = help: the `rustc_splat` attribute can only be applied to function params
 
@@ -59,6 +66,7 @@ error: the `rustc_splat` attribute cannot be used on foreign functions
    |
 LL |     #[rustc_splat]
    |       ^^^^^^^^^^^
+LL |     fn bar_2_bad(_: (u32, i8));
    |
    = help: the `rustc_splat` attribute can only be applied to function params
 
@@ -67,6 +75,7 @@ error: the `rustc_splat` attribute cannot be used on modules
    |
 LL | #[rustc_splat]
    |   ^^^^^^^^^^^
+LL | mod foo_mod {}
    |
    = help: the `rustc_splat` attribute can only be applied to function params
 
@@ -75,6 +84,7 @@ error: the `rustc_splat` attribute cannot be used on use statements
    |
 LL | #[rustc_splat]
    |   ^^^^^^^^^^^
+LL | use std::mem;
    |
    = help: the `rustc_splat` attribute can only be applied to function params
 
@@ -83,6 +93,7 @@ error: the `rustc_splat` attribute cannot be used on structs
    |
 LL | #[rustc_splat]
    |   ^^^^^^^^^^^
+LL | struct FooStruct;
    |
    = help: the `rustc_splat` attribute can only be applied to function params
 

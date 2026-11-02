@@ -45,6 +45,7 @@ note: `Foo` defines an item `foo`, perhaps you need to implement it
    |
 LL | trait Foo {
    | ^^^^^^^^^
+LL |     fn foo(&self);
    = note: the trait `FooBar` defines an item `foo`, but is explicitly unimplemented
 
 error: aborting due to 4 previous errors

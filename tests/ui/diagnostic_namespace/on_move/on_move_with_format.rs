@@ -11,7 +11,7 @@ struct Foo;
 #[diagnostic::on_move(
     message="Foo for {X}",
     label="Bar for {X}",
-    note = "This is `{This}`",
+    note = "This is `{this}`",
 )]
 struct MyType<X> {
     _x: X,

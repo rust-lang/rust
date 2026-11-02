@@ -2,4 +2,4 @@
 #![feature(diagnostic_on_unknown)]
 #![crate_type = "lib"]
 
-#![diagnostic::on_unknown(message = "you silly, the crate `{This}` is empty")]
+#![diagnostic::on_unknown(message = "you silly, the crate `{this}` is empty")]

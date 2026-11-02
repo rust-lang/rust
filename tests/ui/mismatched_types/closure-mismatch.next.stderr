@@ -11,8 +11,8 @@ help: the trait `for<'a> FnOnce(&'a ())` is not implemented for closure `{closur
    |
 LL |     baz(|_| ());
    |         ^^^
-   = note: expected a closure with signature `for<'a> fn(&'a ())`
-              found a closure with signature `fn(&())`
+   = note: expected type with signature `for<'a> fn(&'a ())`
+           found closure with signature `fn(&())`
 note: required for `{closure@$DIR/closure-mismatch.rs:12:9: 12:12}` to implement `Foo`
   --> $DIR/closure-mismatch.rs:7:18
    |
@@ -39,8 +39,8 @@ help: the trait `for<'a> FnOnce(&'a ())` is not implemented for closure `{closur
    |
 LL |     baz(|x| ());
    |         ^^^
-   = note: expected a closure with signature `for<'a> fn(&'a ())`
-              found a closure with signature `fn(&())`
+   = note: expected type with signature `for<'a> fn(&'a ())`
+           found closure with signature `fn(&())`
 note: required for `{closure@$DIR/closure-mismatch.rs:16:9: 16:12}` to implement `Foo`
   --> $DIR/closure-mismatch.rs:7:18
    |

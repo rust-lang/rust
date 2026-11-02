@@ -9,7 +9,6 @@ use rustc_index::{Idx, IndexVec};
 use rustc_lint_defs::builtin::{NON_CONTIGUOUS_RANGE_ENDPOINTS, OVERLAPPING_RANGE_ENDPOINTS};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
@@ -193,7 +192,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     ) -> impl Iterator<Item = (&'tcx FieldDef, RevealedTy<'tcx>)> {
         let ty::Adt(_, args) = ty.kind() else { bug!() };
         variant.fields.iter().map(move |field| {
-            let ty = field.ty(self.tcx, args);
+            let ty = field.ty(self.tcx, *args);
             // `field.ty()` doesn't normalize after instantiating.
             let ty =
                 self.tcx.try_normalize_erasing_regions(self.typing_env, ty).unwrap_or_else(|e| {
@@ -381,7 +380,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         // Visibly uninhabited variants.
                         let is_inhabited = v
                             .inhabited_predicate(cx.tcx)
-                            .instantiate(cx.tcx, args)
+                            .instantiate(cx.tcx, *args)
                             .apply_revealing_opaque(cx.tcx, cx.typing_env, cx.module, &|key| {
                                 cx.reveal_opaque_key(key)
                             });

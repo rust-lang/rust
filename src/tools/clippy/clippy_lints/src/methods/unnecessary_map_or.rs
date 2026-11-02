@@ -54,7 +54,7 @@ fn closure_bool_constant(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<bool> 
     let [_] = body.params else {
         return None;
     };
-    bool_constant(cx, &body.value)
+    bool_constant(cx, body.value)
 }
 
 /// Checks whether a `Result::{map_or, map_or_else}` call is a variant query.
@@ -199,7 +199,7 @@ pub(super) fn check<'tcx>(
         );
 
         let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr) {
-            if parent_expr.span.eq_ctxt(expr.span) {
+            if parent_expr.span.ctxt() == expr.span.ctxt() {
                 match parent_expr.kind {
                     ExprKind::Binary(..) | ExprKind::Unary(..) | ExprKind::Cast(..) => binop.maybe_paren(),
                     ExprKind::MethodCall(_, receiver, _, _) if receiver.hir_id == expr.hir_id => binop.maybe_paren(),

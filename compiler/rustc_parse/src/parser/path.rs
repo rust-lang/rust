@@ -15,8 +15,8 @@ use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::ast::{PatKind, TyKind};
 use crate::diagnostics::{
-    self, ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, PathFoundAttributeInParams,
-    PathFoundCVariadicParams, PathSingleColon, PathTripleColon,
+    self, ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, PathSingleColon,
+    PathTripleColon,
 };
 use crate::exp;
 use crate::parser::{CommaRecoveryMode, Expr, FnContext, FnParseMode, RecoverColon, RecoverComma};
@@ -303,9 +303,20 @@ impl<'a> Parser<'a> {
             is_args_start(&this.token)
         };
 
+        // A lifetime followed by `>` or `,` can never start a valid expression, so `<` here
+        // must be the start of generic arguments with a missing `::`.
+        let is_missing_turbofish_for_lifetime = |this: &mut Self| {
+            this.token == token::Lt
+                && this.may_recover()
+                && style == PathStyle::Expr
+                && this.look_ahead(1, |t| t.is_lifetime())
+                && this.look_ahead(2, |t| matches!(t.kind, token::Gt | token::Comma))
+        };
+
         Ok(
             if style == PathStyle::Type && check_args_start(self)
                 || style != PathStyle::Mod && self.check_path_sep_and_look_ahead(is_args_start)
+                || is_missing_turbofish_for_lifetime(self)
             {
                 // We use `style == PathStyle::Expr` to check if this is in a recursion or not. If
                 // it isn't, then we reset the unmatched angle bracket count as we're about to start
@@ -314,12 +325,18 @@ impl<'a> Parser<'a> {
                     self.unmatched_angle_bracket_count = 0;
                 }
 
+                let missing_turbofish =
+                    style == PathStyle::Expr && !self.check_path_sep_and_look_ahead(is_args_start);
+
                 // Generic arguments are found - `<`, `(`, `::<` or `::(`.
                 // First, eat `::` if it exists.
                 let _ = self.eat_path_sep();
 
                 let lo = self.token.span;
                 let args = if self.eat_lt() {
+                    if missing_turbofish {
+                        self.recover_missing_turbofish_for_lifetimes(lo);
+                    }
                     // `<'a, T, A = U>`
                     let args = self.parse_angle_args_with_leading_angle_bracket_recovery(
                         style,
@@ -395,7 +412,6 @@ impl<'a> Parser<'a> {
                         snapshot = Some(self.create_snapshot_for_diagnostic());
                     }
 
-                    let dcx = self.dcx();
                     let mut first_param = true;
                     let parse_params_result = self.parse_paren_comma_seq(|p| {
                         // Inside parenthesized type arguments, we want types only, not names.
@@ -403,6 +419,7 @@ impl<'a> Parser<'a> {
                             context: FnContext::ParenthesizedArgumentList,
                             req_name: |_, _| false,
                             req_body: false,
+                            allow_const_params: false,
                         };
                         let param = p.parse_param_general(&mode, first_param)?;
                         first_param = false;
@@ -412,10 +429,14 @@ impl<'a> Parser<'a> {
                                 .gate(sym::named_fn_trait_parameters, param.pat.span);
                         }
                         if matches!(param.ty.kind, TyKind::CVarArgs) {
-                            dcx.emit_err(PathFoundCVariadicParams { span: param.pat.span });
+                            self.psess
+                                .gated_spans
+                                .gate(sym::named_fn_trait_parameters, param.ty.span);
                         }
                         if !param.attrs.is_empty() {
-                            dcx.emit_err(PathFoundAttributeInParams { span: param.attrs[0].span });
+                            self.psess
+                                .gated_spans
+                                .gate(sym::named_fn_trait_parameters, param.attrs[0].span);
                         }
                         Ok(param)
                     });

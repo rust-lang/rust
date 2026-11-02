@@ -2641,7 +2641,10 @@ pub fn abort() -> ! {
 
 #[doc(inline)]
 #[unstable(feature = "abort_immediate", issue = "154601")]
-pub use core::process::abort_immediate;
+pub use core::process::crash;
+#[doc(inline)]
+#[unstable(feature = "breakpoint", issue = "133724")]
+pub use core::process::resumable_breakpoint;
 
 /// Returns the OS-assigned process identifier associated with this process.
 ///
@@ -2676,7 +2679,7 @@ pub fn id() -> u32 {
 #[rustc_on_unimplemented(on(
     cause = "MainFunctionType",
     message = "`main` has invalid return type `{Self}`",
-    label = "`main` can only return types that implement `{This}`"
+    label = "`main` can only return types that implement `{this}`"
 ))]
 pub trait Termination {
     /// Is called to get the representation of the value as status code.

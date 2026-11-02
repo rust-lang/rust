@@ -1,4 +1,4 @@
-// rustfmt-edition: 2018
+//@ rustfmt-edition: 2018
 
 use ::baz::{bar, foo};
 use ::ignore;

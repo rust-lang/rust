@@ -12,7 +12,7 @@ LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/empty-attributes.rs:3:1
+  --> $DIR/empty-attributes.rs:5:1
    |
 LL | #![expect()]
    | ^^^^^^^^^^^^ help: remove this attribute
@@ -20,7 +20,7 @@ LL | #![expect()]
    = note: attribute `expect` with an empty list has no effect
 
 error: unused attribute
-  --> $DIR/empty-attributes.rs:4:1
+  --> $DIR/empty-attributes.rs:8:1
    |
 LL | #![warn()]
    | ^^^^^^^^^^ help: remove this attribute
@@ -28,7 +28,7 @@ LL | #![warn()]
    = note: attribute `warn` with an empty list has no effect
 
 error: unused attribute
-  --> $DIR/empty-attributes.rs:5:1
+  --> $DIR/empty-attributes.rs:11:1
    |
 LL | #![deny()]
    | ^^^^^^^^^^ help: remove this attribute
@@ -36,7 +36,7 @@ LL | #![deny()]
    = note: attribute `deny` with an empty list has no effect
 
 error: unused attribute
-  --> $DIR/empty-attributes.rs:6:1
+  --> $DIR/empty-attributes.rs:14:1
    |
 LL | #![forbid()]
    | ^^^^^^^^^^^^ help: remove this attribute
@@ -44,7 +44,52 @@ LL | #![forbid()]
    = note: attribute `forbid` with an empty list has no effect
 
 error: unused attribute
-  --> $DIR/empty-attributes.rs:7:1
+  --> $DIR/empty-attributes.rs:2:1
+   |
+LL | #![allow()]
+   | ^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: attribute `allow` with an empty list has no effect
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: unused attribute
+  --> $DIR/empty-attributes.rs:5:1
+   |
+LL | #![expect()]
+   | ^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: attribute `expect` with an empty list has no effect
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: unused attribute
+  --> $DIR/empty-attributes.rs:8:1
+   |
+LL | #![warn()]
+   | ^^^^^^^^^^ help: remove this attribute
+   |
+   = note: attribute `warn` with an empty list has no effect
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: unused attribute
+  --> $DIR/empty-attributes.rs:11:1
+   |
+LL | #![deny()]
+   | ^^^^^^^^^^ help: remove this attribute
+   |
+   = note: attribute `deny` with an empty list has no effect
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: unused attribute
+  --> $DIR/empty-attributes.rs:14:1
+   |
+LL | #![forbid()]
+   | ^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: attribute `forbid` with an empty list has no effect
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: unused attribute
+  --> $DIR/empty-attributes.rs:17:1
    |
 LL | #![feature()]
    | ^^^^^^^^^^^^^ help: remove this attribute
@@ -52,7 +97,7 @@ LL | #![feature()]
    = note: using `feature` with an empty list has no effect
 
 error: unused attribute
-  --> $DIR/empty-attributes.rs:9:1
+  --> $DIR/empty-attributes.rs:19:1
    |
 LL | #[repr()]
    | ^^^^^^^^^ help: remove this attribute
@@ -60,12 +105,12 @@ LL | #[repr()]
    = note: using `repr` with an empty list has no effect
 
 error: unused attribute
-  --> $DIR/empty-attributes.rs:12:1
+  --> $DIR/empty-attributes.rs:22:1
    |
 LL | #[target_feature()]
    | ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
    = note: using `target_feature` with an empty list has no effect
 
-error: aborting due to 8 previous errors
+error: aborting due to 13 previous errors
 

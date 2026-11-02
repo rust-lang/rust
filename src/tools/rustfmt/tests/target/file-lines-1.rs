@@ -1,4 +1,4 @@
-// rustfmt-file_lines: [{"file":"tests/source/file-lines-1.rs","range":[4,8]}]
+//@ rustfmt-file_lines: [{"file":"tests/source/file-lines-1.rs","range":[4,8]}]
 
 fn floaters() {
     let x = Foo {

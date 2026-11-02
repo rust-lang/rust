@@ -1,5 +1,5 @@
 error: variable does not need to be mutable
-  --> $DIR/unused-mut-issue-50343.rs:7:33
+  --> $DIR/unused-mut-issue-50343.rs:7:37
    |
 LL |     vec![(42, 22)].iter().map(|(mut x, _y)| ()).count();
    |                                 ----^

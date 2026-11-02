@@ -109,6 +109,7 @@ impl FileDescription for VirtualSocket {
 
     fn metadata<'tcx>(
         &self,
+        _communicate_allowed: bool,
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
         let mode_name = match self.fd_type {
             VirtualSocketType::Socketpair => "S_IFSOCK",
@@ -289,7 +290,7 @@ impl UnixFileDescription for VirtualSocket {
             }
 
             let ([value_ptr], _) = ecx.check_varargs(shim_varargs![*i32], args, "ioctl")?;
-            let value = ecx.deref_pointer_as(value_ptr, ecx.machine.layouts.i32)?;
+            let value = ecx.deref_pointer_as(&value_ptr, ecx.machine.layouts.i32)?;
             let non_block = ecx.read_scalar(&value)?.to_i32()? != 0;
             self.is_nonblock.set(non_block);
             return interp_ok(0);

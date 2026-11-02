@@ -41,7 +41,7 @@ use crate::traits::{
 /// bounds / where-clauses).
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct ImplHeader<'tcx> {
-    pub impl_args: ty::GenericArgsRef<'tcx>,
+    pub impl_args: ty::GenericArgs<'tcx>,
     pub self_ty: Ty<'tcx>,
     pub trait_ref: Option<ty::TraitRef<'tcx>>,
     pub predicates: Vec<ty::Predicate<'tcx>>,
@@ -245,7 +245,8 @@ fn overlap<'tcx>(
         .inner
         .borrow_mut()
         .unwrap_region_constraints()
-        .data()
+        // FIXME(-Zassumptions-on-binders): Handle solver_data
+        .legacy_data()
         .constraints
         .iter()
         .any(|c| c.0.involves_placeholders());

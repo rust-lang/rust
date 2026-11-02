@@ -713,31 +713,31 @@ impl [u8] {
 ///     fn borrow(&self) -> &[String] { &self.1 }
 /// }
 /// ```
-#[unstable(feature = "slice_concat_trait", issue = "27747")]
+#[unstable(feature = "slice_concat_trait", issue = "none", reason = "implementation detail")]
 pub trait Concat<Item: ?Sized> {
-    #[unstable(feature = "slice_concat_trait", issue = "27747")]
+    #[unstable(feature = "slice_concat_trait", issue = "none", reason = "implementation detail")]
     /// The resulting type after concatenation
     type Output;
 
     /// Implementation of [`[T]::concat`](slice::concat)
-    #[unstable(feature = "slice_concat_trait", issue = "27747")]
+    #[unstable(feature = "slice_concat_trait", issue = "none", reason = "implementation detail")]
     fn concat(slice: &Self) -> Self::Output;
 }
 
 /// Helper trait for [`[T]::join`](slice::join)
-#[unstable(feature = "slice_concat_trait", issue = "27747")]
+#[unstable(feature = "slice_concat_trait", issue = "none", reason = "implementation detail")]
 pub trait Join<Separator> {
-    #[unstable(feature = "slice_concat_trait", issue = "27747")]
+    #[unstable(feature = "slice_concat_trait", issue = "none", reason = "implementation detail")]
     /// The resulting type after concatenation
     type Output;
 
     /// Implementation of [`[T]::join`](slice::join)
-    #[unstable(feature = "slice_concat_trait", issue = "27747")]
+    #[unstable(feature = "slice_concat_trait", issue = "none", reason = "implementation detail")]
     fn join(slice: &Self, sep: Separator) -> Self::Output;
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "slice_concat_ext", issue = "27747")]
+#[unstable(feature = "slice_concat_ext", issue = "none", reason = "implementation detail")]
 impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
     type Output = Vec<T>;
 
@@ -752,7 +752,7 @@ impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "slice_concat_ext", issue = "27747")]
+#[unstable(feature = "slice_concat_ext", issue = "none", reason = "implementation detail")]
 impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
     type Output = Vec<T>;
 
@@ -775,7 +775,7 @@ impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "slice_concat_ext", issue = "27747")]
+#[unstable(feature = "slice_concat_ext", issue = "none", reason = "implementation detail")]
 impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
     type Output = Vec<T>;
 

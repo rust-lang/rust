@@ -3,11 +3,14 @@ FROM ubuntu:26.04
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
+RUN curl https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
+  echo 'deb http://apt.llvm.org/resolute/ llvm-toolchain-resolute-23 main' | tee -a /etc/apt/sources.list
+
 RUN apt-get update && \
   DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-  clang-22 \
-  llvm-22 \
-  lld-22
+  clang-23 \
+  llvm-23 \
+  lld-23
 
 COPY scripts/crosstool-ng-git.sh /scripts/
 COPY scripts/crosstool-ng-sha256-20260705.diff /scripts/
@@ -24,7 +27,7 @@ RUN /scripts/crosstool-ng-build.sh
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV PATH=/usr/lib/llvm-22/bin:$PATH:/x-tools/loongarch64-unknown-linux-gnu/bin
+ENV PATH=/usr/lib/llvm-23/bin:$PATH:/x-tools/loongarch64-unknown-linux-gnu/bin
 
 # --no-rosegment keeps read-only code in the first LOAD segment, matching the
 # segment layout produced by GNU ld. This allows Linux to make better use of

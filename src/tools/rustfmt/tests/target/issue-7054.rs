@@ -1,4 +1,4 @@
-// rustfmt-edition: 2018
+//@ rustfmt-edition: 2018
 
 // `for await` is spelled with two tokens, so the source may separate them with
 // arbitrary whitespace or comments. rustfmt must not search for the rendered

@@ -3,7 +3,6 @@
 use cranelift_codegen::ir::immediates::Offset32;
 use rustc_abi::Endian;
 use rustc_middle::ty::SimdAlign;
-use rustc_middle::ty::consts::ConstExt;
 
 use super::*;
 use crate::prelude::*;
@@ -22,7 +21,7 @@ fn report_simd_type_validation_error(
 pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: Symbol,
-    generic_args: GenericArgsRef<'tcx>,
+    generic_args: GenericArgs<'tcx>,
     args: &[Spanned<mir::Operand<'tcx>>],
     ret: CPlace<'tcx>,
     target: BasicBlock,

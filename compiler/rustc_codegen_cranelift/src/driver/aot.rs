@@ -22,8 +22,8 @@ use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mono::{MonoItem, MonoItemData, Visibility};
-use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames, OutputType};
+use rustc_session::{BorrowedIncrCompSession, Session};
 use rustc_span::Symbol;
 
 use crate::base::CodegenedFunction;
@@ -62,7 +62,11 @@ fn make_module(tcx: TyCtxt<'_>, cgu_name: &str) -> AotModule {
         tcx.sess.opts.unstable_opts.function_sections.unwrap_or(default_function_sections),
     );
 
-    let module = UnwindModule::new(ObjectModule::new(builder), true);
+    let module = UnwindModule::new(
+        ObjectModule::new(builder),
+        &rustc_symbol_mangling::eh_personality_symbol(tcx),
+        true,
+    );
 
     let producer = crate::debuginfo::producer(tcx.sess);
     let global_asm_config = GlobalAsmConfig::new(tcx.sess);
@@ -337,6 +341,7 @@ impl WriteBackendMethods for AotDriver {
     fn run_thin_lto(
         _cgcx: &CodegenContext,
         _prof: &SelfProfilerRef,
+        _incr_comp_session: Option<&BorrowedIncrCompSession>,
         _dcx: rustc_errors::DiagCtxtHandle<'_>,
         _exported_symbols_for_lto: &[String],
         _each_linked_rlib_for_lto: &[PathBuf],

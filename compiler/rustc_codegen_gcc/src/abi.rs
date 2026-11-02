@@ -2,8 +2,8 @@
 use gccjit::FnAttribute;
 use gccjit::{ToLValue, ToRValue, Type};
 #[cfg(feature = "master")]
-use rustc_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
-use rustc_abi::{Reg, RegKind};
+use rustc_abi::{ArmCall, InterruptKind, X86Call};
+use rustc_abi::{CanonAbi, Reg, RegKind};
 use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeCodegenMethods};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::Ty;
@@ -12,7 +12,6 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::{Session, config};
 use rustc_span::bug;
 use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, IndirectMode, PassMode};
-#[cfg(feature = "master")]
 use rustc_target::spec::Arch;
 
 use crate::builder::Builder;
@@ -140,6 +139,11 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
         let return_type = match self.ret.mode {
             PassMode::Ignore => cx.type_void(),
+            PassMode::Pair(..) if returns_pair_in_two_registers(cx, self) => cx
+                .type_two_register_pair(
+                    self.ret.layout.scalar_pair_element_gcc_type(cx, 0),
+                    self.ret.layout.scalar_pair_element_gcc_type(cx, 1),
+                ),
             PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_gcc_type(cx),
             PassMode::Cast { ref cast, .. } => cast.gcc_type(cx),
             // Returned by value: the function (or function pointer type) is flagged as returning
@@ -310,6 +314,19 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn gcc_cconv(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Option<FnAttribute<'gcc>> {
         conv_to_fn_attribute(cx.sess(), self.conv)
     }
+}
+
+/// cg_llvm returns each scalar of a pair in its own register, but on x86-64 SysV GCC packs two
+/// scalars sharing an eightbyte into one register, which code built by cg_llvm would misread.
+fn returns_pair_in_two_registers<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+) -> bool {
+    let target = &cx.sess().target;
+    target.arch == Arch::X86_64
+        && !target.is_like_windows
+        && matches!(fn_abi.conv, CanonAbi::Rust | CanonAbi::RustCold)
+        && fn_abi.ret.layout.size.bytes() <= 8
 }
 
 #[cfg(feature = "master")]

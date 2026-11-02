@@ -322,7 +322,6 @@ fn mp_i256_sub() {
         let y = random_i256(&mut rng);
         assign_bigint_i256(&mut bx, x);
         assign_bigint_i256(&mut by, y);
-        dbg!(&bx, &by);
 
         // Emulate wrapping semantics with panicking ops
         let actual = if y > i256::ZERO && x < i256::MIN + y {

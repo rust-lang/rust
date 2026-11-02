@@ -63,7 +63,7 @@ impl PpAnn for &dyn rustc_hir::intravisit::HirTyCtxt<'_> {
             Nested::TraitItem(id) => state.print_trait_item(self.hir_trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.hir_impl_item(id)),
             Nested::ForeignItem(id) => state.print_foreign_item(self.hir_foreign_item(id)),
-            Nested::Body(id) => state.print_expr(&self.hir_body(id).value),
+            Nested::Body(id) => state.print_expr(self.hir_body(id).value),
             Nested::BodyParamPat(id, i) => state.print_pat(self.hir_body(id).params[i].pat),
         }
     }
@@ -101,15 +101,8 @@ impl<'a> State<'a> {
     /// actual style of the attribute.
     fn print_attribute_as_style(&mut self, attr: &Attribute, style: ast::AttrStyle) {
         match &attr {
-            Attribute::Unparsed(unparsed) => {
-                self.maybe_print_comment(unparsed.span.lo());
-                match style {
-                    ast::AttrStyle::Inner => self.word("#!["),
-                    ast::AttrStyle::Outer => self.word("#["),
-                }
-                self.print_attr_item(&unparsed, unparsed.span);
-                self.word("]");
-                self.hardbreak()
+            Attribute::Tool(unparsed) | Attribute::DeriveHelper(unparsed) => {
+                self.print_attritem_as_style(unparsed, style)
             }
             Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {
                 self.word(rustc_ast_pretty::pprust::state::doc_comment_to_string(
@@ -127,6 +120,17 @@ impl<'a> State<'a> {
                 self.hardbreak()
             }
         }
+    }
+
+    fn print_attritem_as_style(&mut self, attr: &AttrItem, style: ast::AttrStyle) {
+        self.maybe_print_comment(attr.span.lo());
+        match style {
+            ast::AttrStyle::Inner => self.word("#!["),
+            ast::AttrStyle::Outer => self.word("#["),
+        }
+        self.print_attr_item(&attr, attr.span);
+        self.word("]");
+        self.hardbreak()
     }
 
     fn print_attr_item(&mut self, item: &AttrItem, span: Span) {
@@ -313,6 +317,10 @@ where
 
 pub fn attribute_to_string(ann: &dyn PpAnn, attr: &Attribute) -> String {
     to_string(ann, |s| s.print_attribute_as_style(attr, ast::AttrStyle::Outer))
+}
+
+pub fn attritem_to_string(ann: &dyn PpAnn, attr: &AttrItem) -> String {
+    to_string(ann, |s| s.print_attritem_as_style(attr, ast::AttrStyle::Outer))
 }
 
 pub fn ty_to_string(ann: &dyn PpAnn, ty: &hir::Ty<'_>) -> String {
@@ -1216,14 +1224,14 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_const_struct(&mut self, qpath: &hir::QPath<'_>, fields: &&[&ConstArgExprField<'_>]) {
+    fn print_const_struct(&mut self, qpath: &hir::QPath<'_>, fields: &[ConstArgExprField<'_>]) {
         self.print_qpath(qpath, true);
         self.word(" ");
         self.word("{");
         if !fields.is_empty() {
             self.nbsp();
         }
-        self.commasep(Inconsistent, *fields, |s, field| {
+        self.commasep(Inconsistent, fields, |s, field| {
             s.word(field.field.as_str().to_string());
             s.word(":");
             s.nbsp();
@@ -1232,10 +1240,10 @@ impl<'a> State<'a> {
         self.word("}");
     }
 
-    fn print_const_ctor(&mut self, qpath: &hir::QPath<'_>, args: &&[&ConstArg<'_, ()>]) {
+    fn print_const_ctor(&mut self, qpath: &hir::QPath<'_>, args: &[ConstArg<'_, ()>]) {
         self.print_qpath(qpath, true);
         self.word("(");
-        self.commasep(Inconsistent, *args, |s, arg| {
+        self.commasep(Inconsistent, args, |s, arg| {
             s.print_const_arg(arg);
         });
         self.word(")");
@@ -2490,7 +2498,7 @@ impl<'a> State<'a> {
                     self.print_type(default);
                 }
             }
-            GenericParamKind::Const { ty, ref default } => {
+            GenericParamKind::Const { ty, ref default, arg_pos: _ } => {
                 self.word_space(":");
                 self.print_type(ty);
                 if let Some(default) = default {

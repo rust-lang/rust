@@ -1,4 +1,4 @@
-// rustfmt-version:One
+//@ rustfmt-version: One
 
 use websocket::client::ClientBuilder;
 use websocket::r#async::futures::Stream;

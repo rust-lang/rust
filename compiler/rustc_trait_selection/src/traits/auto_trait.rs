@@ -175,7 +175,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let outlives_env = OutlivesEnvironment::new(&infcx, CRATE_DEF_ID, full_env, []);
         let _ = infcx.process_registered_region_obligations(&outlives_env);
 
-        let region_data = infcx.inner.borrow_mut().unwrap_region_constraints().data().clone();
+        // FIXME(-Zassumptions-on-binders): Handle solver_data
+        let region_data =
+            infcx.inner.borrow_mut().unwrap_region_constraints().legacy_data().clone();
 
         let vid_to_region = self.map_vid_to_region(&region_data);
 
@@ -620,7 +622,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         finished_map
     }
 
-    fn is_param_no_infer(&self, args: GenericArgsRef<'tcx>) -> bool {
+    fn is_param_no_infer(&self, args: GenericArgs<'tcx>) -> bool {
         self.is_of_param(args.type_at(0)) && !args.terms().any(|t| t.has_infer_types())
     }
 

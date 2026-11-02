@@ -10,6 +10,9 @@ note: `X` defines an item `make_g`, perhaps you need to implement it
    |
 LL | trait X {
    | ^^^^^^^
+LL |     type G;
+LL |     fn make_g() -> Self::G;
+   |
 
 error: implementation of `X` is not general enough
   --> $DIR/hrtb-fn-ptr-impl-not-general-enough-57936.rs:26:5

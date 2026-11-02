@@ -1,4 +1,4 @@
-error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected (i.e. it is in use as a function argument)
   --> tests/fail/both_borrows/drop_in_place_protector.rs:LL:CC
    |
 LL |             P.write(0);

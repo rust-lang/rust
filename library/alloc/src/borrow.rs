@@ -280,6 +280,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn to_mut(&mut self) -> &mut <B as ToOwned>::Owned {
         match *self {
             Borrowed(borrowed) => {

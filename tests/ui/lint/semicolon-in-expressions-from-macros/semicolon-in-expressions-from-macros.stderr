@@ -33,17 +33,15 @@ LL |     let _ = foo!(warn_in_expr);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
 
-warning: unused attribute `allow`
-  --> $DIR/semicolon-in-expressions-from-macros.rs:50:13
+warning: the `allow` attribute cannot be used on macro calls
+  --> $DIR/semicolon-in-expressions-from-macros.rs:50:15
    |
 LL |     let _ = #[allow(semicolon_in_expressions_from_macros)] foo!(allow_does_not_work);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^
    |
-note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `foo`
-  --> $DIR/semicolon-in-expressions-from-macros.rs:50:60
-   |
-LL |     let _ = #[allow(semicolon_in_expressions_from_macros)] foo!(allow_does_not_work);
-   |                                                            ^^^
+   = help: the `allow` attribute can be applied to associated consts, associated types, break expressions, const parameters, constants, crates, data types, enum variants, expressions, extern crates, for loops, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, loops, macro defs, match arms, modules, pattern fields, statements, statics, struct fields, trait aliases, traits, type aliases, type parameters, use statements, and while loops
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
    = note: requested on the command line with `-W unused-attributes`
 
 warning: trailing semicolon in macro used in expression position

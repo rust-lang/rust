@@ -75,8 +75,21 @@ on them: `#[doc(notable_trait)]`. This means that you can apply this attribute
 to your own trait to include it in the "Notable traits" dialog in documentation.
 
 In addition to the "Notable traits" dialog, every type that implements a
-`#[doc(notable_trait)]` trait renders a colored badge for that trait at the top
+`#[doc(notable_trait)]` trait renders a badge for that trait at the top
 of its page, making the relationship easy to spot when browsing the type.
+To set a color for the badge, write `#[doc(notable_trait(color="red"))]` or
+one of the other colors in the list (from the [ANSI 3 bit terminal palette][]):
+
+[ANSI 3 bit terminal palette]: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
+
+- grey
+- red
+- green
+- yellow
+- blue
+- magenta
+- cyan
+- transparent
 
 The `#[doc(notable_trait)]` attribute currently requires the `#![feature(doc_notable_trait)]`
 feature gate. For more information, see [its chapter in the Unstable Book][unstable-notable_trait]

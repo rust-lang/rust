@@ -1,9 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{FormatArgsStorage, find_format_arg_expr, is_format_macro, root_macro_call_first_node};
 use clippy_utils::source::{snippet_indent, walk_span_to_context};
+use clippy_utils::span_contains_cfg_or_cfg_attr;
 use clippy_utils::visitors::{for_each_local_assignment, for_each_value_source};
 use core::ops::ControlFlow;
 use rustc_ast::{FormatArgs, FormatArgumentKind};
+use rustc_attr_ir::find_attr;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_body, walk_expr};
@@ -27,6 +29,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, format_args: &FormatArgsStorag
         && !local.span.in_external_macro(cx.sess().source_map())
         && !local.span.is_from_async_await()
         && cx.typeck_results().pat_ty(local.pat).is_unit()
+        && !find_attr!(cx.tcx, local.hir_id, CfgTrace(..) | CfgAttrTrace(..))
+        && !span_contains_cfg_or_cfg_attr(cx, local.span)
     {
         // skip `let awa = ()`
         if let ExprKind::Tup([]) = init.kind {

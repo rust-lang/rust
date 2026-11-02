@@ -1,7 +1,7 @@
 #![feature(diagnostic_on_type_error)]
 
 #[diagnostic::on_type_error(
-    note = "custom on_type_error note: expected enum `{This}<{T}>`, found `{Found}`"
+    note = "custom on_type_error note: expected enum `{this}<{T}>`, found `{found}`"
 )]
 enum MyEnum<T> {
     Variant(T),

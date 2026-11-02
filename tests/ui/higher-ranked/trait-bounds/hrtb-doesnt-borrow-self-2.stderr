@@ -21,6 +21,8 @@ note: `StreamExt` defines an item `countx`, perhaps you need to implement it
    |
 LL | pub trait StreamExt
    | ^^^^^^^^^^^^^^^^^^^
+...
+LL |     fn countx(mut self) -> usize
    = note: the full name for the type has been written to '$TEST_BUILD_DIR/hrtb-doesnt-borrow-self-2.long-type-$LONG_TYPE_HASH.txt'
    = note: consider using `--verbose` to print the full type name to the console
 

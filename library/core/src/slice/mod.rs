@@ -2523,7 +2523,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_split_once)]
     /// let s = [1, 2, 3, 2, 4];
     /// assert_eq!(s.split_once(|&x| x == 2), Some((
     ///     &[1][..],
@@ -2531,7 +2530,7 @@ impl<T> [T] {
     /// )));
     /// assert_eq!(s.split_once(|&x| x == 0), None);
     /// ```
-    #[unstable(feature = "slice_split_once", issue = "112811")]
+    #[stable(feature = "slice_split_once", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn split_once<F>(&self, pred: F) -> Option<(&[T], &[T])>
     where
@@ -2552,7 +2551,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_split_once)]
     /// let s = [1, 2, 3, 2, 4];
     /// assert_eq!(s.rsplit_once(|&x| x == 2), Some((
     ///     &[1, 2, 3][..],
@@ -2560,7 +2558,7 @@ impl<T> [T] {
     /// )));
     /// assert_eq!(s.rsplit_once(|&x| x == 0), None);
     /// ```
-    #[unstable(feature = "slice_split_once", issue = "112811")]
+    #[stable(feature = "slice_split_once", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn rsplit_once<F>(&self, pred: F) -> Option<(&[T], &[T])>
     where
@@ -5329,6 +5327,32 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), Some(Range { start: 4, end: 4 }));
     /// assert_eq!(iter.next(), Some(Range { start: 5, end: 6 }));
     /// ```
+    /// Returning `None` with a slice not aligned to the elements of the base array:
+    /// ```
+    /// use core::range::Range;
+    /// use core::slice::from_ref;
+    ///
+    /// let arr: &[[u8; 4]] = &[[0, 1, 2, 3], [4, 5, 6, 7]];
+    /// let flattened: &[u8] = arr.as_flattened();
+    ///
+    /// // This sub-slice is aligned with the first element of `arr`:
+    /// // &[[0, 1, 2, 3], [4, 5, 6, 7]]
+    /// // &[[0, 1, 2, 3]]
+    /// let aligned_elem: &[u8; 4] = flattened[0..4].try_into().unwrap();
+    /// let aligned_slice: &[[u8; 4]] = from_ref(aligned_elem);
+    ///
+    /// // `aligned_slice` is `&arr[0..1]`
+    /// assert_eq!(arr.subslice_range(aligned_slice), Some(Range { start: 0, end: 1 }));
+    ///
+    /// // This sub-slice is **not** aligned to the elements of `arr`, despite pointing inside it:
+    /// // &[[0, 1, 2, 3], [4, 5, 6, 7]]
+    /// //    &[[1, 2, 3,   4]]
+    /// let misaligned_elem: &[u8; 4] = flattened[1..5].try_into().unwrap();
+    /// let misaligned_slice: &[[u8; 4]] = from_ref(misaligned_elem);
+    ///
+    /// // `misaligned_slice` has no corresponding slice of `arr`
+    /// assert_eq!(arr.subslice_range(misaligned_slice), None);
+    /// ```
     #[must_use]
     #[stable(feature = "substr_range", since = "1.98.0")]
     pub fn subslice_range(&self, subslice: &[T]) -> Option<core::range::Range<usize>> {
@@ -5662,7 +5686,7 @@ const impl<T> Default for &mut [T] {
     }
 }
 
-#[unstable(feature = "slice_pattern", reason = "stopgap trait for slice patterns", issue = "56345")]
+#[unstable(feature = "slice_pattern", issue = "none", reason = "stopgap trait for slice patterns")]
 /// Patterns in slices - currently, only used by `strip_prefix` and `strip_suffix`.  At a future
 /// point, we hope to generalise `core::str::Pattern` (which at the time of writing is limited to
 /// `str`) to slices, and then this trait will be replaced or abolished.

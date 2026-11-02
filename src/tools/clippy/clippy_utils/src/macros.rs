@@ -1,16 +1,18 @@
+//! Utilities for analyzing macro invocations and expansions.
+
 #![expect(clippy::similar_names)] // `expr` and `expn`
 
 use std::cell::Cell;
 use std::sync::{Arc, OnceLock};
 
 use crate::visitors::{Descend, for_each_expr_without_closures};
-use crate::{get_unique_builtin_attr, sym};
+use crate::{get_clippy_attr, sym};
 
 use arrayvec::ArrayVec;
 use rustc_ast::{FormatArgs, FormatArgument, FormatPlaceholder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
-use rustc_lint::{LateContext, LintContext as _};
+use rustc_lint::LateContext;
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{BytePos, ExpnData, ExpnId, ExpnKind, Span, SpanData, Symbol};
@@ -44,13 +46,7 @@ pub fn is_format_macro(cx: &LateContext<'_>, macro_def_id: DefId) -> bool {
     } else {
         // Allow users to tag any macro as being format!-like
         // TODO: consider deleting FORMAT_MACRO_DIAG_ITEMS and using just this method
-        get_unique_builtin_attr(
-            cx.sess(),
-            #[allow(deprecated)]
-            cx.tcx.get_all_attrs(macro_def_id),
-            sym::format_args,
-        )
-        .is_some()
+        get_clippy_attr(cx.tcx, macro_def_id, sym::format_args).is_some()
     }
 }
 
@@ -73,6 +69,7 @@ pub struct MacroCall {
 }
 
 impl MacroCall {
+    /// Returns true if this macro call is from the root expansion or a locally defined macro
     pub fn is_local(&self) -> bool {
         span_is_local(self.span)
     }
@@ -301,7 +298,7 @@ impl<'a> PanicCall<'a> {
         };
         let result = match name {
             sym::panic | sym::begin_panic | sym::panic_str_2015 => {
-                if arg.span.eq_ctxt(expr.span) || arg.span.is_dummy() {
+                if arg.span.ctxt() == expr.span.ctxt() || arg.span.is_dummy() {
                     Self::DefaultMessage
                 } else {
                     Self::Str2015(arg)
@@ -576,7 +573,9 @@ pub enum FormatParamUsage {
 
 /// A node with a `HirId` and a `Span`
 pub trait HirNode {
+    /// Returns this node's [`HirId`]
     fn hir_id(&self) -> HirId;
+    /// Returns this node's [`Span`]
     fn span(&self) -> Span;
 }
 

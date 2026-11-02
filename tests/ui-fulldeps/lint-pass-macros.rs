@@ -2,6 +2,7 @@
 //@ check-pass
 
 #![feature(rustc_private)]
+#![feature(default_field_values)]
 
 extern crate rustc_lint;
 

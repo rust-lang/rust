@@ -81,8 +81,11 @@ fn run_many_seeds(
     let exit_code =
         sync::IntoDynSyncSend(AtomicU32::new(rustc_driver::EXIT_SUCCESS.cast_unsigned()));
     let num_failed = sync::IntoDynSyncSend(AtomicU32::new(0));
-    sync::par_for_each_in(many_seeds.seeds.clone(), |&seed| {
-        if let Err(return_code) = eval_entry_once(seed.into()) {
+
+    let range = &many_seeds.seeds;
+    let range = range.start as usize..range.end as usize;
+    sync::par_range(range, |seed| {
+        if let Err(return_code) = eval_entry_once(seed as u64) {
             eprintln!("FAILING SEED: {seed}");
             if !many_seeds.keep_going {
                 // `abort_if_errors` would unwind but would not actually stop miri, since

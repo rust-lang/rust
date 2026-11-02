@@ -16,12 +16,13 @@ pub mod diff;
 pub mod env;
 pub mod external_deps;
 pub mod linker;
+pub mod obj;
 pub mod path_helpers;
 pub mod run;
 pub mod scoped_run;
 pub mod string;
-pub mod symbols;
 pub mod targets;
+pub mod wasm;
 
 // Internally we call our fs-related support module as `fs`, but re-export its content as `rfs`
 // to tests to avoid colliding with commonly used `use std::fs;`.
@@ -31,6 +32,16 @@ mod fs;
 /// confused with [`std::fs`].
 pub mod rfs {
     pub use crate::fs::*;
+}
+
+/// Older version of the [`obj`] module. Prefer importing from there instead.
+pub mod symbols {
+    pub use crate::obj::{
+        ContainsAllSymbolSubstringsOutcome, ContainsAllSymbolsOutcome,
+        exported_dynamic_symbol_names, object_contains_all_symbol_substring,
+        object_contains_all_symbols, object_contains_any_symbol,
+        object_contains_any_symbol_substring,
+    };
 }
 
 // Re-exports of third-party library crates.
@@ -44,6 +55,8 @@ pub use serde_json;
 pub use similar;
 pub use tempfile;
 pub use wasmparser;
+#[cfg(windows)]
+pub use windows;
 
 // Helpers for building names of output artifacts that are potentially target-specific.
 pub use crate::artifact_names::{
@@ -90,7 +103,7 @@ pub use crate::path_helpers::{
     shallow_find_files, source_root,
 };
 // Convenience helpers for running binaries and other commands.
-pub use crate::run::{cmd, run, run_fail, run_with_args};
+pub use crate::run::{cmd, run, run_fail, run_fail_with_args, run_with_args};
 // Helpers for scoped test execution where certain properties are attempted to be maintained.
 pub use crate::scoped_run::{run_in_tmpdir, test_while_readonly};
 pub use crate::string::{

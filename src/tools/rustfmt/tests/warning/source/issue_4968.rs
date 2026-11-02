@@ -1,5 +1,5 @@
-// rustfmt-hard_tabs: true
-// rustfmt-max_width: 40
+//@ rustfmt-hard_tabs: true
+//@ rustfmt-max_width: 40
 
 fn foo(x: u32) {
 	if x > 10 {

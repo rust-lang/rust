@@ -101,7 +101,7 @@ fn check_arm<'tcx>(
                 }
             },
         }
-        && outer_pat.span.eq_ctxt(inner_scrutinee.span)
+        && outer_pat.span.ctxt() == inner_scrutinee.span.ctxt()
         // match expression must be a local binding
         // match <local> { .. }
         && let Some(binding_id) = peel_ref_operators(cx, inner_scrutinee).res_local_id()
@@ -161,7 +161,7 @@ fn check_arm<'tcx>(
     } else if outer_is_match // Leave if-let to the `collapsible_if` lint
         && only_wildcards_after // adding a guard allows fall-through; unsafe if other arms follow
         && let Some(inner) = If::hir(inner_expr)
-        && outer_pat.span.eq_ctxt(inner.cond.span)
+        && outer_pat.span.ctxt() == inner.cond.span.ctxt()
         && match (outer_else_body, inner.r#else) {
             (None, None) => true,
             (None, Some(e)) | (Some(e), None) => is_unit_expr(e),

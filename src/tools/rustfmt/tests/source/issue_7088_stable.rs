@@ -1,4 +1,4 @@
-// rustfmt-stable: true
+//@ rustfmt-stable: true
 
 // cfg_select! doesn't get formatted, but indentation is updated.
 

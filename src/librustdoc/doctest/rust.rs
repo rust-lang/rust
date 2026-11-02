@@ -5,7 +5,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use proc_macro2::{TokenStream, TokenTree};
-use rustc_attr_ir::{AttributeKind, CfgEntry};
+use rustc_attr_ir::{AttributeKind, CfgEntry, find_attr};
 use rustc_attr_parsing::eval_config_entry;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
@@ -18,7 +18,7 @@ use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span, sym};
 use super::{DocTestVisitor, ScrapedDocTest};
 use crate::clean::cfg::Cfg;
 use crate::clean::{Attributes, CfgInfo};
-use crate::html::markdown::{self, CodeLineMapping, ErrorCodes, LangString, MdRelLine};
+use crate::html::markdown::{self, CodeBlockPosition, CodeLineMapping, ErrorCodes, LangString};
 
 struct RustCollector {
     source_map: Arc<SourceMap>,
@@ -46,11 +46,14 @@ impl DocTestVisitor for RustCollector {
         &mut self,
         test: String,
         config: LangString,
-        rel_line: MdRelLine,
+        position: CodeBlockPosition,
         code_mappings: Vec<CodeLineMapping>,
     ) {
         let base_line = self.get_base_line();
-        let line = base_line + rel_line.offset();
+        let line = match position {
+            CodeBlockPosition::Relative(rel_line) => base_line + rel_line.offset(),
+            CodeBlockPosition::Span(sp) => self.source_map.lookup_char_pos(sp.lo()).line,
+        };
         let count = Cell::new(base_line);
         let span = if line > base_line {
             match self.source_map.span_extend_while(self.position, |c| {
@@ -218,13 +221,10 @@ impl HirCollector<'_> {
             } else {
                 // this span affects filesystem path resolution,
                 // so we need to keep it the same as it was previously
-                hir_attrs
-                    .iter()
-                    .find(|attr| attr.doc_str().is_some())
-                    .map(|attr| {
-                        attr.span().ctxt().outer_expn().expansion_cause().unwrap_or(attr.span())
-                    })
-                    .unwrap_or(DUMMY_SP)
+                let first_doc_str_span = find_attr!(hir_attrs, DocComment { span, .. } => *span);
+                let cause_span = first_doc_str_span
+                    .map(|sp| sp.ctxt().outer_expn().expansion_cause().unwrap_or(sp));
+                cause_span.unwrap_or(DUMMY_SP)
             };
             markdown::find_testable_code(
                 &doc,

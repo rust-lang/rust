@@ -117,3 +117,13 @@ fn wrongly_unmangled_macros(a: u32, b: u32) {
         todo!()
     }
 }
+
+fn issue16537(v: u64) {
+    let _ = v % 2 == 0;
+    let _ = (v + 1) % 2 == 0;
+    let _ = v % 2 != 0;
+    let _ = (v + 1) % 2 != 0;
+
+    let _ = v % 2 > 0;
+    let _ = 0 < v % 2;
+}

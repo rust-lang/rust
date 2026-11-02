@@ -68,6 +68,14 @@ pub(crate) fn inline_attr<'tcx, 'll>(
 
     match inline {
         InlineAttr::Hint => Some(AttributeKind::InlineHint.create_attr(cx.llcx)),
+        // LLVM 22 and older may inline a target-featured function into a caller
+        // that lacks those features. Keep the function inlineable, but do not force it.
+        InlineAttr::Always
+            if !codegen_fn_attrs.target_features.is_empty()
+                && llvm_util::get_version() < (23, 0, 0) =>
+        {
+            Some(AttributeKind::InlineHint.create_attr(cx.llcx))
+        }
         InlineAttr::Always | InlineAttr::Force { .. } => {
             Some(AttributeKind::AlwaysInline.create_attr(cx.llcx))
         }
@@ -204,7 +212,10 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
 
 /// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.
 #[inline]
-pub(crate) fn uwtable_attr(llcx: &llvm::Context, use_sync_unwind: Option<bool>) -> &Attribute {
+pub(crate) fn uwtable_attr<'ll>(
+    llcx: llvm::Context<'ll>,
+    use_sync_unwind: Option<bool>,
+) -> &'ll Attribute {
     // NOTE: We should determine if we even need async unwind tables, as they
     // take have more overhead and if we can use sync unwind tables we
     // probably should.
@@ -480,7 +491,7 @@ pub(crate) fn default_optimisation_attrs<'ll>(
     attrs
 }
 
-fn create_alloc_family_attr(llcx: &llvm::Context) -> &llvm::Attribute {
+fn create_alloc_family_attr<'ll>(llcx: llvm::Context<'ll>) -> &'ll llvm::Attribute {
     llvm::CreateAttrStringValue(llcx, "alloc-family", "__rust_alloc")
 }
 

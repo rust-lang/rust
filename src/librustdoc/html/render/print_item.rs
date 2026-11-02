@@ -1,13 +1,12 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::collections::hash_map::DefaultHasher;
 use std::fmt::{self, Display, Write as _};
-use std::hash::{Hash, Hasher};
 use std::iter;
 
 use askama::Template;
 use rustc_abi::VariantIdx;
 use rustc_ast::join_path_syms;
+use rustc_attr_ir::NotableTraitColor;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, MacroKinds};
@@ -58,8 +57,8 @@ struct NotableTraitBadgeVars {
     full_path: String,
     /// Relative URL to the trait page, or `None` when not linkable.
     href: Option<String>,
-    /// Index of the `.notable-trait-badge-{n}` color class.
-    color_index: u8,
+    /// Name of the `.notable-trait-badge-{color}` color class.
+    color: NotableTraitColor,
 }
 
 #[derive(Template)]
@@ -126,22 +125,14 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
 
         let notable_trait_badges: Vec<NotableTraitBadgeVars> = notable_trait_badges(item, cx)
             .into_iter()
-            .map(|info| {
-                // Stable per-trait color from a hash of the trait path so the
-                // same trait gets the same badge color across pages.
-                // This won't be stable between releases though.
-                let mut h = DefaultHasher::new();
-                info.full_path.hash(&mut h);
-                const BADGE_COLORS: u8 = 6;
-                let color_index = (h.finish() as u8) % BADGE_COLORS;
-                NotableTraitBadgeVars {
-                    name: info.name,
-                    full_path: info.full_path,
-                    href: info.href,
-                    color_index,
-                }
+            .map(|info| NotableTraitBadgeVars {
+                name: info.name,
+                full_path: info.full_path,
+                href: info.href,
+                color: info.color,
             })
             .collect();
+        let has_notable_trait_badges = !notable_trait_badges.is_empty();
 
         let path_components = if item.is_fake_item() {
             vec![]
@@ -219,11 +210,11 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
 
         // Render notable-traits.js used for all methods in this module.
         let mut types_with_notable_traits = cx.types_with_notable_traits.borrow_mut();
-        if !types_with_notable_traits.is_empty() {
+        if !types_with_notable_traits.is_empty() || has_notable_trait_badges {
             write!(
                 buf,
                 r#"<script type="text/json" id="notable-traits-data">{}</script>"#,
-                notable_traits_json(types_with_notable_traits.iter(), cx),
+                notable_traits_json(types_with_notable_traits.iter(), item, cx),
             )?;
             types_with_notable_traits.clear();
         }
@@ -960,11 +951,17 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
             )?;
 
             if let Some(list) = must_implement_one_of_functions.as_deref() {
-                write!(
-                    w,
-                    "<div class=\"stab must_implement\">At least one of the `{}` methods is required.</div>",
-                    fmt::from_fn(|f| list.iter().joined("`, `", f)),
+                w.write_str(
+                    "<span class=\"item-info\">\
+                         <div class=\"stab must_implement\">At least one of the ",
                 )?;
+                for (pos, method) in list.iter().enumerate() {
+                    if pos > 0 {
+                        w.write_str(", ")?;
+                    }
+                    write!(w, "<a href=\"#method.{method}\"><code>{method}</code></a>")?;
+                }
+                w.write_str(" methods is required.</div></span>")?;
             }
 
             for m in required_methods {

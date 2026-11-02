@@ -10,11 +10,7 @@ error[E0425]: cannot find type `S` in module `self`
 LL |         offset_of!(self::S, v);
    |                          ^ not found in `self`
    |
-help: consider importing this struct
-   |
-LL +     use S;
-   |
-help: if you import `S`, refer to it directly
+help: consider using this struct
    |
 LL -         offset_of!(self::S, v);
 LL +         offset_of!(S, v);

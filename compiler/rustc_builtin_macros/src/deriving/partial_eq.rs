@@ -1,6 +1,6 @@
-use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, Mutability, Safety};
+use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, Mutability};
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Span, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::*;
@@ -29,8 +29,7 @@ pub(crate) fn expand_deriving_partial_eq(
         supports_unions: true,
         methods: SmallVec::new(),
         is_const: false,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
     structural_trait_def.expand(cx, item, push);
 
@@ -42,8 +41,8 @@ pub(crate) fn expand_deriving_partial_eq(
         explicit_self: true,
         nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
         has_other_selflike_arg: true,
-        ret_ty: cx.ty_path(cx.path_ident(span, Ident::new(sym::bool, span))),
-        attributes: thin_vec![cx.attr_word(sym::inline, span)],
+        ret_ty: cx.ty_name(span, sym::bool),
+        attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(get_substructure_equality_expr),
     }];
@@ -51,14 +50,12 @@ pub(crate) fn expand_deriving_partial_eq(
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, cmp::PartialEq),
-        skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
         supports_unions: false,
         methods,
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
     trait_def.expand(cx, item, push)
 }
@@ -119,7 +116,7 @@ fn get_substructure_equality_expr(
     span: Span,
     substructure: Substructure<'_>,
 ) -> BlockOrExpr {
-    BlockOrExpr::new_expr(match substructure.fields {
+    BlockOrExpr::new_expr(match substructure {
         EnumMatching(.., fields) | Struct(.., fields) => {
             let combine = move |acc, field: &FieldInfo| {
                 let rhs = field

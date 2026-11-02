@@ -1,6 +1,6 @@
 # `direct_access_external_data`
 
-The tracking issue for this feature is: https://github.com/rust-lang/compiler-team/issues/707
+The tracking issue for this feature is: [#127488](https://github.com/rust-lang/rust/issues/127488).
 
 ------------------------
 

@@ -1,13 +1,11 @@
 #include "../SuppressLLVMWarnings.h"
 
 #include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Bitcode/BitcodeReader.h"
-#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Frontend/Offloading/OffloadWrapper.h"
 #include "llvm/Frontend/Offloading/Utility.h"
 #include "llvm/IR/IRBuilder.h"
@@ -15,7 +13,6 @@
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
 #include "llvm/MC/TargetRegistry.h"
-#include "llvm/Object/OffloadBinary.h"
 #include "llvm/Support/CodeGen.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileOutputBuffer.h"
@@ -36,7 +33,6 @@
 #include <utility>
 
 using namespace llvm;
-using namespace llvm::object;
 
 static Error writeFile(StringRef Filename, StringRef Data) {
   Expected<std::unique_ptr<FileOutputBuffer>> OutputOrErr =
@@ -48,43 +44,6 @@ static Error writeFile(StringRef Filename, StringRef Data) {
   if (Error E = Output->commit())
     return E;
   return Error::success();
-}
-
-// This is the first of many steps in creating a binary using llvm offload,
-// to run code on the gpu. Concrete, it replaces the following binary use:
-// clang-offload-packager -o device.bin
-//  --image=file=device.bc,triple=amdgcn-amd-amdhsa,arch=gfx90a,kind=openmp
-// The input module is the rust code compiled for a gpu target like amdgpu.
-// Based on clang/tools/clang-offload-packager/ClangOffloadPackager.cpp
-extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM,
-                                     const char *HostOutPath) {
-  std::string Storage;
-  llvm::raw_string_ostream OS1(Storage);
-  llvm::WriteBitcodeToFile(*unwrap(M), OS1);
-  OS1.flush();
-  auto MB = llvm::MemoryBuffer::getMemBufferCopy(Storage, "device.bc");
-
-  SmallVector<char, 1024> BinaryData;
-  raw_svector_ostream OS2(BinaryData);
-
-  OffloadBinary::OffloadingImage ImageBinary{};
-  ImageBinary.TheImageKind = object::IMG_Bitcode;
-  ImageBinary.Image = std::move(MB);
-  ImageBinary.TheOffloadKind = object::OFK_OpenMP;
-
-  std::string TripleStr = TM.getTargetTriple().str();
-  llvm::StringRef CPURef = TM.getTargetCPU();
-  ImageBinary.StringData["triple"] = TripleStr;
-  ImageBinary.StringData["arch"] = CPURef;
-  llvm::SmallString<0> Buffer = OffloadBinary::write(ImageBinary);
-  if (Buffer.size() % OffloadBinary::getAlignment() != 0)
-    // Offload binary has invalid size alignment
-    return false;
-  OS2 << Buffer;
-  if (Error E = writeFile(HostOutPath,
-                          StringRef(BinaryData.begin(), BinaryData.size())))
-    return false;
-  return true;
 }
 
 // Clone OldFn into NewFn, remapping its arguments to RebuiltArgs.
@@ -120,22 +79,6 @@ extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn,
 
   IRBuilder<> B(&entry);
   B.CreateBr(&clonedEntry);
-}
-
-static Error extractImages(StringRef DeviceBinPath,
-                           SmallVectorImpl<OffloadFile> &Binaries) {
-  ErrorOr<std::unique_ptr<MemoryBuffer>> BufOrErr =
-      MemoryBuffer::getFile(DeviceBinPath);
-  if (std::error_code EC = BufOrErr.getError())
-    return createFileError(DeviceBinPath, EC);
-  std::unique_ptr<MemoryBuffer> Buf = std::move(*BufOrErr);
-
-  if (!isAddrAligned(Align(OffloadBinary::getAlignment()),
-                     Buf->getBufferStart()))
-    Buf = MemoryBuffer::getMemBufferCopy(Buf->getBuffer(),
-                                         Buf->getBufferIdentifier());
-
-  return extractOffloadBinaries(*Buf, Binaries);
 }
 
 static bool hasOffloadEntries(Module &M) {
@@ -248,15 +191,23 @@ linkWithRustLld(StringRef Obj, StringRef LldPath) {
 }
 
 static Expected<std::unique_ptr<MemoryBuffer>>
-compileDeviceImage(const OffloadBinary &Input, const char *LldPath) {
-  const Triple DeviceTriple(Input.getTriple());
-  const StringRef Arch = Input.getArch();
-
+compileDeviceImage(MemoryBufferRef Input, const char *LldPath) {
   LLVMContext Ctx;
-  Expected<std::unique_ptr<Module>> ImageObjOrError =
-      parseBitcodeFile(MemoryBufferRef(Input.getImage(), "device.bc"), Ctx);
-  if (!ImageObjOrError)
-    return ImageObjOrError.takeError();
+  Expected<std::unique_ptr<Module>> ModOrErr = parseBitcodeFile(Input, Ctx);
+  if (!ModOrErr)
+    return ModOrErr.takeError();
+  Module &M = **ModOrErr;
+
+  const Triple &DeviceTriple = M.getTargetTriple();
+  StringRef Arch;
+  for (Function &F : M)
+    if (F.hasFnAttribute("target-cpu")) {
+      Arch = F.getFnAttribute("target-cpu").getValueAsString();
+      break;
+    }
+
+  if (Arch.empty())
+    return createStringError("no target-cpu attribute in device bitcode");
 
   std::string ErrorMsg;
   const Target *DeviceTarget =
@@ -282,7 +233,7 @@ compileDeviceImage(const OffloadBinary &Input, const char *LldPath) {
                              DeviceTriple.str().c_str(),
                              IsNvptx ? "assembly" : "object");
 
-  PM.run(**ImageObjOrError);
+  PM.run(**ModOrErr);
 
   if (IsNvptx)
     return assembleWithPtxas(Emitted, Arch);
@@ -299,25 +250,20 @@ compileDeviceImage(const OffloadBinary &Input, const char *LldPath) {
 
 extern "C" bool LLVMRustOffloadWrapImages(LLVMModuleRef HostMRef,
                                           const char *LldPath,
-                                          const char *DeviceBinPath) {
+                                          const char *DeviceBitcodePath) {
   Module &M = *unwrap(HostMRef);
   if (!hasOffloadEntries(M))
     return true;
 
-  SmallVector<OffloadFile> Binaries;
-  if (Error E = extractImages(DeviceBinPath, Binaries))
-    return reportAndFailWrappingImages(std::move(E), "extract");
+  ErrorOr<std::unique_ptr<MemoryBuffer>> BufOrErr =
+      MemoryBuffer::getFile(DeviceBitcodePath);
+  if (std::error_code EC = BufOrErr.getError())
+    return reportAndFailWrappingImages(createFileError(DeviceBitcodePath, EC),
+                                       "device bitcode");
+  std::unique_ptr<MemoryBuffer> Buf = std::move(*BufOrErr);
 
-  // LLVMRustBundleImages writes exactly one device image
-  if (Binaries.size() != 1)
-    return reportAndFailWrappingImages(
-        createStringError("expected exactly one device image, found %zu",
-                          Binaries.size()),
-        "extract");
-
-  const OffloadBinary &Input = *Binaries.front().getBinary();
-
-  auto ImageOrErr = compileDeviceImage(Input, LldPath);
+  Expected<std::unique_ptr<MemoryBuffer>> ImageOrErr =
+      compileDeviceImage(Buf->getMemBufferRef(), LldPath);
   if (!ImageOrErr)
     return reportAndFailWrappingImages(ImageOrErr.takeError(),
                                        "device compile");

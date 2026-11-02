@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+//@ rustfmt-wrap_comments: true
 
 // below we try and force a split at a byte in the middle of a multi-byte
 // character. The two parts of the first line are constructed such that:

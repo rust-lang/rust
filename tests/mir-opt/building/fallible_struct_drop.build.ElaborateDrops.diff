@@ -61,53 +61,33 @@
 +     let mut _56: bool;
       scope 1 {
           debug residual => _9;
-          scope 2 {
-          }
+      }
+      scope 2 {
+          debug val => _12;
       }
       scope 3 {
-          debug val => _12;
-          scope 4 {
-          }
+          debug residual => _19;
+      }
+      scope 4 {
+          debug val => _22;
       }
       scope 5 {
-          debug residual => _19;
-          scope 6 {
-          }
+          debug residual => _29;
+      }
+      scope 6 {
+          debug val => _32;
       }
       scope 7 {
-          debug val => _22;
-          scope 8 {
-          }
+          debug residual => _39;
+      }
+      scope 8 {
+          debug val => _42;
       }
       scope 9 {
-          debug residual => _29;
-          scope 10 {
-          }
-      }
-      scope 11 {
-          debug val => _32;
-          scope 12 {
-          }
-      }
-      scope 13 {
-          debug residual => _39;
-          scope 14 {
-          }
-      }
-      scope 15 {
-          debug val => _42;
-          scope 16 {
-          }
-      }
-      scope 17 {
           debug residual => _49;
-          scope 18 {
-          }
       }
-      scope 19 {
+      scope 10 {
           debug val => _52;
-          scope 20 {
-          }
       }
   
       bb0: {

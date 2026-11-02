@@ -19,10 +19,14 @@ pub(super) fn check<'tcx>(
     rhs: &'tcx Expr<'tcx>,
     msrv: Msrv,
 ) {
-    if msrv.meets(cx, msrvs::UNSIGNED_IS_MULTIPLE_OF)
-        && let Some(operand) = uint_compare_to_zero(cx, expr, op, lhs, rhs)
+    if let Some(operand) = uint_compare_to_zero(cx, expr, op, lhs, rhs)
         && let ExprKind::Binary(operand_op, operand_left, operand_right) = operand.kind
         && operand_op.node == BinOpKind::Rem
+        // https://github.com/rust-lang/rust-clippy/issues/16537
+        && !matches!(
+            operand_right.kind,
+            ExprKind::Lit(_)
+        )
         && matches!(
             cx.typeck_results().expr_ty_adjusted(operand_left).peel_refs().kind(),
             ty::Uint(_)
@@ -32,6 +36,7 @@ pub(super) fn check<'tcx>(
             ty::Uint(_)
         )
         && expr_type_is_certain(cx, operand_left)
+        && msrv.meets(cx, msrvs::UNSIGNED_IS_MULTIPLE_OF)
     {
         let mut app = Applicability::MachineApplicable;
         let divisor = deref_sugg(

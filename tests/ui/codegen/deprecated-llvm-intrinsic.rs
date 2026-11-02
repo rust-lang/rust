@@ -6,7 +6,7 @@
 #![feature(no_core, lang_items, link_llvm_intrinsics, simd_ffi)]
 #![no_std]
 #![no_core]
-#![allow(internal_features, non_camel_case_types, improper_ctypes)]
+#![allow(internal_features, non_camel_case_types)]
 #![crate_type = "lib"]
 
 extern crate minicore;

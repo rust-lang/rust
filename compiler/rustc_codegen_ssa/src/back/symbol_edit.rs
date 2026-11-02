@@ -483,8 +483,8 @@ fn coff_collect_impl<'data, Coff: CoffHeader>(
         }
         let Ok(name_bytes) = sym.name(strings) else { continue };
         let Ok(name) = str::from_utf8(name_bytes) else { continue };
-        let name = undecorate_coff_symbol(name, machine, coff_symbol_kind(sym));
-        if !exported.contains(name) {
+        let export_name = undecorate_coff_symbol(name, machine, coff_symbol_kind(sym));
+        if !exported.contains(export_name) {
             out.insert(name.to_string());
         }
     }
@@ -522,7 +522,6 @@ fn coff_edit_impl<'data, Coff: CoffHeader>(
 
     let Ok(symbols) = header.symbols(data) else { return None };
     let strings = symbols.strings();
-    let machine = header.machine();
 
     let mut renames = Vec::new();
     for (index, sym) in symbols.iter() {
@@ -532,8 +531,7 @@ fn coff_edit_impl<'data, Coff: CoffHeader>(
         }
         let Ok(name_bytes) = sym.name(strings) else { continue };
         let Ok(name) = str::from_utf8(name_bytes) else { continue };
-        let check_name = undecorate_coff_symbol(name, machine, coff_symbol_kind(sym));
-        if rename.is_some_and(|(rename_set, _)| rename_set.contains(check_name)) {
+        if rename.is_some_and(|(rename_set, _)| rename_set.contains(name)) {
             renames.push(RenameEntry {
                 name_field_offset: symbol_bytes_offset + index.0 * sym_size,
                 name: name.to_string(),

@@ -22,7 +22,6 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, GenericArgs, List, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{Span, Spanned, bug, span_bug};
 use tracing::{debug, instrument};
@@ -815,11 +814,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         rhs.clone()
                     } else {
                         let unit = Rvalue::Use(
-                            Operand::Constant(Box::new(ConstOperand {
-                                span: statement.source_info.span,
-                                user_ty: None,
-                                const_: Const::zero_sized(self.tcx.types.unit),
-                            })),
+                            Operand::zero_sized_constant(
+                                self.tcx.types.unit,
+                                statement.source_info.span,
+                            ),
                             WithRetag::Yes,
                         );
                         mem::replace(rhs, unit)

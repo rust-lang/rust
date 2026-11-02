@@ -56,7 +56,7 @@ pub(super) fn extract_refined_covspans<'tcx>(
 
             // Each pushed covspan should have the same context as the body span.
             // If it somehow doesn't, discard the covspan.
-            if !body_span.eq_ctxt(covspan_span) {
+            if body_span.ctxt() != covspan_span.ctxt() {
                 // There is currently no known way for this to happen, but if it
                 // does happen then dropping the offending span is better than
                 // having tricky macro expansions trigger an ICE.

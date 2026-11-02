@@ -14,7 +14,7 @@
 #[cfg(test)]
 extern crate self as rustc_serialize;
 
-pub use self::serialize::{Decodable, Decoder, Encodable, Encoder};
+pub use self::serialize::{ContextOrd, Decodable, Decoder, Encodable, Encoder};
 
 mod serialize;
 

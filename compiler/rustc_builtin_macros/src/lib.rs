@@ -4,6 +4,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![feature(decl_macro)]
+#![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(proc_macro_internals)]
@@ -45,6 +46,7 @@ mod iter;
 mod log_syntax;
 mod offload;
 mod pattern_type;
+mod rustdoc_skip_body;
 mod source_util;
 mod test;
 mod test_binder_constraints;
@@ -62,13 +64,13 @@ pub mod util;
 pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     let mut register = |name, kind| resolver.register_builtin_macro(name, kind);
     macro register_bang($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyBang(Arc::new($f as MacroExpanderFn)));)*
+        $(register(sym::$name, SyntaxExtensionKind::AstBang(Arc::new($f as MacroExpanderFn)));)*
     }
     macro register_attr($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyAttr(Arc::new($f)));)*
+        $(register(sym::$name, SyntaxExtensionKind::AstAttr(Arc::new($f)));)*
     }
     macro register_derive($($name:ident: $f:expr,)*) {
-        $(register(sym::$name, SyntaxExtensionKind::LegacyDerive(Arc::new(BuiltinDerive($f))));)*
+        $(register(sym::$name, SyntaxExtensionKind::AstDerive(Arc::new(BuiltinDerive($f))));)*
     }
 
     register_bang! {
@@ -124,6 +126,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         eii_shared_macro: eii::eii_shared_macro,
         global_allocator: global_allocator::expand,
         offload_kernel: offload::expand_kernel,
+        rustdoc_skip_body: rustdoc_skip_body::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,
         unsafe_eii: eii::unsafe_eii,

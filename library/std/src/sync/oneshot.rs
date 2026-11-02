@@ -86,9 +86,8 @@ pub struct Sender<T> {
     inner: mpmc::Sender<T>,
 }
 
-// SAFETY: Since the only methods in which synchronization must occur take full ownership of the
-// [`Sender`], it is perfectly safe to share a `&Sender` between threads (as it is effectively
-// useless without ownership).
+// SAFETY: Sending a value requires ownership of the sender. Shared references only inspect
+// channel state, so they cannot send a value of a non-`Send` type from another thread.
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 unsafe impl<T> Sync for Sender<T> {}
 
@@ -118,6 +117,20 @@ impl<T> Sender<T> {
     #[unstable(feature = "oneshot_channel", issue = "143674")]
     pub fn send(self, t: T) -> Result<(), SendError<T>> {
         self.inner.send(t)
+    }
+
+    /// Returns `true` if the corresponding [`Receiver`] has been dropped.
+    ///
+    /// If this method returns `true`, [`send`](Self::send) is guaranteed to return an error.
+    ///
+    /// On the receiving side, [`Receiver::is_ready`] checks whether a value is available without
+    /// consuming the receiver.
+    ///
+    /// A return value of `false` does not guarantee that a later call to [`send`](Self::send) will
+    /// succeed. The receiver may be dropped immediately after this method returns.
+    #[unstable(feature = "oneshot_channel", issue = "143674")]
+    pub fn is_closed(&self) -> bool {
+        self.inner.is_disconnected()
     }
 }
 

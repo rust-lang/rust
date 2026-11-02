@@ -12,3 +12,6 @@ indent_size = 4
 
 [*.{yaml,yml}]
 indent_size = 2
+
+[*.json*]
+indent_size = 2

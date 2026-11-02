@@ -1,0 +1,13 @@
+error: Undefined Behavior: calling a `#[track_caller]` function from a non-`#[track_caller]` declaration
+  --> tests/fail/extern-missing-track-caller.rs:LL:CC
+   |
+LL |     foo();
+   |     ^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

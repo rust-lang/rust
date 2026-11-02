@@ -102,7 +102,9 @@ fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
         extra: (basis, op, inputs),
         fn_extra: match MACRO_FN_NAME {
             // Not provided by musl
-            fmaximum
+            exp2m1
+            | exp2m1f
+            | fmaximum
             | fmaximum_num
             | fmaximum_numf
             | fmaximumf

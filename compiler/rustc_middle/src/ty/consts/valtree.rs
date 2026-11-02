@@ -11,7 +11,6 @@ use rustc_span::bug;
 
 use super::ScalarInt;
 use crate::mir::interpret::{ErrorHandled, Scalar};
-use crate::ty::consts::ConstExt;
 use crate::ty::print::{FmtPrinter, PrettyPrinter};
 use crate::ty::{self, Ty, TyCtxt, ValTreeKind};
 
@@ -116,7 +115,7 @@ impl<'tcx> Value<'tcx> {
             return None;
         };
         let scalar = self.try_to_leaf()?;
-        let input = typing_env.with_post_analysis_normalized(tcx).as_query_input(self.ty);
+        let input = typing_env.as_query_input(self.ty);
         let size = tcx.layout_of(input).ok()?.size;
         Some(scalar.to_bits(size))
     }
@@ -228,12 +227,20 @@ impl<'tcx> Value<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::ValueConst<TyCtxt<'tcx>> for Value<'tcx> {
+    fn new(ty: Ty<'tcx>, valtree: ValTree<'tcx>) -> Self {
+        Self { ty, valtree }
+    }
+
     fn ty(self) -> Ty<'tcx> {
         self.ty
     }
 
     fn valtree(self) -> ValTree<'tcx> {
         self.valtree
+    }
+
+    fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        self.try_to_target_usize(tcx)
     }
 }
 

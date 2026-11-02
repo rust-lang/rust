@@ -119,7 +119,10 @@ pub struct sockaddr_storage {
     pub ss_family: sa_family_t,
     pub s2_data1: [c_char; 2usize],
     pub s2_data2: [u32; 3usize],
+    pub s2_data3: [u32; 3usize],
 }
+
+const _: () = assert!(size_of::<sockaddr_storage>() >= size_of::<sockaddr_in6>());
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]

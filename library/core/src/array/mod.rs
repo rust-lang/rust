@@ -430,20 +430,12 @@ const impl<T: [const] PartialOrd, const N: usize> PartialOrd for [T; N] {
     }
 
     #[inline]
-    fn __chaining_lt(&self, other: &[T; N]) -> ControlFlow<bool> {
-        <[T] as PartialOrd>::__chaining_lt(self, other)
+    fn __chaining_less(&self, other: &[T; N]) -> ControlFlow<bool> {
+        <[T] as PartialOrd>::__chaining_less(self, other)
     }
     #[inline]
-    fn __chaining_le(&self, other: &[T; N]) -> ControlFlow<bool> {
-        <[T] as PartialOrd>::__chaining_le(self, other)
-    }
-    #[inline]
-    fn __chaining_ge(&self, other: &[T; N]) -> ControlFlow<bool> {
-        <[T] as PartialOrd>::__chaining_ge(self, other)
-    }
-    #[inline]
-    fn __chaining_gt(&self, other: &[T; N]) -> ControlFlow<bool> {
-        <[T] as PartialOrd>::__chaining_gt(self, other)
+    fn __chaining_greater(&self, other: &[T; N]) -> ControlFlow<bool> {
+        <[T] as PartialOrd>::__chaining_greater(self, other)
     }
 }
 

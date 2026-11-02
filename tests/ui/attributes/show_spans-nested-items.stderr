@@ -1,0 +1,12 @@
+note: showing the spans of the ty
+  --> $DIR/show_spans-nested-items.rs:17:16
+   |
+LL |         let _: u8 = 1;
+   |                ^^
+
+note: showing the spans of the expr
+  --> $DIR/show_spans-nested-items.rs:20:17
+   |
+LL |     let _: u8 = 2;
+   |                 ^
+

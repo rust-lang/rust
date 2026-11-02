@@ -1,0 +1,20 @@
+- // MIR for `index_local_not_projected` before MoveElimination
++ // MIR for `index_local_not_projected` after MoveElimination
+  
+  fn index_local_not_projected(_1: [usize; 4]) -> [usize; 1] {
+      let mut _0: [usize; 1];
+      let mut _2: usize;
+      let mut _3: usize;
+  
+      bb0: {
++         StorageLive(_2);
+          _2 = const 2_usize;
++         StorageLive(_3);
+          _3 = copy _1[_2];
++         StorageDead(_3);
+          _0 = [copy _2];
++         StorageDead(_2);
+          return;
+      }
+  }
+  

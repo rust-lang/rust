@@ -1,3 +1,4 @@
+use rustc_serialize::ContextOrd;
 #[cfg(feature = "nightly")]
 use {
     rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash},
@@ -25,6 +26,13 @@ pub enum CrateType {
     // Unstable; feature(export_stable)
     Sdylib,
 }
+
+impl<Ctx> ContextOrd<Ctx> for CrateType {
+    fn stable_cmp_with_context(_context: Ctx) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        <Self as Ord>::cmp
+    }
+}
+
 #[cfg(feature = "nightly")]
 impl CrateType {
     /// Pairs of each `#[crate_type] = "..."` value and the crate type it resolves to

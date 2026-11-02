@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+//@ rustfmt-wrap_comments: true
 //! List:
 //! - Sub list:
 //!   + very long #1 blah blah blah blah blah blah blah blah blah blah blah blah

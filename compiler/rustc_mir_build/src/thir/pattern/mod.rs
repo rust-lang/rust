@@ -19,7 +19,6 @@ use rustc_middle::thir::{
     Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
 use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, LitToConstInput, Ty, TyCtxt, const_lit_matches_ty,
@@ -544,7 +543,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                 if adt_def.is_enum() {
                     let args = match ty.kind() {
                         ty::FnDef(_, args) => args.no_bound_vars().unwrap(),
-                        ty::Adt(_, args) => args,
+                        ty::Adt(_, args) => *args,
                         ty::Error(e) => {
                             // Avoid ICE (#50585)
                             return Box::new(Pat {

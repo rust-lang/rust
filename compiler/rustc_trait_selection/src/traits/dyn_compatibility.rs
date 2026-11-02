@@ -223,7 +223,7 @@ fn predicate_references_self<'tcx>(
     match predicate.kind().skip_binder() {
         ty::ClauseKind::Trait(ref data) => {
             // In the case of a trait predicate, we can skip the "self" type.
-            data.trait_ref.args[1..]
+            data.trait_ref.args.as_slice()[1..]
                 .iter()
                 .any(|&arg| {
                     contains_illegal_self_type_reference(
@@ -251,7 +251,7 @@ fn predicate_references_self<'tcx>(
             //
             // This is ALT2 in issue #56288, see that for discussion of the
             // possible alternatives.
-            data.projection_term.args[1..]
+            data.projection_term.args.as_slice()[1..]
                 .iter()
                 .any(|&arg| {
                     contains_illegal_self_type_reference(
@@ -535,14 +535,14 @@ fn virtual_call_violations_for_method<'tcx>(
                 // Get the `Span` for all of `self: Ty`, not just `Ty`.
                 match trait_fn {
                     hir::TraitFn::Required([Some(name), ..])
-                        if name.span.eq_ctxt(sig.decl.inputs[0].span) =>
+                        if name.span.ctxt() == sig.decl.inputs[0].span.ctxt() =>
                     {
                         Some(name.span.to(sig.decl.inputs[0].span))
                     }
                     hir::TraitFn::Provided(body_id)
                         if let body = tcx.hir_body(*body_id)
                             && let Some(p) = body.params.get(0)
-                            && p.span.eq_ctxt(p.ty_span) =>
+                            && p.span.ctxt() == p.ty_span.ctxt() =>
                     {
                         Some(p.span.to(p.ty_span))
                     }
@@ -749,19 +749,61 @@ fn receiver_is_dispatchable<'tcx>(
         let trait_predicate = ty::TraitRef::new_from_args(tcx, trait_def_id, args);
         clauses.push(trait_predicate.upcast(tcx));
 
-        // U satisfies Trait's trait bounds. When normalizing `U: Trait<Arg1, ..., ArgN>`, aliases
-        // in the arguments of supertrait bounds can generate trait obligations which may only be
-        // be provable using where-clauses from Trait (#161621).
+        // U satisfies Trait's trait bounds. Supertrait bounds are already included by the expansion
+        // of `U: Trait<...>` done by param-env normalization. However, normalizing aliases in the
+        // arguments of those supertrait bounds can generate trait obligations which may only be
+        // provable using other where-clauses from Trait (#161621).
         clauses.extend(
             tcx.clauses_of(trait_def_id)
                 .instantiate(tcx, args)
                 .clauses
                 .into_iter()
                 .map(Unnormalized::skip_norm_wip)
+                // For simplicity, add all trait clauses, though strictly this should only need to
+                // add non-supertrait clauses involving Self.
                 .filter(|clause| matches!(clause.kind().skip_binder(), ty::ClauseKind::Trait(_))),
         );
-        // FIXME(@dianne): we need projection clauses too in some form, but adding them all
-        // unmodified can introduce ambiguity (#163550)
+
+        // When Self appears in the arguments of a projection clause, we also need a corresponding
+        // projection for U. We don't want U in the targets of projections that doesn't also have
+        // U in the alias, since that can lead to ambiguity (#163550). For example, if we have
+        // `(): HasAssoc<Assoc = Self>` in Trait's clauses, `<() as HasAssoc>::Assoc` normalizes to
+        // Self during dispatchability checking, since we assume `method`'s clauses. This should be
+        // fine: if `dyn Trait<...>: Trait<...>` isn't satisfied, you can't call methods on such a
+        // trait object anyway.
+        //
+        // HACK: This relies on param-env normalization jank. We don't normalize the left-hand side
+        // of bounds like `<Self as HasAssoc1>::Assoc: HasAssoc2<Assoc = Self>` in the param-env we
+        // use to normalize our param-env. If it's someday possible for `<Self as HasAssoc1>::Assoc`
+        // to normalize there, we won't know whether Self is in the arguments of
+        // `<<Self as HasAssoc1>::Assoc as HasAssoc2>::Assoc == Self` or not. In that case, this may
+        // need first to normalize Trait's projection clauses or do additional hacks to avoid adding
+        // ambiguity.
+        clauses.extend(
+            tcx.clauses_of(trait_def_id)
+                .instantiate_identity(tcx)
+                .clauses
+                .into_iter()
+                .map(Unnormalized::skip_norm_wip)
+                .filter_map(|clause| -> Option<ty::Clause<'tcx>> {
+                    clause
+                        .as_projection_clause()
+                        // For each clause `Alias == ProjectionTarget` with Self in Alias, make a
+                        // copy of the clause with U in place of Self. Strictly, this should only
+                        // need to add clauses that didn't come from supertrait bounds.
+                        .filter(|proj| {
+                            proj.skip_binder().projection_term.args.iter().any(|arg| {
+                                arg.as_type().is_some_and(|arg| arg.contains(tcx.types.self_param))
+                            })
+                        })
+                        .map(|proj| {
+                            proj.map_bound(|proj| {
+                                EarlyBinder::bind(tcx, proj).instantiate(tcx, args).skip_norm_wip()
+                            })
+                            .upcast(tcx)
+                        })
+                }),
+        );
 
         let meta_sized_predicate = {
             let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, DUMMY_SP);

@@ -3,6 +3,7 @@ error: the `repr(i128)` attribute cannot be used on structs
    |
 LL | #[repr(i128)]
    |   ^^^^^^^^^^
+LL | struct Foo;
    |
    = help: the `repr(i128)` attribute can only be applied to enums
 
@@ -11,6 +12,7 @@ error: the `repr(u128)` attribute cannot be used on structs
    |
 LL | #[repr(u128)]
    |   ^^^^^^^^^^
+LL | struct Bar;
    |
    = help: the `repr(u128)` attribute can only be applied to enums
 

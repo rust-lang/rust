@@ -75,6 +75,7 @@ pub enum CopyState {
 /// descriptors if possible.
 ///
 /// Note that platform-specific behavior may change in the future.
+#[doc(alias = "copy_file_range", alias = "sendfile", alias = "splice")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> Result<u64>
 where

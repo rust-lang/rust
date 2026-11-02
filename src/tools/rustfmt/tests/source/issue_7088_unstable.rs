@@ -1,4 +1,4 @@
-// rustfmt-unstable: true
+//@ rustfmt-unstable: true
 
 #![crate_type = "lib"]
     cfg_select! {

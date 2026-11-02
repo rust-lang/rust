@@ -1,6 +1,7 @@
 error[E0053]: method `from` has an incompatible type for trait
   --> $DIR/issue-90444.rs:3:16
    |
+LL | impl From<fn((), (), &())> for A {
 LL |     fn from(_: fn((), (), &mut ())) -> Self {
    |                ^^^^^^^^^^^^^^^^^^^ types differ in mutability
    |
@@ -15,6 +16,7 @@ LL +     fn from(_: for<'a> fn((), (), &'a ())) -> Self {
 error[E0053]: method `from` has an incompatible type for trait
   --> $DIR/issue-90444.rs:11:16
    |
+LL | impl From<fn((), (), u32)> for B {
 LL |     fn from(_: fn((), (), u64)) -> Self {
    |                ^^^^^^^^^^^^^^^ expected `u32`, found `u64`
    |

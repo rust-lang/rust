@@ -600,7 +600,7 @@ pub(crate) mod rustc {
                 match layout.variants {
                     Variants::Single { index } => {
                         let field = &def.variant(index).fields[i];
-                        field.ty(cx.tcx(), args).skip_norm_wip()
+                        field.ty(cx.tcx(), *args).skip_norm_wip()
                     }
                     Variants::Empty => panic!("there is no field in Variants::Empty types"),
                     // Discriminant field for enums (where applicable).

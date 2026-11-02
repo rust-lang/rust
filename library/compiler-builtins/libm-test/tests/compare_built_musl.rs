@@ -92,6 +92,8 @@ libm_macros::for_each_function! {
 
         // Not provided by musl
         // verify-sorted-start
+        exp2m1,
+        exp2m1f,
         fmaximum,
         fmaximum_num,
         fmaximum_numf,

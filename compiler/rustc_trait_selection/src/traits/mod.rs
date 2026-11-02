@@ -30,11 +30,10 @@ use rustc_errors::ErrorGuaranteed;
 pub use rustc_infer::traits::*;
 use rustc_macros::TypeVisitable;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, Clause, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode,
+    self, BottomUpFolder, Clause, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode,
     Unnormalized, Upcast,
 };
 use rustc_span::Span;
@@ -686,9 +685,11 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
                                         tcx,
                                         alias_const.args,
                                     );
-                                    let typing_env = infcx
+                                    let ty::PseudoCanonicalInput { typing_env, value: args } = infcx
                                         .typing_env(tcx.erase_and_anonymize_regions(param_env))
-                                        .with_post_analysis_normalized(tcx);
+                                        .with_post_analysis_normalized_invalidating_rigid_aliases(
+                                            tcx, args,
+                                        );
                                     (args, typing_env)
                                 }
                             }
@@ -699,10 +700,13 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
                             }
                         }
                     } else {
-                        let typing_env = infcx
+                        let ty::PseudoCanonicalInput { typing_env, value: args } = infcx
                             .typing_env(tcx.erase_and_anonymize_regions(param_env))
-                            .with_post_analysis_normalized(tcx);
-                        (alias_const.args, typing_env)
+                            .with_post_analysis_normalized_invalidating_rigid_aliases(
+                                tcx,
+                                alias_const.args,
+                            );
+                        (args, typing_env)
                     }
                 }
                 Some((def_id, ty::AnonConstKind::RepeatExprCount)) => {
@@ -794,8 +798,8 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
 /// args when they're not actually needed to evaluate a constant.
 fn replace_param_and_infer_args_with_placeholder<'tcx>(
     tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
-) -> GenericArgsRef<'tcx> {
+    args: GenericArgs<'tcx>,
+) -> GenericArgs<'tcx> {
     struct ReplaceParamAndInferWithPlaceholder<'tcx> {
         tcx: TyCtxt<'tcx>,
         idx: ty::BoundVar,
@@ -870,7 +874,7 @@ pub fn impossible_clauses<'tcx>(tcx: TyCtxt<'tcx>, clauses: Vec<ty::Clause<'tcx>
 
 fn instantiate_and_check_impossible_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: (DefId, GenericArgsRef<'tcx>),
+    key: (DefId, GenericArgs<'tcx>),
 ) -> bool {
     debug!("instantiate_and_check_impossible_clauses(key={:?})", key);
 

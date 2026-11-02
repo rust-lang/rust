@@ -3,6 +3,7 @@ error: the `repr(transparent)` attribute cannot be used on functions
    |
 LL | #[repr(transparent)]
    |   ^^^^^^^^^^^^^^^^^
+LL | fn cant_repr_this() {}
    |
    = help: the `repr(transparent)` attribute can only be applied to data types
 
@@ -11,6 +12,7 @@ error: the `repr(transparent)` attribute cannot be used on statics
    |
 LL | #[repr(transparent)]
    |   ^^^^^^^^^^^^^^^^^
+LL | static CANT_REPR_THIS: u32 = 0;
    |
    = help: the `repr(transparent)` attribute can only be applied to data types
 

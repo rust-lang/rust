@@ -1,4 +1,4 @@
-// rustfmt-indent_style: Visual
+//@ rustfmt-indent_style: Visual
 type CNodeSetAtts = unsafe extern "C" fn(node: *const RsvgNode,
                                          node_impl: *const RsvgCNodeImpl,
                                          handle: *const RsvgHandle,

@@ -9,8 +9,8 @@ use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeVisitableExt};
 use rustc_span::bug;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{
-    ImplSource, Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
-    SelectionError,
+    FulfillmentErrorCode, ImplSource, Obligation, ObligationCause, ObligationCtxt,
+    SelectionContext, SelectionError,
 };
 use tracing::debug;
 
@@ -51,10 +51,15 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     // Currently, we use a fulfillment context to completely resolve
     // all nested obligations. This is because they can inform the
     // inference of the impl's type parameters.
-    let ocx = ObligationCtxt::new(&infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let impl_source = selection.map(|obligation| {
         ocx.register_obligation(obligation);
     });
+
+    let impl_span = match &impl_source {
+        ImplSource::UserDefined(source) => Some(tcx.def_span(source.impl_def_id)),
+        _ => None,
+    };
 
     // In principle, we only need to do this so long as `impl_source`
     // contains unbound type parameters. It could be a slight
@@ -62,11 +67,24 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.no_errors() {
         // `rustc_monomorphize::collector` assumes there are no type errors.
-        // Cycle errors are the only post-monomorphization errors possible; emit them now so
-        // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
-        for err in errors {
-            if let ScrubbedTraitError::Cycle(cycle) = err {
-                infcx.err_ctxt().report_overflow_obligation_cycle(&cycle);
+        // Report post-monomorphization overflows here so that `Instance::expect_resolve` doesn't ICE later.
+        for mut err in errors {
+            match err.code {
+                FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) } => {
+                    if err.obligation.cause.span.is_dummy() {
+                        if let Some(span) = impl_span {
+                            err.obligation.cause.span = span;
+                        }
+                    }
+
+                    infcx
+                        .err_ctxt()
+                        .report_overflow_obligation(&err.obligation, suggest_increasing_limit);
+                }
+                FulfillmentErrorCode::Cycle(cycle) => {
+                    infcx.err_ctxt().report_overflow_obligation_cycle(&cycle);
+                }
+                _ => {}
             }
         }
         return Err(CodegenObligationError::Unimplemented);

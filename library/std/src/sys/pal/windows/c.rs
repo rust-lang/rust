@@ -20,6 +20,11 @@ pub type WCHAR = u16;
 
 pub const INVALID_HANDLE_VALUE: HANDLE = ::core::ptr::without_provenance_mut(-1i32 as _);
 
+#[cfg(not(target_vendor = "win7"))]
+pub const FILE_DEVICE_NAMED_PIPE: u32 = 0x00000011;
+#[cfg(not(target_vendor = "win7"))]
+pub const FILE_DEVICE_CONSOLE: u32 = 0x00000050;
+
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/exit-success-exit-failure?view=msvc-170
 pub const EXIT_SUCCESS: u32 = 0;
 pub const EXIT_FAILURE: u32 = 1;
@@ -144,12 +149,6 @@ pub const HANDLE_FLAG_INHERIT: u32 = cu(windows_sys::HANDLE_FLAG_INHERIT);
 pub const STACK_SIZE_PARAM_IS_A_RESERVATION: u32 =
     cu(windows_sys::STACK_SIZE_PARAM_IS_A_RESERVATION);
 
-// dwFlags -- WideCharToMultiByte
-pub const WC_ERR_INVALID_CHARS: u32 = cu(windows_sys::WC_ERR_INVALID_CHARS);
-
-// dwFlags -- MultiByteToWideChar
-pub const MB_ERR_INVALID_CHARS: u32 = cu(windows_sys::MB_ERR_INVALID_CHARS);
-
 // dwFlags -- CreateWaitableTimerExW
 pub const CREATE_WAITABLE_TIMER_HIGH_RESOLUTION: u32 =
     cu(windows_sys::CREATE_WAITABLE_TIMER_HIGH_RESOLUTION);
@@ -187,9 +186,6 @@ pub const FILE_CURRENT: u32 = cu(windows_sys::FILE_CURRENT);
 // dwIoControlCode -- DeviceIoControl
 pub const FSCTL_GET_REPARSE_POINT: u32 = cu(windows_sys::FSCTL_GET_REPARSE_POINT);
 pub const FSCTL_SET_REPARSE_POINT: u32 = cu(windows_sys::FSCTL_SET_REPARSE_POINT);
-
-// GetFileType return value (DWORD)
-pub const FILE_TYPE_PIPE: u32 = cu(windows_sys::FILE_TYPE_PIPE);
 
 // GetACP return value (UINT)
 pub const CP_UTF8: u32 = windows_sys::CP_UTF8.cast_unsigned();
@@ -473,6 +469,7 @@ cfg_select! {
     target_vendor = "uwp" => {
         windows_link::link_raw_dylib!("ntdll.dll" "system" fn NtCreateFile(filehandle : *mut HANDLE, desiredaccess : ACCESS_MASK, objectattributes : *const OBJECT_ATTRIBUTES, iostatusblock : *mut IO_STATUS_BLOCK, allocationsize : *const i64, fileattributes : u32, shareaccess : u32, createdisposition : u32, createoptions : u32, eabuffer : *const core::ffi::c_void, ealength : u32) -> NTSTATUS);
         windows_link::link_raw_dylib!("ntdll.dll" "system" fn NtOpenFile(filehandle : *mut HANDLE, desiredaccess : ACCESS_MASK, objectattributes : *const OBJECT_ATTRIBUTES, iostatusblock : *mut IO_STATUS_BLOCK, shareaccess : u32, openoptions : u32) -> NTSTATUS);
+        windows_link::link_raw_dylib!("ntdll.dll" "system" fn NtQueryVolumeInformationFile(filehandle : HANDLE, iostatusblock : *mut IO_STATUS_BLOCK, fsinformation : *mut core::ffi::c_void, length : u32, fsinformationclass : FS_INFORMATION_CLASS) -> NTSTATUS);
         windows_link::link_raw_dylib!("ntdll.dll" "system" fn NtReadFile(filehandle : HANDLE, event : HANDLE, apcroutine : PIO_APC_ROUTINE, apccontext : *const core::ffi::c_void, iostatusblock : *mut IO_STATUS_BLOCK, buffer : *mut core::ffi::c_void, length : u32, byteoffset : *const i64, key : *const u32) -> NTSTATUS);
         windows_link::link_raw_dylib!("ntdll.dll" "system" fn NtWriteFile(filehandle : HANDLE, event : HANDLE, apcroutine : PIO_APC_ROUTINE, apccontext : *const core::ffi::c_void, iostatusblock : *mut IO_STATUS_BLOCK, buffer : *const core::ffi::c_void, length : u32, byteoffset : *const i64, key : *const u32) -> NTSTATUS);
         windows_link::link_raw_dylib!("ntdll.dll" "system" fn RtlNtStatusToDosError(status : NTSTATUS) -> u32);

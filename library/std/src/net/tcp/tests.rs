@@ -60,8 +60,9 @@ fn connect_timeout_error() {
     let socket_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port));
 
     // Ensure we error immediately rather than timing out.
-    let result = TcpStream::connect_timeout(&socket_addr, Duration::MAX);
-    assert!(!matches!(result, Err(e) if e.kind() == ErrorKind::TimedOut));
+    let err = TcpStream::connect_timeout(&socket_addr, Duration::MAX)
+        .expect_err("connected to a port with no listener");
+    assert_ne!(err.kind(), ErrorKind::TimedOut, "unexpected error: {err}");
 
     let _listener = TcpListener::bind(&socket_addr).unwrap();
     assert!(TcpStream::connect_timeout(&socket_addr, Duration::MAX).is_ok());
@@ -892,6 +893,23 @@ fn ttl() {
 
     t!(stream.set_ttl(ttl));
     assert_eq!(ttl, t!(stream.ttl()));
+}
+
+#[test]
+#[cfg_attr(target_env = "sgx", ignore)]
+#[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+fn hop_limit() {
+    let hlim = 100;
+
+    let listener = t!(TcpListener::bind(LOCALHOST_IP6));
+
+    t!(listener.set_hop_limit_v6(hlim));
+    assert_eq!(hlim, t!(listener.hop_limit_v6()));
+
+    let stream = t!(TcpStream::connect(t!(listener.local_addr())));
+
+    t!(stream.set_hop_limit_v6(hlim));
+    assert_eq!(hlim, t!(stream.hop_limit_v6()));
 }
 
 #[test]

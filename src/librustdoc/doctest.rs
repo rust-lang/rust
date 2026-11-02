@@ -37,7 +37,7 @@ use tracing::{debug, info};
 
 use self::rust::HirCollector;
 use crate::config::{MergeDoctests, Options as RustdocOptions, OutputFormat};
-use crate::html::markdown::{CodeLineMapping, ErrorCodes, Ignore, LangString, MdRelLine};
+use crate::html::markdown::{CodeBlockPosition, CodeLineMapping, ErrorCodes, Ignore, LangString};
 use crate::lint::init_lints;
 
 /// Type used to display times (compilation and total) information for merged doctests.
@@ -173,7 +173,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         lint_cap: Some(options.lint_cap.unwrap_or(lint::Forbid)),
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
-        unstable_features: options.unstable_features,
+        unstable_features: options.unstable_features.clone(),
         actually_rustdoc: true,
         edition: options.edition,
         target_triple: options.target.clone(),
@@ -575,7 +575,7 @@ pub(crate) struct RunnableDocTest<'a> {
     /// In a standalone test this is just the regular test code.
     full_test_code: String,
     full_test_line_offset: usize,
-    test_opts: &'a IndividualTestOptions,
+    test_opts: IndividualTestOptions,
     global_opts: &'a GlobalTestOptions,
     langstr: LangString,
     line: usize,
@@ -1020,7 +1020,7 @@ pub(crate) trait DocTestVisitor {
         &mut self,
         test: String,
         config: LangString,
-        rel_line: MdRelLine,
+        position: CodeBlockPosition,
         code_mappings: Vec<CodeLineMapping>,
     );
     fn visit_header(&mut self, _name: &str, _level: u32) {}
@@ -1143,8 +1143,6 @@ fn generate_test_desc_and_fn(
     unused_externs: Arc<Mutex<Vec<UnusedExterns>>>,
 ) -> test::TestDescAndFn {
     let target_str = rustdoc_options.target.to_string();
-    let rustdoc_test_options =
-        IndividualTestOptions::new(&rustdoc_options, &test.test_id, scraped_test.local_path());
 
     debug!("creating test {}: {}", scraped_test.name, scraped_test.text);
     test::TestDescAndFn {
@@ -1168,8 +1166,13 @@ fn generate_test_desc_and_fn(
             test_type: test::TestType::DocTest,
         },
         testfn: test::DynTestFn(Arc::new(move || {
+            let rustdoc_test_options = IndividualTestOptions::new(
+                &rustdoc_options,
+                &test.test_id,
+                scraped_test.local_path(),
+            );
             doctest_run_fn(
-                &rustdoc_test_options,
+                rustdoc_test_options,
                 &opts,
                 &test,
                 &scraped_test,
@@ -1181,7 +1184,7 @@ fn generate_test_desc_and_fn(
 }
 
 fn doctest_run_fn(
-    test_opts: &IndividualTestOptions,
+    test_opts: IndividualTestOptions,
     global_opts: &GlobalTestOptions,
     doctest: &DocTestBuilder,
     scraped_test: &ScrapedDocTest,
@@ -1271,10 +1274,14 @@ impl DocTestVisitor for Vec<usize> {
         &mut self,
         _test: String,
         _config: LangString,
-        rel_line: MdRelLine,
+        position: CodeBlockPosition,
         _code_mappings: Vec<CodeLineMapping>,
     ) {
-        self.push(1 + rel_line.offset());
+        let line = match position {
+            CodeBlockPosition::Relative(rel_line) => 1 + rel_line.offset(),
+            CodeBlockPosition::Span(_) => unreachable!(),
+        };
+        self.push(line);
     }
 }
 

@@ -11,9 +11,9 @@
 static FOO: [u8; 22] = *b"custom section content";
 
 // Data segment in foo section
-// CHECK: @FOO = dso_local constant [22 x i8] c"custom section content", section "foo"
+// CHECK: @FOO = {{.*}}constant [22 x i8] c"custom section content", section "foo"
 // CHECK: @llvm.used = appending global [1 x ptr] [ptr @FOO], section "llvm.metadata"
 
 // Custom section
-// CHECK: !wasm.custom_sections = !{!3}
-// CHECK: !3 = !{!"foo", !"custom section content"}
+// CHECK: !wasm.custom_sections = !{![[ID:[0-9]+]]}
+// CHECK: ![[ID]] = !{!"foo", !"custom section content"}

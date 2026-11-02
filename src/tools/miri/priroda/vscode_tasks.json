@@ -8,7 +8,11 @@
             "args": [
                 "run",
                 "--manifest-path",
-                "${workspaceFolder}/Cargo.toml",
+                "${workspaceFolder}/../Cargo.toml",
+                "--bin",
+                "priroda",
+                "--features",
+                "priroda",
                 "--",
                 "--dap",
                 "--port",

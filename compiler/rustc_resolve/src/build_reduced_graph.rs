@@ -1294,7 +1294,9 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     // items will be reported as `unused_macros`.
     fn insert_unused_macro(&mut self, ident: Ident, def_id: LocalDefId, node_id: NodeId) {
         if !ident.as_str().starts_with('_') {
-            self.r.unused_macros.insert(def_id, (node_id, ident));
+            self.r
+                .unused_macros
+                .insert(def_id, (node_id, ident, self.parent_scope.module.opt_def_id()));
             if let SyntaxExtensionKind::MacroRules(mr) = &self.r.local_macro_map[&def_id].kind {
                 let value = (def_id, DenseBitSet::new_filled(mr.nrules()));
                 self.r.unused_macro_rules.insert(node_id, value);
@@ -1333,7 +1335,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
         if macro_rules {
             let ident = IdentKey::new(orig_ident);
-            self.r.macro_names.insert(ident);
+            self.r.macro_names.insert(ident, def_id);
             let is_macro_export = ast::attr::contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
                 Visibility::Public
@@ -1430,6 +1432,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 }
                 match item.kind {
                     ItemKind::Mod(..) if self.contains_macro_use(&item.attrs) => {
+                        self.r.macro_use_mods.insert(item.id);
                         self.parent_scope.macro_rules
                     }
                     _ => orig_macro_rules_scope,

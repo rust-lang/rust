@@ -32,11 +32,11 @@ LL | impl Fn(&isize) for Error {
    |
    = help: implement the missing item: `fn call(&self, _: (&isize,)) -> <Self as FnOnce<(&isize,)>>::Output { todo!() }` (unstable, requires feature `fn_traits`)
 
-error[E0277]: expected an `FnMut(&isize)` closure, found `Error`
+error[E0277]: expected `FnMut(&isize)` signature, found `Error`
   --> $DIR/issue-87558.rs:3:21
    |
 LL | impl Fn(&isize) for Error {
-   |                     ^^^^^ expected an `FnMut(&isize)` closure, found `Error`
+   |                     ^^^^^ expected `FnMut(&isize)` signature, found `Error`
    |
 help: the trait `FnMut(&isize)` is not implemented for `Error`
   --> $DIR/issue-87558.rs:2:1

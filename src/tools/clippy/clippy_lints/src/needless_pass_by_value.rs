@@ -5,7 +5,8 @@ use clippy_utils::ty::{implements_trait, implements_trait_with_env_from_iter, is
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use clippy_utils::{is_self, peel_hir_ty_options, strip_pat_refs, sym};
 use rustc_abi::ExternAbi;
-use rustc_attr_ir::Attribute;
+
+use clippy_utils::requires_exact_signature;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::FnKind;
@@ -307,11 +308,6 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             }
         }
     }
-}
-
-/// Functions marked with these attributes must have the exact signature.
-pub(crate) fn requires_exact_signature(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(Attribute::is_proc_macro_attr)
 }
 
 #[derive(Default)]

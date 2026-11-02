@@ -237,22 +237,22 @@ pub enum FormatArg {
     },
     // `{Self}`
     SelfUpper,
-    /// `{This}` and `{This:name}`.
+    /// `{this}` and `{this:name}`.
     This,
-    /// The sugared form: `{This:sugared}`.
+    /// The sugared form: `{this:resolved}`.
     ThisResolved,
-    /// The full path: `{This:path}`.
+    /// The full path: `{this:path}`.
     ThisPath,
-    /// what we're in, like a function, method, closure etc.
+    /// What we're in, like a function, method, closure etc. Used via `{item_context}`.
     ItemContext,
+    /// {found} in diagnostic::on_type_error
+    Found,
+    /// {expected} in diagnostic::on_type_error
+    Expected,
+    /// {unresolved} in diagnostic::on_unknown
+    Unresolved,
     /// What the user typed, if it doesn't match anything we can use.
     AsIs(Symbol),
-    /// {Found} in diagnostic::on_type_error
-    Found,
-    /// {Expected} in diagnostic::on_type_error
-    Expected,
-    /// {Unresolved} in diagnostic::on_unknown
-    Unresolved,
 }
 
 /// Represents the `on` filter in `#[rustc_on_unimplemented]`.

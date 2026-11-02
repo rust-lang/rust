@@ -95,27 +95,6 @@ const fn stderr_raw() -> StderrRaw {
     StderrRaw(stdio::Stderr::new())
 }
 
-#[cfg(windows)]
-impl StdoutRaw {
-    /// Starts a new lock session: stream state cached per lock session (the
-    /// handle and its console mode) is re-queried at the next write, so that
-    /// changing the process stdio handles (e.g. with `SetStdHandle`) between
-    /// lock sessions keeps working.
-    #[inline]
-    fn refresh(&mut self) {
-        self.0.refresh();
-    }
-}
-
-#[cfg(windows)]
-impl StderrRaw {
-    /// See `StdoutRaw::refresh`.
-    #[inline]
-    fn refresh(&mut self) {
-        self.0.refresh();
-    }
-}
-
 impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         handle_ebadf(self.0.read(buf), || Ok(0))
@@ -615,9 +594,8 @@ impl fmt::Debug for StdinLock<'_> {
 ///
 /// ### Note: Windows Portability Considerations
 ///
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
+/// When operating in a console, the Windows implementation of this stream decodes bytes
+/// as UTF-8, replacing malformed sequences with the Unicode replacement character (U+FFFD).
 ///
 /// In a process with a detached console, such as one using
 /// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
@@ -648,9 +626,8 @@ pub struct Stdout {
 ///
 /// ### Note: Windows Portability Considerations
 ///
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
+/// When operating in a console, the Windows implementation of this stream decodes bytes
+/// as UTF-8, replacing malformed sequences with the Unicode replacement character (U+FFFD).
 ///
 /// In a process with a detached console, such as one using
 /// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
@@ -680,9 +657,8 @@ static STDOUT: OnceLock<ReentrantLock<RefCell<LineWriter<StdoutRaw>>>> = OnceLoc
 ///
 /// ### Note: Windows Portability Considerations
 ///
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
+/// When operating in a console, the Windows implementation of this stream decodes bytes
+/// as UTF-8, replacing malformed sequences with the Unicode replacement character (U+FFFD).
 ///
 /// In a process with a detached console, such as one using
 /// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
@@ -790,19 +766,7 @@ impl Stdout {
         // Locks this handle with 'static lifetime. This depends on the
         // implementation detail that the underlying `ReentrantMutex` is
         // static.
-        let lock = StdoutLock { inner: self.inner.lock() };
-        // A new lock session begins, so let Windows re-query cached stream
-        // state at the next write; other platforms cache nothing, and skip
-        // this entirely so their `lock()` is unchanged. Skipped also if the
-        // cell is already borrowed (a nested lock during an ongoing write);
-        // such a lock is part of the outer session anyway.
-        #[cfg(windows)]
-        {
-            if let Ok(mut w) = lock.inner.try_borrow_mut() {
-                w.get_mut().refresh();
-            }
-        }
-        lock
+        StdoutLock { inner: self.inner.lock() }
     }
 }
 
@@ -915,9 +879,8 @@ impl fmt::Debug for StdoutLock<'_> {
 ///
 /// ### Note: Windows Portability Considerations
 ///
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
+/// When operating in a console, the Windows implementation of this stream decodes bytes
+/// as UTF-8, replacing malformed sequences with the Unicode replacement character (U+FFFD).
 ///
 /// In a process with a detached console, such as one using
 /// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
@@ -936,9 +899,8 @@ pub struct Stderr {
 ///
 /// ### Note: Windows Portability Considerations
 ///
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
+/// When operating in a console, the Windows implementation of this stream decodes bytes
+/// as UTF-8, replacing malformed sequences with the Unicode replacement character (U+FFFD).
 ///
 /// In a process with a detached console, such as one using
 /// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
@@ -957,9 +919,8 @@ pub struct StderrLock<'a> {
 ///
 /// ### Note: Windows Portability Considerations
 ///
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
+/// When operating in a console, the Windows implementation of this stream decodes bytes
+/// as UTF-8, replacing malformed sequences with the Unicode replacement character (U+FFFD).
 ///
 /// In a process with a detached console, such as one using
 /// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
@@ -1034,15 +995,7 @@ impl Stderr {
         // Locks this handle with 'static lifetime. This depends on the
         // implementation detail that the underlying `ReentrantMutex` is
         // static.
-        let lock = StderrLock { inner: self.inner.lock() };
-        // See `Stdout::lock`: a new lock session begins (Windows only).
-        #[cfg(windows)]
-        {
-            if let Ok(mut w) = lock.inner.try_borrow_mut() {
-                w.refresh();
-            }
-        }
-        lock
+        StderrLock { inner: self.inner.lock() }
     }
 }
 

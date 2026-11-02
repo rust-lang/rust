@@ -1,6 +1,6 @@
 #![warn(clippy::match_like_matches_macro)]
 #![allow(irrefutable_let_patterns, clippy::redundant_guards)]
-#![expect(clippy::needless_borrowed_reference)]
+#![expect(clippy::manual_range_patterns, clippy::needless_borrowed_reference)]
 
 fn main() {
     let x = Some(5);

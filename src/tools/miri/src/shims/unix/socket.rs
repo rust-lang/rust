@@ -1,13 +1,16 @@
+use std::io;
 use std::net::{Shutdown, SocketAddr};
+use std::time::Duration;
 
 use rustc_abi::Size;
 use rustc_target::spec::Os;
 
-use crate::shims::FileDescriptionRef;
 use crate::shims::files::FdNum;
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket_address::EvalContextExt as _;
 use crate::shims::unix::tcp_socket::TcpSocket;
+use crate::shims::unix::udp_socket::UdpSocket;
+use crate::shims::{FileDescription, FileDescriptionRef};
 use crate::*;
 
 /// Represents unix-specific socket file descriptions.
@@ -149,6 +152,63 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
     ) -> InterpResult<'tcx, Result<(), IoError>> {
         throw_unsup_format!("cannot shut down {}", self.name());
     }
+
+    // Socket options from SOL_SOCKET which are supported by all socket kinds.
+
+    /// Set the read timeout for the socket.
+    /// If `timeout` is [`None`], then read operations should block indefinitely.
+    /// Otherwise, read operations should block until `timeout` is expired.
+    fn set_read_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _timeout: Option<Duration>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("setsockopt: option SO_RCVTIMEO is unsupported for {}", self.name())
+    }
+
+    /// Get the read timeout for the socket.
+    fn get_read_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+    ) -> InterpResult<'tcx, Option<Duration>> {
+        throw_unsup_format!("getsockopt: option SO_RCVTIMEO is unsupported for {}", self.name())
+    }
+
+    /// Set the write timeout for the socket.
+    /// If `timeout` is [`None`], then write operations should block indefinitely.
+    /// Otherwise, write operations should block until `timeout` is expired.
+    fn set_write_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _timeout: Option<Duration>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("setsockopt: option SO_SNDTIMEO is unsupported for {}", self.name())
+    }
+
+    /// Get the write timeout for the socket.
+    fn get_write_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+    ) -> InterpResult<'tcx, Option<Duration>> {
+        throw_unsup_format!("getsockopt: option SO_SNDTIMEO is unsupported for {}", self.name())
+    }
+
+    /// Get the stored I/O error of the socket, if any exists.
+    /// This method should consume the stored error.
+    fn take_error<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Option<io::Error>> {
+        throw_unsup_format!("getsockopt: option SO_ERROR is unsupported for {}", self.name())
+    }
+
+    /// If the shimmed socket contains an underlying host socket, the `cb` callback
+    /// function is invoked with a [`socket2::SockRef`] to the underlying host socket
+    /// and [`Ok`] with the return value of the callback is returned.
+    /// Otherwise, when the shimmed socket is not backed by a host socket, [`Err`] is
+    /// returned.
+    fn with_socket_ref<T>(&self, _cb: impl FnOnce(socket2::SockRef<'_>) -> T) -> Result<T, ()>
+    where
+        Self: Sized,
+    {
+        Err(())
+    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -207,28 +267,36 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         };
 
-        if flags != this.eval_libc_i32("SOCK_STREAM") {
+        let fd_result = if flags == this.eval_libc_i32("SOCK_STREAM") {
+            if ![0, this.eval_libc_i32("IPPROTO_TCP")].contains(&protocol) {
+                throw_unsup_format!(
+                    "socket: socket protocol {protocol} is unsupported for \
+                    streaming socket, only IPPROTO_TCP and 0 are allowed"
+                );
+            }
+
+            TcpSocket::new(family, is_non_block, this).map(|fd| fd.as_unix())
+        } else if flags == this.eval_libc_i32("SOCK_DGRAM") {
+            if ![0, this.eval_libc_i32("IPPROTO_UDP")].contains(&protocol) {
+                throw_unsup_format!(
+                    "socket: socket protocol {protocol} is unsupported for \
+                    datagram socket, only IPPROTO_UDP and 0 are allowed"
+                );
+            }
+
+            UdpSocket::new(family, is_non_block, this).map(|fd| fd.as_unix())
+        } else {
             throw_unsup_format!(
                 "socket: type {:#x} is unsupported, only SOCK_STREAM, \
-            SOCK_CLOEXEC and SOCK_NONBLOCK are allowed",
+                SOCK_DGRAM, SOCK_CLOEXEC and SOCK_NONBLOCK are allowed",
                 flags
             );
-        }
-        if protocol != 0 && protocol != this.eval_libc_i32("IPPROTO_TCP") {
-            throw_unsup_format!(
-                "socket: socket protocol {protocol} is unsupported, \
-            only IPPROTO_TCP and 0 are allowed"
-            );
-        }
-
-        let socket = match TcpSocket::new(family, is_non_block) {
-            Ok(socket) => socket,
-            Err(e) => return this.set_errno_and_return_neg1_i32(e),
         };
-        let fds = &mut this.machine.fds;
-        let fd = fds.new_ref(socket);
 
-        interp_ok(Scalar::from_i32(fds.insert(fd)))
+        match fd_result {
+            Ok(fd) => interp_ok(Scalar::from_i32(this.machine.fds.insert(fd))),
+            Err(e) => this.set_errno_and_return_neg1_i32(e),
+        }
     }
 
     fn bind(
@@ -809,5 +877,356 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(_) => interp_ok(Scalar::from_i32(0)),
             Err(e) => this.set_errno_and_return_neg1_i32(e),
         }
+    }
+
+    /// Set the `option` socket option on level SOL_SOCKET for `socket`.
+    /// `value_ptr` points to the new value of the socket option, and `value_len`
+    /// contains the amount of bytes the value uses at `value_ptr`.
+    fn set_generic_socket_option<T: UnixSocketFileDescription>(
+        &mut self,
+        option: i32,
+        value_ptr: Pointer,
+        value_len: u64,
+        socket: FileDescriptionRef<T>,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        let ecx = self.eval_context_mut();
+
+        let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
+        let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
+        let opt_so_reuseaddr = ecx.eval_libc_i32("SO_REUSEADDR");
+        let opt_so_linger = if matches!(ecx.tcx.sess.target.os, Os::MacOs) {
+            // On macOS the SO_LINGER socket option sets the linger duration in kernel ticks
+            // while the SO_LINGER_SEC socket option sets the linger duration in seconds.
+            ecx.eval_libc_i32("SO_LINGER_SEC")
+        } else {
+            // For all other targets SO_LINGER sets the linger duration in seconds.
+            ecx.eval_libc_i32("SO_LINGER")
+        };
+        let opt_so_keepalive = ecx.eval_libc_i32("SO_KEEPALIVE");
+
+        if matches!(ecx.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::NetBsd) {
+            // SO_NOSIGPIPE only exists on MacOS, FreeBSD, and NetBSD.
+            let opt_so_nosigpipe = ecx.eval_libc_i32("SO_NOSIGPIPE");
+
+            if option == opt_so_nosigpipe {
+                if value_len != 4 {
+                    // Option value should be C-int which is usually 4 bytes.
+                    return interp_ok(Err(LibcError("EINVAL")));
+                }
+                let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
+                let _val = ecx.read_scalar(&option_value)?.to_i32()?;
+                // We entirely ignore this value since we do not support signals anyway.
+
+                return interp_ok(Ok(()));
+            }
+        }
+
+        if option == opt_so_rcvtimeo || option == opt_so_sndtimeo {
+            let timeval_layout = ecx.libc_ty_layout("timeval");
+            let option_value = ecx.ptr_to_mplace(value_ptr, timeval_layout);
+
+            let timeout = match ecx.read_timeval(&option_value)? {
+                None => return interp_ok(Err(LibcError("EINVAL"))),
+                Some(Duration::ZERO) => None,
+                Some(duration) => Some(duration),
+            };
+
+            if option == opt_so_rcvtimeo {
+                socket.set_read_timeout(timeout)?;
+            } else {
+                socket.set_write_timeout(timeout)?;
+            }
+
+            return interp_ok(Ok(()));
+        }
+
+        if option == opt_so_reuseaddr {
+            if value_len != 4 {
+                // Option value should be C-int which is usually 4 bytes.
+                return interp_ok(Err(LibcError("EINVAL")));
+            }
+            let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
+            let reuse = ecx.read_scalar(&option_value)?.to_i32()? != 0;
+
+            let result = socket.with_socket_ref(|s| s.set_reuse_address(reuse)).map_err(|()| {
+                err_unsup_format!(
+                    "setsockopt: option SO_REUSEADDR is unsupported for {}",
+                    socket.name()
+                )
+            })?;
+            return interp_ok(result.map_err(IoError::HostError));
+        } else if option == opt_so_linger {
+            let linger_layout = ecx.libc_ty_layout("linger");
+            if value_len != linger_layout.size.bytes() {
+                // Size should be equal to the size of a linger struct.
+                return interp_ok(Err(LibcError("EINVAL")));
+            }
+            let option_value = ecx.ptr_to_mplace(value_ptr, linger_layout);
+
+            let onoff_field = ecx.project_field_named(&option_value, "l_onoff")?;
+            let onoff = ecx.read_scalar(&onoff_field)?.to_i32()? != 0;
+
+            let linger_field = ecx.project_field_named(&option_value, "l_linger")?;
+            let linger = ecx.read_scalar(&linger_field)?.to_i32()?;
+
+            let linger = onoff.then_some(Duration::from_secs(u64::try_from(linger).unwrap()));
+
+            let result = socket.with_socket_ref(|s| s.set_linger(linger)).map_err(|()| {
+                err_unsup_format!(
+                    "setsockopt: option SO_LINGER is unsupported for {}",
+                    socket.name()
+                )
+            })?;
+            return interp_ok(result.map_err(IoError::HostError));
+        } else if option == opt_so_keepalive {
+            if value_len != 4 {
+                // Option value should be C-int which is usually 4 bytes.
+                return interp_ok(Err(LibcError("EINVAL")));
+            }
+            let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
+            let keepalive = ecx.read_scalar(&option_value)?.to_i32()? != 0;
+
+            let result = socket.with_socket_ref(|s| s.set_keepalive(keepalive)).map_err(|()| {
+                err_unsup_format!(
+                    "setsockopt: option SO_LINGER is unsupported for {}",
+                    socket.name()
+                )
+            })?;
+            return interp_ok(result.map_err(IoError::HostError));
+        }
+
+        throw_unsup_format!("setsockopt: option {option:#x} is unsupported for level SOL_SOCKET");
+    }
+
+    /// Set the `option` socket option on level IPPROTO_IP for `socket`.
+    /// `value_ptr` points to the new value of the socket option, and `value_len`
+    /// contains the amount of bytes the value uses at `value_ptr`.
+    /// `socket` is a [`socket2::SockRef`] to the underlying host socket of
+    /// the shimmed socket.
+    fn set_ip_socket_option(
+        &self,
+        option: i32,
+        value_ptr: Pointer,
+        value_len: u64,
+        socket: socket2::SockRef<'_>,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        let ecx = self.eval_context_ref();
+
+        let opt_ip_ttl = ecx.eval_libc_i32("IP_TTL");
+
+        if option == opt_ip_ttl {
+            if value_len != 4 {
+                // Option value should be C-uint which is usually 4 bytes.
+                return interp_ok(Err(LibcError("EINVAL")));
+            }
+            let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.u32);
+            let ttl = ecx.read_scalar(&option_value)?.to_u32()?;
+
+            return interp_ok(socket.set_ttl_v4(ttl).map_err(IoError::HostError));
+        }
+
+        throw_unsup_format!("setsockopt: option {option:#x} is unsupported for level IPPROTO_IP",);
+    }
+
+    /// Set the `option` socket option on level IPPROTO_TCP for `socket`.
+    /// `value_ptr` points to the new value of the socket option, and `value_len`
+    /// contains the amount of bytes the value uses at `value_ptr`.
+    /// `socket` is a [`socket2::SockRef`] to the underlying host socket of
+    /// the shimmed socket.
+    fn set_tcp_socket_option(
+        &self,
+        option: i32,
+        value_ptr: Pointer,
+        value_len: u64,
+        socket: socket2::SockRef<'_>,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        let ecx = self.eval_context_ref();
+
+        let opt_tcp_nodelay = ecx.eval_libc_i32("TCP_NODELAY");
+
+        if option == opt_tcp_nodelay {
+            if value_len != 4 {
+                // Option value should be C-int which is usually 4 bytes.
+                return interp_ok(Err(LibcError("EINVAL")));
+            }
+            let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
+            let nodelay = ecx.read_scalar(&option_value)?.to_i32()? != 0;
+
+            return interp_ok(socket.set_tcp_nodelay(nodelay).map_err(IoError::HostError));
+        }
+
+        throw_unsup_format!("setsockopt: option {option:#x} is unsupported for level IPPROTO_TCP");
+    }
+
+    /// Get the `option` socket option on level SOL_SOCKET for `socket`.
+    fn get_generic_socket_option<T: UnixSocketFileDescription>(
+        &mut self,
+        option: i32,
+        socket: FileDescriptionRef<T>,
+    ) -> InterpResult<'tcx, Result<MPlaceTy<'tcx>, IoError>> {
+        let ecx = self.eval_context_mut();
+
+        let opt_so_error = ecx.eval_libc_i32("SO_ERROR");
+        let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
+        let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
+        let opt_so_reuseaddr = ecx.eval_libc_i32("SO_REUSEADDR");
+        let opt_so_linger = if matches!(ecx.tcx.sess.target.os, Os::MacOs) {
+            // On macOS the SO_LINGER socket option sets the linger duration in kernel ticks
+            // while the SO_LINGER_SEC socket option sets the linger duration in seconds.
+            ecx.eval_libc_i32("SO_LINGER_SEC")
+        } else {
+            // For all other targets SO_LINGER sets the linger duration in seconds.
+            ecx.eval_libc_i32("SO_LINGER")
+        };
+        let opt_so_keepalive = ecx.eval_libc_i32("SO_KEEPALIVE");
+
+        if option == opt_so_error {
+            let return_value = match socket.take_error(ecx)? {
+                Some(err) => ecx.io_error_to_errnum(err)?.to_i32()?,
+                // If there is no error, we return 0 as the option value.
+                None => 0,
+            };
+
+            // Allocate new buffer on the stack with the `i32` layout.
+            let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
+            ecx.write_int(return_value, &value_buffer)?;
+            return interp_ok(Ok(value_buffer));
+        } else if option == opt_so_rcvtimeo || option == opt_so_sndtimeo {
+            let timeout = if option == opt_so_rcvtimeo {
+                socket.get_read_timeout()?
+            } else {
+                socket.get_write_timeout()?
+            }
+            .unwrap_or_default();
+
+            let secs = timeout.as_secs();
+            let usecs = timeout.subsec_micros();
+
+            let timeval_layout = ecx.libc_ty_layout("timeval");
+            // Allocate new buffer on the stack with the `timeval` layout.
+            let timeval_buffer = ecx.allocate(timeval_layout, MemoryKind::Stack)?;
+
+            let sec_field = ecx.project_field_named(&timeval_buffer, "tv_sec")?;
+            ecx.write_int(secs, &sec_field)?;
+
+            let usec_field = ecx.project_field_named(&timeval_buffer, "tv_usec")?;
+            ecx.write_int(usecs, &usec_field)?;
+
+            return interp_ok(Ok(timeval_buffer));
+        }
+
+        if option == opt_so_reuseaddr {
+            let reuse = match socket.with_socket_ref(|s| s.reuse_address()) {
+                Ok(Ok(reuse)) => reuse,
+                Ok(Err(e)) => return interp_ok(Err(IoError::HostError(e))),
+                Err(()) =>
+                    throw_unsup_format!(
+                        "getsockopt: option SO_REUSEADDR is unsupported for {}",
+                        socket.name()
+                    ),
+            };
+
+            // Allocate new buffer on the stack with the `i32` layout.
+            let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
+            ecx.write_int(i32::from(reuse), &value_buffer)?;
+
+            return interp_ok(Ok(value_buffer));
+        } else if option == opt_so_linger {
+            let linger = match socket.with_socket_ref(|s| s.linger()) {
+                Ok(Ok(linger)) => linger,
+                Ok(Err(e)) => return interp_ok(Err(IoError::HostError(e))),
+                Err(()) =>
+                    throw_unsup_format!(
+                        "getsockopt: option SO_LINGER is unsupported for {}",
+                        socket.name()
+                    ),
+            };
+
+            let linger_layout = ecx.libc_ty_layout("linger");
+            // Allocate new buffer on the stack with the `linger` layout.
+            let linger_buffer = ecx.allocate(linger_layout, MemoryKind::Stack)?;
+
+            let onoff_field = ecx.project_field_named(&linger_buffer, "l_onoff")?;
+            let onoff = i32::from(linger.is_some());
+            ecx.write_int(onoff, &onoff_field)?;
+
+            let linger_field = ecx.project_field_named(&linger_buffer, "l_linger")?;
+            let secs = i32::try_from(linger.unwrap_or_default().as_secs()).unwrap();
+            ecx.write_int(secs, &linger_field)?;
+
+            return interp_ok(Ok(linger_buffer));
+        } else if option == opt_so_keepalive {
+            let keepalive = match socket.with_socket_ref(|s| s.keepalive()) {
+                Ok(Ok(keepalive)) => keepalive,
+                Ok(Err(e)) => return interp_ok(Err(IoError::HostError(e))),
+                Err(()) =>
+                    throw_unsup_format!(
+                        "getsockopt: option SO_KEEPALIVE is unsupported for {}",
+                        socket.name()
+                    ),
+            };
+
+            // Allocate new buffer on the stack with the `i32` layout.
+            let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
+            ecx.write_int(i32::from(keepalive), &value_buffer)?;
+
+            return interp_ok(Ok(value_buffer));
+        }
+
+        throw_unsup_format!("getsockopt: option {option:#x} is unsupported for level SOL_SOCKET",);
+    }
+
+    /// Get the `option` socket option on level IPPROTO_IP for `socket`.
+    /// `socket` is a [`socket2::SockRef`] to the underlying host socket of
+    /// the shimmed socket.
+    fn get_ip_socket_option(
+        &mut self,
+        option: i32,
+        socket: socket2::SockRef<'_>,
+    ) -> InterpResult<'tcx, Result<MPlaceTy<'tcx>, IoError>> {
+        let ecx = self.eval_context_mut();
+
+        let opt_ip_ttl = ecx.eval_libc_i32("IP_TTL");
+
+        if option == opt_ip_ttl {
+            let ttl = match socket.ttl_v4() {
+                Ok(ttl) => ttl,
+                Err(e) => return interp_ok(Err(IoError::HostError(e))),
+            };
+
+            // Allocate new buffer on the stack with the `u32` layout.
+            let value_buffer = ecx.allocate(ecx.machine.layouts.u32, MemoryKind::Stack)?;
+            ecx.write_int(ttl, &value_buffer)?;
+            return interp_ok(Ok(value_buffer));
+        }
+
+        throw_unsup_format!("getsockopt: option {option:#x} is unsupported for level IPPROTO_IP",);
+    }
+
+    /// Get the `option` socket option on level IPPROTO_TCP for `socket`.
+    /// `socket` is a [`socket2::SockRef`] to the underlying host socket of
+    /// the shimmed socket.
+    fn get_tcp_socket_option(
+        &mut self,
+        option: i32,
+        socket: socket2::SockRef<'_>,
+    ) -> InterpResult<'tcx, Result<MPlaceTy<'tcx>, IoError>> {
+        let ecx = self.eval_context_mut();
+
+        let opt_tcp_nodelay = ecx.eval_libc_i32("TCP_NODELAY");
+
+        if option == opt_tcp_nodelay {
+            let nodelay = match socket.tcp_nodelay() {
+                Ok(nodelay) => nodelay,
+                Err(e) => return interp_ok(Err(IoError::HostError(e))),
+            };
+
+            // Allocate new buffer on the stack with the `i32` layout.
+            let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
+            ecx.write_int(i32::from(nodelay), &value_buffer)?;
+            return interp_ok(Ok(value_buffer));
+        }
+
+        throw_unsup_format!("getsockopt: option {option:#x} is unsupported for level IPPROTO_TCP");
     }
 }

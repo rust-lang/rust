@@ -11,7 +11,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_pat};
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, StmtKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::consts::ConstExt as _;
 use rustc_middle::ty::{self, AdtDef, TyCtxt, TypeckResults, VariantDef};
 use rustc_span::Span;
 
@@ -105,7 +104,7 @@ fn report_single_pattern(
         format!(" else {}", expr_block(cx, els, ctxt, "..", Some(expr.span), &mut app))
     });
 
-    if ex.span.eq_ctxt(expr.span) && snippet(cx, ex.span, "..") == snippet(cx, arm.pat.span, "..") {
+    if ex.span.ctxt() == expr.span.ctxt() && snippet(cx, ex.span, "..") == snippet(cx, arm.pat.span, "..") {
         let msg = "this pattern is irrefutable, `match` is useless";
         let (sugg, help) = if is_unit_expr(arm.body) {
             (String::new(), "`match` expression can be removed")

@@ -1,5 +1,5 @@
-// rustfmt-style_edition: 2015
-// rustfmt-reorder_modules: true
+//@ rustfmt-style_edition: 2015
+//@ rustfmt-reorder_modules: true
 
 mod A2;
 mod ABCD;

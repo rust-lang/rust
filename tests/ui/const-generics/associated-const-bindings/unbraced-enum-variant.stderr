@@ -33,6 +33,7 @@ LL | pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
 note: the associated constant is defined here
   --> $DIR/unbraced-enum-variant.rs:10:5
    |
+LL | pub trait Parse {
 LL |     const MODE: Mode;
    |     ^^^^^^^^^^^^^^^^
 help: consider adding braces here
@@ -51,6 +52,7 @@ LL | pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
 note: the associated constant is defined here
   --> $DIR/unbraced-enum-variant.rs:10:5
    |
+LL | pub trait Parse {
 LL |     const MODE: Mode;
    |     ^^^^^^^^^^^^^^^^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -70,6 +72,7 @@ LL | pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
 note: the associated constant is defined here
   --> $DIR/unbraced-enum-variant.rs:10:5
    |
+LL | pub trait Parse {
 LL |     const MODE: Mode;
    |     ^^^^^^^^^^^^^^^^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`

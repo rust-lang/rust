@@ -4,7 +4,7 @@ use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 use rustc_type_ir_macros::GenericTypeVisitable;
 
 use self::RegionKind::*;
@@ -226,22 +226,38 @@ where
 {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        std::mem::discriminant(self).stable_hash(hcx, hasher);
+        #[derive(StableHash)]
+        enum Tag {
+            ReErased,
+            ReStatic,
+            ReError,
+            ReBound,
+            ReEarlyParam,
+            ReLateParam,
+            RePlaceholder,
+        }
+
         match self {
-            ReErased | ReStatic | ReError(_) => {
-                // No variant fields to hash for these ...
-            }
+            // No variant fields to hash for these ...
+            ReErased => Tag::ReErased.stable_hash(hcx, hasher),
+            ReStatic => Tag::ReStatic.stable_hash(hcx, hasher),
+            ReError(_) => Tag::ReError.stable_hash(hcx, hasher),
+
             ReBound(d, r) => {
+                Tag::ReBound.stable_hash(hcx, hasher);
                 d.stable_hash(hcx, hasher);
                 r.stable_hash(hcx, hasher);
             }
             ReEarlyParam(r) => {
+                Tag::ReEarlyParam.stable_hash(hcx, hasher);
                 r.stable_hash(hcx, hasher);
             }
             ReLateParam(r) => {
+                Tag::ReLateParam.stable_hash(hcx, hasher);
                 r.stable_hash(hcx, hasher);
             }
             RePlaceholder(r) => {
+                Tag::RePlaceholder.stable_hash(hcx, hasher);
                 r.stable_hash(hcx, hasher);
             }
             ReVar(_) => {

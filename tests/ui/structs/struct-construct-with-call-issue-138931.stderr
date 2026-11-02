@@ -53,9 +53,14 @@ LL | | }
    | |_- `PersonWithAge` defined here
 ...
 LL |       let person = PersonWithAge("Name3".to_owned());
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use struct literal syntax instead: `PersonWithAge { name: val, age: val, height: val }`
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: a struct named `PersonWithAge` exists in another namespace
+help: use struct literal syntax instead
+   |
+LL -     let person = PersonWithAge("Name3".to_owned());
+LL +     let person = PersonWithAge { name: val, age: val, height: val };
+   |
 
 error: aborting due to 3 previous errors
 

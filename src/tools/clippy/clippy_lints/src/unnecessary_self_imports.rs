@@ -40,8 +40,27 @@ impl EarlyLintPass for UnnecessarySelfImports {
                 tree,
                 self_tree,
                 is_toplevel,
+                is_nested,
             } = self_import;
-            let Some(last_segment) = tree.prefix.segments.last() else {
+
+            let (sugg_code, sugg_span) = if is_nested && let Some(last_segment) = tree.prefix.segments.last() {
+                if let UseTreeKind::Simple(Some(alias)) = self_tree.kind {
+                    // Suggest replacing `source::{ident as target}` with `source as target`
+                    (
+                        format!("{} as {alias}", last_segment.ident),
+                        last_segment.span().to(tree.hi_span()),
+                    )
+                } else {
+                    // Suggest removing `::{self}`
+                    (String::new(), last_segment.span().shrink_to_hi().to(tree.hi_span()))
+                }
+            } else if !is_nested && let [.., last_segment, self_segment] = &*self_tree.prefix.segments {
+                // Suggest removing `::self`
+                (
+                    String::new(),
+                    last_segment.span().shrink_to_hi().to(self_segment.span()),
+                )
+            } else {
                 return;
             };
 
@@ -51,20 +70,18 @@ impl EarlyLintPass for UnnecessarySelfImports {
                 // If this is the top-level import, highlight the entirety of it,
                 // i.e. the `use ` and `;` as well
                 if is_toplevel { item.span } else { tree.span() },
-                "import ending with `::{self}`",
+                format!(
+                    "import ending with {}",
+                    if is_nested { "`::{self}`" } else { "`::self`" }
+                ),
                 |diag| {
                     diag.span_suggestion(
-                        last_segment.span().to(tree.hi_span()),
-                        "consider omitting `::{self}`",
+                        sugg_span,
                         format!(
-                            "{}{}",
-                            last_segment.ident,
-                            if let UseTreeKind::Simple(Some(alias)) = self_tree.kind {
-                                format!(" as {alias}")
-                            } else {
-                                String::new()
-                            },
+                            "consider omitting {}",
+                            if is_nested { "`::{self}`" } else { "`::self`" }
                         ),
+                        sugg_code,
                         Applicability::MaybeIncorrect,
                     );
                     diag.note("this will slightly change semantics; any non-module items at the same path will also be imported");
@@ -97,6 +114,7 @@ struct SelfImport<'a> {
     /// };
     /// ```
     is_toplevel: bool,
+    is_nested: bool,
 }
 
 /// Traverses the `use` tree and calls `emit_lint` for every `self` import found
@@ -112,12 +130,24 @@ fn for_each_self_import<'a>(tree: &'a UseTree, emit_lint: impl Fn(SelfImport<'a>
                     tree,
                     self_tree: &self_tree.inner,
                     is_toplevel,
+                    is_nested: true,
                 });
             } else {
                 for subtree in &**items {
                     inner(&subtree.inner, emit_lint, false);
                 }
             }
+        } else if let UseTreeKind::Simple(_) = &tree.kind
+            && tree.prefix.segments.len() > 1
+            && let Some(self_seg) = tree.prefix.segments.last()
+            && self_seg.ident.name == kw::SelfLower
+        {
+            emit_lint(SelfImport {
+                tree,
+                self_tree: tree,
+                is_toplevel,
+                is_nested: false,
+            });
         }
     }
     inner(tree, emit_lint, true);

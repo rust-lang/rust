@@ -350,10 +350,11 @@ impl ItemNameRepetitions {
     fn check_struct_common_affix(&self, cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
         // if the SyntaxContext of the identifiers of the fields and struct differ dont lint them.
         // this prevents linting in macros in which the location of the field identifier names differ
-        if !fields
-            .iter()
-            .all(|field| item.kind.ident().is_some_and(|i| i.span.eq_ctxt(field.ident.span)))
-        {
+        if !fields.iter().all(|field| {
+            item.kind
+                .ident()
+                .is_some_and(|i| i.span.ctxt() == field.ident.span.ctxt())
+        }) {
             return;
         }
 
@@ -429,7 +430,7 @@ impl ItemNameRepetitions {
                 continue;
             }
 
-            if !field.ident.span.eq_ctxt(ident.span) {
+            if field.ident.span.ctxt() != ident.span.ctxt() {
                 // consider linting only if the field identifier has the same SyntaxContext as the item(struct)
                 continue;
             }
@@ -460,6 +461,66 @@ impl ItemNameRepetitions {
                         field.hir_id,
                         field.span,
                         "field name ends with the struct's name",
+                    );
+                }
+            }
+        }
+    }
+
+    fn check_use_tree(&self, cx: &LateContext<'_>, item: &Item<'_>, tree: &UseTree<'_>) {
+        match tree.kind {
+            UseKind::Single(ident) => self.check_name_repetition(cx, item, ident),
+            UseKind::Nested { items, .. } => {
+                for (subtree, ..) in items {
+                    self.check_use_tree(cx, item, subtree);
+                }
+            },
+            UseKind::Glob => {},
+        }
+    }
+
+    fn check_name_repetition(&self, cx: &LateContext<'_>, item: &Item<'_>, ident: Ident) {
+        let item_name = ident.name.as_str();
+        let item_camel = to_camel_case(item_name);
+
+        if let [.., prev] = &*self.modules
+            && prev.is_public
+            && prev.in_body_count == 0
+            && !item.span.from_expansion()
+            && !matches!(item.kind, ItemKind::Macro(..))
+            && cx.tcx.visibility(item.owner_id).is_public()
+        {
+            if !self.allow_exact_repetitions && item_camel == prev.name_camel {
+                if !is_from_proc_macro(cx, item) {
+                    span_lint(
+                        cx,
+                        MODULE_NAME_REPETITIONS,
+                        ident.span,
+                        "item name is the same as its containing module's name",
+                    );
+                }
+            } else if item_camel.len() > prev.name_camel.len() {
+                if let Some(s) = item_camel.strip_prefix(&prev.name_camel)
+                    && let Some(c) = s.chars().next()
+                    && (c == '_' || c.is_uppercase() || c.is_numeric())
+                {
+                    if !is_from_proc_macro(cx, item) {
+                        span_lint(
+                            cx,
+                            MODULE_NAME_REPETITIONS,
+                            ident.span,
+                            "item name starts with its containing module's name",
+                        );
+                    }
+                } else if let Some(s) = item_camel.strip_suffix(&prev.name_camel)
+                    && !self.is_allowed_prefix(s)
+                    && !is_from_proc_macro(cx, item)
+                {
+                    span_lint(
+                        cx,
+                        MODULE_NAME_REPETITIONS,
+                        ident.span,
+                        "item name ends with its containing module's name",
                     );
                 }
             }
@@ -545,60 +606,21 @@ impl LateLintPass<'_> for ItemNameRepetitions {
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
+        if let ItemKind::Use(tree) = item.kind {
+            self.check_use_tree(cx, item, &tree);
+            return;
+        }
+
         let Some(ident) = self.check_item_kind(cx, item) else {
             return;
         };
 
-        let item_name = ident.name.as_str();
-        let item_camel = to_camel_case(item_name);
-
-        if let [.., prev] = &*self.modules
-            && prev.is_public
-            && prev.in_body_count == 0
-            && !item.span.from_expansion()
-            && !matches!(item.kind, ItemKind::Macro(..))
-            && cx.tcx.visibility(item.owner_id).is_public()
-        {
-            if !self.allow_exact_repetitions && item_camel == prev.name_camel {
-                if !is_from_proc_macro(cx, item) {
-                    span_lint(
-                        cx,
-                        MODULE_NAME_REPETITIONS,
-                        ident.span,
-                        "item name is the same as its containing module's name",
-                    );
-                }
-            } else if item_camel.len() > prev.name_camel.len() {
-                if let Some(s) = item_camel.strip_prefix(&prev.name_camel)
-                    && let Some(c) = s.chars().next()
-                    && (c == '_' || c.is_uppercase() || c.is_numeric())
-                {
-                    if !is_from_proc_macro(cx, item) {
-                        span_lint(
-                            cx,
-                            MODULE_NAME_REPETITIONS,
-                            ident.span,
-                            "item name starts with its containing module's name",
-                        );
-                    }
-                } else if let Some(s) = item_camel.strip_suffix(&prev.name_camel)
-                    && !self.is_allowed_prefix(s)
-                    && !is_from_proc_macro(cx, item)
-                {
-                    span_lint(
-                        cx,
-                        MODULE_NAME_REPETITIONS,
-                        ident.span,
-                        "item name ends with its containing module's name",
-                    );
-                }
-            }
-        }
+        self.check_name_repetition(cx, item, ident);
 
         if matches!(item.kind, ItemKind::Mod(..)) {
             self.modules.push(ModInfo {
                 name: ident.name,
-                name_camel: item_camel,
+                name_camel: to_camel_case(ident.name.as_str()),
                 is_public: cx.tcx.visibility(item.owner_id).is_public(),
                 in_body_count: 0,
             });

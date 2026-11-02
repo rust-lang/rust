@@ -1,2 +1,4 @@
 #gcc-path = "gcc-build/gcc"
 download-gccjit = true
+#backend-path = "path/to/librustc_codegen_gcc.so"
+#sysroot-path = "path/to/sysroot"

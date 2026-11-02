@@ -44,7 +44,7 @@ use rustc_session::{IncrCompSession, Session};
 use rustc_span::{
     DUMMY_SP, ErrorGuaranteed, ExpnKind, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
 };
-use rustc_structures::{CrateType, Limit};
+use rustc_structures::CrateType;
 use rustc_trait_selection::{solve, traits};
 use tracing::{info, instrument};
 
@@ -201,7 +201,7 @@ fn configure_and_expand(
         }
 
         // Create the config for macro expansion
-        let recursion_limit = get_recursion_limit(pre_configured_attrs, sess);
+        let recursion_limit = tcx.recursion_limit();
         let cfg = rustc_expand::expand::ExpansionConfig {
             crate_name,
             features,
@@ -265,6 +265,10 @@ fn configure_and_expand(
             resolver.lint_buffer(),
         )
     });
+
+    if features.rustc_attrs() {
+        rustc_ast_passes::show_spans::check_crate(sess, &krate);
+    }
 
     let crate_types = tcx.crate_types();
     let is_executable_crate = crate_types.contains(&CrateType::Executable);
@@ -896,12 +900,12 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.queries.analysis = analysis;
     providers.queries.resolver_for_lowering_raw = resolver_for_lowering_raw;
     providers.queries.stripped_cfg_items = |tcx, _| &tcx.resolutions(()).stripped_cfg_items[..];
+    providers.queries.get_lang_items = |tcx, ()| &tcx.resolutions(()).lang_items;
     providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).2;
     providers.queries.early_lint_checks = early_lint_checks;
     providers.queries.env_var_os = env_var_os;
     providers.queries.proc_macro_decls_static = |tcx, _| tcx.hir_crate_items(()).proc_macro_decls();
     rustc_ast_lowering::provide(&mut providers.queries);
-    limits::provide(&mut providers.queries);
     rustc_expand_queries::provide(&mut providers.queries);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(&mut providers.queries);
@@ -1033,11 +1037,13 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             feed.crate_name(crate_name);
 
             let feed = tcx.feed_unit_query();
-            feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
+            let features = tcx.arena.alloc(rustc_expand::config::features(
                 tcx.sess,
                 &pre_configured_attrs,
                 crate_name,
-            )));
+            ));
+            feed.features_query(features);
+            feed.limits(limits::get_limits(&pre_configured_attrs, tcx.sess, features));
             feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
             feed.output_filenames(Arc::new(outputs));
 
@@ -1137,13 +1143,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                     tcx.ensure_ok().check_mod_attrs(module);
                     tcx.ensure_ok().check_mod_unstable_api_usage(module);
                 });
-            },
-            &mut || {
-                // We force these queries to run,
-                // since they might not otherwise get called.
-                // This marks the corresponding crate-level attributes
-                // as used, and ensures that their values are valid.
-                tcx.ensure_ok().limits(());
             },
         ]);
     });
@@ -1518,20 +1517,4 @@ pub fn collect_crate_types(
 /// option for now
 fn default_output_for_target(sess: &Session) -> CrateType {
     if !sess.target.executables { CrateType::StaticLib } else { CrateType::Executable }
-}
-
-fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {
-    let attr = AttributeParser::parse_limited_sym_should_emit(
-        sess,
-        &krate_attrs,
-        &[sym::recursion_limit],
-        DUMMY_SP,
-        None,
-        // errors are fatal here, but lints aren't.
-        // If things aren't fatal we continue, and will parse this again.
-        // That makes the same lint trigger again.
-        // So, no lints here to avoid duplicates.
-        ShouldEmit::EarlyFatal { also_emit_lints: false },
-    );
-    crate::limits::get_recursion_limit(attr.as_slice(), sess)
 }

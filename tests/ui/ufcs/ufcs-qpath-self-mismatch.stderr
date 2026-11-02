@@ -40,6 +40,12 @@ LL |     <i32 as Add<i32>>::add(1u32, 2);
    |                            this argument influences the return type of `add`
 note: method defined here
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+note: method provided through this `impl`
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+   = note: in this macro invocation
+   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: change the type of the numeric literal from `u32` to `i32`
    |
 LL -     <i32 as Add<i32>>::add(1u32, 2);
@@ -63,6 +69,12 @@ LL |     <i32 as Add<i32>>::add(1, 2u32);
    |                               this argument influences the return type of `add`
 note: method defined here
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+note: method provided through this `impl`
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+   = note: in this macro invocation
+   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: change the type of the numeric literal from `u32` to `i32`
    |
 LL -     <i32 as Add<i32>>::add(1, 2u32);

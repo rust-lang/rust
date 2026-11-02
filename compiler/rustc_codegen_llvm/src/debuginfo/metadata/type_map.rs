@@ -314,7 +314,7 @@ pub(super) fn build_type_with_children<'ll, 'tcx>(
             // FIXME: indicate that this is an expanding recursive type in stub metadata?
             return DINodeCreationResult::new(stub_info.metadata, false);
         } else {
-            debug_context(cx).adt_stack.borrow_mut().push((def_id, args));
+            debug_context(cx).adt_stack.borrow_mut().push((def_id, *args));
             _adt_stack_pop_guard = Some(AdtStackPopGuard { cx });
         }
     }

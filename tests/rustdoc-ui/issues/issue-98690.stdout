@@ -1,0 +1,15 @@
+
+running 1 test
+test $DIR/issue-98690.rs - (line 9) ... FAILED
+
+failures:
+
+---- $DIR/issue-98690.rs - (line 9) stdout ----
+Couldn't create directory for doctest executables: Permission denied (os error 13)
+
+
+failures:
+    $DIR/issue-98690.rs - (line 9)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

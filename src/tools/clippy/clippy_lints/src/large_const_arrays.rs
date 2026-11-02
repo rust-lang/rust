@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
-use rustc_middle::ty::consts::ConstExt as _;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Ty, Unnormalized};
 use rustc_span::{BytePos, Pos as _, Span};
@@ -50,7 +49,7 @@ impl LargeConstArrays {
         match ty.kind() {
             ty::Adt(adt_def, args) => adt_def
                 .all_fields()
-                .any(|f| self.check_impl(cx, f.ty(cx.tcx, args).skip_norm_wip())),
+                .any(|f| self.check_impl(cx, f.ty(cx.tcx, *args).skip_norm_wip())),
             ty::Array(element_type, cst) => {
                 let normalized = cx
                     .tcx

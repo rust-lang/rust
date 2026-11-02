@@ -3,6 +3,8 @@ error: the `coroutine` attribute cannot be used on structs
    |
 LL | #[coroutine]
    |   ^^^^^^^^^
+LL |
+LL | struct Foo;
    |
    = help: the `coroutine` attribute can only be applied to closures
 
@@ -11,6 +13,8 @@ error: the `coroutine` attribute cannot be used on functions
    |
 LL | #[coroutine]
    |   ^^^^^^^^^
+LL |
+LL | fn main() {}
    |
    = help: the `coroutine` attribute can only be applied to closures
 

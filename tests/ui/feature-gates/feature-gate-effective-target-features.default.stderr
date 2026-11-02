@@ -20,12 +20,15 @@ LL |     fn foo(&self) {}
 error[E0053]: method `foo` has an incompatible type for trait
   --> $DIR/feature-gate-effective-target-features.rs:24:5
    |
+LL | impl Foo for Bar2 {
+...
 LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^ expected safe fn, found unsafe fn
    |
 note: type in trait
   --> $DIR/feature-gate-effective-target-features.rs:8:5
    |
+LL | trait Foo {
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
    = note: expected signature `fn(&Bar2)`

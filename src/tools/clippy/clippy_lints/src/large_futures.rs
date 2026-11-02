@@ -65,11 +65,13 @@ impl<'tcx> LateLintPass<'tcx> for LargeFuture {
             && let ty = cx.typeck_results().expr_ty(arg)
             && let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
             && implements_trait(cx, ty, future_trait_def_id, &[])
-            && let typing_env = cx.typing_env().with_codegen_normalized(cx.tcx)
+            && let ty::PseudoCanonicalInput { typing_env, value: ty } = cx
+                .typing_env()
+                .with_codegen_normalized_invalidating_rigid_aliases(cx.tcx, ty)
             // Aliases that were rigid during type checking can be revealed in codegen mode.
             && let Ok(ty) = cx.tcx.try_normalize_erasing_regions(
                 typing_env,
-                ty::set_aliases_to_non_rigid(cx.tcx, ty),
+                ty::Unnormalized::new_wip(ty),
             )
             && let Ok(layout) = cx.tcx.layout_of(typing_env.as_query_input(ty))
             && let size = layout.layout.size()

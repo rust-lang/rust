@@ -1,5 +1,11 @@
 #![warn(clippy::manual_ok_or)]
 #![expect(clippy::disallowed_names, clippy::redundant_closure)]
+#![allow(
+    dead_code,
+    unused_must_use,
+    clippy::or_fun_call,
+    clippy::unnecessary_lazy_evaluations
+)]
 
 fn main() {
     // basic case

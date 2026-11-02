@@ -4,10 +4,6 @@
 // Two threads race to initialize a key, which is just an index into an array in this test.
 // The (Acquire, Release) orderings on the compare_exchange prevent any data races for reading from `VALUES[key]`.
 
-// FIXME(genmc): GenMC does not model the failure ordering of compare_exchange currently.
-// Miri thus upgrades the success ordering to prevent showing any false data races in cases like this one.
-// Once GenMC supports the failure ordering, this test should work without the upgrading.
-
 #![no_main]
 
 #[path = "../../../utils/genmc.rs"]

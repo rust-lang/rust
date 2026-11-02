@@ -34,7 +34,7 @@ fn assert_typing_mode(typing_mode: ty::TypingMode<'_>) {
             ty::TypingMode::Coherence
             | ty::TypingMode::Typeck { .. }
             | ty::TypingMode::Reflection
-            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+            | ty::TypingMode::PostTypeckThroughBorrowck { .. }
             | ty::TypingMode::PostBorrowck { .. } => bug!(
                 "Const eval should always happens in PostAnalysis or Codegen mode. See the comment on `assert_typing_mode` for more details."
             ),

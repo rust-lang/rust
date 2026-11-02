@@ -174,13 +174,13 @@ impl Mode {
                 "only `Self` and generics of the implementation are allowed as a format argument"
             }
             Self::DiagnosticOnMove => {
-                "only `This`, `Self` and generics of the type are allowed as a format argument"
+                "only `this`, `Self` and generics of the type are allowed as a format argument"
             }
             Self::DiagnosticOnUnknown => {
-                "only `This` is allowed as a format argument, referring to the failed import"
+                "only `this` is allowed as a format argument, referring to the failed import"
             }
             Self::DiagnosticOnUnmatchedArgs => {
-                "only `This` is allowed as a format argument, referring to the macro's name"
+                "only `this` is allowed as a format argument, referring to the macro's name"
             }
             Self::DiagnosticOnTypeError => {
                 "only `note` is allowed as option for `diagnostic::on_type_error`"
@@ -515,10 +515,10 @@ fn parse_arg(
     let ret = match arg.position {
         // Something like "hello {name}"
         Position::ArgumentNamed(name) => match (mode, Symbol::intern(name)) {
-            (Mode::RustcOnUnimplemented, sym::ItemContext) => FormatArg::ItemContext,
+            (Mode::RustcOnUnimplemented, sym::item_context) => FormatArg::ItemContext,
 
-            // `{This:ty}`
-            (Mode::RustcOnUnimplemented, sym::This) => match arg.format.ty {
+            // `{this:ty}`
+            (Mode::RustcOnUnimplemented, sym::this) => match arg.format.ty {
                 "resolved" => {
                     check_format = false;
                     FormatArg::ThisResolved
@@ -530,11 +530,11 @@ fn parse_arg(
                 _ => FormatArg::This,
             },
 
-            (Mode::DiagnosticOnTypeError, sym::Found) => FormatArg::Found,
-            (Mode::DiagnosticOnTypeError, sym::Expected) => FormatArg::Expected,
-            (Mode::DiagnosticOnUnknown, sym::Unresolved) => FormatArg::Unresolved,
+            (Mode::DiagnosticOnTypeError, sym::found) => FormatArg::Found,
+            (Mode::DiagnosticOnTypeError, sym::expected) => FormatArg::Expected,
+            (Mode::DiagnosticOnUnknown, sym::unresolved) => FormatArg::Unresolved,
 
-            // Some diagnostic attributes can use `{This}` to refer to the annotated item.
+            // Some diagnostic attributes can use `{this}` to refer to the annotated item.
             // For those that don't, we continue and maybe use it as a generic parameter.
             //
             // FIXME(mejrs) `DiagnosticOnUnimplemented` is intentionally not here;
@@ -544,13 +544,13 @@ fn parse_arg(
                 | Mode::DiagnosticOnMove
                 | Mode::DiagnosticOnUnmatchedArgs
                 | Mode::DiagnosticOnTypeError,
-                sym::This,
+                sym::this,
             ) => FormatArg::This,
 
             // `{Self}`; the self type.
             // - For trait declaration attributes that's the type that does not implement it.
             // - for trait impl attributes, the implemented for type.
-            // - For ADT attributes, that's the type (which will be identical to `{This}`)
+            // - For ADT attributes, that's the type (which will be identical to `{this}`)
             // - For everything else it doesn't make sense.
             (
                 Mode::RustcOnUnimplemented

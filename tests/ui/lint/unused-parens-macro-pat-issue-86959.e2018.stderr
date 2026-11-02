@@ -1,5 +1,5 @@
 error: unnecessary parentheses around pattern
-  --> $DIR/unused-parens-macro-pat-issue-86959.rs:76:16
+  --> $DIR/unused-parens-macro-pat-issue-86959.rs:77:16
    |
 LL |     match_pat!(('a'));
    |                ^   ^
@@ -16,7 +16,7 @@ LL +     match_pat!('a');
    |
 
 error: unnecessary parentheses around pattern
-  --> $DIR/unused-parens-macro-pat-issue-86959.rs:54:13
+  --> $DIR/unused-parens-macro-pat-issue-86959.rs:55:13
    |
 LL | macro_rules! body_or_pat {
 ...
@@ -27,7 +27,7 @@ LL |     body_or_pat!();
    |     -------------- in this macro invocation
 
 error: unnecessary parentheses around pattern
-  --> $DIR/unused-parens-macro-pat-issue-86959.rs:80:9
+  --> $DIR/unused-parens-macro-pat-issue-86959.rs:81:9
    |
 LL |     let (_x) = 1;
    |         ^  ^

@@ -1,6 +1,6 @@
-// rustfmt-unstable: true
-// rustfmt-style_edition: 2024
-// rustfmt-skip_children: true
+//@ rustfmt-unstable: true
+//@ rustfmt-style_edition: 2024
+//@ rustfmt-skip_children: true
 
 // empty cfg_select!
 // Original `{}` delimiters

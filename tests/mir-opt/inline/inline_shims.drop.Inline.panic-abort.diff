@@ -89,6 +89,7 @@
       }
   
       bb1: {
++         _3 = const ();
 +         StorageDead(_8);
 +         StorageDead(_7);
 +         StorageDead(_6);
@@ -105,6 +106,7 @@
       }
   
       bb2: {
++         _8 = const ();
 +         StorageDead(_16);
 +         StorageDead(_15);
 +         StorageDead(_14);
@@ -121,11 +123,12 @@
 +     }
 + 
 +     bb4: {
-+         _16 = Eq(copy _14, copy _11);
++         _16 = Eq(copy _11, copy _14);
 +         switchInt(move _16) -> [0: bb3, otherwise: bb2];
 +     }
 + 
 +     bb5: {
++         _0 = const ();
 +         StorageDead(_18);
 +         StorageDead(_17);
           StorageDead(_5);

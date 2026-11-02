@@ -1431,3 +1431,55 @@ fn extract_if_pred_panic_leak() {
     assert_eq!(DROPS.get(), 2); // 0 and 1
     assert_eq!(q.len(), 6);
 }
+
+#[test]
+fn test_custom_allocator_balanced() {
+    use core::alloc::{AllocError, Allocator, Layout};
+    use core::cell::Cell;
+    use core::ptr::NonNull;
+
+    struct CountingAlloc<'a> {
+        live: &'a Cell<isize>,
+        dropped: &'a Cell<isize>,
+    }
+
+    impl<'a> Drop for CountingAlloc<'a> {
+        fn drop(&mut self) {
+            self.dropped.set(self.dropped.get() + 1);
+        }
+    }
+
+    unsafe impl Allocator for CountingAlloc<'_> {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            let ptr = Global.allocate(layout)?;
+            self.live.set(self.live.get() + 1);
+            Ok(ptr)
+        }
+
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            self.live.set(self.live.get() - 1);
+            unsafe { Global.deallocate(ptr, layout) }
+        }
+    }
+
+    let live = Cell::new(0);
+    let dropped = Cell::new(0);
+    {
+        let mut d = VecDeque::new_in(CountingAlloc { live: &live, dropped: &dropped });
+        assert_eq!(live.get(), 0);
+
+        for i in 0..4 {
+            d.push_back(i);
+        }
+        d.pop_front();
+        d.pop_front();
+        d.push_back(4);
+        d.push_back(5);
+        d.push_back(6);
+        assert_eq!(d.iter().copied().collect::<Vec<_>>(), [2, 3, 4, 5, 6]);
+        assert_eq!(live.get(), 1);
+        assert_eq!(dropped.get(), 0);
+    }
+    assert_eq!(live.get(), 0);
+    assert_eq!(dropped.get(), 1);
+}

@@ -71,35 +71,27 @@ macro_rules! tuple_impls {
                 }
                 #[inline]
                 fn lt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(lt, __chaining_lt, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
+                    lexical_ord!(lt, __chaining_less, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn le(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(le, __chaining_le, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
+                    lexical_ord!(le, __chaining_less, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn ge(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(ge, __chaining_ge, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
+                    lexical_ord!(ge, __chaining_greater, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn gt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(gt, __chaining_gt, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
+                    lexical_ord!(gt, __chaining_greater, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn __chaining_lt(&self, other: &($($T,)+)) -> ControlFlow<bool> {
-                    lexical_chain!(__chaining_lt, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
+                fn __chaining_less(&self, other: &($($T,)+)) -> ControlFlow<bool> {
+                    lexical_chain!(__chaining_less, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn __chaining_le(&self, other: &($($T,)+)) -> ControlFlow<bool> {
-                    lexical_chain!(__chaining_le, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
-                }
-                #[inline]
-                fn __chaining_gt(&self, other: &($($T,)+)) -> ControlFlow<bool> {
-                    lexical_chain!(__chaining_gt, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
-                }
-                #[inline]
-                fn __chaining_ge(&self, other: &($($T,)+)) -> ControlFlow<bool> {
-                    lexical_chain!(__chaining_ge, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
+                fn __chaining_greater(&self, other: &($($T,)+)) -> ControlFlow<bool> {
+                    lexical_chain!(__chaining_greater, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
             }
         }
@@ -206,13 +198,14 @@ macro_rules! lexical_ord {
 
 // Same parameter interleaving as `lexical_ord` above
 macro_rules! lexical_chain {
-    ($chain_rel: ident, $a:expr, $b:expr $(,$rest_a:expr, $rest_b:expr)*) => {{
-        PartialOrd::$chain_rel(&$a, &$b)?;
-        lexical_chain!($chain_rel $(,$rest_a, $rest_b)*)
-    }};
-    ($chain_rel: ident) => {
+    ($chain_rel:ident $(, $a:expr, $b:expr)* $(,)?) => {{
+        // Using `?` here makes this harder on mir-opt due
+        // to the `Try` residuals bloating the function
+        $(if let r @ Break(_) = PartialOrd::$chain_rel(&$a, &$b) {
+            return r;
+        })*
         Continue(())
-    };
+    }};
 }
 
 macro_rules! lexical_partial_cmp {

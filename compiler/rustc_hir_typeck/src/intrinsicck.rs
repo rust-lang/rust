@@ -1,11 +1,13 @@
 use hir::HirId;
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::VariantIdx;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
+use rustc_middle::ty::offload_meta::is_region_ty;
 use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, bug};
@@ -134,6 +136,28 @@ fn check_transmute<'tcx>(
     }
 }
 
+fn contains_nested_offload_region<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    let mut visited = FxHashSet::default();
+    let mut stack = vec![ty];
+    let mut is_root = true;
+
+    while let Some(ty) = stack.pop() {
+        if !is_root && is_region_ty(tcx, ty) {
+            return true;
+        }
+        is_root = false;
+
+        if let ty::Adt(def, args) = *ty.kind()
+            && visited.insert(def.did())
+        {
+            stack.extend(def.all_fields().map(|field| field.ty(tcx, args).skip_norm_wip()));
+        }
+        stack.extend(ty.walk().skip(1).filter_map(|arg| arg.as_type()));
+    }
+
+    false
+}
+
 fn check_offload<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
@@ -205,7 +229,23 @@ fn check_offload<'tcx>(
     {
         let norm_input_ty = normalize(input_ty);
         let norm_arg_ty = normalize(arg_ty);
-        if norm_input_ty != norm_arg_ty {
+
+        if contains_nested_offload_region(tcx, norm_input_ty)
+            || contains_nested_offload_region(tcx, norm_arg_ty)
+        {
+            let guar = tcx
+                .sess
+                .dcx()
+                .struct_span_err(
+                    span,
+                    format!(
+                        "offload kernel argument {i} contains a `Region` nested inside another \
+                        type. Pass the `Region` by value so it can be mapped like a slice"
+                    ),
+                )
+                .emit_err();
+            result = Err(guar);
+        } else if norm_input_ty != norm_arg_ty {
             let guar = tcx
                 .sess
                 .dcx()

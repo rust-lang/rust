@@ -1,6 +1,5 @@
 use rustc_abi::{Align, FieldIdx, WrappingRange};
 use rustc_middle::mir::SourceInfo;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::{ErrorGuaranteed, bug, span_bug, sym};
@@ -126,6 +125,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | sym::cold_path
                 | sym::gpu_launch_sized_workgroup_mem
                 | sym::breakpoint
+                | sym::codeview_annotation
                 | sym::amdgpu_dispatch_ptr
                 | sym::assert_zero_valid
                 | sym::assert_mem_uninitialized_valid
@@ -181,11 +181,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
                     _ => bug!(),
                 };
-                let value = meth::VirtualIndex::from_index(idx).get_usize(
-                    bx,
-                    vtable,
-                    instance.ty(bx.tcx(), bx.typing_env()),
-                );
+                let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
                 match name {
                     // Size is always <= isize::MAX.
                     sym::vtable_size => {
@@ -207,7 +203,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let layout = bx.layout_of(ty);
                 let ptr = args[0].immediate();
                 let offset = args[1].immediate();
-                OperandValue::Immediate(bx.gep(bx.backend_type(layout), ptr, &[offset]))
+                OperandValue::Immediate(bx.gep(layout.size, ptr, offset))
             }
             sym::copy => {
                 copy_intrinsic(

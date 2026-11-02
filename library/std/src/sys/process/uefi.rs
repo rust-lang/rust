@@ -195,9 +195,9 @@ pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>
         }
     }
 
-    let stat = cmd.start_image()?;
+    let stat = cmd.start_image();
 
-    // Rollback any env changes
+    // Rollback any env changes, even if the image failed to start
     if let Some(e) = env {
         for (k, (v, _)) in e {
             match v {
@@ -206,6 +206,8 @@ pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>
             }
         }
     }
+
+    let stat = stat?;
 
     let stdout = cmd.stdout()?;
     let stderr = cmd.stderr()?;

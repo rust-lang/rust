@@ -110,7 +110,7 @@ pub(crate) fn check_abi_required_features(sess: &Session) {
     // emit a (less friendly) hard error.
     // Also make it a hard error on x86, where we use SSE registers for the "Rust" ABI. The
     // post-mono ABI check only systematically checks "C" calls, so we better reject this here.
-    let hard_error = matches!(sess.target.arch, Arch::Arm | Arch::X86);
+    let hard_error = matches!(sess.target.arch, Arch::AArch64 | Arch::Arm | Arch::X86);
 
     for feature in abi_feature_constraints.required {
         if !sess.internal_target_features.contains(&Symbol::intern(feature)) {

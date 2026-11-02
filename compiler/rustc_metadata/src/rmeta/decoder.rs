@@ -41,6 +41,7 @@ use tracing::debug;
 
 use crate::creader::CStore;
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::table::IsDefault;
 use crate::rmeta::*;
 
@@ -103,7 +104,7 @@ pub(crate) struct CrateMetadata {
     /// FIXME: make type of the value `LazyArray<(DefIndex, Option<SimplifiedType>)>`
     /// through transmuting or somehow else, as `LocalDefId` here should be `DefIndex`,
     /// as it is from external crate.
-    trait_impls: FxIndexMap<RawDefId, LazyArray<(LocalDefId, Option<SimplifiedType>)>>,
+    trait_impls: FxIndexMap<RemappedRawDefId, LazyArray<(LocalDefId, Option<SimplifiedType>)>>,
     /// Inherent impls which do not follow the normal coherence rules.
     ///
     /// These can be introduced using either `#![rustc_coherence_is_core]`
@@ -195,8 +196,14 @@ pub(super) trait LazyDecoder: BlobDecoder {
         self.read_lazy_offset_then(|pos| LazyArray::from_position_and_num_elems(pos, len))
     }
 
-    fn read_lazy_table<Ie, Id, T>(&mut self, width: usize, len: usize) -> LazyTable<Ie, Id, T> {
-        self.read_lazy_offset_then(|pos| LazyTable::from_position_and_encoded_size(pos, width, len))
+    fn read_lazy_table<Ie, Id, T>(
+        &mut self,
+        width_and_sparse: usize,
+        len: usize,
+    ) -> LazyTable<Ie, Id, T> {
+        self.read_lazy_offset_then(|pos| {
+            LazyTable::from_position_and_encoded_size(pos, width_and_sparse, len)
+        })
     }
 
     #[inline]
@@ -466,15 +473,21 @@ impl<'a, 'tcx> SpanDecoder for MetadataDecodeContext<'a, 'tcx> {
         let tcx = self.tcx;
 
         let cname = cdata.root.name();
-        rustc_span::hygiene::decode_syntax_context(self, &cdata.hygiene_context, |_, id| {
-            debug!("SpecializedDecoder<SyntaxContext>: decoding {}", id);
-            cdata
-                .root
-                .syntax_contexts
-                .get(cdata, id)
-                .unwrap_or_else(|| panic!("Missing SyntaxContext {id:?} for crate {cname:?}"))
-                .decode((cdata, tcx))
-        })
+        rustc_span::hygiene::decode_syntax_context(
+            self,
+            &cdata.hygiene_context,
+            |_, external_ctxt| {
+                debug!("SpecializedDecoder<SyntaxContext>: decoding {:?}", external_ctxt);
+                cdata
+                    .root
+                    .syntax_contexts
+                    .get(cdata, external_ctxt)
+                    .unwrap_or_else(|| {
+                        panic!("Missing SyntaxContext {external_ctxt:?} for crate {cname:?}")
+                    })
+                    .decode((cdata, tcx))
+            },
+        )
     }
 
     fn decode_expn_id(&mut self) -> ExpnId {
@@ -688,9 +701,9 @@ impl<D: LazyDecoder, T> Decodable<D> for LazyArray<T> {
 
 impl<Ie: Idx, Id: Idx, D: LazyDecoder, T> Decodable<D> for LazyTable<Ie, Id, T> {
     fn decode(decoder: &mut D) -> Self {
-        let width = decoder.read_usize();
+        let width_and_sparse = decoder.read_usize();
         let len = decoder.read_usize();
-        decoder.read_lazy_table(width, len)
+        decoder.read_lazy_table(width_and_sparse, len)
     }
 }
 
@@ -2163,10 +2176,10 @@ impl CrateMetadata {
 
     // Translate a DefId from the current compilation environment to a DefId
     // for an external crate.
-    fn reverse_translate_def_id(&self, did: DefId) -> Option<RawDefId> {
+    fn reverse_translate_def_id(&self, did: DefId) -> Option<RemappedRawDefId> {
         for (local, &global) in self.cnum_map.iter_enumerated() {
             if global == did.krate {
-                return Some(RawDefId { krate: local.as_u32(), index: did.index.as_u32() });
+                return Some(RemappedRawDefId::new_unchecked(local.as_u32(), did.index.as_u32()));
             }
         }
 

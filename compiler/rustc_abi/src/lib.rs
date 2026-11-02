@@ -781,20 +781,20 @@ impl TargetDataLayout {
 
     /// Get the pointer alignment in the default data address space.
     #[inline]
-    pub fn pointer_align(&self) -> AbiAlign {
-        AbiAlign::new(self.default_address_space_pointer_spec.pointer_align)
+    pub fn pointer_align(&self) -> Align {
+        self.default_address_space_pointer_spec.pointer_align
     }
 
     /// Get the pointer alignment in a specific address space.
     #[inline]
-    pub fn pointer_align_in(&self, c: AddressSpace) -> AbiAlign {
-        AbiAlign::new(if c == self.default_address_space {
+    pub fn pointer_align_in(&self, c: AddressSpace) -> Align {
+        if c == self.default_address_space {
             self.default_address_space_pointer_spec.pointer_align
         } else if let Some(e) = self.address_space_info.iter().find(|(a, _)| a == &c) {
             e.1.pointer_align
         } else {
             panic!("Use of unknown address space {c:?}");
-        })
+        }
     }
 }
 
@@ -1133,6 +1133,7 @@ impl fmt::Display for AlignFromBytesError {
 
 impl Align {
     pub const ONE: Align = Align { pow2: 0 };
+    pub const FOUR: Align = Align { pow2: 2 };
     pub const EIGHT: Align = Align { pow2: 3 };
     // LLVM has a maximal supported alignment of 2^29, we inherit that.
     pub const MAX: Align = Align { pow2: 29 };
@@ -1224,10 +1225,16 @@ impl Align {
 ///
 /// An example of a rare thing actually affected by preferred alignment is aligning of statics.
 /// It is of effectively no consequence for layout in structs and on the stack.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct AbiAlign {
     pub abi: Align,
+}
+
+impl fmt::Debug for AbiAlign {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.abi, f)
+    }
 }
 
 impl AbiAlign {
@@ -1311,17 +1318,17 @@ impl Integer {
         }
     }
 
-    pub fn align<C: HasDataLayout>(self, cx: &C) -> AbiAlign {
+    pub fn align<C: HasDataLayout>(self, cx: &C) -> Align {
         use Integer::*;
         let dl = cx.data_layout();
 
-        AbiAlign::new(match self {
+        match self {
             I8 => dl.i8_align,
             I16 => dl.i16_align,
             I32 => dl.i32_align,
             I64 => dl.i64_align,
             I128 => dl.i128_align,
-        })
+        }
     }
 
     /// Returns the largest signed value that can be represented by this Integer.
@@ -1382,7 +1389,7 @@ impl Integer {
         let dl = cx.data_layout();
 
         [I8, I16, I32, I64, I128].into_iter().find(|&candidate| {
-            wanted == candidate.align(dl).abi && wanted.bytes() == candidate.size().bytes()
+            wanted == candidate.align(dl) && wanted.bytes() == candidate.size().bytes()
         })
     }
 
@@ -1393,7 +1400,7 @@ impl Integer {
 
         // FIXME(eddyb) maybe include I128 in the future, when it works everywhere.
         for candidate in [I64, I32, I16] {
-            if wanted >= candidate.align(dl).abi && wanted.bytes() >= candidate.size().bytes() {
+            if wanted >= candidate.align(dl) && wanted.bytes() >= candidate.size().bytes() {
                 return candidate;
             }
         }
@@ -1447,17 +1454,17 @@ impl Float {
         }
     }
 
-    pub fn align<C: HasDataLayout>(self, cx: &C) -> AbiAlign {
+    pub fn align<C: HasDataLayout>(self, cx: &C) -> Align {
         use Float::*;
         let dl = cx.data_layout();
 
-        AbiAlign::new(match self {
+        match self {
             F16 | F16B => dl.f16_align,
             F32 => dl.f32_align,
             F64 => dl.f64_align,
             F128 => dl.f128_align,
             PpcF128 => dl.f128_align,
-        })
+        }
     }
 
     pub fn ty_str(self) -> &'static str {
@@ -1470,6 +1477,15 @@ impl Float {
             F64 => "f64",
             F128 => "f128",
             PpcF128 => "ppcf128",
+        }
+    }
+
+    pub fn is_ieee(self) -> bool {
+        use Float::*;
+
+        match self {
+            F16 | F32 | F64 | F128 => true,
+            F16B | PpcF128 => false,
         }
     }
 }
@@ -1557,7 +1573,7 @@ impl Primitive {
     ///
     /// This is the type alignment for the corresponding built-in.
     /// In other contexts it might have different alignment.
-    pub fn default_align<C: HasDataLayout>(self, cx: &C) -> AbiAlign {
+    pub fn default_align<C: HasDataLayout>(self, cx: &C) -> Align {
         use Primitive::*;
         let dl = cx.data_layout();
 
@@ -1634,7 +1650,7 @@ impl Scalar {
     ///
     /// This is the type alignment for the corresponding built-in.
     /// This is *not* necessarily the correct alignment for a type that has this `BackendRepr::Scalar`!
-    pub fn default_align(self, cx: &impl HasDataLayout) -> AbiAlign {
+    pub fn default_align(self, cx: &impl HasDataLayout) -> Align {
         self.primitive().default_align(cx)
     }
 
@@ -1947,9 +1963,9 @@ impl BackendRepr {
     /// not calculating something from the `Scalar`s.
     pub fn scalar_platform_align<C: HasDataLayout>(&self, cx: &C) -> Option<Align> {
         match *self {
-            BackendRepr::Scalar(s) => Some(s.default_align(cx).abi),
+            BackendRepr::Scalar(s) => Some(s.default_align(cx)),
             BackendRepr::ScalarPair { a: s1, b: s2, b_offset: _ } => {
-                Some(s1.default_align(cx).max(s2.default_align(cx)).abi)
+                Some(s1.default_align(cx).max(s2.default_align(cx)))
             }
             // The align of a Vector can vary in surprising ways
             BackendRepr::SimdVector { .. }
@@ -2459,16 +2475,34 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// aggregates are passed via `PassMode::Indirect`, `PassMode::IndirectUnsized` or
     /// `PassMode::Cast`; more strict checks would otherwise be required.
     pub fn eq_abi(&self, other: &Self) -> bool {
+        let LayoutData {
+            size,
+            align,
+            backend_repr,
+            // We assume aggregates are passed via `Cast` or `Indirect*` so their details either
+            // do not matter or they are checked by `PassMode::eq_abi`.
+            fields: _,
+            variants: _,
+            // Inhabitedness and niches are not ABI-relevant.
+            largest_niche: _,
+            uninhabited: _,
+            // max_repr_align, unadjusted_abi_align, repr_c are not read directly by codegen
+            // backends. They are only used to compute `PassMode`. So we can ignore them here, any
+            // differences they may cause are picked up by the `PassMode` check.
+            max_repr_align: _,
+            unadjusted_abi_align: _,
+            repr_c: _,
+            // The seed does not affect the ABI.
+            randomization_seed: _,
+        } = self;
         // The one thing that we are not capturing here is that for unsized types, the metadata must
         // also have the same ABI, and moreover that the same metadata leads to the same size. The
         // 2nd point is quite hard to check though.
-        self.size == other.size
-            && self.is_sized() == other.is_sized()
-            && self.backend_repr.eq_up_to_validity(&other.backend_repr)
-            && self.backend_repr.is_bool() == other.backend_repr.is_bool()
-            && self.align.abi == other.align.abi
-            && self.max_repr_align == other.max_repr_align
-            && self.unadjusted_abi_align == other.unadjusted_abi_align
+        *size == other.size
+            && *align == other.align
+            && backend_repr.eq_up_to_validity(&other.backend_repr)
+            // `is_bool` checks validity and is ABI-relevant, so we need to consider it.
+            && backend_repr.is_bool() == other.backend_repr.is_bool()
     }
 }
 

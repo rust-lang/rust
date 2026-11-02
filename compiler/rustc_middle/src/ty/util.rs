@@ -4,7 +4,7 @@ use std::{fmt, iter};
 
 use rustc_abi::{Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
-use rustc_attr_ir::find_attr;
+use rustc_attr_ir::{NotableTraitColor, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_errors::ErrorGuaranteed;
@@ -26,10 +26,9 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::query::Providers;
 use crate::traits::ObligationCause;
-use crate::ty::consts::ConstExt;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
-    self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
+    self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgs, Ty, TyCtxt, TypeFoldable,
     TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized,
 };
 
@@ -773,7 +772,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn try_expand_impl_trait_type(
         self,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
         let mut visitor = OpaqueTypeExpander {
             seen_opaque_tys: FxHashSet::default(),
@@ -983,7 +982,7 @@ struct OpaqueTypeExpander<'tcx> {
     seen_opaque_tys: FxHashSet<DefId>,
     // Cache of all expansions we've seen so far. This is a critical
     // optimization for some large types produced by async fn trees.
-    expanded_cache: FxHashMap<(DefId, GenericArgsRef<'tcx>), Ty<'tcx>>,
+    expanded_cache: FxHashMap<(DefId, GenericArgs<'tcx>), Ty<'tcx>>,
     primary_def_id: Option<DefId>,
     found_recursion: bool,
     found_any_recursion: bool,
@@ -995,7 +994,7 @@ struct OpaqueTypeExpander<'tcx> {
 }
 
 impl<'tcx> OpaqueTypeExpander<'tcx> {
-    fn expand_opaque_ty(&mut self, def_id: DefId, args: GenericArgsRef<'tcx>) -> Option<Ty<'tcx>> {
+    fn expand_opaque_ty(&mut self, def_id: DefId, args: GenericArgs<'tcx>) -> Option<Ty<'tcx>> {
         if self.found_any_recursion {
             return None;
         }
@@ -1702,8 +1701,15 @@ fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 }
 
 /// Determines whether an item is annotated with `doc(notable_trait)`.
-pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    find_attr!(tcx, def_id, Doc(doc) if doc.notable_trait.is_some())
+pub fn doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Option<&'_ NotableTraitColor> {
+    find_attr!(tcx, def_id, Doc(doc) if doc.notable_trait.is_some() => {
+        let (color, _span) = doc.notable_trait.as_ref()?;
+        if let Some((color, _span)) = color {
+            color
+        } else {
+            &NotableTraitColor::Transparent
+        }
+    })
 }
 
 /// Determines whether an item is an intrinsic (which may be via Abi or via the `rustc_intrinsic` attribute).
@@ -1733,7 +1739,7 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         reveal_opaque_types_in_bounds,
         is_doc_hidden,
-        is_doc_notable_trait,
+        doc_notable_trait,
         intrinsic_raw,
         ..*providers
     }

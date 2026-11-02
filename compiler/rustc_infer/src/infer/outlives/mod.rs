@@ -58,8 +58,9 @@ impl<'tcx> InferCtxt<'tcx> {
             inner.region_constraint_storage.take().expect("regions already resolved")
         };
 
-        storage.data.constraints = storage
-            .data
+        // FIXME(-Zassumptions-in-binders): Handle solver_data
+        storage.legacy_data.constraints = storage
+            .legacy_data
             .constraints
             .iter()
             .flat_map(|(constraint, origin)| {
@@ -70,7 +71,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // Filter out any region-region outlives assumptions that are implied by
         // coroutine well-formedness.
         if self.tcx.sess.opts.unstable_opts.higher_ranked_assumptions {
-            storage.data.constraints.retain(|(c, _)| match c.kind {
+            storage.legacy_data.constraints.retain(|(c, _)| match c.kind {
                 ConstraintKind::RegSubReg => !outlives_env
                     .higher_ranked_assumptions()
                     .contains(&ty::OutlivesClause(c.sup.into(), c.sub)),
@@ -88,7 +89,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let region_rels = &RegionRelations::new(self.tcx, outlives_env.free_region_map());
 
         let (lexical_region_resolutions, errors) =
-            lexical_region_resolve::resolve(region_rels, storage.var_infos, storage.data);
+            lexical_region_resolve::resolve(region_rels, storage.var_infos, storage.legacy_data);
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());
@@ -127,6 +128,7 @@ impl<'tcx> InferCtxt<'tcx> {
         op: impl FnOnce(&RegionConstraintData<'tcx>) -> R,
     ) -> R {
         let mut inner = self.inner.borrow_mut();
-        op(inner.unwrap_region_constraints().data())
+        // FIXME(-Zassumptions-on-binders): Handle solver_data
+        op(inner.unwrap_region_constraints().legacy_data())
     }
 }

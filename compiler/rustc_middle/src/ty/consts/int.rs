@@ -8,6 +8,7 @@ use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::bug;
 
+use crate::mir::interpret::Scalar;
 use crate::ty::TyCtxt;
 
 #[derive(Copy, Clone)]
@@ -182,6 +183,16 @@ impl<D: Decoder> Decodable<D> for ScalarInt {
         let size = d.read_u8();
         data[..size as usize].copy_from_slice(d.read_raw_bytes(size as usize));
         ScalarInt { data: u128::from_le_bytes(data), size: NonZero::new(size).unwrap() }
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::ScalarInt<TyCtxt<'tcx>> for ScalarInt {
+    fn try_from_uint(i: impl Into<u128>, size: Size) -> Option<Self> {
+        Self::try_from_uint(i, size)
+    }
+
+    fn to_scalar(self) -> Scalar {
+        Scalar::Int(self)
     }
 }
 

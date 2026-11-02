@@ -80,7 +80,7 @@ macro_rules! define_Conf {
             $(#[default_text = $default_text:literal])?
             $(#[rename = $new_name:ident])?
             $(#[lints($($for_lints:ident),* $(,)?)])?
-            // The type must exist for regular fields and shouldn't exist for deprecated ones.
+            // The type must exist for regular fields and must not exist for deprecated ones.
             $name:ident($name_str:literal) $(: $ty:ty $(= $default:expr)?)?,
         )*
     ) => {
@@ -205,6 +205,18 @@ macro_rules! define_Conf {
                 )?)*}
             }
         }
+
+        // The next macro invocation intentionally produces a compile error if `$name` is renamed
+        // and has a type. It is a compile-time check, not a conventional test. If it fails to
+        // compile, find `$name` in the `define_Conf!` invocation and remove either its `rename`
+        // attribute (`rename = ...`) or its type annotation (`...: $ty ...`).
+        macro_rules! test (
+            ($name_:ident) => {};
+            ($name_:ident $new_name_:ident) => {};
+            ($name_:ident $ty_:ty) => {};
+            ($name_:ident $new_name_:ident $ty_:ty) => { compile_error!(concat!("renamed field `", stringify!($name_), "` has a type")); };
+        );
+        $(test!($name $($new_name)? $($ty)?);)*
 
         #[test]
         fn check_conf_order() {
@@ -474,7 +486,13 @@ define_Conf! {
     #[lints(inconsistent_struct_constructor)]
     check_inconsistent_struct_field_initializers("check-inconsistent-struct-field-initializers"): bool = false,
     /// Whether to also run the listed lints on private items.
-    #[lints(missing_errors_doc, missing_panics_doc, missing_safety_doc, unnecessary_safety_doc)]
+    #[lints(
+        missing_errors_doc,
+        missing_panics_doc,
+        missing_safety_doc,
+        too_long_first_doc_paragraph,
+        unnecessary_safety_doc,
+    )]
     check_private_items("check-private-items"): bool = false,
     /// The maximum cognitive complexity a function can have
     #[lints(cognitive_complexity)]
@@ -591,7 +609,7 @@ define_Conf! {
     #[lints(collapsible_else_if, collapsible_if)]
     lint_commented_code("lint-commented-code"): bool = false,
     #[rename = check_inconsistent_struct_field_initializers]
-    lint_inconsistent_struct_field_initializers("lint-inconsistent-struct-field-initializers"): bool = false,
+    lint_inconsistent_struct_field_initializers("lint-inconsistent-struct-field-initializers"),
     /// The lower bound for linting decimal literals
     #[lints(decimal_literal_representation)]
     literal_representation_threshold("literal-representation-threshold"): u64 = 16384,
@@ -721,6 +739,7 @@ define_Conf! {
         type_repetition_in_bounds,
         unchecked_time_subtraction,
         uninlined_format_args,
+        unnecessary_box_pin,
         unnecessary_lazy_evaluations,
         unnecessary_unwrap,
         unnested_or_patterns,

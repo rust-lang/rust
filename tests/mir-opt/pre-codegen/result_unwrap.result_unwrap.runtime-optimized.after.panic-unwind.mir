@@ -1,0 +1,43 @@
+// MIR for `result_unwrap` after runtime-optimized
+
+fn result_unwrap(_1: Result<i32, String>) -> i32 {
+    debug result => _1;
+    let mut _0: i32;
+    scope 1 (inlined #[track_caller] Result::<i32, String>::unwrap) {
+        let mut _2: isize;
+        let _3: std::string::String;
+        let mut _4: !;
+        scope 2 {
+        }
+        scope 3 {
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        _2 = discriminant(_1);
+        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb3];
+    }
+
+    bb1: {
+        _0 = copy ((_1 as Ok).0: i32);
+        StorageDead(_2);
+        return;
+    }
+
+    bb2: {
+        StorageLive(_3);
+        _3 = copy ((_1 as Err).0: std::string::String);
+        _4 = result::unwrap_failed::<String>(const "called `Result::unwrap()` on an `Err` value", move _3) -> unwind continue;
+    }
+
+    bb3: {
+        unreachable;
+    }
+}
+
+ALLOC0 (size: 43, align: 1) {
+    0x00 │ 63 61 6c 6c 65 64 20 60 52 65 73 75 6c 74 3a 3a │ called `Result::
+    0x10 │ 75 6e 77 72 61 70 28 29 60 20 6f 6e 20 61 6e 20 │ unwrap()` on an 
+    0x20 │ 60 45 72 72 60 20 76 61 6c 75 65                │ `Err` value
+}

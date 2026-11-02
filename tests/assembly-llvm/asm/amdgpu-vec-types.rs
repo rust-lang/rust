@@ -19,7 +19,6 @@
     unused_variables
 )]
 #![deny(unfulfilled_lint_expectations)]
-#![expect(improper_ctypes_definitions)]
 
 extern crate minicore;
 use minicore::simd::*;

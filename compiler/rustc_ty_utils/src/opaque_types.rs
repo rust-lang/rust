@@ -67,7 +67,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         let Some(body) = self.tcx.hir_maybe_body_owned_by(self.item) else {
             return;
         };
-        let body = &body.value;
+        let body = body.value;
         struct TaitInBodyFinder<'a, 'tcx> {
             collector: &'a mut OpaqueTypeCollector<'tcx>,
         }
@@ -130,10 +130,10 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         // Only check that the parent generics of the TAIT/RPIT are unique.
         // the args owned by the opaque are going to always be duplicate
         // lifetime params for RPITs, and empty for TAITs.
-        match self
-            .tcx
-            .uses_unique_generic_params(&alias_ty.args[..parent_count], CheckRegions::FromFunction)
-        {
+        match self.tcx.uses_unique_generic_params(
+            &alias_ty.args.as_slice()[..parent_count],
+            CheckRegions::FromFunction,
+        ) {
             Ok(()) => {
                 // FIXME: implement higher kinded lifetime bounds on nested opaque types. They are not
                 // supported at all, so this is sound to do, but once we want to support them, you'll

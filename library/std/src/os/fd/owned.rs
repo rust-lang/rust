@@ -10,6 +10,7 @@ use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::alloc::Allocator;
 #[cfg(not(target_os = "trusty"))]
 use crate::fs;
+use crate::macros::rustdoc_skip_body;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 #[cfg(not(any(
@@ -90,6 +91,27 @@ impl BorrowedFd<'_> {
     pub const unsafe fn borrow_raw(fd: RawFd) -> Self {
         Self { fd: ValidRawFd::new(fd).expect("fd != -1"), _phantom: PhantomData }
     }
+
+    /// Converts a `BorrowedFd` into a reference to a file-like type.
+    ///
+    #[cfg_attr(all(unix, not(miri)), doc = "```")]
+    #[cfg_attr(not(unix), doc = "```ignore (needs unix)")]
+    /// # #![feature(fd_view)]
+    /// # use std::fs::File;
+    /// # use std::io;
+    /// # use std::os::fd::AsFd;
+    /// let meta = io::stdout().as_fd().to_view::<File>().metadata().unwrap();
+    /// if meta.is_file() {
+    ///     println!("stdout is a regular file");
+    /// }
+    /// ```
+    #[unstable(feature = "fd_view", issue = "160402")]
+    pub fn to_view<T>(&self) -> &T
+    where
+        Self: AsRef<T>,
+    {
+        self.as_ref()
+    }
 }
 
 impl OwnedFd {
@@ -111,6 +133,7 @@ impl BorrowedFd<'_> {
         target_os = "motor"
     )))]
     #[stable(feature = "io_safety", since = "1.63.0")]
+    #[rustdoc_skip_body]
     pub fn try_clone_to_owned(&self) -> io::Result<OwnedFd> {
         // We want to atomically duplicate this file descriptor and set the
         // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This
@@ -200,6 +223,7 @@ impl FromRawFd for OwnedFd {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl Drop for OwnedFd {
     #[inline]
+    #[rustdoc_skip_body]
     fn drop(&mut self) {
         unsafe {
             // Note that errors are ignored when closing a file descriptor. According to POSIX 2024,
@@ -319,6 +343,7 @@ impl AsFd for OwnedFd {
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for fs::File {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.as_inner().as_fd()
     }
@@ -329,6 +354,7 @@ impl AsFd for fs::File {
 impl From<fs::File> for OwnedFd {
     /// Takes ownership of a [`File`](fs::File)'s underlying file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(file: fs::File) -> OwnedFd {
         file.into_inner().into_inner().into_inner()
     }
@@ -340,6 +366,7 @@ impl From<OwnedFd> for fs::File {
     /// Returns a [`File`](fs::File) that takes ownership of the given
     /// file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(owned_fd: OwnedFd) -> Self {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(owned_fd)))
     }
@@ -349,6 +376,7 @@ impl From<OwnedFd> for fs::File {
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for crate::net::TcpStream {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.as_inner().socket().as_fd()
     }
@@ -359,6 +387,7 @@ impl AsFd for crate::net::TcpStream {
 impl From<crate::net::TcpStream> for OwnedFd {
     /// Takes ownership of a [`TcpStream`](crate::net::TcpStream)'s socket file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(tcp_stream: crate::net::TcpStream) -> OwnedFd {
         tcp_stream.into_inner().into_socket().into_inner().into_inner()
     }
@@ -368,6 +397,7 @@ impl From<crate::net::TcpStream> for OwnedFd {
 #[cfg(not(target_os = "trusty"))]
 impl From<OwnedFd> for crate::net::TcpStream {
     #[inline]
+    #[rustdoc_skip_body]
     fn from(owned_fd: OwnedFd) -> Self {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(FromInner::from_inner(
             owned_fd,
@@ -379,6 +409,7 @@ impl From<OwnedFd> for crate::net::TcpStream {
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for crate::net::TcpListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.as_inner().socket().as_fd()
     }
@@ -389,6 +420,7 @@ impl AsFd for crate::net::TcpListener {
 impl From<crate::net::TcpListener> for OwnedFd {
     /// Takes ownership of a [`TcpListener`](crate::net::TcpListener)'s socket file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(tcp_listener: crate::net::TcpListener) -> OwnedFd {
         tcp_listener.into_inner().into_socket().into_inner().into_inner()
     }
@@ -398,6 +430,7 @@ impl From<crate::net::TcpListener> for OwnedFd {
 #[cfg(not(target_os = "trusty"))]
 impl From<OwnedFd> for crate::net::TcpListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn from(owned_fd: OwnedFd) -> Self {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(FromInner::from_inner(
             owned_fd,
@@ -409,6 +442,7 @@ impl From<OwnedFd> for crate::net::TcpListener {
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for crate::net::UdpSocket {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.as_inner().socket().as_fd()
     }
@@ -419,6 +453,7 @@ impl AsFd for crate::net::UdpSocket {
 impl From<crate::net::UdpSocket> for OwnedFd {
     /// Takes ownership of a [`UdpSocket`](crate::net::UdpSocket)'s file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(udp_socket: crate::net::UdpSocket) -> OwnedFd {
         udp_socket.into_inner().into_socket().into_inner().into_inner()
     }
@@ -428,12 +463,65 @@ impl From<crate::net::UdpSocket> for OwnedFd {
 #[cfg(not(target_os = "trusty"))]
 impl From<OwnedFd> for crate::net::UdpSocket {
     #[inline]
+    #[rustdoc_skip_body]
     fn from(owned_fd: OwnedFd) -> Self {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(FromInner::from_inner(
             owned_fd,
         ))))
     }
 }
+
+/// Implements `AsRef<$t>` conversions from `BorrowedFd` to the specified types.
+///
+/// # Safety
+///
+/// It must be sound to transmute `&BorrowedFd` to `&$t`.
+///
+/// This typically implies that:
+///
+/// - $t must be a wrapper with `BorrowedFd`, `OwnedFd` or `RawFd` being the single non-ZST-field.
+///   Nominally it also requires repr(transparent), but std can cheat because we can stay in
+///   sync with rustc's layout implementation details.
+/// - `&$t` must not have any methods that would allow closing the file descriptor.
+/// - `&$t` impls must tolerate instances being created from any kind of file-descriptor without
+///   going through some dedicated constructor function, akin to `From<OwnedFd>` being a noop
+///   conversion.
+pub(crate) macro unsafe_impl_fd_asrefs {
+    ($($t:ty),*$(,)?) => {$(
+        #[unstable(feature = "fd_view", issue = "160402")]
+        #[unstable_feature_bound(fd_view)]
+        impl AsRef<$t> for BorrowedFd<'_> {
+            #[inline]
+            fn as_ref(&self) -> &$t {
+                use core::mem;
+
+                // These are neither necessary nor sufficient, but generally
+                // a type that implements them is more likely to have the required behavior.
+                fn type_check<T: From<OwnedFd> + Into<OwnedFd> + AsFd>() {}
+
+                // sanity check in case layouts change
+                const {
+                    assert!(mem::size_of::<RawFd>() == mem::size_of::<$t>());
+                    assert!(mem::size_of::<RawFd>() == mem::size_of::<BorrowedFd<'_>>());
+                }
+                type_check::<$t>();
+                // SAFETY: See macro-level requirements.
+                unsafe { mem::transmute::<&BorrowedFd<'_>, &$t>(self) }
+            }
+        }
+    )*}
+}
+
+#[cfg(not(target_os = "trusty"))]
+unsafe_impl_fd_asrefs!(
+    crate::fs::File,
+    crate::net::TcpStream,
+    crate::net::TcpListener,
+    crate::net::UdpSocket,
+);
+
+#[cfg(unix)]
+unsafe_impl_fd_asrefs!(io::PipeWriter, io::PipeReader);
 
 #[stable(feature = "asfd_ptrs", since = "1.64.0")]
 /// This impl allows implementing traits that require `AsFd` on Arc.
@@ -536,6 +624,7 @@ impl<'a> AsFd for io::StderrLock<'a> {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for io::PipeReader {
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_fd()
     }
@@ -544,6 +633,7 @@ impl AsFd for io::PipeReader {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl From<io::PipeReader> for OwnedFd {
+    #[rustdoc_skip_body]
     fn from(pipe: io::PipeReader) -> Self {
         pipe.0.into_inner()
     }
@@ -552,6 +642,7 @@ impl From<io::PipeReader> for OwnedFd {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for io::PipeWriter {
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_fd()
     }
@@ -560,6 +651,7 @@ impl AsFd for io::PipeWriter {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl From<io::PipeWriter> for OwnedFd {
+    #[rustdoc_skip_body]
     fn from(pipe: io::PipeWriter) -> Self {
         pipe.0.into_inner()
     }

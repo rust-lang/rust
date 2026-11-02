@@ -59,7 +59,7 @@ use rustc_session::output::invalid_output_for_target;
 use rustc_session::{EarlyDiagCtxt, Session, config};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, FileName};
-use rustc_structures::CrateType;
+use rustc_structures::{CrateType, LintName};
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
 use tracing::trace;
@@ -203,6 +203,7 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
     let sopts =
         config::build_session_options(&mut default_early_dcx, &matches, warn_unspecified_edition);
     let ice_file = ice_path_with_config(Some(&sopts.unstable_opts)).clone();
+    let _ = ICE_COLOR.set(sopts.color);
 
     if let Some(ref code) = matches.opt_str("explain") {
         handle_explain(&default_early_dcx, code, sopts.color);
@@ -517,9 +518,11 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
     }
 
     // The pager failed. Try to print pretty output to stdout.
-    if let Some((bufwtr, mdbuf)) = &mut pretty_data
+    if matches!(color, ColorConfig::Auto | ColorConfig::Always)
+        && let Some((bufwtr, mdbuf)) = &mut pretty_data
         && bufwtr.write_all(&mdbuf).is_ok()
     {
+        // Colored output was successfully printed to stdout.
         return;
     }
 
@@ -989,11 +992,9 @@ Available lint options:
         lints
     }
 
-    fn sort_lint_groups(
-        lints: Vec<(&'static str, Vec<LintId>, bool)>,
-    ) -> Vec<(&'static str, Vec<LintId>)> {
+    fn sort_lint_groups(lints: Vec<(LintName, Vec<LintId>, bool)>) -> Vec<(LintName, Vec<LintId>)> {
         let mut lints: Vec<_> = lints.into_iter().map(|(x, y, _)| (x, y)).collect();
-        lints.sort_by_key(|l| l.0);
+        lints.sort_by(|left, right| Ord::cmp(&left.0, &right.0));
         lints
     }
 
@@ -1040,7 +1041,7 @@ Available lint options:
         loaded_groups
             .iter()
             .chain(&builtin_groups)
-            .map(|&(s, _)| s.chars().count())
+            .map(|(s, _)| s.name.as_str().chars().count())
             .max()
             .unwrap_or(0),
     );
@@ -1053,7 +1054,7 @@ Available lint options:
 
     safe_println!("Lint groups provided by rustc:\n");
 
-    let print_lint_groups = |lints: Vec<(&'static str, Vec<LintId>)>, all_warnings| {
+    let print_lint_groups = |lints: Vec<(LintName, Vec<LintId>)>, all_warnings| {
         safe_println!("    {}  sub-lints", padded("name"));
         safe_println!("    {}  ---------", padded("----"));
 
@@ -1062,7 +1063,7 @@ Available lint options:
         }
 
         for (name, to) in lints {
-            let name = name.to_lowercase().replace('_', "-");
+            let name = name.to_string().to_lowercase().replace('_', "-");
             let desc = to
                 .into_iter()
                 .map(|x| x.to_string().replace('_', "-"))
@@ -1304,7 +1305,7 @@ pub fn handle_help(matches: &getopts::Matches, args: &[String]) -> bool {
     let chelp_pos = opt_help_pos("C");
     let print_help = || {
         // Only show unstable options in --help if we accept unstable options.
-        let unstable_enabled = nightly_options::is_unstable_enabled(&matches);
+        let unstable_enabled = nightly_options::unstable_options_enabled(&matches);
         let nightly_build = nightly_options::match_is_nightly_build(&matches);
         usage(matches.opt_present("verbose"), unstable_enabled, nightly_build);
     };
@@ -1395,6 +1396,7 @@ pub fn catch_with_exit_code<T: Termination>(f: impl FnOnce() -> T) -> ExitCode {
     }
 }
 
+static ICE_COLOR: OnceLock<ColorConfig> = OnceLock::new();
 static ICE_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
 // This function should only be called from the ICE hook.
@@ -1541,9 +1543,10 @@ fn report_ice(
     extra_info: fn(DiagCtxtHandle<'_>),
     using_internal_features: &AtomicBool,
 ) {
+    let color = ICE_COLOR.get().copied().unwrap_or(ColorConfig::Auto);
     let emitter =
         Box::new(rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter::new(
-            stderr_destination(rustc_errors::ColorConfig::Auto),
+            stderr_destination(color),
         ));
     let dcx = DiagCtxt::new(emitter);
     let dcx = dcx.handle();

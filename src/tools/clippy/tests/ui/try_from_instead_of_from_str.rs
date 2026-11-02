@@ -1,5 +1,12 @@
+//@aux-build:proc_macros.rs
+//@aux-build:proc_macro_derive.rs
 #![warn(clippy::try_from_instead_of_from_str)]
 #![allow(dead_code, clippy::elidable_lifetime_names)]
+
+extern crate proc_macro_derive;
+extern crate proc_macros;
+
+use proc_macros::{external, with_span};
 
 struct MyType;
 
@@ -121,6 +128,58 @@ impl std::str::FromStr for Already {
     type Err = ();
     fn from_str(_s: &str) -> Result<Self, Self::Err> {
         Ok(Already)
+    }
+}
+
+// Should not lint because macros generate these, and the user cannot rewrite them.
+#[derive(proc_macro_derive::TryFromStr)]
+struct DeriveInput;
+
+external! {
+    struct External;
+
+    impl TryFrom<&str> for External {
+        type Error = ();
+        fn try_from(_value: &str) -> Result<Self, Self::Error> {
+            Ok(External)
+        }
+    }
+}
+
+with_span! {
+    span
+
+    struct WithSpan;
+
+    impl TryFrom<&str> for WithSpan {
+        type Error = ();
+        fn try_from(_value: &str) -> Result<Self, Self::Error> {
+            Ok(WithSpan)
+        }
+    }
+}
+
+mod issue17877 {
+    use std::convert::TryFrom;
+
+    struct NotValue;
+    impl TryFrom<&str> for NotValue {
+        //~^ try_from_instead_of_from_str
+        type Error = std::io::Error;
+        fn try_from(some_other_name: &str) -> Result<Self, Self::Error> {
+            let _ = some_other_name;
+            Ok(Self)
+        }
+    }
+
+    struct NotValue2;
+    impl TryFrom<&str> for NotValue2 {
+        //~^ try_from_instead_of_from_str
+        type Error = ();
+        fn try_from(mut __value_value_value__: &str) -> Result<Self, Self::Error> {
+            __value_value_value__ = "something changed";
+            Ok(Self)
+        }
     }
 }
 

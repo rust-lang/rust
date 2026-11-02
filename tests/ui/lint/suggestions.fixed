@@ -50,9 +50,8 @@ fn main() {
         //~| WARN unnecessary parentheses
         //~| HELP remove these parentheses
         // the line after `mut` has a `\t` at the beginning, this is on purpose
-        let b = 1;
-        //~^^ WARN does not need to be mutable
-        //~| HELP remove this `mut`
+        let //~ HELP remove this `mut`
+	        b = 1; //~| WARN does not need to be mutable
         let d = Equinox { warp_factor: 9.975 };
         match d {
             #[allow(unused_variables)] // for rustfix

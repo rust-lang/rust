@@ -34,6 +34,7 @@ use rustc_target::spec::{
 use smallvec::SmallVec;
 
 use crate::abi::to_llvm_calling_convention;
+use crate::back::llvm_backend::ModuleRefs;
 use crate::back::write::to_llvm_code_model;
 use crate::builder::gpu_offload::{OffloadGlobals, OffloadKernelGlobals};
 use crate::callee::get_fn;
@@ -46,8 +47,8 @@ use crate::{attributes, common, coverageinfo, debuginfo, llvm_util};
 /// other compiler pieces. Here we define a small subset which has enough information and can be
 /// moved around more freely.
 pub(crate) struct SCx<'ll> {
-    pub llmod: &'ll llvm::Module,
-    pub llcx: &'ll llvm::Context,
+    pub llmod: llvm::Module<'ll>,
+    pub llcx: llvm::Context<'ll>,
     pub isize_ty: &'ll Type,
 }
 
@@ -183,13 +184,17 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
 
 pub(crate) unsafe fn create_module<'ll>(
     tcx: TyCtxt<'_>,
-    llcx: &'ll llvm::Context,
+    llcx: llvm::Context<'ll>,
     mod_name: &str,
-) -> &'ll llvm::Module {
-    let sess = tcx.sess;
-    let mod_name = SmallCStr::new(mod_name);
-    let llmod = unsafe { llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx) };
+) -> llvm::Module<'ll> {
+    let mod_name_cstr = SmallCStr::new(mod_name);
+    let llmod = unsafe { llvm::LLVMModuleCreateWithNameInContext(mod_name_cstr.as_ptr(), llcx) };
+    init_module(tcx, llcx, llmod);
+    llmod
+}
 
+fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: llvm::Module<'ll>) {
+    let sess = tcx.sess;
     let cx = SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size());
 
     let mut target_data_layout = sess.target.data_layout.to_string();
@@ -592,15 +597,13 @@ pub(crate) unsafe fn create_module<'ll>(
         };
         llvm::add_module_flag_u32(llmod, merge_behavior, key, *value);
     }
-
-    llmod
 }
 
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         codegen_unit: &'tcx CodegenUnit<'tcx>,
-        llvm_module: &'ll crate::ModuleLlvm,
+        module_refs: ModuleRefs<'ll>,
         bitcode_needed: bool,
     ) -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
@@ -659,7 +662,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let tls_model = to_llvm_tls_model(tcx.sess.tls_model());
 
-        let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
+        let ModuleRefs { llcx, llmod, .. } = module_refs;
 
         let coverage_cx =
             tcx.sess.instrument_coverage().then(coverageinfo::CguCoverageContext::new);
@@ -876,8 +879,8 @@ impl<'ll> SimpleCx<'ll> {
 }
 impl<'ll> SimpleCx<'ll> {
     pub(crate) fn new(
-        llmod: &'ll llvm::Module,
-        llcx: &'ll llvm::Context,
+        llmod: llvm::Module<'ll>,
+        llcx: llvm::Context<'ll>,
         pointer_size: Size,
     ) -> Self {
         let isize_ty = llvm::LLVMIntTypeInContext(llcx, pointer_size.bits() as c_uint);
@@ -1017,13 +1020,20 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     tcx,
                     self.typing_env(),
                     def_id,
-                    ty::List::empty(),
+                    ty::GenericArgs::empty(),
                     DUMMY_SP,
                 ),
                 tcx.sess.pointer_authentication_functions(),
             ),
             _ => {
-                let name = name.unwrap_or("rust_eh_personality");
+                let mangled_symbol;
+                let name = match name {
+                    Some(name) => name,
+                    None => {
+                        mangled_symbol = rustc_symbol_mangling::eh_personality_symbol(tcx);
+                        mangled_symbol.as_str()
+                    }
+                };
                 if let Some(llfn) = self.get_declared_value(name) {
                     llfn
                 } else {
@@ -1215,7 +1225,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     /// - `LLVMAddNamedMetadataOperand` (to set that node as metadata of `kind_name` for `module`)
     pub(crate) fn module_add_named_metadata_node(
         &self,
-        module: &'ll Module,
+        module: Module<'ll>,
         kind_name: &CStr,
         md_list: &[&'ll Metadata],
     ) {

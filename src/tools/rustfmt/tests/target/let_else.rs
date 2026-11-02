@@ -1,4 +1,4 @@
-// rustfmt-single_line_let_else_max_width: 100
+//@ rustfmt-single_line_let_else_max_width: 100
 
 fn main() {
     // Although this won't compile it still parses so make sure we can format empty else blocks

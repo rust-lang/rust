@@ -118,7 +118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
 
-        if !found_expr.span.eq_ctxt(expected_expr.span) {
+        if found_expr.span.ctxt() != expected_expr.span.ctxt() {
             return;
         }
 
@@ -190,8 +190,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Result<(), Diag<'a>> {
-        self.at(cause, self.param_env)
-            .sup(DefineOpaqueTypes::Yes, expected, actual)
+        self.sup_raw(cause, self.param_env, DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
             .map_err(|e| {
                 self.err_ctxt().report_mismatched_types(cause, self.param_env, expected, actual, e)
@@ -333,7 +332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut expr_finder = FindExprs { hir_id: local_hir_id, uses: init.into_iter().collect() };
         let body = self.tcx.hir_body_owned_by(self.body_def_id);
-        expr_finder.visit_expr(&body.value);
+        expr_finder.visit_expr(body.value);
 
         // Replaces all of the variables in the given type with a fresh inference variable.
         let mut fudger = BottomUpFolder {
@@ -1238,7 +1237,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         *span,
                         "use the type name directly",
-                        self.tcx.value_path_str_with_args(e_def.did(), e_args),
+                        self.tcx.value_path_str_with_args(e_def.did(), *e_args),
                         Applicability::MaybeIncorrect,
                     );
                 }

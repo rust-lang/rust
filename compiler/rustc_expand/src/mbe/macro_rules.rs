@@ -13,7 +13,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr_ir::diagnostic::Directive;
 use rustc_attr_ir::{self as attrs, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, StringPart};
 use rustc_feature::Features;
 use rustc_hir::def::MacroKinds;
 use rustc_lint_defs::builtin::{
@@ -245,7 +245,8 @@ impl MacroRulesMacroExpander {
         }
 
         match try_match_macro_derive(psess, body, rules, &mut NoopTracker) {
-            Ok((rule_index, rule, named_matches)) => {
+            Ok((rule_index, named_matches)) => {
+                let rule = &rules[rule_index];
                 let MacroRule::Derive { rhs, .. } = rule else {
                     panic!("try_match_macro_derive returned non-derive rule");
                 };
@@ -450,7 +451,8 @@ fn expand_macro<'cx, 'a: 'cx>(
     let try_success_result = try_match_macro(psess, &arg, rules, &mut NoopTracker);
 
     match try_success_result {
-        Ok((rule_index, rule, named_matches)) => {
+        Ok((rule_index, named_matches)) => {
+            let rule = &rules[rule_index];
             let MacroRule::Func { lhs, rhs, .. } = rule else {
                 panic!("try_match_macro returned non-func rule");
             };
@@ -539,7 +541,8 @@ fn expand_macro_attr(
 
     // Track nothing for the best performance.
     match try_match_macro_attr(psess, &args, &body, rules, &mut NoopTracker) {
-        Ok((i, rule, named_matches)) => {
+        Ok((i, named_matches)) => {
+            let rule = &rules[i];
             let MacroRule::Attr { rhs, unsafe_rule, .. } = rule else {
                 panic!("try_macro_match_attr returned non-attr rule");
             };
@@ -609,7 +612,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     arg: &TokenStream,
     rules: &'matcher [MacroRule],
     track: &mut T,
-) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
+) -> Result<(usize, NamedMatches), CanRetry> {
     // We create a base parser that can be used for the "black box" parts.
     // Every iteration needs a fresh copy of that parser. However, the parser
     // is not mutated on many of the iterations, particularly when dealing with
@@ -653,7 +656,7 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
                 // Merge the gated spans from parsing the matcher with the preexisting ones.
                 psess.gated_spans.merge(gated_spans_snapshot);
 
-                return Ok((i, rule, named_matches));
+                return Ok((i, named_matches));
             }
             Failure => {
                 trace!("Failed to match arm, trying the next one");
@@ -689,7 +692,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
     attr_body: &TokenStream,
     rules: &'matcher [MacroRule],
     track: &mut T,
-) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
+) -> Result<(usize, NamedMatches), CanRetry> {
     // This uses the same strategy as `try_match_macro`
     let args_parser = parser_from_cx(psess, attr_args.clone(), T::recovery());
     let body_parser = parser_from_cx(psess, attr_body.clone(), T::recovery());
@@ -722,7 +725,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
                 psess.gated_spans.merge(gated_spans_snapshot);
                 #[allow(rustc::potential_query_instability)]
                 named_matches.extend(body_named_matches);
-                return Ok((i, rule, named_matches));
+                return Ok((i, named_matches));
             }
             Failure => {
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut())
@@ -744,7 +747,7 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
     body: &TokenStream,
     rules: &'matcher [MacroRule],
     track: &mut T,
-) -> Result<(usize, &'matcher MacroRule, NamedMatches), CanRetry> {
+) -> Result<(usize, NamedMatches), CanRetry> {
     // This uses the same strategy as `try_match_macro`
     let body_parser = parser_from_cx(psess, body.clone(), T::recovery());
     let mut tt_parser = TtParser::new();
@@ -760,7 +763,7 @@ pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
         match result {
             Success(named_matches) => {
                 psess.gated_spans.merge(gated_spans_snapshot);
-                return Ok((i, rule, named_matches));
+                return Ok((i, named_matches));
             }
             Failure => {
                 mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut())
@@ -1643,21 +1646,32 @@ fn check_matcher_core<'tt>(
                                 );
                             }
 
-                            let msg = "allowed there are: ";
                             match possible {
                                 &[] => {}
                                 &[t] => {
-                                    err.note(format!(
-                                        "only {t} is allowed after `{kind}` fragments",
-                                    ));
+                                    err.highlighted_note(vec![
+                                        StringPart::normal("only "),
+                                        StringPart::highlighted(t),
+                                        StringPart::normal(format!(
+                                            " is allowed after `{kind}` fragments"
+                                        )),
+                                    ]);
                                 }
                                 ts => {
-                                    err.note(format!(
-                                        "{}{} or {}",
-                                        msg,
-                                        ts[..ts.len() - 1].to_vec().join(", "),
-                                        ts[ts.len() - 1],
-                                    ));
+                                    let mut msg_parts =
+                                        vec![StringPart::normal("allowed there are: ")];
+
+                                    for (i, &t) in ts.iter().enumerate() {
+                                        if i == ts.len() - 1 {
+                                            msg_parts.push(StringPart::normal(" or "));
+                                        } else if i > 0 {
+                                            msg_parts.push(StringPart::normal(", "));
+                                        }
+
+                                        msg_parts.push(StringPart::highlighted(t));
+                                    }
+
+                                    err.highlighted_note(msg_parts);
                                 }
                             }
                             errored = Err(err.emit_err());

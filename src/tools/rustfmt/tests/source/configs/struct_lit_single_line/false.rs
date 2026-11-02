@@ -1,4 +1,4 @@
-// rustfmt-struct_lit_single_line: false
+//@ rustfmt-struct_lit_single_line: false
 // Struct literal multiline-style
 
 fn main() {

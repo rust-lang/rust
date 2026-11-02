@@ -1197,7 +1197,7 @@ impl Session {
         }
 
         if target.starts_with("wasm") && target.contains("wasi") {
-            self.default_wasi_runner(target)
+            self.default_wasi_runner()
         } else {
             None
         }
@@ -1206,7 +1206,7 @@ impl Session {
     /// When a `runner` configuration is not provided and a WASI-looking target
     /// is being tested this is consulted to prove the environment to see if
     /// there's a runtime already lying around that seems reasonable to use.
-    fn default_wasi_runner(&self, target: TargetSelection) -> Option<String> {
+    fn default_wasi_runner(&self) -> Option<String> {
         let mut finder = crate::core::sanity::Finder::new();
 
         // Look for Wasmtime, and for its default options be sure to disable
@@ -1215,19 +1215,10 @@ impl Session {
         if let Some(path) = finder.maybe_have("wasmtime")
             && let Ok(mut path) = path.into_os_string().into_string()
         {
-            path.push_str(" run -Wexceptions -C cache=n --dir .");
-            // Make sure that tests have access to RUSTC_BOOTSTRAP. This (for example) is
-            // required for libtest to work on beta/stable channels.
-            //
-            // NB: with Wasmtime 20 this can change to `-S inherit-env` to
-            // inherit the entire environment rather than just this single
-            // environment variable.
-            path.push_str(" --env RUSTC_BOOTSTRAP");
-
-            if target.contains("wasip2") {
-                path.push_str(" --wasi inherit-network --wasi allow-ip-name-lookup");
-            }
-
+            path.push_str(
+                " run -C cache=n --dir . \
+                 --wasi inherit-env,inherit-network,allow-ip-name-lookup",
+            );
             return Some(path);
         }
 
