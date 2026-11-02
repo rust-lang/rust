@@ -4531,15 +4531,22 @@ impl FnHeader {
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct TestBinderBody<'hir> {
     pub span: Span,
-    pub foralls: &'hir [TestBinderForall<'hir>],
-    pub exists: &'hir [TestBinderExists<'hir>],
-    pub region_equalities: &'hir [(&'hir Lifetime, &'hir Lifetime)],
-    /// Constraints to be inserted directly into constraint storage to be proven
-    pub constraints: TestBinderConstraint<'hir>,
-    /// Constraints declared using `where` syntax, used via `register_obligation`
-    pub predicates: &'hir [WherePredicate<'hir>],
+    pub items: &'hir [TestBinderItem<'hir>],
 }
 
+#[derive(Debug, Clone, Copy, StableHash)]
+pub enum TestBinderItem<'hir> {
+    Forall(TestBinderForall<'hir>),
+    Exists(TestBinderExists<'hir>),
+    RegionEquality {
+        lhs: &'hir Lifetime,
+        rhs: &'hir Lifetime,
+    },
+    /// Constraints to be inserted directly into constraint storage to be proven
+    Constraint(TestBinderConstraint<'hir>),
+    /// Constraints declared using `where` syntax, used via `register_obligation`
+    Predicate(WherePredicate<'hir>),
+}
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct TestBinderForall<'hir> {
     pub span: Span,
