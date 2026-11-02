@@ -13,7 +13,7 @@ use rustc_infer::traits::Obligation;
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgs, Ty, TypeVisitableExt as _};
+use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgs, Ty, TypeVisitableExt as _, CallerBoundsIterator};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
@@ -343,7 +343,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             && let Some(self_ty) = inputs.first()
                             && let ty::Ref(_, _, Mutability::Mut) = self_ty.kind()
                             && let Some(second_ty) = inputs.get(1)
-                            && cx.tcx.param_env(def_id).caller_bounds().any(|clause| {
+                            && cx.tcx.param_env(def_id).caller_bounds().all_clauses(cx.tcx).iter().any(|clause| {
                                 if let ty::ClauseKind::Trait(trait_pred) = clause.kind().skip_binder() {
                                     trait_pred.self_ty() == *second_ty
                                         && cx.tcx.lang_items().fn_mut_trait() == Some(trait_pred.def_id())

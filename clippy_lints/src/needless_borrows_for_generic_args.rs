@@ -14,7 +14,7 @@ use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::{
-    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionClause, Ty, Unnormalized,
+    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionClause, Ty, Unnormalized, CallerBoundsIterator,
 };
 use rustc_span::SyntaxContext;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -189,6 +189,8 @@ fn needless_borrow_count<'tcx>(
         .tcx
         .param_env(fn_id)
         .caller_bounds()
+        .all_clauses(cx.tcx)
+        .iter()
         // TODO: remove filter once https://github.com/rust-lang/rust/issues/160895 is in stable
         //
         // This sends the old trait solver into unbounded recursion for `[const] Destruct` on self-recursive types
