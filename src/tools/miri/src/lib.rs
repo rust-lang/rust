@@ -200,9 +200,10 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     // we let Miri do these checks.
     "-Zmir-enable-passes=-CheckAlignment,-CheckNull,-CheckEnums",
     // FIXME: Disable some passes to make higher opt levels also work.
-    // - ReferencePropagation is incompatible with SB's ref-to-raw castb behavior.
+    // - ReferencePropagation is incompatible with SB's ref-to-raw cast behavior.
     //   The fix here is to ditch SB and use TB instead but we're not yet ready for that.
     // - GVN is not yet adjusted for implicit retags during assignments.
+    //   <https://github.com/rust-lang/rust/issues/165327>
     "-Zmir-enable-passes=-ReferencePropagation,-GVN",
     // Deduplicating diagnostics means we miss events when tracking what happens during an
     // execution. Let's not do that.
