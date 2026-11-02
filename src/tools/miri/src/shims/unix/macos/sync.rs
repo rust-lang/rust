@@ -305,6 +305,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(());
         }
 
+        // See the Linux futex implementation for why this fence exists.
+        this.atomic_fence(AtomicFenceOrd::SeqCst)?;
+
         let Ok(futex) = this.try_get_meta::<MacOsFutex>(ptr) else {
             // Same behavior for dangling pointers and when no futex has been put here yet.
             return this.set_errno_and_return_neg1(LibcError("ENOENT"), dest);
@@ -320,11 +323,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
         }
 
-        let futex_ref = futex.futex.clone();
-
-        // See the Linux futex implementation for why this fence exists.
-        this.atomic_fence(AtomicFenceOrd::SeqCst)?;
-        this.futex_wake(&futex_ref, u32::MAX, if all { usize::MAX } else { 1 })?;
+        this.futex_wake(&futex.futex.clone(), u32::MAX, if all { usize::MAX } else { 1 })?;
         this.write_scalar(Scalar::from_i32(0), dest)?;
         interp_ok(())
     }

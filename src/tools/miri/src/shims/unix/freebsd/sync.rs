@@ -180,6 +180,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // UMTX_OP_WAKE and UMTX_OP_WAKE_PRIVATE only differ in whether they work across
             // processes or not. For Miri, we can treat them the same.
             op if op == wake || op == wake_private => {
+                // Saturating cast for when usize is smaller than u64.
+                let count = usize::try_from(val).unwrap_or(usize::MAX);
+                if count == 0 {
+                    // Native testing seems to indicate that this still wakes up a thread.
+                    // Just consider this unsupported for now.
+                    throw_unsup_format!(
+                        "UMTX_OP_WAKE with a val (number of threads to wake up) of 0 is not supported"
+                    );
+                }
+
+                // Read the Linux futex wake implementation in Miri to understand why this fence is needed.
+                ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
+
                 let futex = match ecx.try_get_meta::<FreeBsdFutex>(obj_ptr) {
                     Ok(f) => f,
                     Err(GetMetaError::NoMem) => {
@@ -196,24 +209,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         return interp_ok(());
                     }
                 };
-                let futex_ref = futex.futex.clone();
-
-                // Saturating cast for when usize is smaller than u64.
-                let count = usize::try_from(val).unwrap_or(usize::MAX);
-                if count == 0 {
-                    // Native testing seems to indicate that this still wakes up a thread.
-                    // Just consider this unsupported for now.
-                    throw_unsup_format!(
-                        "UMTX_OP_WAKE with a val (number of threads to wake up) of 0 is not supported"
-                    );
-                }
-
-                // Read the Linux futex wake implementation in Miri to understand why this fence is needed.
-                ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
                 // `_umtx_op` doesn't return the amount of woken threads.
                 let _woken = ecx.futex_wake(
-                    &futex_ref,
+                    &futex.futex.clone(),
                     u32::MAX, // we set the bitset to include all bits
                     count,
                 )?;
