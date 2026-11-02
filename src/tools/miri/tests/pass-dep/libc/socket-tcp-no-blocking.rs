@@ -67,7 +67,7 @@ fn main() {
 /// are still able to accept incoming connections should they already exist before the `accept` or
 /// `accept4` syscall is called.
 fn test_accept_nonblock() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -105,7 +105,7 @@ fn test_accept_nonblock() {
 /// Test that calling `accept4` with the SOCK_NONBLOCK flag produces
 /// a non-blocking peer socket.
 fn test_accept4_sock_nonblock_opt() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -138,7 +138,7 @@ fn test_accept4_sock_nonblock_opt() {
 /// Test that connecting to a server socket works when the client
 /// socket is non-blocking before the `connect` call.
 fn test_connect_nonblock() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -193,7 +193,7 @@ fn test_connect_nonblock() {
 
 /// Test sending bytes into and receiving bytes from a connected stream without blocking.
 fn test_send_recv_nonblock() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -310,7 +310,7 @@ fn test_send_recv_nonblock() {
 /// Instead of using non-blocking sockets, we test whether it works with blocking sockets
 /// when passing the `libc::MSG_DONTWAIT` flag to the send and receive calls.
 fn test_send_recv_dontwait() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -417,7 +417,7 @@ fn test_send_recv_dontwait() {
 
 /// Test writing bytes into and reading bytes from a connected stream without blocking.
 fn test_write_read_nonblock() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -505,7 +505,7 @@ fn test_write_read_nonblock() {
 /// Test that Miri's internal temporary read buffer gets correctly deallocated when the
 /// vectored read produces an error due to the socket read buffer being empty.
 fn test_readv_nonblock_err() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -542,7 +542,7 @@ fn test_readv_nonblock_err() {
 /// Test that Miri's internal temporary write buffer gets correctly deallocated when the
 /// vectored write produces an error due to the socket write buffer being full.
 fn test_writev_nonblock_err() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -638,7 +638,7 @@ fn test_getsockname_ipv4_connect_nonblock() {
 /// for a non-blocking IPv4 socket whose connection has been successfully
 /// established before calling the syscall.
 fn test_getpeername_ipv4_nonblock() {
-    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd, addr) = net::make_tcp_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -820,7 +820,7 @@ fn test_connect_connecting() {
     assert_eq!(so_error, 0);
 
     // Create a socket which listens on `addr`.
-    let (_, addr) = net::make_listener_ipv4().unwrap();
+    let (_, addr) = net::make_tcp_listener_ipv4().unwrap();
 
     let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
     // The standard library doesn't provide an error kind for EALREADY;

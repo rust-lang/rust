@@ -340,7 +340,7 @@ pub mod net {
 
     /// Create an IPv4 TCP socket which listens on a random port at the localhost address.
     /// Returns the socket file descriptor and the actual socket address the socket is listening on.
-    pub fn make_listener_ipv4() -> io::Result<(libc::c_int, libc::sockaddr_in)> {
+    pub fn make_tcp_listener_ipv4() -> io::Result<(libc::c_int, libc::sockaddr_in)> {
         let (sockfd, addr_with_port) = make_local_ipv4(libc::SOCK_STREAM)?;
 
         unsafe { errno_result(libc::listen(sockfd, 16))? };
@@ -373,7 +373,7 @@ pub mod net {
 
     /// Create an IPv6 TCP socket which listens on a random port at the localhost address.
     /// Returns the socket file descriptor and the actual socket address the socket is listening on.
-    pub fn make_listener_ipv6() -> io::Result<(libc::c_int, libc::sockaddr_in6)> {
+    pub fn make_tcp_listener_ipv6() -> io::Result<(libc::c_int, libc::sockaddr_in6)> {
         let (sockfd, addr_with_port) = make_local_ipv6(libc::SOCK_STREAM)?;
 
         unsafe { errno_result(libc::listen(sockfd, 16))? };
