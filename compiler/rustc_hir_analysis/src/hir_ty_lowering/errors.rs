@@ -123,6 +123,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_ident: Ident,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'_>>,
+        constraints: &[hir::AssocItemConstraint<'_>],
     ) -> ErrorGuaranteed
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
@@ -328,12 +329,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // If we still couldn't find any associated item, and only one associated item exists,
         // suggest using it.
         if let [candidate_name] = all_candidate_names.as_slice() {
-            err.sugg = Some(diagnostics::AssocItemNotFoundSugg::Other {
-                span: assoc_ident.span,
-                qself: &qself_str,
-                assoc_kind,
-                suggested_name: *candidate_name,
-            });
+            if constraints.iter().find(|c| c.ident.name == *candidate_name).is_none() {
+                // We do not suggest specifying an assoc type if it is already present in the
+                // constraint list.
+                err.sugg = Some(diagnostics::AssocItemNotFoundSugg::Other {
+                    span: assoc_ident.span,
+                    qself: &qself_str,
+                    assoc_kind,
+                    suggested_name: *candidate_name,
+                });
+            }
         } else {
             err.label = Some(diagnostics::AssocItemNotFoundLabel::NotFound {
                 span: assoc_ident.span,
