@@ -113,8 +113,8 @@ impl<'db> LookupTable<'db> {
     fn find(&mut self, db: &'db dyn HirDatabase, ty: &Type<'db>) -> Option<Vec<Expr<'db>>> {
         let res = self
             .data
-            .iter()
-            .find(|(t, _)| t.could_unify_with_deeply(db, ty))
+            .get_key_value(ty)
+            .or_else(|| self.data.iter().find(|(t, _)| t.could_unify_with_deeply(db, ty)))
             .map(|(t, tts)| tts.exprs(t));
 
         if res.is_none() {
@@ -138,8 +138,8 @@ impl<'db> LookupTable<'db> {
     fn find_autoref(&mut self, db: &'db dyn HirDatabase, ty: &Type<'db>) -> Option<Vec<Expr<'db>>> {
         let res = self
             .data
-            .iter()
-            .find(|(t, _)| t.could_unify_with_deeply(db, ty))
+            .get_key_value(ty)
+            .or_else(|| self.data.iter().find(|(t, _)| t.could_unify_with_deeply(db, ty)))
             .map(|(t, it)| it.exprs(t))
             .or_else(|| {
                 self.data

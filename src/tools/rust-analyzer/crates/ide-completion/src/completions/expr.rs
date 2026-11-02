@@ -245,7 +245,7 @@ pub(crate) fn complete_expr_path<'db>(
         Qualified::No => {
             acc.add_nameref_keywords_with_colon(ctx);
             if let Some(adt) =
-                ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
+                ctx.expected.ty.as_ref().and_then(|ty| ty.strip_references().as_adt())
             {
                 let self_ty = (|| ctx.sema.to_def(impl_.as_ref()?)?.self_ty(ctx.db).as_adt())();
                 let complete_self = self_ty == Some(adt);
@@ -475,7 +475,7 @@ pub(crate) fn complete_expr(
         return;
     }
 
-    if let Some(ty) = &ctx.expected_type {
+    if let Some(ty) = &ctx.expected.ty {
         // Ignore unit types as they are not very interesting
         if ty.is_unit() || ty.is_unknown() {
             return;

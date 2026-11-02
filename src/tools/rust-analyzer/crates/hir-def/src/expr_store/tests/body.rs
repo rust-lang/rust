@@ -666,3 +666,27 @@ fn foo() {
             }"#]],
     );
 }
+
+#[test]
+fn async_gen() {
+    pretty_print(
+        r#"
+//- minicore: async_iterator
+async gen fn foo() {
+    yield async {}.await;
+    yield;
+}
+    "#,
+        expect![[r#"
+            fn foo() async gen {
+                {
+                    yield builtin#lang(async_gen_ready)(
+                        (async {}).await,
+                    );
+                    yield builtin#lang(async_gen_ready)(
+                        (),
+                    );
+                }
+            }"#]],
+    );
+}

@@ -16,7 +16,7 @@ env:
   RUSTFLAGS: "-D warnings -W unreachable-pub"
   RUSTUP_MAX_RETRIES: 10
   FETCH_DEPTH: 0 # pull in the tags for the version string
-  MACOSX_DEPLOYMENT_TARGET: 14.0
+  MACOSX_DEPLOYMENT_TARGET: 15.0
 
 jobs:
   dist:
@@ -57,12 +57,12 @@ jobs:
             container: debian:10
             code-target: linux-armhf
             allocator: system
-          - os: macos-14
+          - os: macos-15
             target: x86_64-apple-darwin
             code-target: darwin-x64
             allocator: system
             pgo: clap-rs/clap@v4.5.36
-          - os: macos-14
+          - os: macos-15
             target: aarch64-apple-darwin
             code-target: darwin-arm64
             allocator: system
