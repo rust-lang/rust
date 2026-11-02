@@ -1,6 +1,5 @@
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
-use std::mem;
 use std::ops::{ControlFlow, Deref};
 
 use rustc_attr_ir::lang_items::LangItem;
@@ -428,10 +427,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         &self,
         kind: CanonicalVarKind<'tcx>,
         span: Span,
-        var_values: &[ty::GenericArg<'tcx>],
+        prev_var_values: &[ty::GenericArg<'tcx>],
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> ty::GenericArg<'tcx> {
-        self.0.instantiate_canonical_var(span, kind, var_values, universe_map)
+        self.0.instantiate_canonical_var(span, kind, prev_var_values, universe_map)
     }
 
     fn add_item_bounds_for_hidden_type(
@@ -506,15 +505,20 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             .ok_or(NoSolution)
     }
 
-    fn obtain_canonicalizer_state(&self) -> CanonicalizerState<Self::Interner> {
-        // We temporarily take the canonicalizer state.
-        mem::take(&mut self.canonicalizer_state.borrow_mut())
+    fn obtain_canonicalizer_state(&self) -> Box<CanonicalizerState<Self::Interner>> {
+        // Get the top state, or create a new one if none are available.
+        self.cx()
+            .caches
+            .canonicalizer_states
+            .lock()
+            .pop()
+            .unwrap_or_else(|| Box::new(CanonicalizerState::default()))
     }
 
-    fn release_canonicalizer_state(&self, mut state: CanonicalizerState<Self::Interner>) {
+    fn release_canonicalizer_state(&self, mut state: Box<CanonicalizerState<Self::Interner>>) {
         // Clear (don't deallocate) the state for later reuse.
         state.clear();
-        *self.canonicalizer_state.borrow_mut() = state;
+        self.cx().caches.canonicalizer_states.lock().push(state);
     }
 
     fn emit_next_solver_overflow_fcw(&self, goal: Goal<'tcx, ty::Predicate<'tcx>>, span: Span) {
