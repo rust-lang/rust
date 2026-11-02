@@ -235,7 +235,9 @@ fn project_and_unify_term<'cx, 'tcx>(
     obligations.extend(new);
 
     // Need to define opaque types to support nested opaque types like `impl Fn() -> impl Trait`
-    match infcx.at(&obligation.cause, obligation.param_env).eq(
+    match infcx.eq_raw(
+        &obligation.cause,
+        obligation.param_env,
         DefineOpaqueTypes::Yes,
         normalized,
         actual,
@@ -636,7 +638,7 @@ pub fn compute_inherent_assoc_term_args<'a, 'b, 'tcx>(
         self_ty.skip_normalization()
     };
 
-    match selcx.infcx.at(&cause, param_env).eq(DefineOpaqueTypes::Yes, impl_ty, self_ty) {
+    match selcx.infcx.eq_raw(&cause, param_env, DefineOpaqueTypes::Yes, impl_ty, self_ty) {
         Ok(mut ok) => obligations.append(&mut ok.obligations),
         Err(_) => {
             tcx.dcx().span_bug(
@@ -2021,7 +2023,9 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
 
     debug!(?cache_projection, ?obligation_projection);
 
-    match infcx.at(cause, param_env).eq(
+    match infcx.eq_raw(
+        cause,
+        param_env,
         DefineOpaqueTypes::Yes,
         cache_projection,
         obligation_projection,

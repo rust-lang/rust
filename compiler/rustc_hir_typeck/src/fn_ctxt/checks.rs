@@ -387,7 +387,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // 3. Check if the formal type is actually equal to the checked one
             //    and register any such obligations for future type checks.
-            let formal_ty_error = self.at(&self.misc(provided_arg.span), self.param_env).eq(
+            let formal_ty_error = self.eq_raw(
+                &self.misc(provided_arg.span),
+                self.param_env,
                 DefineOpaqueTypes::Yes,
                 formal_input_ty,
                 coerced_ty,
