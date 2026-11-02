@@ -2,7 +2,6 @@
 // Checks that `#[coverage(..)]` in a trait method is not inherited in an
 // implementation.
 //@ edition: 2021
-//@ reference: attributes.coverage.trait-impl-inherit
 
 trait T {
     #[coverage(off)]

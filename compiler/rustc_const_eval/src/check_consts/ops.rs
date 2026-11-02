@@ -1,6 +1,7 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
-use hir::{ConstContext, LangItem};
+use hir::ConstContext;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, msg};
 use rustc_hir as hir;
@@ -8,14 +9,13 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::CallSource;
-use rustc_middle::span_bug;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, AssocContainer, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param, TraitRef,
-    Ty, suggest_constraining_type_param,
+    self, AssocContainer, Closure, FnDef, FnPtr, GenericArgKind, GenericArgs, Param, TraitRef, Ty,
+    suggest_constraining_type_param,
 };
 use rustc_session::diagnostics::add_feature_diagnostics;
-use rustc_span::{BytePos, Pos, Span, Symbol, sym};
+use rustc_span::{BytePos, Pos, Span, Symbol, span_bug, sym};
 use rustc_trait_selection::error_reporting::traits::call_kind::{
     CallDesugaringKind, CallKind, call_kind,
 };
@@ -100,7 +100,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallCVariadic {
 #[derive(Debug)]
 pub(crate) struct ConditionallyConstCall<'tcx> {
     pub callee: DefId,
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
     pub span: Span,
     pub call_source: CallSource,
 }
@@ -140,7 +140,7 @@ impl<'tcx> NonConstOp<'tcx> for ConditionallyConstCall<'tcx> {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct FnCallNonConst<'tcx> {
     pub callee: DefId,
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
     pub span: Span,
     pub call_source: CallSource,
 }
@@ -218,7 +218,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 fn build_error_for_const_call<'tcx>(
     ccx: &ConstCx<'_, 'tcx>,
     callee: DefId,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
     span: Span,
     call_source: CallSource,
     non_or_conditionally: &'static str,
@@ -247,7 +247,9 @@ fn build_error_for_const_call<'tcx>(
             // Don't point at the trait if this is a desugaring...
             // FIXME(const_trait_impl): we could perhaps do this for `Iterator`.
             match kind {
-                CallDesugaringKind::ForLoopIntoIter | CallDesugaringKind::ForLoopNext => {
+                CallDesugaringKind::ForLoopIntoIter
+                | CallDesugaringKind::ForLoopIntoAsyncIter
+                | CallDesugaringKind::ForLoopNext => {
                     error!(NonConstForLoopIntoIter)
                 }
                 CallDesugaringKind::QuestionBranch => {

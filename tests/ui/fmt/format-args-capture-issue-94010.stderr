@@ -1,11 +1,14 @@
 error[E0425]: cannot find value `foo` in this scope
   --> $DIR/format-args-capture-issue-94010.rs:3:16
    |
-LL |     const FOO: i32 = 123;
-   |     --------------------- similarly named constant `FOO` defined here
 LL |     println!("{foo:X}");
-   |                ^^^
+   |                ^^^ not found in this scope
    |
+note: similarly named constant `FOO` defined here
+  --> $DIR/format-args-capture-issue-94010.rs:2:5
+   |
+LL |     const FOO: i32 = 123;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists (notice the capitalization)
    |
 LL -     println!("{foo:X}");
@@ -15,12 +18,14 @@ LL +     println!("{FOO:X}");
 error[E0425]: cannot find value `foo` in this scope
   --> $DIR/format-args-capture-issue-94010.rs:5:18
    |
-LL |     const FOO: i32 = 123;
-   |     --------------------- similarly named constant `FOO` defined here
-...
 LL |     println!("{:.foo$}", 0);
-   |                  ^^^
+   |                  ^^^ not found in this scope
    |
+note: similarly named constant `FOO` defined here
+  --> $DIR/format-args-capture-issue-94010.rs:2:5
+   |
+LL |     const FOO: i32 = 123;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists (notice the capitalization)
    |
 LL -     println!("{:.foo$}", 0);

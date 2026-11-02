@@ -9,6 +9,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on extern crates
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | extern crate std as other_std;
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -17,6 +19,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on use statements
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | use std::vec::Vec;
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -25,6 +29,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on statics
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | static _X: u32 = 0;
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -33,6 +39,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on constants
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | const _Y: u32 = 0;
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -41,6 +49,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on modules
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | mod bar {
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -49,6 +59,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on foreign modules
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | unsafe extern "C" {
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -57,6 +69,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on foreign statics
    |
 LL |     #[rustc_scalable_vector(4)]
    |       ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     static X: &'static u32;
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -65,6 +79,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on foreign types
    |
 LL |     #[rustc_scalable_vector(4)]
    |       ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     type Y;
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -73,6 +89,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on foreign functions
    |
 LL |     #[rustc_scalable_vector(4)]
    |       ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn foo();
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -81,6 +99,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on type aliases
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | type Foo = u32;
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -89,6 +109,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on enums
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | enum Bar<#[rustc_scalable_vector(4)] T> {
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -105,6 +127,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on enum variants
    |
 LL |     #[rustc_scalable_vector(4)]
    |       ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     Baz(std::marker::PhantomData<T>),
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -113,6 +137,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on struct fields
    |
 LL |     #[rustc_scalable_vector(4)]
    |       ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     field: u32,
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -121,6 +147,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on unions
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | union FooBar {
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -129,6 +157,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on traits
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | trait FooBaz {
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -137,6 +167,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on associated types
    |
 LL |     #[rustc_scalable_vector(4)]
    |       ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     type Foo;
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -145,6 +177,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on associated consts
    |
 LL |     #[rustc_scalable_vector(4)]
    |       ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     const Bar: i32;
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -153,6 +187,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on provided trait me
    |
 LL |     #[rustc_scalable_vector(4)]
    |       ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn foo() {}
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -161,6 +197,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on trait aliases
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | trait FooQux = FooBaz;
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -169,6 +207,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on inherent impl blo
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl<T> Bar<T> {
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -177,6 +217,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on inherent methods
    |
 LL |     #[rustc_scalable_vector(4)]
    |       ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn foo() {}
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -185,6 +227,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on trait impl blocks
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl<T> FooBaz for Bar<T> {
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -193,6 +237,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on macro defs
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | macro_rules! barqux { ($foo:tt) => { $foo }; }
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -201,6 +247,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on functions
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn barqux(#[rustc_scalable_vector(4)] _x: u32) {}
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -217,6 +265,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on functions
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | async fn async_foo() {}
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -225,6 +275,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on functions
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | gen fn gen_foo() {}
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -233,6 +285,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on functions
    |
 LL | #[rustc_scalable_vector(4)]
    |   ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | async gen fn async_gen_foo() {}
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -257,6 +311,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on statements
    |
 LL |     #[rustc_scalable_vector(4)]
    |       ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     let _z = 3;
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 
@@ -265,6 +321,8 @@ error: the `rustc_scalable_vector` attribute cannot be used on match arms
    |
 LL |         #[rustc_scalable_vector(4)]
    |           ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         1 => (),
    |
    = help: the `rustc_scalable_vector` attribute can only be applied to structs
 

@@ -7,14 +7,13 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
+use rustc_hir::intravisit::{InferKind, Visitor, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, Expr, ExprKind, FnRetTy, FnSig, GenericArgsParentheses, GenericParamKind, HirId, Impl,
     ImplItemImplKind, ImplItemKind, Item, ItemKind, Node, Pat, PatExpr, PatExprKind, PatKind, Path, QPath, Ty, TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::Ty as MiddleTy;
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use std::iter;
 use std::ops::ControlFlow;
@@ -67,7 +66,7 @@ pub struct UseSelf {
 impl UseSelf {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             stack: Vec::new(),
             recursive_self_in_type_definitions: conf.recursive_self_in_type_definitions,
         }

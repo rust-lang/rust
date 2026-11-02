@@ -12,9 +12,9 @@
    LL|      1|        fn fn_in_macro() {
    LL|      1|            if core::hint::black_box(true) {
    LL|      1|                say("true");
-   LL|      1|            } else {
+   LL|       |            } else {
    LL|      0|                say("false");
-   LL|      0|            }
+   LL|       |            }
    LL|      1|        }
    LL|       |    };
    LL|       |}
@@ -28,9 +28,9 @@
   |  Branch (LL:8): [True: 1, False: 0]
   ------------------
    LL|      1|        say("true");
-   LL|      1|    } else {
+   LL|       |    } else {
    LL|      0|        say("false");
-   LL|      0|    }
+   LL|       |    }
    LL|      1|}
    LL|       |
    LL|       |/// Function that is not in a macro, containing a branch that is in a macro.

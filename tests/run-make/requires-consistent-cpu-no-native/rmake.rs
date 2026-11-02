@@ -10,6 +10,9 @@
 // Finally, the test verifies that `-Ctarget-cpu=native` is rejected when using
 // the second custom target.
 
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 use std::fs;
 
 use run_make_support::*;

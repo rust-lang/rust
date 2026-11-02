@@ -1,6 +1,6 @@
-//! This module implements [RFC 1946]: Intra-rustdoc-links
+//! Resolves intra-doc links ([RFC 1946]).
 //!
-//! [RFC 1946]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
+//! [RFC 1946]: https://rust-lang.github.io/rfcs/1946-intra-rustdoc-links.html
 
 use std::borrow::Cow;
 use std::fmt::Display;
@@ -8,26 +8,27 @@ use std::mem;
 use std::ops::Range;
 
 use rustc_ast::util::comments::may_have_doc_links;
+use rustc_attr_ir::{Attribute, AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, DiagMessage};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
-use rustc_hir::{Attribute, Mutability, Safety, find_attr};
+use rustc_hir::{Mutability, Safety};
+use rustc_lint::Lint;
+use rustc_middle::ty;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
 use rustc_resolve::rustdoc::{
-    MalformedGenerics, has_primitive_or_keyword_or_attribute_docs, prepare_to_doc_link_resolution,
-    source_span_for_markdown_range, strip_generics_from_path,
+    DocStrings, MalformedGenerics, has_primitive_or_keyword_or_attribute_docs_hir,
+    prepare_to_doc_link_resolution, source_span_for_markdown_range, strip_generics_from_path,
 };
-use rustc_session::config::CrateType;
-use rustc_session::lint::Lint;
-use rustc_span::BytePos;
 use rustc_span::def_id::ModId;
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{Ident, Symbol, sym};
+use rustc_span::{BytePos, bug, span_bug};
+use rustc_structures::CrateType;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, info, instrument, trace};
 
@@ -36,23 +37,19 @@ use crate::clean::{self, Crate, Item, ItemId, ItemLink, PrimitiveType, reexport_
 use crate::core::DocContext;
 use crate::html::markdown::{MarkdownLink, MarkdownLinkRange, markdown_links};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
-use crate::passes::Pass;
 use crate::visit::DocVisitor;
 
-pub(crate) const COLLECT_INTRA_DOC_LINKS: Pass =
-    Pass { name: "collect-intra-doc-links", run: None, description: "resolves intra-doc links" };
-
-pub(crate) fn collect_intra_doc_links<'a, 'tcx>(
+pub(super) fn collect_intra_doc_links(
     krate: Crate,
-    cx: &'a mut DocContext<'tcx>,
-) -> (Crate, LinkCollector<'a, 'tcx>) {
-    let mut collector = LinkCollector {
-        cx,
-        visited_links: FxHashMap::default(),
-        ambiguous_links: FxIndexMap::default(),
-    };
+    cx: &mut DocContext<'_>,
+) -> (Crate, LinkCollection) {
+    let mut collector = LinkCollector { cx, links: LinkCollection::default() };
     collector.visit_crate(&krate);
-    (krate, collector)
+    (krate, collector.links)
+}
+
+pub(super) fn resolve_ambiguous_links(links: LinkCollection, cx: &mut DocContext<'_>) {
+    LinkCollector { cx, links }.resolve_ambiguities();
 }
 
 fn filter_assoc_items_by_name_and_namespace(
@@ -126,10 +123,9 @@ impl Res {
             DefKind::Trait => "trait",
             DefKind::Union => "union",
             DefKind::Mod => "mod",
-            DefKind::Const { .. }
-            | DefKind::ConstParam
-            | DefKind::AssocConst { .. }
-            | DefKind::AnonConst => "const",
+            DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst => {
+                "const"
+            }
             DefKind::Static { .. } => "static",
             DefKind::Field => "field",
             DefKind::Variant | DefKind::Ctor(..) => "variant",
@@ -252,11 +248,16 @@ impl OwnedDiagnosticInfo {
     }
 }
 
-pub(crate) struct LinkCollector<'a, 'tcx> {
-    pub(crate) cx: &'a mut DocContext<'tcx>,
+struct LinkCollector<'a, 'tcx> {
+    cx: &'a mut DocContext<'tcx>,
+    links: LinkCollection,
+}
+
+#[derive(Default)]
+pub(super) struct LinkCollection {
     /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link.
     /// The link will be `None` if it could not be resolved (i.e. the error was cached).
-    pub(crate) visited_links: FxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
+    visited: FxHashMap<ResolutionInfo, Option<(Res, Option<UrlFragment>)>>,
     /// According to `rustc_resolve`, these links are ambiguous.
     ///
     /// However, we cannot link to an item that has been stripped from the documentation. If all
@@ -267,7 +268,7 @@ pub(crate) struct LinkCollector<'a, 'tcx> {
     /// We could get correct results by simply delaying everything. This would have fewer happy
     /// codepaths, but we want to distinguish different kinds of error conditions, and this is easy
     /// to do by resolving links as soon as possible.
-    pub(crate) ambiguous_links: FxIndexMap<(ItemId, String), Vec<AmbiguousLinks>>,
+    ambiguous: FxIndexMap<(ItemId, String), Vec<AmbiguousLinks>>,
 }
 
 pub(crate) struct AmbiguousLinks {
@@ -400,10 +401,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
         if let Some(res) = self.resolve_path(path_str, ns, item_id, module_id) {
             return Ok(match res {
                 Res::Def(
-                    DefKind::AssocFn
-                    | DefKind::AssocConst { .. }
-                    | DefKind::AssocTy
-                    | DefKind::Variant,
+                    DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Variant,
                     def_id,
                 ) => {
                     vec![(Res::from_def_id(self.cx.tcx, self.cx.tcx.parent(def_id)), Some(def_id))]
@@ -500,7 +498,7 @@ fn resolve_self_ty<'tcx>(
 
     let self_id = match tcx.def_kind(item_id) {
         def_kind @ (DefKind::AssocFn
-        | DefKind::AssocConst { .. }
+        | DefKind::AssocConst
         | DefKind::AssocTy
         | DefKind::Variant
         | DefKind::Field) => {
@@ -1083,7 +1081,7 @@ impl LinkCollector<'_, '_> {
                 && item_id
                     .as_local()
                     .is_some_and(|local_def_id| !effective_visibilities.is_exported(local_def_id))
-                && !has_primitive_or_keyword_or_attribute_docs(&item.attrs.other_attrs)
+                && !has_primitive_or_keyword_or_attribute_docs_hir(&item.attrs.other_attrs)
         };
 
         if let Some(def_id) = item.item_id.as_def_id()
@@ -1093,14 +1091,7 @@ impl LinkCollector<'_, '_> {
             return;
         }
 
-        let mut try_insert_links = |item_id, doc: &str| {
-            if should_skip_link_resolution(item_id) {
-                return;
-            }
-            let module_id = match tcx.def_kind(item_id) {
-                DefKind::Mod if item.inner_docs(tcx) => ModId::new_unchecked(item_id),
-                _ => find_nearest_parent_module(tcx, item_id).unwrap(),
-            };
+        let mut try_insert_links_inner = |item_id, module_id, doc: &str| {
             for md_link in preprocessed_markdown_links(&doc) {
                 let link = self.resolve_link(&doc, item, item_id, module_id, &md_link);
                 if let Some(link) = link {
@@ -1114,16 +1105,45 @@ impl LinkCollector<'_, '_> {
             }
         };
 
+        let mut try_insert_links = |item_id, docs: &DocStrings| {
+            if should_skip_link_resolution(item_id) {
+                return;
+            }
+            match tcx.def_kind(item_id) {
+                DefKind::Mod => {
+                    if !docs.outer.is_empty() {
+                        try_insert_links_inner(
+                            item_id,
+                            find_nearest_parent_module(tcx, item_id).unwrap(),
+                            &docs.outer,
+                        );
+                    }
+                    if !docs.inner.is_empty() {
+                        try_insert_links_inner(item_id, ModId::new_unchecked(item_id), &docs.inner);
+                    }
+                }
+                _ => {
+                    // It's the same handling for non-module items.
+                    let module_id = find_nearest_parent_module(tcx, item_id).unwrap();
+                    try_insert_links_inner(
+                        item_id,
+                        module_id,
+                        &format!("{}{}", docs.outer, docs.inner),
+                    );
+                }
+            }
+        };
+
         // We want to resolve in the lexical scope of the documentation.
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
         // so we know which module it came from.
         for (item_id, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
-            if !may_have_doc_links(&doc) {
+            if !may_have_doc_links(&doc.inner) && !may_have_doc_links(&doc.outer) {
                 continue;
             }
 
-            debug!("combined_docs={doc}");
+            debug!("combined_docs=outer: {} inner: {}", doc.outer, doc.inner);
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
             let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
@@ -1132,8 +1152,11 @@ impl LinkCollector<'_, '_> {
 
         // Also resolve links in the note text of `#[deprecated]`.
         for attr in &item.attrs.other_attrs {
-            let Attribute::Parsed(AttributeKind::Deprecated { span: depr_span, deprecation }) =
-                attr
+            let Attribute::Parsed(AttributeKind::Deprecated {
+                span: depr_span,
+                deprecation,
+                is_inner,
+            }) = attr
             else {
                 continue;
             };
@@ -1165,7 +1188,12 @@ impl LinkCollector<'_, '_> {
             } else {
                 item.item_id.expect_def_id()
             };
-            try_insert_links(item_id, note)
+            let attr = if *is_inner {
+                DocStrings { outer: String::new(), inner: note.to_owned() }
+            } else {
+                DocStrings { outer: note.to_owned(), inner: String::new() }
+            };
+            try_insert_links(item_id, &attr);
         }
     }
 
@@ -1174,8 +1202,6 @@ impl LinkCollector<'_, '_> {
     }
 
     /// This is the entry point for resolving an intra-doc link.
-    ///
-    /// FIXME(jynelson): this is way too many arguments
     fn resolve_link(
         &mut self,
         dox: &str,
@@ -1218,7 +1244,8 @@ impl LinkCollector<'_, '_> {
                 resolved,
             };
 
-            self.ambiguous_links
+            self.links
+                .ambiguous
                 .entry((item.item_id, path_str.to_string()))
                 .or_default()
                 .push(links);
@@ -1232,7 +1259,7 @@ impl LinkCollector<'_, '_> {
 
     /// Returns `true` if a link could be generated from the given intra-doc information.
     ///
-    /// This is a very light version of `format::href_with_root_path` since we're only interested
+    /// This is a very light version of `format::href_with_jump_to_def_path_depth` since we're only interested
     /// about whether we can generate a link to an item or not.
     ///
     /// * If `original_did` is local, then we check if the item is reexported or public.
@@ -1242,7 +1269,7 @@ impl LinkCollector<'_, '_> {
         let tcx = self.cx.tcx;
         let def_kind = tcx.def_kind(original_did);
         let did = match def_kind {
-            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant => {
+            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
                 // documented on their parent's page
                 tcx.parent(original_did)
             }
@@ -1274,8 +1301,8 @@ impl LinkCollector<'_, '_> {
             || !did.is_local()
     }
 
-    pub(crate) fn resolve_ambiguities(&mut self) {
-        let mut ambiguous_links = mem::take(&mut self.ambiguous_links);
+    fn resolve_ambiguities(&mut self) {
+        let mut ambiguous_links = mem::take(&mut self.links.ambiguous);
         for ((item_id, path_str), info_items) in ambiguous_links.iter_mut() {
             for info in info_items {
                 info.resolved.retain(|(res, _)| match res {
@@ -1431,11 +1458,11 @@ impl LinkCollector<'_, '_> {
         debug!("saw kind {kind:?} with disambiguator {disambiguator:?}");
         match (kind, disambiguator) {
                 | (
-                    DefKind::Const { .. }
+                    DefKind::Const
                     | DefKind::ConstParam
-                    | DefKind::AssocConst { .. }
+                    | DefKind::AssocConst
                     | DefKind::AnonConst,
-                    Some(Disambiguator::Kind(DefKind::Const { .. })),
+                    Some(Disambiguator::Kind(DefKind::Const)),
                 )
                 // NOTE: this allows 'method' to mean both normal functions and associated functions
                 // This can't cause ambiguity because both are in the same namespace.
@@ -1474,7 +1501,7 @@ impl LinkCollector<'_, '_> {
     ) {
         // The resolved item did not match the disambiguator; give a better error than 'not found'
         let msg = format!("incompatible link kind for `{path_str}`");
-        let callback = |diag: &mut Diag<'_, ()>, sp: Option<rustc_span::Span>, link_range| {
+        let callback = |diag: &mut Diag<'_>, sp: Option<rustc_span::Span>, link_range| {
             let note = format!(
                 "this link resolved to {} {}, which is not {} {}",
                 resolved.article(),
@@ -1525,7 +1552,7 @@ impl LinkCollector<'_, '_> {
         // which we want in some cases but not in others.
         cache_errors: bool,
     ) -> Option<Vec<(Res, Option<UrlFragment>)>> {
-        if let Some(res) = self.visited_links.get(&key)
+        if let Some(res) = self.links.visited.get(&key)
             && (res.is_some() || cache_errors)
         {
             return res.clone().map(|r| vec![r]);
@@ -1572,9 +1599,9 @@ impl LinkCollector<'_, '_> {
             out.push((res, fragment));
         }
         if let [r] = out.as_slice() {
-            self.visited_links.insert(key, Some(r.clone()));
+            self.links.visited.insert(key, Some(r.clone()));
         } else if cache_errors {
-            self.visited_links.insert(key, None);
+            self.links.visited.insert(key, None);
         }
         Some(out)
     }
@@ -1759,7 +1786,7 @@ impl Disambiguator {
                 "trait" => Kind(DefKind::Trait),
                 "union" => Kind(DefKind::Union),
                 "module" | "mod" => Kind(DefKind::Mod),
-                "const" | "constant" => Kind(DefKind::Const { is_type_const: false }),
+                "const" | "constant" => Kind(DefKind::Const),
                 "static" => Kind(DefKind::Static {
                     mutability: Mutability::Not,
                     nested: false,
@@ -1932,7 +1959,7 @@ fn report_diagnostic(
     lint: &'static Lint,
     msg: impl Into<DiagMessage> + Display,
     DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
-    decorate: impl FnOnce(&mut Diag<'_, ()>, Option<rustc_span::Span>, MarkdownLinkRange),
+    decorate: impl FnOnce(&mut Diag<'_>, Option<rustc_span::Span>, MarkdownLinkRange),
 ) {
     let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id) else {
         // If non-local, no need to check anything.
@@ -2006,6 +2033,56 @@ fn report_diagnostic(
             decorate(lint, span, link_range);
         }),
     );
+}
+
+fn suggest_path_name_typo(
+    collector: &LinkCollector<'_, '_>,
+    diag: &mut Diag<'_>,
+    span: Option<rustc_span::Span>,
+    link_range: &MarkdownLinkRange,
+    dox: &str,
+    module: ModId,
+    unresolved: &str,
+    has_partial_res: bool,
+    disambiguator: Option<Disambiguator>,
+) {
+    if unresolved.chars().count() <= 1 {
+        // There are too many false positives for single character typos.
+        return;
+    }
+
+    let tcx = collector.cx.tcx;
+    let lookup = Symbol::intern(unresolved);
+    let children = if let Some(local_module) = module.as_local() {
+        tcx.module_children_local(local_module.to_local_def_id())
+    } else {
+        tcx.module_children(module.to_def_id())
+    };
+    let candidates = children
+        .iter()
+        .filter(|child| {
+            disambiguator.is_none_or(|disambiguator| child.res.matches_ns(disambiguator.ns()))
+        })
+        .map(|child| child.ident.name)
+        .filter(|&name| name != lookup)
+        .collect::<Vec<_>>();
+    let Some(candidate) = find_best_match_for_name(&candidates, lookup, None) else {
+        return;
+    };
+
+    let msg = format!("there's a similarly named item `{candidate}`");
+    if let (Some(span), MarkdownLinkRange::Destination(range)) = (span, link_range) {
+        let link = &dox[range.clone()];
+        // A partial resolution means that the unresolved name follows a resolved parent path.
+        let start = if has_partial_res { link.rfind(unresolved) } else { link.find(unresolved) };
+        if let Some(start) = start {
+            let mut suggestion = link.to_owned();
+            suggestion.replace_range(start..start + unresolved.len(), candidate.as_str());
+            diag.span_suggestion_verbose(span, msg, suggestion, Applicability::MaybeIncorrect);
+            return;
+        }
+    }
+    diag.help(msg);
 }
 
 /// Reports a link that failed to resolve.
@@ -2135,6 +2212,20 @@ fn resolution_failure(
                             diag.note(note);
                         }
 
+                        if !path_is_invalid {
+                            suggest_path_name_typo(
+                                collector,
+                                diag,
+                                sp,
+                                &link_range,
+                                diag_info.dox,
+                                module,
+                                unresolved,
+                                partial_res.is_some(),
+                                disambiguator,
+                            );
+                        }
+
                         if !path_str.contains("::") {
                             if disambiguator.is_none_or(|d| d.ns() == MacroNS)
                                 && collector
@@ -2225,7 +2316,10 @@ fn resolution_failure(
                             | TraitAlias
                             | TyParam
                             | Static { .. } => "associated item",
-                            Impl { .. } | GlobalAsm | SyntheticCoroutineBody => {
+                            Impl { .. }
+                            | GlobalAsm
+                            | SyntheticCoroutineBody
+                            | TestBinderConstraints => {
                                 unreachable!("not a path")
                             }
                         }
@@ -2458,7 +2552,7 @@ fn ambiguity_error(
 /// disambiguator.
 fn suggest_disambiguator(
     res: Res,
-    diag: &mut Diag<'_, ()>,
+    diag: &mut Diag<'_>,
     path_str: &str,
     link_range: MarkdownLinkRange,
     sp: Option<rustc_span::Span>,

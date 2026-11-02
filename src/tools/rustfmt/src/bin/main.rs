@@ -6,7 +6,6 @@ use io::Error as IoError;
 use thiserror::Error;
 
 use rustfmt_nightly as rustfmt;
-use tracing_subscriber::EnvFilter;
 
 use std::collections::HashMap;
 use std::env;
@@ -30,9 +29,8 @@ extern crate rustc_driver;
 fn main() {
     rustc_driver::install_ice_hook(BUG_REPORT_URL, |_| ());
 
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_env("RUSTFMT_LOG"))
-        .init();
+    setup_tracing();
+
     let opts = make_opts();
 
     let exit_code = match execute(&opts) {
@@ -50,6 +48,24 @@ fn main() {
     // NOTE: this immediately terminates the process without doing any cleanup,
     // so make sure to finish all necessary cleanup before this is called.
     std::process::exit(exit_code);
+}
+
+fn setup_tracing() {
+    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+    use tracing_tree::HierarchicalLayer;
+
+    let layer = HierarchicalLayer::default()
+        .with_writer(std::io::stderr)
+        .with_targets(true)
+        .with_bracketed_fields(true)
+        .with_indent_amount(2);
+
+    tracing_subscriber::registry()
+        .with(EnvFilter::from_env("RUSTFMT_LOG"))
+        .with(layer)
+        .init();
 }
 
 /// Rustfmt operations.
@@ -133,12 +149,6 @@ fn make_opts() -> Options {
         "",
         "edition",
         "Rust edition to use",
-        "[2015|2018|2021|2024]",
-    );
-    opts.optopt(
-        "",
-        "style-edition",
-        "The edition of the Style Guide (unstable).",
         "[2015|2018|2021|2024]",
     );
     opts.optopt(
@@ -630,6 +640,19 @@ impl GetOptsOptions {
             options.emit_mode = Some(emit_mode_from_emit_str(emit_str)?);
         }
 
+        if options.inline_config.contains_key("emit_mode") {
+            if options.check {
+                return Err(format_err!(
+                    "Invalid to use `--config=emit_mode=<mode>` and `--check`"
+                ));
+            }
+            if options.emit_mode.is_some() {
+                return Err(format_err!(
+                    "Invalid to use `--config=emit_mode=<mode>` and `--emit`"
+                ));
+            }
+        }
+
         if let Some(ref edition_str) = matches.opt_str("edition") {
             options.edition = Some(edition_from_edition_str(edition_str)?);
         }
@@ -828,6 +851,37 @@ mod test {
         options.inline_config = HashMap::from([("version".to_owned(), "Two".to_owned())]);
         let config = get_config(None, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+    }
+
+    #[test]
+    fn emit_mode_from_inline_config_is_rejected() {
+        // Regression for #6999.
+        let emit_modes = [
+            "Files",
+            "Stdout",
+            "Coverage",
+            "Checkstyle",
+            "Json",
+            "ModifiedLines",
+            "Diff",
+        ];
+        for mode in emit_modes {
+            let config = format!("emit_mode={mode}");
+
+            let matches = make_opts().parse(["--check", "--config", &config]).unwrap();
+            assert!(
+                GetOptsOptions::from_matches(&matches).is_err(),
+                "`--check` with `--config={config}` should be rejected"
+            );
+
+            let matches = make_opts()
+                .parse(["--emit", "stdout", "--config", &config])
+                .unwrap();
+            assert!(
+                GetOptsOptions::from_matches(&matches).is_err(),
+                "`--emit` with `--config={config}` should be rejected"
+            );
+        }
     }
 
     #[nightly_only_test]

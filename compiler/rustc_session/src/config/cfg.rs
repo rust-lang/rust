@@ -24,7 +24,6 @@ use std::hash::Hash;
 use std::iter;
 
 use rustc_abi::Align;
-use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
 use rustc_span::{Symbol, sym};
@@ -101,11 +100,9 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
         } else {
             format!("{}", cfg_name)
         };
-        sess.psess.opt_span_buffer_lint(
+        sess.psess.buffer_crate_lint(
             EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
-            None,
-            ast::CRATE_NODE_ID,
-            diagnostics::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.into(),
+            diagnostics::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by },
         )
     };
 
@@ -154,6 +151,7 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_has_atomic_load_store, Some(_))
             | (sym::target_has_reliable_f16, None | Some(_))
             | (sym::target_has_reliable_f16_math, None | Some(_))
+            | (sym::target_has_reliable_f16b, None | Some(_))
             | (sym::target_has_reliable_f128, None | Some(_))
             | (sym::target_has_reliable_f128_math, None | Some(_))
             | (sym::target_thread_local, None) => disallow(cfg, "--target"),
@@ -299,12 +297,12 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
             };
             insert_atomic(sym::integer(i), align);
             if sess.target.pointer_width as u64 == i {
-                insert_atomic(sym::ptr, layout.pointer_align().abi);
+                insert_atomic(sym::ptr, layout.pointer_align());
             }
         }
     }
 
-    if !sess.target.singlethread(&sess.target_features) {
+    if !sess.target.singlethread(&sess.internal_target_features) {
         ins_none!(sym::target_has_threads);
     }
 
@@ -391,6 +389,7 @@ impl CheckCfg {
         ins!(sym::doc, no_values);
         ins!(sym::doctest, no_values);
         ins!(sym::miri, no_values);
+        ins!(sym::rust_analyzer, no_values);
         ins!(sym::rustfmt, no_values);
 
         ins!(sym::overflow_checks, no_values);

@@ -1,6 +1,8 @@
 error[E0080]: invalid `TypeId` value: the hash does not match the type id metadata
   --> $DIR/const_transmute_type_id5.rs:16:13
    |
+LL | const _: () = {
+...
 LL |     assert!(b == b);
    |             ^^^^^^ evaluation of `_` failed inside this call
    |

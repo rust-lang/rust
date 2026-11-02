@@ -21,17 +21,17 @@ use crate::{fmt, mem, sys};
 
 cfg_select! {
     any(target_os = "nto", target_os = "qnx") => {
-        use crate::thread;
         use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
-        use crate::time::Duration;
+
         use crate::sync::LazyLock;
+        use crate::thread;
+        use crate::time::Duration;
         // Get smallest amount of time we can sleep.
         // Return a common value if it cannot be determined.
         fn get_clock_resolution() -> Duration {
             static MIN_DELAY: LazyLock<Duration, fn() -> Duration> = LazyLock::new(|| {
                 let mut mindelay = libc::timespec { tv_sec: 0, tv_nsec: 0 };
-                if unsafe { libc::clock_getres(libc::CLOCK_MONOTONIC, &mut mindelay) } == 0
-                {
+                if unsafe { libc::clock_getres(libc::CLOCK_MONOTONIC, &mut mindelay) } == 0 {
                     Duration::from_nanos(mindelay.tv_nsec as u64)
                 } else {
                     Duration::from_millis(1)
@@ -462,6 +462,8 @@ impl Command {
         use core::sync::atomic::{Atomic, AtomicU8, Ordering};
 
         use crate::mem::MaybeUninit;
+        use crate::pin::{Pin, pin};
+        use crate::sys::helpers::COpaque;
         use crate::sys::{self, cvt_nz, on_broken_pipe_used};
 
         if self.get_gid().is_some()
@@ -512,15 +514,22 @@ impl Command {
                                 support = FORK_EXEC;
                                 // but for the fast path we need both spawnp and the
                                 // pidfd -> pid conversion to work.
-                                if pidfd_spawnp.get().is_some() && let Ok(pid) = pidfd.pid() {
+                                if pidfd_spawnp.get().is_some()
+                                    && let Ok(pid) = pidfd.pid()
+                                {
                                     assert_eq!(pid, crate::process::id(), "sanity check");
                                     support = SPAWN;
                                 }
                             }
-                            Err(e) if matches!(e.raw_os_error(), Some(libc::EMFILE | libc::ENFILE | libc::ENOMEM)) => {
+                            Err(e)
+                                if matches!(
+                                    e.raw_os_error(),
+                                    Some(libc::EMFILE | libc::ENFILE | libc::ENOMEM)
+                                ) =>
+                            {
                                 // We're temporarily(?) out of file descriptors or memory. In this case pidfd_spawnp would also fail
                                 // Don't update the support flag so we can probe again later.
-                                return Err(e)
+                                return Err(e);
                             }
                             _ => {
                                 // pidfd_open not available? likely an old kernel without pidfd support.
@@ -670,65 +679,68 @@ impl Command {
 
         let pgroup = self.get_pgroup();
 
-        struct PosixSpawnFileActions<'a>(&'a mut MaybeUninit<libc::posix_spawn_file_actions_t>);
+        struct PosixSpawnFileActions<'a>(Pin<&'a COpaque<libc::posix_spawn_file_actions_t>>);
 
         impl Drop for PosixSpawnFileActions<'_> {
             fn drop(&mut self) {
                 unsafe {
-                    libc::posix_spawn_file_actions_destroy(self.0.as_mut_ptr());
+                    libc::posix_spawn_file_actions_destroy(self.0.get());
                 }
             }
         }
 
-        struct PosixSpawnattr<'a>(&'a mut MaybeUninit<libc::posix_spawnattr_t>);
+        struct PosixSpawnattr<'a>(Pin<&'a COpaque<libc::posix_spawnattr_t>>);
 
         impl Drop for PosixSpawnattr<'_> {
             fn drop(&mut self) {
                 unsafe {
-                    libc::posix_spawnattr_destroy(self.0.as_mut_ptr());
+                    libc::posix_spawnattr_destroy(self.0.get());
                 }
             }
         }
 
         unsafe {
-            let mut attrs = MaybeUninit::uninit();
-            cvt_nz(libc::posix_spawnattr_init(attrs.as_mut_ptr()))?;
-            let attrs = PosixSpawnattr(&mut attrs);
+            let attrs = pin!(COpaque::uninit());
+            // FIXME(pin-ergonomics): remove the next line.
+            let attrs = attrs.into_ref();
+            cvt_nz(libc::posix_spawnattr_init(attrs.get()))?;
+            let attrs = PosixSpawnattr(attrs);
 
             let mut flags = 0;
 
-            let mut file_actions = MaybeUninit::uninit();
-            cvt_nz(libc::posix_spawn_file_actions_init(file_actions.as_mut_ptr()))?;
-            let file_actions = PosixSpawnFileActions(&mut file_actions);
+            let file_actions = pin!(COpaque::uninit());
+            let file_actions = file_actions.into_ref();
+            cvt_nz(libc::posix_spawn_file_actions_init(file_actions.get()))?;
+            let file_actions = PosixSpawnFileActions(file_actions);
 
             if let Some(fd) = stdio.stdin.fd() {
                 cvt_nz(libc::posix_spawn_file_actions_adddup2(
-                    file_actions.0.as_mut_ptr(),
+                    file_actions.0.get(),
                     fd,
                     libc::STDIN_FILENO,
                 ))?;
             }
             if let Some(fd) = stdio.stdout.fd() {
                 cvt_nz(libc::posix_spawn_file_actions_adddup2(
-                    file_actions.0.as_mut_ptr(),
+                    file_actions.0.get(),
                     fd,
                     libc::STDOUT_FILENO,
                 ))?;
             }
             if let Some(fd) = stdio.stderr.fd() {
                 cvt_nz(libc::posix_spawn_file_actions_adddup2(
-                    file_actions.0.as_mut_ptr(),
+                    file_actions.0.get(),
                     fd,
                     libc::STDERR_FILENO,
                 ))?;
             }
             if let Some((f, cwd)) = addchdir {
-                cvt_nz(f(file_actions.0.as_mut_ptr(), cwd.as_ptr()))?;
+                cvt_nz(f(file_actions.0.get(), cwd.as_ptr()))?;
             }
 
             if let Some(pgroup) = pgroup {
                 flags |= libc::POSIX_SPAWN_SETPGROUP;
-                cvt_nz(libc::posix_spawnattr_setpgroup(attrs.0.as_mut_ptr(), pgroup))?;
+                cvt_nz(libc::posix_spawnattr_setpgroup(attrs.0.get(), pgroup))?;
             }
 
             // Inherit the signal mask from this process rather than resetting it (i.e. do not call
@@ -746,10 +758,7 @@ impl Command {
                 {
                     cvt(sigaddset(default_set.as_mut_ptr(), libc::SIGLOST))?;
                 }
-                cvt_nz(libc::posix_spawnattr_setsigdefault(
-                    attrs.0.as_mut_ptr(),
-                    default_set.as_ptr(),
-                ))?;
+                cvt_nz(libc::posix_spawnattr_setsigdefault(attrs.0.get(), default_set.as_ptr()))?;
                 flags |= libc::POSIX_SPAWN_SETSIGDEF;
             }
 
@@ -764,7 +773,7 @@ impl Command {
                 }
             }
 
-            cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
+            cvt_nz(libc::posix_spawnattr_setflags(attrs.0.get(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource
             let _env_lock = sys::env::env_read_lock();
@@ -781,8 +790,8 @@ impl Command {
                 let spawn_res = pidfd_spawnp.get().unwrap()(
                     &mut pidfd,
                     self.get_program_cstr().as_ptr(),
-                    file_actions.0.as_ptr(),
-                    attrs.0.as_ptr(),
+                    file_actions.0.get(),
+                    attrs.0.get(),
                     self.get_argv().as_ptr() as *const _,
                     envp as *const _,
                 );
@@ -823,8 +832,8 @@ impl Command {
             let spawn_res = spawn_fn(
                 &mut p.pid,
                 self.get_program_cstr().as_ptr(),
-                file_actions.0.as_ptr(),
-                attrs.0.as_ptr(),
+                file_actions.0.get(),
+                attrs.0.get(),
                 self.get_argv().as_ptr() as *const _,
                 envp as *const _,
             );
@@ -921,9 +930,8 @@ impl Command {
             msg.msg_controllen = size_of::<Cmsg>() as _;
             msg.msg_control = (&raw mut cmsg) as *mut _;
 
-            match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, libc::MSG_CMSG_CLOEXEC)) {
-                Err(_) => return -1,
-                Ok(_) => {}
+            if cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, libc::MSG_CMSG_CLOEXEC)).is_err() {
+                return -1;
             }
 
             let hdr = CMSG_FIRSTHDR((&raw mut msg) as *mut _);
@@ -1069,12 +1077,6 @@ impl Process {
 #[derive(PartialEq, Eq, Clone, Copy, Default)]
 pub struct ExitStatus(c_int);
 
-impl fmt::Debug for ExitStatus {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("unix_wait_status").field(&self.0).finish()
-    }
-}
-
 impl ExitStatus {
     pub fn new(status: c_int) -> ExitStatus {
         ExitStatus(status)
@@ -1148,56 +1150,56 @@ impl From<c_int> for ExitStatus {
 /// If a signal is unrecognized, it returns the empty string, so that
 /// you just get the number like "0". If it is recognized, you'll get
 /// something like "9 (SIGKILL)".
-fn signal_string(signal: i32) -> &'static str {
-    match signal {
-        libc::SIGHUP => " (SIGHUP)",
-        libc::SIGINT => " (SIGINT)",
-        libc::SIGQUIT => " (SIGQUIT)",
-        libc::SIGILL => " (SIGILL)",
-        libc::SIGTRAP => " (SIGTRAP)",
-        libc::SIGABRT => " (SIGABRT)",
+fn signal_string(signal: i32) -> Option<&'static str> {
+    let name = match signal {
+        libc::SIGHUP => "SIGHUP",
+        libc::SIGINT => "SIGINT",
+        libc::SIGQUIT => "SIGQUIT",
+        libc::SIGILL => "SIGILL",
+        libc::SIGTRAP => "SIGTRAP",
+        libc::SIGABRT => "SIGABRT",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGBUS => " (SIGBUS)",
-        libc::SIGFPE => " (SIGFPE)",
-        libc::SIGKILL => " (SIGKILL)",
+        libc::SIGBUS => "SIGBUS",
+        libc::SIGFPE => "SIGFPE",
+        libc::SIGKILL => "SIGKILL",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGUSR1 => " (SIGUSR1)",
-        libc::SIGSEGV => " (SIGSEGV)",
+        libc::SIGUSR1 => "SIGUSR1",
+        libc::SIGSEGV => "SIGSEGV",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGUSR2 => " (SIGUSR2)",
-        libc::SIGPIPE => " (SIGPIPE)",
-        libc::SIGALRM => " (SIGALRM)",
-        libc::SIGTERM => " (SIGTERM)",
+        libc::SIGUSR2 => "SIGUSR2",
+        libc::SIGPIPE => "SIGPIPE",
+        libc::SIGALRM => "SIGALRM",
+        libc::SIGTERM => "SIGTERM",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGCHLD => " (SIGCHLD)",
+        libc::SIGCHLD => "SIGCHLD",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGCONT => " (SIGCONT)",
+        libc::SIGCONT => "SIGCONT",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGSTOP => " (SIGSTOP)",
+        libc::SIGSTOP => "SIGSTOP",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGTSTP => " (SIGTSTP)",
+        libc::SIGTSTP => "SIGTSTP",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGTTIN => " (SIGTTIN)",
+        libc::SIGTTIN => "SIGTTIN",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGTTOU => " (SIGTTOU)",
+        libc::SIGTTOU => "SIGTTOU",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGURG => " (SIGURG)",
+        libc::SIGURG => "SIGURG",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGXCPU => " (SIGXCPU)",
+        libc::SIGXCPU => "SIGXCPU",
         #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
-        libc::SIGXFSZ => " (SIGXFSZ)",
+        libc::SIGXFSZ => "SIGXFSZ",
         #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
-        libc::SIGVTALRM => " (SIGVTALRM)",
+        libc::SIGVTALRM => "SIGVTALRM",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGPROF => " (SIGPROF)",
+        libc::SIGPROF => "SIGPROF",
         #[cfg(not(any(target_os = "l4re", target_os = "rtems")))]
-        libc::SIGWINCH => " (SIGWINCH)",
+        libc::SIGWINCH => "SIGWINCH",
         #[cfg(not(any(target_os = "haiku", target_os = "l4re")))]
-        libc::SIGIO => " (SIGIO)",
+        libc::SIGIO => "SIGIO",
         #[cfg(target_os = "haiku")]
-        libc::SIGPOLL => " (SIGPOLL)",
+        libc::SIGPOLL => "SIGPOLL",
         #[cfg(not(target_os = "l4re"))]
-        libc::SIGSYS => " (SIGSYS)",
+        libc::SIGSYS => "SIGSYS",
         // For information on Linux signals, run `man 7 signal`
         #[cfg(all(
             target_os = "linux",
@@ -1208,14 +1210,14 @@ fn signal_string(signal: i32) -> &'static str {
                 target_arch = "aarch64"
             )
         ))]
-        libc::SIGSTKFLT => " (SIGSTKFLT)",
+        libc::SIGSTKFLT => "SIGSTKFLT",
         #[cfg(any(
             target_os = "linux",
             target_os = "nto",
             target_os = "qnx",
             target_os = "cygwin"
         ))]
-        libc::SIGPWR => " (SIGPWR)",
+        libc::SIGPWR => "SIGPWR",
         #[cfg(any(
             target_os = "freebsd",
             target_os = "netbsd",
@@ -1226,7 +1228,7 @@ fn signal_string(signal: i32) -> &'static str {
             target_vendor = "apple",
             target_os = "cygwin",
         ))]
-        libc::SIGEMT => " (SIGEMT)",
+        libc::SIGEMT => "SIGEMT",
         #[cfg(any(
             target_os = "freebsd",
             target_os = "netbsd",
@@ -1234,36 +1236,47 @@ fn signal_string(signal: i32) -> &'static str {
             target_os = "dragonfly",
             target_vendor = "apple",
         ))]
-        libc::SIGINFO => " (SIGINFO)",
+        libc::SIGINFO => "SIGINFO",
         #[cfg(target_os = "hurd")]
-        libc::SIGLOST => " (SIGLOST)",
+        libc::SIGLOST => "SIGLOST",
         #[cfg(target_os = "freebsd")]
-        libc::SIGTHR => " (SIGTHR)",
+        libc::SIGTHR => "SIGTHR",
         #[cfg(target_os = "freebsd")]
-        libc::SIGLIBRT => " (SIGLIBRT)",
-        _ => "",
+        libc::SIGLIBRT => "SIGLIBRT",
+        _ => return None,
+    };
+    Some(name)
+}
+
+impl fmt::Debug for ExitStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "unix_wait_status({}, \"{self}\")", self.0)
     }
 }
 
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
-            write!(f, "exit status: {code}")
+            write!(f, "exit status: {code}")?;
         } else if let Some(signal) = self.signal() {
-            let signal_string = signal_string(signal);
+            write!(f, "signal: {signal}")?;
+            if let Some(name) = signal_string(signal) {
+                write!(f, " ({name})")?;
+            }
             if self.core_dumped() {
-                write!(f, "signal: {signal}{signal_string} (core dumped)")
-            } else {
-                write!(f, "signal: {signal}{signal_string}")
+                write!(f, " (core dumped)")?;
             }
         } else if let Some(signal) = self.stopped_signal() {
-            let signal_string = signal_string(signal);
-            write!(f, "stopped (not terminated) by signal: {signal}{signal_string}")
+            write!(f, "stopped (not terminated) by signal: {signal}")?;
+            if let Some(name) = signal_string(signal) {
+                write!(f, " ({name})")?;
+            }
         } else if self.continued() {
-            write!(f, "continued (WIFCONTINUED)")
+            write!(f, "continued (WIFCONTINUED)")?;
         } else {
-            write!(f, "unrecognised wait status: {} {:#x}", self.0, self.0)
+            write!(f, "unrecognised wait status: {} {:#x}", self.0, self.0)?;
         }
+        Ok(())
     }
 }
 
@@ -1291,6 +1304,7 @@ impl ExitStatusError {
 #[cfg(target_os = "linux")]
 mod linux_child_ext {
     use crate::io::ErrorKind;
+    use crate::macros::rustdoc_skip_body;
     use crate::os::linux::process as os;
     use crate::sys::{FromInner, process as imp};
     use crate::{io, mem};
@@ -1306,11 +1320,12 @@ mod linux_child_ext {
                 .ok_or_else(|| io::const_error!(ErrorKind::Uncategorized, "no pidfd was created."))
         }
 
+        #[rustdoc_skip_body]
         fn into_pidfd(mut self) -> Result<os::PidFd, Self> {
             self.handle
                 .pidfd
                 .take()
-                .map(|fd| <os::PidFd as FromInner<imp::PidFd>>::from_inner(fd))
+                .map(<os::PidFd as FromInner<imp::PidFd>>::from_inner)
                 .ok_or_else(|| self)
         }
     }

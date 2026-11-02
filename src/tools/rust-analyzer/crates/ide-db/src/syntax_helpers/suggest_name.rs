@@ -186,16 +186,13 @@ impl NameGenerator {
     /// # Current implementation
     ///
     /// In current implementation, the function tries to get the name from the first
-    /// character of the name for the first type bound.
-    ///
-    /// If the name conflicts with existing generic parameters, it will try to
-    /// resolve the conflict with `for_unique_generic_name`.
+    /// uppercase character of the name for the first type bound.
     pub fn for_impl_trait_as_generic(&mut self, ty: &ast::ImplTraitType) -> SmolStr {
         let c = ty
             .type_bound_list()
             .and_then(|bounds| {
                 let ty = bounds.bounds().next()?.ty()?;
-                ty.syntax().text().char_at(0.into()).filter(|ch| ch.is_alphabetic())
+                ty.syntax().text().to_smolstr().chars().find(|ch| ch.is_uppercase())
             })
             .unwrap_or('T');
 

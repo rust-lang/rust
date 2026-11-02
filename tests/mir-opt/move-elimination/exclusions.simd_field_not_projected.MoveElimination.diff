@@ -1,0 +1,30 @@
+- // MIR for `simd_field_not_projected` before MoveElimination
++ // MIR for `simd_field_not_projected` after MoveElimination
+  
+  fn simd_field_not_projected() -> U32x4 {
+      let mut _0: U32x4;
+      let _1: [u32; 4];
+      let mut _2: [u32; 4];
+      scope 1 {
+-         debug lanes => _1;
++         debug lanes => _2;
+      }
+  
+      bb0: {
+-         StorageLive(_1);
+-         _1 = [const 1_u32, const 2_u32, const 3_u32, const 4_u32];
++         nop;
+          StorageLive(_2);
+-         _2 = copy _1;
++         _2 = [const 1_u32, const 2_u32, const 3_u32, const 4_u32];
++         nop;
++         nop;
+          _0 = U32x4(move _2);
+          StorageDead(_2);
+-         StorageDead(_1);
++         nop;
++         nop;
+          return;
+      }
+  }
+  

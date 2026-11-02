@@ -3,8 +3,8 @@ blarg I am dead
 error: abnormal termination: the program aborted execution
   --> tests/fail/panic/no_std.rs:LL:CC
    |
-LL |     core::intrinsics::abort();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
+LL |     core::intrinsics::abort_immediate();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
    = note: stack backtrace:
            0: panic_handler

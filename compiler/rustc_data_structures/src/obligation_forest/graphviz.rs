@@ -18,8 +18,8 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// A few post-processing that you might want to do make the forest easier to visualize:
     ///
     ///  * `sed 's,std::[a-z]*::,,g'` — Deletes the `std::<package>::` prefix of paths.
-    ///  * `sed 's,"Binder(TraitPredicate(<\(.*\)>)) (\([^)]*\))","\1 (\2)",'` — Transforms
-    ///    `Binder(TraitPredicate(<predicate>))` into just `<predicate>`.
+    ///  * `sed 's,"Binder(TraitClause(<\(.*\)>)) (\([^)]*\))","\1 (\2)",'` — Transforms
+    ///    `Binder(TraitClause(<predicate>))` into just `<predicate>`.
     #[allow(dead_code)]
     pub fn dump_graphviz<P: AsRef<Path>>(&self, dir: P, description: &str) {
         static COUNTER: AtomicUsize = AtomicUsize::new(0);

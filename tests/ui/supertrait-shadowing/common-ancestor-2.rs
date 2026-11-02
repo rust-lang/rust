@@ -1,11 +1,12 @@
 //@ run-pass
 
 #![feature(supertrait_item_shadowing)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![warn(resolving_to_items_shadowing_supertrait_items)]
 #![warn(shadowing_supertrait_items)]
 #![allow(dead_code)]
 
+use std::gca;
 use std::mem::size_of;
 
 trait A {
@@ -39,12 +40,13 @@ trait C: A + B {
     }
     type Assoc;
     //~^ WARN trait item `Assoc` from `C` shadows identically named item
-    type const CONST: i32;
+    #[rustc_always_gca]
+    const CONST: i32;
     //~^ WARN trait item `CONST` from `C` shadows identically named item
 }
 impl<T> C for T {
     type Assoc = i32;
-    type const CONST: i32 = 3;
+    const CONST: i32 = gca!(3);
 }
 
 fn main() {

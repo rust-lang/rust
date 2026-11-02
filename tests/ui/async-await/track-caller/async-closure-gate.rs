@@ -1,52 +1,54 @@
 //@ edition:2021
-//@ revisions: afn nofeat
+//@ revisions: afn cls afn_cls nofeat
+//@[afn_cls] check-pass
 
 #![feature(stmt_expr_attributes)]
-#![cfg_attr(afn, feature(async_fn_track_caller))]
+#![deny(ungated_async_fn_track_caller)]
+#![cfg_attr(any(afn, afn_cls), feature(async_fn_track_caller))]
+#![cfg_attr(any(cls, afn_cls), feature(closure_track_caller))]
 
 fn main() {
-    let _ = #[track_caller] async || {
-        //~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
-    };
+    let _ = #[track_caller]
+    //[nofeat,afn]~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
+    async || {};
 }
 
 #[track_caller]
+//[cls]~^ ERROR `#[track_caller]` on async functions is a no-op
 async fn foo() {
-    let _ = #[track_caller] async || {
-        //~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
-    };
+    let _ = #[track_caller]
+    //[nofeat,afn]~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
+    async || {};
 }
 
 async fn foo2() {
-    let _ = #[track_caller] || {
-        //~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
-    };
+    let _ = #[track_caller]
+    //[nofeat,afn]~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
+    || {};
 }
 
 fn foo3() {
-    async {
-        //~^ ERROR mismatched types
-        let _ = #[track_caller] || {
-            //~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
-        };
-    }
+    let _ = async {
+        let _ = #[track_caller]
+        //[nofeat,afn]~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
+        || {};
+    };
 }
 
 async fn foo4() {
     let _ = || {
-        #[track_caller] || {
-            //~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
-        };
+        #[track_caller]
+        //[nofeat,afn]~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
+        || {};
     };
 }
 
 fn foo5() {
-    async {
-        //~^ ERROR mismatched types
+    let _ = async {
         let _ = || {
-            #[track_caller] || {
-                //~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
-            };
+            #[track_caller]
+            //[nofeat,afn]~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
+            || {};
         };
-    }
+    };
 }

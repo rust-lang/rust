@@ -23,7 +23,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.arm.smulbb"]
     fn arm_smulbb(a: i32, b: i32) -> i32;
 

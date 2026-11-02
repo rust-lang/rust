@@ -5,7 +5,7 @@
 //! which have their own parser in `rustc_metadata`.)
 
 use rustc_feature::UnstableFeatures;
-use rustc_hir::attrs::NativeLibKind;
+use rustc_structures::NativeLibKind;
 
 use crate::EarlyDiagCtxt;
 use crate::config::UnstableOptions;
@@ -18,7 +18,7 @@ mod tests;
 pub(crate) fn parse_native_libs(
     early_dcx: &EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
-    unstable_features: UnstableFeatures,
+    unstable_features: &UnstableFeatures,
     matches: &getopts::Matches,
 ) -> Vec<NativeLib> {
     let cx = ParseNativeLibCx {

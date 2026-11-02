@@ -2,7 +2,6 @@
    LL|       |// Checks that `#[coverage(..)]` in a trait method is not inherited in an
    LL|       |// implementation.
    LL|       |//@ edition: 2021
-   LL|       |//@ reference: attributes.coverage.trait-impl-inherit
    LL|       |
    LL|       |trait T {
    LL|       |    #[coverage(off)]

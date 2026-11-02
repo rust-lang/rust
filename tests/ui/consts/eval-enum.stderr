@@ -1,12 +1,15 @@
 error[E0080]: attempt to divide `1_isize` by zero
   --> $DIR/eval-enum.rs:2:15
    |
+LL | enum Test {
 LL |     DivZero = 1 / 0,
    |               ^^^^^ evaluation of `Test::DivZero::{constant#0}` failed here
 
 error[E0080]: attempt to calculate the remainder of `1_isize` with a divisor of zero
   --> $DIR/eval-enum.rs:4:15
    |
+LL | enum Test {
+...
 LL |     RemZero = 1 % 0,
    |               ^^^^^ evaluation of `Test::RemZero::{constant#0}` failed here
 

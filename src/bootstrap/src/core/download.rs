@@ -13,11 +13,10 @@ use xz2::bufread::XzDecoder;
 
 use crate::core::build_steps::llvm::detect_llvm_freshness;
 use crate::core::config::toml::llvm::check_incompatible_options_for_ci_llvm;
-use crate::core::config::{BUILDER_CONFIG_FILENAME, TargetSelection};
+use crate::core::config::{BUILDER_CONFIG_FILENAME, Config, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::{ExecutionContext, command};
-use crate::utils::helpers::{exe, hex_encode, move_file};
-use crate::{Config, exit, t};
+use crate::utils::helpers::{self, exe, hex_encode, move_file, t};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 
@@ -109,16 +108,15 @@ enum DownloadSource {
 
 /// Functions that are only ever called once, but named for clarity and to avoid thousand-line functions.
 impl Config {
-    pub(crate) fn download_clippy(&self) -> PathBuf {
+    pub(crate) fn download_clippy(&self, initial_sysroot: &Path) -> PathBuf {
         self.do_if_verbose(|| println!("downloading stage0 clippy artifacts"));
 
         let date = &self.stage0_metadata.compiler.date;
         let version = &self.stage0_metadata.compiler.version;
         let host = self.host_target;
 
-        let clippy_stamp =
-            BuildStamp::new(&self.initial_sysroot).with_prefix("clippy").add_stamp(date);
-        let cargo_clippy = self.initial_sysroot.join("bin").join(exe("cargo-clippy", host));
+        let clippy_stamp = BuildStamp::new(initial_sysroot).with_prefix("clippy").add_stamp(date);
+        let cargo_clippy = initial_sysroot.join("bin").join(exe("cargo-clippy", host));
         if cargo_clippy.exists() && clippy_stamp.is_up_to_date() {
             return cargo_clippy;
         }
@@ -270,17 +268,15 @@ impl Config {
         download_component(dwn_ctx, &self.out, mode, filename, prefix, key, destination);
     }
 
-    pub(crate) fn maybe_download_ci_llvm(&self) {
+    /// Attempts to download LLVM from CI for the given **target**.
+    /// Returns a path to the downloaded and extracted directory.
+    pub(crate) fn maybe_download_ci_llvm(&self, target: TargetSelection) -> Option<PathBuf> {
         // Never try to download CI LLVM during unit tests.
         if cfg!(test) {
-            return;
+            return None;
         }
 
-        if !self.llvm_from_ci {
-            return;
-        }
-
-        let llvm_root = self.ci_llvm_root();
+        let llvm_root = self.out.join(target).join("ci-llvm");
         let llvm_freshness =
             detect_llvm_freshness(self, self.rust_info.is_managed_git_subrepository());
         self.do_if_verbose(|| {
@@ -294,13 +290,13 @@ impl Config {
                 eprintln!("HELP: maybe your repository history is too shallow?");
                 eprintln!("HELP: consider disabling `download-ci-llvm`");
                 eprintln!("HELP: or fetch enough history to include one upstream commit");
-                crate::exit!(1);
+                helpers::exit_process(1);
             }
         };
         let stamp_key = format!("{}{}", llvm_sha, self.llvm_assertions);
         let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm").add_stamp(stamp_key);
         if !llvm_stamp.is_up_to_date() && !self.dry_run() {
-            self.download_ci_llvm(&llvm_sha);
+            self.download_ci_llvm(&llvm_root, target, &llvm_sha);
 
             if self.should_fix_bins_and_dylibs() {
                 for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
@@ -319,7 +315,7 @@ impl Config {
             let now = std::time::SystemTime::now();
             let file_times = fs::FileTimes::new().set_accessed(now).set_modified(now);
 
-            let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.host_target));
+            let llvm_config = llvm_root.join("bin").join(exe("llvm-config", target));
             t!(crate::utils::helpers::set_file_times(llvm_config, file_times));
 
             if self.should_fix_bins_and_dylibs() {
@@ -350,19 +346,20 @@ impl Config {
                 }
                 Err(e) => {
                     eprintln!("ERROR: Failed to parse CI LLVM bootstrap.toml: {e}");
-                    exit!(2);
+                    helpers::exit_process(2);
                 }
             };
         };
+        Some(llvm_root)
     }
 
-    fn download_ci_llvm(&self, llvm_sha: &str) {
+    fn download_ci_llvm(&self, llvm_root: &Path, target: TargetSelection, llvm_sha: &str) {
         // For unit tests, downloading should have been blocked by `maybe_download_ci_llvm`.
         assert!(cfg!(not(test)), "unit tests shouldn't be downloading CI LLVM");
 
         let llvm_assertions = self.llvm_assertions;
 
-        let cache_prefix = format!("llvm-{llvm_sha}-{llvm_assertions}");
+        let cache_prefix = format!("llvm-{}-{llvm_sha}-{llvm_assertions}", target.triple);
         let cache_dst =
             self.bootstrap_cache_path.as_ref().cloned().unwrap_or_else(|| self.out.join("cache"));
 
@@ -376,23 +373,25 @@ impl Config {
             &self.stage0_metadata.config.artifacts_server
         };
         let version = self.artifact_version_part(llvm_sha);
-        let filename = format!("rust-dev-{}-{}.tar.xz", version, self.host_target.triple);
+        let filename = format!("rust-dev-{}-{}.tar.xz", version, target.triple);
         let tarball = rustc_cache.join(&filename);
         if !tarball.exists() {
-            let help_on_error = "ERROR: failed to download llvm from ci
+            let help_on_error = format!(
+                "ERROR: failed to download llvm from CI for `{target}`
 
     HELP: There could be two reasons behind this:
-        1) The host triple is not supported for `download-ci-llvm`.
+        1) `{target}` is not supported for `download-ci-llvm`.
         2) Old builds get deleted after a certain time.
     HELP: In either case, disable `download-ci-llvm` in your bootstrap.toml:
 
     [llvm]
     download-ci-llvm = false
-    ";
-            self.download_file(&format!("{base}/{llvm_sha}/{filename}"), &tarball, help_on_error);
+    ",
+                target = target.triple
+            );
+            self.download_file(&format!("{base}/{llvm_sha}/{filename}"), &tarball, &help_on_error);
         }
-        let llvm_root = self.ci_llvm_root();
-        self.unpack(&tarball, &llvm_root, "rust-dev");
+        self.unpack(&tarball, llvm_root, "rust-dev");
     }
 
     pub fn download_ci_gcc(&self, gcc_sha: &str, root_dir: &Path) {
@@ -530,25 +529,20 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
 
 /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
 /// reuse target directories or artifacts
-pub(crate) fn maybe_download_rustfmt<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
-    out: &Path,
-) -> Option<PathBuf> {
+pub(crate) fn maybe_download_rustfmt(config: &Config, out: &Path) -> Option<PathBuf> {
     // Don't actually download rustfmt during unit tests.
     if cfg!(test) {
         return Some(PathBuf::new());
     }
 
-    let dwn_ctx = dwn_ctx.as_ref();
-
-    if dwn_ctx.exec_ctx.dry_run() {
+    if config.dry_run() {
         return Some(PathBuf::new());
     }
 
-    let VersionMetadata { date, version, .. } = dwn_ctx.stage0_metadata.rustfmt.as_ref()?;
+    let VersionMetadata { date, version, .. } = config.stage0_metadata.rustfmt.as_ref()?;
     let channel = format!("{version}-{date}");
 
-    let host = dwn_ctx.host_target;
+    let host = config.host_target;
     let bin_root = out.join(host).join("rustfmt");
     let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
     let rustfmt_stamp = BuildStamp::new(&bin_root).with_prefix("rustfmt").add_stamp(channel);
@@ -557,7 +551,7 @@ pub(crate) fn maybe_download_rustfmt<'a>(
     }
 
     download_component(
-        dwn_ctx,
+        DownloadContext::from(config),
         out,
         DownloadSource::Dist,
         format!("rustfmt-{version}-{build}.tar.xz", build = host.triple),
@@ -567,7 +561,7 @@ pub(crate) fn maybe_download_rustfmt<'a>(
     );
 
     download_component(
-        dwn_ctx,
+        DownloadContext::from(config),
         out,
         DownloadSource::Dist,
         format!("rustc-{version}-{build}.tar.xz", build = host.triple),
@@ -576,14 +570,14 @@ pub(crate) fn maybe_download_rustfmt<'a>(
         "rustfmt",
     );
 
-    if should_fix_bins_and_dylibs(dwn_ctx.patch_binaries_for_nix, dwn_ctx.exec_ctx) {
-        fix_bin_or_dylib(out, &bin_root.join("bin").join("rustfmt"), dwn_ctx.exec_ctx);
-        fix_bin_or_dylib(out, &bin_root.join("bin").join("cargo-fmt"), dwn_ctx.exec_ctx);
+    if should_fix_bins_and_dylibs(config.patch_binaries_for_nix, &config.exec_ctx) {
+        fix_bin_or_dylib(out, &bin_root.join("bin").join("rustfmt"), &config.exec_ctx);
+        fix_bin_or_dylib(out, &bin_root.join("bin").join("cargo-fmt"), &config.exec_ctx);
         let lib_dir = bin_root.join("lib");
         for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
             let lib = t!(lib);
             if path_is_dylib(&lib.path()) {
-                fix_bin_or_dylib(out, &lib.path(), dwn_ctx.exec_ctx);
+                fix_bin_or_dylib(out, &lib.path(), &config.exec_ctx);
             }
         }
     }
@@ -1126,7 +1120,7 @@ fn download_http_with_retries(
         if !help_on_error.is_empty() {
             eprintln!("{help_on_error}");
         }
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 }
 

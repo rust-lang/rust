@@ -1,14 +1,17 @@
 //! This module defines the `Rust` struct, which represents the `[rust]` table
 //! in the `bootstrap.toml` configuration file.
 
+use std::collections::BTreeSet;
+use std::path::PathBuf;
+
 use build_helper::ci::CiEnv;
 use serde::{Deserialize, Deserializer};
 
+use crate::core::backend::CodegenBackendKind;
+use crate::core::config::macros::define_config;
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::{
-    CompressDebuginfo, DebuginfoLevel, Merge, OverrideAllocator, ReplaceOpt, StringOrBool,
-};
-use crate::{BTreeSet, CodegenBackendKind, HashSet, PathBuf, TargetSelection, define_config, exit};
+use crate::core::config::{CompressDebuginfo, DebuginfoLevel, StringOrBool, TargetSelection};
+use crate::utils::helpers;
 
 define_config! {
     /// TOML representation of how the Rust build is configured.
@@ -57,7 +60,6 @@ define_config! {
         verify_llvm_ir: Option<bool> = "verify-llvm-ir",
         thin_lto_import_instr_limit: Option<u32> = "thin-lto-import-instr-limit",
         remap_debuginfo: Option<bool> = "remap-debuginfo",
-        override_allocator: Option<OverrideAllocator> = "override-allocator",
         // FIXME: Remove this option in Q1 2027
         jemalloc: Option<bool> = "jemalloc",
         test_compare_mode: Option<bool> = "test-compare-mode",
@@ -77,6 +79,9 @@ define_config! {
         std_features: Option<BTreeSet<String>> = "std-features",
         break_on_ice: Option<bool> = "break-on-ice",
         parallel_frontend_threads: Option<u32> = "parallel-frontend-threads",
+        stdlib_semver_baseline: Option<String> = "stdlib-semver-baseline",
+        wasm_proc_macros: Option<bool> = "wasm-proc-macros",
+        wasm_panic_unwind_default: Option<bool> = "wasm-panic-unwind-default",
     }
 }
 
@@ -297,6 +302,10 @@ pub fn check_incompatible_options_for_ci_rustc(
         ci_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins.clone());
     err!(current_optimized_compiler_builtins, optimized_compiler_builtins, "build");
 
+    let current_allocator = current_config_toml.build.as_ref().and_then(|b| b.allocator);
+    let allocator = ci_config_toml.build.as_ref().and_then(|b| b.allocator);
+    err!(current_allocator, allocator, "build");
+
     // We always build the in-tree compiler on cross targets, so we only care
     // about the host target here.
     let host_str = host.to_string();
@@ -309,10 +318,17 @@ pub fn check_incompatible_options_for_ci_rustc(
         ))?;
 
         let profiler = &ci_cfg.profiler;
-        err!(current_cfg.profiler, profiler, "build");
+        err!(current_cfg.profiler, profiler, format!("target.{host_str}"));
 
         let optimized_compiler_builtins = &ci_cfg.optimized_compiler_builtins;
-        err!(current_cfg.optimized_compiler_builtins, optimized_compiler_builtins, "build");
+        err!(
+            current_cfg.optimized_compiler_builtins,
+            optimized_compiler_builtins,
+            format!("target.{host_str}")
+        );
+
+        err!(current_cfg.allocator, &ci_cfg.allocator, format!("target.{host_str}"));
+        err!(current_cfg.jemalloc, &ci_cfg.jemalloc, format!("target.{host_str}"));
     }
 
     let (Some(current_rust_config), Some(ci_rust_config)) =
@@ -333,7 +349,6 @@ pub fn check_incompatible_options_for_ci_rustc(
         stack_protector,
         strip,
         jemalloc,
-        override_allocator,
         rpath,
         channel,
         default_linker,
@@ -384,6 +399,9 @@ pub fn check_incompatible_options_for_ci_rustc(
         parallel_frontend_threads: _,
         bootstrap_override_lld: _,
         rustflags: _,
+        stdlib_semver_baseline: _,
+        wasm_proc_macros: _,
+        wasm_panic_unwind_default: _,
     } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:
@@ -403,7 +421,6 @@ pub fn check_incompatible_options_for_ci_rustc(
     err!(current_rust_config.llvm_tools, llvm_tools, "rust");
     err!(current_rust_config.llvm_bitcode_linker, llvm_bitcode_linker, "rust");
     err!(current_rust_config.jemalloc, jemalloc, "rust");
-    err!(current_rust_config.override_allocator, override_allocator, "rust");
     err!(current_rust_config.default_linker, default_linker, "rust");
     err!(current_rust_config.stack_protector, stack_protector, "rust");
     err!(current_rust_config.std_features, std_features, "rust");
@@ -415,6 +432,7 @@ pub fn check_incompatible_options_for_ci_rustc(
 
 pub(crate) const BUILTIN_CODEGEN_BACKENDS: &[&str] = &["llvm", "cranelift", "gcc"];
 
+/// FIXME(Zalathar): This is partly redundant with the parsing code in [`CodegenBackendKind`].
 pub(crate) fn parse_codegen_backends(
     backends: Vec<String>,
     section: &str,
@@ -448,7 +466,7 @@ pub(crate) fn parse_codegen_backends(
         if !BUILTIN_CODEGEN_BACKENDS.contains(&backend.name()) {
             if CiEnv::is_rust_lang_managed_ci_job() {
                 eprintln!("Unknown codegen backend {}", backend.name());
-                exit!(1);
+                helpers::exit_process(1);
             }
 
             println!(
@@ -461,7 +479,7 @@ pub(crate) fn parse_codegen_backends(
     }
     if found_backends.is_empty() {
         eprintln!("ERROR: `{section}.codegen-backends` should not be set to `[]`");
-        exit!(1);
+        helpers::exit_process(1);
     }
     found_backends
 }

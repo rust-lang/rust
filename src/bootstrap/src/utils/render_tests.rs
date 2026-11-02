@@ -16,6 +16,7 @@ use termcolor::{Color, ColorSpec, WriteColor};
 use crate::core::build_steps::test::failed_tests::RecordFailedTests;
 use crate::core::builder::Builder;
 use crate::utils::exec::BootstrapCommand;
+use crate::utils::helpers;
 
 const TERSE_TESTS_PER_LINE: usize = 88;
 
@@ -43,7 +44,7 @@ pub(crate) fn try_run_tests(
     }
 
     if builder.fail_fast {
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 
     builder.config.exec_ctx().add_to_delay_failure(format!("{cmd:?}"));

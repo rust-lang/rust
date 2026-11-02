@@ -9,20 +9,22 @@ cfg_select! {
     any(target_family = "unix", target_os = "wasi") => {
         mod unix;
         use unix as imp;
-        #[cfg(not(target_os = "wasi"))]
-        pub use unix::{chown, fchown, lchown, mkfifo};
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        pub(super) use unix::CachedFileMetadata;
         #[cfg(not(any(target_os = "fuchsia", target_os = "wasi")))]
         pub use unix::chroot;
         #[cfg(not(target_os = "wasi"))]
         pub(crate) use unix::debug_assert_fd_is_open;
-        #[cfg(any(target_os = "linux", target_os = "android"))]
-        pub(super) use unix::CachedFileMetadata;
+        #[cfg(not(target_os = "wasi"))]
+        pub use unix::{chown, fchown, lchown, mkfifo};
+
         use crate::sys::helpers::run_path_with_cstr as with_native_path;
     }
     target_os = "windows" => {
         mod windows;
         use windows as imp;
-        pub use windows::{symlink_inner, junction_point};
+        pub use windows::{junction_point, symlink_inner};
+
         use crate::sys::path::with_native_path;
     }
     target_os = "hermit" => {
@@ -59,8 +61,8 @@ pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> i
 }
 
 pub use imp::{
-    Dir, DirBuilder, DirEntry, File, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
-    ReadDir,
+    Dir, DirBuilder, DirEntry, ExtraHomeDirs, ExtraMediaDirs, File, FileAttr, FilePermissions,
+    FileTimes, FileType, OpenOptions, ReadDir,
 };
 
 pub fn read_dir(path: &Path) -> io::Result<ReadDir> {
@@ -74,6 +76,10 @@ pub fn remove_file(path: &Path) -> io::Result<()> {
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     with_native_path(old, &|old| with_native_path(new, &|new| imp::rename(old, new)))
+}
+
+pub fn rename_noreplace(old: &Path, new: &Path) -> io::Result<()> {
+    with_native_path(old, &|old| with_native_path(new, &|new| imp::rename_noreplace(old, new)))
 }
 
 pub fn remove_dir(path: &Path) -> io::Result<()> {

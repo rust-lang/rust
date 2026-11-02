@@ -1,9 +1,7 @@
-use rustc_abi::CanonAbi;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use crate::shims::sig::check_min_vararg_count;
 use crate::shims::unix::env::EvalContextExt;
 use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
 use crate::shims::unix::linux_like::sync::futex;
@@ -17,7 +15,10 @@ pub fn syscall<'tcx>(
     args: &[OpTy<'tcx>],
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
-    let ([op], varargs) = ecx.check_shim_sig_variadic_lenient(abi, CanonAbi::C, link_name, args)?;
+    let ([op], varargs) = ecx.check_shim_sig_variadic(
+        shim_sig!(extern "C" fn(isize, ...) -> isize),
+        (link_name, abi, args),
+    )?;
     // The syscall variadic function is legal to call with more arguments than needed,
     // extra arguments are simply ignored. The important check is that when we use an
     // argument, we have to also check all arguments *before* it to ensure that they
@@ -29,20 +30,24 @@ pub fn syscall<'tcx>(
     let sys_gettid = ecx.eval_libc("SYS_gettid").to_target_usize(ecx)?;
     let sys_accept4 = ecx.eval_libc("SYS_accept4").to_target_usize(ecx)?;
 
-    match ecx.read_target_usize(op)? {
+    match ecx.read_target_usize(&op)? {
         // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
         // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
         num if num == sys_getrandom => {
             // Used by getrandom 0.1
             // The first argument is the syscall id, so skip over it.
-            let [ptr, len, flags] = check_min_vararg_count("syscall(SYS_getrandom, ...)", varargs)?;
+            let ([ptr, len, flags], _) = ecx.check_varargs(
+                shim_varargs![*libc::c_void, usize, i32],
+                varargs,
+                "syscall(SYS_getrandom, ...)",
+            )?;
 
-            let ptr = ecx.read_pointer(ptr)?;
-            let len = ecx.read_target_usize(len)?;
+            let ptr = ecx.read_pointer(&ptr)?;
+            let len = ecx.read_target_usize(&len)?;
             // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
             // neither of which have any effect on our current PRNG.
             // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
-            let _flags = ecx.read_scalar(flags)?.to_i32()?;
+            let _flags = ecx.read_scalar(&flags)?.to_i32()?;
 
             ecx.gen_random(ptr, len)?;
             ecx.write_scalar(Scalar::from_target_usize(len, ecx), dest)?;
@@ -52,9 +57,10 @@ pub fn syscall<'tcx>(
             futex(ecx, varargs, dest)?;
         }
         num if num == sys_eventfd2 => {
-            let [initval, flags] = check_min_vararg_count("syscall(SYS_evetfd2, ...)", varargs)?;
+            let ([initval, flags], _) =
+                ecx.check_varargs(shim_varargs![u32, i32], varargs, "syscall(SYS_evetfd2, ...)")?;
 
-            let result = ecx.eventfd(initval, flags)?;
+            let result = ecx.eventfd(&initval, &flags)?;
             ecx.write_int(result.to_i32()?, dest)?;
         }
         num if num == sys_gettid => {
@@ -63,9 +69,12 @@ pub fn syscall<'tcx>(
         }
         num if num == sys_accept4 => {
             // Used on Android.
-            let [socket, address, address_len, flags] =
-                check_min_vararg_count("syscall(SYS_accept4, ...)", varargs)?;
-            ecx.accept4(socket, address, address_len, Some(flags), dest)?;
+            let ([socket, address, address_len, flags], _) = ecx.check_varargs(
+                shim_varargs![i32, *libc::sockaddr, *libc::socklen_t, i32],
+                varargs,
+                "syscall(SYS_accept4, ...)",
+            )?;
+            ecx.accept4(&socket, &address, &address_len, Some(&flags), dest)?;
         }
         num => {
             throw_unsup_format!("syscall: unsupported syscall number {num}");

@@ -10,7 +10,7 @@
 //! This problem is a part of more-or-less every IDE feature implemented. Every
 //! IDE functionality (like goto to definition), conceptually starts with a
 //! specific cursor position in a file. Starting with this text offset, we first
-//! figure out what syntactic construct are we at: is this a pattern, an
+//! figure out what syntactic construct we are at: is this a pattern, an
 //! expression, an item definition.
 //!
 //! Knowing only the syntax gives us relatively little info. For example,
@@ -32,11 +32,11 @@
 //! Specifically, the algorithm goes like this:
 //!
 //! 1. Find the syntactic container for the syntax. For example, field's
-//!    container is the struct, and structs container is a module.
+//!    container is the struct, and the struct's container is a module.
 //! 2. Recursively get the def corresponding to container.
 //! 3. Ask the container def for all child defs. These child defs contain
 //!    the answer and answer's siblings.
-//! 4. For each child def, ask for it's source.
+//! 4. For each child def, ask for its source.
 //! 5. The child def whose source is the syntax node we've started with
 //!    is the answer.
 //!
@@ -165,8 +165,20 @@ impl<'db> SourceToDefCache<'db> {
         self.expansion_info_cache.entry(macro_file).or_insert_with(|| {
             let exp_info = macro_file.expansion_info(db);
 
+            // Ensure that the cache contains syntax nodes from expanded macros,
+            // whose root may be in another file.
             let InMacroFile { file_id, value } = exp_info.expanded();
             Self::cache(&mut self.root_to_file_cache, value, file_id.into());
+
+            // include!("foo.rs") invocations are awkward: in addition to the
+            // expansion site there's the included file (foo.rs), so we need to
+            // ensure that it exists in the cache too.
+            if macro_file.is_include_macro(db) {
+                let arg = exp_info.arg();
+                if let Some(arg_node) = arg.value {
+                    Self::cache(&mut self.root_to_file_cache, arg_node.tree_top(), arg.file_id);
+                }
+            }
 
             exp_info
         })

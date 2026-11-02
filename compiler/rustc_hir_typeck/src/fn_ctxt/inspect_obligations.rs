@@ -2,7 +2,7 @@
 
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::DefId;
-use rustc_infer::traits::{self, ObligationCause, PredicateObligations};
+use rustc_infer::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_trait_selection::solve::Certainty;
@@ -139,7 +139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         obligations_for_self_ty.retain_mut(|obligation| {
-            obligation.predicate = self.resolve_vars_if_possible(obligation.predicate);
+            obligation.predicate = self.deeply_resolve_ignoring_regions(obligation.predicate);
             !obligation.predicate.has_placeholders()
         });
         obligations_for_self_ty
@@ -171,11 +171,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         predicate: ty::Predicate<'tcx>,
     ) -> Option<ty::FloatVid> {
         // The predicates we are looking for look like
-        // `TraitPredicate(<f32 as std::convert::From<{float}>>, polarity:Positive)`.
+        // `TraitClause(<f32 as std::convert::From<{float}>>, polarity:Positive)`.
         // They will have no bound variables.
         match predicate.kind().no_bound_vars() {
-            Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
-                polarity: ty::PredicatePolarity::Positive,
+            Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitClause {
+                polarity: ty::ClausePolarity::Positive,
                 trait_ref,
             }))) if trait_ref.def_id == from_trait
                 && self.shallow_resolve(trait_ref.self_ty()).kind()

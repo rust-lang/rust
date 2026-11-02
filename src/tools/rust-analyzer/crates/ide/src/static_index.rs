@@ -12,7 +12,7 @@ use ide_db::{
     famous_defs::FamousDefs,
     ra_fixture::RaFixtureConfig,
 };
-use syntax::{AstNode, AstToken, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, ast};
+use syntax::{AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken, TextRange};
 
 use crate::navigation_target::UpmappingResult;
 use crate::{
@@ -31,6 +31,7 @@ pub struct StaticIndex<'a> {
     pub tokens: TokenStore,
     analysis: &'a Analysis,
     db: &'a RootDatabase,
+    include_hovers: bool,
     def_map: FxHashMap<Definition<'a>, TokenId>,
 }
 
@@ -180,18 +181,22 @@ impl<'a> StaticIndex<'a> {
             syntax::NodeOrToken::Node(_) => None,
             syntax::NodeOrToken::Token(it) => Some(it),
         });
-        let hover_config = HoverConfig {
-            links_in_hover: true,
-            memory_layout: None,
-            documentation: true,
-            keywords: true,
-            format: crate::HoverDocFormat::Markdown,
-            max_trait_assoc_items_count: None,
-            max_fields_count: Some(5),
-            max_enum_variants_count: Some(5),
-            max_subst_ty_len: SubstTyLen::Unlimited,
-            show_drop_glue: true,
-            ra_fixture: RaFixtureConfig::default(),
+        let hover_config = if self.include_hovers {
+            Some(HoverConfig {
+                links_in_hover: true,
+                memory_layout: None,
+                documentation: true,
+                keywords: true,
+                format: crate::HoverDocFormat::Markdown,
+                max_trait_assoc_items_count: None,
+                max_fields_count: Some(5),
+                max_enum_variants_count: Some(5),
+                max_subst_ty_len: SubstTyLen::Unlimited,
+                show_drop_glue: true,
+                ra_fixture: RaFixtureConfig::default(),
+            })
+        } else {
+            None
         };
         let mut result = StaticIndexedFile { file_id, folds, tokens: vec![] };
 
@@ -202,18 +207,20 @@ impl<'a> StaticIndex<'a> {
                 let nav = def.try_to_nav(&sema).map(UpmappingResult::call_site);
                 let it = self.tokens.insert(TokenStaticData {
                     documentation: documentation_for_definition(&sema, def, scope_node),
-                    hover: Some(hover_for_definition(
-                        &sema,
-                        file_id,
-                        def,
-                        None,
-                        scope_node,
-                        None,
-                        false,
-                        &hover_config,
-                        edition,
-                        display_target,
-                    )),
+                    hover: hover_config.as_ref().map(|hover_config| {
+                        hover_for_definition(
+                            &sema,
+                            file_id,
+                            def,
+                            None,
+                            scope_node,
+                            None,
+                            false,
+                            hover_config,
+                            edition,
+                            display_target,
+                        )
+                    }),
                     definition: nav.as_ref().map(|it| FileRange {
                         file_id: it.file_id,
                         range: it.focus_or_full_range(),
@@ -268,6 +275,7 @@ impl<'a> StaticIndex<'a> {
     pub fn compute(
         analysis: &'a Analysis,
         vendored_libs_config: VendoredLibrariesConfig<'_>,
+        include_hovers: bool,
     ) -> StaticIndex<'a> {
         let db = &analysis.db;
         hir::attach_db(db, || {
@@ -290,6 +298,7 @@ impl<'a> StaticIndex<'a> {
                 tokens: Default::default(),
                 analysis,
                 db,
+                include_hovers,
                 def_map: Default::default(),
             };
             let mut visited_files = FxHashSet::default();
@@ -349,15 +358,20 @@ fn definition_range_excluding_trivia(
 }
 
 fn is_leading_trivia_excluding_docs(token: &SyntaxToken) -> bool {
-    match token.kind() {
-        SyntaxKind::WHITESPACE => true,
-        SyntaxKind::COMMENT => ast::Comment::cast(token.clone()).is_none_or(|it| !it.is_outer()),
-        _ => false,
-    }
+    matches!(
+        token.kind(),
+        SyntaxKind::WHITESPACE | SyntaxKind::COMMENT | SyntaxKind::INNER_DOC_COMMENT
+    )
 }
 
 fn is_trailing_trivia(token: &SyntaxToken) -> bool {
-    matches!(token.kind(), SyntaxKind::WHITESPACE | SyntaxKind::COMMENT)
+    matches!(
+        token.kind(),
+        SyntaxKind::WHITESPACE
+            | SyntaxKind::COMMENT
+            | SyntaxKind::INNER_DOC_COMMENT
+            | SyntaxKind::OUTER_DOC_COMMENT
+    )
 }
 
 #[cfg(test)]
@@ -373,7 +387,7 @@ mod tests {
         vendored_libs_config: VendoredLibrariesConfig<'_>,
     ) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
-        let s = StaticIndex::compute(&analysis, vendored_libs_config);
+        let s = StaticIndex::compute(&analysis, vendored_libs_config, true);
         let mut range_set: FxHashSet<_> = ranges.iter().map(|it| it.0).collect();
         for f in s.files {
             for (range, _) in f.tokens {
@@ -399,7 +413,7 @@ mod tests {
         vendored_libs_config: VendoredLibrariesConfig<'_>,
     ) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
-        let s = StaticIndex::compute(&analysis, vendored_libs_config);
+        let s = StaticIndex::compute(&analysis, vendored_libs_config, true);
         let mut range_set: FxHashSet<_> = ranges.iter().map(|it| it.0).collect();
         for (_, t) in s.tokens.iter() {
             if let Some(t) = t.definition {
@@ -424,7 +438,7 @@ mod tests {
         vendored_libs_config: VendoredLibrariesConfig<'_>,
     ) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
-        let s = StaticIndex::compute(&analysis, vendored_libs_config);
+        let s = StaticIndex::compute(&analysis, vendored_libs_config, true);
         let mut range_set: FxHashMap<_, i32> = ranges.iter().map(|it| (it.0, 0)).collect();
 
         // Make sure that all references have at least one range. We use a HashMap instead of a

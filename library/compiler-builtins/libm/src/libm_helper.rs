@@ -66,6 +66,7 @@ libm_helper! {
         (fn exp(x: f32) -> (f32);                   => expf);
         (fn exp10(x: f32) -> (f32);                 => exp10f);
         (fn exp2(x: f32) -> (f32);                  => exp2f);
+        (fn exp2m1(x: f32) -> (f32);                => exp2m1f);
         (fn expm1(x: f32) -> (f32);                 => expm1f);
         (fn fabs(x: f32) -> (f32);                  => fabsf);
         (fn fdim(x: f32, y: f32) -> (f32);          => fdimf);
@@ -132,6 +133,7 @@ libm_helper! {
         (fn exp(x: f64) -> (f64);                   => exp);
         (fn exp10(x: f64) -> (f64);                 => exp10);
         (fn exp2(x: f64) -> (f64);                  => exp2);
+        (fn exp2m1(x: f64) -> (f64);                => exp2m1);
         (fn expm1(x: f64) -> (f64);                 => expm1);
         (fn fabs(x: f64) -> (f64);                  => fabs);
         (fn fdim(x: f64, y: f64) -> (f64);          => fdim);
@@ -192,6 +194,7 @@ libm_helper! {
         // verify-sorted-start
         (fn ceil(x: f16) -> (f16);                  => ceilf16);
         (fn copysign(x: f16, y: f16) -> (f16);      => copysignf16);
+        (fn exp2m1(x: f16) -> (f16);                => exp2m1f16);
         (fn fabs(x: f16) -> (f16);                  => fabsf16);
         (fn fdim(x: f16, y: f16) -> (f16);          => fdimf16);
         (fn floor(x: f16) -> (f16);                 => floorf16);

@@ -1,0 +1,101 @@
+error: `[const]` is not allowed here
+  --> $DIR/const-supertrait-unstable.rs:26:12
+   |
+LL | trait Bar: [const] Foo {}
+   |            ^^^^^^^
+   |
+note: this trait is not `const`, so it cannot have `[const]` trait bounds
+  --> $DIR/const-supertrait-unstable.rs:26:1
+   |
+LL | trait Bar: [const] Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0554]: `#![feature]` may not be used on the nightly release channel
+  --> $DIR/const-supertrait-unstable.rs:19:30
+   |
+LL | #![cfg_attr(feature_enabled, feature(const_trait_impl))]
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const-supertrait-unstable.rs:26:12
+   |
+LL | trait Bar: [const] Foo {}
+   |            ^^^^^^^ can't be applied to `Foo`
+   |
+note: `Foo` can't be used with `[const]` because it isn't `const`
+  --> $DIR/const-supertrait-unstable.rs:22:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const-supertrait-unstable.rs:26:12
+   |
+LL | trait Bar: [const] Foo {}
+   |            ^^^^^^^ can't be applied to `Foo`
+   |
+note: `Foo` can't be used with `[const]` because it isn't `const`
+  --> $DIR/const-supertrait-unstable.rs:22:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const-supertrait-unstable.rs:26:12
+   |
+LL | trait Bar: [const] Foo {}
+   |            ^^^^^^^ can't be applied to `Foo`
+   |
+note: `Foo` can't be used with `[const]` because it isn't `const`
+  --> $DIR/const-supertrait-unstable.rs:22:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const-supertrait-unstable.rs:33:17
+   |
+LL | const fn foo<T: [const] Bar>(x: &T) {
+   |                 ^^^^^^^ can't be applied to `Bar`
+   |
+note: `Bar` can't be used with `[const]` because it isn't `const`
+  --> $DIR/const-supertrait-unstable.rs:26:1
+   |
+LL | trait Bar: [const] Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const-supertrait-unstable.rs:33:17
+   |
+LL | const fn foo<T: [const] Bar>(x: &T) {
+   |                 ^^^^^^^ can't be applied to `Bar`
+   |
+note: `Bar` can't be used with `[const]` because it isn't `const`
+  --> $DIR/const-supertrait-unstable.rs:26:1
+   |
+LL | trait Bar: [const] Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions
+  --> $DIR/const-supertrait-unstable.rs:37:7
+   |
+LL |     x.a();
+   |       ^^^
+   |
+note: method `a` is not const because trait `Foo` is not const
+  --> $DIR/const-supertrait-unstable.rs:22:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^ this trait is not const
+LL |     fn a(&self);
+   |     ------------ this method is not const
+   = help: const traits are not yet supported on stable Rust
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0015, E0554.
+For more information about an error, try `rustc --explain E0015`.

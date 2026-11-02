@@ -4,7 +4,6 @@ use crate::marker::{Destruct, PointeeSized, Unsize};
 use crate::mem::{MaybeUninit, SizedTypeProperties, transmute};
 use crate::num::NonZero;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
-use crate::ptr::Unique;
 use crate::slice::{self, SliceIndex};
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{fmt, hash, intrinsics, mem, ptr};
@@ -75,8 +74,8 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
-#[rustc_diagnostic_item = "NonNull"]
-pub struct NonNull<T: PointeeSized> {
+#[lang = "non_null"]
+pub struct NonNull<#[rustc_assert_variance(covariant)] T: PointeeSized> {
     pointer: crate::pattern_type!(*const T is !null),
 }
 
@@ -207,6 +206,10 @@ impl<T: Sized> NonNull<T> {
 impl<T: PointeeSized> NonNull<T> {
     /// Creates a new `NonNull`.
     ///
+    /// Note that if you have an `&mut`, you can use the safe [`from_mut`] instead.
+    ///
+    /// [`from_mut`]: NonNull::from_mut
+    ///
     /// # Safety
     ///
     /// `ptr` must be non-null.
@@ -245,6 +248,10 @@ impl<T: PointeeSized> NonNull<T> {
     }
 
     /// Creates a new `NonNull` if `ptr` is non-null.
+    ///
+    /// Note that if you have an `&mut`, you can use [`from_mut`] instead to avoid the `Option`.
+    ///
+    /// [`from_mut`]: NonNull::from_mut
     ///
     /// # Panics during const evaluation
     ///
@@ -386,7 +393,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u32;
-    /// let ptr = NonNull::new(&mut x).expect("pointer should not be null");
+    /// let ptr = NonNull::from_mut(&mut x);
     ///
     /// let x_value = unsafe { *ptr.as_ptr() };
     /// assert_eq!(x_value, 0);
@@ -428,7 +435,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u32;
-    /// let ptr = NonNull::new(&mut x as *mut _).expect("pointer should not be null");
+    /// let ptr = NonNull::from_mut(&mut x);
     ///
     /// let ref_x = unsafe { ptr.as_ref() };
     /// println!("{ref_x}");
@@ -464,7 +471,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u32;
-    /// let mut ptr = NonNull::new(&mut x).expect("pointer should not be null");
+    /// let mut ptr = NonNull::from_mut(&mut x);
     ///
     /// let x_ref = unsafe { ptr.as_mut() };
     /// assert_eq!(*x_ref, 0);
@@ -491,7 +498,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u32;
-    /// let ptr = NonNull::new(&mut x as *mut _).expect("pointer should not be null");
+    /// let ptr = NonNull::from_mut(&mut x);
     ///
     /// let casted_ptr = ptr.cast::<i8>();
     /// let raw_ptr: *mut i8 = casted_ptr.as_ptr();
@@ -514,7 +521,6 @@ impl<T: PointeeSized> NonNull<T> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(pointer_try_cast_aligned)]
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u64;
@@ -525,7 +531,7 @@ impl<T: PointeeSized> NonNull<T> {
     /// assert!(aligned.try_cast_aligned::<u32>().is_some());
     /// assert!(unaligned.try_cast_aligned::<u32>().is_none());
     /// ```
-    #[unstable(feature = "pointer_try_cast_aligned", issue = "141221")]
+    #[stable(feature = "pointer_try_cast_aligned", since = "CURRENT_RUSTC_VERSION")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -940,7 +946,8 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    pub unsafe fn read_volatile(self) -> T
+    #[rustc_const_unstable(feature = "const_volatile", issue = "159094")]
+    pub const unsafe fn read_volatile(self) -> T
     where
         T: Sized,
     {
@@ -1114,7 +1121,8 @@ impl<T: PointeeSized> NonNull<T> {
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    pub unsafe fn write_volatile(self, val: T)
+    #[rustc_const_unstable(feature = "const_volatile", issue = "159094")]
+    pub const unsafe fn write_volatile(self, val: T)
     where
         T: Sized,
     {
@@ -1318,13 +1326,13 @@ impl<T> NonNull<T> {
     ///
     /// The `len` argument is the number of **elements**, not the number of bytes.
     ///
-    /// This function is safe, but dereferencing the return value is unsafe.
-    /// See the documentation of [`slice::from_raw_parts`] for slice safety requirements.
+    /// See [`ptr::slice_from_raw_parts`] for more information.
+    ///
+    /// [`ptr::slice_from_raw_parts`]: crate::ptr::slice_from_raw_parts
     ///
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(ptr_cast_slice)]
     /// use std::ptr::NonNull;
     ///
     /// // create a slice pointer when starting out with a pointer to the first element
@@ -1338,7 +1346,8 @@ impl<T> NonNull<T> {
     /// but `let slice = NonNull::from(&x[..]);` would be a better way to write code like this.)
     #[inline]
     #[must_use]
-    #[unstable(feature = "ptr_cast_slice", issue = "149103")]
+    #[stable(feature = "ptr_cast_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_cast_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn cast_slice(self, len: usize) -> NonNull<[T]> {
         NonNull::slice_from_raw_parts(self, len)
     }
@@ -1551,7 +1560,7 @@ impl<T> NonNull<[T]> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(allocator_api, ptr_as_uninit)]
+    /// #![feature(ptr_as_uninit)]
     ///
     /// use std::alloc::{Allocator, Layout, Global};
     /// use std::mem::MaybeUninit;
@@ -1679,15 +1688,6 @@ impl<T: PointeeSized> hash::Hash for NonNull<T> {
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.as_ptr().hash(state)
-    }
-}
-
-#[unstable(feature = "ptr_internals", issue = "none")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-const impl<T: PointeeSized> From<Unique<T>> for NonNull<T> {
-    #[inline]
-    fn from(unique: Unique<T>) -> Self {
-        unique.as_non_null_ptr()
     }
 }
 

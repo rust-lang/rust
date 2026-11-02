@@ -14,7 +14,7 @@ pub(crate) struct DIBuilderBox<'ll> {
 }
 
 impl<'ll> DIBuilderBox<'ll> {
-    pub(crate) fn new(llmod: &'ll Module) -> Self {
+    pub(crate) fn new(llmod: Module<'ll>) -> Self {
         let raw = unsafe { llvm::LLVMCreateDIBuilder(llmod) };
         let raw = ptr::NonNull::new(raw).unwrap();
         Self { raw }

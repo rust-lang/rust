@@ -13,6 +13,7 @@ LL | impl Bar<3> for u16 {}
 note: required by a bound in `Foo::Assoc`
   --> $DIR/associated-type-bound-fail.rs:4:17
    |
+LL | trait Foo<const N: usize> {
 LL |     type Assoc: Bar<N>;
    |                 ^^^^^^ required by this bound in `Foo::Assoc`
 

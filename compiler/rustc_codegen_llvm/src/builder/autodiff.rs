@@ -2,22 +2,22 @@ use std::ptr;
 
 use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
 use rustc_ast::expand::typetree::FncTree;
-use rustc_codegen_ssa::common::TypeKind;
+use rustc_attr_ir::RustcAutodiff;
 use rustc_codegen_ssa::mir::IntrinsicResult;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceValue;
-use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods, ReturnSlot};
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::attrs::RustcAutodiff;
-use rustc_middle::ty::{PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
-use rustc_middle::{bug, ty};
+use rustc_middle::ty;
+use rustc_middle::ty::{Ty, TyCtxt, TypingEnv};
+use rustc_span::bug;
 use rustc_target::callconv::PassMode;
 use tracing::debug;
 
 use crate::builder::{Builder, UNNAMED};
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
-use crate::llvm::{self, TRUE, Type, Value};
+use crate::llvm::{self, TRUE, Type, TypeKind, Value};
 
 pub(crate) fn adjust_activity_to_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -45,21 +45,12 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
     let mut del_activities = 0;
     for (i, ty) in sig.inputs().iter().enumerate() {
         if let Some(inner_ty) = ty.builtin_deref(true) {
-            if inner_ty.is_slice() {
+            let tail_ty = tcx.struct_tail_for_codegen(inner_ty, typing_env);
+            if let ty::Slice(element_ty) = tail_ty.kind() {
                 // Now we need to figure out the size of each slice element in memory to allow
                 // safety checks and usability improvements in the backend.
-                let sty = match inner_ty.builtin_index() {
-                    Some(sty) => sty,
-                    None => {
-                        panic!("slice element type unknown");
-                    }
-                };
-                let pci = PseudoCanonicalInput {
-                    typing_env: TypingEnv::fully_monomorphized(),
-                    value: sty,
-                };
 
-                let layout = tcx.layout_of(pci);
+                let layout = tcx.layout_of(typing_env.as_query_input(*element_ty));
                 let elem_size = match layout {
                     Ok(layout) => layout.size,
                     Err(_) => {
@@ -95,9 +86,7 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
             }
         }
 
-        let pci = PseudoCanonicalInput { typing_env: TypingEnv::fully_monomorphized(), value: *ty };
-
-        let layout = match tcx.layout_of(pci) {
+        let layout = match tcx.layout_of(typing_env.as_query_input(*ty)) {
             Ok(layout) => layout.layout,
             Err(_) => {
                 bug!("failed to compute layout for type {:?}", ty);
@@ -203,7 +192,7 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
             // Now we multiply `4 * next_outer_arg` to get the stride.
             let mul = unsafe {
                 llvm::LLVMBuildMul(
-                    builder.llbuilder,
+                    builder.llbuilder(),
                     cx.get_const_int(cx.type_i64(), elem_bytes_size),
                     next_outer_arg,
                     UNNAMED,
@@ -377,10 +366,10 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
         crate::typetree::add_tt(&bx, fn_to_diff, fnc_tree);
     }
 
-    let call = bx.call(enzyme_ty, None, None, ad_fn, &args, None, None);
+    let call = bx.call(enzyme_ty, None, None, ad_fn, ReturnSlot::Direct, &args, None, None);
 
     let fn_ret_ty = bx.cx.val_ty(call);
-    if fn_ret_ty == bx.cx.type_void() || fn_ret_ty == bx.cx.type_struct(&[], false) {
+    if fn_ret_ty == bx.cx.type_void() || fn_ret_ty == bx.cx.type_struct(&[]) {
         // If we return void or an empty struct, then our caller (due to how we generated it)
         // does not expect a return value. As such, we have no pointer (or place) into which
         // we could store our value, and would store into an undef, which would cause UB.

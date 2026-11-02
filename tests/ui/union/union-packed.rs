@@ -1,4 +1,5 @@
 //@ run-pass
+//@ reference: layout.repr.alignment.intro
 
 #![allow(dead_code)]
 #![allow(non_snake_case)]

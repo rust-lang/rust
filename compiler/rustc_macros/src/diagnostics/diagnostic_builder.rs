@@ -347,9 +347,14 @@ impl DiagnosticDeriveVariantBuilder {
         match (&attr.meta, name.as_str()) {
             (Meta::Path(_), "primary_span") => {
                 report_error_if_not_applied_to_span(attr, &info)?;
-
                 return Ok(quote! {
                     diag.span(#binding);
+                });
+            }
+            (Meta::Path(_), "context") => {
+                report_error_if_not_applied_to_span(attr, &info)?;
+                return Ok(quote! {
+                    diag.span_context(#binding);
                 });
             }
             (Meta::Path(_), "subdiagnostic") => {

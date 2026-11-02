@@ -9,12 +9,13 @@ use crate::io;
 // Time //
 //////////
 
-pub type zx_time_t = i64;
+pub type zx_instant_mono_t = i64;
 
-pub const ZX_TIME_INFINITE: zx_time_t = i64::MAX;
+pub const ZX_TIME_INFINITE: zx_instant_mono_t = i64::MAX;
 
 unsafe extern "C" {
-    pub safe fn zx_clock_get_monotonic() -> zx_time_t;
+    pub safe fn zx_clock_get_monotonic() -> zx_instant_mono_t;
+    pub safe fn zx_nanosleep(deadline: zx_instant_mono_t) -> zx_status_t;
 }
 
 /////////////
@@ -62,7 +63,7 @@ unsafe extern "C" {
     pub fn zx_object_wait_one(
         handle: zx_handle_t,
         signals: zx_signals_t,
-        timeout: zx_time_t,
+        deadline: zx_instant_mono_t,
         pending: *mut zx_signals_t,
     ) -> zx_status_t;
 
@@ -70,7 +71,7 @@ unsafe extern "C" {
         value_ptr: *const zx_futex_t,
         current_value: zx_futex_t,
         new_futex_owner: zx_handle_t,
-        deadline: zx_time_t,
+        deadline: zx_instant_mono_t,
     ) -> zx_status_t;
     pub fn zx_futex_wake(value_ptr: *const zx_futex_t, wake_count: u32) -> zx_status_t;
     pub fn zx_futex_wake_single_owner(value_ptr: *const zx_futex_t) -> zx_status_t;
@@ -117,7 +118,7 @@ pub type zx_info_process_flags_t = u32;
 #[repr(C)]
 pub struct zx_info_process_t {
     pub return_code: i64,
-    pub start_time: zx_time_t,
+    pub start_time: zx_instant_mono_t,
     pub flags: zx_info_process_flags_t,
     pub reserved1: u32,
 }

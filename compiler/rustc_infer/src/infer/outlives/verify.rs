@@ -1,7 +1,7 @@
 use std::assert_matches;
 
 use rustc_middle::ty::outlives::{Component, compute_alias_components_recursive};
-use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, OutlivesClause, Ty, TyCtxt};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
@@ -24,7 +24,7 @@ pub(crate) struct VerifyBoundCx<'cx, 'tcx> {
     /// Outside of borrowck the only way to prove `T: '?0` is by
     /// setting  `'?0` to `'empty`.
     implicit_region_bound: Option<ty::Region<'tcx>>,
-    caller_bounds: &'cx [ty::PolyTypeOutlivesPredicate<'tcx>],
+    caller_bounds: &'cx [ty::PolyTypeOutlivesClause<'tcx>],
 }
 
 impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
@@ -32,7 +32,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         tcx: TyCtxt<'tcx>,
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
-        caller_bounds: &'cx [ty::PolyTypeOutlivesPredicate<'tcx>],
+        caller_bounds: &'cx [ty::PolyTypeOutlivesClause<'tcx>],
     ) -> Self {
         Self { tcx, region_bound_pairs, implicit_region_bound, caller_bounds }
     }
@@ -95,7 +95,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     pub(crate) fn approx_declared_bounds_from_env(
         &self,
         alias_ty: ty::AliasTy<'tcx>,
-    ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
+    ) -> Vec<ty::PolyTypeOutlivesClause<'tcx>> {
         let erased_alias_ty = self.tcx.erase_and_anonymize_regions(
             alias_ty.to_ty(self.tcx, ty::IsRigid::yes_if_next_solver(self.tcx)),
         );
@@ -107,7 +107,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // Search the env for where clauses like `P: 'a`.
         let env_bounds = self.approx_declared_bounds_from_env(alias_ty).into_iter().map(|binder| {
             // FIXME(#155345): We probably want to assert the alias is rigid here.
-            if let Some(ty::OutlivesPredicate(ty, r)) = binder.no_bound_vars()
+            if let Some(ty::OutlivesClause(ty, r)) = binder.no_bound_vars()
                 && let ty::Alias(_, alias_ty_from_bound) = *ty.kind()
                 && alias_ty_from_bound == alias_ty
             {
@@ -117,7 +117,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 VerifyBound::OutlivedBy(r)
             } else {
                 let verify_if_eq_b =
-                    binder.map_bound(|ty::OutlivesPredicate(ty, bound)| VerifyIfEq { ty, bound });
+                    binder.map_bound(|ty::OutlivesClause(ty, bound)| VerifyIfEq { ty, bound });
                 VerifyBound::IfEq(verify_if_eq_b)
             }
         });
@@ -187,7 +187,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn declared_generic_bounds_from_env(
         &self,
         generic_ty: Ty<'tcx>,
-    ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
+    ) -> Vec<ty::PolyTypeOutlivesClause<'tcx>> {
         assert_matches!(generic_ty.kind(), ty::Param(_) | ty::Placeholder(_));
         self.declared_generic_bounds_from_env_for_erased_ty(generic_ty)
     }
@@ -207,15 +207,15 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn declared_generic_bounds_from_env_for_erased_ty(
         &self,
         erased_ty: Ty<'tcx>,
-    ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
+    ) -> Vec<ty::PolyTypeOutlivesClause<'tcx>> {
         let tcx = self.tcx;
         let mut bounds = vec![];
 
         // To start, collect bounds from user environment. Note that
         // parameter environments are already elaborated, so we don't
         // have to worry about that.
-        bounds.extend(self.caller_bounds.iter().copied().filter(move |outlives_predicate| {
-            super::test_type_match::can_match_erased_ty(tcx, *outlives_predicate, erased_ty)
+        bounds.extend(self.caller_bounds.iter().copied().filter(move |outlives_clause| {
+            super::test_type_match::can_match_erased_ty(tcx, *outlives_clause, erased_ty)
         }));
 
         // Next, collect regions we scraped from the well-formedness
@@ -229,7 +229,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // The problem is that the type of `x` is `&'a A`. To be
         // well-formed, then, A must outlive `'a`, but we don't know that
         // this holds from first principles.
-        bounds.extend(self.region_bound_pairs.iter().filter_map(|&OutlivesPredicate(p, r)| {
+        bounds.extend(self.region_bound_pairs.iter().filter_map(|&OutlivesClause(p, r)| {
             debug!(
                 "declared_generic_bounds_from_env_for_erased_ty: region_bound_pair = {:?}",
                 (r, p)
@@ -248,7 +248,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
             let p_ty = p.to_ty(tcx);
             let erased_p_ty = self.tcx.erase_and_anonymize_regions(p_ty);
-            (erased_p_ty == erased_ty).then_some(ty::Binder::dummy(ty::OutlivesPredicate(p_ty, r)))
+            (erased_p_ty == erased_ty).then_some(ty::Binder::dummy(ty::OutlivesClause(p_ty, r)))
         }));
 
         bounds

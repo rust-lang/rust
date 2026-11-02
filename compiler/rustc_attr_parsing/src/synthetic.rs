@@ -1,13 +1,13 @@
 use rustc_ast::SyntheticAttr;
 use rustc_ast::attr::data_structures::CfgEntry;
-use rustc_hir::Attribute;
-use rustc_hir::attrs::AttributeKind;
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_span::Span;
 use thin_vec::ThinVec;
 
-/// This struct contains the state necessary to convert synthetic attributes to hir attributes
+/// Contains the state necessary to convert synthetic attributes to parsed attributes.
+///
 /// The only conversion that really happens here is that multiple synthetic attributes are
-/// merged into a single hir attribute, representing their combined state.
+/// merged into a single `rustc_attr_ir::attribute`, representing their combined state.
 /// FIXME: We should make this a nice and extendable system if this is going to be used more often
 #[derive(Default)]
 pub(crate) struct SyntheticAttrState {

@@ -3,8 +3,9 @@ use std::ops::ControlFlow;
 
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::lang_items::SolverAdtLangItem;
 use rustc_type_ir::{
-    self as ty, InferCtxtLike, Interner, Region, TrivialTypeTraversalImpls, TypeVisitable,
+    self as ty, Const, InferCtxtLike, Interner, Region, TrivialTypeTraversalImpls, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
 use tracing::instrument;
@@ -407,12 +408,17 @@ where
             }
 
             // For fundamental types, we just look inside of them.
+            // Certain lang items (currently, `Box`) have special behaviour here
+            // and so are special cased.
             ty::Ref(_, ty, _) => ty.visit_with(self),
             ty::Adt(def, args) => {
                 if self.def_id_is_local(def.def_id()) {
                     ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
                 } else if def.is_fundamental() {
-                    args.visit_with(self)
+                    match self.infcx.cx().as_adt_lang_item(def.def_id()) {
+                        Some(SolverAdtLangItem::OwnedBox) => args.type_at(0).visit_with(self),
+                        Some(..) | None => args.visit_with(self)
+                    }
                 } else {
                     self.found_non_local_ty(ty)
                 }
@@ -463,7 +469,7 @@ where
     /// As these should be quite rare as const arguments and especially rare as impl
     /// parameters, allowing uncovered const parameters in impls seems more useful
     /// than allowing `impl<T> Trait<local_fn_ptr, T> for i32` to compile.
-    fn visit_const(&mut self, _c: I::Const) -> Self::Result {
+    fn visit_const(&mut self, _c: Const<I>) -> Self::Result {
         ControlFlow::Continue(())
     }
 }

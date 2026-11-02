@@ -66,7 +66,7 @@ fn incremental_verify_ich_failed<'tcx>(
     let old_in_panic = INSIDE_VERIFY_PANIC.replace(true);
 
     if old_in_panic {
-        tcx.dcx().emit_err(crate::error::Reentrant);
+        tcx.dcx().emit_err(crate::diagnostics::Reentrant);
     } else {
         let run_cmd = if was_invoked_from_cargo() {
             format!("run `cargo clean -p {}` or `cargo clean`", tcx.crate_name(LOCAL_CRATE))
@@ -75,7 +75,7 @@ fn incremental_verify_ich_failed<'tcx>(
         };
 
         let dep_node = tcx.dep_graph.data().unwrap().prev_node_of(prev_index);
-        tcx.dcx().emit_err(crate::error::IncrementCompilation {
+        tcx.dcx().emit_err(crate::diagnostics::IncrementCompilation {
             run_cmd,
             dep_node: format!("{dep_node:?}"),
         });

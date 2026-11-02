@@ -1,3 +1,24 @@
+//! This crate is an abstraction layer, shared between rustc and rust-analyzer, to help with the
+//! overlapping responsibilities (like type inference and trait solving), reduce duplication, and
+//! maintain consistent behavior between the two implementations.
+//!
+//! It defines fundamental interfaces for types, predicates, and the context required by the next
+//! trait solver.
+//!
+//! Both rustc and rust-analyzer immplement these traits for their own concrete implementations, and
+//! `rustc_next_trait_solver` is written to be generic over these abstractions.
+//!
+//! In addition to these interfaces, it also contains components built on top of the abstraction
+//! layer, for example elaboration logic, and the search graph machinery used by the solver, as well
+//! as items that do not need compiler-specific implementations.
+//!
+//! Note that rust-analyzer is built with a stable compiler, while rustc uses unstable features, so
+//! this crate and some of its dependencies need to separate unstable code under the `nightly`
+//! feature.
+//!
+//! There are more details available in a [dedicated dev-guide
+//! chapter](https://rustc-dev-guide.rust-lang.org/solve/sharing-crates-with-rust-analyzer.html).
+
 #![cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir")]
 // tidy-alphabetical-start
 #![allow(rustc::direct_use_of_rustc_type_ir)]
@@ -6,6 +27,12 @@
 #![allow(rustc::usage_of_type_ir_traits)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", feature(associated_type_defaults, rustc_attrs, negative_impls))]
+// NOTE: the outer `cfg_attr` is only there so that r-a doesn't see the nightly-only `bootstrap`
+// in the inner `cfg_attr`. When the latter is removed, the former can be removed as well.
+#![cfg_attr(
+    feature = "nightly",
+    cfg_attr(not(bootstrap), deny(rustc::missing_generic_type_visitable_derive))
+)]
 // tidy-alphabetical-end
 
 extern crate self as rustc_type_ir;
@@ -34,6 +61,7 @@ pub mod relate;
 pub mod search_graph;
 pub mod solve;
 pub mod sty;
+pub mod transmute;
 pub mod walk;
 
 // These modules are not `pub` since they are glob-imported.
@@ -45,7 +73,6 @@ mod const_kind;
 mod flags;
 mod fold;
 mod generic_arg;
-#[cfg(not(feature = "nightly"))]
 mod generic_visit;
 mod infer_ctxt;
 mod interner;
@@ -76,7 +103,6 @@ pub use const_kind::*;
 pub use flags::*;
 pub use fold::*;
 pub use generic_arg::*;
-#[cfg(not(feature = "nightly"))]
 pub use generic_visit::*;
 pub use infer_ctxt::*;
 pub use interner::*;
@@ -86,7 +112,6 @@ pub use predicate::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
-use rustc_type_ir_macros::GenericTypeVisitable;
 #[cfg(feature = "nightly")]
 pub use serialize::*;
 pub use sty::*;
@@ -232,7 +257,7 @@ pub fn debug_bound_var<T: std::fmt::Write>(
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, GenericTypeVisitable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(Decodable, Encodable, StableHash))]
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum Variance {
@@ -350,6 +375,7 @@ rustc_index::newtype_index! {
     /// type -- an idealized representative of "types in general" that we
     /// use for checking generic functions.
     #[stable_hash]
+    #[default]
     #[encodable]
     #[orderable]
     #[debug_format = "U{}"]
@@ -394,12 +420,6 @@ impl UniverseIndex {
     /// Returns `true` if `self` is the root universe, otherwise false.
     pub fn is_root(self) -> bool {
         self == Self::ROOT
-    }
-}
-
-impl Default for UniverseIndex {
-    fn default() -> Self {
-        Self::ROOT
     }
 }
 

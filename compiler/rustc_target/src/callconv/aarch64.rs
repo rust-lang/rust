@@ -32,10 +32,11 @@ where
 
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
+            RegKind::PpcF128 => unreachable!(),
             // The softfloat ABI treats floats like integers, so they
             // do not get homogeneous aggregate treatment.
             RegKind::Float => cx.target_spec().rustc_abi != Some(RustcAbi::Softfloat),
-            RegKind::Vector { .. } => size.bits() == 64 || size.bits() == 128,
+            RegKind::Vector { .. } => unit.size.bits() == 64 || unit.size.bits() == 128,
         };
 
         valid_unit.then_some(Uniform::consecutive(unit, size))

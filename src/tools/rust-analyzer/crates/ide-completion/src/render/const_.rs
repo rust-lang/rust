@@ -26,7 +26,14 @@ fn render(ctx: RenderContext<'_, '_>, const_: hir::Const) -> Option<CompletionIt
     item.set_documentation(ctx.docs(const_))
         .set_deprecated(ctx.is_deprecated(const_, const_.as_assoc_item(db)))
         .detail(detail)
-        .set_relevance(ctx.completion_relevance());
+        .const_value(Some(const_), db, ctx.completion.display_target)
+        .set_relevance(crate::CompletionRelevance {
+            type_match: super::compute_type_match(
+                ctx.completion,
+                &ctx.completion.rebase_ty(&const_.ty(db)),
+            ),
+            ..ctx.completion_relevance()
+        });
 
     if let Some(actm) = const_.as_assoc_item(db)
         && let Some(trt) = actm.container_or_implemented_trait(db)
@@ -35,5 +42,5 @@ fn render(ctx: RenderContext<'_, '_>, const_: hir::Const) -> Option<CompletionIt
     }
     item.insert_text(escaped_name);
 
-    Some(item.build(ctx.db()))
+    Some(item.build(db))
 }

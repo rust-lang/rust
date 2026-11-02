@@ -2,16 +2,15 @@ use std::{fmt, iter, mem};
 
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind};
 use rustc_index::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, dummy_spanned};
+use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt};
+use rustc_mir_dataflow::DropFlagState;
+use rustc_span::{DUMMY_SP, bug, dummy_spanned, span_bug};
 use tracing::{debug, instrument};
 
 use crate::coroutine::CTX_ARG;
@@ -107,11 +106,10 @@ pub(crate) trait DropElaborator<'a, 'tcx>: fmt::Debug {
     /// Returns the drop flag of `path` as a MIR `Operand` (or `None` if `path` has no drop flag).
     fn get_drop_flag(&mut self, path: Self::Path) -> Option<Operand<'tcx>>;
 
-    /// Modifies the MIR patch so that the drop flag of `path` (if any) is cleared at `location`.
+    /// Return the drop flag of `path`, if any.
     ///
-    /// If `mode` is deep, drop flags of all child paths should also be cleared by inserting
-    /// additional statements.
-    fn clear_drop_flag(&mut self, location: Location, path: Self::Path, mode: DropFlagMode);
+    /// If `mode` is deep, drop flags of all child paths should be returned.
+    fn drop_flags_for(&mut self, path: Self::Path, mode: DropFlagMode) -> Vec<Place<'tcx>>;
 
     // Subpaths
 
@@ -250,8 +248,9 @@ where
 
         let fut_ty = tcx
             .instantiate_bound_regions_with_erased(
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                Ty::new_fn_def(tcx, async_drop_fn_def_id, ty::Binder::dummy([drop_ty])).fn_sig(tcx),
+                tcx.fn_sig(async_drop_fn_def_id)
+                    .instantiate(tcx, &[drop_ty.into()])
+                    .skip_norm_wip(),
             )
             .output();
         let fut = self.new_temp(fut_ty);
@@ -262,20 +261,20 @@ where
         let succ_with_dead = self.new_block_with_statements(
             unwind,
             vec![self.storage_dead(fut)],
-            TerminatorKind::Goto { target: succ },
+            TerminatorKind::goto(succ),
         );
         let dropline_with_dead = dropline.map(|target| {
             self.new_block_with_statements(
                 unwind,
                 vec![self.storage_dead(fut)],
-                TerminatorKind::Goto { target },
+                TerminatorKind::goto(target),
             )
         });
         let unwind_with_dead = unwind.map(|target| {
             self.new_block_with_statements(
                 Unwind::InCleanup,
                 vec![self.storage_dead(fut)],
-                TerminatorKind::Goto { target },
+                TerminatorKind::goto(target),
             )
         });
 
@@ -321,12 +320,8 @@ where
             dropline_with_dead.unwrap_or(succ_with_dead),
             unwind_with_dead,
         );
-        self.elaborator
-            .patch()
-            .patch_terminator(drop_resume_bb, TerminatorKind::Goto { target: panic_bb });
-        self.elaborator
-            .patch()
-            .patch_terminator(drop_drop_bb, TerminatorKind::Goto { target: drop_pin_bb });
+        self.elaborator.patch().patch_terminator(drop_resume_bb, TerminatorKind::goto(panic_bb));
+        self.elaborator.patch().patch_terminator(drop_drop_bb, TerminatorKind::goto(drop_pin_bb));
 
         // If we are in the regular code path, `dropline_with_dead` is `Some`.
         //
@@ -343,12 +338,8 @@ where
                 succ_with_dead,
                 unwind_with_dead,
             );
-            self.elaborator
-                .patch()
-                .patch_terminator(resume_bb, TerminatorKind::Goto { target: pin_bb });
-            self.elaborator
-                .patch()
-                .patch_terminator(drop_bb, TerminatorKind::Goto { target: drop_pin_bb });
+            self.elaborator.patch().patch_terminator(resume_bb, TerminatorKind::goto(pin_bb));
+            self.elaborator.patch().patch_terminator(drop_bb, TerminatorKind::goto(drop_pin_bb));
             pin_bb
         } else {
             // We were already in the drop line, so return the loop we created for it.
@@ -373,7 +364,6 @@ where
             unwind_with_dead,
             vec![self.storage_live(fut)],
             TerminatorKind::Call {
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                 func: Operand::function_handle(tcx, async_drop_fn_def_id, &[drop_ty.into()], span),
                 args: [dummy_spanned(drop_arg)].into(),
                 destination: fut.into(),
@@ -402,7 +392,6 @@ where
                 func: Operand::function_handle(
                     tcx,
                     pin_obj_new_unchecked_fn,
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                     &[obj_ref_ty.into()],
                     span,
                 ),
@@ -568,7 +557,6 @@ where
             unwind,
             Vec::new(),
             TerminatorKind::Call {
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                 func: Operand::function_handle(tcx, poll_fn, &[fut_ty.into()], source_info.span),
                 args: [
                     dummy_spanned(Operand::Move(fut_pin_local.into())),
@@ -598,7 +586,6 @@ where
                     func: Operand::function_handle(
                         tcx,
                         get_context_fn,
-                        // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                         &[tcx.lifetimes.re_erased.into(), tcx.lifetimes.re_erased.into()],
                         source_info.span,
                     ),
@@ -657,9 +644,7 @@ where
                 self.dropline,
                 false,
             );
-            self.elaborator
-                .patch()
-                .patch_terminator(bb, TerminatorKind::Goto { target: async_drop_bb });
+            self.elaborator.patch().patch_terminator(bb, TerminatorKind::goto(async_drop_bb));
         } else {
             self.elaborator.patch().patch_terminator(
                 bb,
@@ -748,24 +733,18 @@ where
     fn elaborate_drop(&mut self, bb: BasicBlock) {
         match self.elaborator.drop_style(self.path, DropFlagMode::Deep) {
             DropStyle::Dead => {
-                self.elaborator
-                    .patch()
-                    .patch_terminator(bb, TerminatorKind::Goto { target: self.succ });
+                self.elaborator.patch().patch_terminator(bb, TerminatorKind::goto(self.succ));
             }
             DropStyle::Static => {
                 self.build_drop(bb);
             }
             DropStyle::Conditional => {
                 let drop_bb = self.complete_drop(self.succ, self.unwind);
-                self.elaborator
-                    .patch()
-                    .patch_terminator(bb, TerminatorKind::Goto { target: drop_bb });
+                self.elaborator.patch().patch_terminator(bb, TerminatorKind::goto(drop_bb));
             }
             DropStyle::Open => {
                 let drop_bb = self.open_drop();
-                self.elaborator
-                    .patch()
-                    .patch_terminator(bb, TerminatorKind::Goto { target: drop_bb });
+                self.elaborator.patch().patch_terminator(bb, TerminatorKind::goto(drop_bb));
             }
         }
     }
@@ -777,7 +756,7 @@ where
         base_place: Place<'tcx>,
         variant_path: D::Path,
         variant: &'tcx ty::VariantDef,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Vec<(Place<'tcx>, Option<D::Path>)> {
         variant
             .fields
@@ -791,7 +770,7 @@ where
                     ty::TypingMode::Coherence
                     | ty::TypingMode::Reflection
                     | ty::TypingMode::Typeck { .. }
-                    | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                    | ty::TypingMode::PostTypeckThroughBorrowck { .. }
                     | ty::TypingMode::PostBorrowck { .. } => {
                         bug!()
                     }
@@ -997,7 +976,7 @@ where
     fn open_drop_for_box_contents(
         &mut self,
         adt: ty::AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         succ: BasicBlock,
         unwind: Unwind,
         dropline: Option<BasicBlock>,
@@ -1026,16 +1005,12 @@ where
                 Place::from(ptr_local),
                 Rvalue::Cast(CastKind::Transmute, Operand::Copy(nonnull_place), ptr_ty),
             )],
-            TerminatorKind::Goto { target: do_drop_bb },
+            TerminatorKind::goto(do_drop_bb),
         )
     }
 
     #[instrument(level = "debug", ret)]
-    fn open_drop_for_adt(
-        &mut self,
-        adt: ty::AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> BasicBlock {
+    fn open_drop_for_adt(&mut self, adt: ty::AdtDef<'tcx>, args: GenericArgs<'tcx>) -> BasicBlock {
         if adt.variants().is_empty() {
             return self.new_block(self.unwind, TerminatorKind::Unreachable);
         }
@@ -1079,7 +1054,7 @@ where
     fn open_drop_for_adt_contents(
         &mut self,
         adt: ty::AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> (BasicBlock, Unwind, Option<BasicBlock>) {
         let (succ, unwind, dropline) = self.drop_ladder_bottom();
         if !adt.is_enum() {
@@ -1094,7 +1069,7 @@ where
     fn open_drop_for_multivariant(
         &mut self,
         adt: ty::AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         succ: BasicBlock,
         unwind: Unwind,
         dropline: Option<BasicBlock>,
@@ -1252,7 +1227,6 @@ where
                 ),
             )],
             TerminatorKind::Call {
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                 func: Operand::function_handle(tcx, drop_fn, &[ty.into()], self.source_info.span),
                 args: [dummy_spanned(Operand::Move(Place::from(ref_place)))].into(),
                 destination: unit_temp,
@@ -1339,7 +1313,7 @@ where
                 self.build_async_drop(place, ety, loop_block, unwind, dropline, false);
             self.elaborator
                 .patch()
-                .patch_terminator(drop_block, TerminatorKind::Goto { target: async_drop_bb });
+                .patch_terminator(drop_block, TerminatorKind::goto(async_drop_bb));
         } else {
             self.elaborator.patch().patch_terminator(
                 drop_block,
@@ -1453,7 +1427,7 @@ where
                     ),
                 ),
             ],
-            TerminatorKind::Goto { target: slice_block },
+            TerminatorKind::goto(slice_block),
         )
     }
 
@@ -1495,7 +1469,7 @@ where
                 ),
                 self.assign(cur.into(), Rvalue::Use(zero, WithRetag::Yes)),
             ],
-            TerminatorKind::Goto { target: loop_block },
+            TerminatorKind::goto(loop_block),
         );
 
         // FIXME(#34708): handle partially-dropped array/slice elements.
@@ -1526,7 +1500,7 @@ where
             // See librustc_body/transform/coroutine.rs for more details.
             ty::Coroutine(_, args) => self.open_drop_for_tuple(args.as_coroutine().upvar_tys()),
             ty::Tuple(fields) => self.open_drop_for_tuple(fields),
-            ty::Adt(def, args) => self.open_drop_for_adt(*def, args),
+            ty::Adt(def, args) => self.open_drop_for_adt(*def, *args),
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
             ty::Array(ety, size) => {
                 let size = size.try_to_target_usize(self.tcx());
@@ -1568,10 +1542,20 @@ where
             // bother setting it.
             return succ;
         }
-        let block = self.new_block(unwind, TerminatorKind::Goto { target: succ });
-        let block_start = Location { block, statement_index: 0 };
-        self.elaborator.clear_drop_flag(block_start, self.path, mode);
-        block
+        let flags = self.elaborator.drop_flags_for(self.path, mode);
+        let statements: Vec<_> = flags
+            .into_iter()
+            .map(|flag| {
+                self.assign(
+                    flag,
+                    Rvalue::Use(self.constant_bool(DropFlagState::Absent.value()), WithRetag::Yes),
+                )
+            })
+            .collect();
+        if statements.is_empty() {
+            return succ;
+        }
+        self.new_block_with_statements(unwind, statements, TerminatorKind::goto(succ))
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -1635,7 +1619,7 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     fn new_block(&mut self, unwind: Unwind, k: TerminatorKind<'tcx>) -> BasicBlock {
         self.elaborator.patch().new_block(BasicBlockData::new(
-            Some(Terminator { source_info: self.source_info, kind: k, attributes: ThinVec::new() }),
+            Some(Terminator { source_info: self.source_info, kind: k }),
             unwind.is_cleanup(),
         ))
     }
@@ -1649,7 +1633,7 @@ where
     ) -> BasicBlock {
         self.elaborator.patch().new_block(BasicBlockData::new_stmts(
             statements,
-            Some(Terminator { source_info: self.source_info, kind: k, attributes: ThinVec::new() }),
+            Some(Terminator { source_info: self.source_info, kind: k }),
             unwind.is_cleanup(),
         ))
     }
@@ -1663,6 +1647,14 @@ where
             span: self.source_info.span,
             user_ty: None,
             const_: Const::from_usize(self.tcx(), val.into()),
+        }))
+    }
+
+    fn constant_bool(&self, val: bool) -> Operand<'tcx> {
+        Operand::Constant(Box::new(ConstOperand {
+            span: self.source_info.span,
+            user_ty: None,
+            const_: Const::from_bool(self.tcx(), val),
         }))
     }
 

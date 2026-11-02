@@ -1,6 +1,6 @@
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::fs::TryLockError;
-use crate::io::{self, BorrowedCursor, Error, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
+use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::MaybeUninit;
 use crate::os::hermit::ffi::OsStringExt;
 use crate::os::hermit::hermit_abi::{
@@ -11,7 +11,7 @@ use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, Raw
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
-pub use crate::sys::fs::common::{Dir, copy, exists};
+pub use crate::sys::fs::common::{Dir, ExtraHomeDirs, ExtraMediaDirs, copy, exists};
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::io::DEFAULT_BUF_SIZE;
 use crate::sys::time::SystemTime;
@@ -221,6 +221,14 @@ impl FileType {
     }
 }
 
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
+        let mut options = OpenOptions::new();
+        options.read(true);
+        Dir::open(&self.inner.root, &options)
+    }
+}
+
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This will only be called from std::fs::ReadDir, which will add a "ReadDir()" frame.
@@ -411,7 +419,8 @@ impl File {
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        unsupported()
+        unsafe { cvt(hermit_abi::fsync(self.as_raw_fd()))? };
+        Ok(())
     }
 
     pub fn datasync(&self) -> io::Result<()> {
@@ -590,6 +599,10 @@ pub fn unlink(path: &Path) -> io::Result<()> {
 }
 
 pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn rename_noreplace(_old: &Path, _new: &Path) -> io::Result<()> {
     unsupported()
 }
 

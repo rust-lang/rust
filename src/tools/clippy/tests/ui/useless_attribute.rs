@@ -1,8 +1,7 @@
 //@aux-build:proc_macro_derive.rs
-
-#![allow(unused, clippy::duplicated_attributes)]
 #![warn(clippy::useless_attribute)]
-#![warn(unreachable_pub)]
+#![deny(unreachable_pub)]
+#![expect(clippy::duplicated_attributes)]
 #![feature(rustc_private)]
 
 #[allow(dead_code)]
@@ -169,4 +168,13 @@ pub mod issue15636 {
 
     #[allow(deprecated_in_future)]
     pub use f::deprec;
+}
+
+pub mod issue17783 {
+    pub mod path {
+        pub mod unused {}
+    }
+    #[expect(clippy::allow_attributes, reason = "lint depends on macro application")]
+    #[allow(unused_imports)]
+    use path::unused;
 }

@@ -18,7 +18,7 @@ impl<'tcx> crate::MirPass<'tcx> for PostAnalysisNormalize {
         PostAnalysisNormalizeVisitor { tcx, typing_env }.visit_body_preserves_cfg(body);
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Reveals opaque types and normalizes MIR while transitioning to the runtime dialect.
         PassPolicy::Required
     }
@@ -89,7 +89,7 @@ impl<'tcx> MutVisitor<'tcx> for PostAnalysisNormalizeVisitor<'tcx> {
     }
 
     #[inline]
-    fn visit_args(&mut self, args: &mut ty::GenericArgsRef<'tcx>, _: Location) {
+    fn visit_args(&mut self, args: &mut ty::GenericArgs<'tcx>, _: Location) {
         if let Ok(a) = self.tcx.try_normalize_erasing_regions(
             self.typing_env,
             ty::set_aliases_to_non_rigid(self.tcx, *args),

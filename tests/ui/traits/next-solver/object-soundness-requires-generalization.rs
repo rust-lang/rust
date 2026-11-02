@@ -1,5 +1,7 @@
-//@ compile-flags: -Znext-solver
-//@ ignore-test (see #114196)
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@ check-pass
 
 trait Trait {
     type Gat<'lt>;

@@ -4,7 +4,7 @@ use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::def_id::ModId;
-use rustc_span::{ErrorGuaranteed, Ident, Symbol};
+use rustc_span::{ErrorGuaranteed, Ident, Symbol, bug};
 
 use super::{TyCtxt, Visibility};
 use crate::ty;
@@ -138,8 +138,15 @@ impl AssocItem {
         self.kind.as_def_kind()
     }
 
-    pub fn is_type_const(&self) -> bool {
-        matches!(self.kind, ty::AssocKind::Const { is_type_const: true, .. })
+    /// Whether this associated item can be constrained with an equality binding.
+    pub fn can_have_equality_constraint(&self, tcx: TyCtxt<'_>) -> bool {
+        match self.kind {
+            ty::AssocKind::Type { .. } => true,
+            ty::AssocKind::Const { .. } => {
+                tcx.features().gca_const_items() || tcx.is_direct_const(self.def_id)
+            }
+            ty::AssocKind::Fn { .. } => false,
+        }
     }
 
     pub fn is_fn(&self) -> bool {
@@ -174,7 +181,7 @@ pub enum AssocTypeData {
 
 #[derive(Copy, Clone, PartialEq, Debug, StableHash, Eq, Hash, Encodable, Decodable)]
 pub enum AssocKind {
-    Const { name: Symbol, is_type_const: bool },
+    Const { name: Symbol },
     Fn { name: Symbol, has_self: bool },
     Type { data: AssocTypeData },
 }
@@ -197,9 +204,7 @@ impl AssocKind {
 
     pub fn as_def_kind(&self) -> DefKind {
         match self {
-            Self::Const { is_type_const, .. } => {
-                DefKind::AssocConst { is_type_const: *is_type_const }
-            }
+            Self::Const { .. } => DefKind::AssocConst,
             Self::Fn { .. } => DefKind::AssocFn,
             Self::Type { .. } => DefKind::AssocTy,
         }

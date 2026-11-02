@@ -29,7 +29,7 @@ fn instant_monotonic() {
 }
 
 #[test]
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 fn instant_monotonic_concurrent() -> std::thread::Result<()> {
     let threads: Vec<_> = (0..8)
         .map(|_| {
@@ -181,6 +181,7 @@ fn system_time_elapsed() {
 }
 
 #[test]
+#[cfg_attr(target_os = "l4re", ignore = "No wallclock time support in L4Re")]
 fn since_epoch() {
     let ts = SystemTime::now();
     let a = ts.duration_since(UNIX_EPOCH + Duration::SECOND).unwrap();

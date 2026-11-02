@@ -290,14 +290,8 @@ pub const fn _mm256_andnot_si256(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpavgw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_avg_epu16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = simd_cast::<_, u32x16>(a.as_u16x16());
-        let b = simd_cast::<_, u32x16>(b.as_u16x16());
-        let r = simd_shr(simd_add(simd_add(a, b), u32x16::splat(1)), u32x16::splat(1));
-        transmute(simd_cast::<_, u16x16>(r))
-    }
+pub fn _mm256_avg_epu16(a: __m256i, b: __m256i) -> __m256i {
+    unsafe { transmute(pavgw(a.as_u16x16(), b.as_u16x16())) }
 }
 
 /// Averages packed unsigned 8-bit integers in `a` and `b`.
@@ -307,14 +301,8 @@ pub const fn _mm256_avg_epu16(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpavgb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_avg_epu8(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = simd_cast::<_, u16x32>(a.as_u8x32());
-        let b = simd_cast::<_, u16x32>(b.as_u8x32());
-        let r = simd_shr(simd_add(simd_add(a, b), u16x32::splat(1)), u16x32::splat(1));
-        transmute(simd_cast::<_, u8x32>(r))
-    }
+pub fn _mm256_avg_epu8(a: __m256i, b: __m256i) -> __m256i {
+    unsafe { transmute(pavgb(a.as_u8x32(), b.as_u8x32())) }
 }
 
 /// Blends packed 32-bit integers from `a` and `b` using control mask `IMM4`.
@@ -2231,14 +2219,8 @@ pub const fn _mm256_mul_epu32(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_mulhi_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = simd_cast::<_, i32x16>(a.as_i16x16());
-        let b = simd_cast::<_, i32x16>(b.as_i16x16());
-        let r = simd_shr(simd_mul(a, b), i32x16::splat(16));
-        transmute(simd_cast::<i32x16, i16x16>(r))
-    }
+pub fn _mm256_mulhi_epi16(a: __m256i, b: __m256i) -> __m256i {
+    unsafe { transmute(pmulhw(a.as_i16x16(), b.as_i16x16())) }
 }
 
 /// Multiplies the packed unsigned 16-bit integers in `a` and `b`, producing
@@ -2250,14 +2232,8 @@ pub const fn _mm256_mulhi_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_mulhi_epu16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = simd_cast::<_, u32x16>(a.as_u16x16());
-        let b = simd_cast::<_, u32x16>(b.as_u16x16());
-        let r = simd_shr(simd_mul(a, b), u32x16::splat(16));
-        transmute(simd_cast::<u32x16, u16x16>(r))
-    }
+pub fn _mm256_mulhi_epu16(a: __m256i, b: __m256i) -> __m256i {
+    unsafe { transmute(pmulhuw(a.as_u16x16(), b.as_u16x16())) }
 }
 
 /// Multiplies the packed 16-bit integers in `a` and `b`, producing
@@ -2315,7 +2291,7 @@ pub const fn _mm256_or_si256(a: __m256i, b: __m256i) -> __m256i {
     unsafe { transmute(simd_or(a.as_i32x8(), b.as_i32x8())) }
 }
 
-/// Converts packed signed 16-bit integers from `a` and `b` to packed 8-bit integers
+/// Converts packed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using signed saturation
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi16)
@@ -2323,33 +2299,11 @@ pub const fn _mm256_or_si256(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpacksswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let max = simd_splat(i8::MAX as i16);
-        let min = simd_splat(i8::MIN as i16);
-
-        let clamped_a = simd_imax(simd_imin(a.as_i16x16(), max), min)
-            .as_m256i()
-            .as_i8x32();
-        let clamped_b = simd_imax(simd_imin(b.as_i16x16(), max), min)
-            .as_m256i()
-            .as_i8x32();
-
-        #[rustfmt::skip]
-        const IDXS: [u32; 32] = [
-            00, 02, 04, 06, 08, 10, 12, 14, // a-lo i16 to i8 conversions
-            32, 34, 36, 38, 40, 42, 44, 46, // b-lo
-            16, 18, 20, 22, 24, 26, 28, 30, // a-hi
-            48, 50, 52, 54, 56, 58, 60, 62, // b-hi
-        ];
-        let result: i8x32 = simd_shuffle!(clamped_a, clamped_b, IDXS);
-
-        result.as_m256i()
-    }
+pub fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
+    unsafe { transmute(packsswb(a.as_i16x16(), b.as_i16x16())) }
 }
 
-/// Converts packed signed 32-bit integers from `a` and `b` to packed 16-bit integers
+/// Converts packed 32-bit integers from `a` and `b` to packed 16-bit integers
 /// using signed saturation
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi32)
@@ -2357,33 +2311,11 @@ pub const fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpackssdw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let max = simd_splat(i16::MAX as i32);
-        let min = simd_splat(i16::MIN as i32);
-
-        let clamped_a = simd_imax(simd_imin(a.as_i32x8(), max), min)
-            .as_m256i()
-            .as_i16x16();
-        let clamped_b = simd_imax(simd_imin(b.as_i32x8(), max), min)
-            .as_m256i()
-            .as_i16x16();
-
-        #[rustfmt::skip]
-        const IDXS: [u32; 16] = [
-            00, 02, 04, 06, // a-lo i32 to i16 conversions
-            16, 18, 20, 22, // b-lo
-            08, 10, 12, 14, // a-hi
-            24, 26, 28, 30, // b-hi
-        ];
-        let result: i16x16 = simd_shuffle!(clamped_a, clamped_b, IDXS);
-
-        result.as_m256i()
-    }
+pub fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
+    unsafe { transmute(packssdw(a.as_i32x8(), b.as_i32x8())) }
 }
 
-/// Converts packed signed 16-bit integers from `a` and `b` to packed 8-bit integers
+/// Converts packed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using unsigned saturation
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi16)
@@ -2391,33 +2323,11 @@ pub const fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpackuswb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let max = simd_splat(u8::MAX as i16);
-        let min = simd_splat(u8::MIN as i16);
-
-        let clamped_a = simd_imax(simd_imin(a.as_i16x16(), max), min)
-            .as_m256i()
-            .as_i8x32();
-        let clamped_b = simd_imax(simd_imin(b.as_i16x16(), max), min)
-            .as_m256i()
-            .as_i8x32();
-
-        #[rustfmt::skip]
-        const IDXS: [u32; 32] = [
-            00, 02, 04, 06, 08, 10, 12, 14, // a-lo i16 to u8 conversions
-            32, 34, 36, 38, 40, 42, 44, 46, // b-lo
-            16, 18, 20, 22, 24, 26, 28, 30, // a-hi
-            48, 50, 52, 54, 56, 58, 60, 62, // b-hi
-        ];
-        let result: i8x32 = simd_shuffle!(clamped_a, clamped_b, IDXS);
-
-        result.as_m256i()
-    }
+pub fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
+    unsafe { transmute(packuswb(a.as_i16x16(), b.as_i16x16())) }
 }
 
-/// Converts packed signed 32-bit integers from `a` and `b` to packed 16-bit integers
+/// Converts packed 32-bit integers from `a` and `b` to packed 16-bit integers
 /// using unsigned saturation
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi32)
@@ -2425,30 +2335,8 @@ pub const fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpackusdw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_packus_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let max = simd_splat(u16::MAX as i32);
-        let min = simd_splat(u16::MIN as i32);
-
-        let clamped_a = simd_imax(simd_imin(a.as_i32x8(), max), min)
-            .as_m256i()
-            .as_i16x16();
-        let clamped_b = simd_imax(simd_imin(b.as_i32x8(), max), min)
-            .as_m256i()
-            .as_i16x16();
-
-        #[rustfmt::skip]
-        const IDXS: [u32; 16] = [
-            00, 02, 04, 06, // a-lo i32 to u16 conversions
-            16, 18, 20, 22, // b-lo
-            08, 10, 12, 14, // a-hi
-            24, 26, 28, 30, // b-hi
-        ];
-        let result: i16x16 = simd_shuffle!(clamped_a, clamped_b, IDXS);
-
-        result.as_m256i()
-    }
+pub fn _mm256_packus_epi32(a: __m256i, b: __m256i) -> __m256i {
+    unsafe { transmute(packusdw(a.as_i32x8(), b.as_i32x8())) }
 }
 
 /// Permutes packed 32-bit integers from `a` according to the content of `b`.
@@ -2959,14 +2847,8 @@ pub const fn _mm256_bslli_epi128<const IMM8: i32>(a: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllvd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_sllv_epi32(a: __m128i, count: __m128i) -> __m128i {
-    unsafe {
-        let count = count.as_u32x4();
-        let no_overflow: u32x4 = simd_lt(count, u32x4::splat(u32::BITS));
-        let count = simd_select(no_overflow, count, u32x4::ZERO);
-        simd_select(no_overflow, simd_shl(a.as_u32x4(), count), u32x4::ZERO).as_m128i()
-    }
+pub fn _mm_sllv_epi32(a: __m128i, count: __m128i) -> __m128i {
+    unsafe { transmute(psllvd(a.as_i32x4(), count.as_i32x4())) }
 }
 
 /// Shifts packed 32-bit integers in `a` left by the amount
@@ -2978,14 +2860,8 @@ pub const fn _mm_sllv_epi32(a: __m128i, count: __m128i) -> __m128i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllvd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_sllv_epi32(a: __m256i, count: __m256i) -> __m256i {
-    unsafe {
-        let count = count.as_u32x8();
-        let no_overflow: u32x8 = simd_lt(count, u32x8::splat(u32::BITS));
-        let count = simd_select(no_overflow, count, u32x8::ZERO);
-        simd_select(no_overflow, simd_shl(a.as_u32x8(), count), u32x8::ZERO).as_m256i()
-    }
+pub fn _mm256_sllv_epi32(a: __m256i, count: __m256i) -> __m256i {
+    unsafe { transmute(psllvd256(a.as_i32x8(), count.as_i32x8())) }
 }
 
 /// Shifts packed 64-bit integers in `a` left by the amount
@@ -2997,14 +2873,8 @@ pub const fn _mm256_sllv_epi32(a: __m256i, count: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllvq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_sllv_epi64(a: __m128i, count: __m128i) -> __m128i {
-    unsafe {
-        let count = count.as_u64x2();
-        let no_overflow: u64x2 = simd_lt(count, u64x2::splat(u64::BITS as u64));
-        let count = simd_select(no_overflow, count, u64x2::ZERO);
-        simd_select(no_overflow, simd_shl(a.as_u64x2(), count), u64x2::ZERO).as_m128i()
-    }
+pub fn _mm_sllv_epi64(a: __m128i, count: __m128i) -> __m128i {
+    unsafe { transmute(psllvq(a.as_i64x2(), count.as_i64x2())) }
 }
 
 /// Shifts packed 64-bit integers in `a` left by the amount
@@ -3016,14 +2886,8 @@ pub const fn _mm_sllv_epi64(a: __m128i, count: __m128i) -> __m128i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllvq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_sllv_epi64(a: __m256i, count: __m256i) -> __m256i {
-    unsafe {
-        let count = count.as_u64x4();
-        let no_overflow: u64x4 = simd_lt(count, u64x4::splat(u64::BITS as u64));
-        let count = simd_select(no_overflow, count, u64x4::ZERO);
-        simd_select(no_overflow, simd_shl(a.as_u64x4(), count), u64x4::ZERO).as_m256i()
-    }
+pub fn _mm256_sllv_epi64(a: __m256i, count: __m256i) -> __m256i {
+    unsafe { transmute(psllvq256(a.as_i64x4(), count.as_i64x4())) }
 }
 
 /// Shifts packed 16-bit integers in `a` right by `count` while
@@ -3088,14 +2952,8 @@ pub const fn _mm256_srai_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsravd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_srav_epi32(a: __m128i, count: __m128i) -> __m128i {
-    unsafe {
-        let count = count.as_u32x4();
-        let no_overflow: u32x4 = simd_lt(count, u32x4::splat(u32::BITS));
-        let count = simd_select(no_overflow, transmute(count), i32x4::splat(31));
-        simd_shr(a.as_i32x4(), count).as_m128i()
-    }
+pub fn _mm_srav_epi32(a: __m128i, count: __m128i) -> __m128i {
+    unsafe { transmute(psravd(a.as_i32x4(), count.as_i32x4())) }
 }
 
 /// Shifts packed 32-bit integers in `a` right by the amount specified by the
@@ -3106,14 +2964,8 @@ pub const fn _mm_srav_epi32(a: __m128i, count: __m128i) -> __m128i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsravd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_srav_epi32(a: __m256i, count: __m256i) -> __m256i {
-    unsafe {
-        let count = count.as_u32x8();
-        let no_overflow: u32x8 = simd_lt(count, u32x8::splat(u32::BITS));
-        let count = simd_select(no_overflow, transmute(count), i32x8::splat(31));
-        simd_shr(a.as_i32x8(), count).as_m256i()
-    }
+pub fn _mm256_srav_epi32(a: __m256i, count: __m256i) -> __m256i {
+    unsafe { transmute(psravd256(a.as_i32x8(), count.as_i32x8())) }
 }
 
 /// Shifts 128-bit lanes in `a` right by `imm8` bytes while shifting in zeros.
@@ -3300,14 +3152,8 @@ pub const fn _mm256_srli_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlvd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_srlv_epi32(a: __m128i, count: __m128i) -> __m128i {
-    unsafe {
-        let count = count.as_u32x4();
-        let no_overflow: u32x4 = simd_lt(count, u32x4::splat(u32::BITS));
-        let count = simd_select(no_overflow, count, u32x4::ZERO);
-        simd_select(no_overflow, simd_shr(a.as_u32x4(), count), u32x4::ZERO).as_m128i()
-    }
+pub fn _mm_srlv_epi32(a: __m128i, count: __m128i) -> __m128i {
+    unsafe { transmute(psrlvd(a.as_i32x4(), count.as_i32x4())) }
 }
 
 /// Shifts packed 32-bit integers in `a` right by the amount specified by
@@ -3318,14 +3164,8 @@ pub const fn _mm_srlv_epi32(a: __m128i, count: __m128i) -> __m128i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlvd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_srlv_epi32(a: __m256i, count: __m256i) -> __m256i {
-    unsafe {
-        let count = count.as_u32x8();
-        let no_overflow: u32x8 = simd_lt(count, u32x8::splat(u32::BITS));
-        let count = simd_select(no_overflow, count, u32x8::ZERO);
-        simd_select(no_overflow, simd_shr(a.as_u32x8(), count), u32x8::ZERO).as_m256i()
-    }
+pub fn _mm256_srlv_epi32(a: __m256i, count: __m256i) -> __m256i {
+    unsafe { transmute(psrlvd256(a.as_i32x8(), count.as_i32x8())) }
 }
 
 /// Shifts packed 64-bit integers in `a` right by the amount specified by
@@ -3336,14 +3176,8 @@ pub const fn _mm256_srlv_epi32(a: __m256i, count: __m256i) -> __m256i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlvq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm_srlv_epi64(a: __m128i, count: __m128i) -> __m128i {
-    unsafe {
-        let count = count.as_u64x2();
-        let no_overflow: u64x2 = simd_lt(count, u64x2::splat(u64::BITS as u64));
-        let count = simd_select(no_overflow, count, u64x2::ZERO);
-        simd_select(no_overflow, simd_shr(a.as_u64x2(), count), u64x2::ZERO).as_m128i()
-    }
+pub fn _mm_srlv_epi64(a: __m128i, count: __m128i) -> __m128i {
+    unsafe { transmute(psrlvq(a.as_i64x2(), count.as_i64x2())) }
 }
 
 /// Shifts packed 64-bit integers in `a` right by the amount specified by
@@ -3354,14 +3188,8 @@ pub const fn _mm_srlv_epi64(a: __m128i, count: __m128i) -> __m128i {
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlvq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
-pub const fn _mm256_srlv_epi64(a: __m256i, count: __m256i) -> __m256i {
-    unsafe {
-        let count = count.as_u64x4();
-        let no_overflow: u64x4 = simd_lt(count, u64x4::splat(u64::BITS as u64));
-        let count = simd_select(no_overflow, count, u64x4::ZERO);
-        simd_select(no_overflow, simd_shr(a.as_u64x4(), count), u64x4::ZERO).as_m256i()
-    }
+pub fn _mm256_srlv_epi64(a: __m256i, count: __m256i) -> __m256i {
+    unsafe { transmute(psrlvq256(a.as_i64x4(), count.as_i64x4())) }
 }
 
 /// Load 256-bits of integer data from memory into dst using a non-temporal memory hint. mem_addr
@@ -3906,15 +3734,31 @@ pub const fn _mm256_extract_epi16<const INDEX: i32>(a: __m256i) -> i32 {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
+    #[link_name = "llvm.x86.avx2.pavg.b"]
+    fn pavgb(a: u8x32, b: u8x32) -> u8x32;
+    #[link_name = "llvm.x86.avx2.pavg.w"]
+    fn pavgw(a: u16x16, b: u16x16) -> u16x16;
     #[link_name = "llvm.x86.avx2.pmadd.wd"]
     fn pmaddwd(a: i16x16, b: i16x16) -> i32x8;
     #[link_name = "llvm.x86.avx2.pmadd.ub.sw"]
     fn pmaddubsw(a: u8x32, b: i8x32) -> i16x16;
     #[link_name = "llvm.x86.avx2.mpsadbw"]
     fn mpsadbw(a: u8x32, b: u8x32, imm8: i8) -> u16x16;
+    #[link_name = "llvm.x86.avx2.pmulhu.w"]
+    fn pmulhuw(a: u16x16, b: u16x16) -> u16x16;
+    #[link_name = "llvm.x86.avx2.pmulh.w"]
+    fn pmulhw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.pmul.hr.sw"]
     fn pmulhrsw(a: i16x16, b: i16x16) -> i16x16;
+    #[link_name = "llvm.x86.avx2.packsswb"]
+    fn packsswb(a: i16x16, b: i16x16) -> i8x32;
+    #[link_name = "llvm.x86.avx2.packssdw"]
+    fn packssdw(a: i32x8, b: i32x8) -> i16x16;
+    #[link_name = "llvm.x86.avx2.packuswb"]
+    fn packuswb(a: i16x16, b: i16x16) -> u8x32;
+    #[link_name = "llvm.x86.avx2.packusdw"]
+    fn packusdw(a: i32x8, b: i32x8) -> u16x16;
     #[link_name = "llvm.x86.avx2.psad.bw"]
     fn psadbw(a: u8x32, b: u8x32) -> u64x4;
     #[link_name = "llvm.x86.avx2.psign.b"]
@@ -3929,16 +3773,36 @@ unsafe extern "unadjusted" {
     fn pslld(a: i32x8, count: i32x4) -> i32x8;
     #[link_name = "llvm.x86.avx2.psll.q"]
     fn psllq(a: i64x4, count: i64x2) -> i64x4;
+    #[link_name = "llvm.x86.avx2.psllv.d"]
+    fn psllvd(a: i32x4, count: i32x4) -> i32x4;
+    #[link_name = "llvm.x86.avx2.psllv.d.256"]
+    fn psllvd256(a: i32x8, count: i32x8) -> i32x8;
+    #[link_name = "llvm.x86.avx2.psllv.q"]
+    fn psllvq(a: i64x2, count: i64x2) -> i64x2;
+    #[link_name = "llvm.x86.avx2.psllv.q.256"]
+    fn psllvq256(a: i64x4, count: i64x4) -> i64x4;
     #[link_name = "llvm.x86.avx2.psra.w"]
     fn psraw(a: i16x16, count: i16x8) -> i16x16;
     #[link_name = "llvm.x86.avx2.psra.d"]
     fn psrad(a: i32x8, count: i32x4) -> i32x8;
+    #[link_name = "llvm.x86.avx2.psrav.d"]
+    fn psravd(a: i32x4, count: i32x4) -> i32x4;
+    #[link_name = "llvm.x86.avx2.psrav.d.256"]
+    fn psravd256(a: i32x8, count: i32x8) -> i32x8;
     #[link_name = "llvm.x86.avx2.psrl.w"]
     fn psrlw(a: i16x16, count: i16x8) -> i16x16;
     #[link_name = "llvm.x86.avx2.psrl.d"]
     fn psrld(a: i32x8, count: i32x4) -> i32x8;
     #[link_name = "llvm.x86.avx2.psrl.q"]
     fn psrlq(a: i64x4, count: i64x2) -> i64x4;
+    #[link_name = "llvm.x86.avx2.psrlv.d"]
+    fn psrlvd(a: i32x4, count: i32x4) -> i32x4;
+    #[link_name = "llvm.x86.avx2.psrlv.d.256"]
+    fn psrlvd256(a: i32x8, count: i32x8) -> i32x8;
+    #[link_name = "llvm.x86.avx2.psrlv.q"]
+    fn psrlvq(a: i64x2, count: i64x2) -> i64x2;
+    #[link_name = "llvm.x86.avx2.psrlv.q.256"]
+    fn psrlvq256(a: i64x4, count: i64x4) -> i64x4;
     #[link_name = "llvm.x86.avx2.pshuf.b"]
     fn pshufb(a: u8x32, b: u8x32) -> u8x32;
     #[link_name = "llvm.x86.avx2.permd"]
@@ -4306,14 +4170,14 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_avg_epu8() {
+    fn test_mm256_avg_epu8() {
         let (a, b) = (_mm256_set1_epi8(3), _mm256_set1_epi8(9));
         let r = _mm256_avg_epu8(a, b);
         assert_eq_m256i(r, _mm256_set1_epi8(6));
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_avg_epu16() {
+    fn test_mm256_avg_epu16() {
         let (a, b) = (_mm256_set1_epi16(3), _mm256_set1_epi16(9));
         let r = _mm256_avg_epu16(a, b);
         assert_eq_m256i(r, _mm256_set1_epi16(6));
@@ -5015,7 +4879,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_mulhi_epi16() {
+    fn test_mm256_mulhi_epi16() {
         let a = _mm256_set1_epi16(6535);
         let b = _mm256_set1_epi16(6535);
         let r = _mm256_mulhi_epi16(a, b);
@@ -5024,7 +4888,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_mulhi_epu16() {
+    fn test_mm256_mulhi_epu16() {
         let a = _mm256_set1_epi16(6535);
         let b = _mm256_set1_epi16(6535);
         let r = _mm256_mulhi_epu16(a, b);
@@ -5068,7 +4932,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_packs_epi16() {
+    fn test_mm256_packs_epi16() {
         let a = _mm256_set1_epi16(2);
         let b = _mm256_set1_epi16(4);
         let r = _mm256_packs_epi16(a, b);
@@ -5084,7 +4948,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_packs_epi32() {
+    fn test_mm256_packs_epi32() {
         let a = _mm256_set1_epi32(2);
         let b = _mm256_set1_epi32(4);
         let r = _mm256_packs_epi32(a, b);
@@ -5094,7 +4958,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_packus_epi16() {
+    fn test_mm256_packus_epi16() {
         let a = _mm256_set1_epi16(2);
         let b = _mm256_set1_epi16(4);
         let r = _mm256_packus_epi16(a, b);
@@ -5110,7 +4974,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_packus_epi32() {
+    fn test_mm256_packus_epi32() {
         let a = _mm256_set1_epi32(2);
         let b = _mm256_set1_epi32(4);
         let r = _mm256_packus_epi32(a, b);
@@ -5243,7 +5107,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm_sllv_epi32() {
+    fn test_mm_sllv_epi32() {
         let a = _mm_set1_epi32(2);
         let b = _mm_set1_epi32(1);
         let r = _mm_sllv_epi32(a, b);
@@ -5252,7 +5116,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_sllv_epi32() {
+    fn test_mm256_sllv_epi32() {
         let a = _mm256_set1_epi32(2);
         let b = _mm256_set1_epi32(1);
         let r = _mm256_sllv_epi32(a, b);
@@ -5261,16 +5125,30 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm_sllv_epi64() {
-        let a = _mm_set1_epi64x(2);
-        let b = _mm_set1_epi64x(1);
+    fn test_mm_sllv_epi64() {
+        let a = _mm_set_epi64x(2, 3);
+        let b = _mm_set_epi64x(1, 2);
         let r = _mm_sllv_epi64(a, b);
-        let e = _mm_set1_epi64x(4);
+        // Compare with the scalar version of the same computation.
+        let e = _mm_set_epi64x(2i64.unbounded_shl(1), 3i64.unbounded_shl(2));
+        assert_eq_m128i(r, e);
+        // Compare with hardcoded output.
+        let e = _mm_set_epi64x(4, 12);
+        assert_eq_m128i(r, e);
+
+        // The shift has unbounded semantics: if the shift amount
+        // is >= the number of bits the result is 0.
+        let a = _mm_set_epi64x(1, 2);
+        let b = _mm_set_epi64x(64, 65);
+        let r = _mm_sllv_epi64(a, b);
+        let e = _mm_set_epi64x(1i64.unbounded_shl(64), 2i64.unbounded_shl(65));
+        assert_eq_m128i(r, e);
+        let e = _mm_set_epi64x(0, 0);
         assert_eq_m128i(r, e);
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_sllv_epi64() {
+    fn test_mm256_sllv_epi64() {
         let a = _mm256_set1_epi64x(2);
         let b = _mm256_set1_epi64x(1);
         let r = _mm256_sllv_epi64(a, b);
@@ -5311,16 +5189,33 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm_srav_epi32() {
-        let a = _mm_set1_epi32(4);
-        let count = _mm_set1_epi32(1);
-        let r = _mm_srav_epi32(a, count);
-        let e = _mm_set1_epi32(2);
+    fn test_mm_srav_epi32() {
+        let a = _mm_set_epi32(16, -32, 64, -128);
+        let b = _mm_set_epi32(4, 3, 2, 1);
+        let r = _mm_srav_epi32(a, b);
+        let e = _mm_set_epi32(1, -4, 16, -64);
+        assert_eq_m128i(r, e);
+
+        // The shift has unbounded semantics: if the shift amount
+        // is >= the number of bits the result is -1.
+        let a = _mm_set_epi32(-16, -32, -64, -128);
+        let b = _mm_set_epi32(31, 32, 33, 0);
+        let r = _mm_srav_epi32(a, b);
+        // Compare with the scalar version of the same computation.
+        let e = _mm_set_epi32(
+            (-16i32).unbounded_shr(31),
+            (-32i32).unbounded_shr(32),
+            (-64i32).unbounded_shr(33),
+            (-128i32).unbounded_shr(0),
+        );
+        assert_eq_m128i(r, e);
+        // Compare with hardcoded output.
+        let e = _mm_set_epi32(-1, -1, -1, -128);
         assert_eq_m128i(r, e);
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_srav_epi32() {
+    fn test_mm256_srav_epi32() {
         let a = _mm256_set1_epi32(4);
         let count = _mm256_set1_epi32(1);
         let r = _mm256_srav_epi32(a, count);
@@ -5397,7 +5292,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm_srlv_epi32() {
+    fn test_mm_srlv_epi32() {
         let a = _mm_set1_epi32(2);
         let count = _mm_set1_epi32(1);
         let r = _mm_srlv_epi32(a, count);
@@ -5406,7 +5301,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_srlv_epi32() {
+    fn test_mm256_srlv_epi32() {
         let a = _mm256_set1_epi32(2);
         let count = _mm256_set1_epi32(1);
         let r = _mm256_srlv_epi32(a, count);
@@ -5415,16 +5310,30 @@ mod tests {
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm_srlv_epi64() {
-        let a = _mm_set1_epi64x(2);
-        let count = _mm_set1_epi64x(1);
-        let r = _mm_srlv_epi64(a, count);
-        let e = _mm_set1_epi64x(1);
+    fn test_mm_srlv_epi64() {
+        let a = _mm_set_epi64x(4, 8);
+        let b = _mm_set_epi64x(2, 1);
+        let r = _mm_srlv_epi64(a, b);
+        // Compare with the scalar version of the same computation.
+        let e = _mm_set_epi64x(4i64.unbounded_shr(2), 8i64.unbounded_shr(1));
+        assert_eq_m128i(r, e);
+        // Compare with hardcoded output.
+        let e = _mm_set_epi64x(1, 4);
+        assert_eq_m128i(r, e);
+
+        // The shift has unbounded semantics: if the shift amount
+        // is >= the number of bits the result is 0.
+        let a = _mm_set_epi64x(i64::MAX, i64::MAX);
+        let b = _mm_set_epi64x(64, 65);
+        let r = _mm_sllv_epi64(a, b);
+        let e = _mm_set_epi64x(i64::MAX.unbounded_shr(64), i64::MAX.unbounded_shr(65));
+        assert_eq_m128i(r, e);
+        let e = _mm_set_epi64x(0, 0);
         assert_eq_m128i(r, e);
     }
 
     #[simd_test(enable = "avx2")]
-    const fn test_mm256_srlv_epi64() {
+    fn test_mm256_srlv_epi64() {
         let a = _mm256_set1_epi64x(2);
         let count = _mm256_set1_epi64x(1);
         let r = _mm256_srlv_epi64(a, count);

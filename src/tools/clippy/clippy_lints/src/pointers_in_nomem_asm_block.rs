@@ -1,8 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::InlineAsmOptions;
 use rustc_hir::{Expr, ExprKind, InlineAsm, InlineAsmOperand};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -82,7 +81,7 @@ fn has_in_operand_pointer(cx: &LateContext<'_>, asm_op: &InlineAsmOperand<'_>) -
     cx.typeck_results().expr_ty(asm_in_expr).is_any_ptr()
 }
 
-fn additional_notes(diag: &mut rustc_errors::Diag<'_, ()>) {
+fn additional_notes(diag: &mut rustc_errors::Diag<'_>) {
     diag.note("`nomem` means that no memory write or read happens inside the asm! block");
     diag.note("if this is intentional and no pointers are read or written to, consider allowing the lint");
 }

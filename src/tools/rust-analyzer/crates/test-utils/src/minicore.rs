@@ -22,6 +22,7 @@
 //!     cell: copy, drop
 //!     clone: sized
 //!     coerce_pointee: derive, sized, unsize, coerce_unsized, dispatch_from_dyn
+//!     reborrow: derive, copy
 //!     coerce_unsized: unsize
 //!     concat:
 //!     copy: clone
@@ -33,9 +34,9 @@
 //!     discriminant:
 //!     drop: sized
 //!     env: option
-//!     eq: sized
+//!     eq: sized, unary_ops, builtin_impls
 //!     error: fmt
-//!     float_consts:
+//!     float_consts: unary_ops, builtin_impls
 //!     fmt: option, result, transmute, coerce_unsized, copy, clone, derive
 //!     fn: sized, tuple
 //!     from: sized, result
@@ -84,6 +85,7 @@
 //!     column:
 //!     addr_of:
 //!     offset_of:
+//!     cfg:
 
 #![rustc_coherence_is_core]
 #![feature(lang_items)]
@@ -208,6 +210,20 @@ pub mod marker {
         /* compiler built-in */
     }
     // endregion:coerce_pointee
+
+    // region:reborrow
+    #[rustc_builtin_macro(Reborrow)]
+    pub macro Reborrow($item:item) {}
+
+    #[lang = "reborrow"]
+    pub trait Reborrow {}
+
+    #[rustc_builtin_macro(CoerceShared, attributes(coerce_shared))]
+    pub macro CoerceShared($item:item) {}
+
+    #[lang = "coerce_shared"]
+    pub trait CoerceShared<Target: Copy>: Reborrow {}
+    // endregion:reborrow
 }
 
 // region:default
@@ -355,11 +371,13 @@ pub mod clone {
         }
     }
 
+    // region:index
     impl<T: Clone> Clone for [T; 1] {
         fn clone(&self) -> Self {
             [self[0].clone()]
         }
     }
+    // endregion:index
     // endregion:builtin_impls
 
     // region:derive
@@ -653,7 +671,11 @@ pub mod ops {
     // region:drop
     #[lang = "drop"]
     pub trait Drop {
-        fn drop(&mut self);
+        fn drop(&mut self) {
+            // region:pin
+            Drop::pin_drop(crate::pin::Pin::new(self))
+            // endregion:pin
+        }
 
         // region:pin
         fn pin_drop(self: crate::pin::Pin<&mut Self>) {}
@@ -778,6 +800,13 @@ pub mod ops {
             pub(crate) start: Idx,
             pub(crate) end: Idx,
             pub(crate) exhausted: bool,
+        }
+
+        impl<Idx> RangeInclusive<Idx> {
+            #[lang = "range_inclusive_new"]
+            pub const fn new(start: Idx, end: Idx) -> Self {
+                Self { start, end, exhausted: false }
+            }
         }
 
         #[lang = "RangeToInclusive"]
@@ -1191,6 +1220,30 @@ pub mod ops {
         #[must_use = "this returns the result of the operation, without modifying the original"]
         fn neg(self) -> Self::Output;
     }
+
+    // region:builtin_impls
+    macro_rules! not_impl {
+        ($($t:ty)*) => ($(
+            impl const Not for $t {
+                type Output = $t;
+                fn not(self) -> $t { !self }
+            }
+        )*)
+    }
+
+    not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+
+    macro_rules! neg_impl {
+        ($($t:ty)*) => ($(
+            impl const Neg for $t {
+                type Output = $t;
+                fn neg(self) -> $t { -self }
+            }
+        )*)
+    }
+
+    neg_impl! { isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
+    // endregion:builtin_impls
     // endregion:unary_ops
 
     // region:coroutine
@@ -1250,12 +1303,12 @@ pub mod range {
     #[lang = "RangeInclusiveCopy"]
     pub struct RangeInclusive<Idx> {
         pub start: Idx,
-        pub end: Idx,
+        pub last: Idx,
     }
 
     #[lang = "RangeToInclusiveCopy"]
     pub struct RangeToInclusive<Idx> {
-        pub end: Idx,
+        pub last: Idx,
     }
 }
 // endregion:new_range
@@ -2223,6 +2276,16 @@ mod macros {
     }
     // endregion:include_bytes
 
+    // region:cfg
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! cfg {
+        ($($cfg:tt)*) => {
+            /* compiler built-in */
+        };
+    }
+    // endregion:cfg
+
     // region:concat
     #[rustc_builtin_macro]
     #[macro_export]
@@ -2445,6 +2508,7 @@ pub mod prelude {
             include_bytes,                                // :include_bytes
             concat,                                       // :concat
             env, option_env,                              // :env
+            cfg,                                          // :cfg
             matches,                                      // :matches
         };
     }

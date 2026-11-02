@@ -266,14 +266,13 @@ impl<'a> FmtVisitor<'a> {
             self.block_indent
         } else {
             self.push_str(" ");
-            Indent::from_width(self.config, last_line_width(&self.buffer))
+            Indent::from_width(
+                self.config,
+                last_line_width(&self.buffer, self.config.tab_spaces()),
+            )
         };
 
-        let comment_width = ::std::cmp::min(
-            self.config.comment_width(),
-            self.config.max_width() - self.block_indent.width(),
-        );
-        let comment_shape = Shape::legacy(comment_width, comment_indent);
+        let comment_shape = Shape::indented(comment_indent, self.config).comment(self.config);
 
         if on_same_line {
             match subslice.find('\n') {

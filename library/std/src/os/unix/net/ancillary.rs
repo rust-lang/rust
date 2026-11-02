@@ -2,6 +2,7 @@
 
 use super::{SocketAddr, sockaddr_un};
 use crate::io::{self, IoSlice, IoSliceMut};
+use crate::macros::rustdoc_skip_body;
 use crate::marker::PhantomData;
 use crate::mem::zeroed;
 use crate::os::unix::io::RawFd;
@@ -30,6 +31,7 @@ mod libc {
     pub type uid_t = u32;
 }
 
+#[rustdoc_skip_body]
 pub(super) fn recv_vectored_with_ancillary_from(
     socket: &Socket,
     bufs: &mut [IoSliceMut<'_>],
@@ -60,6 +62,7 @@ pub(super) fn recv_vectored_with_ancillary_from(
     }
 }
 
+#[rustdoc_skip_body]
 pub(super) fn send_vectored_with_ancillary_to(
     socket: &Socket,
     path: Option<&Path>,
@@ -87,6 +90,7 @@ pub(super) fn send_vectored_with_ancillary_to(
     }
 }
 
+#[rustdoc_skip_body]
 fn add_to_ancillary_data<T>(
     buffer: &mut [u8],
     length: &mut usize,
@@ -503,15 +507,16 @@ impl<'a> AncillaryData<'a> {
         AncillaryData::ScmCredentials(scm_credentials)
     }
 
+    #[rustdoc_skip_body]
     fn try_from_cmsghdr(cmsg: &'a libc::cmsghdr) -> Result<Self, AncillaryError> {
         unsafe {
             let cmsg_len_zero = libc::CMSG_LEN(0) as usize;
-            let data_len = (*cmsg).cmsg_len as usize - cmsg_len_zero;
+            let data_len = cmsg.cmsg_len as usize - cmsg_len_zero;
             let data = libc::CMSG_DATA(cmsg).cast();
             let data = from_raw_parts(data, data_len);
 
-            match (*cmsg).cmsg_level {
-                libc::SOL_SOCKET => match (*cmsg).cmsg_type {
+            match cmsg.cmsg_level {
+                libc::SOL_SOCKET => match cmsg.cmsg_type {
                     libc::SCM_RIGHTS => Ok(AncillaryData::as_rights(data)),
                     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
                     libc::SCM_CREDENTIALS => Ok(AncillaryData::as_credentials(data)),
@@ -524,7 +529,7 @@ impl<'a> AncillaryData<'a> {
                     }
                 },
                 cmsg_level => {
-                    Err(AncillaryError::Unknown { cmsg_level, cmsg_type: (*cmsg).cmsg_type })
+                    Err(AncillaryError::Unknown { cmsg_level, cmsg_type: cmsg.cmsg_type })
                 }
             }
         }
@@ -543,6 +548,7 @@ pub struct Messages<'a> {
 impl<'a> Iterator for Messages<'a> {
     type Item = Result<AncillaryData<'a>, AncillaryError>;
 
+    #[rustdoc_skip_body]
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
             let mut msg: libc::msghdr = zeroed();
@@ -576,7 +582,15 @@ impl<'a> Iterator for Messages<'a> {
 /// A Unix socket Ancillary data struct.
 ///
 /// # Example
-/// ```no_run
+///
+#[cfg_attr(
+    any(target_os = "android", target_os = "linux", target_os = "cygwin"),
+    doc = "```no_run"
+)]
+#[cfg_attr(
+    not(any(target_os = "android", target_os = "linux", target_os = "cygwin")),
+    doc = "```ignore (needs unix)"
+)]
 /// #![feature(unix_socket_ancillary_data)]
 /// use std::os::unix::net::{UnixStream, SocketAncillary, AncillaryData};
 /// use std::io::IoSliceMut;
@@ -615,7 +629,14 @@ impl<'a> SocketAncillary<'a> {
     ///
     /// # Example
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "android", target_os = "linux", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "android", target_os = "linux", target_os = "cygwin")),
+        doc = "```ignore (needs unix)"
+    )]
     /// # #![allow(unused_mut)]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::SocketAncillary;
@@ -658,7 +679,14 @@ impl<'a> SocketAncillary<'a> {
     ///
     /// # Example
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "android", target_os = "linux", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "android", target_os = "linux", target_os = "cygwin")),
+        doc = "```ignore (needs unix)"
+    )]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary};
     /// use std::io::IoSliceMut;
@@ -692,7 +720,14 @@ impl<'a> SocketAncillary<'a> {
     ///
     /// # Example
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "android", target_os = "linux", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "android", target_os = "linux", target_os = "cygwin")),
+        doc = "```ignore (needs unix)"
+    )]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary};
     /// use std::os::unix::io::AsRawFd;
@@ -715,7 +750,7 @@ impl<'a> SocketAncillary<'a> {
     pub fn add_fds(&mut self, fds: &[RawFd]) -> bool {
         self.truncated = false;
         add_to_ancillary_data(
-            &mut self.buffer,
+            self.buffer,
             &mut self.length,
             fds,
             libc::SOL_SOCKET,
@@ -742,7 +777,7 @@ impl<'a> SocketAncillary<'a> {
     pub fn add_creds(&mut self, creds: &[SocketCred]) -> bool {
         self.truncated = false;
         add_to_ancillary_data(
-            &mut self.buffer,
+            self.buffer,
             &mut self.length,
             creds,
             libc::SOL_SOCKET,
@@ -759,7 +794,14 @@ impl<'a> SocketAncillary<'a> {
     ///
     /// # Example
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "android", target_os = "linux", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "android", target_os = "linux", target_os = "cygwin")),
+        doc = "```ignore (needs unix)"
+    )]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary, AncillaryData};
     /// use std::io::IoSliceMut;

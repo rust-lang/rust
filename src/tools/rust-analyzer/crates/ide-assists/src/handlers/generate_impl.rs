@@ -167,7 +167,8 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_, '_>
             let holder_arg = ast::GenericArg::TypeArg(make.type_arg(make.ty_placeholder()));
             let missing_items = utils::filter_assoc_items(
                 &ctx.sema,
-                &hir_trait.items(ctx.db()),
+                hir_trait,
+                &ide_db::traits::trait_items_with_required(ctx.db(), hir_trait),
                 DefaultMethods::No,
                 IgnoreAssocItems::DocHiddenAttrPresent,
             );
@@ -185,7 +186,7 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_, '_>
                     None,
                     None,
                     false,
-                    make.ty(&name.text()),
+                    make.ty(name.text()),
                     make.ty_placeholder(),
                     None,
                     None,
@@ -205,6 +206,7 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_, '_>
                     hir_trait,
                     &impl_,
                     &target_scope,
+                    DefaultMethods::No,
                 );
                 let assoc_item_list = make.assoc_item_list(assoc_items);
                 make_impl_(Some(assoc_item_list))

@@ -3,6 +3,8 @@ name: Clippy Test (merge queue)
 on:
   merge_group:
 
+permissions: {}
+
 env:
   RUST_BACKTRACE: 1
   CARGO_TARGET_DIR: '${{ github.workspace }}/target'
@@ -34,7 +36,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
 
@@ -47,9 +49,11 @@ jobs:
 
     - name: Install toolchain
       run: |
-        rustup set default-host ${{ matrix.host }}
+        rustup set default-host "${MATRIX_HOST}"
         # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
         rustup show active-toolchain || rustup toolchain install
+      env:
+        MATRIX_HOST: ${{ matrix.host }}
 
     # Run
     - name: Build
@@ -79,7 +83,7 @@ jobs:
       run: cargo test
       working-directory: rustc_tools_util
 
-    - name: Test clippy_dev
+    - name: Test clippy-dev
       run: cargo test
       working-directory: clippy_dev
 
@@ -94,7 +98,7 @@ jobs:
     steps:
      # Setup
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
 
@@ -112,7 +116,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
 
@@ -131,11 +135,11 @@ jobs:
     - name: Extract Binaries
       run: |
         DIR=$CARGO_TARGET_DIR/debug
-        find $DIR/deps/integration-* -executable ! -type d | xargs -I {} mv {} $DIR/integration
+        find $DIR/build/clippy/*/out/integration* -executable ! -type d | xargs -I {} mv {} $DIR/integration
         find $DIR ! -executable -o -type d ! -path $DIR | xargs rm -rf
 
     - name: Upload Binaries
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: binaries
         path: target/debug
@@ -147,7 +151,6 @@ jobs:
       max-parallel: 6
       matrix:
         integration:
-        - 'matthiaskrgr/clippy_ci_panic_test'
         - 'rust-lang/cargo'
         - 'rust-lang/chalk'
         - 'rust-lang/rustfmt'
@@ -168,7 +171,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
 
@@ -179,7 +182,7 @@ jobs:
 
     # Download
     - name: Download target dir
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
       with:
         name: binaries
         path: target/debug
@@ -195,8 +198,60 @@ jobs:
       env:
         INTEGRATION: ${{ matrix.integration }}
 
+  doc:
+    # NOTE: If you modify this job, make sure you copy the changes to clippy_pr.yml
+    runs-on: ubuntu-latest
+
+    env:
+      RUSTDOCFLAGS: "-D rustdoc::broken-intra-doc-links"
+
+    steps:
+    # Setup
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        # Unsetting this would make so that any malicious package could get our Github Token
+        persist-credentials: false
+
+    - name: Install toolchain
+      run: |
+        # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
+        rustup show active-toolchain || rustup toolchain install
+
+    # Run
+    - name: Rustdoc top-level
+      run: cargo doc --no-deps
+
+    - name: Rustdoc clippy_config
+      run: cargo doc --no-deps
+      working-directory: clippy_config
+
+    - name: Rustdoc clippy_dev
+      run: cargo doc --no-deps
+      working-directory: clippy_dev
+
+    - name: Rustdoc clippy_lints
+      run: cargo doc --no-deps
+      working-directory: clippy_lints
+
+    - name: Rustdoc clippy_lints_internal
+      run: cargo doc --no-deps
+      working-directory: clippy_lints_internal
+
+    - name: Rustdoc clippy_utils
+      run: cargo doc --no-deps
+      working-directory: clippy_utils
+
+    - name: Rustdoc declare_clippy_lint
+      run: cargo doc --no-deps
+      working-directory: declare_clippy_lint
+
+    - name: Rustdoc lintcheck
+      run: cargo doc --no-deps
+      working-directory: lintcheck
+
   conclusion:
-    needs: [ base, metadata_collection, integration_build, integration ]
+    needs: [ base, metadata_collection, integration_build, integration, doc ]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
@@ -210,6 +265,8 @@ jobs:
       - name: Conclusion
         run: |
           # Print the dependent jobs to see them in the CI log
-          jq -C <<< '${{ toJson(needs) }}'
+          jq -C <<< "${NEEDS_JSON}"
           # Check if all jobs that we depend on (in the needs array) were successful.
-          jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
+          jq --exit-status 'all(.result == "success")' <<< "${NEEDS_JSON}"
+        env:
+          NEEDS_JSON: ${{ toJson(needs) }}

@@ -1,17 +1,15 @@
 use std::assert_matches;
 
 use hir::Node;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::find_attr;
 use rustc_middle::ty::{
-    self, GenericClauses, ImplTraitInTraitData, RegionExt, Ty, TyCtxt, TypeVisitable, TypeVisitor,
-    Upcast,
+    self, GenericClauses, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable, TypeVisitor, Upcast,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Ident, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, bug, span_bug};
 use tracing::{debug, instrument, trace};
 
 use super::item_bounds::explicit_item_bounds_with_filter;
@@ -267,63 +265,7 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
     trace!(?clauses);
     // Add inline `<T: Foo>` bounds and bounds in the where clause.
     for predicate in hir_generics.predicates {
-        match predicate.kind {
-            hir::WherePredicateKind::BoundPredicate(bound_pred) => {
-                let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
-                let bound_vars = tcx.late_bound_vars(predicate.hir_id);
-
-                // This is a `where Ty:` (sic!).
-                if bound_pred.bounds.is_empty() {
-                    if let ty::Param(_) = ty.kind() {
-                        // We can skip the predicate because type parameters are trivially WF.
-                    } else {
-                        // Keep the type around in a dummy predicate. That way, it's not a complete
-                        // noop (see #53696) and `Ty` is still checked for WF.
-
-                        let span = bound_pred.bounded_ty.span;
-                        let clause = ty::Binder::bind_with_vars(
-                            ty::ClauseKind::WellFormed(ty.into()),
-                            bound_vars,
-                        );
-                        clauses.insert((clause.upcast(tcx), span));
-                    }
-                }
-
-                let mut bounds = Vec::new();
-                icx.lowerer().lower_bounds(
-                    ty,
-                    bound_pred.bounds,
-                    &mut bounds,
-                    bound_vars,
-                    PredicateFilter::All,
-                    OverlappingAsssocItemConstraints::Allowed,
-                );
-                clauses.extend(bounds);
-            }
-
-            hir::WherePredicateKind::RegionPredicate(region_pred) => {
-                let r1 = icx
-                    .lowerer()
-                    .lower_lifetime(region_pred.lifetime, RegionInferReason::RegionPredicate);
-                clauses.extend(region_pred.bounds.iter().map(|bound| {
-                    let (r2, span) = match bound {
-                        hir::GenericBound::Outlives(lt) => (
-                            icx.lowerer().lower_lifetime(lt, RegionInferReason::RegionPredicate),
-                            lt.ident.span,
-                        ),
-                        bound => {
-                            span_bug!(
-                                bound.span(),
-                                "lifetime param bounds must be outlives, but found {bound:?}"
-                            )
-                        }
-                    };
-                    let clause =
-                        ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r1, r2)).upcast(tcx);
-                    (clause, span)
-                }))
-            }
-        }
+        where_predicate_clauses(&icx, predicate, &mut clauses);
     }
 
     if tcx.features().generic_const_exprs() {
@@ -373,6 +315,70 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
     ty::GenericClauses { parent: generics.parent, clauses: tcx.arena.alloc_from_iter(clauses) }
 }
 
+pub(super) fn where_predicate_clauses<'tcx>(
+    icx: &ItemCtxt<'tcx>,
+    predicate: &hir::WherePredicate<'_>,
+    clauses: &mut FxIndexSet<(ty::Clause<'tcx>, Span)>,
+) {
+    let tcx = icx.tcx;
+    match predicate.kind {
+        hir::WherePredicateKind::BoundPredicate(bound_pred) => {
+            let ty = icx.lowerer().lower_ty_maybe_return_type_notation(bound_pred.bounded_ty);
+            let bound_vars = tcx.late_bound_vars(predicate.hir_id);
+
+            // This is a `where Ty:` (sic!).
+            if bound_pred.bounds.is_empty() {
+                if let ty::Param(_) = ty.kind() {
+                    // We can skip the predicate because type parameters are trivially WF.
+                } else {
+                    // Keep the type around in a dummy predicate. That way, it's not a complete
+                    // noop (see #53696) and `Ty` is still checked for WF.
+
+                    let span = bound_pred.bounded_ty.span;
+                    let clause = ty::Binder::bind_with_vars(
+                        ty::ClauseKind::WellFormed(ty.into()),
+                        bound_vars,
+                    );
+                    clauses.insert((clause.upcast(tcx), span));
+                }
+            }
+
+            let mut bounds = Vec::new();
+            icx.lowerer().lower_bounds(
+                ty,
+                bound_pred.bounds,
+                &mut bounds,
+                bound_vars,
+                PredicateFilter::All,
+                OverlappingAsssocItemConstraints::Allowed,
+            );
+            clauses.extend(bounds);
+        }
+
+        hir::WherePredicateKind::RegionPredicate(region_pred) => {
+            let r1 = icx
+                .lowerer()
+                .lower_lifetime(region_pred.lifetime, RegionInferReason::RegionPredicate);
+            clauses.extend(region_pred.bounds.iter().map(|bound| {
+                let (r2, span) = match bound {
+                    hir::GenericBound::Outlives(lt) => (
+                        icx.lowerer().lower_lifetime(lt, RegionInferReason::RegionPredicate),
+                        lt.ident.span,
+                    ),
+                    bound => {
+                        span_bug!(
+                            bound.span(),
+                            "lifetime param bounds must be outlives, but found {bound:?}"
+                        )
+                    }
+                };
+                let clause = ty::ClauseKind::RegionOutlives(ty::OutlivesClause(r1, r2)).upcast(tcx);
+                (clause, span)
+            }))
+        }
+    }
+}
+
 /// Opaques have duplicated lifetimes and we need to compute bidirectional outlives clauses to
 /// enforce that these lifetimes stay in sync.
 fn compute_bidirectional_outlives_clauses<'tcx>(
@@ -389,12 +395,12 @@ fn compute_bidirectional_outlives_clauses<'tcx>(
             );
             let span = tcx.def_span(param.def_id);
             clauses.push((
-                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(orig_lifetime, dup_lifetime))
+                ty::ClauseKind::RegionOutlives(ty::OutlivesClause(orig_lifetime, dup_lifetime))
                     .upcast(tcx),
                 span,
             ));
             clauses.push((
-                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(dup_lifetime, orig_lifetime))
+                ty::ClauseKind::RegionOutlives(ty::OutlivesClause(dup_lifetime, orig_lifetime))
                     .upcast(tcx),
                 span,
             ));
@@ -444,7 +450,7 @@ fn const_evaluatable_clauses_of<'tcx>(
                 }
 
                 // Skip type consts as mGCA doesn't support evaluatable clauses.
-                if alias_const.kind.is_type_const(self.tcx) {
+                if alias_const.kind.is_direct_const(self.tcx) {
                     return;
                 }
 
@@ -720,7 +726,7 @@ pub(super) fn implied_clauses_with_filter<'tcx>(
             for &(clause, span) in implied_bounds {
                 debug!("superbound: {:?}", clause);
                 if let ty::ClauseKind::Trait(bound) = clause.kind().skip_binder()
-                    && bound.polarity == ty::PredicatePolarity::Positive
+                    && bound.polarity == ty::ClausePolarity::Positive
                 {
                     tcx.at(span).explicit_super_clauses_of(bound.def_id());
                 }
@@ -730,7 +736,7 @@ pub(super) fn implied_clauses_with_filter<'tcx>(
             for &(clause, span) in implied_bounds {
                 debug!("superbound: {:?}", clause);
                 if let ty::ClauseKind::Trait(bound) = clause.kind().skip_binder()
-                    && bound.polarity == ty::PredicatePolarity::Positive
+                    && bound.polarity == ty::ClausePolarity::Positive
                 {
                     tcx.at(span).explicit_implied_clauses_of(bound.def_id());
                 }
@@ -776,18 +782,18 @@ pub(super) fn assert_only_contains_clauses_from<'tcx>(
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
-                    ty::ClauseKind::TypeOutlives(outlives_predicate) => {
+                    ty::ClauseKind::TypeOutlives(outlives_clause) => {
                         assert_eq!(
-                            outlives_predicate.0, ty,
-                            "expected `Self` predicate when computing \
+                            outlives_clause.0, ty,
+                            "expected `Self` clause when computing \
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
-                    ty::ClauseKind::HostEffect(host_effect_predicate) => {
+                    ty::ClauseKind::HostEffect(host_effect_clause) => {
                         assert_eq!(
-                            host_effect_predicate.self_ty(),
+                            host_effect_clause.self_ty(),
                             ty,
-                            "expected `Self` predicate when computing \
+                            "expected `Self` clause when computing \
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
@@ -836,13 +842,13 @@ pub(super) fn assert_only_contains_clauses_from<'tcx>(
         PredicateFilter::ConstIfConst => {
             for (clause, _) in bounds {
                 match clause.kind().skip_binder() {
-                    ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                    ty::ClauseKind::HostEffect(ty::HostEffectClause {
                         trait_ref: _,
                         constness: ty::BoundConstness::Maybe,
                     }) => {}
                     _ => {
                         bug!(
-                            "unexpected non-`HostEffect` predicate when computing \
+                            "unexpected non-`HostEffect` clause when computing \
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
@@ -852,23 +858,23 @@ pub(super) fn assert_only_contains_clauses_from<'tcx>(
         PredicateFilter::SelfConstIfConst => {
             for (clause, _) in bounds {
                 match clause.kind().skip_binder() {
-                    ty::ClauseKind::HostEffect(pred) => {
+                    ty::ClauseKind::HostEffect(host_clause) => {
                         assert_eq!(
-                            pred.constness,
+                            host_clause.constness,
                             ty::BoundConstness::Maybe,
-                            "expected `[const]` predicate when computing `{filter:?}` \
+                            "expected `[const]` clause when computing `{filter:?}` \
                             implied bounds: {clause:?}",
                         );
                         assert_eq!(
-                            pred.trait_ref.self_ty(),
+                            host_clause.trait_ref.self_ty(),
                             ty,
-                            "expected `Self` predicate when computing `{filter:?}` \
+                            "expected `Self` clause when computing `{filter:?}` \
                             implied bounds: {clause:?}"
                         );
                     }
                     _ => {
                         bug!(
-                            "unexpected non-`HostEffect` predicate when computing \
+                            "unexpected non-`HostEffect` clause when computing \
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
@@ -1076,7 +1082,7 @@ pub(super) fn const_conditions<'tcx>(
         },
         // While associated types are not really const, we do allow them to have `[const]`
         // bounds and where clauses. `const_conditions` is responsible for gathering
-        // these up so we can check them in `compare_type_predicate_entailment`, and
+        // these up so we can check them in `compare_type_clause_entailment`, and
         // in `HostEffect` goal computation.
         Node::TraitItem(item) => match item.kind {
             hir::TraitItemKind::Fn(_, _) | hir::TraitItemKind::Type(_, _) => {
@@ -1151,10 +1157,10 @@ pub(super) fn const_conditions<'tcx>(
 
     ty::ConstConditions {
         parent: has_parent.then(|| tcx.local_parent(def_id).to_def_id()),
-        predicates: tcx.arena.alloc_from_iter(bounds.into_iter().map(|(clause, span)| {
+        clauses: tcx.arena.alloc_from_iter(bounds.into_iter().map(|(clause, span)| {
             (
                 clause.kind().map_bound(|clause| match clause {
-                    ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                    ty::ClauseKind::HostEffect(ty::HostEffectClause {
                         trait_ref,
                         constness: ty::BoundConstness::Maybe,
                     }) => trait_ref,
@@ -1206,7 +1212,7 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
         &*tcx.arena.alloc_from_iter(bounds.iter().copied().map(|(clause, span)| {
             (
                 clause.kind().map_bound(|clause| match clause {
-                    ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                    ty::ClauseKind::HostEffect(ty::HostEffectClause {
                         trait_ref,
                         constness: ty::BoundConstness::Maybe,
                     }) => trait_ref,

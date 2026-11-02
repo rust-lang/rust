@@ -9,7 +9,7 @@ use crate::marker::{PhantomData, PointeeSized};
 use crate::num::imp::fmt as numfmt;
 use crate::ops::Deref;
 use crate::ptr::NonNull;
-use crate::{iter, mem, result, str};
+use crate::{mem, result, str};
 
 mod builders;
 #[cfg(not(no_fp_fmt_parse))]
@@ -1038,14 +1038,14 @@ impl Display for Arguments<'_> {
 #[rustc_on_unimplemented(
     on(
         all(crate_local, not(Self = "{union}")),
-        note = "add `#[derive(Debug)]` to `{Self}` or manually `impl {This} for {Self}`"
+        note = "add `#[derive(Debug)]` to `{Self}` or manually `impl {this} for {Self}`"
     ),
-    on(all(crate_local, Self = "{union}"), note = "manually `impl {This} for {Self}`"),
+    on(all(crate_local, Self = "{union}"), note = "manually `impl {this} for {Self}`"),
     on(
         from_desugaring = "FormatLiteral",
-        label = "`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{This}`"
+        label = "`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{this}`"
     ),
-    message = "`{Self}` doesn't implement `{This}`"
+    message = "`{Self}` doesn't implement `{this}`"
 )]
 #[doc(alias = "{:?}")]
 #[rustc_diagnostic_item = "Debug"]
@@ -1176,10 +1176,10 @@ pub use macros::Debug;
     ),
     on(
         from_desugaring = "FormatLiteral",
-        note = "in format strings you may be able to use `{{:?}}` (or {{:#?}} for pretty-print) instead",
+        note = "in format strings you may be able to use `{{:?}}` (or `{{:#?}}` for pretty-print) instead",
         label = "`{Self}` cannot be formatted with the default formatter",
     ),
-    message = "`{Self}` doesn't implement `{This}`"
+    message = "`{Self}` doesn't implement `{this}`"
 )]
 #[doc(alias = "{}")]
 #[rustc_diagnostic_item = "Display"]
@@ -1611,7 +1611,7 @@ pub trait UpperExp: PointeeSized {
 ///
 /// let mut output = String::new();
 /// fmt::write(&mut output, format_args!("Hello {}!", "world"))
-///     .expect("Error occurred while trying to write in String");
+///     .expect("writing to a `String` should not fail");
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
@@ -1622,7 +1622,7 @@ pub trait UpperExp: PointeeSized {
 ///
 /// let mut output = String::new();
 /// write!(&mut output, "Hello {}!", "world")
-///     .expect("Error occurred while trying to write in String");
+///     .expect("writing to a `String` should not fail");
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
@@ -2107,6 +2107,10 @@ impl<'a> Formatter<'a> {
     ///
     /// Writes some formatted information into this instance.
     ///
+    /// This method delegates to the underlying [`Write`] implementation, so
+    /// whether the formatted output is appended to, or replaces, previously
+    /// written data is up to that writer.
+    ///
     /// # Examples
     ///
     /// ```
@@ -2122,6 +2126,44 @@ impl<'a> Formatter<'a> {
     ///
     /// assert_eq!(format!("{}", Foo(-1)), "Foo -1");
     /// assert_eq!(format!("{:0>8}", Foo(2)), "Foo 2");
+    /// ```
+    ///
+    /// The same formatting code can produce different output depending on the
+    /// underlying writer:
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Hello;
+    ///
+    /// impl fmt::Display for Hello {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         formatter.write_fmt(format_args!("Hello"))?;
+    ///         formatter.write_fmt(format_args!(" world"))
+    ///     }
+    /// }
+    ///
+    /// // A writer that replaces its contents on every write.
+    /// struct Replace(String);
+    ///
+    /// impl fmt::Write for Replace {
+    ///     fn write_str(&mut self, s: &str) -> fmt::Result {
+    ///         self.0.clear();
+    ///         self.0.push_str(s);
+    ///         Ok(())
+    ///     }
+    /// }
+    ///
+    /// // With `String`, which appends, both writes are kept.
+    /// let mut s = String::new();
+    /// fmt::write(&mut s, format_args!("{Hello}"))?;
+    /// assert_eq!(s, "Hello world");
+    ///
+    /// // With a writer that replaces, the second write replaces the first.
+    /// let mut w = Replace(String::new());
+    /// fmt::write(&mut w, format_args!("{Hello}"))?;
+    /// assert_eq!(w.0, " world");
+    /// # Ok::<(), fmt::Error>(())
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -2454,14 +2496,10 @@ impl<'a> Formatter<'a> {
     /// faster for 1 field.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_struct_field1_finish<'b>(
-        &'b mut self,
-        name: &str,
-        name1: &str,
-        value1: &dyn Debug,
-    ) -> Result {
-        let mut builder = builders::debug_struct_new(self, name);
-        builder.field(name1, value1);
+    pub fn debug_struct_field1_finish<'b>(&'b mut self, names: &str, value1: &dyn Debug) -> Result {
+        let mut names = names.split(' ');
+        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
+        builder.field(names.next().unwrap(), value1);
         builder.finish()
     }
 
@@ -2472,15 +2510,14 @@ impl<'a> Formatter<'a> {
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field2_finish<'b>(
         &'b mut self,
-        name: &str,
-        name1: &str,
+        names: &str,
         value1: &dyn Debug,
-        name2: &str,
         value2: &dyn Debug,
     ) -> Result {
-        let mut builder = builders::debug_struct_new(self, name);
-        builder.field(name1, value1);
-        builder.field(name2, value2);
+        let mut names = names.split(' ');
+        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
+        builder.field(names.next().unwrap(), value1);
+        builder.field(names.next().unwrap(), value2);
         builder.finish()
     }
 
@@ -2491,18 +2528,16 @@ impl<'a> Formatter<'a> {
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field3_finish<'b>(
         &'b mut self,
-        name: &str,
-        name1: &str,
+        names: &str,
         value1: &dyn Debug,
-        name2: &str,
         value2: &dyn Debug,
-        name3: &str,
         value3: &dyn Debug,
     ) -> Result {
-        let mut builder = builders::debug_struct_new(self, name);
-        builder.field(name1, value1);
-        builder.field(name2, value2);
-        builder.field(name3, value3);
+        let mut names = names.split(' ');
+        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
+        builder.field(names.next().unwrap(), value1);
+        builder.field(names.next().unwrap(), value2);
+        builder.field(names.next().unwrap(), value3);
         builder.finish()
     }
 
@@ -2513,21 +2548,18 @@ impl<'a> Formatter<'a> {
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field4_finish<'b>(
         &'b mut self,
-        name: &str,
-        name1: &str,
+        names: &str,
         value1: &dyn Debug,
-        name2: &str,
         value2: &dyn Debug,
-        name3: &str,
         value3: &dyn Debug,
-        name4: &str,
         value4: &dyn Debug,
     ) -> Result {
-        let mut builder = builders::debug_struct_new(self, name);
-        builder.field(name1, value1);
-        builder.field(name2, value2);
-        builder.field(name3, value3);
-        builder.field(name4, value4);
+        let mut names = names.split(' ');
+        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
+        builder.field(names.next().unwrap(), value1);
+        builder.field(names.next().unwrap(), value2);
+        builder.field(names.next().unwrap(), value3);
+        builder.field(names.next().unwrap(), value4);
         builder.finish()
     }
 
@@ -2538,43 +2570,53 @@ impl<'a> Formatter<'a> {
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field5_finish<'b>(
         &'b mut self,
-        name: &str,
-        name1: &str,
+        names: &str,
         value1: &dyn Debug,
-        name2: &str,
         value2: &dyn Debug,
-        name3: &str,
         value3: &dyn Debug,
-        name4: &str,
         value4: &dyn Debug,
-        name5: &str,
         value5: &dyn Debug,
     ) -> Result {
-        let mut builder = builders::debug_struct_new(self, name);
-        builder.field(name1, value1);
-        builder.field(name2, value2);
-        builder.field(name3, value3);
-        builder.field(name4, value4);
-        builder.field(name5, value5);
+        let mut names = names.split(' ');
+        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
+        builder.field(names.next().unwrap(), value1);
+        builder.field(names.next().unwrap(), value2);
+        builder.field(names.next().unwrap(), value3);
+        builder.field(names.next().unwrap(), value4);
+        builder.field(names.next().unwrap(), value5);
         builder.finish()
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller binaries.
     /// For the cases not covered by `debug_struct_field[12345]_finish`.
+    /// Field names should be separated by space.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_fields_finish<'b>(
         &'b mut self,
-        name: &str,
-        names: &[&str],
+        names: &str,
         values: &[&dyn Debug],
     ) -> Result {
-        assert_eq!(names.len(), values.len());
-        let mut builder = builders::debug_struct_new(self, name);
-        for (name, value) in iter::zip(names, values) {
+        let mut names = names.split(' ');
+        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
+        for value in values.into_iter() {
+            let name = names.next().unwrap();
             builder.field(name, value);
         }
         builder.finish()
+    }
+
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// For C-like enums with concatenated variant name strings.
+    /// Names should be separated by space.
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn debug_c_like_enum_write_str<'b>(
+        &'b mut self,
+        names: &str,
+        start_index: usize,
+    ) -> Result {
+        self.write_str(names[start_index..].split(' ').next().unwrap())
     }
 
     /// Creates a `DebugTuple` builder designed to assist with creation of
@@ -2881,7 +2923,7 @@ macro_rules! fmt_refs {
 
 fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "1.100.0")]
 impl Debug for ! {
     #[inline]
     fn fmt(&self, _: &mut Formatter<'_>) -> Result {
@@ -2889,7 +2931,7 @@ impl Debug for ! {
     }
 }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "1.100.0")]
 impl Display for ! {
     #[inline]
     fn fmt(&self, _: &mut Formatter<'_>) -> Result {
@@ -2927,7 +2969,7 @@ impl Debug for str {
         // the loop here first skips over runs of printable ASCII as a fast path.
         // other chars (unicode, or ASCII that needs escaping) are then handled per-`char`.
         let mut rest = self;
-        while rest.len() > 0 {
+        while !rest.is_empty() {
             let Some(non_printable_start) = rest.as_bytes().iter().position(|&b| needs_escape(b))
             else {
                 printable_range.end += rest.len();
@@ -2941,7 +2983,6 @@ impl Debug for str {
             let mut chars = rest.chars();
             if let Some(c) = chars.next() {
                 let esc = c.escape_debug_ext(EscapeDebugExtArgs {
-                    escape_grapheme_extender: true,
                     escape_single_quote: false,
                     escape_double_quote: true,
                 });
@@ -2973,7 +3014,6 @@ impl Debug for char {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.write_char('\'')?;
         let esc = self.escape_debug_ext(EscapeDebugExtArgs {
-            escape_grapheme_extender: true,
             escape_single_quote: true,
             escape_double_quote: false,
         });
@@ -3174,7 +3214,7 @@ impl<T: ?Sized + Debug> Debug for Ref<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Debug::fmt(&*(self.deref()), f)
+        Debug::fmt(self.deref(), f)
     }
 }
 

@@ -44,14 +44,14 @@ fn test_local<'a>() {
     //~^ ERROR lifetime may not live long enough
 }
 
-fn test_closure_sig<'a, 'b>() {
+fn test_closure_sig<'a, 'b>() { //~ ERROR one or more lifetime errors were found
     |_: Ty<'a>| {};
     //~^ ERROR lifetime may not live long enough
     || -> Option<Ty<'b>> { None };
     //~^ ERROR lifetime may not live long enough
 }
 
-fn test_path<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h>() {
+fn test_path<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h>() { //~ ERROR one or more lifetime errors were found
     <Ty<'a>>::method::<Ty<'static>>;
     //~^ ERROR lifetime may not live long enough
     <Ty<'static>>::method::<Ty<'b>>;
@@ -78,14 +78,14 @@ fn test_path<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h>() {
     //~^ ERROR lifetime may not live long enough
 }
 
-fn test_call<'a, 'b, 'c>() {
+fn test_call<'a, 'b, 'c>() { //~ ERROR one or more lifetime errors were found
     <Ty<'a>>::method::<Ty<'static>>();
     //~^ ERROR lifetime may not live long enough
     <Ty<'static>>::method::<Ty<'b>>();
     //~^ ERROR lifetime may not live long enough
 }
 
-fn test_variants<'a, 'b, 'c>() {
+fn test_variants<'a, 'b, 'c>() { //~ ERROR one or more lifetime errors were found
     <Ty<'a>>::Struct {};
     //~^ ERROR lifetime may not live long enough
     <Ty<'b>>::Tuple();
@@ -94,14 +94,14 @@ fn test_variants<'a, 'b, 'c>() {
     //~^ ERROR lifetime may not live long enough
 }
 
-fn test_method_call<'a, 'b>(x: MyTy<()>) {
+fn test_method_call<'a, 'b>(x: MyTy<()>) { //~ ERROR one or more lifetime errors were found
     x.method2::<Ty<'a>>();
     //~^ ERROR lifetime may not live long enough
     x.trait_method::<Ty<'b>>();
     //~^ ERROR lifetime may not live long enough
 }
 
-fn test_struct_path<'a, 'b, 'c, 'd>() {
+fn test_struct_path<'a, 'b, 'c, 'd>() { //~ ERROR one or more lifetime errors were found
     struct Struct<T> { x: Option<T>, }
 
     trait Project {
@@ -126,7 +126,7 @@ fn test_struct_path<'a, 'b, 'c, 'd>() {
     //~^ ERROR lifetime may not live long enough
 }
 
-fn test_pattern<'a, 'b, 'c, 'd, 'e, 'f>() {
+fn test_pattern<'a, 'b, 'c, 'd, 'e, 'f>() { //~ ERROR one or more lifetime errors were found
     use MyTy::*;
     match MyTy::Unit {
         Struct::<Ty<'a>> {..} => {},

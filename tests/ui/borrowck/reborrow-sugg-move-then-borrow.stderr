@@ -9,7 +9,7 @@ LL |
 LL |     fill_segment(state);
    |                  ^^^^^ value borrowed here after move
    |
-note: `into_iter` takes ownership of the receiver `self`, which moves `state`
+note: the `for` loop is desugared into a call to `std::iter::IntoIterator::into_iter`, which takes ownership of the receiver `self`, which moves `state`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: consider creating a fresh reborrow of `state` here
    |

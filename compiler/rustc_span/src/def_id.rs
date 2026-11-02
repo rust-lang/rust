@@ -4,15 +4,15 @@ use std::hash::{BuildHasherDefault, Hash, Hasher};
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hash::{
-    RawDefId, RawDefPathHash, StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
+    RawDefId, StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
 };
 use rustc_data_structures::unhash::Unhasher;
 use rustc_hashes::Hash64;
 use rustc_index::Idx;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::{ContextOrd, Decodable, Encodable};
 
-use crate::{SpanDecoder, SpanEncoder, Symbol};
+use crate::{BlobDecoder, SpanEncoder, Symbol};
 
 pub type StableCrateIdMap =
     indexmap::IndexMap<StableCrateId, CrateNum, BuildHasherDefault<Unhasher>>;
@@ -21,6 +21,13 @@ rustc_index::newtype_index! {
     #[orderable]
     #[debug_format = "crate{}"]
     pub struct CrateNum {}
+}
+
+impl<E: SpanEncoder> ContextOrd<&E> for CrateNum {
+    fn stable_cmp_with_context(context: &E) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        let hasher = context.def_path_hasher();
+        move |id1, id2| hasher(id1.as_def_id()).cmp(&hasher(id2.as_def_id()))
+    }
 }
 
 /// Item definitions in the currently-compiled crate would have the `CrateNum`
@@ -116,16 +123,6 @@ impl DefPathHash {
     pub fn new(stable_crate_id: StableCrateId, local_hash: Hash64) -> DefPathHash {
         DefPathHash(Fingerprint::new(stable_crate_id.0, local_hash))
     }
-
-    #[inline]
-    pub fn to_raw_def_path_hash(self) -> RawDefPathHash {
-        RawDefPathHash(self.0.to_le_bytes())
-    }
-
-    #[inline]
-    pub fn from_raw_def_path_hash(RawDefPathHash(a): RawDefPathHash) -> DefPathHash {
-        DefPathHash(Fingerprint::from_le_bytes(a))
-    }
 }
 
 impl Default for DefPathHash {
@@ -202,6 +199,11 @@ impl StableCrateId {
         }
 
         StableCrateId(hasher.finish())
+    }
+
+    #[inline]
+    pub fn as_hash(self) -> Hash64 {
+        self.0
     }
 
     #[inline]
@@ -409,14 +411,21 @@ impl fmt::Debug for LocalDefId {
 }
 
 impl<E: SpanEncoder> Encodable<E> for LocalDefId {
-    fn encode(&self, s: &mut E) {
-        self.to_def_id().encode(s);
+    fn encode(&self, e: &mut E) {
+        e.encode_local_def_id(*self);
     }
 }
 
-impl<D: SpanDecoder> Decodable<D> for LocalDefId {
+impl<D: BlobDecoder> Decodable<D> for LocalDefId {
     fn decode(d: &mut D) -> LocalDefId {
-        DefId::decode(d).expect_local()
+        d.decode_local_def_id()
+    }
+}
+
+impl<E: SpanEncoder> ContextOrd<&E> for LocalDefId {
+    fn stable_cmp_with_context(context: &E) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        let hasher = context.def_path_hasher();
+        move |id1, id2| hasher(id1.to_def_id()).cmp(&hasher(id2.to_def_id()))
     }
 }
 
@@ -426,6 +435,13 @@ rustc_data_structures::define_id_collections!(
     LocalDefIdMapEntry,
     LocalDefId
 );
+
+impl<E: SpanEncoder> ContextOrd<&E> for DefId {
+    fn stable_cmp_with_context(context: &E) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        let hasher = context.def_path_hasher();
+        move |id1, id2| hasher(*id1).cmp(&hasher(*id2))
+    }
+}
 
 impl StableHash for DefId {
     #[inline]
@@ -453,7 +469,7 @@ impl ToStableHashKey for DefId {
 
     #[inline]
     fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
-        DefPathHash::from_raw_def_path_hash(hcx.def_path_hash(self.to_raw_def_id()))
+        DefPathHash(hcx.def_path_hash(self.to_raw_def_id()))
     }
 }
 

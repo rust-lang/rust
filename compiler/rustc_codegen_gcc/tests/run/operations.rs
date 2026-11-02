@@ -5,7 +5,7 @@
 //     39
 //     10
 
-#![feature(no_core)]
+#![feature(no_core, rustc_private)]
 #![no_std]
 #![no_core]
 #![no_main]

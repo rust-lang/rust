@@ -1,5 +1,5 @@
-// rustfmt-group_imports: One
-// rustfmt-imports_granularity: Crate
+//@ rustfmt-group_imports: One
+//@ rustfmt-imports_granularity: Crate
 use super::{
     schema::{Context, Payload},
     update::convert_publish_payload,

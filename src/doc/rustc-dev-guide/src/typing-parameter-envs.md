@@ -25,7 +25,7 @@ such as `ConstArgHasType` or (some) implied bounds.
 
 In most cases `ParamEnv`s are initially created via the [`param_env` query][query] which returns a `ParamEnv` derived from the provided item's where clauses.
 A `ParamEnv` can also be created with arbitrary sets of clauses that are not derived from a specific item,
-such as in [`compare_method_predicate_entailment`][method_pred_entailment] where we create a hybrid `ParamEnv` consisting of the impl's where clauses and the trait definition's function's where clauses.
+such as in [`compare_method_clause_entailment`][method_clause_entailment] where we create a hybrid `ParamEnv` consisting of the impl's where clauses and the trait definition's function's where clauses.
 
 ---
 
@@ -76,7 +76,7 @@ fn foo2<T>(a: T) {
 ```
 
 [clauses_of]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/collect/clauses_of/fn.clauses_of.html
-[method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
+[method_clause_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_clause_entailment.html
 [query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.param_env
 [normalization]: normalization.md
 
@@ -111,7 +111,7 @@ Creating an empty environment with `ParamEnv::empty` is typically only done eith
 or as part of some analysis that do not expect to ever encounter generic parameters
 (e.g. various parts of coherence/orphan check).
 
-Creating an env from an arbitrary set of where clauses is usually unnecessary and should only be done if the environment you need does not correspond to an actual item in the source code (e.g. [`compare_method_predicate_entailment`][method_pred_entailment]).
+Creating an env from an arbitrary set of where clauses is usually unnecessary and should only be done if the environment you need does not correspond to an actual item in the source code (e.g. [`compare_method_clause_entailment`][method_clause_entailment]).
 
 [param_env_new]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html#method.new
 [normalize_env_or_error]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/fn.normalize_param_env_or_error.html
@@ -124,7 +124,7 @@ Creating an env from an arbitrary set of where clauses is usually unnecessary an
 [mirtypeck_param_env]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/type_check/struct.TypeChecker.html#structfield.param_env
 [env_empty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html#method.empty
 [param_env_query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html#structfield.param_env
-[method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
+[method_clause_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_clause_entailment.html
 [predicate_emitting_relation]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/relate/combine/trait.PredicateEmittingRelation.html
 [tenv_mono]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypingEnv.html#method.fully_monomorphized
 [compiler_help]: https://rust-lang.zulipchat.com/#narrow/channel/182449-t-compiler.2Fhelp

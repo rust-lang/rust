@@ -2,9 +2,8 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::sym;
 use rustc_errors::MultiSpan;
 use rustc_hir::{Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::AssocTag;
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -59,7 +58,11 @@ impl<'tcx> LateLintPass<'tcx> for InfallibleTryFrom {
             .filter_by_name_unhygienic_and_kind(sym::Error, AssocTag::Type)
         {
             let ii_ty = cx.tcx.type_of(ii.def_id).instantiate_identity().skip_norm_wip();
-            if !ii_ty.is_inhabited_from(cx.tcx, cx.tcx.parent_module_from_def_id(ii.def_id.expect_local()), cx.typing_env()) {
+            if !ii_ty.is_inhabited_from(
+                cx.tcx,
+                cx.tcx.parent_module_from_def_id(ii.def_id.expect_local()),
+                cx.typing_env(),
+            ) {
                 let mut span = MultiSpan::from_span(cx.tcx.def_span(item.owner_id.to_def_id()));
                 let ii_ty_span = cx
                     .tcx

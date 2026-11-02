@@ -1,21 +1,23 @@
 //@ run-pass
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![allow(dead_code)]
 
 use std::mem::size_of;
 
 mod out_of_scope {
+    use std::gca;
     pub trait Subtrait: super::Supertrait {
         fn hello(&self) -> &'static str {
             "subtrait"
         }
         type Assoc;
-        type const CONST: i32;
+        #[rustc_always_gca]
+        const CONST: i32;
     }
     impl<T> Subtrait for T {
         type Assoc = i16;
-        type const CONST: i32 = 2;
+        const CONST: i32 = gca!(2);
     }
 }
 

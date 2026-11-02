@@ -95,7 +95,7 @@ impl EnableGuard {
             return false;
         }
 
-        return true;
+        true
     }
 }
 
@@ -175,6 +175,12 @@ pub fn enable() {
                 }
             }
         };
+
+        // We must not set the key if we are in a fiber, since deleting that fiber from a thread
+        // will cause the destructors to run before thread exit.
+        if is_thread_a_fiber() {
+            return;
+        }
 
         // Setting the key's value to non-zero will cause the dtor callback to be called when the thread exits.
         unsafe { set(key, ptr::without_provenance(1)) };

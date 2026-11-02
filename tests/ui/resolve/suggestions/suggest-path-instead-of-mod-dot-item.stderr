@@ -40,13 +40,15 @@ LL +     a::b.J
 error[E0423]: cannot find value `b` in module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:35:8
    |
-LL |     pub const I: i32 = 1;
-   |     --------------------- similarly named constant `I` defined here
-...
 LL |     a::b.J
    |        ^
    |
    = note: a module named `a::b` exists in another namespace
+note: similarly named constant `I` defined here
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:5:5
+   |
+LL |     pub const I: i32 = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 help: use the path separator to refer to an item
    |
 LL -     a::b.J
@@ -74,13 +76,15 @@ LL +     a::b.f();
 error[E0423]: cannot find value `b` in module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:46:15
    |
-LL |     pub const I: i32 = 1;
-   |     --------------------- similarly named constant `I` defined here
-...
 LL |     v.push(a::b);
-   |               ^
+   |               ^ not found in `a`
    |
    = note: a module named `a::b` exists in another namespace
+note: similarly named constant `I` defined here
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:5:5
+   |
+LL |     pub const I: i32 = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists
    |
 LL -     v.push(a::b);
@@ -90,13 +94,15 @@ LL +     v.push(a::I);
 error[E0423]: cannot find value `b` in module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:52:8
    |
-LL |     pub const I: i32 = 1;
-   |     --------------------- similarly named constant `I` defined here
-...
 LL |     a::b.f()
    |        ^
    |
    = note: a module named `a::b` exists in another namespace
+note: similarly named constant `I` defined here
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:5:5
+   |
+LL |     pub const I: i32 = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 help: use the path separator to refer to an item
    |
 LL -     a::b.f()
@@ -111,13 +117,15 @@ LL +     a::I.f()
 error[E0423]: cannot find value `b` in module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:59:8
    |
-LL |     pub const I: i32 = 1;
-   |     --------------------- similarly named constant `I` defined here
-...
 LL |     a::b
-   |        ^
+   |        ^ not found in `a`
    |
    = note: a module named `a::b` exists in another namespace
+note: similarly named constant `I` defined here
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:5:5
+   |
+LL |     pub const I: i32 = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists
    |
 LL -     a::b
@@ -127,13 +135,15 @@ LL +     a::I
 error[E0423]: cannot find function `b` in module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:65:8
    |
-LL |     pub const I: i32 = 1;
-   |     --------------------- similarly named constant `I` defined here
-...
 LL |     a::b()
-   |        ^
+   |        ^ not found in `a`
    |
    = note: a module named `a::b` exists in another namespace
+note: similarly named constant `I` defined here
+  --> $DIR/suggest-path-instead-of-mod-dot-item.rs:5:5
+   |
+LL |     pub const I: i32 = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^
 help: a constant with a similar name exists
    |
 LL -     a::b()
@@ -143,6 +153,8 @@ LL +     a::I()
 error[E0423]: cannot find value `a` in this scope
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:72:9
    |
+LL | macro_rules! module {
+LL |     () => {
 LL |         a
    |         ^ not found in this scope
 ...
@@ -150,11 +162,12 @@ LL |     module!().g::<()>(); // no `help` here!
    |     --------- in this macro invocation
    |
    = note: a module named `a` exists in another namespace
-   = note: this error originates in the macro `module` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0423]: cannot find value `a` in this scope
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:72:9
    |
+LL | macro_rules! module {
+LL |     () => {
 LL |         a
    |         ^ not found in this scope
 ...
@@ -162,11 +175,12 @@ LL |     module!().g; // no `help` here!
    |     --------- in this macro invocation
    |
    = note: a module named `a` exists in another namespace
-   = note: this error originates in the macro `module` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0423]: cannot find value `a` in this scope
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:80:9
    |
+LL | macro_rules! create {
+LL |     (method) => {
 LL |         a.f()
    |         ^
 ...
@@ -174,7 +188,6 @@ LL |     let _ = create!(method);
    |             --------------- in this macro invocation
    |
    = note: a module named `a` exists in another namespace
-   = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -         a.f()
@@ -184,6 +197,8 @@ LL +         a::f()
 error[E0423]: cannot find value `a` in this scope
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:85:9
    |
+LL | macro_rules! create {
+...
 LL |         a.f
    |         ^
 ...
@@ -191,7 +206,6 @@ LL |     let _ = create!(field);
    |             -------------- in this macro invocation
    |
    = note: a module named `a` exists in another namespace
-   = note: this error originates in the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
 LL -         a.f

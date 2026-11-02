@@ -10,7 +10,9 @@
 //!    names refer to.
 //! 4. Desugared. There's no `if let`.
 //!
-//! See also a neighboring `body` module.
+//! See also a neighboring [`body`] module.
+//!
+//! [`body`]: crate::expr_store::body
 
 pub mod format_args;
 pub mod generics;
@@ -74,7 +76,7 @@ impl ExprOrPatId {
     }
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, salsa::Update)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, salsa::SalsaValue)]
 pub struct ExprOrPatIdPacked(u32);
 
 const _: () = assert!(mem::size_of::<ExprOrPatIdPacked>() == mem::size_of::<u32>());
@@ -269,6 +271,12 @@ pub enum RecordSpread {
     Expr(ExprId),
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum Unsafe {
+    Yes,
+    No,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Expr {
     /// This is produced if the syntax tree does not have a required expression piece.
@@ -288,14 +296,9 @@ pub enum Expr {
         statements: Box<[Statement]>,
         tail: Option<ExprId>,
         label: Option<LabelId>,
+        unsafe_: Unsafe,
     },
     Const(ExprId),
-    // FIXME: Fold this into Block with an unsafe flag?
-    Unsafe {
-        id: Option<BlockId>,
-        statements: Box<[Statement]>,
-        tail: Option<ExprId>,
-    },
     Loop {
         body: ExprId,
         label: Option<LabelId>,
@@ -370,11 +373,6 @@ pub enum Expr {
         target: PatId,
         value: ExprId,
     },
-    Range {
-        lhs: Option<ExprId>,
-        rhs: Option<ExprId>,
-        range_type: RangeOp,
-    },
     Index {
         base: ExprId,
         index: ExprId,
@@ -409,7 +407,6 @@ impl Expr {
             Expr::Array(_)
             | Expr::InlineAsm(_)
             | Expr::Block { .. }
-            | Expr::Unsafe { .. }
             | Expr::Const(_)
             | Expr::If { .. }
             | Expr::Literal(_)
@@ -459,8 +456,6 @@ impl Expr {
             | Expr::Yield { .. } => ExprPrecedence::Jump,
 
             Expr::Continue { .. } => ExprPrecedence::Unambiguous,
-
-            Expr::Range { .. } => ExprPrecedence::Range,
         }
     }
 }
@@ -805,7 +800,6 @@ pub enum Pat {
         inner: PatId,
     },
     NotNull,
-    ConstBlock(ExprId),
     /// An expression inside a pattern. That can only occur inside assignments.
     ///
     /// E.g. in `(a, *b) = (1, &mut 2)`, `*b` is an expression.
@@ -818,7 +812,6 @@ impl Pat {
             Pat::Range { .. }
             | Pat::Lit(..)
             | Pat::Path(..)
-            | Pat::ConstBlock(..)
             | Pat::Wild
             | Pat::Missing
             | Pat::Rest

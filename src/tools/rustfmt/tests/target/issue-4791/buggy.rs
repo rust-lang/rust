@@ -1,5 +1,5 @@
-// rustfmt-struct_field_align_threshold: 30
-// rustfmt-trailing_comma: Never
+//@ rustfmt-struct_field_align_threshold: 30
+//@ rustfmt-trailing_comma: Never
 
 struct Foo {
     group_a: u8,

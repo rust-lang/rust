@@ -4,20 +4,22 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node, QPath};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::def_id::LocalModId;
 use rustc_span::{BytePos, ExpnKind};
 
 use crate::clean::{self, PrimitiveType, rustc_span};
 use crate::html::sources;
 
-/// This is a stripped down version of [`rustc_span::Span`] that only contains the start and end byte positions of the span.
+/// This is a stripped down version of [`rustc_span::Span`] that only contains the start and end
+/// byte positions of the span.
 ///
-/// Profiling showed that the `Span` interner was taking up a lot of the run-time when highlighting, and since we
-/// never actually use the context and parent that are stored in a normal `Span`, we can replace its usages with this
-/// one, which is much cheaper to construct.
+/// Profiling showed that the `Span` interner was taking up a lot of the run-time when highlighting,
+/// and since we never actually use the context and parent that are stored in a normal `Span`, we
+/// can replace its usages with this one, which is much cheaper to construct.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Span {
     lo: BytePos,
@@ -309,13 +311,13 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         }
     }
 
-    fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: rustc_span::Span, id: HirId) {
+    fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: rustc_span::Span, id: LocalModId) {
         // To make the difference between "mod foo {}" and "mod foo;". In case we "import" another
         // file, we want to link to it. Otherwise no need to create a link.
         if !span.overlaps(m.spans.inner_span) {
             // Now that we confirmed it's a file import, we want to get the span for the module
             // name only and not all the "mod foo;".
-            if let Node::Item(item) = self.tcx.hir_node(id) {
+            if let Node::Item(item) = self.tcx.hir_node_by_def_id(id.into()) {
                 let (ident, _) = item.expect_mod();
                 self.matches.insert(
                     ident.span.into(),
@@ -324,7 +326,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             }
         } else {
             // If it's a "mod foo {}", we want to look to its documentation page.
-            self.extract_info_from_hir_id(id);
+            self.extract_info_from_hir_id(id.into());
         }
         intravisit::walk_mod(self, m);
     }
@@ -366,6 +368,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             | ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm { .. }
+            | ItemKind::TestBinderConstraints { .. }
             // We already have "visit_mod" above so no need to check it here.
             | ItemKind::Mod(..) => {}
         }

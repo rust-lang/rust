@@ -1,6 +1,6 @@
 #![allow(unreachable_code)]
 
-use crate::support::{Float, MinInt, cfg_if};
+use crate::support::{Float, MinInt, cfg_select_nofmt};
 
 // These definitions should be consistent with LLVM's definition from `getCmpLibcallReturnType`,
 // compiler-rt's definitions [1], GCC's `CMPtype` [2], and `libgcc`. To find the definitions
@@ -12,15 +12,17 @@ use crate::support::{Float, MinInt, cfg_if};
 //
 // [1]: https://github.com/llvm/llvm-project/blob/0cf3c437c18ed27d9663d87804a9a15ff6874af2/compiler-rt/lib/builtins/fp_compare_impl.inc#L11-L27
 // [2]: https://gcc.gnu.org/onlinedocs/gccint/Soft-float-library-routines.html#Comparison-functions-1
-cfg_if! {
-    if #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec", target_family = "wasm"))] {
+cfg_select_nofmt! {
+    any(target_arch = "aarch64", target_arch = "arm64ec", target_family = "wasm") => {
         // Aarch64 uses `int` rather than a pointer-sized value.
         // `getCmpLibcallReturnType` for WASM is always set to i32.
         pub type CmpResult = i32;
-    } else if #[cfg(target_arch = "avr")] {
+    }
+    target_arch = "avr" => {
         // AVR uses a single byte.
         pub type CmpResult = i8;
-    } else {
+    }
+    _ => {
         // The default is word-sized. In LLVM's compiler-rt, this is done by using `long long` on
         // LLP64 ABIs and `long` on everything else.
         pub type CmpResult = isize;
@@ -225,37 +227,37 @@ intrinsics! {
 
 #[cfg(f128_enabled)]
 intrinsics! {
-    #[ppc_alias = __lekf2]
+    #[ppc_name = __lekf2]
     pub extern "C" fn __letf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         cmp(a, b).to_default_cmp_result()
     }
 
-    #[ppc_alias = __gekf2]
+    #[ppc_name = __gekf2]
     pub extern "C" fn __getf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         cmp(a, b).to_gt_ge_cmp_result()
     }
 
-    #[ppc_alias = __unordkf2]
+    #[ppc_name = __unordkf2]
     pub extern "C" fn __unordtf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         unord(a, b) as crate::float::cmp::CmpResult
     }
 
-    #[ppc_alias = __eqkf2]
+    #[ppc_name = __eqkf2]
     pub extern "C" fn __eqtf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         cmp(a, b).to_default_cmp_result()
     }
 
-    #[ppc_alias = __ltkf2]
+    #[ppc_name = __ltkf2]
     pub extern "C" fn __lttf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         cmp(a, b).to_default_cmp_result()
     }
 
-    #[ppc_alias = __nekf2]
+    #[ppc_name = __nekf2]
     pub extern "C" fn __netf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         cmp(a, b).to_default_cmp_result()
     }
 
-    #[ppc_alias = __gtkf2]
+    #[ppc_name = __gtkf2]
     pub extern "C" fn __gttf2(a: f128, b: f128) -> crate::float::cmp::CmpResult {
         cmp(a, b).to_gt_ge_cmp_result()
     }

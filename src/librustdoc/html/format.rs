@@ -13,15 +13,15 @@ use std::{iter, slice};
 use itertools::{Either, Itertools};
 use rustc_abi::ExternAbi;
 use rustc_ast::join_path_syms;
+use rustc_attr_ir::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, MacroKinds};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::{ConstStability, StabilityLevel, StableSince};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, ModId};
 use rustc_metadata::creader::CStore;
-use rustc_middle::ty::{self, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
-use rustc_span::{Ident, Symbol};
+use rustc_span::{Ident, Symbol, sym};
 use tracing::{debug, trace};
 
 use super::url_parts_builder::UrlPartsBuilder;
@@ -308,7 +308,7 @@ fn print_generic_args(generic_args: &clean::GenericArgs, cx: &Context<'_>) -> im
 }
 
 // Possible errors when computing href link source for a `DefId`
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub(crate) enum HrefError {
     /// This item is known to rustdoc, but from a crate that does not have documentation generated.
     ///
@@ -338,6 +338,7 @@ pub(crate) enum HrefError {
 }
 
 /// Type representing information of an `href` attribute.
+#[derive(Debug)]
 pub(crate) struct HrefInfo {
     /// URL to the item page.
     pub(crate) url: String,
@@ -348,11 +349,11 @@ pub(crate) struct HrefInfo {
 }
 
 /// This function is to get the external macro path because they are not in the cache used in
-/// `href_with_root_path`.
+/// `href_with_jump_to_def_path_depth`.
 fn generate_macro_def_id_path(
     def_id: DefId,
     cx: &Context<'_>,
-    root_path: Option<&str>,
+    jump_to_def_path_depth: Option<usize>,
 ) -> Result<HrefInfo, HrefError> {
     let tcx = cx.tcx();
     let crate_name = tcx.crate_name(def_id.krate);
@@ -388,16 +389,16 @@ fn generate_macro_def_id_path(
 
     let url = match cache.extern_locations[&def_id.krate] {
         ExternalLocation::Remote { ref url, is_absolute } => {
-            let mut prefix = remote_url_prefix(url, is_absolute, cx.current.len());
+            let depth = jump_to_def_path_depth.unwrap_or(cx.current.len());
+            let mut prefix = remote_url_prefix(url, is_absolute, depth);
             prefix.extend(module_path.iter().copied());
             prefix.push_fmt(format_args!("{}.{last}.html", item_type.as_str()));
             prefix.finish()
         }
         ExternalLocation::Local => {
-            // `root_path` always end with a `/`.
             format!(
-                "{root_path}{path}/{item_type}.{last}.html",
-                root_path = root_path.unwrap_or(""),
+                "{prefix}{path}/{item_type}.{last}.html",
+                prefix = "../".repeat(jump_to_def_path_depth.unwrap_or(0)),
                 path = fmt::from_fn(|f| module_path.iter().joined("/", f)),
                 item_type = item_type.as_str(),
             )
@@ -410,49 +411,188 @@ fn generate_macro_def_id_path(
     Ok(HrefInfo { url, kind: item_type, rust_path: path })
 }
 
+/// Takes an impl `DefId` and return the self `Ty` of the impl.
+fn impl_self_ty(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Ty<'_> {
+    use rustc_middle::traits::ObligationCause;
+    use rustc_middle::ty;
+    use rustc_trait_selection::infer::TyCtxtInferExt;
+    use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
+
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+    let ty = tcx.type_of(impl_def_id);
+    infcx
+        .at(&ObligationCause::dummy(), tcx.param_env(impl_def_id))
+        .query_normalize(ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()))
+        .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value).skip_binder())
+        .unwrap_or(ty.skip_binder())
+}
+
+fn transitive_reexport_path(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Vec<Symbol>> {
+    transitive_reexport_path_inner(tcx, def_id, &mut Vec::new())
+}
+
+/// Simplified implementation of `rustc_middle::ty::print::pretty::try_print_visible_def_path_recur`.
+fn transitive_reexport_path_inner(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    callers: &mut Vec<DefId>,
+) -> Option<Vec<Symbol>> {
+    use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+
+    if let Some(cnum) = def_id.as_crate_root() {
+        return Some(vec![tcx.crate_name(cnum)]);
+    }
+
+    let visible_parent_map = tcx.visible_parent_map(());
+    let mut cur_def_key = tcx.def_key(def_id);
+
+    // For a constructor, we want the name of its parent rather than <unnamed>.
+    if let DefPathData::Ctor = cur_def_key.disambiguated_data.data {
+        let parent = DefId {
+            krate: def_id.krate,
+            index: cur_def_key
+                .parent
+                .expect("`DefPathData::Ctor` / `VariantData` missing a parent"),
+        };
+
+        cur_def_key = tcx.def_key(parent);
+    }
+
+    let visible_parent = visible_parent_map.get(&def_id).cloned()?;
+    // FIXME: Should we also check for private items?
+    if tcx.is_doc_hidden(visible_parent) {
+        return None;
+    }
+
+    let actual_parent = tcx.opt_parent(def_id);
+    let mut data = cur_def_key.disambiguated_data.data;
+    match data {
+        DefPathData::TypeNs(ref mut name) if Some(visible_parent) != actual_parent => {
+            // Item might be re-exported several times, but filter for the one
+            // that's public and whose identifier isn't `_`.
+            let reexport = tcx
+                .module_children(ModId::new_unchecked(visible_parent))
+                .iter()
+                .filter(|child| child.res.opt_def_id() == Some(def_id))
+                .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)
+                .map(|child| child.ident.name);
+
+            if let Some(new_name) = reexport {
+                *name = new_name;
+            } else {
+                // There is no name that is public and isn't `_`, so bail.
+                return None;
+            }
+        }
+        // Re-exported `extern crate`.
+        DefPathData::CrateRoot => {
+            data = DefPathData::TypeNs(tcx.crate_name(def_id.krate));
+        }
+        _ => {}
+    }
+
+    if callers.contains(&visible_parent) {
+        return None;
+    }
+    callers.push(visible_parent);
+    let mut path = transitive_reexport_path_inner(tcx, visible_parent, callers)?;
+    callers.pop();
+    path.push(DisambiguatedDefPathData { data, disambiguator: 0 }.as_sym(false));
+    Some(path)
+}
+
 fn generate_item_def_id_path(
     mut def_id: DefId,
     original_def_id: DefId,
     cx: &Context<'_>,
-    root_path: Option<&str>,
+    jump_to_def_path_depth: Option<usize>,
 ) -> Result<HrefInfo, HrefError> {
-    use rustc_middle::traits::ObligationCause;
-    use rustc_trait_selection::infer::TyCtxtInferExt;
-    use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
-
     let tcx = cx.tcx();
     let crate_name = tcx.crate_name(def_id.krate);
     let mut prim = None;
+    let mut maybe_have_impl_not_in_def_crate = false;
 
     // No need to try to infer the actual parent item if it's not an associated item from the `impl`
     // block.
-    if def_id != original_def_id && matches!(tcx.def_kind(def_id), DefKind::Impl { .. }) {
-        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
-        let ty = tcx.type_of(def_id);
-        let ty = infcx
-            .at(&ObligationCause::dummy(), tcx.param_env(def_id))
-            .query_normalize(ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()))
-            .map(|resolved| infcx.resolve_vars_if_possible(resolved.value).skip_binder())
-            .unwrap_or(ty.skip_binder());
-        if let Some(new_def_id) = ty.ty_adt_def().map(|adt| adt.did()) {
+    if def_id != original_def_id
+        && let DefKind::Impl { of_trait } = tcx.def_kind(def_id)
+    {
+        let ty = impl_self_ty(tcx, def_id);
+        // If this is a dyn trait, we want to get the actual trait from which the method comes from.
+        // Since a `dyn trait` (as of 2026) can only be composed of a trait plus auto traits, we
+        // look for the trait and ignore auto traits.
+        if let ty::Dynamic(traits, _) = ty.kind()
+            && let Some(trait_def_id) =
+                traits.iter().find_map(|trait_| match trait_.skip_binder() {
+                    ty::ExistentialPredicate::Trait(t) => Some(t.def_id),
+                    ty::ExistentialPredicate::Projection(p) => Some(p.trait_ref(tcx).def_id),
+                    ty::ExistentialPredicate::AutoTrait(_) => None,
+                })
+        {
+            def_id = trait_def_id;
+        } else if let Some(new_def_id) = ty.ty_adt_def().map(|adt| adt.did()) {
+            // If the inferred item is available in the local path map, it means we're reexporting
+            // from the current crate, so better use the local path directly.
+            if cx.cache().paths.contains_key(&new_def_id)
+                && let Ok(mut info) =
+                    href_with_jump_to_def_path_depth(new_def_id, cx, jump_to_def_path_depth, None)
+            {
+                let kind = ItemType::from_def_id(original_def_id, tcx);
+                // We need to append the anchor to the URL otherwise we're just linking to the
+                // parent item...
+                info.url = format!("{}#{kind}.{}", info.url, tcx.item_name(original_def_id));
+                return Ok(info);
+            }
             def_id = new_def_id;
+            maybe_have_impl_not_in_def_crate = !of_trait
+                && !original_def_id.is_local()
+                && !def_id.is_local()
+                && def_id.krate != original_def_id.krate;
         } else {
+            // This hack is because primitive types are only documented in `core` and `std`.
+            // However, with `#[rustc_allow_incoherent_impl]`, a lot of primitive methods are
+            // implemented in `core`. Some of them are documented in `core` (like `[]::sort`) while
+            // others aren't (like `[]::to_vec`). So in case we're not documenting `core`, we link
+            // to `std`.
+            if !of_trait && crate_name != sym::core {
+                if ![sym::alloc, sym::std].contains(&crate_name) {
+                    // We cannot link to this primitive's associated item as it's not part of
+                    // `core`, `alloc` or `std` so returning early.
+                    return Err(HrefError::UnnamableItem);
+                }
+                maybe_have_impl_not_in_def_crate = true;
+            }
             prim = PrimitiveType::from_ty(ty);
         }
     }
 
-    let mut fqp = vec![crate_name];
-    let shortty = if let Some(prim) = prim {
-        fqp.push(prim.as_sym());
-        ItemType::Primitive
+    let (shortty, fqp) = if let Some(prim) = prim {
+        let crate_name = if maybe_have_impl_not_in_def_crate { sym::std } else { crate_name };
+        (ItemType::Primitive, vec![crate_name, prim.as_sym()])
     } else {
-        fqp.append(&mut clean::inline::item_relative_path(tcx, def_id));
-        ItemType::from_def_id(def_id, tcx)
+        (
+            ItemType::from_def_id(def_id, tcx),
+            if maybe_have_impl_not_in_def_crate
+                // We have a method, not coming from a trait, implemented from a different crate
+                // where the original item is defined. So in short, the item is using
+                // `#[rustc_allow_incoherent_impl]` and we need to keep the non-final item path.
+                // Sadly if we use `item_relative_path` which uses `def_path`, it renders the final
+                // item path and not the intermediate one.
+                && let Some(fqp) = transitive_reexport_path(tcx, def_id)
+            {
+                fqp
+            } else {
+                let mut fqp = vec![crate_name];
+                fqp.append(&mut clean::inline::item_relative_path(tcx, def_id));
+                fqp
+            },
+        )
     };
     let module_fqp = to_module_fqp(shortty, &fqp);
 
-    let (parts, is_absolute) = url_parts(cx.cache(), def_id, module_fqp, &cx.current)?;
-    let mut url = make_href(root_path, shortty, parts, &fqp, is_absolute);
+    let (parts, is_remote) =
+        url_parts(cx.cache(), def_id, module_fqp, &cx.current, jump_to_def_path_depth)?;
+    let mut url = make_href(jump_to_def_path_depth, shortty, parts, &fqp, is_remote);
 
     if def_id != original_def_id {
         let kind = ItemType::from_def_id(original_def_id, tcx);
@@ -497,17 +637,38 @@ fn remote_url_prefix(url: &str, is_absolute: bool, depth: usize) -> UrlPartsBuil
     }
 }
 
+/// Returns `(url_parts, is_remote)` where `is_remote` indicates the URL points to an
+/// external location and should not use relative URLs.
+///
+/// This function tries to generate minimal, relative URLs. When generating an intra-doc
+/// link from one item page to another, it compares the paths of both items and generates
+/// exactly the right number of "../"'s to reach the deepest common parent, then fills in
+/// the rest of the path. This is done by comparing `module_fqp` with `relative_to`.
+///
+/// When generating a link for jump-to-def across crates, that won't work, because sources are
+/// stored under `src/<crate>/<path>.rs`. When linking jump-to-def for another crate, we just
+/// write enough "../"'s to reach the doc root, then generate the entire path for `module_fqp`.
+/// The right number of "../"'s is stored in `jump_to_def_path_depth`.
 fn url_parts(
     cache: &Cache,
     def_id: DefId,
     module_fqp: &[Symbol],
     relative_to: &[Symbol],
+    jump_to_def_path_depth: Option<usize>,
 ) -> Result<(UrlPartsBuilder, bool), HrefError> {
-    match cache.extern_locations[&def_id.krate] {
+    let location = if def_id.krate == LOCAL_CRATE {
+        &ExternalLocation::Local
+    } else {
+        &cache.extern_locations[&def_id.krate]
+    };
+    match *location {
         ExternalLocation::Remote { ref url, is_absolute } => {
-            let mut builder = remote_url_prefix(url, is_absolute, relative_to.len());
+            let depth = jump_to_def_path_depth.unwrap_or(relative_to.len());
+            let mut builder = remote_url_prefix(url, is_absolute, depth);
             builder.extend(module_fqp.iter().copied());
-            Ok((builder, is_absolute))
+            // Remote URLs (both absolute and relative) already encode the correct path;
+            // no additional depth prefix should be applied.
+            Ok((builder, true))
         }
         ExternalLocation::Local => Ok((href_relative_parts(module_fqp, relative_to), false)),
         ExternalLocation::Unknown => Err(HrefError::DocumentationNotBuilt),
@@ -515,16 +676,16 @@ fn url_parts(
 }
 
 fn make_href(
-    root_path: Option<&str>,
+    jump_to_def_path_depth: Option<usize>,
     shortty: ItemType,
     mut url_parts: UrlPartsBuilder,
     fqp: &[Symbol],
-    is_absolute: bool,
+    is_remote: bool,
 ) -> String {
-    // FIXME: relative extern URLs may break when prefixed with root_path
-    if !is_absolute && let Some(root_path) = root_path {
-        let root = root_path.trim_end_matches('/');
-        url_parts.push_front(root);
+    // Remote URLs already have the correct depth via `remote_url_prefix`;
+    // only local items need `jump_to_def_path_depth` to bridge from source pages to the doc tree.
+    if !is_remote && let Some(depth) = jump_to_def_path_depth {
+        url_parts.push_front(&iter::repeat_n("..", depth).join("/"));
     }
     debug!(?url_parts);
     match shortty {
@@ -539,21 +700,72 @@ fn make_href(
     url_parts.finish()
 }
 
-pub(crate) fn href_with_root_path(
+fn ty_inherits_doc_hidden<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.kind() {
+        // If this is a dyn trait, we want to get the actual trait from which the method comes from.
+        // Since a `dyn trait` (as of 2026) can only be composed of a trait plus auto traits, we
+        // look for the trait and ignore auto traits.
+        ty::Dynamic(traits, _) => traits
+            .iter()
+            .find_map(|trait_| match trait_.skip_binder() {
+                ty::ExistentialPredicate::Trait(t) => Some(inherits_doc_hidden(tcx, t.def_id)),
+                ty::ExistentialPredicate::Projection(p) => {
+                    Some(inherits_doc_hidden(tcx, p.trait_ref(tcx).def_id))
+                }
+                ty::ExistentialPredicate::AutoTrait(_) => None,
+            })
+            .unwrap_or(false),
+        ty::Adt(adt, _) => inherits_doc_hidden(tcx, adt.did()),
+        ty::Foreign(def_id) => inherits_doc_hidden(tcx, *def_id),
+        ty::Ref(_, ty, _) => ty_inherits_doc_hidden(tcx, *ty),
+        // For now we consider that everything doesn't inherit `#[doc(hidden)]`. To be confirmed
+        // later.
+        _ => false,
+    }
+}
+
+fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut def_id: DefId) -> bool {
+    loop {
+        if tcx.is_doc_hidden(def_id) {
+            return true;
+        } else if def_id.is_crate_root() {
+            return false;
+        } else if let DefKind::Impl { of_trait } = tcx.def_kind(def_id) {
+            // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
+            // on them, they don't inherit it from the parent context.
+            // Instead we check that the `Self` item and the trait aren't hidden.
+            return ty_inherits_doc_hidden(tcx, impl_self_ty(tcx, def_id))
+                || (of_trait && inherits_doc_hidden(tcx, tcx.impl_trait_id(def_id)));
+        }
+        def_id = tcx.parent(def_id);
+    }
+}
+
+/// If `jump_to_def_path_depth` is `Some`, the link comes from a source page and needs that many
+/// `..` segments to reach the doc root; `None` generates a link relative to the current page.
+pub(crate) fn href_with_jump_to_def_path_depth(
     original_did: DefId,
     cx: &Context<'_>,
-    root_path: Option<&str>,
+    jump_to_def_path_depth: Option<usize>,
+    preferred_name: Option<&str>,
 ) -> Result<HrefInfo, HrefError> {
     let tcx = cx.tcx();
     let def_kind = tcx.def_kind(original_did);
     let did = match def_kind {
-        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant => {
+        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
             // documented on their parent's page
             tcx.parent(original_did)
         }
         // If this a constructor, we get the parent (either a struct or a variant) and then
         // generate the link for this item.
-        DefKind::Ctor(..) => return href_with_root_path(tcx.parent(original_did), cx, root_path),
+        DefKind::Ctor(..) => {
+            return href_with_jump_to_def_path_depth(
+                tcx.parent(original_did),
+                cx,
+                jump_to_def_path_depth,
+                preferred_name,
+            );
+        }
         DefKind::ExternCrate => {
             // Link to the crate itself, not the `extern crate` item.
             if let Some(local_did) = original_did.as_local() {
@@ -564,7 +776,7 @@ pub(crate) fn href_with_root_path(
         }
         _ => original_did,
     };
-    if is_unnamable(cx.tcx(), did) {
+    if is_unnamable(tcx, did) {
         return Err(HrefError::UnnamableItem);
     }
     let cache = cx.cache();
@@ -573,8 +785,8 @@ pub(crate) fn href_with_root_path(
     if !original_did.is_local() {
         // If we are generating an href for the "jump to def" feature, then the only case we want
         // to ignore is if the item is `doc(hidden)` because we can't link to it.
-        if root_path.is_some() {
-            if tcx.is_doc_hidden(original_did) {
+        if jump_to_def_path_depth.is_some() {
+            if inherits_doc_hidden(tcx, original_did) {
                 return Err(HrefError::Private);
             }
         } else if !cache.effective_visibilities.is_directly_public(tcx, did)
@@ -585,44 +797,57 @@ pub(crate) fn href_with_root_path(
         }
     }
 
-    let (fqp, shortty, url_parts, is_absolute) = match cache.paths.get(&did) {
-        Some(&(ref fqp, shortty)) => (
-            fqp,
-            shortty,
+    let (fqp, shortty, url_parts, is_remote) = match cache.paths.get(&did) {
+        Some(info) => (
+            info.get_preferred_path(preferred_name),
+            info.ty,
             {
-                let module_fqp = to_module_fqp(shortty, fqp.as_slice());
-                debug!(?fqp, ?shortty, ?module_fqp);
+                let module_fqp = to_module_fqp(info.ty, info.parts.as_slice());
+                debug!(?info.parts, ?info.ty, ?module_fqp);
                 href_relative_parts(module_fqp, relative_to)
             },
             false,
         ),
         None => {
-            // Associated items are handled differently with "jump to def". The anchor is generated
+            // Associated items are handled differently with "jump to def": the anchor is generated
             // directly here whereas for intra-doc links, we have some extra computation being
             // performed there.
-            let def_id_to_get = if root_path.is_some() { original_did } else { did };
-            if let Some(&(ref fqp, shortty)) = cache.external_paths.get(&def_id_to_get) {
+            //
+            // So if `jump_to_def_path_depth` is `Some()` and it's an associated item, we enter to
+            // enter the `else` branch to have the anchor generated here directly.
+            if (jump_to_def_path_depth.is_none() || original_did == did)
+                && let Some(&(ref fqp, shortty)) = cache.external_paths.get(&did)
+            {
                 let module_fqp = to_module_fqp(shortty, fqp);
-                let (parts, is_absolute) = url_parts(cache, did, module_fqp, relative_to)?;
-                (fqp, shortty, parts, is_absolute)
+                let (parts, is_remote) =
+                    url_parts(cache, did, module_fqp, relative_to, jump_to_def_path_depth)?;
+                (fqp.as_slice(), shortty, parts, is_remote)
             } else if matches!(def_kind, DefKind::Macro(_)) {
-                return generate_macro_def_id_path(did, cx, root_path);
+                return generate_macro_def_id_path(did, cx, jump_to_def_path_depth);
             } else if did.is_local() {
                 return Err(HrefError::Private);
             } else {
-                return generate_item_def_id_path(did, original_did, cx, root_path);
+                return generate_item_def_id_path(did, original_did, cx, jump_to_def_path_depth);
             }
         }
     };
     Ok(HrefInfo {
-        url: make_href(root_path, shortty, url_parts, fqp, is_absolute),
+        url: make_href(jump_to_def_path_depth, shortty, url_parts, fqp, is_remote),
         kind: shortty,
-        rust_path: fqp.clone(),
+        rust_path: fqp.to_vec(),
     })
 }
 
 pub(crate) fn href(did: DefId, cx: &Context<'_>) -> Result<HrefInfo, HrefError> {
-    href_with_root_path(did, cx, None)
+    href_with_jump_to_def_path_depth(did, cx, None, None)
+}
+
+pub(crate) fn href_with_path_check(
+    did: DefId,
+    cx: &Context<'_>,
+    text: &str,
+) -> Result<HrefInfo, HrefError> {
+    href_with_jump_to_def_path_depth(did, cx, None, Some(text))
 }
 
 /// Both paths should only be modules.
@@ -660,25 +885,36 @@ pub(crate) fn link_tooltip(
     did: DefId,
     fragment: &Option<UrlFragment>,
     cx: &Context<'_>,
+    preferred_name: Option<&str>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         let cache = cx.cache();
-        let Some((fqp, shortty)) = cache.paths.get(&did).or_else(|| cache.external_paths.get(&did))
+        let Some((fqp, shortty)) = cache
+            .paths
+            .get(&did)
+            .map(|info| (info.get_preferred_path(preferred_name), info.ty))
+            .or_else(|| {
+                cache.external_paths.get(&did).map(|(fqp, shortty)| (fqp.as_slice(), *shortty))
+            })
         else {
             return Ok(());
         };
-        let fqp = if *shortty == ItemType::Primitive {
+        let fqp = if shortty == ItemType::Primitive {
             // primitives are documented in a crate, but not actually part of it
             slice::from_ref(fqp.last().unwrap())
         } else {
             fqp
         };
         if let &Some(UrlFragment::Item(id)) = fragment {
-            write!(f, "{} ", cx.tcx().def_descr(id))?;
+            let tcx = cx.tcx();
+            write!(f, "{} ", tcx.def_descr(id))?;
             for component in fqp {
                 write!(f, "{component}::")?;
             }
-            write!(f, "{}", cx.tcx().item_name(id))?;
+            if shortty == ItemType::Enum && tcx.def_kind(id) == DefKind::Field {
+                write!(f, "{}::", tcx.item_name(tcx.parent(id)))?;
+            }
+            write!(f, "{}", tcx.item_name(id))?;
         } else if !fqp.is_empty() {
             write!(f, "{shortty} ")?;
             write!(f, "{}", join_path_syms(fqp))?;
@@ -842,7 +1078,7 @@ pub(crate) fn fragment(did: DefId, tcx: TyCtxt<'_>) -> impl Display {
     fmt::from_fn(move |f| {
         let def_kind = tcx.def_kind(did);
         match def_kind {
-            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant => {
+            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
                 let item_type = ItemType::from_def_id(did, tcx);
                 write!(f, "#{}.{}", item_type.as_str(), tcx.item_name(did))
             }
@@ -1251,7 +1487,9 @@ pub(crate) fn print_params(params: &[clean::Parameter], cx: &Context<'_>) -> imp
             .iter()
             .map(|param| {
                 fmt::from_fn(|f| {
-                    if let Some(name) = param.name {
+                    if param.is_splat {
+                        write!(f, "…: ")?;
+                    } else if let Some(name) = param.name {
                         write!(f, "{name}: ")?;
                     }
                     print_type(&param.type_, cx).fmt(f)
@@ -1305,7 +1543,9 @@ fn print_parameter(parameter: &clean::Parameter, cx: &Context<'_>) -> impl fmt::
             if parameter.is_const {
                 write!(f, "const ")?;
             }
-            if let Some(name) = parameter.name {
+            if parameter.is_splat {
+                write!(f, "…: ")?;
+            } else if let Some(name) = parameter.name {
                 write!(f, "{name}: ")?;
             }
             print_type(&parameter.type_, cx).fmt(f)

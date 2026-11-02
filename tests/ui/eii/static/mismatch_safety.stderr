@@ -1,5 +1,5 @@
 error: safety does not match with the definition of`#[hello]`
-  --> $DIR/mismatch_safety.rs:10:1
+  --> $DIR/mismatch_safety.rs:9:1
    |
 LL | #[hello]
    | ^^^^^^^^

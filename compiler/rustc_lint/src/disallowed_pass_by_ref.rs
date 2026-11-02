@@ -1,9 +1,10 @@
+use rustc_attr_ir::find_attr;
 use rustc_hir::def::Res;
-use rustc_hir::{self as hir, AmbigArg, GenericArg, PathSegment, QPath, TyKind, find_attr};
+use rustc_hir::{self as hir, AmbigArg, GenericArg, PathSegment, QPath, TyKind};
+use rustc_lint_defs::{declare_lint_pass, declare_tool_lint};
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::lints::DisallowedPassByRefDiag;
+use crate::diagnostics::DisallowedPassByRefDiag;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_tool_lint! {
@@ -22,7 +23,7 @@ declare_lint_pass!(DisallowedPassByRef => [DISALLOWED_PASS_BY_REF]);
 impl<'tcx> LateLintPass<'tcx> for DisallowedPassByRef {
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match &ty.kind {
-            TyKind::Ref(_, hir::MutTy { ty: inner_ty, mutbl: hir::Mutability::Not }) => {
+            TyKind::Ref(_, inner_ty, hir::Mutability::Not) => {
                 if cx.tcx.trait_impl_of_assoc(ty.hir_id.owner.to_def_id()).is_some() {
                     return;
                 }
@@ -52,7 +53,7 @@ fn path_for_rustc_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Optio
                     cx.tcx.type_of(did).instantiate_identity().skip_norm_wip().kind()
                 {
                     if find_attr!(cx.tcx, adt.did(), RustcPassByValue) {
-                        return Some(cx.tcx.def_path_str_with_args(adt.did(), args));
+                        return Some(cx.tcx.def_path_str_with_args(adt.did(), *args));
                     }
                 }
             }

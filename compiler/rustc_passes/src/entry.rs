@@ -1,11 +1,13 @@
 use rustc_ast::entry::EntryPointType;
+use rustc_attr_ir::find_attr;
 use rustc_errors::codes::*;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{ItemId, Node, find_attr};
+use rustc_hir::{ItemId, Node};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{CrateType, EntryFnType, sigpipe};
+use rustc_session::config::{EntryFnType, sigpipe};
 use rustc_span::{RemapPathScopeComponents, Span};
+use rustc_structures::CrateType;
 
 use crate::diagnostics::{ExternMain, MultipleRustcMain, NoMainErr};
 

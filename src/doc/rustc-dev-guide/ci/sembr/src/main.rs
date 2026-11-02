@@ -11,9 +11,12 @@ use regex::Regex;
 struct Cli {
     /// File or directory to check
     path: PathBuf,
-    #[arg(long)]
     /// Modify files that do not comply
+    #[arg(long)]
     overwrite: bool,
+    /// This reflows file even when it complies (with one sentence per line)
+    #[arg(long)]
+    reflow_harder: bool,
     /// Applies to lines that are to be split
     #[arg(long, default_value_t = 100)]
     line_length_limit: usize,
@@ -24,7 +27,7 @@ static REGEX_IGNORE_END: LazyLock<Regex> =
 static REGEX_IGNORE_LINK_TARGETS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\[.+\]: ").unwrap());
 static REGEX_SPLIT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"([^\.\d\-\*]\.|[^r\~]\?|!)\s").unwrap());
+    LazyLock::new(|| Regex::new(r"([^\.\d\-]\.|[^r\~]\?|!)\s").unwrap());
 // list elements, numbered (1.) or not  (- and *)
 static REGEX_LIST_ENTRY: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*|\d\))\s+").unwrap());
@@ -40,22 +43,22 @@ fn main() -> Result<()> {
             continue;
         }
         let path = entry.into_path();
-        if let Some(extension) = path.extension() {
-            if extension != "md" {
-                continue;
-            }
-            let old = fs::read_to_string(&path)?;
-            let new = comply(&old);
-            if new == old {
-                compliant.push(path.clone());
-            } else {
-                if cli.overwrite {
-                    fs::write(&path, lengthen_lines(&new, cli.line_length_limit))?;
-                    made_compliant.push(path.clone());
-                } else {
-                    not_compliant.push(path.clone());
-                }
-            }
+        let Some(extension) = path.extension() else { continue };
+        if extension != "md" {
+            continue;
+        }
+        let old = fs::read_to_string(&path)?;
+        let mut new = comply(&old);
+        if cli.reflow_harder {
+            new = reformat(&new, cli.line_length_limit)
+        }
+        if new == old {
+            compliant.push(path.clone());
+        } else if cli.overwrite {
+            fs::write(&path, reformat(&new, cli.line_length_limit))?;
+            made_compliant.push(path.clone());
+        } else {
+            not_compliant.push(path.clone());
         }
     }
     if !compliant.is_empty() {
@@ -78,8 +81,8 @@ fn display(header: &str, paths: &[PathBuf]) {
     }
 }
 
-fn ignore(line: &str, in_code_block: bool) -> bool {
-    in_code_block
+fn ignore(line: &str) -> bool {
+    REGEX_IGNORE_LINK_TARGETS.is_match(line)
         || line.to_lowercase().contains("e.g.")
         || line.to_lowercase().contains("n.b.")
         || line.contains(" etc.")
@@ -91,7 +94,6 @@ fn ignore(line: &str, in_code_block: bool) -> bool {
         || line.trim_start().starts_with('>')
         || line.starts_with('#')
         || line.trim().is_empty()
-        || REGEX_IGNORE_LINK_TARGETS.is_match(line)
 }
 
 fn comply(content: &str) -> String {
@@ -107,31 +109,31 @@ fn comply(content: &str) -> String {
             in_code_block = !in_code_block;
             continue;
         }
-        if ignore(&line, in_code_block) {
+        if in_code_block || ignore(&line) {
             continue;
         }
-        if REGEX_SPLIT.is_match(&line) {
-            let indent = if let Some(regex_match) = REGEX_LIST_ENTRY.find(&line) {
-                regex_match.len()
-            } else {
-                line.find(|ch: char| !ch.is_whitespace()).unwrap()
-            };
-            let mut newly_split_lines = line.split_inclusive(&*REGEX_SPLIT);
-            let first = newly_split_lines.next().unwrap().trim_end().to_owned();
-            let mut remaining: Vec<_> = newly_split_lines
-                .map(|portion| format!("{:indent$}{}", "", portion.trim_end()))
-                .collect();
-            let mut new_lines = Vec::new();
-            new_lines.push(first);
-            new_lines.append(&mut remaining);
-            new_content.splice(new_n..=new_n, new_lines.clone());
-            new_n += new_lines.len() - 1;
+        if !REGEX_SPLIT.is_match(&line) {
+            continue;
         }
+        let indent = if let Some(regex_match) = REGEX_LIST_ENTRY.find(&line) {
+            regex_match.len()
+        } else {
+            line.find(|ch: char| !ch.is_whitespace()).unwrap()
+        };
+        let mut newly_split_lines = line.split_inclusive(&*REGEX_SPLIT);
+        let mut new_lines = Vec::new();
+        new_lines.push(newly_split_lines.next().unwrap().trim_end().to_owned());
+        let mut remaining: Vec<_> =
+            newly_split_lines.map(|portion| format!("{:indent$}{}", "", portion.trim())).collect();
+        new_lines.append(&mut remaining);
+        new_content.splice(new_n..=new_n, new_lines.clone());
+        new_n += new_lines.len() - 1;
     }
     new_content.join("\n") + "\n"
 }
 
-fn lengthen_lines(content: &str, limit: usize) -> String {
+// This reformats lines, so that changes of "fn comply" look more pretty
+fn reformat(content: &str, limit: usize) -> String {
     let content: Vec<_> = content.lines().map(std::borrow::ToOwned::to_owned).collect();
     let mut new_content = content.clone();
     let mut new_n = 0;
@@ -150,12 +152,15 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
             in_code_block = !in_code_block;
             continue;
         }
-        if line.trim_start().starts_with("<div") {
-            in_html_div = true;
+        if in_code_block {
             continue;
         }
-        if line.trim_start().starts_with("</div") {
+        if line.trim_end().ends_with("</div>") {
             in_html_div = false;
+            continue;
+        }
+        if line.trim_start().starts_with("<div") {
+            in_html_div = true;
             continue;
         }
         if in_html_div {
@@ -164,7 +169,16 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         if line.trim_end().ends_with("<br>") {
             continue;
         }
-        if ignore(line, in_code_block) || REGEX_SPLIT.is_match(line) {
+        if ignore(line) || REGEX_SPLIT.is_match(line) {
+            continue;
+        }
+        const SEP: &str = ", ";
+        if line.contains(SEP) && line.len() > limit {
+            let indent = line.find(|ch: char| !ch.is_whitespace()).unwrap();
+            let (before_sep, after_sep) = line.rsplit_once(SEP).unwrap();
+            new_content[new_n] = format!("{before_sep}{}", SEP.trim_end());
+            new_n += 1;
+            new_content.insert(new_n, format!("{:indent$}{after_sep}", ""));
             continue;
         }
         let Some(next_line) = content.get(n + 1) else {
@@ -173,7 +187,7 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         if next_line.trim_start().starts_with("```") {
             continue;
         }
-        if ignore(next_line, in_code_block)
+        if ignore(next_line)
             || REGEX_LIST_ENTRY.is_match(next_line)
             || REGEX_IGNORE_END.is_match(line)
         {
@@ -183,6 +197,27 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
             new_content[new_n] = format!("{line} {}", next_line.trim_start());
             new_content.remove(new_n + 1);
             skip_next = true;
+            continue;
+        }
+        let indent = next_line.find(|ch: char| !ch.is_whitespace()).unwrap();
+        if next_line.contains(SEP) {
+            let (before_sep, after_sep) = next_line.split_once(SEP).unwrap();
+            if line.len() + before_sep.len() < limit - SEP.len() {
+                new_content[new_n] =
+                    format!("{line} {}{}", before_sep.trim_start(), SEP.trim_end());
+                new_n += 1;
+                new_content[new_n] = format!("{:indent$}{after_sep}", "");
+                skip_next = true;
+            }
+        } else if line.contains(SEP) {
+            let (before_sep, after_sep) = line.rsplit_once(SEP).unwrap();
+            if after_sep.len() + next_line.len() < limit {
+                new_content[new_n] = format!("{before_sep}{}", SEP.trim_end());
+                new_n += 1;
+                new_content[new_n] =
+                    format!("{:indent$}{after_sep} {}", "", next_line.trim_start());
+                skip_next = true;
+            }
         }
     }
     new_content.join("\n") + "\n"
@@ -207,11 +242,14 @@ some code. block
 ```
 sentence with *italics* should not be ignored. truly.
 git log main.. compiler
- foo.   bar.  baz
 o? whatever
 r? @reviewer
  r? @reviewer
 ~? diagnostic
+
+the queries that we do, as well as the **query DAG**. The
+
+trim double space.  or many spaces.   in this next sentence
 ";
     let expected = "
 # some. heading
@@ -237,26 +275,31 @@ some code. block
 sentence with *italics* should not be ignored.
 truly.
 git log main.. compiler
- foo.
-   bar.
-  baz
 o?
 whatever
 r? @reviewer
  r? @reviewer
 ~? diagnostic
+
+the queries that we do, as well as the **query DAG**.
+The
+
+trim double space.
+or many spaces.
+in this next sentence
 ";
     assert_eq!(expected, comply(original));
 }
 
 #[test]
-fn test_lengthen_lines() {
+fn test_reformat_lines() {
     let original = "\
 do not split
 short sentences
 <div class='warning'>
 a bit of text inside
 </div>
+<div></div>
 preserve next line
 1. one
 
@@ -280,6 +323,20 @@ html comment closing
  handle the
  indented well
 
+split on comma (filler), of
+current line
+
+  split on comma (filler), of
+  current line
+
+split on
+comma (filler), of next line
+
+  split on
+  comma (filler), of next line
+
+ this overlong, sentence, should be split in two
+
 [a target]: https://example.com
 [another target]: https://example.com
 ";
@@ -288,6 +345,7 @@ do not split short sentences
 <div class='warning'>
 a bit of text inside
 </div>
+<div></div>
 preserve next line
 1. one
 
@@ -310,10 +368,25 @@ html comment closing
 
  handle the indented well
 
+split on comma (filler),
+of current line
+
+  split on comma (filler),
+  of current line
+
+split on comma (filler),
+of next line
+
+  split on comma (filler),
+  of next line
+
+ this overlong, sentence,
+ should be split in two
+
 [a target]: https://example.com
 [another target]: https://example.com
 ";
-    assert_eq!(expected, lengthen_lines(original, 50));
+    assert_eq!(expected, reformat(original, 30));
 }
 
 #[test]
@@ -321,4 +394,11 @@ html comment closing
 fn should_pass() {
     let original = "if you see `input isn't interesting! verify interesting-ness test`.";
     assert_eq!(original, comply(original));
+}
+
+#[test]
+#[ignore] // would be useful for appendix/background.md
+fn should_ignore_link_text() {
+    let original = "[foo, bar, baz]";
+    assert_eq!(original, reformat(original, 10));
 }

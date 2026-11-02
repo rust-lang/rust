@@ -1,12 +1,16 @@
 error[E0053]: method `values` has an incompatible type for trait
   --> $DIR/mismatched-map-under-self.rs:10:15
    |
+LL | impl<T> Insertable for Option<T> {
+...
 LL |     fn values(self) -> Self::Values {
    |               ^^^^ expected `&Option<T>`, found `Option<T>`
    |
 note: type in trait
   --> $DIR/mismatched-map-under-self.rs:4:15
    |
+LL | pub trait Insertable {
+...
 LL |     fn values(&self) -> Self::Values;
    |               ^^^^^
    = note: expected signature `fn(&Option<_>)`

@@ -1,0 +1,15 @@
+warning: incorrect NaN comparison, NaN cannot be directly compared to itself
+  --> $DIR/no-std.rs:16:13
+   |
+LL |     let _ = b != &nan!();
+   |             ^^^^^^^^^^^^
+   |
+   = note: `#[warn(invalid_nan_comparisons)]` on by default
+help: use the `is_nan` method instead
+   |
+LL -     let _ = b != &nan!();
+LL +     let _ = !::core::primitive::f64::is_nan(*b);
+   |
+
+warning: 1 warning emitted
+

@@ -34,6 +34,8 @@ LL |         W(S).bar(((), (), ()), &[1]);
 note: method defined here
   --> $DIR/infer-defaults.rs:71:12
    |
+LL |     trait Trait<'a, X, Y, T = (), const N: usize = 2> {
+LL |         fn foo(&self, t: (T, T, T), slice: &[usize; N]) {}
 LL |         fn bar(&self, t: (T, T, T), slice: &[usize; N]) {}
    |            ^^^                      ------------------
 

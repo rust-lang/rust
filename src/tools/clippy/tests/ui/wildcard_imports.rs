@@ -7,8 +7,8 @@
 // no longer detects some of the cases starting with Rust 2018.
 
 #![warn(clippy::wildcard_imports)]
-#![allow(unused, clippy::unnecessary_wraps, clippy::let_unit_value)]
-#![warn(unused_imports)]
+#![deny(unused_imports)]
+#![expect(clippy::let_unit_value)]
 
 extern crate wildcard_imports_helper;
 
@@ -297,5 +297,21 @@ mod super_imports {
         fn with_explicit() {
             let _ = foofoo();
         }
+    }
+}
+
+mod issue_17799 {
+    // see `https://github.com/rust-lang/rust-clippy/pull/17828#discussion_r4169531242`
+    macro_rules! glob_import {
+        ($p:path) => {
+            use $p::*;
+            fn __glob_used(_e: Error) {}
+        };
+    }
+
+    glob_import!(std::io);
+
+    fn lol() -> usize {
+        2 * 3
     }
 }

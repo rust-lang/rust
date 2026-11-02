@@ -1,13 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_none_expr;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_expr, walk_path};
-use rustc_hir::{ExprKind, HirId, LangItem, Node, PatKind, Path, QPath};
+use rustc_hir::{ExprKind, HirId, Node, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_span::{Span, sym};
@@ -73,7 +74,7 @@ pub(super) fn check<'tcx>(
         }
     }
 
-    if !unwrap_arg.span.eq_ctxt(map_span) {
+    if unwrap_arg.span.ctxt() != map_span.ctxt() {
         return;
     }
 
@@ -82,12 +83,7 @@ pub(super) fn check<'tcx>(
     let unwrap_snippet = snippet_with_applicability(cx, unwrap_arg.span, "..", &mut applicability);
     // lint message
 
-    let suggest_kind = if recv_ty_kind == sym::Option
-        && unwrap_arg
-            .basic_res()
-            .ctor_parent(cx)
-            .is_lang_item(cx, LangItem::OptionNone)
-    {
+    let suggest_kind = if recv_ty_kind == sym::Option && is_none_expr(cx, unwrap_arg) {
         SuggestedKind::AndThen
     }
     // is_some_and is stabilised && `unwrap_or` argument is false; suggest `is_some_and` instead
@@ -191,7 +187,7 @@ impl<'tcx> Visitor<'tcx> for ReferenceVisitor<'_, 'tcx> {
         // If we haven't found a reference yet, check if this references
         // one of the locals that was moved in the `unwrap_or` argument.
         // We are only interested in exprs that appear before the `unwrap_or` call.
-        if expr.span < self.unwrap_or_span
+        if expr.span.lo_hi() < self.unwrap_or_span.lo_hi()
             && let ExprKind::Path(ref path) = expr.kind
             && let QPath::Resolved(_, path) = path
             && let Res::Local(local_id) = path.res

@@ -3,16 +3,17 @@ use rustc_abi::{Integer, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, Semantics, SingleS};
 use rustc_ast as ast;
+use rustc_attr_ir as attrs;
 use rustc_hir as hir;
-use rustc_hir::{HirId, attrs};
+use rustc_hir::HirId;
+use rustc_middle::ty;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::{bug, ty};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, bug};
 
 use crate::LateContext;
 use crate::context::LintContext;
-use crate::lints::{
+use crate::diagnostics::{
     OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign, OverflowingBinHexSignBitSub,
     OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral, OverflowingUInt,
     RangeEndpointOutOfRange, SurrogateCharCast, TooLargeCharCast, UseInclusiveRange,
@@ -205,13 +206,25 @@ fn report_bin_hex_error(
                     &repr_str
                 };
 
-            Some(OverflowingBinHexSignBitSub {
-                span,
-                lit_no_suffix,
-                negative_val: actually,
-                int_ty: int_ty.name_str(),
-                uint_ty: Integer::fit_unsigned(val).uint_ty_str(),
-            })
+            let uint_ty = Integer::fit_unsigned(val);
+            // `cast_signed` only supports equal-width integer casts.
+            if uint_ty.size() == size {
+                Some(OverflowingBinHexSignBitSub::CastSigned {
+                    span,
+                    lit_no_suffix,
+                    negative_val: actually,
+                    uint_ty: uint_ty.uint_ty_str(),
+                    int_ty: int_ty.name_str(),
+                })
+            } else {
+                Some(OverflowingBinHexSignBitSub::AsCast {
+                    span,
+                    lit_no_suffix,
+                    negative_val: actually,
+                    uint_ty: uint_ty.uint_ty_str(),
+                    int_ty: int_ty.name_str(),
+                })
+            }
         })
         .flatten();
 

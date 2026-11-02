@@ -1,7 +1,7 @@
 use std::fmt;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_span::Symbol;
+use rustc_span::{Symbol, sym};
 
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 use crate::spec::{RelocModel, Target};
@@ -9,6 +9,9 @@ use crate::spec::{RelocModel, Target};
 def_reg_class! {
     Sparc SparcInlineAsmRegClass {
         reg,
+        freg,
+        dreg,
+        qreg,
         yreg,
     }
 }
@@ -51,6 +54,9 @@ impl SparcInlineAsmRegClass {
                     types! { _: I8, I16, I32, I64; }
                 }
             }
+            Self::freg => types! { _: F32; },
+            Self::dreg => types! { _: F64; },
+            Self::qreg => types! { _: F128; },
             Self::yreg => &[],
         }
     }
@@ -70,6 +76,23 @@ fn reserved_g5(
         // [1]: https://temlib.org/pub/SparcStation/Standards/V8plus.pdf
         // [2]: https://github.com/llvm/llvm-project/blob/llvmorg-19.1.0/llvm/lib/Target/Sparc/SparcRegisterInfo.cpp#L64-L66
         Err("g5 is reserved for system on SPARC32")
+    } else {
+        Ok(())
+    }
+}
+
+fn v9_only(
+    _arch: InlineAsmArch,
+    _reloc_model: RelocModel,
+    target_features: &FxIndexSet<Symbol>,
+    _target: &Target,
+    _is_clobber: bool,
+) -> Result<(), &'static str> {
+    // FIXME: This is the what GCC/LLVM currently use to limit access to upper-half registers, but
+    // it's unclear whether this is the correct behaviour. See the discussion around
+    // https://github.com/rust-lang/rust/pull/160949#discussion_r3806194355.
+    if !target_features.contains(&sym::v9) {
+        Err("floating point registers in the upper half can only be used on SPARCv9")
     } else {
         Ok(())
     }
@@ -107,6 +130,86 @@ def_regs! {
         r27: reg = ["r27", "i3"], // % reserved_i3
         r28: reg = ["r28", "i4"], // % reserved_i4
         r29: reg = ["r29", "i5"], // % reserved_i5
+        f0: freg = ["f0"],
+        f1: freg = ["f1"],
+        f2: freg = ["f2"],
+        f3: freg = ["f3"],
+        f4: freg = ["f4"],
+        f5: freg = ["f5"],
+        f6: freg = ["f6"],
+        f7: freg = ["f7"],
+        f8: freg = ["f8"],
+        f9: freg = ["f9"],
+        f10: freg = ["f10"],
+        f11: freg = ["f11"],
+        f12: freg = ["f12"],
+        f13: freg = ["f13"],
+        f14: freg = ["f14"],
+        f15: freg = ["f15"],
+        f16: freg = ["f16"],
+        f17: freg = ["f17"],
+        f18: freg = ["f18"],
+        f19: freg = ["f19"],
+        f20: freg = ["f20"],
+        f21: freg = ["f21"],
+        f22: freg = ["f22"],
+        f23: freg = ["f23"],
+        f24: freg = ["f24"],
+        f25: freg = ["f25"],
+        f26: freg = ["f26"],
+        f27: freg = ["f27"],
+        f28: freg = ["f28"],
+        f29: freg = ["f29"],
+        f30: freg = ["f30"],
+        f31: freg = ["f31"],
+        d0: dreg = ["d0"],
+        d2: dreg = ["d2"],
+        d4: dreg = ["d4"],
+        d6: dreg = ["d6"],
+        d8: dreg = ["d8"],
+        d10: dreg = ["d10"],
+        d12: dreg = ["d12"],
+        d14: dreg = ["d14"],
+        d16: dreg = ["d16"],
+        d18: dreg = ["d18"],
+        d20: dreg = ["d20"],
+        d22: dreg = ["d22"],
+        d24: dreg = ["d24"],
+        d26: dreg = ["d26"],
+        d28: dreg = ["d28"],
+        d30: dreg = ["d30"],
+        d32: dreg = ["d32"] % v9_only,
+        d34: dreg = ["d34"] % v9_only,
+        d36: dreg = ["d36"] % v9_only,
+        d38: dreg = ["d38"] % v9_only,
+        d40: dreg = ["d40"] % v9_only,
+        d42: dreg = ["d42"] % v9_only,
+        d44: dreg = ["d44"] % v9_only,
+        d46: dreg = ["d46"] % v9_only,
+        d48: dreg = ["d48"] % v9_only,
+        d50: dreg = ["d50"] % v9_only,
+        d52: dreg = ["d52"] % v9_only,
+        d54: dreg = ["d54"] % v9_only,
+        d56: dreg = ["d56"] % v9_only,
+        d58: dreg = ["d58"] % v9_only,
+        d60: dreg = ["d60"] % v9_only,
+        d62: dreg = ["d62"] % v9_only,
+        q0: qreg = ["q0"],
+        q4: qreg = ["q4"],
+        q8: qreg = ["q8"],
+        q12: qreg = ["q12"],
+        q16: qreg = ["q16"],
+        q20: qreg = ["q20"],
+        q24: qreg = ["q24"],
+        q28: qreg = ["q28"],
+        q32: qreg = ["q32"] % v9_only,
+        q36: qreg = ["q36"] % v9_only,
+        q40: qreg = ["q40"] % v9_only,
+        q44: qreg = ["q44"] % v9_only,
+        q48: qreg = ["q48"] % v9_only,
+        q52: qreg = ["q52"] % v9_only,
+        q56: qreg = ["q56"] % v9_only,
+        q60: qreg = ["q60"] % v9_only,
         y: yreg = ["y"],
         #error = ["r0", "g0"] =>
             "g0 is always zero and cannot be used as an operand for inline asm",
@@ -134,5 +237,103 @@ impl SparcInlineAsmReg {
         _modifier: Option<char>,
     ) -> fmt::Result {
         write!(out, "%{}", self.name())
+    }
+
+    pub fn overlapping_regs(self, mut cb: impl FnMut(SparcInlineAsmReg)) {
+        cb(self);
+
+        macro_rules! reg_conflicts {
+            (
+                $(
+                    $q:ident : $d0:ident $d1:ident : $f0:ident $f1:ident $f2:ident $f3:ident
+                ),*;
+                $(
+                    $q_high:ident : $d0_high:ident $d1_high:ident
+                ),*;
+            ) => {
+                match self {
+                    $(
+                        Self::$q => {
+                            cb(Self::$d0);
+                            cb(Self::$d1);
+                            cb(Self::$f0);
+                            cb(Self::$f1);
+                            cb(Self::$f2);
+                            cb(Self::$f3);
+                        }
+                        Self::$d0 => {
+                            cb(Self::$q);
+                            cb(Self::$f0);
+                            cb(Self::$f1);
+                        }
+                        Self::$d1 => {
+                            cb(Self::$q);
+                            cb(Self::$f2);
+                            cb(Self::$f3);
+                        }
+                        Self::$f0 | Self::$f1 => {
+                            cb(Self::$q);
+                            cb(Self::$d0);
+                        }
+                        Self::$f2 | Self::$f3 => {
+                            cb(Self::$q);
+                            cb(Self::$d1);
+                        }
+                    )*
+                    $(
+                        Self::$q_high => {
+                            cb(Self::$d0_high);
+                            cb(Self::$d1_high);
+                        }
+                        Self::$d0_high | Self::$d1_high => {
+                            cb(Self::$q_high);
+                        }
+                    )*
+                    _ => {},
+                }
+            };
+        }
+
+        // SPARC's floating-point register file is interesting in that it can be
+        // viewed as 16 128-bit registers, 32 64-bit registers or 32 32-bit
+        // registers. Because these views overlap, the registers of different
+        // widths will conflict (e.g. d0 overlaps with f0 and f1, and q1
+        // overlaps with d2 and d3).
+        //
+        // See section 3.1.2 of The SPARC Architecture Manual: Version 9 for details.
+        reg_conflicts! {
+            q0 : d0 d2 : f0 f1 f2 f3,
+            q4 : d4 d6 : f4 f5 f6 f7,
+            q8 : d8 d10 : f8 f9 f10 f11,
+            q12 : d12 d14 : f12 f13 f14 f15,
+            q16 : d16 d18 : f16 f17 f18 f19,
+            q20 : d20 d22 : f20 f21 f22 f23,
+            q24 : d24 d26 : f24 f25 f26 f27,
+            q28 : d28 d30 : f28 f29 f30 f31;
+            q32 : d32 d34,
+            q36 : d36 d38,
+            q40 : d40 d42,
+            q44 : d44 d46,
+            q48 : d48 d50,
+            q52 : d52 d54,
+            q56 : d56 d58,
+            q60 : d60 d62;
+        }
+    }
+
+    pub fn dreg_number(self) -> Option<u32> {
+        if self >= Self::d0 && self <= Self::d62 {
+            Some((self as u32 - Self::d0 as u32) * 2)
+        } else {
+            None
+        }
+    }
+
+    pub fn qreg_number(self) -> Option<u32> {
+        if self >= Self::q0 && self <= Self::q60 {
+            Some((self as u32 - Self::q0 as u32) * 4)
+        } else {
+            None
+        }
     }
 }

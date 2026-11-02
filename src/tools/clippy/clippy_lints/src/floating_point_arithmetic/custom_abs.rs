@@ -1,8 +1,9 @@
 use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::consts::Constant::{F32, F64, Int};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{eq_expr_value, higher, peel_blocks};
+use clippy_utils::{eq_expr_value, higher, is_in_const_context, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::LateContext;
@@ -84,7 +85,11 @@ fn are_negated<'a>(
     None
 }
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
+    if is_in_const_context(cx) && !msrv.meets(cx, msrvs::ABS_CONST) {
+        return;
+    }
+
     if let Some(higher::If {
         cond,
         then,

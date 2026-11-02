@@ -300,7 +300,7 @@
 //@ lldb-command:continue
 
 #![allow(unused_variables)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 use self::Univariant::Unit;
 
@@ -370,7 +370,7 @@ fn contained_borrowed_pointer((&cc, _): (&isize, isize)) {
     zzz(); // #break
 }
 
-fn unique_pointer(box dd: Box<(isize, isize, isize)>) {
+fn unique_pointer(deref!(dd): Box<(isize, isize, isize)>) {
     zzz(); // #break
 }
 

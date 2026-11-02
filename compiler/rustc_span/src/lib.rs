@@ -17,12 +17,15 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
+#![cfg_attr(all(bootstrap, target_arch = "loongarch64"), feature(stdarch_loongarch))]
 #![feature(core_io_borrowed_buf)]
+#![feature(decl_macro)]
+#![feature(diagnostic_on_unknown)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
 #![feature(rustc_attrs)]
+#![feature(trait_alias)]
 // tidy-alphabetical-end
 
 // The code produced by the `Encodable`/`Decodable` derive macros refer to
@@ -30,8 +33,7 @@
 // this crate without this line making `rustc_span` available.
 extern crate self as rustc_span;
 
-use derive_where::derive_where;
-use rustc_data_structures::stable_hash::StableHashCtxt;
+use rustc_data_structures::stable_hash::{DummyStableHashCtxt, StableHashCtxt};
 use rustc_data_structures::{AtomicRef, outline};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_serialize::opaque::mem_encoder::MemEncoder;
@@ -45,6 +47,7 @@ pub mod source_map;
 use source_map::{SourceMap, SourceMapInputs};
 
 pub use self::caching_source_map_view::CachingSourceMapView;
+use crate::def_id::DefPathHash;
 use crate::fatal_error::FatalError;
 
 pub mod edition;
@@ -58,7 +61,7 @@ pub mod def_id;
 use def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId};
 pub mod edit_distance;
 mod span_encoding;
-pub use span_encoding::{DUMMY_SP, Span};
+pub use span_encoding::{DUMMY_SP, OrdSpan, Span};
 
 pub mod symbol;
 pub use symbol::{
@@ -70,8 +73,8 @@ pub mod fatal_error;
 
 pub mod profiling;
 
+pub mod macros;
 use std::borrow::Cow;
-use std::cmp::{self, Ordering};
 use std::fmt::Display;
 use std::hash::Hash;
 use std::io::{self, Read};
@@ -79,8 +82,9 @@ use std::ops::{Add, Range, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
-use std::{fmt, iter};
+use std::{cmp, fmt, iter};
 
+pub use macros::{bug, span_bug};
 use md5::{Digest, Md5};
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock};
@@ -88,6 +92,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::{Hash64, Hash128};
 use sha1::Sha1;
 use sha2::Sha256;
+use span_encoding::InlineCtxt;
 
 #[cfg(test)]
 mod tests;
@@ -248,9 +253,9 @@ bitflags::bitflags! {
         /// Apply remappings to documentation information
         const DOCUMENTATION = 1 << 5;
 
-        /// An alias for `macro`, `debuginfo` and `coverage`. This ensures all paths in compiled
-        /// executables, libraries and objects are remapped but not elsewhere.
-        const OBJECT = Self::MACRO.bits() | Self::DEBUGINFO.bits() | Self::COVERAGE.bits();
+        /// An alias for `macro`, `documentation`, `debuginfo` and `coverage`. This ensures all paths in compiled
+        /// executables, libraries, objects and documentation outputs are remapped but not elsewhere.
+        const OBJECT = Self::MACRO.bits() | Self::DOCUMENTATION.bits() | Self::DEBUGINFO.bits() | Self::COVERAGE.bits();
     }
 }
 
@@ -313,7 +318,7 @@ pub struct RealFileName {
 /// The inner workings of `RealFileName`.
 ///
 /// It contains the `name`, `working_directory` and `embeddable_name` components.
-#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Decodable, Encodable, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, StableHash, Decodable, Encodable)]
 struct InnerRealFileName {
     /// The name.
     name: PathBuf,
@@ -323,18 +328,18 @@ struct InnerRealFileName {
     embeddable_name: PathBuf,
 }
 
-impl Hash for RealFileName {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+impl StableHash for RealFileName {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        let RealFileName { local, maybe_remapped, scopes } = self;
         // To prevent #70924 from happening again we should only hash the
         // remapped path if that exists. This is because remapped paths to
         // sysroot crates (/rust/$hash or /rust/$version) remain stable even
         // if the corresponding local path changes.
         if !self.was_fully_remapped() {
-            self.local.hash(state);
+            local.stable_hash(hcx, hasher);
         }
-        self.maybe_remapped.hash(state);
-        self.scopes.bits().hash(state);
+        maybe_remapped.stable_hash(hcx, hasher);
+        scopes.bits().stable_hash(hcx, hasher);
     }
 }
 
@@ -503,7 +508,7 @@ impl RealFileName {
 }
 
 /// Differentiates between real files and common virtual files.
-#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Decodable, Encodable)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, StableHash, Decodable, Encodable)]
 pub enum FileName {
     Real(RealFileName),
     /// Strings provided as `--cfg [cfgspec]`.
@@ -518,7 +523,8 @@ pub enum FileName {
     CliCrateAttr(Hash64),
     /// Custom sources for explicit parser calls from plugins and drivers.
     Custom(String),
-    DocTest(PathBuf, isize),
+    /// Custom path for doctests
+    DocTest(RealFileName, isize),
     /// Post-substitution inline assembly from LLVM.
     InlineAsm(Hash64),
 }
@@ -541,7 +547,7 @@ impl fmt::Display for FileNameDisplay<'_> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use FileName::*;
         match *self.inner {
-            Real(ref name) => {
+            Real(ref name) | DocTest(ref name, _) => {
                 write!(fmt, "{}", name.to_string_lossy(self.display_pref))
             }
             CfgSpec(_) => write!(fmt, "<cfgspec>"),
@@ -550,7 +556,6 @@ impl fmt::Display for FileNameDisplay<'_> {
             ProcMacroSourceCode(_) => write!(fmt, "<proc-macro source code>"),
             CliCrateAttr(_) => write!(fmt, "<crate attribute>"),
             Custom(ref s) => write!(fmt, "<{s}>"),
-            DocTest(ref path, _) => write!(fmt, "{}", path.display()),
             InlineAsm(_) => write!(fmt, "<inline asm>"),
         }
     }
@@ -641,7 +646,7 @@ impl FileName {
         FileName::CliCrateAttr(hasher.finish())
     }
 
-    pub fn doc_test_source_code(path: PathBuf, line: isize) -> FileName {
+    pub fn doc_test_source_code(path: RealFileName, line: isize) -> FileName {
         FileName::DocTest(path, line)
     }
 
@@ -658,7 +663,7 @@ impl FileName {
     pub fn into_local_path(self) -> Option<PathBuf> {
         match self {
             FileName::Real(path) => path.into_local_path(),
-            FileName::DocTest(path, _) => Some(path),
+            FileName::DocTest(path, _) => path.into_local_path(),
             _ => None,
         }
     }
@@ -680,21 +685,19 @@ impl FileName {
 /// sent to other threads, but some pieces of performance infra run in a separate thread.
 /// Using `Span` is generally preferred.
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
-#[derive_where(PartialOrd, Ord)]
 pub struct SpanData {
     pub lo: BytePos,
     pub hi: BytePos,
     /// Information about where the macro came from, if this piece of
     /// code was created by a macro expansion.
-    #[derive_where(skip)]
-    // `SyntaxContext` does not implement `Ord`.
-    // The other fields are enough to determine in-file order.
     pub ctxt: SyntaxContext,
-    #[derive_where(skip)]
-    // `LocalDefId` does not implement `Ord`.
-    // The other fields are enough to determine in-file order.
     pub parent: Option<LocalDefId>,
 }
+
+// `SyntaxContext` and `LocalDefId` aren't orderable. See the equivalent negative impls for `Span`
+// for more details.
+impl !PartialOrd for SpanData {}
+impl !Ord for SpanData {}
 
 impl SpanData {
     #[inline]
@@ -712,12 +715,12 @@ impl SpanData {
     /// Avoid if possible, `Span::map_ctxt` should be preferred.
     #[inline]
     fn with_ctxt(&self, ctxt: SyntaxContext) -> Span {
-        Span::new(self.lo, self.hi, ctxt, self.parent)
+        Span::new_ordered(self.lo, self.hi, ctxt, self.parent)
     }
     /// Avoid if possible, `Span::with_parent` should be preferred.
     #[inline]
     fn with_parent(&self, parent: Option<LocalDefId>) -> Span {
-        Span::new(self.lo, self.hi, self.ctxt, parent)
+        Span::new_ordered(self.lo, self.hi, self.ctxt, parent)
     }
     /// Returns `true` if this is a dummy span with any hygienic context.
     #[inline]
@@ -727,23 +730,6 @@ impl SpanData {
     /// Returns `true` if `self` fully encloses `other`.
     pub fn contains(self, other: Self) -> bool {
         self.lo <= other.lo && other.hi <= self.hi
-    }
-}
-
-impl Default for SpanData {
-    fn default() -> Self {
-        Self { lo: BytePos(0), hi: BytePos(0), ctxt: SyntaxContext::root(), parent: None }
-    }
-}
-
-impl PartialOrd for Span {
-    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
-        Some(self.cmp(rhs))
-    }
-}
-impl Ord for Span {
-    fn cmp(&self, rhs: &Self) -> Ordering {
-        Ord::cmp(&self.data(), &rhs.data())
     }
 }
 
@@ -767,6 +753,16 @@ impl Span {
     #[inline]
     pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
         self.map_ctxt(|_| ctxt)
+    }
+
+    /// When to use this:
+    /// - Use it instead of `==` for span equality comparisons when either span could be generated
+    ///   code and you only care that they point to the same bytes of source text.
+    /// - Use it (possibly via `OrdSpan`) for span ordering comparisons of any kind.
+    #[inline]
+    pub fn lo_hi(self) -> (BytePos, BytePos) {
+        let data = self.data();
+        (data.lo, data.hi)
     }
 
     #[inline]
@@ -857,16 +853,6 @@ impl Span {
         span.lo <= other.hi && other.lo <= span.hi
     }
 
-    /// Returns `true` if the spans are equal with regards to the source text.
-    ///
-    /// Use this instead of `==` when either span could be generated code,
-    /// and you only care that they point to the same bytes of source text.
-    pub fn source_equal(self, other: Span) -> bool {
-        let span = self.data();
-        let other = other.data();
-        span.lo == other.lo && span.hi == other.hi
-    }
-
     /// Returns `Some(span)`, where the start is trimmed by the end of `other`.
     pub fn trim_start(self, other: Span) -> Option<Span> {
         let span = self.data();
@@ -927,7 +913,7 @@ impl Span {
     /// [`find_ancestor_inside`]: Self::find_ancestor_inside
     /// [`find_ancestor_inside_same_ctxt`]: Self::find_ancestor_inside_same_ctxt
     pub fn find_ancestor_in_same_ctxt(mut self, other: Span) -> Option<Span> {
-        while !self.eq_ctxt(other) {
+        while self.ctxt() != other.ctxt() {
             self = self.parent_callsite()?;
         }
         Some(self)
@@ -946,7 +932,7 @@ impl Span {
     /// [`find_ancestor_inside`]: Self::find_ancestor_inside
     /// [`find_ancestor_in_same_ctxt`]: Self::find_ancestor_in_same_ctxt
     pub fn find_ancestor_inside_same_ctxt(mut self, outer: Span) -> Option<Span> {
-        while !outer.contains(self) || !self.eq_ctxt(outer) {
+        while !outer.contains(self) || self.ctxt() != outer.ctxt() {
             self = self.parent_callsite()?;
         }
         Some(self)
@@ -1080,7 +1066,7 @@ impl Span {
                 }
 
                 let expn_data = ctxt.outer_expn_data();
-                let is_recursive = expn_data.call_site.source_equal(prev_span);
+                let is_recursive = expn_data.call_site.lo_hi() == prev_span.lo_hi();
 
                 prev_span = self;
                 self = expn_data.call_site;
@@ -1106,39 +1092,49 @@ impl Span {
     }
 
     /// Check if you can select metavar spans for the given spans to get matching contexts.
-    fn try_metavars(a: SpanData, b: SpanData, a_orig: Span, b_orig: Span) -> (SpanData, SpanData) {
+    ///
+    /// Returns the data for each metavar span if found and matched, or None otherwise. The caller
+    /// substitutes each span for its own if Some.
+    #[cold]
+    fn try_metavars(
+        a_ctxt: SyntaxContext,
+        b_ctxt: SyntaxContext,
+        a_orig: Span,
+        b_orig: Span,
+    ) -> (Option<SpanData>, Option<SpanData>) {
         match with_metavar_spans(|mspans| (mspans.get(a_orig), mspans.get(b_orig))) {
             (None, None) => {}
             (Some(meta_a), None) => {
                 let meta_a = meta_a.data();
-                if meta_a.ctxt == b.ctxt {
-                    return (meta_a, b);
+                if meta_a.ctxt == b_ctxt {
+                    return (Some(meta_a), None);
                 }
             }
             (None, Some(meta_b)) => {
                 let meta_b = meta_b.data();
-                if a.ctxt == meta_b.ctxt {
-                    return (a, meta_b);
+                if a_ctxt == meta_b.ctxt {
+                    return (None, Some(meta_b));
                 }
             }
             (Some(meta_a), Some(meta_b)) => {
                 let meta_b = meta_b.data();
-                if a.ctxt == meta_b.ctxt {
-                    return (a, meta_b);
+                if a_ctxt == meta_b.ctxt {
+                    return (None, Some(meta_b));
                 }
                 let meta_a = meta_a.data();
-                if meta_a.ctxt == b.ctxt {
-                    return (meta_a, b);
+                if meta_a.ctxt == b_ctxt {
+                    return (Some(meta_a), None);
                 } else if meta_a.ctxt == meta_b.ctxt {
-                    return (meta_a, meta_b);
+                    return (Some(meta_a), Some(meta_b));
                 }
             }
         }
 
-        (a, b)
+        (None, None)
     }
 
     /// Prepare two spans to a combine operation like `to` or `between`.
+    #[inline(always)]
     fn prepare_to_combine(
         a_orig: Span,
         b_orig: Span,
@@ -1148,20 +1144,21 @@ impl Span {
             return Ok((a, b, if a.parent == b.parent { a.parent } else { None }));
         }
 
-        let (a, b) = Span::try_metavars(a, b, a_orig, b_orig);
-        if a.ctxt == b.ctxt {
-            return Ok((a, b, if a.parent == b.parent { a.parent } else { None }));
+        match Span::try_metavars(a.ctxt, b.ctxt, a_orig, b_orig) {
+            (None, None) => {
+                // Combining locations typically doesn't make sense in case of context mismatches.
+                // So, just pick the more useful context; root contexts are less useful.
+                Err(if a.ctxt.is_root() { b_orig } else { a_orig })
+            }
+            (a_new, b_new) => {
+                let a = a_new.unwrap_or(a);
+                let b = b_new.unwrap_or(b);
+                // If `try_metavars` returns either span as Some, the contexts must have matched, so
+                // we don't need to check again.
+                debug_assert_eq!(a.ctxt, b.ctxt);
+                Ok((a, b, if a.parent == b.parent { a.parent } else { None }))
+            }
         }
-
-        // Context mismatches usually happen when procedural macros combine spans copied from
-        // the macro input with spans produced by the macro (`Span::*_site`).
-        // In that case we consider the combined span to be produced by the macro and return
-        // the original macro-produced span as the result.
-        // Otherwise we just fall back to returning the first span.
-        // Combining locations typically doesn't make sense in case of context mismatches.
-        // `is_root` here is a fast path optimization.
-        let a_is_callsite = a.ctxt.is_root() || a.ctxt == b.span().source_callsite().ctxt();
-        Err(if a_is_callsite { b_orig } else { a_orig })
     }
 
     /// This span, but in a larger context, may switch to the metavariable span if suitable.
@@ -1183,10 +1180,34 @@ impl Span {
     ///     ^^^^^^^^^^^^^^^^^^^^
     /// ```
     pub fn to(self, end: Span) -> Span {
-        match Span::prepare_to_combine(self, end) {
-            Ok((from, to, parent)) => {
-                Span::new(cmp::min(from.lo, to.lo), cmp::max(from.hi, to.hi), from.ctxt, parent)
+        // Inline-only fast path. Inline contexts are by far the most common case, checking for them
+        // is fast (just a bitmask check on the packed span representation), we know we don't have
+        // parents, and we know the context will fit back in an inline span.
+        // So, this fast path entirely skips setting up a stack frame or saving registers.
+        use rustc_serialize::int_overflow::{DebugStrictAdd, DebugStrictSub};
+        if let Some(from) = InlineCtxt::try_from_span(self)
+            && let Some(to) = InlineCtxt::try_from_span(end)
+            && from.ctxt == to.ctxt
+        {
+            let lo = cmp::min(from.lo, to.lo);
+            let len = cmp::max(from.lo.debug_strict_add(from.len), to.lo.debug_strict_add(to.len))
+                .debug_strict_sub(lo);
+            if let Some(span) = InlineCtxt::try_new_span(lo, len, from.ctxt) {
+                return span;
             }
+        }
+        self.to_non_inline(end)
+    }
+
+    #[inline(never)]
+    fn to_non_inline(self, end: Span) -> Span {
+        match Span::prepare_to_combine(self, end) {
+            Ok((from, to, parent)) => Span::new_ordered(
+                cmp::min(from.lo, to.lo),
+                cmp::max(from.hi, to.hi),
+                from.ctxt,
+                parent,
+            ),
             Err(fallback) => fallback,
         }
     }
@@ -1252,11 +1273,11 @@ impl Span {
 
         // Don't return something if it's marked with `#[diagnostic::opaque]`.
         // This already accounts for `-Zmacro-backtrace`.
-        if within.data().ctxt.outer_expn_data().diagnostic_opaque {
+        if within.ctxt().outer_expn_data().diagnostic_opaque {
             return None;
         }
 
-        Some(Span::new(self_.lo, self_.hi, self_.ctxt, parent))
+        Some(Span::new_ordered(self_.lo, self_.hi, self_.ctxt, parent))
     }
 
     pub fn from_inner(self, inner: InnerSpan) -> Span {
@@ -1355,6 +1376,16 @@ rustc_index::newtype_index! {
 /// This trait is used to allow encoder specific encodings of certain types.
 /// It is similar to rustc_type_ir's TyEncoder.
 pub trait SpanEncoder: Encoder {
+    /// Only needed if the encoder wants deterministic encoding for `HashMap` and `HashSet` with
+    /// `CrateNum`, `DefId` or `LocalDefId` keys. Can be unimplemented otherwise
+    fn def_path_hasher(&self) -> impl Fn(DefId) -> DefPathHash {
+        panic!(
+            "Deterministic encoding of HashMap<DefId, V> requires overriding `SpanEncoder::def_path_hasher`"
+        );
+        #[allow(unreachable_code)]
+        |_def_id| unimplemented!()
+    }
+
     fn encode_span(&mut self, span: Span);
     fn encode_symbol(&mut self, sym: Symbol);
     fn encode_byte_symbol(&mut self, byte_sym: ByteSymbol);
@@ -1365,13 +1396,27 @@ pub trait SpanEncoder: Encoder {
     fn encode_crate_num(&mut self, crate_num: CrateNum);
     fn encode_def_index(&mut self, def_index: DefIndex);
     fn encode_def_id(&mut self, def_id: DefId);
+
+    fn encode_local_def_id(&mut self, def_id: LocalDefId) {
+        self.encode_def_id(def_id.to_def_id());
+    }
+
+    // `rustc_span` does not reference `rustc_hir_id` (`rustc_hir_id` references `rustc_span` instead),
+    // so we can't use `DefKey` or `DisambiguatedDefPathData` here.
+    fn encode_def_key(&mut self, parent: Option<DefIndex>, disambiguated_data: impl Encodable<Self>)
+    where
+        Self: Sized,
+    {
+        parent.encode(self);
+        disambiguated_data.encode(self);
+    }
 }
 
 impl SpanEncoder for FileEncoder<'_> {
     fn encode_span(&mut self, span: Span) {
-        let span = span.data();
-        span.lo.encode(self);
-        span.hi.encode(self);
+        let (lo, hi) = span.lo_hi();
+        lo.encode(self);
+        hi.encode(self);
     }
 
     fn encode_symbol(&mut self, sym: Symbol) {
@@ -1406,9 +1451,9 @@ impl SpanEncoder for FileEncoder<'_> {
 
 impl SpanEncoder for MemEncoder {
     fn encode_span(&mut self, span: Span) {
-        let span = span.data();
-        span.lo.encode(self);
-        span.hi.encode(self);
+        let (lo, hi) = span.lo_hi();
+        lo.encode(self);
+        hi.encode(self);
     }
 
     fn encode_symbol(&mut self, sym: Symbol) {
@@ -1420,11 +1465,11 @@ impl SpanEncoder for MemEncoder {
     }
 
     fn encode_expn_id(&mut self, _expn_id: ExpnId) {
-        panic!("cannot encode `ExpnId` with `FileEncoder`");
+        panic!("cannot encode `ExpnId` with `MemEncoder`");
     }
 
     fn encode_syntax_context(&mut self, _syntax_context: SyntaxContext) {
-        panic!("cannot encode `SyntaxContext` with `FileEncoder`");
+        panic!("cannot encode `SyntaxContext` with `MemEncoder`");
     }
 
     fn encode_crate_num(&mut self, crate_num: CrateNum) {
@@ -1432,7 +1477,7 @@ impl SpanEncoder for MemEncoder {
     }
 
     fn encode_def_index(&mut self, _def_index: DefIndex) {
-        panic!("cannot encode `DefIndex` with `FileEncoder`");
+        panic!("cannot encode `DefIndex` with `MemEncoder`");
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
@@ -1499,6 +1544,12 @@ pub trait BlobDecoder: Decoder {
     fn decode_symbol(&mut self) -> Symbol;
     fn decode_byte_symbol(&mut self) -> ByteSymbol;
     fn decode_def_index(&mut self) -> DefIndex;
+
+    // This function is placed here (not in a `SpanDecoder`),
+    // as during metadata decoding `LocalDefId` is just a wrapper
+    // around `DefIndex`, so it can be decoded without extra knowledge
+    // like crate remapping.
+    fn decode_local_def_id(&mut self) -> LocalDefId;
 }
 
 /// This trait is used to allow decoder specific encodings of certain types.
@@ -1538,6 +1589,10 @@ impl BlobDecoder for MemDecoder<'_> {
     fn decode_def_index(&mut self) -> DefIndex {
         panic!("cannot decode `DefIndex` with `MemDecoder`");
     }
+
+    fn decode_local_def_id(&mut self) -> LocalDefId {
+        self.decode_def_id().expect_local()
+    }
 }
 
 impl SpanDecoder for MemDecoder<'_> {
@@ -1545,7 +1600,7 @@ impl SpanDecoder for MemDecoder<'_> {
         let lo = Decodable::decode(self);
         let hi = Decodable::decode(self);
 
-        Span::new(lo, hi, SyntaxContext::root(), None)
+        Span::new_ordered(lo, hi, SyntaxContext::root(), None)
     }
 
     fn decode_expn_id(&mut self) -> ExpnId {
@@ -2147,8 +2202,8 @@ impl StableSourceFileId {
         stable_crate_id: Option<StableCrateId>,
     ) -> Self {
         let mut hasher = StableHasher::new();
-        filename.hash(&mut hasher);
-        stable_crate_id.hash(&mut hasher);
+        filename.stable_hash(&mut DummyStableHashCtxt, &mut hasher);
+        stable_crate_id.stable_hash(&mut DummyStableHashCtxt, &mut hasher);
         StableSourceFileId(hasher.finish())
     }
 }

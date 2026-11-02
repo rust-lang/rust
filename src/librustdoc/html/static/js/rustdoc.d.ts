@@ -31,6 +31,8 @@ declare global {
         /** Notable trait data */
         NOTABLE_TRAITS?: { [key: string]: string };
         CURRENT_TOOLTIP_ELEMENT?: HTMLElement & { TOOLTIP_BASE: HTMLElement };
+        /** List of all documented crates. Generated in `render/write_shared.rs`. */
+        ALL_CRATES: rustdoc.AllCratesEntry[]|undefined;
         /** Used by the popover tooltip code. */
         RUSTDOC_TOOLTIP_HOVER_MS: number;
         /** Used by the popover tooltip code. */
@@ -137,6 +139,8 @@ declare namespace rustdoc {
         loadDesc: function({descShard: SearchDescShard, descIndex: number}): Promise<string|null>;
         loadedDescShard: function(string, number, string);
         isDisplayed: function(): boolean;
+        searchLoaded: boolean;
+        loadSearch: function();
     }
 
     interface SearchDescShard {
@@ -536,6 +540,18 @@ declare namespace rustdoc {
         bindings: Map<number, FingerprintableType[]>;
     };
 
+    /** Member of ALL_CRATES. */
+    interface AllCratesEntry {
+        /**
+         * Heading under which the crate should be listed.
+         * 
+         * May be empty to specify the first, primary heading.
+         */
+        h?: string,
+        /** Crate name. */
+        c: string,
+    }
+
     type VlqData = VlqData[] | number;
 
     /**
@@ -560,13 +576,21 @@ declare namespace rustdoc {
     type Dir = [string, rustdoc.Dir[], string[]]
 
     /**
-     * Indivitual setting object, used in `settings.js`
+     * Individual setting object, used in `settings.js`.
      */
     interface Setting {
         js_name: string,
         name: string,
         options?: string[],
         default: string | boolean,
+    }
+
+    /**
+     * Individual settings tab, used in `settings.js`.
+     */
+    interface SettingsTab {
+        name: string,
+        settings: Array<rustdoc.Setting>,
     }
 
     /**

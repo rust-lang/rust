@@ -263,5 +263,101 @@ LL |     let _ = (0..3).fold(false, |acc: bool, x| acc || test_expr!(x));
    |
    = note: the `any` method is short circuiting and may change the program semantics if the iterator has side effects
 
-error: aborting due to 41 previous errors
+error: this `.fold` can be written more succinctly using another method
+  --> tests/ui/unnecessary_fold.rs:207:24
+   |
+LL |     let _ = opt.iter().fold(10, |acc, x| acc + x);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = opt.iter().fold(10, |acc, x| acc + x);
+LL +     let _ = opt.as_ref().map_or(10, |x| 10 + x);
+   |
+
+error: this `.fold` can be written more succinctly using another method
+  --> tests/ui/unnecessary_fold.rs:211:29
+   |
+LL |     let _ = opt.into_iter().fold(10, |acc, x| acc * x);
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = opt.into_iter().fold(10, |acc, x| acc * x);
+LL +     let _ = opt.map_or(10, |x| 10 * x);
+   |
+
+error: this `.fold` can be written more succinctly using another method
+  --> tests/ui/unnecessary_fold.rs:216:32
+   |
+LL |     let _ = opt_mut.iter_mut().fold(10, |acc, x| acc + *x);
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = opt_mut.iter_mut().fold(10, |acc, x| acc + *x);
+LL +     let _ = opt_mut.as_mut().map_or(10, |x| 10 + *x);
+   |
+
+error: this `.fold` can be written more succinctly using another method
+  --> tests/ui/unnecessary_fold.rs:220:24
+   |
+LL |     let _ = opt.iter().fold(10, |_, x| *x);
+   |                        ^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = opt.iter().fold(10, |_, x| *x);
+LL +     let _ = opt.as_ref().map_or(10, |x| *x);
+   |
+
+error: this `.fold` can be written more succinctly using another method
+  --> tests/ui/unnecessary_fold.rs:224:24
+   |
+LL |     let _ = opt.iter().fold(2, |acc, x| acc * acc + x);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = opt.iter().fold(2, |acc, x| acc * acc + x);
+LL +     let _ = opt.as_ref().map_or(2, |x| 2 * 2 + x);
+   |
+
+error: this `.fold` can be written more succinctly using another method
+  --> tests/ui/unnecessary_fold.rs:229:24
+   |
+LL |     let _ = opt.iter().fold(init, |acc, x| acc + x);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = opt.iter().fold(init, |acc, x| acc + x);
+LL +     let _ = opt.as_ref().map_or(init, |x| init + x);
+   |
+
+error: this `.fold` can be written more succinctly using another method
+  --> tests/ui/unnecessary_fold.rs:233:33
+   |
+LL |     let _ = Some(1).into_iter().fold(5, |acc, x| acc - x);
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = Some(1).into_iter().fold(5, |acc, x| acc - x);
+LL +     let _ = Some(1).map_or(5, |x| 5 - x);
+   |
+
+error: this `.fold` can be written more succinctly using another method
+  --> tests/ui/unnecessary_fold.rs:242:48
+   |
+LL |     let _ = (0..3).fold(0, |acc, x| opt.iter().fold(1, |a, b| a + b) + x);
+   |                                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = (0..3).fold(0, |acc, x| opt.iter().fold(1, |a, b| a + b) + x);
+LL +     let _ = (0..3).fold(0, |acc, x| opt.as_ref().map_or(1, |b| 1 + b) + x);
+   |
+
+error: aborting due to 49 previous errors
 

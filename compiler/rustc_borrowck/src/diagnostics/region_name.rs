@@ -2,15 +2,12 @@ use std::fmt::{self, Display};
 use std::iter;
 
 use rustc_data_structures::fx::IndexEntry;
-use rustc_errors::{Diag, EmissionGuarantee};
+use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
-use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgsRef, RegionUtilitiesExt, RegionVid, Ty, Unnormalized,
-};
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Span, Symbol, kw, sym};
+use rustc_middle::ty::{self, GenericArgKind, GenericArgs, RegionVid, Ty, Unnormalized};
+use rustc_span::{DUMMY_SP, Span, Symbol, bug, kw, span_bug, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use tracing::{debug, instrument};
 
@@ -64,11 +61,11 @@ pub(crate) enum RegionNameHighlight {
     MatchedAdtAndSegment(Span),
     /// The anonymous region corresponds to a region where the type annotation is completely missing
     /// from the code, e.g. in a closure arguments `|x| { ... }`, where `x` is a reference.
-    CannotMatchHirTy(Span, Symbol),
+    CannotMatchHirTy(Span, Symbol, Option<Span>),
     /// The anonymous region corresponds to a region where the type annotation is completely missing
     /// from the code, and *even if* we print out the full name of the type, the region name won't
     /// be included. This currently occurs for opaque types like `impl Future`.
-    Occluded(Span, Symbol),
+    Occluded(Span, Symbol, Option<Span>),
 }
 
 impl RegionName {
@@ -101,13 +98,13 @@ impl RegionName {
             | RegionNameSource::AnonRegionFromOutput(ref highlight, _) => match *highlight {
                 RegionNameHighlight::MatchedHirTy(span)
                 | RegionNameHighlight::MatchedAdtAndSegment(span)
-                | RegionNameHighlight::CannotMatchHirTy(span, _)
-                | RegionNameHighlight::Occluded(span, _) => Some(span),
+                | RegionNameHighlight::CannotMatchHirTy(span, _, _)
+                | RegionNameHighlight::Occluded(span, _, _) => Some(span),
             },
         }
     }
 
-    pub(crate) fn highlight_region_name<G: EmissionGuarantee>(&self, diag: &mut Diag<'_, G>) {
+    pub(crate) fn highlight_region_name(&self, diag: &mut Diag<'_>) {
         match &self.source {
             RegionNameSource::NamedLateParamRegion(span)
             | RegionNameSource::NamedEarlyParamRegion(span) => {
@@ -123,8 +120,12 @@ impl RegionName {
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::CannotMatchHirTy(
                 span,
                 type_name,
+                lt_span,
             )) => {
                 diag.span_label(*span, format!("has type `{type_name}`"));
+                if let Some(span) = lt_span {
+                    diag.span_label(*span, format!("lifetime `{self}` introduced here"));
+                }
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::MatchedHirTy(span))
             | RegionNameSource::AnonRegionFromOutput(RegionNameHighlight::MatchedHirTy(span), _)
@@ -146,14 +147,18 @@ impl RegionName {
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::Occluded(
                 span,
                 type_name,
+                lt_span,
             )) => {
                 diag.span_label(
                     *span,
                     format!("lifetime `{self}` appears in the type `{type_name}`"),
                 );
+                if let Some(span) = lt_span {
+                    diag.span_label(*span, format!("lifetime `{self}` introduced here"));
+                }
             }
             RegionNameSource::AnonRegionFromOutput(
-                RegionNameHighlight::Occluded(span, type_name),
+                RegionNameHighlight::Occluded(span, type_name, lt_span),
                 mir_description,
             ) => {
                 diag.span_label(
@@ -162,6 +167,9 @@ impl RegionName {
                         "return type{mir_description} `{type_name}` contains a lifetime `{self}`"
                     ),
                 );
+                if let Some(span) = lt_span {
+                    diag.span_label(*span, format!("lifetime `{self}` introduced here"));
+                }
             }
             RegionNameSource::AnonRegionFromUpvar(span, upvar_name) => {
                 diag.span_label(
@@ -170,10 +178,13 @@ impl RegionName {
                 );
             }
             RegionNameSource::AnonRegionFromOutput(
-                RegionNameHighlight::CannotMatchHirTy(span, type_name),
+                RegionNameHighlight::CannotMatchHirTy(span, type_name, lt_span),
                 mir_description,
             ) => {
-                diag.span_label(*span, format!("return type{mir_description} is {type_name}"));
+                diag.span_label(*span, format!("return type{mir_description} is `{type_name}`"));
+                if let Some(span) = lt_span {
+                    diag.span_label(*span, format!("lifetime `{self}` introduced here"));
+                }
             }
             RegionNameSource::AnonRegionFromYieldTy(span, type_name) => {
                 diag.span_label(*span, format!("yield type is {type_name}"));
@@ -579,11 +590,18 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
             type_name, needle_fr
         );
+        let lt_span = if let Some(needle) = self.regioncx.to_error_region(needle_fr)
+            && let Some(def_id) = needle.opt_param_def_id(self.infcx.tcx, self.mir_def_id().into())
+        {
+            Some(self.infcx.tcx.def_span(def_id))
+        } else {
+            None
+        };
         if type_name.contains(&format!("'{counter}")) {
             // Only add a label if we can confirm that a region was labelled.
-            RegionNameHighlight::CannotMatchHirTy(span, Symbol::intern(&type_name))
+            RegionNameHighlight::CannotMatchHirTy(span, Symbol::intern(&type_name), lt_span)
         } else {
-            RegionNameHighlight::Occluded(span, Symbol::intern(&type_name))
+            RegionNameHighlight::Occluded(span, Symbol::intern(&type_name), lt_span)
         }
     }
 
@@ -624,7 +642,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 //
                 //     &
                 //     - let's call the lifetime of this reference `'1`
-                (ty::Ref(region, referent_ty, _), hir::TyKind::Ref(_lifetime, referent_hir_ty)) => {
+                (
+                    ty::Ref(region, referent_ty, _),
+                    hir::TyKind::Ref(_lifetime, referent_hir_ty, _),
+                ) => {
                     if region.as_var() == needle_fr {
                         // Just grab the first character, the `&`.
                         let source_map = self.infcx.tcx.sess.source_map();
@@ -634,7 +655,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     }
 
                     // Otherwise, let's descend into the referent types.
-                    search_stack.push((*referent_ty, referent_hir_ty.ty));
+                    search_stack.push((*referent_ty, referent_hir_ty));
                 }
 
                 // Match up something like `Foo<'1>`
@@ -648,7 +669,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         _ => {
                             if let Some(last_segment) = path.segments.last()
                                 && let Some(highlight) = self.match_adt_and_segment(
-                                    args,
+                                    *args,
                                     needle_fr,
                                     last_segment,
                                     search_stack,
@@ -672,8 +693,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     search_stack.push((*elem_ty, elem_hir_ty));
                 }
 
-                (ty::RawPtr(mut_ty, _), hir::TyKind::Ptr(mut_hir_ty)) => {
-                    search_stack.push((*mut_ty, mut_hir_ty.ty));
+                (ty::RawPtr(inner_ty, _), hir::TyKind::Ptr(hir_ty, _)) => {
+                    search_stack.push((*inner_ty, hir_ty));
                 }
 
                 _ => {
@@ -692,7 +713,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// types+hir to search through).
     fn match_adt_and_segment<'hir>(
         &self,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         needle_fr: RegionVid,
         last_segment: &'hir hir::PathSegment<'hir>,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
@@ -715,7 +736,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// `search_stack` the types+hir to search through.
     fn try_match_adt_and_generic_args<'hir>(
         &self,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         needle_fr: RegionVid,
         hir_args: &'hir hir::GenericArgs<'hir>,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
@@ -1111,7 +1132,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             Some(RegionName {
                 name: region_name,
                 source: RegionNameSource::AnonRegionFromArgument(
-                    RegionNameHighlight::CannotMatchHirTy(arg_span, arg_name?),
+                    RegionNameHighlight::CannotMatchHirTy(arg_span, arg_name?, None),
                 ),
             })
         } else {

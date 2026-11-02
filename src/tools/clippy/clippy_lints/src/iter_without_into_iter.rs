@@ -5,9 +5,8 @@ use clippy_utils::{get_parent_as_impl, sym};
 use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir::{FnRetTy, ImplItemKind, ImplicitSelfKind, ItemKind, TyKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -127,7 +126,7 @@ fn is_ty_exported(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
 impl LateLintPass<'_> for IterWithoutIntoIter {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
         if let ItemKind::Impl(imp) = item.kind
-            && let TyKind::Ref(_, self_ty_without_ref) = &imp.self_ty.kind
+            && let TyKind::Ref(_, self_ty_without_ref, _) = &imp.self_ty.kind
             && let Some(of_trait) = imp.of_trait
             && of_trait
                 .trait_ref
@@ -179,7 +178,7 @@ impl {self_ty_without_ref} {{
     }}
 }}
 ",
-                        self_ty_without_ref = snippet(cx, self_ty_without_ref.ty.span, ".."),
+                        self_ty_without_ref = snippet(cx, self_ty_without_ref.span, ".."),
                         ref_self = mtbl.ref_prefix_str(),
                         iter_ty = snippet(cx, iter_assoc_span, ".."),
                     );
@@ -205,13 +204,12 @@ impl {self_ty_without_ref} {{
             _ => return,
         };
 
-        if !item.span.in_external_macro(cx.sess().source_map())
-            && let ImplItemKind::Fn(sig, _) = item.kind
+        if let ImplItemKind::Fn(sig, _) = item.kind
             && let FnRetTy::Return(ret) = sig.decl.output
+            && sig.decl.inputs.len() == 1
+            && sig.decl.implicit_self() == expected_implicit_self
             && is_nameable_in_impl_trait(ret)
             && cx.tcx.generics_of(item_did).is_own_empty()
-            && sig.decl.implicit_self() == expected_implicit_self
-            && sig.decl.inputs.len() == 1
             && let Some(imp) = get_parent_as_impl(cx.tcx, item.hir_id())
             && imp.of_trait.is_none()
             && let sig = cx.tcx.liberate_late_bound_regions(
@@ -235,6 +233,7 @@ impl {self_ty_without_ref} {{
             // Only lint if the `IntoIterator` impl doesn't actually exist
             && !implements_trait(cx, ref_ty, into_iter_did, &[])
             && is_ty_exported(cx, ref_ty.peel_refs())
+            && !item.span.in_external_macro(cx.sess().source_map())
         {
             let self_ty_snippet = format!("{borrow_prefix}{}", snippet(cx, imp.self_ty.span, ".."));
 

@@ -15,8 +15,6 @@ pub mod compat;
 pub mod api;
 
 pub mod c;
-#[cfg(not(target_vendor = "win7"))]
-pub mod futex;
 pub mod handle;
 pub mod time;
 cfg_select! {
@@ -54,7 +52,9 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
 }
 
 // SAFETY: must be called only once during runtime cleanup.
-// NOTE: this is not guaranteed to run, for example when the program aborts.
+// NOTE: this is not guaranteed to run, for example when the program aborts, and
+//       is not guaranteed to run on the main thread (#161018 was caused by that
+//       mistaken assumption).
 pub unsafe fn cleanup() {
     winsock::cleanup();
 }
@@ -275,7 +275,7 @@ pub fn abort_internal() -> ! {
                 core::arch::asm!("brk 0xF003", in("x0") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
             }
             _ => {
-                core::intrinsics::abort();
+                core::intrinsics::abort_immediate();
             }
         }
     }
@@ -284,7 +284,7 @@ pub fn abort_internal() -> ! {
 #[cfg(miri)]
 #[track_caller] // even without panics, this helps for Miri backtraces
 pub fn abort_internal() -> ! {
-    crate::intrinsics::abort();
+    crate::intrinsics::abort_immediate();
 }
 
 /// Align the inner value to 8 bytes.

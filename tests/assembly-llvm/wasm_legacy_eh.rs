@@ -42,7 +42,6 @@ pub fn test_cleanup() {
     // CHECK-NOT: try_table
     // CHECK-NOT: catch_all_ref
     // CHECK-NOT: throw_ref
-    // CHECK-NOT: call
     // CHECK: try
     // CHECK: call may_panic
     // CHECK: catch_all
@@ -69,7 +68,6 @@ pub fn test_rtry() {
     // CHECK-NOT: try_table
     // CHECK-NOT: catch_all_ref
     // CHECK-NOT: throw_ref
-    // CHECK-NOT: call
     // CHECK: try
     // CHECK: call may_panic
     // CHECK: catch

@@ -1,21 +1,20 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use rustc_abi::Size;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Symbol;
 
-use crate::spec::{Arch, RelocModel, Target};
+use crate::spec::{Arch, LlvmAbi, RelocModel, Target};
 
 pub struct ModifierInfo {
     pub modifier: char,
     pub result: &'static str,
-    pub size: u16,
+    pub size: InlineAsmSize,
 }
 
-impl From<(char, &'static str, u16)> for ModifierInfo {
-    fn from((modifier, result, size): (char, &'static str, u16)) -> Self {
+impl From<(char, &'static str, InlineAsmSize)> for ModifierInfo {
+    fn from((modifier, result, size): (char, &'static str, InlineAsmSize)) -> Self {
         Self { modifier, result, size }
     }
 }
@@ -475,9 +474,9 @@ impl InlineAsmReg {
             Self::PowerPC(r) => r.overlapping_regs(|r| cb(Self::PowerPC(r))),
             Self::Hexagon(r) => r.overlapping_regs(|r| cb(Self::Hexagon(r))),
             Self::LoongArch(r) => r.overlapping_regs(|r| cb(Self::LoongArch(r))),
-            Self::Mips(_) => cb(self),
+            Self::Mips(r) => r.overlapping_regs(|r| cb(Self::Mips(r))),
             Self::S390x(r) => r.overlapping_regs(|r| cb(Self::S390x(r))),
-            Self::Sparc(_) => cb(self),
+            Self::Sparc(r) => r.overlapping_regs(|r| cb(Self::Sparc(r))),
             Self::Xtensa(_) => cb(self),
             Self::Bpf(r) => r.overlapping_regs(|r| cb(Self::Bpf(r))),
             Self::Avr(r) => r.overlapping_regs(|r| cb(Self::Avr(r))),
@@ -649,7 +648,7 @@ impl InlineAsmRegClass {
         match self {
             Self::X86(r) => r.supported_types(arch, allow_experimental_reg).into(),
             Self::Arm(r) => r.supported_types(arch).into(),
-            Self::AArch64(r) => r.supported_types(arch).into(),
+            Self::AArch64(r) => r.supported_types(arch, allow_experimental_reg).into(),
             Self::Amdgpu(r) => r.supported_types(arch).into(),
             Self::RiscV(r) => r.supported_types(arch).into(),
             Self::Nvptx(r) => r.supported_types(arch).into(),
@@ -712,13 +711,19 @@ impl InlineAsmRegClass {
         })
     }
 
-    /// Returns the list of template modifiers that can be used with this
-    /// register class.
-    pub fn valid_modifiers(self, arch: InlineAsmArch) -> &'static [char] {
+    /// Returns the list of template modifiers that can be used with this register class, as well as
+    /// whether the `asm_experimental_reg` feature is enabled: there can be template modifiers that
+    /// apply to currently unstable registers, and we don't want to make these modifiers usable
+    /// without the feature gate.
+    pub fn valid_modifiers(
+        self,
+        arch: InlineAsmArch,
+        allow_experimental_reg: bool,
+    ) -> &'static [char] {
         match self {
             Self::X86(r) => r.valid_modifiers(arch),
             Self::Arm(r) => r.valid_modifiers(arch),
-            Self::AArch64(r) => r.valid_modifiers(arch),
+            Self::AArch64(r) => r.valid_modifiers(arch, allow_experimental_reg),
             Self::Amdgpu(r) => r.valid_modifiers(arch),
             Self::RiscV(r) => r.valid_modifiers(arch),
             Self::Nvptx(r) => r.valid_modifiers(arch),
@@ -796,6 +801,31 @@ pub enum InlineAsmType {
     VecF32(u64),
     VecF64(u64),
     VecF128(u64),
+    SveVecI8,
+    SveVecI16,
+    SveVecI32,
+    SveVecI64,
+    SveVecI128,
+    SveVecF16,
+    SveVecF32,
+    SveVecF64,
+    SveVecF128,
+    SveVecBool,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum InlineAsmSize {
+    FixedBytes(u64),
+    Scalable,
+}
+
+impl InlineAsmSize {
+    pub fn fixed_size_bytes(self) -> Option<u64> {
+        match self {
+            Self::FixedBytes(size) => Some(size),
+            Self::Scalable => None,
+        }
+    }
 }
 
 impl InlineAsmType {
@@ -803,27 +833,29 @@ impl InlineAsmType {
         matches!(self, Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128)
     }
 
-    pub fn size(self) -> Size {
-        Size::from_bytes(match self {
-            Self::I8 => 1,
-            Self::I16 => 2,
-            Self::I32 => 4,
-            Self::I64 => 8,
-            Self::I128 => 16,
-            Self::F16 => 2,
-            Self::F32 => 4,
-            Self::F64 => 8,
-            Self::F128 => 16,
-            Self::VecI8(n) => n * 1,
-            Self::VecI16(n) => n * 2,
-            Self::VecI32(n) => n * 4,
-            Self::VecI64(n) => n * 8,
-            Self::VecI128(n) => n * 16,
-            Self::VecF16(n) => n * 2,
-            Self::VecF32(n) => n * 4,
-            Self::VecF64(n) => n * 8,
-            Self::VecF128(n) => n * 16,
-        })
+    pub fn size(self) -> InlineAsmSize {
+        match self {
+            Self::I8 => InlineAsmSize::FixedBytes(1),
+            Self::I16 | Self::F16 => InlineAsmSize::FixedBytes(2),
+            Self::I32 | Self::F32 => InlineAsmSize::FixedBytes(4),
+            Self::I64 | Self::F64 => InlineAsmSize::FixedBytes(8),
+            Self::I128 | Self::F128 => InlineAsmSize::FixedBytes(16),
+            Self::VecI8(n) => InlineAsmSize::FixedBytes(n),
+            Self::VecI16(n) | Self::VecF16(n) => InlineAsmSize::FixedBytes(n * 2),
+            Self::VecI32(n) | Self::VecF32(n) => InlineAsmSize::FixedBytes(n * 4),
+            Self::VecI64(n) | Self::VecF64(n) => InlineAsmSize::FixedBytes(n * 8),
+            Self::VecI128(n) | Self::VecF128(n) => InlineAsmSize::FixedBytes(n * 16),
+            Self::SveVecI8
+            | Self::SveVecI16
+            | Self::SveVecI32
+            | Self::SveVecI64
+            | Self::SveVecI128
+            | Self::SveVecF16
+            | Self::SveVecF32
+            | Self::SveVecF64
+            | Self::SveVecF128
+            | Self::SveVecBool => InlineAsmSize::Scalable,
+        }
     }
 }
 
@@ -848,6 +880,16 @@ impl fmt::Display for InlineAsmType {
             Self::VecF32(n) => write!(f, "f32x{n}"),
             Self::VecF64(n) => write!(f, "f64x{n}"),
             Self::VecF128(n) => write!(f, "f128x{n}"),
+            Self::SveVecI8 => f.write_str("svint8_t"),
+            Self::SveVecI16 => f.write_str("svint16_t"),
+            Self::SveVecI32 => f.write_str("svint32_t"),
+            Self::SveVecI64 => f.write_str("svint64_t"),
+            Self::SveVecI128 => f.write_str("svint128_t"),
+            Self::SveVecF16 => f.write_str("svfloat26_t"),
+            Self::SveVecF32 => f.write_str("svfloat32_t"),
+            Self::SveVecF64 => f.write_str("svfloat64_t"),
+            Self::SveVecF128 => f.write_str("svfloat128_t"),
+            Self::SveVecBool => f.write_str("svbool_t"),
         }
     }
 }
@@ -982,6 +1024,7 @@ pub enum InlineAsmClobberAbi {
     Arm64EC,
     Avr,
     RiscV,
+    RiscVD,
     RiscVE,
     LoongArch,
     PowerPC,
@@ -1035,11 +1078,15 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system"]),
             },
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => match name {
-                "C" | "system" | "efiapi" => Ok(if riscv::is_e(target_features) {
-                    InlineAsmClobberAbi::RiscVE
-                } else {
-                    InlineAsmClobberAbi::RiscV
-                }),
+                "C" | "system" | "efiapi" => {
+                    Ok(match target.llvm_abiname {
+                        LlvmAbi::Ilp32e | LlvmAbi::Lp64e => InlineAsmClobberAbi::RiscVE,
+                        // FIXME: Once LLVM adds support for the `q` extension, `d` will no longer
+                        // be the largest supported FLEN, so change this to Lp64q => RiscVQ.
+                        LlvmAbi::Ilp32d | LlvmAbi::Lp64d => InlineAsmClobberAbi::RiscVD,
+                        _ => InlineAsmClobberAbi::RiscV,
+                    })
+                }
                 _ => Err(&["C", "system", "efiapi"]),
             },
             InlineAsmArch::Avr => match name {
@@ -1232,6 +1279,46 @@ impl InlineAsmClobberAbi {
                     x10, x11, x12, x13, x14, x15, x16, x17,
                     // t3-t6
                     x28, x29, x30, x31,
+
+                    // Only ABI_FLEN bits of the callee-saved floating point registers are
+                    // preserved. As LLVM doesn't have partial clobbers, this means we have to
+                    // clobber the callee-saved floating point registers as well as the temporary
+                    // registers.
+                    // ft0-ft7
+                    f0, f1, f2, f3, f4, f5, f6, f7,
+                    // fs0-fs1 (callee-saved)
+                    f8, f9,
+                    // fa0-fa7
+                    f10, f11, f12, f13, f14, f15, f16, f17,
+                    // fs2-fs11 (callee-saved)
+                    f18, f19, f20, f21, f22, f23, f24, f25,
+                    f26, f27,
+                    // ft8-ft11
+                    f28, f29, f30, f31,
+
+                    // v0-v31
+                    v0, v1, v2, v3, v4, v5, v6, v7,
+                    v8, v9, v10, v11, v12, v13, v14, v15,
+                    v16, v17, v18, v19, v20, v21, v22, v23,
+                    v24, v25, v26, v27, v28, v29, v30, v31,
+                }
+            },
+            InlineAsmClobberAbi::RiscVD => clobbered_regs! {
+                RiscV RiscVInlineAsmReg {
+                    // ra
+                    x1,
+                    // t0-t2
+                    x5, x6, x7,
+                    // a0-a7
+                    x10, x11, x12, x13, x14, x15, x16, x17,
+                    // t3-t6
+                    x28, x29, x30, x31,
+
+                    // Only ABI_FLEN bits of the callee-saved floating point registers are
+                    // preserved. As `d` (FLEN == 64) is the largest floating point register LLVM
+                    // currently supports (`q` is currently assembly only), and ABI_FLEN == 64,
+                    // ABI_FLEN must equal FLEN and therefore there is no need to clobber the
+                    // callee-saved registers.
                     // ft0-ft7
                     f0, f1, f2, f3, f4, f5, f6, f7,
                     // fa0-fa7
@@ -1239,6 +1326,7 @@ impl InlineAsmClobberAbi {
                     // ft8-ft11
                     f28, f29, f30, f31,
 
+                    // v0-v31
                     v0, v1, v2, v3, v4, v5, v6, v7,
                     v8, v9, v10, v11, v12, v13, v14, v15,
                     v16, v17, v18, v19, v20, v21, v22, v23,
@@ -1257,13 +1345,17 @@ impl InlineAsmClobberAbi {
                     x5, x6, x7,
                     // a0-a5
                     x10, x11, x12, x13, x14, x15,
-                    // ft0-ft7
-                    f0, f1, f2, f3, f4, f5, f6, f7,
-                    // fa0-fa7
-                    f10, f11, f12, f13, f14, f15, f16, f17,
-                    // ft8-ft11
-                    f28, f29, f30, f31,
+                    // x16-x31
+                    x16, x17, x18, x19, x20, x21, x22, x23,
+                    x24, x25, x26, x27, x28, x29, x30, x31,
 
+                    // f0-f31
+                    f0, f1, f2, f3, f4, f5, f6, f7,
+                    f8, f9, f10, f11, f12, f13, f14, f15,
+                    f16, f17, f18, f19, f20, f21, f22, f23,
+                    f24, f25, f26, f27, f28, f29, f30, f31,
+
+                    // v0-v31
                     v0, v1, v2, v3, v4, v5, v6, v7,
                     v8, v9, v10, v11, v12, v13, v14, v15,
                     v16, v17, v18, v19, v20, v21, v22, v23,

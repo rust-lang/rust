@@ -21,12 +21,12 @@ export async function bootstrap(
 
     log.info("Using server binary at", path);
 
-    if (!isValidExecutable(path, config.serverExtraEnv)) {
+    if (!(await isValidExecutable(path, config.serverExtraEnv))) {
         throw new Error(
             `Failed to execute ${path} --version.` +
                 (config.serverPath
-                    ? `\`config.server.path\` or \`config.serverPath\` has been set explicitly.\
-            Consider removing this config or making a valid server binary available at that path.`
+                    ? ` \`config.server.path\` or \`config.serverPath\` has been set explicitly.` +
+                      ` Consider removing this config or making a valid server binary available at that path.`
                     : ""),
         );
     }
@@ -176,14 +176,24 @@ async function fileExists(uri: vscode.Uri) {
     );
 }
 
+// Captures the elements of a `components` array. They are matched with `[^\]]` rather than `.`
+// so that the array may be spread over several lines, which is just as valid TOML as keeping it
+// on one, while still stopping at the end of the array.
+const COMPONENTS_RE = /components\s*=\s*\[(?<components>[^\]]*)\]/;
+// TOML strings come in both quote flavours.
+const RA_COMPONENT_RE = /["']rust-analyzer["']/;
+
+function declaresRaComponent(toolchainFileContents: string): boolean {
+    const components = toolchainFileContents.match(COMPONENTS_RE)?.groups?.["components"];
+    return components !== undefined && RA_COMPONENT_RE.test(components);
+}
+
 async function hasToolchainFileWithRaDeclared(uri: vscode.Uri): Promise<boolean> {
     try {
         const toolchainFileContents = new TextDecoder().decode(
             await vscode.workspace.fs.readFile(uri),
         );
-        return (
-            toolchainFileContents.match(/components\s*=\s*\[.*"rust-analyzer".*\]/g)?.length === 1
-        );
+        return declaresRaComponent(toolchainFileContents);
     } catch (_) {
         return false;
     }
@@ -296,6 +306,7 @@ async function patchelf(dest: vscode.Uri): Promise<void> {
 }
 
 export const _private = {
+    declaresRaComponent,
     earliestToolchainPath,
     orderFromPath,
 };

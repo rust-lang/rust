@@ -272,13 +272,13 @@ LL +     };
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:170:13
    |
+LL |     macro_rules! create_binding_if_some {
+LL |         ($n:ident, $e:expr) => {
 LL |             let $n = if let Some(v) = $e { v } else { return };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some($n) = g() else { return };`
 ...
 LL |     create_binding_if_some!(w, g());
    |     ------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `create_binding_if_some` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else.rs:180:5

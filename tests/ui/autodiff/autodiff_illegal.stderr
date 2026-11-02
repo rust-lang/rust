@@ -1,5 +1,5 @@
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/autodiff_illegal.rs:53:5
+  --> $DIR/autodiff_illegal.rs:54:5
    |
 LL |     #[autodiff_forward(df7, Dual)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,26 +44,56 @@ error: Duplicated can not be used for this type
 LL | pub fn f6(x: f64) {
    |              ^^^
 
+error[E0658]: macro attributes on statements are unstable
+  --> $DIR/autodiff_illegal.rs:49:5
+   |
+LL |     #[autodiff_forward(df7, Dual)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error: autodiff must be applied to function
-  --> $DIR/autodiff_illegal.rs:50:5
+  --> $DIR/autodiff_illegal.rs:51:5
    |
 LL |     let mut x = 5;
    |     ^^^^^^^^^^^^^^
 
-error: autodiff must be applied to function
+error[E0658]: macro attributes on expressions are unstable
   --> $DIR/autodiff_illegal.rs:54:5
+   |
+LL |     #[autodiff_forward(df7, Dual)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: autodiff must be applied to function
+  --> $DIR/autodiff_illegal.rs:55:5
    |
 LL |     x = x + 3;
    |     ^
 
+error[E0658]: macro attributes on statements are unstable
+  --> $DIR/autodiff_illegal.rs:60:5
+   |
+LL |     #[autodiff_forward(df7, Dual)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error: autodiff must be applied to function
-  --> $DIR/autodiff_illegal.rs:59:5
+  --> $DIR/autodiff_illegal.rs:62:5
    |
 LL |     let add_one_v2 = |x: u32| -> u32 { x + 1 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: autodiff requires at least a name and mode
-  --> $DIR/autodiff_illegal.rs:65:1
+  --> $DIR/autodiff_illegal.rs:68:1
    |
 LL | / pub fn f7(x: f64) {
 LL | |
@@ -72,7 +102,7 @@ LL | | }
    | |_^
 
 error: autodiff requires at least a name and mode
-  --> $DIR/autodiff_illegal.rs:72:1
+  --> $DIR/autodiff_illegal.rs:75:1
    |
 LL | / pub fn f8(x: f64) {
 LL | |
@@ -81,7 +111,7 @@ LL | | }
    | |_^
 
 error: autodiff requires at least a name and mode
-  --> $DIR/autodiff_illegal.rs:79:1
+  --> $DIR/autodiff_illegal.rs:82:1
    |
 LL | / pub fn f9(x: f64) {
 LL | |
@@ -90,7 +120,7 @@ LL | | }
    | |_^
 
 error[E0428]: the name `fn_exists` is defined multiple times
-  --> $DIR/autodiff_illegal.rs:87:1
+  --> $DIR/autodiff_illegal.rs:90:1
    |
 LL | fn fn_exists() {}
    | -------------- previous definition of the value `fn_exists` here
@@ -101,30 +131,30 @@ LL | #[autodiff_reverse(fn_exists, Active)]
    = note: `fn_exists` must be defined only once in the value namespace of this module
 
 error: did not recognize Activity: `Reverse`
-  --> $DIR/autodiff_illegal.rs:95:26
+  --> $DIR/autodiff_illegal.rs:98:26
    |
 LL | #[autodiff_reverse(df13, Reverse)]
    |                          ^^^^^^^
 
 error: invalid return activity Active in Forward Mode
-  --> $DIR/autodiff_illegal.rs:131:1
+  --> $DIR/autodiff_illegal.rs:134:1
    |
 LL | #[autodiff_forward(df19, Dual, Active)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: invalid return activity Dual in Reverse Mode
-  --> $DIR/autodiff_illegal.rs:137:1
+  --> $DIR/autodiff_illegal.rs:140:1
    |
 LL | #[autodiff_reverse(df20, Active, Dual)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: invalid return activity Duplicated in Reverse Mode
-  --> $DIR/autodiff_illegal.rs:144:1
+  --> $DIR/autodiff_illegal.rs:147:1
    |
 LL | #[autodiff_reverse(df21, Active, Duplicated)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 18 previous errors
+error: aborting due to 21 previous errors
 
 Some errors have detailed explanations: E0428, E0658.
 For more information about an error, try `rustc --explain E0428`.

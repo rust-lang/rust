@@ -3,6 +3,8 @@ error: the `unstable_feature_bound` attribute cannot be used on required trait m
    |
 LL |     #[unstable_feature_bound(foo)]
    |       ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn foo();
    |
    = help: the `unstable_feature_bound` attribute can be applied to functions, trait impl blocks, and traits
 
@@ -11,6 +13,8 @@ error: the `unstable_feature_bound` attribute cannot be used on trait methods in
    |
 LL |     #[unstable_feature_bound(foo)]
    |       ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn foo() {}
    |
    = help: the `unstable_feature_bound` attribute can be applied to functions, trait impl blocks, and traits
 

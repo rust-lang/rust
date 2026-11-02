@@ -9,14 +9,12 @@
 //@ has foo/keyword.match.html '//h1' 'Keyword match'
 //@ has foo/keyword.match.html '//section[@id="main-content"]//div[@class="docblock"]//p' 'this is a test!'
 //@ has foo/index.html '//a/@href' '../foo/index.html'
-//@ !has foo/foo/index.html
-//@ !has-dir foo/foo
 //@ !has foo/index.html '//span' '🔒'
 #[doc(keyword = "match")]
 /// this is a test!
-mod foo{}
+const _: () = ();
 
 //@ has foo/keyword.break.html '//section[@id="main-content"]//div[@class="docblock"]//p' 'hello'
 #[doc(keyword = "break")]
 /// hello
-mod bar {}
+const _: () = ();

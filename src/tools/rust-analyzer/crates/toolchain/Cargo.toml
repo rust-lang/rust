@@ -3,7 +3,7 @@ name = "toolchain"
 version = "0.0.0"
 repository.workspace = true
 description = "Discovery of `cargo` & `rustc` executables for rust-analyzer."
-
+publish = false
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -14,6 +14,7 @@ doctest = false
 
 [dependencies]
 camino.workspace = true
+semver.workspace = true
 
 [lints]
 workspace = true

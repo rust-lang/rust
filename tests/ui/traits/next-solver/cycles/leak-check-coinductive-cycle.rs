@@ -1,5 +1,15 @@
-//@ compile-flags: -Znext-solver
-//@ check-pass
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+
+// This test is no longer testing what it was originally intended to do as we've changed the
+// leak check to no longer rely on any constraints from nested goals, see #155749.
+//
+// Long-term we do want to consider constraints from nested goals, at which point
+// this test becomes useful again.
+
+//[current]~^^^^^^^^^^ ERROR overflow evaluating the requirement `&(): Trait<u32>`
+
 #![feature(rustc_attrs)]
 
 #[rustc_coinductive]
@@ -30,4 +40,5 @@ fn main() {
     // end up with a single impl for `&'a (): Trait<_>` which infers `_` to `i32`
     // and succeeds.
     impls_trait::<(&(), &()), _>();
+    //[next]~^ ERROR overflow evaluating the requirement `(&(), &()): Trait<_>`
 }

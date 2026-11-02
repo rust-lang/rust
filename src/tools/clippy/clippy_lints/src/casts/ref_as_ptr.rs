@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{ExprUseNode, get_expr_use_site, is_expr_temporary_value, std_or_core};
+use clippy_utils::{
+    ExprUseNode, get_expr_use_site, is_expr_temporary_value, is_inside_always_const_context, std_or_core,
+};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Mutability, Ty, TyKind};
 use rustc_lint::LateContext;
@@ -26,10 +28,10 @@ pub(super) fn check<'tcx>(
     {
         if let ExprKind::AddrOf(_, _, addr_inner) = cast_expr.kind
             && is_expr_temporary_value(cx, addr_inner)
-            && matches!(
+            && (matches!(
                 get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr).use_node(cx),
                 ExprUseNode::LetStmt(_) | ExprUseNode::ConstStatic(_)
-            )
+            ) || is_inside_always_const_context(cx.tcx, expr.hir_id))
         {
             return;
         }
@@ -42,13 +44,13 @@ pub(super) fn check<'tcx>(
         let mut app = Applicability::MachineApplicable;
         let turbofish = match &cast_to_hir_ty.kind {
             TyKind::Infer(()) => String::new(),
-            TyKind::Ptr(mut_ty) => {
-                if matches!(mut_ty.ty.kind, TyKind::Infer(())) {
+            TyKind::Ptr(inner_ty, _) => {
+                if matches!(inner_ty.kind, TyKind::Infer(())) {
                     String::new()
                 } else {
                     format!(
                         "::<{}>",
-                        snippet_with_applicability(cx, mut_ty.ty.span, "/* type */", &mut app)
+                        snippet_with_applicability(cx, inner_ty.span, "/* type */", &mut app)
                     )
                 }
             },

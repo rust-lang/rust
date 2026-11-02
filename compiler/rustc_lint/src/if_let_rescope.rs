@@ -3,16 +3,15 @@ use std::ops::ControlFlow;
 
 use hir::intravisit::{self, Visitor};
 use rustc_ast::Recovered;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic, SuggestionStyle, msg};
+use rustc_errors::{Applicability, Diag, Subdiagnostic, SuggestionStyle, msg};
 use rustc_hir::{self as hir, HirIdSet};
+use rustc_lint_defs::{LintId, declare_lint, fcw, impl_lint_pass};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::significant_drop_order::{
     extract_component_with_significant_dtor, ty_dtor_span,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::lint::{LintId, fcw};
-use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::{DUMMY_SP, Span};
 use smallvec::SmallVec;
 
@@ -325,7 +324,7 @@ struct IfLetRescopeRewrite {
 }
 
 impl Subdiagnostic for IfLetRescopeRewrite {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let mut suggestions = vec![];
         for match_head in self.match_heads {
             match match_head {

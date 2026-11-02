@@ -1,2 +1,2 @@
-// rustfmt-edition: 2018
+//@ rustfmt-edition: 2018
 mod bar;

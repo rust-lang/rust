@@ -14,13 +14,13 @@ pub(crate) struct Compiler {
     pub(crate) rustdoc: PathBuf,
     pub(crate) rustflags: Vec<String>,
     pub(crate) rustdocflags: Vec<String>,
-    pub(crate) triple: String,
+    pub(crate) target: String,
     pub(crate) runner: Vec<String>,
 }
 
 impl Compiler {
     pub(crate) fn set_cross_linker_and_runner(&mut self) {
-        match self.triple.as_str() {
+        match self.target.as_str() {
             "aarch64-unknown-linux-gnu" => {
                 // We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
                 self.rustflags.push("-Clinker=aarch64-linux-gnu-gcc".to_owned());
@@ -122,7 +122,7 @@ impl CargoProject {
     fn build_cmd(&self, command: &str, compiler: &Compiler, dirs: &Dirs) -> Command {
         let mut cmd = self.base_cmd(command, &compiler.cargo, dirs);
 
-        cmd.arg("--target").arg(&compiler.triple);
+        cmd.arg("--target").arg(&compiler.target);
 
         cmd.env("RUSTC", &compiler.rustc);
         cmd.env("RUSTDOC", &compiler.rustdoc);
@@ -130,7 +130,7 @@ impl CargoProject {
         rustflags_to_cmd_env(&mut cmd, "RUSTDOCFLAGS", &compiler.rustdocflags);
         if !compiler.runner.is_empty() {
             cmd.env(
-                format!("CARGO_TARGET_{}_RUNNER", compiler.triple.to_uppercase().replace('-', "_")),
+                format!("CARGO_TARGET_{}_RUNNER", compiler.target.to_uppercase().replace('-', "_")),
                 compiler.runner.join(" "),
             );
         }

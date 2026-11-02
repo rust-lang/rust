@@ -1,8 +1,10 @@
+use rustc_attr_ir::find_attr;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{find_attr, intravisit};
+use rustc_hir::intravisit;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::sym;
 
@@ -21,6 +23,30 @@ pub(crate) fn generics(tcx: TyCtxt<'_>) {
             let generics = tcx.generics_of(did);
             diag.span_note(tcx.def_span(did), format!("{generics:#?}"));
             diag.emit();
+        }
+    }
+}
+
+pub(crate) fn object_lifetime_defaults(tcx: TyCtxt<'_>) {
+    for def_id in tcx.hir_crate_items(()).definitions() {
+        if def_id == hir::def_id::CRATE_DEF_ID {
+            continue;
+        }
+
+        if !find_attr!(tcx, def_id, RustcDumpObjectLifetimeDefaults) {
+            continue;
+        }
+
+        for param in &tcx.generics_of(def_id).own_params {
+            let ty::GenericParamDefKind::Type { .. } = param.kind else { continue };
+            let default = tcx.object_lifetime_default(param.def_id);
+            let repr = match default {
+                ObjectLifetimeDefault::Empty => "Empty".to_owned(),
+                ObjectLifetimeDefault::Static => "'static".to_owned(),
+                ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
+                ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
+            };
+            tcx.dcx().span_err(tcx.def_span(param.def_id), repr);
         }
     }
 }
@@ -50,7 +76,7 @@ pub(crate) fn clauses_and_item_bounds(tcx: TyCtxt<'_>) {
         #[expect(deprecated)] // we don't want to unnecessarily retrieve the attrs twice in a row.
         let attrs = tcx.get_all_attrs(id);
 
-        if find_attr!(attrs, RustcDumpPredicates) {
+        if find_attr!(attrs, RustcDumpClauses) {
             let clauses = tcx
                 .clauses_of(id)
                 .instantiate_identity(tcx)
@@ -59,7 +85,7 @@ pub(crate) fn clauses_and_item_bounds(tcx: TyCtxt<'_>) {
                 .map(Unnormalized::skip_norm_wip);
             let span = tcx.def_span(id);
 
-            let mut diag = tcx.dcx().struct_span_err(span, sym::rustc_dump_predicates.as_str());
+            let mut diag = tcx.dcx().struct_span_err(span, sym::rustc_dump_clauses.as_str());
             for clause in clauses {
                 diag.note(format!("{clause:?}"));
             }
@@ -78,7 +104,7 @@ pub(crate) fn clauses_and_item_bounds(tcx: TyCtxt<'_>) {
                     for bound in bounds {
                         diag.note(format!("{bound:?}"));
                     }
-                    diag.emit()
+                    diag.emit_err()
                 }
                 kind => tcx.dcx().span_delayed_bug(
                     tcx.def_span(id),

@@ -1,4 +1,5 @@
-#![allow(clippy::mut_mut)]
+#![warn(clippy::unnecessary_mut_passed)]
+#![expect(clippy::mut_mut)]
 
 fn takes_ref(a: &i32) {}
 fn takes_refmut(a: &mut i32) {}

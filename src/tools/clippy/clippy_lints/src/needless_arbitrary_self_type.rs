@@ -2,8 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use rustc_ast::ast::{BindingMode, ByRef, Lifetime, Param, PatKind, TyKind};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, declare_lint_pass};
 use rustc_span::symbol::kw;
 
 declare_clippy_lint! {
@@ -75,11 +74,11 @@ impl EarlyLintPass for NeedlessArbitrarySelfType {
             TyKind::Path(None, path) if let PatKind::Ident(BindingMode(ByRef::No, mutbl), _, _) = p.pat.kind => {
                 (path, Mode::Value, mutbl)
             },
-            TyKind::Ref(lifetime, mut_ty)
-                if let TyKind::Path(None, path) = &mut_ty.ty.kind
+            TyKind::Ref(lifetime, ty, mutbl)
+                if let TyKind::Path(None, path) = &ty.kind
                     && let PatKind::Ident(BindingMode::NONE, _, _) = p.pat.kind =>
             {
-                (path, Mode::Ref(*lifetime), mut_ty.mutbl)
+                (path, Mode::Ref(*lifetime), *mutbl)
             },
             _ => return,
         };

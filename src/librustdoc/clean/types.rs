@@ -8,27 +8,29 @@ use arrayvec::ArrayVec;
 use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_ast as ast;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{
+    AttributeKind, ConstStability, DeprecatedSince, Deprecation, DocAttribute, Stability,
+    StableSince, find_attr,
+};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, DocAttribute};
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::lang_items::LangItem;
-use rustc_hir::{Attribute, BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
+use rustc_hir::{BodyId, Mutability};
 use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;
-use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{
-    DocFragment, add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments,
+    DocFragment, add_doc_fragment, attrs_to_doc_fragments, span_of_fragments,
 };
 use rustc_session::Session;
 use rustc_span::def_id::{CRATE_DEF_ID, ModId};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, FileName, Ident, Loc, RemapPathScopeComponents};
+use rustc_span::{DUMMY_SP, FileName, Ident, Loc, RemapPathScopeComponents, span_bug};
 use tracing::{debug, trace};
 
 pub(crate) use self::ItemKind::*;
@@ -236,31 +238,12 @@ impl ExternalCrate {
             .unwrap_or(Unknown) // Well, at least we tried.
     }
 
-    fn mapped_root_modules<T>(
+    fn fake_doc_items<T>(
         &self,
         tcx: TyCtxt<'_>,
         f: impl Fn(DefId, TyCtxt<'_>) -> Option<(DefId, T)>,
     ) -> impl Iterator<Item = (DefId, T)> {
-        let root = self.def_id();
-
-        if root.is_local() {
-            Either::Left(
-                tcx.hir_root_module()
-                    .item_ids
-                    .iter()
-                    .filter(move |&&id| matches!(tcx.hir_item(id).kind, hir::ItemKind::Mod(..)))
-                    .filter_map(move |&id| f(id.owner_id.into(), tcx)),
-            )
-        } else {
-            Either::Right(
-                tcx.module_children(root)
-                    .iter()
-                    .filter_map(|item| {
-                        if let Res::Def(DefKind::Mod, did) = item.res { Some(did) } else { None }
-                    })
-                    .filter_map(move |did| f(did, tcx)),
-            )
-        }
+        tcx.fake_doc_items(self.crate_num).into_iter().filter_map(move |did| f(*did, tcx))
     }
 
     pub(crate) fn keywords(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = (DefId, Symbol)> {
@@ -281,7 +264,7 @@ impl ExternalCrate {
         let as_target = move |did: DefId, tcx: TyCtxt<'_>| -> Option<(DefId, Symbol)> {
             find_attr!(tcx, did, Doc(d) => callback(d)).flatten().map(|value| (did, value))
         };
-        self.mapped_root_modules(tcx, as_target)
+        self.fake_doc_items(tcx, as_target)
     }
 
     pub(crate) fn primitives(
@@ -316,7 +299,7 @@ impl ExternalCrate {
             Some((def_id, prim))
         }
 
-        self.mapped_root_modules(tcx, as_primitive)
+        self.fake_doc_items(tcx, as_primitive)
     }
 }
 
@@ -446,8 +429,8 @@ impl Item {
             // versions; the paths that are exposed through it are "deprecated" because they
             // were never supposed to work at all.
             let stab = self.stability(tcx)?;
-            if let rustc_hir::StabilityLevel::Stable {
-                allowed_through_unstable_modules: Some(note),
+            if let rustc_attr_ir::StabilityLevel::Stable {
+                allowed_through_unstable_modules: Some((note, _)),
                 ..
             } = stab.level
             {
@@ -478,13 +461,15 @@ impl Item {
     }
 
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
+        use rustc_ast::attr::AttributeExt;
+
         self.item_id
             .as_def_id()
             .map(|did| {
-                inner_docs(
-                    #[allow(deprecated)]
-                    tcx.get_all_attrs(did),
-                )
+                #[allow(deprecated)]
+                tcx.get_all_attrs(did).iter().any(|attr| {
+                    attr.doc_resolution_scope().is_some_and(|style| style == ast::AttrStyle::Inner)
+                })
             })
             .unwrap_or(false)
     }
@@ -596,7 +581,7 @@ impl Item {
     }
 
     pub(crate) fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
-        use crate::html::format::{href, link_tooltip};
+        use crate::html::format::{href_with_path_check, link_tooltip};
 
         let Some(links) = cx.cache().intra_doc_links.get(&self.item_or_reexport_id()) else {
             return vec![];
@@ -605,7 +590,7 @@ impl Item {
             .iter()
             .filter_map(|ItemLink { link: s, link_text, page_id: id, fragment }| {
                 debug!(?id);
-                if let Ok(HrefInfo { mut url, .. }) = href(*id, cx) {
+                if let Ok(HrefInfo { mut url, .. }) = href_with_path_check(*id, cx, link_text) {
                     debug!(?url);
                     match fragment {
                         Some(UrlFragment::Item(def_id)) => {
@@ -621,7 +606,7 @@ impl Item {
                     Some(RenderedLink {
                         original_text: s.clone(),
                         new_text: link_text.clone(),
-                        tooltip: link_tooltip(*id, fragment, cx).to_string(),
+                        tooltip: link_tooltip(*id, fragment, cx, Some(link_text)).to_string(),
                         href: url,
                     })
                 } else {
@@ -984,10 +969,10 @@ pub(crate) enum ItemKind {
     AssocTypeItem(Box<TypeAlias>, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
-    /// This item represents a module with a `#[doc(keyword = "...")]` attribute which is used
+    /// This item represents an anonymous constant with a `#[doc(keyword = "...")]` attribute which is used
     /// to generate documentation for Rust keywords.
     KeywordItem,
-    /// This item represents a module with a `#[doc(attribute = "...")]` attribute which is used
+    /// This item represents an anonymous constant with a `#[doc(attribute = "...")]` attribute which is used
     /// to generate documentation for Rust builtin attributes.
     AttributeItem,
 }
@@ -1081,7 +1066,7 @@ pub struct RenderedLink {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Attributes {
     pub(crate) doc_strings: Vec<DocFragment>,
-    pub(crate) other_attrs: ThinVec<hir::Attribute>,
+    pub(crate) other_attrs: ThinVec<rustc_attr_ir::Attribute>,
 }
 
 impl Attributes {
@@ -1093,13 +1078,13 @@ impl Attributes {
         find_attr!(&self.other_attrs, Doc(d) if d.hidden.is_some())
     }
 
-    pub(crate) fn from_hir(attrs: &[hir::Attribute]) -> Attributes {
+    pub(crate) fn from_hir(attrs: &[rustc_attr_ir::Attribute]) -> Attributes {
         Attributes::from_hir_iter(attrs.iter().map(|attr| (attr, None)), false)
     }
 
     pub(crate) fn from_hir_with_additional(
-        attrs: &[hir::Attribute],
-        (additional_attrs, def_id): (&[hir::Attribute], DefId),
+        attrs: &[rustc_attr_ir::Attribute],
+        (additional_attrs, def_id): (&[rustc_attr_ir::Attribute], DefId),
     ) -> Attributes {
         // Additional documentation should be shown before the original documentation.
         let attrs1 = additional_attrs.iter().map(|attr| (attr, Some(def_id)));
@@ -1108,7 +1093,7 @@ impl Attributes {
     }
 
     pub(crate) fn from_hir_iter<'a>(
-        attrs: impl Iterator<Item = (&'a hir::Attribute, Option<DefId>)>,
+        attrs: impl Iterator<Item = (&'a rustc_attr_ir::Attribute, Option<DefId>)>,
         doc_only: bool,
     ) -> Attributes {
         let (doc_strings, other_attrs) = attrs_to_doc_fragments(attrs, doc_only);
@@ -1138,7 +1123,7 @@ impl Attributes {
         let mut aliases = FxIndexSet::default();
 
         for attr in &self.other_attrs {
-            if let Attribute::Parsed(AttributeKind::Doc(d)) = attr {
+            if let rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d)) = attr {
                 for (alias, _) in &d.aliases {
                     aliases.insert(*alias);
                 }
@@ -1345,6 +1330,9 @@ pub(crate) struct Parameter {
     /// This field is used to represent "const" arguments from the `rustc_legacy_const_generics`
     /// feature. More information in <https://github.com/rust-lang/rust/issues/83167>.
     pub(crate) is_const: bool,
+    /// Flags whether this parameter is actually a splat (e.g., `#[rustc_splat]`).
+    /// Refer to <github.com/rust-lang/rust/issues/153629>
+    pub(crate) is_splat: bool,
 }
 
 impl Parameter {
@@ -1366,7 +1354,7 @@ impl Trait {
         tcx.trait_is_auto(self.def_id)
     }
     pub(crate) fn is_notable_trait(&self, tcx: TyCtxt<'_>) -> bool {
-        tcx.is_doc_notable_trait(self.def_id)
+        tcx.doc_notable_trait(self.def_id).is_some()
     }
     pub(crate) fn safety(&self, tcx: TyCtxt<'_>) -> hir::Safety {
         tcx.trait_def(self.def_id).safety
@@ -1888,27 +1876,35 @@ impl PrimitiveType {
     /// `rustc_doc_primitive`, then it's entirely random whether `std` or the other crate is picked.
     /// (no_std crates are usually fine unless multiple dependencies define a primitive.)
     pub(crate) fn primitive_locations(tcx: TyCtxt<'_>) -> &FxIndexMap<PrimitiveType, DefId> {
+        fn as_primitive(def_id: DefId, tcx: TyCtxt<'_>) -> Option<PrimitiveType> {
+            let (attr_span, prim_sym) = find_attr!(
+                tcx, def_id,
+                RustcDocPrimitive(span, prim) => (*span, *prim)
+            )?;
+            let Some(prim) = PrimitiveType::from_symbol(prim_sym) else {
+                span_bug!(attr_span, "primitive `{prim_sym}` is not a member of `PrimitiveType`");
+            };
+            Some(prim)
+        }
+
         static PRIMITIVE_LOCATIONS: OnceCell<FxIndexMap<PrimitiveType, DefId>> = OnceCell::new();
         PRIMITIVE_LOCATIONS.get_or_init(|| {
             let mut primitive_locations = FxIndexMap::default();
             // NOTE: technically this misses crates that are only passed with `--extern` and not loaded when checking the crate.
             // This is a degenerate case that I don't plan to support.
-            for &crate_num in tcx.crates(()) {
-                let e = ExternalCrate { crate_num };
-                let crate_name = e.name(tcx);
-                debug!(?crate_num, ?crate_name);
-                for (def_id, prim) in e.primitives(tcx) {
-                    // HACK: try to link to std instead where possible
-                    if crate_name == sym::core && primitive_locations.contains_key(&prim) {
-                        continue;
-                    }
+
+            let mut ids = tcx.all_fake_doc_items(()).clone();
+
+            // HACK: Primitives are unhygienically duplicated by `include!`.
+            // Sort them with core first, so that if std is present in the crate graph,
+            // core's items are overridden and we link to std preferentially.
+            ids.iter_mut().partition_in_place(|id| tcx.crate_name(id.krate) == sym::core);
+            for def_id in ids {
+                if let Some(prim) = as_primitive(def_id, tcx) {
                     primitive_locations.insert(prim, def_id);
                 }
             }
-            let local_primitives = ExternalCrate { crate_num: LOCAL_CRATE }.primitives(tcx);
-            for (def_id, prim) in local_primitives {
-                primitive_locations.insert(prim, def_id);
-            }
+
             primitive_locations
         })
     }
@@ -2527,7 +2523,7 @@ mod size_asserts {
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 8);
-    static_assert_size!(ItemInner, 136);
+    static_assert_size!(ItemInner, 144);
     static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 32);
     static_assert_size!(Type, 32);

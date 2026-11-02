@@ -43,7 +43,7 @@
 //! For more information, see <https://github.com/rust-lang/rustc_public>.
 
 #![allow(rustc::usage_of_ty_tykind)]
-#![doc(test(attr(allow(unused_variables), deny(warnings), allow(internal_features))))]
+#![doc(test(attr(allow(unused_variables), deny(warnings))))]
 #![feature(sized_hierarchy)]
 
 use std::fmt::Debug;

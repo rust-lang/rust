@@ -5,8 +5,7 @@ use rustc_ast::ast::{Fn, FnRetTy, GenericParam, GenericParamKind};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{HasAttrs as _, NodeId};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -20,7 +19,7 @@ declare_clippy_lint! {
     /// Avoid complex inline bounds, which could make a function declaration more difficult to read.
     ///
     /// ### Known limitations
-    /// Only lints functions and method declararions. Bounds on structs, enums,
+    /// Only lints functions and method declarations. Bounds on structs, enums,
     /// and impl blocks are not yet covered.
     ///
     /// ### Example

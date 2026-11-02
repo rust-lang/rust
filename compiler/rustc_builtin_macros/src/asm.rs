@@ -5,9 +5,9 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::PResult;
 use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
+use rustc_lint_defs::builtin::BAD_ASM_STYLE;
 use rustc_parse::parser::asm::*;
 use rustc_parse_format as parse;
-use rustc_session::lint;
 use rustc_span::{ErrorGuaranteed, InnerSpan, Span, Symbol, sym};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
@@ -65,7 +65,7 @@ fn validate_asm_args<'a>(
     for arg in args {
         for attr in arg.attributes.0.iter() {
             if !matches!(attr.name(), Some(sym::cfg | sym::cfg_attr)) {
-                ecx.dcx().emit_err(diagnostics::AsmAttributeNotSupported { span: attr.span() });
+                ecx.dcx().emit_err(diagnostics::AsmAttributeNotSupported { span: attr.span });
             }
         }
 
@@ -314,7 +314,7 @@ fn expand_preparsed_asm(
                 Ok(template_part) => template_part,
                 Err(err) => {
                     return ExpandResult::Ready(Err(match err {
-                        Ok((err, _)) => err.emit(),
+                        Ok((err, _)) => err.emit_err(),
                         Err(guar) => guar,
                     }));
                 }
@@ -340,7 +340,7 @@ fn expand_preparsed_asm(
                     if let Some(pos) = snippet.find(needle) {
                         let end = pos
                             + snippet[pos..]
-                                .find(|c| matches!(c, '\n' | ';' | '\\' | '"'))
+                                .find(['\n', ';', '\\', '"'])
                                 .unwrap_or(snippet[pos..].len() - 1);
                         let inner = InnerSpan::new(pos, end);
                         return template_sp.from_inner(inner);
@@ -351,7 +351,7 @@ fn expand_preparsed_asm(
 
             if template_str.contains(".intel_syntax") {
                 ecx.psess().buffer_lint(
-                    lint::builtin::BAD_ASM_STYLE,
+                    BAD_ASM_STYLE,
                     find_span(".intel_syntax"),
                     ecx.current_expansion.lint_node_id,
                     diagnostics::AvoidIntelSyntax,
@@ -359,7 +359,7 @@ fn expand_preparsed_asm(
             }
             if template_str.contains(".att_syntax") {
                 ecx.psess().buffer_lint(
-                    lint::builtin::BAD_ASM_STYLE,
+                    BAD_ASM_STYLE,
                     find_span(".att_syntax"),
                     ecx.current_expansion.lint_node_id,
                     diagnostics::AvoidAttSyntax,
@@ -407,7 +407,7 @@ fn expand_preparsed_asm(
             if let Some((label, span)) = err.secondary_label {
                 e.span_label(span_in_template(span), label);
             }
-            let guar = e.emit();
+            let guar = e.emit_err();
             return ExpandResult::Ready(Err(guar));
         }
 
@@ -437,7 +437,7 @@ fn expand_preparsed_asm(
 
                                 let positional_args = args.operands.len()
                                     - args.named_args.len()
-                                    - args.reg_args.len();
+                                    - args.reg_args.count();
                                 let positional = if positional_args != args.operands.len() {
                                     "positional "
                                 } else {
@@ -481,12 +481,10 @@ fn expand_preparsed_asm(
                                 Some(&idx) => Some(idx),
                                 None => {
                                     let span = arg.position_span;
-                                    ecx.dcx()
-                                        .create_err(diagnostics::AsmNoMatchedArgumentName {
-                                            name: name.to_owned(),
-                                            span: span_in_template(span),
-                                        })
-                                        .emit();
+                                    ecx.dcx().emit_err(diagnostics::AsmNoMatchedArgumentName {
+                                        name: name.to_owned(),
+                                        span: span_in_template(span),
+                                    });
                                     None
                                 }
                             }
@@ -590,19 +588,13 @@ pub(super) fn expand_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
-                Ok(inline_asm) => Box::new(ast::Expr {
-                    id: ast::DUMMY_NODE_ID,
-                    kind: ast::ExprKind::InlineAsm(Box::new(inline_asm)),
-                    span: sp,
-                    attrs: ast::AttrVec::new(),
-                    tokens: None,
-                }),
+                Ok(inline_asm) => ecx.expr(sp, ast::ExprKind::InlineAsm(Box::new(inline_asm))),
                 Err(guar) => DummyResult::raw_expr(sp, Some(guar)),
             };
             MacEager::expr(expr)
         }
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             DummyResult::any(sp, guar)
         }
     })
@@ -620,19 +612,13 @@ pub(super) fn expand_naked_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
-                Ok(inline_asm) => Box::new(ast::Expr {
-                    id: ast::DUMMY_NODE_ID,
-                    kind: ast::ExprKind::InlineAsm(Box::new(inline_asm)),
-                    span: sp,
-                    attrs: ast::AttrVec::new(),
-                    tokens: None,
-                }),
+                Ok(inline_asm) => ecx.expr(sp, ast::ExprKind::InlineAsm(Box::new(inline_asm))),
                 Err(guar) => DummyResult::raw_expr(sp, Some(guar)),
             };
             MacEager::expr(expr)
         }
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             DummyResult::any(sp, guar)
         }
     })
@@ -650,22 +636,16 @@ pub(super) fn expand_global_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             match mac {
-                Ok(inline_asm) => MacEager::items(smallvec![Box::new(ast::Item {
-                    attrs: ast::AttrVec::new(),
-                    id: ast::DUMMY_NODE_ID,
-                    kind: ast::ItemKind::GlobalAsm(Box::new(inline_asm)),
-                    vis: ast::Visibility {
-                        span: sp.shrink_to_lo(),
-                        kind: ast::VisibilityKind::Inherited,
-                    },
-                    span: sp,
-                    tokens: None,
-                })]),
+                Ok(inline_asm) => MacEager::items(smallvec![ecx.item(
+                    sp,
+                    ast::AttrVec::new(),
+                    ast::ItemKind::GlobalAsm(Box::new(inline_asm))
+                )]),
                 Err(guar) => DummyResult::any(sp, guar),
             }
         }
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             DummyResult::any(sp, guar)
         }
     })

@@ -13,8 +13,9 @@ use run_make_support::{diff, run_in_tmpdir, rustc};
 
 // Test emitting text outputs to stdout works correctly
 fn run_diff(name: &str, file_args: &[&str]) {
-    rustc().emit(format!("{name}={name}")).input("test.rs").args(file_args).run();
-    let out = rustc().emit(format!("{name}=-")).input("test.rs").run().stdout_utf8();
+    rustc().edition("2015").emit(format!("{name}={name}")).input("test.rs").args(file_args).run();
+    let out =
+        rustc().edition("2015").emit(format!("{name}=-")).input("test.rs").run().stdout_utf8();
     diff().expected_file(name).actual_text("stdout", &out).run();
 }
 
@@ -29,7 +30,13 @@ fn run_terminal_err_diff(name: &str) {
     let terminal = File::options().read(true).write(true).open(r"\\.\CONOUT$").unwrap();
 
     let err = File::create(name).unwrap();
-    rustc().emit(format!("{name}=-")).input("test.rs").stdout(terminal).stderr(err).run_fail();
+    rustc()
+        .edition("2015")
+        .emit(format!("{name}=-"))
+        .input("test.rs")
+        .stdout(terminal)
+        .stderr(err)
+        .run_fail();
     diff().expected_file(format!("emit-{name}.stderr")).actual_file(name).run();
 }
 
@@ -47,6 +54,7 @@ fn main() {
 
         // Test error for emitting multiple types to stdout
         rustc()
+            .edition("2015")
             .input("test.rs")
             .emit("asm=-")
             .emit("llvm-ir=-")
@@ -58,6 +66,7 @@ fn main() {
 
         // Same as above, but using `-o`
         rustc()
+            .edition("2015")
             .input("test.rs")
             .output("-")
             .emit("asm,llvm-ir,dep-info,mir")
@@ -69,6 +78,11 @@ fn main() {
             .run();
 
         // Test that `-o -` redirected to a file works correctly (#26719)
-        rustc().input("test.rs").output("-").stdout(File::create("out-stdout").unwrap()).run();
+        rustc()
+            .edition("2015")
+            .input("test.rs")
+            .output("-")
+            .stdout(File::create("out-stdout").unwrap())
+            .run();
     });
 }

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{SpanlessEq, get_parent_expr, sym};
@@ -214,7 +214,7 @@ fn emit_lint<'tcx>(
 pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
     if let Some(parent_expr) = get_parent_expr(cx, expr)
         && let ExprKind::Binary(op, left, right) = parent_expr.kind
-        && op.span.eq_ctxt(expr.span)
+        && op.span.ctxt() == expr.span.ctxt()
         && let Ok(op) = Op::try_from(op.node)
     {
         // Check `left` and `right` expression in any order
@@ -314,8 +314,8 @@ pub(super) fn check_is_some_is_none<'tcx>(
         .expr_ty_adjusted(recv)
         .peel_refs()
         .is_diag_item(cx, sym::Option)
-        && (is_some || msrv.meets(cx, msrvs::IS_NONE_OR))
         && let Ok(map_func) = MapFunc::try_from(arg)
+        && (is_some || msrv.meets(cx, msrvs::IS_NONE_OR))
     {
         let method = if is_some { "is_some_and" } else { "is_none_or" };
         let lint_span = recv.span.to(call_span);

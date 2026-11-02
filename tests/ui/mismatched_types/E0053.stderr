@@ -1,12 +1,14 @@
 error[E0053]: method `foo` has an incompatible type for trait
   --> $DIR/E0053.rs:9:15
    |
+LL | impl Foo for Bar {
 LL |     fn foo(x: i16) { }
    |               ^^^ expected `u16`, found `i16`
    |
 note: type in trait
   --> $DIR/E0053.rs:2:15
    |
+LL | trait Foo {
 LL |     fn foo(x: u16);
    |               ^^^
    = note: expected signature `fn(u16)`
@@ -20,12 +22,16 @@ LL +     fn foo(x: u16) { }
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/E0053.rs:11:12
    |
+LL | impl Foo for Bar {
+...
 LL |     fn bar(&mut self) { }
    |            ^^^^^^^^^ types differ in mutability
    |
 note: type in trait
   --> $DIR/E0053.rs:3:12
    |
+LL | trait Foo {
+LL |     fn foo(x: u16);
 LL |     fn bar(&self);
    |            ^^^^^
    = note: expected signature `fn(&Bar)`

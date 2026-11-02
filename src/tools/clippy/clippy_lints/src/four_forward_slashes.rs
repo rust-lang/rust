@@ -1,10 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::SpanExt as _;
-use itertools::Itertools;
+use itertools::Itertools as _;
+use rustc_ast::AttrStyle;
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_errors::Applicability;
 use rustc_hir::Item;
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -48,8 +49,25 @@ impl<'tcx> LateLintPass<'tcx> for FourForwardSlashes {
             .tcx
             .hir_attrs(item.hir_id())
             .iter()
-            .filter(|i| i.is_doc_comment().is_some())
-            .fold(item.span.shrink_to_lo(), |span, attr| span.to(attr.span()));
+            // Only fold in OUTER doc comments. An inner doc (`//!`) inside the item's
+            // body lowers onto the item with `AttrStyle::Inner`; folding its span drags
+            // `end_line` down into the body, so the upward `////` scan then flags a
+            // regular comment there (see #16168).
+            .filter_map(|attr| {
+                if let Attribute::Parsed(AttributeKind::DocComment {
+                    style: AttrStyle::Outer,
+                    span,
+                    ..
+                }) = attr
+                {
+                    Some(*span)
+                } else {
+                    None
+                }
+            })
+            .fold(item.span.shrink_to_lo(), |span, doc_comment_span| {
+                span.to(doc_comment_span)
+            });
         let (Some(file), _, _, end_line, _) = sm.span_to_location_info(span) else {
             return;
         };

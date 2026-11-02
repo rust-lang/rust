@@ -1,0 +1,19 @@
+// Config docs: <https://docs.renovatebot.com/configuration-options/>
+// Shared rust-lang presets: <https://github.com/rust-lang/renovate>
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>rust-lang/renovate:actions"
+  ],
+  // Restrict to Actions updates.
+  //
+  // We don't want automatic Rust dependency bumps in rustfmt repo for two reasons:
+  //
+  // 1. Some dependency bumps can cause subtle breaking formatting changes that's not picked up by
+  //    the / test suites.
+  // 2. We don't want to pick up immediately-new artifacts (cf. `arrayref` style compromise,
+  //    <https://blog.rust-lang.org/2026/08/20/supply-chain-attack-on-arrayref/>).
+  "enabledManagers": [
+    "github-actions"
+  ]
+}

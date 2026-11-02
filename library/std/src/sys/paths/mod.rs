@@ -5,7 +5,10 @@ cfg_select! {
         mod unsupported;
         mod imp {
             pub use super::hermit::{getcwd, temp_dir};
-            pub use super::unsupported::{chdir, SplitPaths, split_paths, JoinPathsError, join_paths, current_exe, home_dir};
+            pub use super::unsupported::{
+                JoinPathsError, SplitPaths, SplitPathsRef, chdir, current_exe, home_dir,
+                join_paths, split_paths, split_paths_ref,
+            };
         }
     }
     target_os = "motor" => {
@@ -13,8 +16,10 @@ cfg_select! {
         #[expect(dead_code)]
         mod unsupported;
         mod imp {
-            pub use super::motor::{getcwd, chdir, current_exe, temp_dir};
-            pub use super::unsupported::{SplitPaths, split_paths, JoinPathsError, join_paths, home_dir};
+            pub use super::motor::{
+                JoinPathsError, SplitPaths, SplitPathsRef, chdir, current_exe, getcwd, home_dir,
+                join_paths, split_paths, split_paths_ref, temp_dir,
+            };
         }
     }
     all(target_vendor = "fortanix", target_env = "sgx") => {
@@ -23,7 +28,10 @@ cfg_select! {
         mod unsupported;
         mod imp {
             pub use super::sgx::chdir;
-            pub use super::unsupported::{getcwd, SplitPaths, split_paths, JoinPathsError, join_paths, current_exe, temp_dir, home_dir};
+            pub use super::unsupported::{
+                JoinPathsError, SplitPaths, SplitPathsRef, current_exe, getcwd, home_dir,
+                join_paths, split_paths, split_paths_ref, temp_dir,
+            };
         }
     }
     target_os = "uefi" => {
@@ -39,8 +47,11 @@ cfg_select! {
         #[expect(dead_code)]
         mod unsupported;
         mod imp {
-            pub use super::wasi::{getcwd, chdir, temp_dir};
-            pub use super::unsupported::{current_exe, SplitPaths, split_paths, JoinPathsError, join_paths, home_dir};
+            pub use super::unsupported::{
+                JoinPathsError, SplitPaths, SplitPathsRef, current_exe, home_dir, join_paths,
+                split_paths, split_paths_ref,
+            };
+            pub use super::wasi::{chdir, getcwd, temp_dir};
         }
     }
     target_os = "windows" => {
@@ -54,6 +65,6 @@ cfg_select! {
 }
 
 pub use imp::{
-    JoinPathsError, SplitPaths, chdir, current_exe, getcwd, home_dir, join_paths, split_paths,
-    temp_dir,
+    JoinPathsError, SplitPaths, SplitPathsRef, chdir, current_exe, getcwd, home_dir, join_paths,
+    split_paths, split_paths_ref, temp_dir,
 };

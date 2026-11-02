@@ -1,6 +1,6 @@
 # GPU target notification group
 
-**Github Label:** None <br>
+**GitHub Label:** None <br>
 **Ping command:** `@rustbot ping gpu-target`
 
 This notification group deals with linker-related issues and their integration within the compiler.

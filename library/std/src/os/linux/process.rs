@@ -5,6 +5,7 @@
 #![unstable(feature = "linux_pidfd", issue = "82971")]
 
 use crate::io::Result;
+use crate::macros::rustdoc_skip_body;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::process::{self, ExitStatus};
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -20,8 +21,10 @@ struct InnerPidFd;
 /// with [`create_pidfd`]. Subsequently, the created pidfd can be retrieved
 /// from the [`Child`] by calling [`pidfd`] or [`into_pidfd`].
 ///
-/// Example:
-/// ```no_run
+/// # Examples
+///
+#[cfg_attr(target_os = "linux", doc = "```no_run")]
+#[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
 /// #![feature(linux_pidfd)]
 /// use std::os::linux::process::{CommandExt, ChildExt};
 /// use std::process::Command;
@@ -59,6 +62,7 @@ impl PidFd {
     /// races. But doing so will return an Error.
     ///
     /// [`Child::kill`]: process::Child::kill
+    #[rustdoc_skip_body]
     pub fn kill(&self) -> Result<()> {
         self.inner.kill()
     }
@@ -72,6 +76,7 @@ impl PidFd {
     /// will return an Error.
     ///
     /// [`Child::wait`]: process::Child::wait
+    #[rustdoc_skip_body]
     pub fn wait(&self) -> Result<ExitStatus> {
         self.inner.wait().map(FromInner::from_inner)
     }
@@ -82,6 +87,7 @@ impl PidFd {
     /// to reap a child will return an ExitStatus, further attempts will return an Error.
     ///
     /// [`Child::try_wait`]: process::Child::try_wait
+    #[rustdoc_skip_body]
     pub fn try_wait(&self) -> Result<Option<ExitStatus>> {
         Ok(self.inner.try_wait()?.map(FromInner::from_inner))
     }
@@ -108,36 +114,42 @@ impl IntoInner<InnerPidFd> for PidFd {
 
 impl AsRawFd for PidFd {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().as_inner().as_raw_fd()
     }
 }
 
 impl FromRawFd for PidFd {
+    #[rustdoc_skip_body]
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         Self::from_inner(InnerPidFd::from_raw_fd(fd))
     }
 }
 
 impl IntoRawFd for PidFd {
+    #[rustdoc_skip_body]
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_inner().into_raw_fd()
     }
 }
 
 impl AsFd for PidFd {
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.as_inner().as_inner().as_fd()
     }
 }
 
 impl From<OwnedFd> for PidFd {
+    #[rustdoc_skip_body]
     fn from(fd: OwnedFd) -> Self {
         Self::from_inner(InnerPidFd::from_inner(FileDesc::from_inner(fd)))
     }
 }
 
 impl From<PidFd> for OwnedFd {
+    #[rustdoc_skip_body]
     fn from(pid_fd: PidFd) -> Self {
         pid_fd.into_inner().into_inner().into_inner()
     }
@@ -209,6 +221,7 @@ pub impl(self) trait CommandExt {
 }
 
 impl CommandExt for process::Command {
+    #[rustdoc_skip_body]
     fn create_pidfd(&mut self, val: bool) -> &mut process::Command {
         self.as_inner_mut().create_pidfd(val);
         self

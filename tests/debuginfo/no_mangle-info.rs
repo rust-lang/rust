@@ -1,4 +1,9 @@
-//@ compile-flags:-g
+//@ revisions: msvc non-msvc
+
+//@ [msvc] only-msvc
+//@ [non-msvc] ignore-msvc
+
+//@ compile-flags:-g --crate-name=no_mangle_info
 //@ min-gdb-version: 10.1
 //@ ignore-backends: gcc
 
@@ -11,10 +16,13 @@
 
 // === LLDB TESTS ==================================================================================
 //@ lldb-command:run
-//@ lldb-command:v TEST
-//@ lldb-check:(unsigned long) TEST = 3735928559
-//@ lldb-command:v OTHER_TEST
-//@ lldb-check:(unsigned long) no_mangle_info::namespace::OTHER_TEST = 42
+//@ [msvc] lldb-command:v no_mangle_info::TEST
+//@ [msvc] lldb-check:[...]no_mangle_info::TEST = 3735928559
+
+//@ [non-msvc] lldb-command:v TEST
+//@ [non-msvc] lldb-check:[...]TEST = 3735928559
+//@ lldb-command:v no_mangle_info::namespace::OTHER_TEST
+//@ lldb-check:[...]no_mangle_info::namespace::OTHER_TEST = 42
 
 // === CDB TESTS ==================================================================================
 //@ cdb-command: g
@@ -36,6 +44,6 @@ pub mod namespace {
 }
 
 pub fn main() {
-    println!("TEST: {}", TEST);
+    println!("TEST: {}", unsafe { TEST} );
     println!("OTHER TEST: {}", namespace::OTHER_TEST); // #break
 }

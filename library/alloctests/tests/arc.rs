@@ -346,47 +346,51 @@ fn issue_158875_make_mut_dont_leak_allocator() {
     assert_eq!(Rc::strong_count(&alloc), 1); // if this is >1, we have a memory leak!
 }
 
-/// Test that `Arc::make_mut` does not cause a UAF if the allocator panics on
-/// clone when it steals the data.
 #[test]
-#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
-fn issue_155746_make_mut_panic_safety() {
-    use std::alloc::{Allocator, System};
-    use std::panic::AssertUnwindSafe;
+#[should_panic = "capacity overflow"]
+fn new_uninit_slice_capacity_overflow() {
+    let _ = Arc::<[u8]>::new_uninit_slice(isize::MAX as usize);
+}
 
-    #[derive(Default)]
-    struct PanickingCloneAlloc {
-        do_panic: Rc<Cell<bool>>,
-    }
-    unsafe impl Allocator for PanickingCloneAlloc {
-        fn allocate(
-            &self,
-            layout: std::alloc::Layout,
-        ) -> Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError> {
-            System.allocate(layout)
-        }
+mod arc_allocator_provenance {
+    //! Regression tests for issues where the pointer passed back to the allocator
+    //! only had the provenance of a reborrow, which is unsound with allocators
+    //! that store metadata next to the allocation.
+    //! Mainly meant to be run in Miri (but should also work outside it).
 
-        unsafe fn deallocate(&self, ptr: std::ptr::NonNull<u8>, layout: std::alloc::Layout) {
-            unsafe { System.deallocate(ptr, layout) }
-        }
-    }
-    impl Clone for PanickingCloneAlloc {
-        fn clone(&self) -> Self {
-            if self.do_panic.get() { panic!() } else { Self { do_panic: self.do_panic.clone() } }
-        }
+    use std::alloc::{AllocError, Allocator, Global, Layout};
+    use std::ptr::NonNull;
+    use std::sync::Arc;
+
+    struct MyMetadataAlloc;
+
+    fn widen(layout: Layout) -> Layout {
+        Layout::from_size_align(layout.size() + 10, layout.align())
+            .unwrap_or_else(|_| std::process::abort())
     }
 
-    let alloc = PanickingCloneAlloc::default();
-    let mut arc = Arc::new_in(vec![vec![1]], alloc.clone());
+    unsafe impl Allocator for MyMetadataAlloc {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            // imagine we are storing metadata in the extra bytes
+            let ptr = Global.allocate(widen(layout))?;
+            Ok(NonNull::slice_from_raw_parts(ptr.cast(), layout.size()))
+        }
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            // SAFETY: we get back a pointer with the same provenance as was
+            // returned by `allocate`, so it's okay to deallocate the full
+            // `layout.size() + 10` bytes through it.
+            unsafe { Global.deallocate(ptr, widen(layout)) }
+        }
+    }
 
-    let _weak = Arc::downgrade(&arc); // create a weak so make_mut steals the data
+    #[test]
+    fn issue_162719() {
+        drop(Arc::<i32, _>::new_uninit_in(MyMetadataAlloc));
+        drop(Arc::new_in(1i32, MyMetadataAlloc));
+    }
 
-    alloc.do_panic.set(true);
-    std::panic::catch_unwind(AssertUnwindSafe(|| {
-        Arc::make_mut(&mut arc);
-    }))
-    .unwrap_err();
-
-    assert_eq!(*arc, [[1]]);
-    assert_eq!(Arc::strong_count(&arc), 1); // if this is 0, we have a UAF!
+    #[test]
+    fn issue_162720() {
+        drop(Arc::new_cyclic_in(|_| 1i32, MyMetadataAlloc));
+    }
 }

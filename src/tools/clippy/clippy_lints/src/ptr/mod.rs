@@ -1,6 +1,5 @@
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, ImplItemKind, ItemKind, Node, TraitFn, TraitItem, TraitItemKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 mod cmp_null;
 mod mut_from_ref;

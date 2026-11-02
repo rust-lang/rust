@@ -85,7 +85,7 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
 
     // Check if `malloc` failed:
     if p.is_null() {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 
     p
@@ -102,7 +102,7 @@ extern "C" fn main(_argc: c_int, _argv: *const *const u8) -> c_int {
 fn rust_eh_personality() {}
 
 #[panic_handler]
-fn panic_handler(_info: &PanicInfo) -> ! { intrinsics::abort() }
+fn panic_handler(_info: &PanicInfo) -> ! { intrinsics::abort_immediate() }
 ```
 
 Note the use of `abort`: the `exchange_malloc` lang item is assumed to
@@ -112,4 +112,4 @@ return a valid pointer, and so needs to do the check internally.
 
 An up-to-date list of all language items can be found [here] in the compiler code.
 
-[here]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_hir/src/lang_items.rs
+[here]: https://github.com/rust-lang/rust/blob/ac62df9b49f9b9036af2a4957db70bf3850785e1/compiler/rustc_attr_ir/src/lang_items.rs#L158

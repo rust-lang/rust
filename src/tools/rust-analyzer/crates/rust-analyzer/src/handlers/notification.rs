@@ -6,6 +6,7 @@ use std::{
     panic::UnwindSafe,
 };
 
+use ide_db::base_db::TargetKind;
 use itertools::Itertools;
 use lsp_types::{
     CancelParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
@@ -373,10 +374,10 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
 
                             let tgt = tgt_name.and_then(|tgt_name| {
                                 Some(match tgt_kind {
-                                    project_model::TargetKind::Bin => Target::Bin(tgt_name),
-                                    project_model::TargetKind::Example => Target::Example(tgt_name),
-                                    project_model::TargetKind::Test => Target::Test(tgt_name),
-                                    project_model::TargetKind::Bench => Target::Benchmark(tgt_name),
+                                    TargetKind::Bin => Target::Bin(tgt_name),
+                                    TargetKind::Example => Target::Example(tgt_name),
+                                    TargetKind::Test => Target::Test(tgt_name),
+                                    TargetKind::Bench => Target::Benchmark(tgt_name),
                                     _ => return None,
                                 })
                             });

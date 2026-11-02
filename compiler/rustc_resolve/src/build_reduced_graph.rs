@@ -5,7 +5,6 @@
 //! unexpanded macros in the fragment are visited and registered.
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
-use std::cell::RefMut;
 use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
@@ -14,21 +13,20 @@ use rustc_ast::{
     DelegationSource, Fn, ForeignItem, ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem,
     StmtKind, TraitAlias, TyAlias,
 };
+use rustc_attr_ir::{Attribute, AttributeKind, MacroUseArgs};
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::sync::WriteGuard;
 use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
-use rustc_hir::Attribute;
-use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::LoadedMacro;
-use rustc_middle::metadata::{ModChild, Reexport};
+use rustc_middle::middle::resolve::{ModChild, PartialRes, Reexport};
 use rustc_middle::ty::{TyCtxtFeed, Visibility};
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{CRATE_MOD_ID, ModId};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, bug, kw, span_bug, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -135,7 +133,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn get_extern_module_with_lock(
         &self,
         def_id: DefId,
-        map_lock: &mut RefMut<'_, FxIndexMap<DefId, ExternModule<'ra>>>,
+        map_lock: &mut WriteGuard<'_, FxIndexMap<DefId, ExternModule<'ra>>>,
     ) -> Option<ExternModule<'ra>> {
         if let module @ Some(..) = map_lock.get(&def_id) {
             return module.copied();
@@ -319,14 +317,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     PathResult::NonModule(partial_res) => {
                         expected_found_error(partial_res.expect_full_res())
                     }
-                    PathResult::Failed { label, suggestion, message, segment, .. } => {
-                        Err(VisResolutionError::FailedToResolve(
-                            segment.span,
-                            segment.name,
+                    PathResult::Failed { label, suggestion, help, message, segment, .. } => {
+                        Err(VisResolutionError::FailedToResolve {
+                            span: segment.span,
+                            segment: segment.name,
                             label,
                             suggestion,
+                            help,
                             message,
-                        ))
+                        })
                     }
                     PathResult::Indeterminate => Err(VisResolutionError::Indeterminate(path.span)),
                 }
@@ -397,8 +396,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Record primary definitions.
         let mut define_extern = |ns| {
             let orig_ident_span = orig_ident.span;
+            let reexport_chain: &[Reexport] = if !reexport_chain.is_empty() {
+                self.arenas.dropless.alloc_slice(reexport_chain)
+            } else {
+                &[]
+            };
             let decl = self.arenas.alloc_decl(DeclData {
-                kind: DeclKind::Def(res),
+                kind: DeclKind::Def(res, reexport_chain),
                 ambiguity: CmCell::new(ambig),
                 initial_vis: vis,
                 ambiguity_vis_max: CmCell::new(None),
@@ -441,8 +445,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 DefKind::Fn
                 | DefKind::AssocFn
                 | DefKind::Static { .. }
-                | DefKind::Const { .. }
-                | DefKind::AssocConst { .. }
+                | DefKind::Const
+                | DefKind::AssocConst
                 | DefKind::Ctor(..),
                 _,
             ) => define_extern(ValueNS),
@@ -459,7 +463,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | DefKind::GlobalAsm
                 | DefKind::Closure
                 | DefKind::SyntheticCoroutineBody
-                | DefKind::Impl { .. },
+                | DefKind::Impl { .. }
+                | DefKind::TestBinderConstraints,
                 _,
             )
             | Res::Local(..)
@@ -567,7 +572,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 // Don't add underscore imports to `single_imports`
                 // because they cannot define any usable names.
                 if target.name != kw::Underscore {
-                    self.r.per_ns(|this, ns| {
+                    self.r.per_ns_mut(|this, ns| {
                         let key = BindingKey::new(IdentKey::new(target), ns);
                         this.resolution_or_default(current_module.to_module(), key, target.span)
                             .borrow_mut(this)
@@ -581,16 +586,17 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
+    /// Note:
+    /// - `item` is the top-level `use` item.
+    /// - `use_tree` is the particular use tree within the top-level `use` item.
     fn build_reduced_graph_for_use_tree(
         &mut self,
-        // This particular use tree
+        item: &Item,
         use_tree: &ast::UseTree,
         id: NodeId,
         parent_prefix: &[Segment],
         nested: bool,
         list_stem: bool,
-        // The whole `use` item
-        item: &Item,
         vis: Visibility,
         root_span: Span,
         feed: TyCtxtFeed<'tcx, LocalDefId>,
@@ -751,14 +757,20 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 }
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
-                for &(ref tree, id) in items {
-                    self.with_owner(id, None, DefKind::Use, use_tree.span(), |this, feed| {
-                        this.build_reduced_graph_for_use_tree(
-                            // This particular use tree
-                            tree, id, &prefix, true, false, // The whole `use` item
-                            item, vis, root_span, feed,
-                        )
-                    });
+                for tree in items {
+                    let id = tree.id;
+                    let feed = self.create_def(id, None, DefKind::Use, use_tree.span());
+                    self.build_reduced_graph_for_use_tree(
+                        item,
+                        &tree.inner,
+                        id,
+                        &prefix,
+                        true,
+                        false,
+                        vis,
+                        root_span,
+                        feed,
+                    );
                 }
 
                 // Empty groups `a::b::{}` are turned into synthetic `self` imports
@@ -773,20 +785,11 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                         prefix: ast::Path::from_ident(Ident::new(kw::SelfLower, new_span)),
                         kind: ast::UseTreeKind::Simple(Some(Ident::new(kw::Underscore, new_span))),
                     };
+                    let vis = Visibility::Restricted(
+                        self.parent_scope.module.nearest_parent_mod().expect_local(),
+                    );
                     self.build_reduced_graph_for_use_tree(
-                        // This particular use tree
-                        &tree,
-                        id,
-                        &prefix,
-                        true,
-                        true,
-                        // The whole `use` item
-                        item,
-                        Visibility::Restricted(
-                            self.parent_scope.module.nearest_parent_mod().expect_local(),
-                        ),
-                        root_span,
-                        feed,
+                        item, &tree, id, &prefix, true, true, vis, root_span, feed,
                     );
                 }
             }
@@ -833,14 +836,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         match item.kind {
             ItemKind::Use(ref use_tree) => {
                 self.build_reduced_graph_for_use_tree(
-                    // This particular use tree
+                    item,
                     use_tree,
                     item.id,
                     &[],
                     false,
                     false,
-                    // The whole `use` item
-                    item,
                     vis,
                     use_tree.span(),
                     feed,
@@ -987,7 +988,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             ItemKind::Impl { .. }
             | ItemKind::ForeignMod(..)
             | ItemKind::GlobalAsm(..)
-            | ItemKind::ConstBlock(..) => {}
+            | ItemKind::ConstBlock(..)
+            | ItemKind::TestBinderConstraints(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
                 unreachable!()
@@ -1292,7 +1294,9 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     // items will be reported as `unused_macros`.
     fn insert_unused_macro(&mut self, ident: Ident, def_id: LocalDefId, node_id: NodeId) {
         if !ident.as_str().starts_with('_') {
-            self.r.unused_macros.insert(def_id, (node_id, ident));
+            self.r
+                .unused_macros
+                .insert(def_id, (node_id, ident, self.parent_scope.module.opt_def_id()));
             if let SyntaxExtensionKind::MacroRules(mr) = &self.r.local_macro_map[&def_id].kind {
                 let value = (def_id, DenseBitSet::new_filled(mr.nrules()));
                 self.r.unused_macro_rules.insert(node_id, value);
@@ -1331,7 +1335,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
         if macro_rules {
             let ident = IdentKey::new(orig_ident);
-            self.r.macro_names.insert(ident);
+            self.r.macro_names.insert(ident, def_id);
             let is_macro_export = ast::attr::contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
                 Visibility::Public
@@ -1428,6 +1432,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 }
                 match item.kind {
                     ItemKind::Mod(..) if self.contains_macro_use(&item.attrs) => {
+                        self.r.macro_use_mods.insert(item.id);
                         self.parent_scope.macro_rules
                     }
                     _ => orig_macro_rules_scope,

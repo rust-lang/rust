@@ -3,6 +3,9 @@ error[E0277]: the trait bound `(): AsRef<(dyn for<'a> Fn(&'a ()) + 'static)>` is
    |
 LL | fn ice() -> impl AsRef<Fn(&())> {
    |             ^^^^^^^^^^^^^^^^^^^ the trait `AsRef<(dyn for<'a> Fn(&'a ()) + 'static)>` is not implemented for `()`
+...
+LL |     ()
+   |     -- return type was inferred to be `()` here
 
 error: aborting due to 1 previous error
 

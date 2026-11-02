@@ -5,7 +5,7 @@ use std::ops;
 use base_db::SourceDatabase;
 use hir_expand::{InFile, Lookup};
 use span::Edition;
-use syntax::ast;
+use syntax::{SyntaxNodePtr, ast};
 use triomphe::Arc;
 
 use crate::{
@@ -96,7 +96,7 @@ impl Body {
 
         let mut is_async_fn = false;
         let mut is_gen_fn = false;
-        let InFile { file_id, value: body } = {
+        let (InFile { file_id, value: body }, syntax_node) = {
             match def {
                 DefWithBodyId::FunctionId(f) => {
                     let f = f.lookup(db);
@@ -104,28 +104,32 @@ impl Body {
                     params = src.value.param_list();
                     is_async_fn = src.value.async_token().is_some();
                     is_gen_fn = src.value.gen_token().is_some();
-                    src.map(|it| it.body().map(ast::Expr::from))
+                    let syntax_node = SyntaxNodePtr::new(src.syntax().value);
+                    (src.map(|it| it.body().map(ast::Expr::from)), syntax_node)
                 }
                 DefWithBodyId::ConstId(c) => {
                     let c = c.lookup(db);
                     let src = c.source(db);
-                    src.map(|it| it.body())
+                    let syntax_node = SyntaxNodePtr::new(src.syntax().value);
+                    (src.map(|it| it.body()), syntax_node)
                 }
                 DefWithBodyId::StaticId(s) => {
                     let s = s.lookup(db);
                     let src = s.source(db);
-                    src.map(|it| it.body())
+                    let syntax_node = SyntaxNodePtr::new(src.syntax().value);
+                    (src.map(|it| it.body()), syntax_node)
                 }
                 DefWithBodyId::VariantId(v) => {
                     let s = v.lookup(db);
                     let src = s.source(db);
-                    src.map(|it| it.const_arg()?.expr())
+                    let syntax_node = SyntaxNodePtr::new(src.syntax().value);
+                    (src.map(|it| it.const_arg()?.expr()), syntax_node)
                 }
             }
         };
         let module = def.module(db);
         let (body, source_map) =
-            lower_body(db, def, file_id, module, params, body, is_async_fn, is_gen_fn);
+            lower_body(db, def, syntax_node, file_id, module, params, body, is_async_fn, is_gen_fn);
 
         (Arc::new(body), source_map)
     }

@@ -4,13 +4,10 @@ use std::iter;
 
 use rustc_ast::attr::data_structures::CfgEntry;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{
-    AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree, WithTokens,
-};
-use rustc_ast::{
-    self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner, NodeId,
-    SyntheticAttr,
-};
+use rustc_ast::tokenstream::{LazyTokenStream, Spacing, TokenStream, TokenTree, WithTokens};
+use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, NodeId, SyntheticAttr};
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{self as attrs, AttributeKind};
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
     self as attr, AttributeParser, AttributeSafety, CFG_TEMPLATE, EvalConfigResult, ShouldEmit,
@@ -22,10 +19,7 @@ use rustc_feature::{
     ACCEPTED_LANG_FEATURES, EnabledLangFeature, EnabledLibFeature, Features, REMOVED_LANG_FEATURES,
     UNSTABLE_LANG_FEATURES,
 };
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{
-    Target, {self as hir},
-};
+use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
@@ -33,8 +27,8 @@ use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::instrument;
 
 use crate::diagnostics::{
-    CrateNameInCfgAttr, CrateTypeInCfgAttr, FeatureNotAllowed, FeatureRemoved,
-    FeatureRemovedReason, InvalidCfg, RemoveExprNotSupported,
+    CfgNotSupportedInPosition, CrateNameInCfgAttr, CrateTypeInCfgAttr, FeatureNotAllowed,
+    FeatureRemoved, FeatureRemovedReason,
 };
 
 /// A folder that strips out items that do not belong in the current configuration.
@@ -51,7 +45,7 @@ pub struct StripUnconfigured<'a> {
 pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -> Features {
     let mut features = Features::default();
 
-    if let Some(hir::Attribute::Parsed(AttributeKind::Feature(feature_idents, _))) =
+    if let Some(attrs::Attribute::Parsed(AttributeKind::Feature(feature_idents, _))) =
         AttributeParser::parse_limited_sym(sess, krate_attrs, &[sym::feature])
     {
         for feature_ident in feature_idents {
@@ -166,59 +160,16 @@ impl<'a> StripUnconfigured<'a> {
     fn try_configure_tokens<T: HasTokens>(&self, node: &mut T) {
         if self.config_tokens {
             if let Some(Some(tokens)) = node.tokens_mut() {
-                let attr_stream = tokens.to_attr_token_stream();
-                *tokens = LazyAttrTokenStream::new_direct(self.configure_tokens(&attr_stream));
-            }
-        }
-    }
-
-    /// Performs cfg-expansion on `stream`, producing a new `AttrTokenStream`.
-    /// This is only used during the invocation of `derive` proc-macros,
-    /// which require that we cfg-expand their entire input.
-    /// Normal cfg-expansion operates on parsed AST nodes via the `configure` method
-    fn configure_tokens(&self, stream: &AttrTokenStream) -> AttrTokenStream {
-        fn can_skip(stream: &AttrTokenStream) -> bool {
-            stream.0.iter().all(|tree| match tree {
-                AttrTokenTree::AttrsTarget(_) => false,
-                AttrTokenTree::Token(..) => true,
-                AttrTokenTree::Delimited(.., inner) => can_skip(inner),
-            })
-        }
-
-        if can_skip(stream) {
-            return stream.clone();
-        }
-
-        let trees: Vec<_> = stream
-            .0
-            .iter()
-            .filter_map(|tree| match tree.clone() {
-                AttrTokenTree::AttrsTarget(mut target) => {
+                let stream = tokens.to_configured_token_stream(&mut |target| {
                     // Expand any `cfg_attr` attributes.
                     target.attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
-
-                    if self.in_cfg(&target.attrs) {
-                        target.tokens = LazyAttrTokenStream::new_direct(
-                            self.configure_tokens(&target.tokens.to_attr_token_stream()),
-                        );
-                        Some(AttrTokenTree::AttrsTarget(target))
-                    } else {
-                        // Remove the target if there's a `cfg` attribute and
-                        // the condition isn't satisfied.
-                        None
-                    }
-                }
-                AttrTokenTree::Delimited(sp, spacing, delim, mut inner) => {
-                    inner = self.configure_tokens(&inner);
-                    Some(AttrTokenTree::Delimited(sp, spacing, delim, inner))
-                }
-                AttrTokenTree::Token(Token { kind, .. }, _) if kind.is_delim() => {
-                    panic!("Should be `AttrTokenTree::Delimited`, not delim tokens: {:?}", tree);
-                }
-                AttrTokenTree::Token(token, spacing) => Some(AttrTokenTree::Token(token, spacing)),
-            })
-            .collect();
-        AttrTokenStream::new(trees)
+                    // This return value means we remove the target if there's a `cfg` attribute and
+                    // the condition isn't satisfied.
+                    self.in_cfg(&target.attrs)
+                });
+                *tokens = LazyTokenStream::new_direct(stream);
+            }
+        }
     }
 
     /// Parse and expand all `cfg_attr` attributes into a list of attributes
@@ -264,7 +215,7 @@ impl<'a> StripUnconfigured<'a> {
         // Lint on zero attributes in source.
         if expanded_attrs.is_empty() {
             self.sess.psess.buffer_lint(
-                rustc_lint_defs::builtin::UNUSED_ATTRIBUTES,
+                UNUSED_ATTRIBUTES,
                 cfg_attr.span,
                 ast::CRATE_NODE_ID,
                 crate::diagnostics::CfgAttrNoAttributes,
@@ -306,7 +257,9 @@ impl<'a> StripUnconfigured<'a> {
         // Convert `#[cfg_attr(pred, attr)]` to `#[attr]`.
 
         // Use the `#` from `#[cfg_attr(pred, attr)]` in the result `#[attr]`.
-        let mut orig_trees = cfg_attr.token_trees().into_iter();
+        let mut orig_trees = vec![];
+        cfg_attr.append_token_trees_to(&mut orig_trees);
+        let mut orig_trees = orig_trees.into_iter();
         let Some(TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _)) =
             orig_trees.next()
         else {
@@ -321,11 +274,11 @@ impl<'a> StripUnconfigured<'a> {
                 panic!("Bad tokens for attribute {cfg_attr:?}");
             };
             vec![
-                AttrTokenTree::Token(pound_token, Spacing::Joint),
-                AttrTokenTree::Token(bang_token, Spacing::JointHidden),
+                TokenTree::Token(pound_token, Spacing::Joint),
+                TokenTree::Token(bang_token, Spacing::JointHidden),
             ]
         } else {
-            vec![AttrTokenTree::Token(pound_token, Spacing::JointHidden)]
+            vec![TokenTree::Token(pound_token, Spacing::JointHidden)]
         };
 
         // And the same thing for the `[`/`]` delimiters in `#[attr]`.
@@ -334,7 +287,7 @@ impl<'a> StripUnconfigured<'a> {
         else {
             panic!("Bad tokens for attribute {cfg_attr:?}");
         };
-        trees.push(AttrTokenTree::Delimited(
+        trees.push(TokenTree::Delimited(
             delim_span,
             delim_spacing,
             Delimiter::Bracket,
@@ -342,11 +295,11 @@ impl<'a> StripUnconfigured<'a> {
                 .tokens
                 .as_ref()
                 .unwrap_or_else(|| panic!("Missing tokens for {:?}", attr_item.node))
-                .to_attr_token_stream(),
+                .to_token_stream(),
         ));
 
         let attr_item_path_span = attr_item.node.path.span;
-        let attr_tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::new(trees)));
+        let attr_tokens = Some(LazyTokenStream::new_direct(TokenStream::new(trees)));
         let attr = ast::attr::mk_attr_from_item(
             &self.sess.psess.attr_id_generator,
             attr_item.node,
@@ -381,6 +334,7 @@ impl<'a> StripUnconfigured<'a> {
             self.lint_node_id,
             // Doesn't matter what the target actually is here.
             Target::Crate,
+            rustc_attr_ir::target::AstTarget::None,
             self.features,
             emit_errors,
             parse_cfg,
@@ -436,37 +390,11 @@ impl<'a> StripUnconfigured<'a> {
         // N.B., this is intentionally not part of the visit_expr() function
         //     in order for filter_map_expr() to be able to avoid this check
         if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a)) {
-            self.sess.dcx().emit_err(RemoveExprNotSupported { span: attr.span });
+            self.sess.dcx().emit_err(CfgNotSupportedInPosition { span: attr.span });
         }
 
         self.process_cfg_attrs(expr);
         self.try_configure_tokens(&mut *expr);
-    }
-}
-
-/// FIXME: Still used by Rustdoc, should be removed after
-pub fn parse_cfg_old<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a MetaItemInner> {
-    let span = meta_item.span;
-    match meta_item.meta_item_list() {
-        None => {
-            sess.dcx().emit_err(InvalidCfg::NotFollowedByParens { span });
-            None
-        }
-        Some([]) => {
-            sess.dcx().emit_err(InvalidCfg::NoPredicate { span });
-            None
-        }
-        Some([_, .., l]) => {
-            sess.dcx().emit_err(InvalidCfg::MultiplePredicates { span: l.span() });
-            None
-        }
-        Some([single]) => match single.meta_item_or_bool() {
-            Some(meta_item) => Some(meta_item),
-            None => {
-                sess.dcx().emit_err(InvalidCfg::PredicateLiteral { span: single.span() });
-                None
-            }
-        },
     }
 }
 

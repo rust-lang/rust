@@ -11,6 +11,8 @@ LL |         return self.x;
 note: `S::bar` takes ownership of the receiver `self`, which moves `self`
   --> $DIR/use-after-move-self-based-on-type.rs:15:16
    |
+LL | impl S {
+...
 LL |     pub fn bar(self) {}
    |                ^^^^
 

@@ -88,7 +88,9 @@ impl Socket {
                 // DragonFlyBSD, FreeBSD and NetBSD use `SO_NOSIGPIPE` as a `setsockopt`
                 // flag to disable `SIGPIPE` emission on socket.
                 #[cfg(any(target_os = "freebsd", target_os = "netbsd", target_os = "dragonfly"))]
-                unsafe { setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)? };
+                unsafe {
+                    setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?
+                };
 
                 Ok(socket)
             }
@@ -101,7 +103,9 @@ impl Socket {
                 // macOS and iOS use `SO_NOSIGPIPE` as a `setsockopt`
                 // flag to disable `SIGPIPE` emission on socket.
                 #[cfg(target_vendor = "apple")]
-                unsafe { setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)? };
+                unsafe {
+                    setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?
+                };
 
                 Ok(socket)
             }
@@ -129,7 +133,10 @@ impl Socket {
                 ) => {
                     // Like above, set cloexec atomically
                     cvt(libc::socketpair(fam, ty | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr()))?;
-                    Ok((Socket(FileDesc::from_raw_fd(fds[0])), Socket(FileDesc::from_raw_fd(fds[1]))))
+                    Ok((
+                        Socket(FileDesc::from_raw_fd(fds[0])),
+                        Socket(FileDesc::from_raw_fd(fds[1])),
+                    ))
                 }
                 _ => {
                     cvt(libc::socketpair(fam, ty, 0, fds.as_mut_ptr()))?;
@@ -164,21 +171,7 @@ impl Socket {
         }
     }
 
-    pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
-        self.set_nonblocking(true)?;
-        let r = unsafe {
-            let (addr, len) = socket_addr_to_c(addr);
-            cvt(libc::connect(self.as_raw_fd(), addr.as_ptr(), len))
-        };
-        self.set_nonblocking(false)?;
-
-        match r {
-            Ok(_) => return Ok(()),
-            // there's no ErrorKind for EINPROGRESS :(
-            Err(ref e) if e.raw_os_error() == Some(libc::EINPROGRESS) => {}
-            Err(e) => return Err(e),
-        }
-
+    pub fn poll_connected(&self, timeout: Duration) -> io::Result<()> {
         let mut pollfd = libc::pollfd { fd: self.as_raw_fd(), events: libc::POLLOUT, revents: 0 };
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
@@ -213,27 +206,28 @@ impl Socket {
                 }
                 0 => {}
                 _ => {
-                    if cfg!(target_os = "vxworks") {
-                        // VxWorks poll does not return  POLLHUP or POLLERR in revents. Check if the
-                        // connection actually succeeded and return ok only when the socket is
-                        // ready and no errors were found.
-                        if let Some(e) = self.take_error()? {
-                            return Err(e);
-                        }
-                    } else {
-                        // linux returns POLLOUT|POLLERR|POLLHUP for refused connections (!), so look
-                        // for POLLHUP or POLLERR rather than read readiness
-                        if pollfd.revents & (libc::POLLHUP | libc::POLLERR) != 0 {
-                            let e = self.take_error()?.unwrap_or_else(|| {
-                                io::const_error!(
-                                    io::ErrorKind::Uncategorized,
-                                    "no error set after POLLHUP",
-                                )
-                            });
-                            return Err(e);
-                        }
+                    // A completed connect makes the socket writable, but that doesn't guarantee it
+                    // succeeded: whether a failed connect also sets `POLLERR`/`POLLHUP` is
+                    // platform-specific. On Linux a clean `revents` means success. Elsewhere
+                    // (`illumos`, `VxWorks`) only `SO_ERROR` holds the actual status.
+                    let failure_shows_in_revents =
+                        cfg!(any(target_os = "linux", target_os = "android"));
+                    let hup_or_err = pollfd.revents & (libc::POLLHUP | libc::POLLERR) != 0;
+
+                    if failure_shows_in_revents && !hup_or_err {
+                        return Ok(());
                     }
 
+                    if let Some(e) = self.take_error()? {
+                        return Err(e);
+                    }
+
+                    if hup_or_err {
+                        return Err(io::const_error!(
+                            io::ErrorKind::Uncategorized,
+                            "no error set after POLLHUP"
+                        ));
+                    }
                     return Ok(());
                 }
             }
@@ -256,20 +250,17 @@ impl Socket {
                 target_os = "netbsd",
                 target_os = "openbsd",
                 target_os = "cygwin",
-            ) => {
-                unsafe {
-                    let fd = cvt_r(|| libc::accept4(self.as_raw_fd(), storage, len, libc::SOCK_CLOEXEC))?;
-                    Ok(Socket(FileDesc::from_raw_fd(fd)))
-                }
-            }
-            _ => {
-                unsafe {
-                    let fd = cvt_r(|| libc::accept(self.as_raw_fd(), storage, len))?;
-                    let fd = FileDesc::from_raw_fd(fd);
-                    fd.set_cloexec()?;
-                    Ok(Socket(fd))
-                }
-            }
+            ) => unsafe {
+                let fd =
+                    cvt_r(|| libc::accept4(self.as_raw_fd(), storage, len, libc::SOCK_CLOEXEC))?;
+                Ok(Socket(FileDesc::from_raw_fd(fd)))
+            },
+            _ => unsafe {
+                let fd = cvt_r(|| libc::accept(self.as_raw_fd(), storage, len))?;
+                let fd = FileDesc::from_raw_fd(fd);
+                fd.set_cloexec()?;
+                Ok(Socket(fd))
+            },
         }
     }
 
@@ -279,7 +270,7 @@ impl Socket {
 
     #[cfg(not(target_os = "wasi"))]
     pub fn send_with_flags(&self, buf: &[u8], flags: c_int) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        let len = cmp::min(buf.len(), super::MAX_SEND_LEN) as wrlen_t;
         let ret = cvt(unsafe {
             libc::send(self.as_raw_fd(), buf.as_ptr() as *const c_void, len, flags)
         })?;
@@ -396,10 +387,7 @@ impl Socket {
                 } else {
                     dur.as_secs() as libc::time_t
                 };
-                let mut timeout = libc::timeval {
-                    tv_sec: secs,
-                    tv_usec: dur.subsec_micros() as libc::suseconds_t,
-                };
+                let mut timeout = libc::timeval { tv_sec: secs, tv_usec: dur.subsec_micros() as _ };
                 if timeout.tv_sec == 0 && timeout.tv_usec == 0 {
                     timeout.tv_usec = 1;
                 }

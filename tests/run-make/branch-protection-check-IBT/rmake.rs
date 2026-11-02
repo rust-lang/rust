@@ -37,6 +37,7 @@
 // FIXME(#93754): increase the test coverage of this test.
 //@ only-x86_64-unknown-linux-gnu
 //@ ignore-cross-compile
+//@ ignore-backends: gcc
 
 use run_make_support::{bare_rustc, llvm_readobj};
 

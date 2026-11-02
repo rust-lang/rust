@@ -14,6 +14,7 @@ use walkdir::WalkDir;
 use xshell::{Shell, cmd};
 
 use crate::Command;
+use crate::config::{Config, Toolchain};
 use crate::util::*;
 
 impl MiriEnv {
@@ -55,7 +56,7 @@ impl MiriEnv {
             .cargo_cmd("cargo-miri", "run", &[])
             .arg("--quiet")
             .arg("--")
-            .args(&["miri", "setup", "--print-sysroot"])
+            .args(["miri", "setup", "--print-sysroot"])
             .args(target_flag);
         if quiet {
             cmd = cmd.arg("--quiet");
@@ -67,25 +68,19 @@ impl MiriEnv {
 }
 
 impl Command {
-    fn auto_actions() -> Result<()> {
+    fn auto_actions(config: &Config) -> Result<()> {
         if env::var_os("MIRI_AUTO_OPS").is_some_and(|x| x == "no") {
             return Ok(());
         }
 
-        let miri_dir = miri_dir()?;
-        let auto_everything = path!(miri_dir / ".auto-everything").exists();
-        let auto_toolchain = auto_everything || path!(miri_dir / ".auto-toolchain").exists();
-        let auto_fmt = auto_everything || path!(miri_dir / ".auto-fmt").exists();
-        let auto_clippy = auto_everything || path!(miri_dir / ".auto-clippy").exists();
-
         // `toolchain` goes first as it could affect the others
-        if auto_toolchain {
-            Self::toolchain(None, vec![])?;
+        if config.auto.toolchain {
+            Self::toolchain(None, None, vec![], config)?;
         }
-        if auto_fmt {
+        if config.auto.fmt {
             Self::fmt(vec![])?;
         }
-        if auto_clippy {
+        if config.auto.clippy {
             // no features for auto actions, see
             // https://github.com/rust-lang/miri/pull/4396#discussion_r2149654845
             Self::clippy(vec![], vec![])?;
@@ -94,17 +89,18 @@ impl Command {
         Ok(())
     }
 
-    pub fn exec(self) -> Result<()> {
+    pub fn exec(self, config: &Config) -> Result<()> {
         // First, and crucially only once, run the auto-actions -- but not for all commands.
         match &self {
             Command::Install { .. }
             | Command::Build { .. }
             | Command::Check { .. }
             | Command::Test { .. }
+            | Command::TestPriroda { .. }
             | Command::Run { .. }
             | Command::Fmt { .. }
             | Command::Doc { .. }
-            | Command::Clippy { .. } => Self::auto_actions()?,
+            | Command::Clippy { .. } => Self::auto_actions(config)?,
             | Command::Toolchain { .. } | Command::Bench { .. } | Command::Squash => {}
         }
         // Then run the actual command.
@@ -114,6 +110,7 @@ impl Command {
             Command::Check { features, flags } => Self::check(features, flags),
             Command::Test { bless, target, coverage, features, flags } =>
                 Self::test(bless, target, coverage, features, flags),
+            Command::TestPriroda { bless, flags } => Self::test_priroda(bless, flags),
             Command::Run { dep, native, quiet, target, edition, features, flags } =>
                 Self::run(dep, native, quiet, target, edition, features, flags),
             Command::Doc { features, flags } => Self::doc(features, flags),
@@ -121,12 +118,21 @@ impl Command {
             Command::Clippy { features, flags } => Self::clippy(features, flags),
             Command::Bench { target, no_install, save_baseline, load_baseline, benches } =>
                 Self::bench(target, no_install, save_baseline, load_baseline, benches),
-            Command::Toolchain { commit, flags } => Self::toolchain(commit, flags),
+            Command::Toolchain { name, commit, flags } =>
+                Self::toolchain(name, commit, flags, config),
             Command::Squash => Self::squash(),
         }
     }
 
-    fn toolchain(new_commit: Option<String>, flags: Vec<String>) -> Result<()> {
+    fn toolchain(
+        name: Option<String>,
+        new_commit: Option<String>,
+        flags: Vec<String>,
+        config: &Config,
+    ) -> Result<()> {
+        let name =
+            name.as_deref().or(config.toolchain.name.as_deref()).unwrap_or(Toolchain::DEFAULT_NAME);
+
         let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
         let new_commit = match new_commit {
@@ -134,7 +140,7 @@ impl Command {
             None => sh.read_file("rust-version")?.trim().to_owned(),
         };
         let current_commit = {
-            let rustc_info = cmd!(sh, "rustc +miri --version -v").read();
+            let rustc_info = cmd!(sh, "rustc +{name} --version -v").read();
             if let Ok(rustc_info) = rustc_info {
                 let metadata = rustc_version::version_meta_for(&rustc_info)?;
                 Some(
@@ -148,20 +154,32 @@ impl Command {
         };
         // Check if we already are at that commit.
         if current_commit.as_ref() == Some(&new_commit) {
-            if active_toolchain()? != "miri" {
-                cmd!(sh, "rustup override set miri").run()?;
+            // The toolchain is already at the right version. Make sure it is active in `miri_dir`.
+            // Ignore errors from `active_toolchain`, the active toolchain might be uninstalled.
+            if active_toolchain().ok().is_none_or(|toolchain| toolchain != name) {
+                cmd!(sh, "rustup override set {name}").run()?;
             }
             return Ok(());
         }
-        // Install and setup new toolchain.
-        cmd!(sh, "rustup toolchain uninstall miri").run()?;
 
-        cmd!(sh, "rustup-toolchain-install-master -n miri -c cargo -c rust-src -c rustc-dev -c llvm-tools -c rustfmt -c clippy {flags...} -- {new_commit}")
+        // Compute rustup-toolchain-install-master flags for additional components.
+        let components =
+            config.toolchain.components.as_deref().unwrap_or(Toolchain::DEFAULT_COMPONENTS);
+        let component_flags = components.iter().flat_map(|component| ["-c", component]);
+
+        // Install and setup new toolchain.
+        cmd!(sh, "rustup toolchain uninstall {name}").run()?;
+        cmd!(sh, "rustup-toolchain-install-master -n {name} -c cargo -c rust-src -c rustc-dev -c llvm-tools {component_flags...} {flags...} -- {new_commit}")
             .run()
-            .context("Failed to run rustup-toolchain-install-master. If it is not installed, run 'cargo install rustup-toolchain-install-master'.")?;
-        cmd!(sh, "rustup override set miri").run()?;
+            .context("Failed to run rustup-toolchain-install-master. If it is not installed, run 'cargo install --locked rustup-toolchain-install-master'.")?;
+        cmd!(sh, "rustup override set {name}").run()?;
         // Cleanup.
         cmd!(sh, "cargo clean").run()?;
+        // Call `cargo metadata` on the sources in case that changes the lockfile
+        // (works around <https://github.com/rust-lang/rust-analyzer/issues/23392>).
+        let sysroot = cmd!(sh, "rustc --print sysroot").read()?;
+        let sysroot = sysroot.trim();
+        cmd!(sh, "cargo metadata --format-version 1 --manifest-path {sysroot}/lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml").ignore_stdout().run()?;
         Ok(())
     }
 
@@ -463,6 +481,30 @@ impl Command {
         Ok(())
     }
 
+    fn test_priroda(bless: bool, flags: Vec<String>) -> Result<()> {
+        let mut e = MiriEnv::new()?;
+
+        // Build cargo-miri and the local sysroot.
+        let features = ["priroda".to_owned()];
+        let quiet = false;
+        e.build_miri_sysroot(quiet, None::<&str>, &features)?;
+
+        // Forward information to test harness.
+        if bless {
+            e.sh.set_var("RUSTC_BLESS", "Gesundheit");
+        }
+
+        // `priroda` is a bin/test target of the `miri` package, so test it there.
+        let mut args = vec!["--test".to_owned(), "priroda".to_owned()];
+        // Pass flags as well. Make sure they are going to the test harness, not cargo.
+        args.push("--".to_owned());
+        args.extend(flags);
+
+        e.test(".", &features, &args)?;
+
+        Ok(())
+    }
+
     fn run(
         dep: bool,
         native: bool,
@@ -511,7 +553,7 @@ impl Command {
             // We invoke the test suite as that has all the logic for running with dependencies.
             let mut cmd = e
                 .cargo_cmd(".", "test", &features)
-                .args(&["--test", "ui"])
+                .args(["--test", "ui"])
                 // This does not show anything useful so we always hide it.
                 .arg("--quiet")
                 .arg("--")

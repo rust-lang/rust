@@ -1,5 +1,5 @@
 error: `...` is not supported for `extern "Rust"` naked functions
-  --> $DIR/naked-invalid.rs:29:41
+  --> $DIR/naked-invalid.rs:26:41
    |
 LL | unsafe extern "Rust" fn c_variadic_rust(_: ...) {
    |        -------------                    ^^^^^^
@@ -9,7 +9,7 @@ LL | unsafe extern "Rust" fn c_variadic_rust(_: ...) {
    = help: C-variadic function must have a compatible calling convention
 
 error: `...` is not supported for `extern "x86-interrupt"` naked functions
-  --> $DIR/naked-invalid.rs:35:59
+  --> $DIR/naked-invalid.rs:32:59
    |
 LL | unsafe extern "x86-interrupt" fn c_variadic_x86_interrupt(_: ...) {
    |        ----------------------                             ^^^^^^
@@ -19,7 +19,7 @@ LL | unsafe extern "x86-interrupt" fn c_variadic_x86_interrupt(_: ...) {
    = help: C-variadic function must have a compatible calling convention
 
 error[E0703]: invalid ABI: found `nonsense`
-  --> $DIR/naked-invalid.rs:41:15
+  --> $DIR/naked-invalid.rs:38:15
    |
 LL | unsafe extern "nonsense" fn c_variadic_x86_nonsense(_: ...) {
    |               ^^^^^^^^^^ invalid ABI

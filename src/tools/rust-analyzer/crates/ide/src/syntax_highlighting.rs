@@ -534,7 +534,7 @@ fn descend_token(
     sema: &Semantics<'_, RootDatabase>,
     token: InRealFile<SyntaxToken>,
 ) -> InFile<NodeOrToken<ast::NameLike, SyntaxToken>> {
-    if token.value.kind() == COMMENT {
+    if ast::AnyComment::can_cast(token.value.kind()) {
         return token.map(NodeOrToken::Token).into();
     }
     let ranker = Ranker::from_token(&token.value);

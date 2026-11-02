@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(adt_const_params, min_generic_const_args)]
+#![feature(adt_const_params, gca_min_const_items)]
 #![allow(incomplete_features)]
 
 use std::marker::ConstParamTy;

@@ -531,10 +531,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   track interior mutable data on the level of references instead of on the
   byte-level as is done by default.  Therefore, with this flag, Tree
   Borrows will be more permissive.
-* `-Zmiri-tree-borrows-relax-custom-allocator-uniqueness` disables uniqueness assumptions for
-  `Box<T, A>` where `A` is not `Global`. The exact aliasing rules for such custom allocators are
-  still up in the air, and by default Miri is conservative and rejects some allocator
-  implementations that incur relevant aliasing between the allocation and the allocator.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
   `4` is default for most targets. This value should always be a power of 2 and nonzero.
 
@@ -652,6 +648,7 @@ Definite bugs found:
 * [`VecDeque::splice` confusing physical and logical indices](https://github.com/rust-lang/rust/issues/151758)
 * [Data race in `oneshot` channel](https://github.com/faern/oneshot/issues/69)
 * [Memory leak in serde-yaml-bw](https://github.com/bourumir-wyngs/serde-yaml-bw/issues/197)
+* [Incorrect use of SSE4.1 intrinsic in SSE2 backend in chacha20](https://github.com/RustCrypto/stream-ciphers/issues/579)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 

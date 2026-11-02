@@ -1063,5 +1063,21 @@ LL - /// [`dummy_target`][dummy_target] TEXT
 LL + /// [`dummy_target`] TEXT
    |
 
-error: aborting due to 60 previous errors
+error: redundant explicit link target
+  --> $DIR/redundant_explicit_links.rs:161:20
+   |
+LL | /// [Issue155458B](struct.Issue155458B.html)
+   |      ------------  ^^^^^^^^^^^^^^^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+help: remove explicit link target
+   |
+LL - /// [Issue155458B](struct.Issue155458B.html)
+LL + /// [Issue155458B]
+   |
+
+error: aborting due to 61 previous errors
 

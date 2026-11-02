@@ -74,7 +74,7 @@ pub(crate) fn convert_range_for_to_while(
 
             let mut elements = vec![];
 
-            let var_expr = make.expr_path(make.ident_path(&name.text()));
+            let var_expr = make.expr_path(make.ident_path(name.text()));
             let op = ast::BinaryOp::CmpOp(ast::CmpOp::Ord {
                 ordering: ast::Ordering::Less,
                 strict: !inclusive,

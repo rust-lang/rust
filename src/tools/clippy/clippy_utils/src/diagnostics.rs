@@ -8,27 +8,27 @@
 //! Thank you!
 //! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, Level, MultiSpan};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagLocation, DiagMessage, Diagnostic, Level, MultiSpan};
 #[cfg(debug_assertions)]
-use rustc_errors::{EmissionGuarantee, SubstitutionPart, Suggestions};
+use rustc_errors::{SubstitutionPart, Suggestions};
 use rustc_hir::HirId;
 use rustc_lint::{LateContext, Lint, LintContext};
 use rustc_span::Span;
 use std::env;
 
-fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
+fn docs_link(diag: &mut Diag<'_>, lint: &'static Lint) {
     if env::var("CLIPPY_DISABLE_DOCS_LINKS").is_err()
         && let Some(lint) = lint.name_lower().strip_prefix("clippy::")
     {
         diag.help(format!(
-            "for further information visit https://rust-lang.github.io/rust-clippy/{}/index.html#{lint}",
+            "for further information visit https://clippy.rust-lang.org/{}/index.html#{lint}",
             match option_env!("CFG_RELEASE_CHANNEL") {
                 // Clippy version is 0.1.xx
                 //
                 // Always use .0 because we do not generate separate lint doc pages for rust patch releases
                 Some("stable") => concat!("rust-1.", env!("CARGO_PKG_VERSION_PATCH"), ".0"),
                 Some("beta") => "beta",
-                _ => "master",
+                _ => "main",
             }
         ));
     }
@@ -43,7 +43,7 @@ fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
 ///
 /// This function makes sure we also validate them in debug clippy builds.
 #[cfg(debug_assertions)]
-fn validate_diag(diag: &Diag<'_, impl EmissionGuarantee>) {
+fn validate_diag(diag: &Diag<'_>) {
     let suggestions = match &diag.suggestions {
         Suggestions::Enabled(suggs) => &**suggs,
         Suggestions::Sealed(suggs) => &**suggs,
@@ -238,12 +238,12 @@ where
     C: LintContext,
     S: Into<MultiSpan>,
     M: Into<DiagMessage>,
-    F: FnOnce(&mut Diag<'_, ()>),
+    F: FnOnce(&mut Diag<'_>),
 {
-    struct ClippyDiag<F: FnOnce(&mut Diag<'_, ()>)>(F);
+    struct ClippyDiag<F: FnOnce(&mut Diag<'_>)>(F);
 
-    impl<'a, F: FnOnce(&mut Diag<'_, ()>)> Diagnostic<'a, ()> for ClippyDiag<F> {
-        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+    impl<'a, F: FnOnce(&mut Diag<'_>)> Diagnostic<'a> for ClippyDiag<F> {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
             let mut lint = Diag::new(dcx, level, "");
             (self.0)(&mut lint);
             lint
@@ -251,12 +251,15 @@ where
     }
 
     let sp = sp.into();
+    let emitted_at = DiagLocation::caller();
+
     #[expect(clippy::disallowed_methods)]
     cx.emit_span_lint(
         lint,
         sp.clone(),
-        ClippyDiag(|diag: &mut Diag<'_, ()>| {
+        ClippyDiag(|diag: &mut Diag<'_>| {
             diag.primary_message(msg);
+            diag.emitted_at = emitted_at;
             diag.span(sp);
             f(diag);
             docs_link(diag, lint);
@@ -327,8 +330,10 @@ pub fn span_lint_hir_and_then(
     hir_id: HirId,
     sp: impl Into<MultiSpan>,
     msg: impl Into<DiagMessage>,
-    f: impl FnOnce(&mut Diag<'_, ()>),
+    f: impl FnOnce(&mut Diag<'_>),
 ) {
+    let emitted_at = DiagLocation::caller();
+
     #[expect(clippy::disallowed_methods)]
     cx.tcx.emit_node_span_lint(
         lint,
@@ -336,6 +341,7 @@ pub fn span_lint_hir_and_then(
         sp,
         rustc_errors::DiagDecorator(|diag| {
             diag.primary_message(msg);
+            diag.emitted_at = emitted_at;
             f(diag);
             docs_link(diag, lint);
 

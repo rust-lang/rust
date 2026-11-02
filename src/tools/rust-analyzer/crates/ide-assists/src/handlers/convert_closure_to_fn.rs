@@ -507,7 +507,7 @@ fn wrap_capture_in_deref_if_needed(
     capture_kind: CaptureKind,
     is_ref: bool,
 ) -> ast::Expr {
-    let capture_name = make.expr_path(make.path_from_text(&capture_name.text()));
+    let capture_name = make.expr_path(make.path_from_text(capture_name.text()));
     if capture_kind == CaptureKind::Move || is_ref {
         return capture_name;
     }

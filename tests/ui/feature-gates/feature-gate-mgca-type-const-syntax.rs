@@ -1,17 +1,18 @@
-type const FOO: u8 = 10;
-//~^ ERROR `type const` syntax is experimental [E0658]
-//~| ERROR top-level `type const` are unstable [E0658]
+const FOO: u8 = std::gca!(10);
+//~^ ERROR use of unstable library feature `gca_min_const_items` [E0658]
+//~| ERROR expected expression, found `gca!()` constant
 
 trait Bar {
-    type const BAR: bool;
-    //~^ ERROR `type const` syntax is experimental [E0658]
-    //~| ERROR associated `type const` are unstable [E0658]
+    #[rustc_always_gca]
+    //~^ ERROR the `rustc_always_gca` attribute is an experimental feature [E0658]
+    const BAR: bool;
 }
 
 impl Bar for bool {
-    type const BAR: bool = false;
-    //~^ ERROR `type const` syntax is experimental [E0658]
-    //~| ERROR associated `type const` are unstable [E0658]
+    const BAR: bool = std::gca!(false);
+    //~^ ERROR use of unstable library feature `gca_min_const_items` [E0658]
+    //~| ERROR expected expression, found `gca!()` constant
+    //~| ERROR implementation of a `#[rustc_always_gca]` must have a `gca!` RHS
 }
 
-fn main() { }
+fn main() {}

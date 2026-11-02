@@ -22,6 +22,15 @@ pub fn bare_rustc() -> Rustc {
     Rustc::bare()
 }
 
+/// Construct a plain `rustc` invocation with no flags set that behaves like a stable compiler,
+/// i.e. rejects unstable flags.
+/// Note that [`set_host_compiler_dylib_path`] still presets the environment variable
+/// `HOST_RUSTC_DYLIB_PATH` by default.
+#[track_caller]
+pub fn stable_bare_rustc() -> Rustc {
+    Rustc::bare_stable()
+}
+
 /// Construct a `rustc` invocation for building `minicore`.
 ///
 /// This function:
@@ -97,6 +106,10 @@ impl Rustc {
             cmd.arg("-Ctarget-feature=-crt-static");
         }
 
+        if let Ok(codegen_backend) = std::env::var("RUSTC_CODEGEN_BACKEND") {
+            cmd.arg(format!("-Zcodegen-backend={codegen_backend}"));
+        }
+
         // Automatically default to cross-compilation
         Self { cmd, target: Some(target()) }
     }
@@ -105,6 +118,14 @@ impl Rustc {
     #[track_caller]
     pub fn bare() -> Self {
         let cmd = setup_common();
+        Self { cmd, target: None }
+    }
+
+    /// Construct a bare `rustc` invocation with no flags set that acts like a stable compiler.
+    #[track_caller]
+    pub fn bare_stable() -> Self {
+        let mut cmd = setup_common();
+        cmd.env("RUSTC_BOOTSTRAP", "-1");
         Self { cmd, target: None }
     }
 
@@ -394,6 +415,13 @@ impl Rustc {
     /// Specify `-C split-debuginfo={packed,unpacked,off}`.
     pub fn split_debuginfo(&mut self, split_kind: &str) -> &mut Self {
         self.cmd.arg(format!("-Csplit-debuginfo={split_kind}"));
+        self
+    }
+
+    /// Specify `-C link-self-contained={y,n}`.
+    pub fn link_self_contained(&mut self, enabled: bool) -> &mut Self {
+        let enabled = if enabled { "y" } else { "n" };
+        self.cmd.arg(format!("-Clink-self-contained={enabled}"));
         self
     }
 

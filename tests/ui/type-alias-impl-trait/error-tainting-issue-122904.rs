@@ -1,6 +1,12 @@
 // We previously didn't taint the borrowck result in this test,
 // causing an ICE later on.
 #![feature(type_alias_impl_trait)]
+
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] ignore-test: trait-system-refactor-initiative#242
+
 trait T {}
 
 type Alias<'a> = impl T;

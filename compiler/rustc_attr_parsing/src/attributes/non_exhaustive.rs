@@ -1,11 +1,9 @@
+use rustc_ast::VariantData;
+use rustc_attr_ir::target::AstTarget;
 use rustc_feature::AttributeStability;
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Span, Symbol, sym};
 
-use crate::attributes::{NoArgsAttributeParser, OnDuplicate};
-use crate::target_checking::AllowedTargets;
-use crate::target_checking::Policy::{Allow, Warn};
+use super::prelude::*;
+use crate::diagnostics::NonExhaustiveWithDefaultFieldValues;
 
 pub(crate) struct NonExhaustiveParser;
 
@@ -23,4 +21,18 @@ impl NoArgsAttributeParser for NonExhaustiveParser {
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NonExhaustive;
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        let AstTarget::Struct(_, _, data) = cx.ast_target else {
+            return;
+        };
+        if let VariantData::Struct { fields, .. } = data
+            && fields.iter().any(|f| f.default_value().is_some())
+        {
+            cx.emit_err(NonExhaustiveWithDefaultFieldValues {
+                attr_span,
+                defn_span: cx.target_span,
+            });
+        }
+    }
 }

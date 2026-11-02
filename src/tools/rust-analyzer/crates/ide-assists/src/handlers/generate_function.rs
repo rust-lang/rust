@@ -67,7 +67,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
         return None;
     }
 
-    let fn_name = &*name_ref.text();
+    let fn_name = name_ref.text();
     let TargetInfo { target_module, adt_info, target, file } =
         fn_target_info(ctx, path, &call, fn_name)?;
 
@@ -126,6 +126,11 @@ fn fn_target_info(
             }
             Some(hir::PathResolution::SelfType(impl_)) => {
                 let adt = impl_.self_ty(ctx.db()).as_adt()?;
+                if let hir::Adt::Enum(_) = adt
+                    && fn_name.starts_with(char::is_uppercase)
+                {
+                    return None;
+                }
                 assoc_fn_target_info(ctx, call, adt, fn_name)
             }
             _ => None,
@@ -159,7 +164,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let (impl_, file) = if let Some(impl_) = cursor_impl {
         (Some(impl_), ctx.vfs_file_id())
     } else {
-        get_adt_source(ctx, &adt, fn_name.text().as_str())?
+        get_adt_source(ctx, &adt, fn_name.text())?
     };
     let target = get_method_target(ctx, &impl_, &adt)?;
 
@@ -269,7 +274,7 @@ impl FunctionBuilder {
         // If generated function has the name "new" and is an associated function, we generate fn body
         // as a constructor and assume a "Self" return type.
         if let Some(body) =
-            make_fn_body_as_new_function(make, ctx, &fn_name.text(), adt_info, target_edition)
+            make_fn_body_as_new_function(make, ctx, fn_name.text(), adt_info, target_edition)
         {
             ret_type = Some(make.ret_type(make.ty_path(make.ident_path("Self")).into()));
             should_focus_return_type = false;
@@ -3461,5 +3466,45 @@ impl Foo for Bar {
 }
 ",
         )
+    }
+    #[test]
+    fn not_applicable_for_self_enum_variant() {
+        check_assist_not_applicable(
+            generate_function,
+            r"
+enum Foo {}
+impl Foo {
+  fn foo() {
+    Self::Bar$0(true)
+  }
+}
+",
+        );
+    }
+    #[test]
+    fn applicable_for_self_enum_method() {
+        check_assist(
+            generate_function,
+            r"
+enum Foo {}
+impl Foo {
+  fn foo() {
+    Self::bar$0()
+  }
+}
+",
+            r"
+enum Foo {}
+impl Foo {
+  fn foo() {
+    Self::bar()
+  }
+
+    fn bar() {
+        ${0:todo!()}
+    }
+}
+",
+        );
     }
 }

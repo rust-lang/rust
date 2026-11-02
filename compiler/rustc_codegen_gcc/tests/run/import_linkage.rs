@@ -1,0 +1,66 @@
+// Compiler:
+//
+// Run-time:
+//   status: 0
+
+// Checks the `#[linkage]` flavours an `extern` static can be imported with, against the symbols
+// `tests/c/import_linkage.c` defines.
+//
+// The value of such an import is the address of the symbol rather than its contents, which is why
+// the types are pointers: an `extern_weak` import of a symbol nobody defines reads as null instead
+// of failing the link.
+
+#![feature(linkage, no_core, rustc_private)]
+#![no_std]
+#![no_core]
+#![no_main]
+
+extern crate mini_core;
+use mini_core::*;
+
+extern "C" {
+    #[linkage = "available_externally"]
+    static available_externally_value: *const i32;
+    #[linkage = "linkonce"]
+    static linkonce_value: *const i32;
+    #[linkage = "linkonce_odr"]
+    static linkonce_odr_value: *const i32;
+    #[linkage = "weak"]
+    static weak_value: *const i32;
+    #[linkage = "weak_odr"]
+    static weak_odr_value: *const i32;
+    #[linkage = "extern_weak"]
+    static extern_weak_value: *const i32;
+
+    // Nothing defines this one, so it stays null instead of breaking the link.
+    #[linkage = "extern_weak"]
+    static undefined_value: *const i32;
+}
+
+#[no_mangle]
+extern "C" fn main(_argc: i32, _argv: *const *const u8) -> i32 {
+    unsafe {
+        if *available_externally_value != 2 {
+            return 2;
+        }
+        if *linkonce_value != 3 {
+            return 3;
+        }
+        if *linkonce_odr_value != 4 {
+            return 4;
+        }
+        if *weak_value != 5 {
+            return 5;
+        }
+        if *weak_odr_value != 6 {
+            return 6;
+        }
+        if *extern_weak_value != 8 {
+            return 8;
+        }
+        if undefined_value as usize != 0 {
+            return 10;
+        }
+    }
+    0
+}

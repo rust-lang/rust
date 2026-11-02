@@ -1,4 +1,4 @@
-// rustfmt-edition: 2021
+//@ rustfmt-edition: 2021
 
 // Simple idempotence test for raw lifetimes.
 

@@ -13,7 +13,7 @@ trait FooTrait {
 struct Foo;
 
 impl FooTrait for Foo {
-    // Currently, splat attributes on impls must match traits. This provides better UX.
+    // Currently, `rustc_splat` attributes on impls must match traits. This provides better UX.
     fn tuple_1_trait(#[rustc_splat] _: (u32,)) {}
 
     fn tuple_2_trait(&self, #[rustc_splat] _: (u32, f32)) {}

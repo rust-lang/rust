@@ -1,6 +1,8 @@
 error[E0107]: associated function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/repeated-macro-expansion-error.rs:12:20
    |
+LL | macro_rules! impl_add {
+...
 LL |                 S::f::<i64>();
    |                    ^------- help: remove the unnecessary generics
    |                    |
@@ -14,11 +16,12 @@ note: associated function defined here, with 0 generic parameters
    |
 LL |     fn f() {}
    |        ^
-   = note: this error originates in the macro `impl_add` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0107]: associated function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/repeated-macro-expansion-error.rs:12:20
    |
+LL | macro_rules! impl_add {
+...
 LL |                 S::f::<i64>();
    |                    ^------- help: remove the unnecessary generics
    |                    |
@@ -33,7 +36,6 @@ note: associated function defined here, with 0 generic parameters
 LL |     fn f() {}
    |        ^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-   = note: this error originates in the macro `impl_add` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

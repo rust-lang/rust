@@ -19,8 +19,8 @@ use rustc_ast::{
     AttrArgs, Expr, ExprKind, LitKind, MetaItemLit, Path, PathSegment, StmtKind, UnOp,
 };
 use rustc_ast_pretty::pprust;
+use rustc_attr_ir::AttrPath;
 use rustc_errors::{Applicability, Diag, PResult};
-use rustc_hir::{self as hir, AttrPath};
 use rustc_parse::exp;
 use rustc_parse::parser::{ForceCollect, Parser, PathStyle, Recovery, token_descr};
 use rustc_session::diagnostics::create_lit_error;
@@ -29,7 +29,7 @@ use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::ShouldEmit;
-use crate::session_diagnostics::{
+use crate::diagnostics::{
     AdditionalCommaSuggestion, ExpectedComma, InvalidMetaItem, InvalidMetaItemQuoteIdentSugg,
     InvalidMetaItemRemoveNegSugg, MetaBadDelim, MetaBadDelimSugg, SuffixedLiteralInAttribute,
 };
@@ -41,7 +41,7 @@ pub type OwnedPathParser = PathParser<Path>;
 pub type RefPathParser<'p> = PathParser<&'p Path>;
 
 impl<P: Borrow<Path>> PathParser<P> {
-    pub fn get_attribute_path(&self) -> hir::AttrPath {
+    pub fn get_attribute_path(&self) -> AttrPath {
         AttrPath {
             segments: self.segments().map(|s| s.name).collect::<Vec<_>>().into_boxed_slice(),
             span: self.span(),
@@ -315,6 +315,7 @@ impl MetaItemOrLitParser {
 ///   `= value` part
 ///
 /// The syntax of `MetaItems` can be found at <https://doc.rust-lang.org/reference/attributes.html>
+#[derive(Debug)]
 pub struct MetaItemParser {
     path: OwnedPathParser,
     args: ArgParser,
@@ -323,15 +324,6 @@ pub struct MetaItemParser {
     /// This is tracked because if the arguments of a `MetaItemParser` are ignored, this is probably a mistake
     #[cfg(debug_assertions)]
     args_checked: AtomicBool,
-}
-
-impl Debug for MetaItemParser {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MetaItemParser")
-            .field("path", &self.path)
-            .field("args", &self.args)
-            .finish()
-    }
 }
 
 impl MetaItemParser {
@@ -385,21 +377,11 @@ impl MetaItemParser {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct NameValueParser {
     pub eq_span: Span,
     value: MetaItemLit,
     pub value_span: Span,
-}
-
-impl Debug for NameValueParser {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("NameValueParser")
-            .field("eq_span", &self.eq_span)
-            .field("value", &self.value)
-            .field("value_span", &self.value_span)
-            .finish()
-    }
 }
 
 impl NameValueParser {
@@ -452,7 +434,7 @@ fn expr_to_lit<'sess>(
                     let lit = MetaItemLit {
                         symbol: token_lit.symbol,
                         suffix: token_lit.suffix,
-                        kind: LitKind::Err(err.emit()),
+                        kind: LitKind::Err(err.emit_err()),
                         span: expr.span,
                     };
                     Ok(Some(lit))
@@ -489,7 +471,7 @@ fn expr_to_lit<'sess>(
     }
 }
 
-/// Whether expansions of `expr` metavariables from decrarative macros
+/// Whether expansions of `expr` metavariables from declarative  macros
 /// are permitted. Used when parsing meta items; currently, only `cfg` predicates
 /// enable this option
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -745,10 +727,11 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         should_emit: ShouldEmit,
         allow_expr_metavar: AllowExprMetavar,
     ) -> PResult<'sess, MetaItemListParser> {
-        let mut parser = Parser::new(psess, tokens, None);
-        if let ShouldEmit::ErrorsAndLints { recovery } = should_emit {
-            parser = parser.recovery(recovery);
-        }
+        let recovery = match should_emit {
+            ShouldEmit::ErrorsAndLints { recovery } => recovery,
+            _ => Recovery::Forbidden,
+        };
+        let mut parser = Parser::new(psess, tokens, None).recovery(recovery);
 
         let mut this =
             MetaItemListParserContext { parser: &mut parser, should_emit, allow_expr_metavar };
@@ -809,5 +792,9 @@ impl MetaItemListParser {
     pub fn as_single(&self) -> Option<&MetaItemOrLitParser> {
         let mut iter = self.mixed();
         iter.next().filter(|_| iter.next().is_none())
+    }
+
+    pub fn sub_parsers(&self) -> &[MetaItemOrLitParser] {
+        &self.sub_parsers
     }
 }

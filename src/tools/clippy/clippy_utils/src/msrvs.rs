@@ -1,16 +1,15 @@
-use crate::sym;
+use crate::{is_in_const_context, span_of_clippy_attr, sym};
 use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
+use rustc_attr_ir::{RustcVersion, StabilityLevel, StableSince};
 use rustc_attr_parsing::parse_version;
 use rustc_data_structures::smallvec::SmallVec;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::attrs::RustcVersion;
-use rustc_hir::{HirId, StabilityLevel, StableSince};
+use rustc_hir::{Constness, HirId};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::Symbol;
-use serde::Deserialize;
 use std::iter::once;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -26,13 +25,19 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
+    1,99,0 { BOX_INTO_NON_NULL }
+    1,98,0 { MAP_OR_DEFAULT, NONZERO_FROM_STR_RADIX }
     1,97,0 { ISOLATE_LOWEST_ONE, BIT_WIDTH }
+    1,94,0 { EULER_GAMMA, GOLDEN_RATIO, MUL_ADD_CONST }
     1,93,0 { VEC_DEQUE_POP_BACK_IF, VEC_DEQUE_POP_FRONT_IF }
     1,91,0 { DURATION_FROM_MINUTES_HOURS }
-    1,88,0 { LET_CHAINS, AS_CHUNKS }
+    1,89,0 { NONNULL_FROM_MUT }
+    1,88,0 { LET_CHAINS, AS_CHUNKS, RAW_PTR_DEFAULT }
     1,87,0 { OS_STR_DISPLAY, INT_MIDPOINT, CONST_CHAR_IS_DIGIT, UNSIGNED_IS_MULTIPLE_OF, INTEGER_SIGN_CAST }
     1,86,0 { VEC_POP_IF }
-    1,85,0 { UINT_FLOAT_MIDPOINT, CONST_SIZE_OF_VAL, WAKER_NOOP }
+    1,85,0 {
+        UINT_FLOAT_MIDPOINT, CONST_SIZE_OF_VAL, WAKER_NOOP, ABS_CONST, RADIANS_CONST, CONST_MEM_SWAP, CONST_PTR_SWAP,
+    }
     1,84,0 { CONST_OPTION_AS_SLICE, MANUAL_DANGLING_PTR }
     1,83,0 { CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY, CONST_MUT_REFS, CONST_UNWRAP }
     1,82,0 { IS_NONE_OR, REPEAT_N, RAW_REF_OP, SPECIALIZED_TO_STRING_FOR_REFS }
@@ -46,7 +51,7 @@ msrv_aliases! {
     1,73,0 { DIV_CEIL }
     1,71,0 { TUPLE_ARRAY_CONVERSIONS, BUILD_HASHER_HASH_ONE }
     1,70,0 { OPTION_RESULT_IS_VARIANT_AND, BINARY_HEAP_RETAIN }
-    1,68,0 { PATH_MAIN_SEPARATOR_STR }
+    1,68,0 { PATH_MAIN_SEPARATOR_STR, PIN_MACRO }
     1,67,0 { ILOG2 }
     1,65,0 { LET_ELSE, POINTER_CAST_CONSTNESS }
     1,63,0 { CLONE_INTO, CONST_SLICE_FROM_REF }
@@ -82,13 +87,14 @@ msrv_aliases! {
     1,29,0 { ITER_FLATTEN }
     1,28,0 { FROM_BOOL, REPEAT_WITH, SLICE_FROM_REF }
     1,27,0 { ITERATOR_TRY_FOLD, DOUBLE_ENDED_ITERATOR_RFIND, DURATION_FROM_NANOS_MICROS }
-    1,26,0 { RANGE_INCLUSIVE, STRING_RETAIN, POINTER_ADD_SUB_METHODS }
+    1,26,0 { RANGE_INCLUSIVE, STRING_RETAIN, POINTER_ADD_SUB_METHODS, BOX_LEAK }
     1,24,0 { IS_ASCII_DIGIT, PTR_NULL }
     1,18,0 { HASH_MAP_RETAIN, HASH_SET_RETAIN }
     1,17,0 { FIELD_INIT_SHORTHAND, STATIC_IN_CONST, EXPECT_ERR }
     1,16,0 { STR_REPEAT, RESULT_UNWRAP_OR_DEFAULT }
     1,15,0 { MAYBE_BOUND_IN_WHERE }
     1,13,0 { QUESTION_MARK_OPERATOR }
+    1,6,0 { CORE_PTR_SWAP }
     1,3,0 { DURATION_FROM_MILLIS_SECS }
 }
 
@@ -102,15 +108,10 @@ static SEEN_MSRV_ATTR: AtomicBool = AtomicBool::new(false);
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Msrv(Option<RustcVersion>);
 
-impl<'de> Deserialize<'de> for Msrv {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let v = String::deserialize(deserializer)?;
-        parse_version(Symbol::intern(&v))
-            .map(|v| Self(Some(v)))
-            .ok_or_else(|| serde::de::Error::custom("not a valid Rust version"))
+impl From<Option<RustcVersion>> for Msrv {
+    #[inline]
+    fn from(value: Option<RustcVersion>) -> Self {
+        Self(value)
     }
 }
 
@@ -142,7 +143,7 @@ impl Msrv {
     fn for_attrs(self, tcx: TyCtxt<'_>, node: HirId) -> Option<RustcVersion> {
         once(node)
             .chain(tcx.hir_parent_id_iter(node))
-            .find_map(|id| parse_attrs(tcx.sess, tcx.hir_attrs(id)))
+            .find_map(|id| parse_attrs(tcx.hir_attrs(id)))
             .or(self.0)
     }
 
@@ -153,7 +154,6 @@ impl Msrv {
     pub fn meets(self, cx: &LateContext<'_>, required: RustcVersion) -> bool {
         self.current(cx).is_none_or(|msrv| msrv >= required)
     }
-
     /// Checks if a required version from [this module](self) is met at the specified node
     ///
     /// If the crate being linted uses an `#[clippy::msrv]` attribute this will search the parent
@@ -162,25 +162,47 @@ impl Msrv {
         self.at(tcx, node).is_none_or(|msrv| msrv >= required)
     }
 
-    pub fn read_cargo(&mut self, sess: &Session) {
-        let cargo_msrv = std::env::var("CARGO_PKG_RUST_VERSION")
-            .ok()
-            .and_then(|v| parse_version(Symbol::intern(&v)));
+    pub fn is_stable(self, cx: &LateContext<'_>, def_id: DefId) -> bool {
+        self.stability_met(cx, cx.tcx.lookup_stability(def_id).map(|stability| stability.level))
+    }
 
-        match (self.0, cargo_msrv) {
-            (None, Some(cargo_msrv)) => self.0 = Some(cargo_msrv),
-            (Some(clippy_msrv), Some(cargo_msrv)) if clippy_msrv != cargo_msrv => {
-                sess.dcx().warn(format!(
-                    "the MSRV in `clippy.toml` and `Cargo.toml` differ; using `{clippy_msrv}` from `clippy.toml`"
-                ));
-            },
-            _ => {},
+    /// Checks whether `def_id` is `const` and const-stable since a version met by the MSRV.
+    ///
+    /// `def_id` must identify a function-like definition or an impl.
+    ///
+    /// Nothing in the crate being linted carries a const-stability attribute, so `const` fns and
+    /// impls defined there are treated as meeting any MSRV, mirroring
+    /// [`is_stable`](Self::is_stable).
+    pub fn is_const_stable(self, cx: &LateContext<'_>, def_id: DefId) -> bool {
+        let constness = match cx.tcx.def_kind(def_id) {
+            // The constness of a trait impl is not encoded in crate metadata, where `constness`
+            // would decode as its default of `Const`. It is only available from the impl header.
+            DefKind::Impl { of_trait: true } => cx.tcx.impl_trait_header(def_id).constness,
+            _ => cx.tcx.constness(def_id),
+        };
+
+        matches!(constness, Constness::Const { .. })
+            && self.stability_met(
+                cx,
+                cx.tcx.lookup_const_stability(def_id).map(|stability| stability.level),
+            )
+    }
+
+    /// Checks the stability relevant to where we are: const-stability inside a `const` context,
+    /// regular stability everywhere else.
+    ///
+    /// Like [`is_in_const_context`], this requires the `LateContext` to have an enclosing body.
+    pub fn is_stable_or_const_stable(self, cx: &LateContext<'_>, def_id: DefId) -> bool {
+        if is_in_const_context(cx) {
+            self.is_const_stable(cx, def_id)
+        } else {
+            self.is_stable(cx, def_id)
         }
     }
 
-    pub fn is_stable(self, cx: &LateContext<'_>, def_id: DefId) -> bool {
-        cx.tcx.lookup_stability(def_id).is_none_or(|stability| {
-            if let StabilityLevel::Stable { since, .. } = stability.level {
+    fn stability_met(self, cx: &LateContext<'_>, level: Option<StabilityLevel>) -> bool {
+        level.is_none_or(|level| {
+            if let StabilityLevel::Stable { since, .. } = level {
                 let version = match since {
                     StableSince::Version(version) => version,
                     StableSince::Current => RustcVersion::CURRENT,
@@ -205,13 +227,16 @@ pub struct MsrvStack {
     stack: SmallVec<[RustcVersion; 2]>,
 }
 
-impl MsrvStack {
-    pub fn new(initial: Msrv) -> Self {
+impl From<Option<RustcVersion>> for MsrvStack {
+    #[inline]
+    fn from(value: Option<RustcVersion>) -> Self {
         Self {
-            stack: SmallVec::from_iter(initial.0),
+            stack: SmallVec::from_iter(value),
         }
     }
+}
 
+impl MsrvStack {
     pub fn current(&self) -> Option<RustcVersion> {
         self.stack.last().copied()
     }
@@ -220,42 +245,55 @@ impl MsrvStack {
         self.current().is_none_or(|msrv| msrv >= required)
     }
 
-    pub fn check_attributes(&mut self, sess: &Session, attrs: &[Attribute]) {
-        if let Some(version) = parse_attrs(sess, attrs) {
+    pub fn check_attributes(&mut self, attrs: &[Attribute]) {
+        if let Some(version) = parse_attrs(attrs) {
             SEEN_MSRV_ATTR.store(true, Ordering::Relaxed);
             self.stack.push(version);
         }
     }
 
-    pub fn check_attributes_post(&mut self, sess: &Session, attrs: &[Attribute]) {
-        if parse_attrs(sess, attrs).is_some() {
+    pub fn check_attributes_post(&mut self, attrs: &[Attribute]) {
+        if parse_attrs(attrs).is_some() {
             self.stack.pop();
         }
     }
 }
 
-fn parse_attrs(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
+fn parse_attrs(attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
+    let msrv_attr = attrs.iter().find(|attr| attr.path_matches(&[sym::clippy, sym::msrv]))?;
+
+    let msrv = msrv_attr.value_str()?;
+
+    parse_version(msrv)
+}
+
+pub fn check_attrs(sess: &Session, attrs: &[impl AttributeExt]) {
     let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym::msrv]));
 
-    let msrv_attr = msrv_attrs.next()?;
+    let Some(msrv_attr) = msrv_attrs.next() else {
+        return;
+    };
 
     if let Some(duplicate) = msrv_attrs.next_back() {
         sess.dcx()
-            .struct_span_err(duplicate.span(), "`clippy::msrv` is defined multiple times")
-            .with_span_note(msrv_attr.span(), "first definition found here")
+            .struct_span_err(
+                span_of_clippy_attr(duplicate),
+                "`clippy::msrv` is defined multiple times",
+            )
+            .with_span_note(span_of_clippy_attr(msrv_attr), "first definition found here")
             .emit();
     }
 
     let Some(msrv) = msrv_attr.value_str() else {
-        sess.dcx().span_err(msrv_attr.span(), "bad clippy attribute");
-        return None;
-    };
-
-    let Some(version) = parse_version(msrv) else {
         sess.dcx()
-            .span_err(msrv_attr.span(), format!("`{msrv}` is not a valid Rust version"));
-        return None;
+            .span_err(span_of_clippy_attr(msrv_attr), "bad clippy attribute");
+        return;
     };
 
-    Some(version)
+    if parse_version(msrv).is_none() {
+        sess.dcx().span_err(
+            span_of_clippy_attr(msrv_attr),
+            format!("`{msrv}` is not a valid Rust version"),
+        );
+    }
 }

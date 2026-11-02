@@ -3,7 +3,7 @@
 use std::{borrow::Cow, ops, str::from_utf8};
 
 use anyhow::Context;
-use base_db::Env;
+use base_db::{Env, TargetKind};
 use cargo_metadata::{CargoOpt, MetadataCommand, PackageId};
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
@@ -36,6 +36,7 @@ pub struct CargoWorkspace {
     targets: Arena<TargetData>,
     workspace_root: AbsPathBuf,
     target_directory: AbsPathBuf,
+    build_directory: Option<AbsPathBuf>,
     manifest_path: ManifestPath,
     is_virtual_workspace: bool,
     /// Whether this workspace represents the sysroot workspace.
@@ -254,66 +255,24 @@ pub struct TargetData {
     pub required_features: Vec<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TargetKind {
-    Bin,
-    /// Any kind of Cargo lib crate-type (dylib, rlib, proc-macro, ...).
-    Lib {
-        /// Is this target a proc-macro
-        is_proc_macro: bool,
-    },
-    Example,
-    Test,
-    Bench,
-    /// Cargo calls this kind `custom-build`
-    BuildScript,
-    Other,
-}
-
-impl TargetKind {
-    pub fn new(kinds: &[cargo_metadata::TargetKind]) -> TargetKind {
-        for kind in kinds {
-            return match kind {
-                cargo_metadata::TargetKind::Bin => TargetKind::Bin,
-                cargo_metadata::TargetKind::Test => TargetKind::Test,
-                cargo_metadata::TargetKind::Bench => TargetKind::Bench,
-                cargo_metadata::TargetKind::Example => TargetKind::Example,
-                cargo_metadata::TargetKind::CustomBuild => TargetKind::BuildScript,
-                cargo_metadata::TargetKind::ProcMacro => TargetKind::Lib { is_proc_macro: true },
-                cargo_metadata::TargetKind::Lib
-                | cargo_metadata::TargetKind::DyLib
-                | cargo_metadata::TargetKind::CDyLib
-                | cargo_metadata::TargetKind::StaticLib
-                | cargo_metadata::TargetKind::RLib => TargetKind::Lib { is_proc_macro: false },
-                _ => continue,
-            };
-        }
-        TargetKind::Other
+fn convert_target_kind(kinds: &[cargo_metadata::TargetKind]) -> TargetKind {
+    for kind in kinds {
+        return match kind {
+            cargo_metadata::TargetKind::Bin => TargetKind::Bin,
+            cargo_metadata::TargetKind::Test => TargetKind::Test,
+            cargo_metadata::TargetKind::Bench => TargetKind::Bench,
+            cargo_metadata::TargetKind::Example => TargetKind::Example,
+            cargo_metadata::TargetKind::CustomBuild => TargetKind::BuildScript,
+            cargo_metadata::TargetKind::ProcMacro => TargetKind::Lib { is_proc_macro: true },
+            cargo_metadata::TargetKind::Lib
+            | cargo_metadata::TargetKind::DyLib
+            | cargo_metadata::TargetKind::CDyLib
+            | cargo_metadata::TargetKind::StaticLib
+            | cargo_metadata::TargetKind::RLib => TargetKind::Lib { is_proc_macro: false },
+            _ => continue,
+        };
     }
-
-    pub fn is_executable(self) -> bool {
-        matches!(self, TargetKind::Bin | TargetKind::Example)
-    }
-
-    pub fn is_proc_macro(self) -> bool {
-        matches!(self, TargetKind::Lib { is_proc_macro: true })
-    }
-
-    /// If this is a valid cargo target, returns the name cargo uses in command line arguments
-    /// and output, otherwise None.
-    /// <https://docs.rs/cargo_metadata/latest/cargo_metadata/enum.TargetKind.html>
-    pub fn as_cargo_target(self) -> Option<&'static str> {
-        match self {
-            TargetKind::Bin => Some("bin"),
-            TargetKind::Lib { is_proc_macro: true } => Some("proc-macro"),
-            TargetKind::Lib { is_proc_macro: false } => Some("lib"),
-            TargetKind::Example => Some("example"),
-            TargetKind::Test => Some("test"),
-            TargetKind::Bench => Some("bench"),
-            TargetKind::BuildScript => Some("custom-build"),
-            TargetKind::Other => None,
-        }
-    }
+    TargetKind::Other
 }
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
@@ -331,10 +290,19 @@ pub struct CargoMetadataConfig {
     /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, Option<String>>,
     /// What kind of metadata are we fetching: workspace, rustc, or sysroot.
-    pub kind: &'static str,
+    pub kind: CargoMetadataKind,
     /// The toolchain version, if known.
     /// Used to conditionally enable unstable cargo features.
     pub toolchain_version: Option<semver::Version>,
+}
+
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CargoMetadataKind {
+    #[default]
+    Workspace,
+    DetachedFile,
+    Rustc,
+    Sysroot,
 }
 
 // Deserialize helper for the cargo metadata
@@ -359,6 +327,7 @@ impl CargoWorkspace {
 
         let workspace_root = AbsPathBuf::assert(meta.workspace_root);
         let target_directory = AbsPathBuf::assert(meta.target_directory);
+        let build_directory = meta.build_directory.map(AbsPathBuf::assert);
         let mut is_virtual_workspace = true;
         let mut requires_rustc_private = false;
 
@@ -437,7 +406,7 @@ impl CargoWorkspace {
             for meta_tgt in meta_targets {
                 let cargo_metadata::Target { name, kind, required_features, src_path, .. } =
                     meta_tgt;
-                let kind = TargetKind::new(&kind);
+                let kind = convert_target_kind(&kind);
                 let tgt = targets.alloc(TargetData {
                     package: pkg,
                     name,
@@ -517,6 +486,7 @@ impl CargoWorkspace {
             targets,
             workspace_root,
             target_directory,
+            build_directory,
             manifest_path: ws_manifest_path,
             is_virtual_workspace,
             requires_rustc_private,
@@ -546,6 +516,10 @@ impl CargoWorkspace {
 
     pub fn target_directory(&self) -> &AbsPath {
         &self.target_directory
+    }
+
+    pub fn build_directory(&self) -> Option<&AbsPath> {
+        self.build_directory.as_deref()
     }
 
     pub fn package_flag(&self, package: &PackageData) -> String {
@@ -630,7 +604,7 @@ pub(crate) struct FetchMetadata {
     manifest_path: ManifestPath,
     lockfile_copy: Option<LockfileCopy>,
     #[expect(dead_code)]
-    kind: &'static str,
+    kind: CargoMetadataKind,
     no_deps: bool,
     no_deps_result: anyhow::Result<cargo_metadata::Metadata>,
     other_options: Vec<String>,
@@ -697,16 +671,33 @@ impl FetchMetadata {
         if cargo_toml.is_rust_manifest() {
             other_options.push("-Zscript".to_owned());
         } else if let Some(v) = config.toolchain_version.as_ref() {
-            lockfile_copy = make_lockfile_copy(
-                v,
-                &<_ as AsRef<Utf8Path>>::as_ref(cargo_toml).with_extension("lock"),
-            );
+            let manifest: &Utf8Path = cargo_toml.as_ref();
+            let lockfile_path = if config.kind == CargoMetadataKind::Rustc {
+                // The `rustc-dev` component ships `rustc-src/rust/compiler/rustc/Cargo.toml`
+                // without the workspace root manifest, so the lockfile at
+                // `rustc-src/rust/Cargo.lock` is neither next to the manifest nor discoverable
+                // by cargo. Without a copy of it, `cargo metadata --locked` fails and we degrade
+                // to `--no-deps` metadata, losing all rustc crates (e.g. `rustc_middle`).
+                manifest.ancestors().nth(3).map(|dir| dir.join("Cargo.lock"))
+            } else {
+                Some(manifest.with_extension("lock"))
+            };
+            lockfile_copy = lockfile_path.and_then(|path| make_lockfile_copy(v, &path));
         }
 
         if !config.targets.is_empty() {
-            other_options.extend(
-                config.targets.iter().flat_map(|it| ["--filter-platform".to_owned(), it.clone()]),
-            );
+            let mut has_json_target = false;
+            other_options.extend(config.targets.iter().flat_map(|target| {
+                has_json_target |= target.ends_with(".json");
+                ["--filter-platform".to_owned(), target.clone()]
+            }));
+            if has_json_target
+                && config.toolchain_version.as_ref().is_some_and(|version| {
+                    *version >= toolchain::MINIMUM_TOOLCHAIN_VERSION_REQUIRING_JSON_TARGET_SPEC_FLAG
+                })
+            {
+                other_options.push("-Zjson-target-spec".to_owned());
+            }
         }
 
         command.other_options(other_options.clone());
@@ -767,6 +758,10 @@ impl FetchMetadata {
         let mut using_lockfile_copy = false;
         if let Some(lockfile_copy) = &lockfile_copy {
             match lockfile_copy.usage {
+                LockfileUsage::WithFlag => {
+                    other_options.push("--lockfile-path".to_owned());
+                    other_options.push(lockfile_copy.path.to_string());
+                }
                 LockfileUsage::WithEnvVarUnstable => {
                     other_options.push("-Zlockfile-path".to_owned());
                     command.env("CARGO_RESOLVER_LOCKFILE_PATH", lockfile_copy.path.as_os_str());

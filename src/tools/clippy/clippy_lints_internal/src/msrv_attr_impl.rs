@@ -4,9 +4,8 @@ use clippy_utils::source::snippet;
 use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass, declare_tool_lint};
 use rustc_middle::ty::{self, GenericArgKind};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_tool_lint! {
     /// ### What it does

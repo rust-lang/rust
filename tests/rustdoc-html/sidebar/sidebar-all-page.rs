@@ -31,4 +31,4 @@ pub type Type = u8;
 pub const FOO: u8 = 0;
 pub static BAR: u8 = 0;
 #[rustc_doc_primitive = "u8"]
-mod u8 {}
+const _: () = ();

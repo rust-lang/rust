@@ -1,4 +1,4 @@
-// rustfmt-inline_attribute_width: 50
+//@ rustfmt-inline_attribute_width: 50
 
 #[cfg(feature = "alloc")] use core::slice;
 

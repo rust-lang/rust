@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{SpanExt, snippet_with_applicability};
+use clippy_utils::source::{SpanExt as _, snippet_with_applicability};
 use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -49,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                             | (Some(sym::FsPermissions), sym::set_mode)
                     )
                     && let ExprKind::Lit(_) = param.kind
-                    && param.span.eq_ctxt(expr.span)
+                    && param.span.ctxt() == expr.span.ctxt()
                     && param
                         .span
                         .check_text(cx, |src| !matches!(src.as_bytes(), [b'0', b'o' | b'b', ..]))
@@ -62,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                     && let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id()
                     && cx.tcx.is_diagnostic_item(sym::permissions_from_mode, def_id)
                     && let ExprKind::Lit(_) = param.kind
-                    && param.span.eq_ctxt(expr.span)
+                    && param.span.ctxt() == expr.span.ctxt()
                     && param
                         .span
                         .check_text(cx, |src| !matches!(src.as_bytes(), [b'0', b'o' | b'b', ..]))

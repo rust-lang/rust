@@ -1,4 +1,4 @@
-use crate::intrinsics::type_id;
+use crate::intrinsics::reflection::type_id;
 
 /// Collapses all unit items from an iterator into one.
 ///

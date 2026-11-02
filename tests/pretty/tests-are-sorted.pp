@@ -11,7 +11,7 @@ use ::std::prelude::rust_2015::*;
 extern crate test;
 #[rustc_test_marker = "m_test"]
 #[doc(hidden)]
-pub const m_test: test::TestDescAndFn =
+pub static m_test: test::TestDescAndFn =
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: test::StaticTestName("m_test"),
@@ -30,13 +30,12 @@ pub const m_test: test::TestDescAndFn =
         testfn: test::StaticTestFn(#[coverage(off)] ||
                 test::assert_test_result(m_test())),
     };
-#[rustc_test_entrypoint_marker]
 fn m_test() {}
 
 extern crate test;
 #[rustc_test_marker = "z_test"]
 #[doc(hidden)]
-pub const z_test: test::TestDescAndFn =
+pub static z_test: test::TestDescAndFn =
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: test::StaticTestName("z_test"),
@@ -56,13 +55,12 @@ pub const z_test: test::TestDescAndFn =
                 test::assert_test_result(z_test())),
     };
 #[ignore = "not yet implemented"]
-#[rustc_test_entrypoint_marker]
 fn z_test() {}
 
 extern crate test;
 #[rustc_test_marker = "a_test"]
 #[doc(hidden)]
-pub const a_test: test::TestDescAndFn =
+pub static a_test: test::TestDescAndFn =
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: test::StaticTestName("a_test"),
@@ -81,12 +79,11 @@ pub const a_test: test::TestDescAndFn =
         testfn: test::StaticTestFn(#[coverage(off)] ||
                 test::assert_test_result(a_test())),
     };
-#[rustc_test_entrypoint_marker]
 fn a_test() {}
+extern crate test;
 #[rustc_main]
 #[coverage(off)]
 #[doc(hidden)]
-pub fn main() -> () {
-    extern crate test;
-    test::test_main_static(&[&a_test, &m_test, &z_test])
+pub fn main() -> test::ExitCode {
+    test::test_main_env_args(&[&a_test, &m_test, &z_test])
 }

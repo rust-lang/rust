@@ -1,10 +1,8 @@
-use std::ffi::CString;
+use std::ffi::{CString, c_uint};
 use std::path::Path;
 
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_errors::{
-    Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, format_diag_message, msg,
-};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, format_diag_message, msg};
 use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
@@ -22,10 +20,10 @@ pub(crate) struct SanitizerMemtagRequiresMte;
 
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for ParseTargetMachineConfig<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         // Reuse the formatted primary message from `LlvmError` without emitting it.
-        let diag: Diag<'_, ()> = self.0.into_diag(dcx, level);
+        let diag = self.0.into_diag(dcx, level);
         let (message, _) = diag.messages.first().expect("`LlvmError` with no message");
         let message = format_diag_message(message, &diag.args).into_owned();
         diag.cancel();
@@ -61,8 +59,21 @@ pub(crate) struct AutoDiffWithoutLto;
 pub(crate) struct AutoDiffWithoutEnable;
 
 #[derive(Diagnostic)]
+#[diag("failed to load our rust offload backend: {$err}")]
+pub(crate) struct RustOffloadComponentUnavailable {
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("rust offload backend not found in the sysroot: {$err}")]
+#[note("it will be distributed via rustup in the future")]
+pub(crate) struct RustOffloadComponentMissing {
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(
-    "using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/device.bin>"
+    "using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/<crate>.bc>"
 )]
 pub(crate) struct OffloadWithoutEnable;
 
@@ -71,28 +82,24 @@ pub(crate) struct OffloadWithoutEnable;
 pub(crate) struct OffloadWithoutFatLTO;
 
 #[derive(Diagnostic)]
-#[diag("using the `-Z offload=Host=/absolute/path/to/device.bin` flag requires an absolute path")]
+#[diag("using the `-Z offload=Host=/absolute/path/to/<crate>.bc` flag requires an absolute path")]
 pub(crate) struct OffloadWithoutAbsPath;
 
 #[derive(Diagnostic)]
 #[diag(
-    "using the `-Z offload=Host=/absolute/path/to/device.bin` flag must point to a `device.bin` file"
+    "using the `-Z offload=Host=/absolute/path/to/<crate>.bc` flag must point to a .bc file produced by the device compilation (--emit=llvm-bc)"
 )]
 pub(crate) struct OffloadWrongFileName;
 
 #[derive(Diagnostic)]
 #[diag(
-    "the given path/file to `device.bin` does not exist. Did you forget to run the device compilation first?"
+    "the given path/file to `<crate>.bc` does not exist. Did you forget to run the device compilation first?"
 )]
 pub(crate) struct OffloadNonexistingPath;
 
 #[derive(Diagnostic)]
-#[diag("call to BundleImages failed, `device.bin` was not created")]
-pub(crate) struct OffloadBundleImagesFailed;
-
-#[derive(Diagnostic)]
-#[diag("call to EmbedBufferInModule failed, `host.o` was not created")]
-pub(crate) struct OffloadEmbedFailed;
+#[diag("call to WrapImages failed, device image was not wrapped into the host module")]
+pub(crate) struct OffloadWrapImagesFailed;
 
 #[derive(Diagnostic)]
 #[diag("failed to get bitcode from object file for LTO ({$err})")]
@@ -106,6 +113,8 @@ pub(crate) enum LlvmError<'a> {
     WriteOutput { path: &'a Path },
     #[diag("could not create LLVM TargetMachine for triple: {$triple}")]
     CreateTargetMachine { triple: SmallCStr },
+    #[diag("could not create LLVM MCSubtargetInfo for triple: {$triple}")]
+    CreateMCSubtargetInfo { triple: SmallCStr },
     #[diag("failed to run LLVM passes")]
     RunLlvmPasses,
     #[diag("failed to write LLVM IR to {$path}")]
@@ -124,13 +133,16 @@ pub(crate) enum LlvmError<'a> {
 
 pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for WithLlvmError<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         use LlvmError::*;
         let msg_with_llvm_err = match &self.0 {
             WriteOutput { .. } => msg!("could not write output to {$path}: {$llvm_err}"),
             CreateTargetMachine { .. } => {
                 msg!("could not create LLVM TargetMachine for triple: {$triple}: {$llvm_err}")
+            }
+            CreateMCSubtargetInfo { .. } => {
+                msg!("could not create LLVM MCSubtargetInfo for triple: {$triple}: {$llvm_err}")
             }
             RunLlvmPasses => msg!("failed to run LLVM passes: {$llvm_err}"),
             WriteIr { .. } => msg!("failed to write LLVM IR to {$path}: {$llvm_err}"),
@@ -244,4 +256,23 @@ pub(crate) struct IntrinsicWrongArch<'a> {
     pub target_arch: &'a str,
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("ignoring feature with missing prefix in `-Zllvm-target-feature`: `{$feature}`")]
+#[note("features must begin with a `+` to enable or `-` to disable it")]
+pub(crate) struct UnknownLlvmTargetFeaturePrefix<'a> {
+    pub feature: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "LLVM version mismatch: this compiler was built for LLVM {$expected_version}, but LLVM {$llvm_major}.{$llvm_minor}.{$llvm_patch} was found{$dll_loc}"
+)]
+pub(crate) struct LlvmVersionMismatch<'a> {
+    pub expected_version: c_uint,
+    pub llvm_major: c_uint,
+    pub llvm_minor: c_uint,
+    pub llvm_patch: c_uint,
+    pub dll_loc: &'a str,
 }

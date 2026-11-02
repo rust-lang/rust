@@ -1,6 +1,6 @@
 use crate::methods::DRAIN_COLLECT;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::snippet;
 use clippy_utils::{is_full_collection_range, std_or_core, sym};
 use rustc_errors::Applicability;

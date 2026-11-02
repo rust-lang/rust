@@ -15,9 +15,10 @@
 //@ ignore-backends: gcc
 
 #![feature(no_core)]
-//[error]~^ ERROR mixing `-Zreg-struct-return` will cause an ABI mismatch in crate `no_value_bool`
-//[error_explicit]~^^ ERROR mixing `-Zreg-struct-return` will cause an ABI mismatch in crate `no_value_bool`
 #![crate_type = "rlib"]
 #![no_core]
 
 extern crate enabled_reg_struct_return;
+
+//[error]~? ERROR mixing `-Zreg-struct-return` will cause an ABI mismatch in crate `no_value_bool`
+//[error_explicit]~? ERROR mixing `-Zreg-struct-return` will cause an ABI mismatch in crate `no_value_bool`

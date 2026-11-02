@@ -9,12 +9,16 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[package.metadata.cargo-machete]
+ignored = ["unicode-ident"]
+
 [lib]
 doctest = false
 
 [dependencies]
 either.workspace = true
 itertools.workspace = true
+ra-ap-rustc_lexer.workspace = true
 rowan.workspace = true
 rustc-hash.workspace = true
 rustc-literal-escaper.workspace = true
@@ -25,6 +29,10 @@ smallvec.workspace = true
 
 parser.workspace = true
 stdx.workspace = true
+
+# This is a transitive dep, but we need to specify this
+# for the workspace-wide pinning
+unicode-ident.workspace = true
 
 [dev-dependencies]
 rayon.workspace = true

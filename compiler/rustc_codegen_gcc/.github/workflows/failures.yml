@@ -16,7 +16,9 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
+    # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
+    timeout-minutes: 90
 
     strategy:
       fail-fast: false
@@ -34,7 +36,7 @@ jobs:
             env_extra: "TEST_FLAGS='-Cpanic=abort -Zpanic-abort-tests' GCC_EXEC_PREFIX=/usr/lib/gcc/"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     # `rustup show` installs from rust-toolchain.toml
     - name: Setup rust toolchain
@@ -43,14 +45,19 @@ jobs:
     - name: Setup rust cache
       uses: Swatinem/rust-cache@v2
 
+    - name: Add apt mirrors
+      uses: ./.github/actions/apt-mirrors
+
     - name: Install packages
-      run: sudo apt-get install ninja-build ripgrep
+      timeout-minutes: 20
+      run: |
+        sudo apt-get update
+        sudo apt-get install ninja-build ripgrep
 
     - name: Install libgccjit12
       if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
-      run: |
-        sudo apt-get update
-        sudo apt-get install libgccjit-12-dev
+      timeout-minutes: 20
+      run: sudo apt-get install libgccjit-12-dev
 
     - name: Setup path to libgccjit
       if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
@@ -98,7 +105,14 @@ jobs:
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       id: tests
       run: |
-        ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --clean --build-sysroot --test-failing-rustc ${{ matrix.libgccjit_version.extra }} 2>&1 | tee output_log
+        # Without this, `tee` masks the exit status of `y.sh test`.
+        set -o pipefail
+        status=0
+        ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --clean --build-sysroot --test-failing-rustc ${{ matrix.libgccjit_version.extra }} 2>&1 | tee output_log || status=$?
+        # This suite runs the tests known to fail, so only a build system error must fail the job.
+        if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+          exit "$status"
+        fi
         rg --text "test result" output_log >> $GITHUB_STEP_SUMMARY
 
     - name: Run failing ui pattern tests for ICE
@@ -106,7 +120,14 @@ jobs:
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       id: ui-tests
       run: |
-        ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --test-failing-ui-pattern-tests ${{ matrix.libgccjit_version.extra }} 2>&1 | tee output_log_ui
+        # Without this, `tee` masks the exit status of `y.sh test`.
+        set -o pipefail
+        status=0
+        ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --test-failing-ui-pattern-tests ${{ matrix.libgccjit_version.extra }} 2>&1 | tee output_log_ui || status=$?
+        # This suite runs tests that fail, so only a build system error must fail the job here.
+        if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+          exit "$status"
+        fi
         if grep -q "the compiler unexpectedly panicked" output_log_ui; then
           echo "Error: 'the compiler unexpectedly panicked' found in output logs. CI Error!!"
           exit 1

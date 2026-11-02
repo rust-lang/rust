@@ -1,5 +1,3 @@
-//@ compile-flags: -Znext-solver=coherence
-
 // A regression test for #124791. Computing ambiguity causes
 // for the overlap of the `ToString` impls caused an ICE.
 #![crate_type = "lib"]

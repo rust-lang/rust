@@ -4,7 +4,8 @@ Hello fellow Rustacean! If you made it here, you're probably interested in
 making Clippy better by contributing to it. In that case, welcome to the
 project!
 
-> _Note:_ If you're just interested in using Clippy, there's nothing to see from
+> [!NOTE]
+> If you're just interested in using Clippy, there's nothing to see from
 > this point onward, and you should return to one of the earlier chapters.
 
 ## Getting started
@@ -46,7 +47,8 @@ also a good idea to give the [stability guarantees][rfc_stability] and
 quick read. The lint categories are also described [earlier in this
 book](../lints.md).
 
-> _Note:_ Some higher level things about contributing to Clippy are still
+> [!NOTE]
+> Some higher level things about contributing to Clippy are still
 > covered in the [`CONTRIBUTING.md`] document. Some of those will be moved to
 > the book over time, like:
 > - Finding something to fix
@@ -61,4 +63,4 @@ book](../lints.md).
 [clippy_rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md
 [rfc_stability]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#stability-guarantees
 [rfc_lint_cats]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories
-[`CONTRIBUTING.md`]: https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md
+[`CONTRIBUTING.md`]: https://github.com/rust-lang/rust-clippy/blob/HEAD/CONTRIBUTING.md

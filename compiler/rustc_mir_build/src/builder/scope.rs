@@ -84,6 +84,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 use std::mem;
 
 use interpret::ErrorHandled;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
@@ -91,10 +92,8 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{AdtExpr, AdtExprBase, ArmId, ExprId, ExprKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
-use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
-use rustc_session::lint::Level;
-use rustc_span::{DUMMY_SP, Span, Spanned};
+use rustc_span::{DUMMY_SP, Span, Spanned, bug, span_bug};
 use tracing::{debug, instrument};
 
 use super::matches::BuiltMatchTree;
@@ -447,7 +446,7 @@ impl DropTree {
                         // use `DUMMY_SP`.
                         let source_info =
                             SourceInfo { span: DUMMY_SP, ..drop_node.data.source_info };
-                        let terminator = TerminatorKind::Goto { target };
+                        let terminator = TerminatorKind::goto(target);
                         cfg.terminate(block, source_info, terminator);
                     }
                 }
@@ -467,7 +466,7 @@ impl DropTree {
                         // use `DUMMY_SP`.
                         let source_info =
                             SourceInfo { span: DUMMY_SP, ..drop_node.data.source_info };
-                        let terminator = TerminatorKind::Goto { target };
+                        let terminator = TerminatorKind::goto(target);
                         cfg.terminate(block, source_info, terminator);
                     }
                 }
@@ -569,12 +568,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(
                     normal_block.into_block(),
                     source_info,
-                    TerminatorKind::Goto { target },
+                    TerminatorKind::goto(target),
                 );
                 self.cfg.terminate(
                     exit_block.into_block(),
                     source_info,
-                    TerminatorKind::Goto { target },
+                    TerminatorKind::goto(target),
                 );
                 target.unit()
             }
@@ -622,12 +621,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(
                     normal_block.into_block(),
                     source_info,
-                    TerminatorKind::Goto { target },
+                    TerminatorKind::goto(target),
                 );
                 self.cfg.terminate(
                     exit_block.into_block(),
                     source_info,
-                    TerminatorKind::Goto { target },
+                    TerminatorKind::goto(target),
                 );
                 target.unit()
             }
@@ -638,9 +637,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// guards.
     ///
     /// For an if-let chain:
-    ///
-    /// if let Some(x) = a && let Some(y) = b && let Some(z) = c { ... }
-    ///
+    /// ```rust,ignore(illustrative)
+    ///     if let Some(x) = a && let Some(y) = b && let Some(z) = c { ... }
+    /// ```
     /// There are three possible ways the condition can be false and we may have
     /// to drop `x`, `x` and `y`, or neither depending on which binding fails.
     /// To handle this correctly we use a `DropTree` in a similar way to a
@@ -650,30 +649,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// - We don't need to keep a stack of scopes in the `Builder` because the
     ///   'else' paths will only leave the innermost scope.
     /// - This is also used for match guards.
-    pub(crate) fn in_if_then_scope<F>(
+    ///
+    /// Returns blocks for the two condition outcomes, `(true_block, false_block)`.
+    pub(crate) fn in_if_then_scope(
         &mut self,
         region_scope: region::Scope,
         span: Span,
-        f: F,
-    ) -> (BasicBlock, BasicBlock)
-    where
-        F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<()>,
-    {
+        // Closure that will lower the condition(s), register breaks, and return `true_block`.
+        f: impl FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<()>,
+    ) -> (BasicBlock, BasicBlock) {
         let scope = IfThenScope { region_scope, else_drops: DropTree::new() };
         let previous_scope = mem::replace(&mut self.scopes.if_then_scope, Some(scope));
 
-        let then_block = f(self).into_block();
+        let true_block = f(self).into_block();
 
         let if_then_scope = mem::replace(&mut self.scopes.if_then_scope, previous_scope).unwrap();
         assert!(if_then_scope.region_scope == region_scope);
 
-        let else_block =
-            self.build_exit_tree(if_then_scope.else_drops, region_scope, span, None).map_or_else(
-                || self.cfg.start_new_block(),
-                |else_block_and| else_block_and.into_block(),
-            );
+        // Lower any break paths (where the condition was false)
+        // into a drop tree that ends in `false_block`.
+        let false_block = self
+            .build_exit_tree(if_then_scope.else_drops, region_scope, span, None)
+            .map(|false_block: BlockAnd<()>| false_block.into_block())
+            .unwrap_or_else(|| self.cfg.start_new_block());
 
-        (then_block, else_block)
+        (true_block, false_block)
     }
 
     /// Convenience wrapper that pushes a scope and then executes `f`
@@ -791,15 +791,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (None, Some(_)) => {
                 panic!("`return`, `become` and `break` with value and must have a destination")
             }
-            (None, None) => {
-                if self.tcx.sess.instrument_coverage() {
-                    // Normally we wouldn't build any MIR in this case, but that makes it
-                    // harder for coverage instrumentation to extract a relevant span for
-                    // `continue` expressions. So here we inject a dummy statement with the
-                    // desired span.
-                    self.cfg.push_coverage_span_marker(block, source_info);
-                }
-            }
+            (None, None) => {}
         }
 
         let region_scope = self.scopes.breakable_scopes[break_index].region_scope;
@@ -968,7 +960,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             tcx: self.tcx,
             typeck_results,
             module: self.tcx.parent_module(self.hir_id),
-            typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(
+            typing_env: ty::TypingEnv::post_typeck_through_borrowck_for_mir_build(
                 self.tcx,
                 self.def_id,
             ),
@@ -1054,12 +1046,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         return self.cfg.start_new_block().unit();
     }
 
-    /// Sets up the drops for breaking from `block` due to an `if` condition
-    /// that turned out to be false.
+    /// Breaks out of the enclosing [`Builder::in_if_then_scope`] due to a
+    /// condition being false.
+    ///
+    /// This adds relevant drops in the drop tree, and adds a dummy terminator
+    /// that will become a real `goto` when the scope's drop tree is built.
     ///
     /// Must be called in the context of [`Builder::in_if_then_scope`], so that
     /// there is an if-then scope to tell us what the target scope is.
-    pub(crate) fn break_for_else(&mut self, block: BasicBlock, source_info: SourceInfo) {
+    pub(crate) fn break_from_if_then_scope(&mut self, block: BasicBlock, source_info: SourceInfo) {
         let if_then_scope = self
             .scopes
             .if_then_scope
@@ -1296,13 +1291,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // This is a moderately common case, mostly hit for previously unseen nodes.
                 break;
             }
-
-            if self
-                .tcx
-                .hir_attrs(id)
-                .iter()
-                .any(|attr| Level::from_opt_symbol(attr.name()).is_some())
-            {
+            if find_attr!(self.tcx, id, LintCheck(_)) {
                 // This is a rare case. It's for a node path that doesn't reach the root due to an
                 // intervening lint level attribute. This result doesn't get cached.
                 return id;
@@ -1969,7 +1958,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
     /// Build a drop tree for a breakable scope.
     ///
     /// If `continue_block` is `Some`, then the tree is for `continue` inside a
-    /// loop. Otherwise this is for `break` or `return`.
+    /// loop. Otherwise this is for `break`, `return`, or `if`.
     fn build_exit_tree(
         &mut self,
         mut drops: DropTree,
@@ -2118,10 +2107,10 @@ impl<'tcx> DropTreeBuilder<'tcx> for ExitScopes {
     fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         // There should be an existing terminator with real source info and a
         // dummy TerminatorKind. Replace it with a proper goto.
-        // (The dummy is added by `break_scope` and `break_for_else`.)
+        // (The dummy is added by `break_scope` and `break_from_if_then_scope`.)
         let term = cfg.block_data_mut(from).terminator_mut();
         if let TerminatorKind::UnwindResume = term.kind {
-            term.kind = TerminatorKind::Goto { target: to };
+            term.kind = TerminatorKind::goto(to);
         } else {
             span_bug!(term.source_info.span, "unexpected dummy terminator kind: {:?}", term.kind);
         }
@@ -2162,7 +2151,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             TerminatorKind::Drop { unwind, .. } => {
                 if let UnwindAction::Cleanup(unwind) = *unwind {
                     let source_info = term.source_info;
-                    cfg.terminate(unwind, source_info, TerminatorKind::Goto { target: to });
+                    cfg.terminate(unwind, source_info, TerminatorKind::goto(to));
                 } else {
                     *unwind = UnwindAction::Cleanup(to);
                 }

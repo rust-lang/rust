@@ -1,33 +1,33 @@
 # Sanitizers support
 
-The rustc compiler contains support for following sanitizers:
+The Rust compiler contains support for following sanitizers:
 
-* [AddressSanitizer][clang-asan] a faster memory error detector.
-  Can detect out-of-bounds access to heap, stack, and globals, use after free, use
-  after return, double free, invalid free, memory leaks.
-* [ControlFlowIntegrity][clang-cfi] LLVM Control Flow Integrity (CFI) provides
+* [AddressSanitizer][clang-asan], a faster memory error detector.
+  It can detect out-of-bounds access to heap, stack, and globals, use after free, use
+  after return, double free, invalid free, and memory leaks.
+* [ControlFlowIntegrity][clang-cfi], LLVM Control Flow Integrity (CFI), provides
   forward-edge control flow protection.
-* [Hardware-assisted AddressSanitizer][clang-hwasan]  a tool similar to
-  AddressSanitizer but based on partial hardware assistance.
-* [KernelControlFlowIntegrity][clang-kcfi] LLVM Kernel Control Flow Integrity
-  (KCFI) provides forward-edge control flow protection for operating systems kernels.
-* [LeakSanitizer][clang-lsan] a run-time memory leak detector.
-* [MemorySanitizer][clang-msan] a detector of uninitialized reads.
-* [ThreadSanitizer][clang-tsan] a fast data race detector.
+* [Hardware-assisted AddressSanitizer][clang-hwasan] is similar to
+  AddressSanitizer, but is based on partial hardware assistance.
+* [KernelControlFlowIntegrity][clang-kcfi], LLVM Kernel Control Flow Integrity
+  (KCFI), provides forward-edge control flow protection for operating system kernels.
+* [LeakSanitizer][clang-lsan], a run-time memory leak detector.
+* [MemorySanitizer][clang-msan], a detector of uninitialized reads.
+* [ThreadSanitizer][clang-tsan], a fast data race detector.
 
 ## How to use the sanitizers?
 
-To enable a sanitizer compile with `-Z sanitizer=...` option, where value is one
-of `address`, `cfi`, `hwaddress`, `kcfi`, `leak`, `memory` or `thread`.
+To enable a sanitizer, compile with `-Z sanitizer=...` option, where value is one
+of `address`, `cfi`, `hwaddress`, `kcfi`, `leak`, `memory`, or `thread`.
 For more details on how to use sanitizers,
-please refer to the sanitizer flag in [The Unstable Book].
+refer to the sanitizer flag in [The Unstable Book].
 
 [The Unstable Book]: https://doc.rust-lang.org/unstable-book
 
-## How are sanitizers implemented in rustc?
+## How sanitizers are implemented in rustc
 
 The implementation of sanitizers (except CFI) relies almost entirely on LLVM.
-The rustc is an integration point for LLVM compile time instrumentation passes
+The Rust compiler is an integration point for LLVM compile time instrumentation passes
 and runtime libraries.
 Highlight of the most important aspects of the implementation:
 
@@ -42,7 +42,7 @@ Highlight of the most important aspects of the implementation:
    The runtimes are [placed into target libdir][sanitizer-copy].
 
 *  During LLVM code generation, the functions intended for instrumentation are
-   [marked][sanitizer-attribute] with appropriate LLVM attribute:
+   [marked][sanitizer-attribute] with an appropriate LLVM attribute:
    `SanitizeAddress`, `SanitizeHWAddress`, `SanitizeMemory`, or `SanitizeThread`.
    By default, all functions are instrumented, but this
    behaviour can be changed with `#[sanitize(xyz = "on|off|<other>")]`.
@@ -57,7 +57,7 @@ Highlight of the most important aspects of the implementation:
    passes][sanitizer-pass], different for each sanitizer.
    Instrumentation passes are invoked after optimization passes.
 
-*  When producing an executable, the sanitizer specific runtime library is
+*  When producing an executable, the sanitizer-specific runtime library is
    [linked in][sanitizer-link].
    The libraries are searched for in the target libdir.
    First, the search is relative to the overridden system root, and subsequently,
@@ -83,7 +83,7 @@ Sanitizers are validated by code generation tests in
 [`tests/ui/sanitizer/`][test-ui] directory.
 
 Testing sanitizer functionality requires the sanitizer runtimes (built when
-`build.sanitizer = true` in `bootstrap.toml`) and target providing support for particular a sanitizer.
+`build.sanitizer = true` in `bootstrap.toml`) and a target providing support for particular a sanitizer.
 When a sanitizer is unsupported on a given target, sanitizer tests will be ignored.
 This behaviour is controlled by compiletest `needs-sanitizer-*` directives.
 

@@ -1,0 +1,24 @@
+error: expected type, found `>`
+  --> $DIR/malformed-parse.rs:11:23
+   |
+LL | impl Foo for Bar {
+   |                  - while parsing this item list starting here
+LL |
+LL |     fn hello<const N: >() {
+   |                       ^ expected type
+...
+LL | }
+   | - the item list ends here
+
+error[E0046]: not all trait items implemented, missing: `hello`
+  --> $DIR/malformed-parse.rs:9:1
+   |
+LL |     fn hello<const N: i32>();
+   |     ------------------------- `hello` from trait
+...
+LL | impl Foo for Bar {
+   | ^^^^^^^^^^^^^^^^ missing `hello` in implementation
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0046`.

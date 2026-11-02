@@ -1,8 +1,6 @@
 //@ skip-filecheck
 // Regression test for issue #116212.
 
-#![feature(never_type)]
-
 use std::mem::MaybeUninit;
 
 struct Foo {

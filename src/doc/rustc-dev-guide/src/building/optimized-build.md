@@ -31,11 +31,11 @@ Enabling LTO on Linux has [produced] speed-ups by up to 10%.
 ## Memory allocator
 
 Using a different memory allocator for `rustc` can provide significant performance benefits.
-If you want to enable the `jemalloc` allocator, you can set the `rust.override-allocator` option to `jemalloc`
+If you want to enable the `jemalloc` allocator, you can set the `build.allocator` option to `jemalloc`
 in `bootstrap.toml`:
 
 ```toml
-rust.override-allocator = "jemalloc"
+build.allocator = "jemalloc"
 ```
 
 > Note that this option is currently only supported for Linux and macOS targets.
@@ -120,7 +120,7 @@ Here is an example of how can `opt-dist` be used locally (outside of CI):
       --target-triple <target> \ # select target, e.g. "x86_64-unknown-linux-gnu"
       --checkout-dir <path>    \ # path to rust checkout, e.g. "."
       --llvm-dir <path>        \ # path to built LLVM toolchain, e.g. "/foo/bar/llvm/install"
-      -- python3 x.py dist       # pass the actual build command
+      -- ./x dist       # pass the actual build command
     ```
     You can run `--help` to see further parameters that you can modify.
 

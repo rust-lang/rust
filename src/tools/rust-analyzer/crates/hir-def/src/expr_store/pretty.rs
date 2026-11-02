@@ -19,7 +19,7 @@ use crate::{
     expr_store::path::{GenericArg, GenericArgs},
     hir::{
         Array, BindingAnnotation, CaptureBy, ClosureKind, CoroutineKind, Literal, Movability,
-        RecordSpread, Statement,
+        RecordSpread, Statement, Unsafe,
         generics::{GenericParams, WherePredicate},
     },
     lang_item::LangItemTarget,
@@ -746,18 +746,6 @@ impl Printer<'_> {
                 self.whitespace();
                 self.print_expr_in(prec, *rhs);
             }
-            Expr::Range { lhs, rhs, range_type } => {
-                if let Some(lhs) = lhs {
-                    self.print_expr_in(prec, *lhs);
-                }
-                match range_type {
-                    RangeOp::Exclusive => w!(self, ".."),
-                    RangeOp::Inclusive => w!(self, "..="),
-                };
-                if let Some(rhs) = rhs {
-                    self.print_expr_in(prec, *rhs);
-                }
-            }
             Expr::Index { base, index } => {
                 self.print_expr_in(prec, *base);
                 w!(self, "[");
@@ -855,14 +843,11 @@ impl Printer<'_> {
                 w!(self, "]");
             }
             Expr::Literal(lit) => self.print_literal(lit),
-            Expr::Block { id: _, statements, tail, label } => {
+            Expr::Block { id: _, statements, tail, label, unsafe_ } => {
                 let label = label.map(|lbl| {
                     format!("{}: ", self.store[lbl].name.display(self.db, self.edition))
                 });
-                self.print_block(label.as_deref(), statements, tail);
-            }
-            Expr::Unsafe { id: _, statements, tail } => {
-                self.print_block(Some("unsafe "), statements, tail);
+                self.print_block(label.as_deref(), *unsafe_, statements, tail);
             }
             Expr::Const(id) => {
                 w!(self, "const {{ /* {id:?} */ }}");
@@ -882,12 +867,16 @@ impl Printer<'_> {
     fn print_block(
         &mut self,
         label: Option<&str>,
+        unsafe_: Unsafe,
         statements: &[Statement],
         tail: &Option<la_arena::Idx<Expr>>,
     ) {
         self.whitespace();
         if let Some(lbl) = label {
             w!(self, "{}", lbl);
+        }
+        if unsafe_ == Unsafe::Yes {
+            w!(self, "unsafe ");
         }
         w!(self, "{{");
         if !statements.is_empty() || tail.is_some() {
@@ -1043,10 +1032,6 @@ impl Printer<'_> {
                 w!(self, "deref!(");
                 self.print_pat(*inner);
                 w!(self, ")");
-            }
-            Pat::ConstBlock(c) => {
-                w!(self, "const ");
-                self.print_expr(*c);
             }
             Pat::Expr(expr) => {
                 self.print_expr_in(prec, *expr);

@@ -1,17 +1,16 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_expr_use_or_unification_node;
-use clippy_utils::res::{MaybeQPath, MaybeResPath};
+use clippy_utils::res::{MaybeQPath as _, MaybeResPath as _};
 use core::cell::Cell;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    Body, Expr, ExprKind, HirId, HirIdMap, ImplItem, ImplItemImplKind, ImplItemKind, Node, PatKind,
-    TraitItem, TraitItemKind,
+    Body, Expr, ExprKind, HirId, HirIdMap, ImplItem, ImplItemImplKind, ImplItemKind, Node, PatKind, TraitItem,
+    TraitItemKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, ConstKind, GenericArgKind, GenericArgsRef};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
+use rustc_middle::ty::{self, ConstKind, GenericArgKind, GenericArgs};
 use rustc_span::Span;
 use rustc_span::symbol::{Ident, kw};
 use std::iter;
@@ -337,7 +336,9 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                     (
                         trait_item_id,
                         FnKind::ImplTraitFn(
-                            std::ptr::from_ref(cx.tcx.erase_and_anonymize_regions(trait_ref.args)) as usize
+                            #[allow(deprecated)]
+                            cx.tcx.erase_and_anonymize_regions(trait_ref.args).as_ptr()
+                                as usize,
                         ),
                         usize::from(sig.decl.implicit_self().has_implicit_self()),
                     )
@@ -481,7 +482,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
     }
 }
 
-fn has_matching_args(kind: FnKind, args: GenericArgsRef<'_>) -> bool {
+fn has_matching_args(kind: FnKind, args: GenericArgs<'_>) -> bool {
     match kind {
         FnKind::Fn => true,
         FnKind::TraitFn => args.iter().enumerate().all(|(idx, subst)| match subst.kind() {
@@ -489,6 +490,7 @@ fn has_matching_args(kind: FnKind, args: GenericArgsRef<'_>) -> bool {
             GenericArgKind::Type(ty) => matches!(*ty.kind(), ty::Param(ty) if ty.index as usize == idx),
             GenericArgKind::Const(c) => matches!(c.kind(), ConstKind::Param(c) if c.index as usize == idx),
         }),
-        FnKind::ImplTraitFn(expected_args) => std::ptr::from_ref(args) as usize == expected_args,
+        #[allow(deprecated)]
+        FnKind::ImplTraitFn(expected_args) => args.as_ptr() as usize == expected_args,
     }
 }

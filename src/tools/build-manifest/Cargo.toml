@@ -16,5 +16,4 @@ rayon = "1.5.1"
 hex = "0.4.2"
 
 [build-dependencies]
-serde = "1"
 serde_json = "1"

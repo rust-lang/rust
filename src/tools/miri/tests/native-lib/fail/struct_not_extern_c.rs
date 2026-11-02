@@ -1,6 +1,5 @@
 // Only works on Unix targets
 //@ignore-target: windows wasm
-//@only-on-host
 
 #![allow(improper_ctypes)]
 

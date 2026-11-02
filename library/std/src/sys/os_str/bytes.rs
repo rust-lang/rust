@@ -4,7 +4,7 @@
 use core::clone::CloneToUninit;
 
 use crate::borrow::Cow;
-use crate::bstr::ByteStr;
+use crate::byte_str::ByteStr;
 use crate::collections::TryReserveError;
 use crate::rc::Rc;
 use crate::sync::Arc;
@@ -16,12 +16,12 @@ mod tests;
 
 #[derive(Hash)]
 #[repr(transparent)]
-pub struct Buf {
+pub(crate) struct Buf {
     pub inner: Vec<u8>,
 }
 
 #[repr(transparent)]
-pub struct Slice {
+pub(crate) struct Slice {
     pub inner: [u8],
 }
 

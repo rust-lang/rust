@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::profiling::QueryInvocationId;
-use rustc_data_structures::sharded::{self, ShardedHashMap};
+use rustc_data_structures::sharded::ShardedHashMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_data_structures::unord::UnordMap;
@@ -48,7 +48,7 @@ pub enum QuerySideEffect {
     /// effect dep node as a dependency.
     Diagnostic(DiagInner),
     /// Records the feature used during query execution.
-    /// This feature will be inserted into `sess.used_features`
+    /// This feature will be inserted into `query_system.used_features`
     /// if we mark the query as green, as that query will have
     /// the side effect dep node as a dependency.
     CheckFeature { symbol: Symbol },
@@ -676,7 +676,7 @@ impl DepGraphData {
             let ok = match color {
                 DepNodeColor::Unknown => true,
                 DepNodeColor::Red => false,
-                DepNodeColor::Green(..) => sess.threads().is_some(), // Other threads may mark this green
+                DepNodeColor::Green(..) => sess.opts.jobs.frontend.is_some(), // Other threads may mark this green
             };
             if !ok {
                 panic!("{}", msg())
@@ -703,6 +703,15 @@ impl DepGraphData {
     #[inline]
     pub fn prev_value_fingerprint_of(&self, prev_index: SerializedDepNodeIndex) -> Fingerprint {
         self.previous.value_fingerprint_for_index(prev_index)
+    }
+
+    /// The number of incremental sessions in this graph's lineage, from
+    /// [`SerializedDepGraph::session_count`]. Advances by one per successful
+    /// session; a failed session does not commit a graph, so a re-run sees
+    /// the same count.
+    #[inline]
+    pub fn session_count(&self) -> u64 {
+        self.previous.session_count()
     }
 
     #[inline]
@@ -770,7 +779,7 @@ impl DepGraphData {
                     tcx.dcx().emit_diagnostic(diagnostic.clone());
                 }
                 QuerySideEffect::CheckFeature { symbol } => {
-                    tcx.sess.used_features.lock().insert(*symbol, dep_node_index.as_u32());
+                    tcx.query_system.used_features.lock().insert(*symbol, dep_node_index);
                 }
             }
 
@@ -850,12 +859,6 @@ impl DepGraph {
     /// so, return the path that leads to it. Used to skip doing work.
     pub fn previous_work_product(&self, v: &WorkProductId) -> Option<WorkProduct> {
         self.data.as_ref().and_then(|data| data.previous_work_products.get(v).cloned())
-    }
-
-    /// Access the map of work-products created during the cached run. Only
-    /// used during saving of the dep-graph.
-    pub fn previous_work_products(&self) -> &WorkProductMap {
-        &self.data.as_ref().unwrap().previous_work_products
     }
 
     pub fn debug_was_loaded_from_disk(&self, dep_node: DepNode) -> bool {
@@ -1134,6 +1137,13 @@ pub struct WorkProduct {
     pub saved_files: UnordMap<String, String>,
 }
 
+impl WorkProduct {
+    /// The metadata work product is not produced by any CGU and thus its
+    /// name cannot be derived from `CodegenUnit`. Both the writers and readers
+    /// of the metadata work product use this constant to agree on the name.
+    pub const METADATA_WORKPRODUCT_CGU_NAME: &str = "metadata";
+}
+
 pub type WorkProductMap = UnordMap<WorkProductId, WorkProduct>;
 
 // Index type for `DepNodeData`'s edges.
@@ -1221,8 +1231,7 @@ impl CurrentDepGraph {
         CurrentDepGraph {
             encoder: GraphEncoder::new(session, encoder, prev_index_space_len, previous),
             anon_node_to_index: ShardedHashMap::with_capacity(
-                // FIXME: The count estimate is off as anon nodes are only a portion of the nodes.
-                new_node_count_estimate / sharded::shards(),
+                3 * new_node_count_estimate / 100, // Reserve capacity for 3% anon nodes
             ),
             anon_id_seed,
             #[cfg(debug_assertions)]

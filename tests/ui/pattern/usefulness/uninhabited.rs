@@ -4,7 +4,6 @@
 //
 // This tests plays with matching and uninhabited types. This also serves as a test for the
 // `Ty::is_inhabited_from` function.
-#![feature(never_type)]
 #![deny(unreachable_patterns)]
 
 macro_rules! assert_empty {

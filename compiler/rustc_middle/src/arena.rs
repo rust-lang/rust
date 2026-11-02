@@ -2,9 +2,11 @@
 //! `Copy` type, and any `!Copy` type explicitly listed below.
 
 use rustc_serialize::Decodable;
+use rustc_span::{Span, Spanned};
 
+use crate::mono::MonoItem;
 use crate::ty::codec::{RefDecodable, TyDecoder};
-use crate::ty::{Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 
 // If a type `T` supported by the arena also needs to support decoding into `&'tcx T`
 // backed by an arena allocation (via `RefDecodable`), add it to the list in
@@ -36,18 +38,18 @@ rustc_arena::declare_arena! {
             rustc_hir::def_id::LocalDefId,
             rustc_middle::ty::DefinitionSiteHiddenType<'tcx>,
         >,
-    resolver: rustc_data_structures::steal::Steal<rustc_middle::ty::ResolverAstLowering<'tcx>>,
-    index_ast:
-        rustc_index::IndexVec<
-            rustc_span::def_id::LocalDefId,
-            rustc_data_structures::steal::Steal<(
-                std::sync::Arc<rustc_middle::ty::ResolverAstLowering<'tcx>>,
-                rustc_ast::AstOwner
-            )>
+    resolver:
+        rustc_data_structures::steal::Steal<
+            rustc_middle::middle::resolve::ResolverAstLowering<'tcx>
         >,
+    index_ast:
+        Option<rustc_data_structures::steal::Steal<(
+            std::sync::Arc<rustc_middle::middle::resolve::ResolverAstLowering<'tcx>>,
+            rustc_middle::middle::resolve::AstOwner
+        )>>,
     crate_alone: rustc_data_structures::steal::Steal<rustc_ast::Crate>,
     crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
-    resolutions: rustc_middle::ty::ResolverGlobalCtxt,
+    resolutions: rustc_middle::middle::resolve::ResolverGlobalCtxt,
     const_allocs: rustc_middle::mir::interpret::Allocation,
     region_scope_tree: rustc_middle::middle::region::ScopeTree,
     // Required for the incremental on-disk cache
@@ -68,6 +70,12 @@ rustc_arena::declare_arena! {
         rustc_middle::infer::canonical::Canonical<'tcx,
             rustc_middle::infer::canonical::QueryResponse<'tcx,
                 Vec<rustc_middle::traits::query::OutlivesBound<'tcx>>
+            >
+        >,
+    mir_borrowck_implied_outlives_bounds:
+        rustc_middle::infer::canonical::Canonical<'tcx,
+            rustc_middle::infer::canonical::QueryResponse<'tcx,
+                rustc_middle::traits::query::MirBorrowckImpliedOutlivesBounds<'tcx>
             >
         >,
     dtorck_constraint: rustc_middle::traits::query::DropckConstraint<'tcx>,
@@ -99,9 +107,9 @@ rustc_arena::declare_arena! {
     upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
     dyn_compatibility_violations: rustc_middle::traits::DynCompatibilityViolation,
     codegen_unit: rustc_middle::mono::CodegenUnit<'tcx>,
-    attribute: rustc_hir::Attribute,
+    attribute: rustc_attr_ir::Attribute,
     name_set: rustc_data_structures::unord::UnordSet<rustc_span::Symbol>,
-    autodiff_item: rustc_hir::attrs::AutoDiffItem,
+    autodiff_item: rustc_attr_ir::AutoDiffItem,
     ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::Symbol>,
     stable_order_of_exportable_impls:
         rustc_data_structures::fx::FxIndexMap<rustc_hir::def_id::DefId, usize>,
@@ -122,16 +130,14 @@ rustc_arena::declare_arena! {
             rustc_middle::ty::EarlyBinder<'tcx, Ty<'tcx>>
         >,
     external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<TyCtxt<'tcx>>,
-    doc_link_resolutions: rustc_hir::def::DocLinkResMap,
-    stripped_cfg_items: rustc_hir::attrs::StrippedCfgItem,
-    mod_child: rustc_middle::metadata::ModChild,
+    doc_link_resolutions: rustc_middle::middle::resolve::DocLinkResMap,
+    stripped_cfg_items: rustc_attr_ir::StrippedCfgItem,
+    mod_child: rustc_middle::middle::resolve::ModChild,
     features: rustc_feature::Features,
     specialization_graph: rustc_middle::traits::specialization_graph::Graph,
     crate_inherent_impls: rustc_middle::ty::CrateInherentImpls,
     hir_owner_nodes: rustc_hir::OwnerNodes<'tcx>,
     token_stream: rustc_ast::tokenstream::TokenStream,
-    maybe_owner: rustc_middle::hir::ProjectedMaybeOwner<'tcx>,
-    owner_info: rustc_middle::hir::ProjectedOwnerInfo<'tcx>,
     parenting: rustc_hir::def_id::LocalDefIdMap<rustc_hir::ItemLocalId>,
     trait_candidates: rustc_hir::ItemLocalMap<&'tcx [rustc_hir::TraitCandidate<'tcx>]>,
     delayed_lints: rustc_data_structures::steal::Steal<rustc_hir::lints::DelayedLints>,
@@ -153,8 +159,10 @@ where
     D: TyDecoder<'tcx>,
     T: ArenaAllocatable<'tcx, C> + Decodable<D>,
 {
-    let values: Vec<T> = Decodable::decode(decoder);
-    decoder.interner().arena.alloc_from_iter(values)
+    // The decoder for slices must match the decoder for `Vec<T>`,
+    // which is a `usize` length followed by that many `T`.
+    let len = decoder.read_usize();
+    decoder.interner().arena.alloc_from_iter((0..len).map(|_| T::decode(decoder)))
 }
 
 macro_rules! impl_ref_decodable_into_arena {
@@ -164,16 +172,16 @@ macro_rules! impl_ref_decodable_into_arena {
         )*
     ) => {
         $(
-            impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for $ty {
+            impl<'tcx> RefDecodable<'tcx> for $ty {
                 #[inline]
-                fn decode(decoder: &mut D) -> &'tcx Self {
+                fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
                     decode_arena_allocatable(decoder)
                 }
             }
 
-            impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [$ty] {
+            impl<'tcx> RefDecodable<'tcx> for [$ty] {
                 #[inline]
-                fn decode(decoder: &mut D) -> &'tcx Self {
+                fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
                     decode_arena_allocatable_slice(decoder)
                 }
             }
@@ -186,14 +194,19 @@ macro_rules! impl_ref_decodable_into_arena {
 //
 // Types in this list must be `ArenaAllocatable`, either because they are `Copy`
 // or because they are listed in the `declare_arena!` invocation.
+//
+// Types in this list must also implement `Decodable<D>` for all `D: TyDecoder<'tcx>`.
 impl_ref_decodable_into_arena! {
     // tidy-alphabetical-start
     (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
+    (ty::Clause<'tcx>, Span),
+    (ty::PolyTraitRef<'tcx>, Span),
+    Spanned<MonoItem<'tcx>>,
     rustc_ast::InlineAsmTemplatePiece,
     rustc_ast::tokenstream::TokenStream,
+    rustc_attr_ir::Attribute,
     rustc_data_structures::unord::UnordMap<rustc_span::def_id::DefId, rustc_middle::ty::EarlyBinder<'tcx, Ty<'tcx>>>,
     rustc_data_structures::unord::UnordSet<rustc_span::def_id::LocalDefId>,
-    rustc_hir::Attribute,
     rustc_index::IndexVec<rustc_middle::mir::Promoted, rustc_middle::mir::Body<'tcx>>,
     rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs,
     rustc_middle::mir::Body<'tcx>,

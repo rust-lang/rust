@@ -1,11 +1,12 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
+use std::convert::identity;
 
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
-use rustc_data_structures::Limit;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
@@ -13,17 +14,17 @@ use rustc_middle::ty::layout::{
     LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{
-    self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, Variance,
+    self, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, Variance,
 };
-use rustc_middle::{mir, span_bug};
-use rustc_span::Span;
+use rustc_span::{Span, span_bug};
+use rustc_structures::Limit;
 use rustc_target::callconv::FnAbi;
-use tracing::{debug, trace};
+use tracing::trace;
 
 use super::{
-    Frame, FrameInfo, GlobalId, InterpErrorInfo, InterpErrorKind, InterpResult, MPlaceTy, Machine,
-    MemPlaceMeta, Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance,
-    err_inval, interp_ok, throw_inval, throw_ub, throw_ub_format,
+    Frame, FrameInfo, GlobalId, InterpErrorKind, InterpResult, MPlaceTy, Machine, MemPlaceMeta,
+    Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance, err_inval, interp_ok,
+    throw_inval, throw_ub, throw_ub_format,
 };
 use crate::{enter_trace_span, util};
 
@@ -239,18 +240,6 @@ pub(super) fn from_known_layout<'tcx>(
     }
 }
 
-/// Turn the given error into a human-readable string. Expects the string to be printed, so if
-/// `RUSTC_CTFE_BACKTRACE` is set this will show a backtrace of the rustc internals that
-/// triggered the error.
-///
-/// This is NOT the preferred way to render an error; use `report` from `const_eval` instead.
-/// However, this is useful when error messages appear in ICEs.
-pub fn format_interp_error<'tcx>(e: InterpErrorInfo<'tcx>) -> String {
-    let (e, backtrace) = e.into_parts();
-    backtrace.print_backtrace();
-    e.to_string()
-}
-
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
@@ -297,12 +286,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     #[inline(always)]
     pub fn frame(&self) -> &Frame<'tcx, M::Provenance, M::FrameExtra> {
-        self.stack().last().expect("no call frames exist")
+        self.stack().last().expect("a call frame should exist")
     }
 
     #[inline(always)]
     pub fn frame_mut(&mut self) -> &mut Frame<'tcx, M::Provenance, M::FrameExtra> {
-        self.stack_mut().last_mut().expect("no call frames exist")
+        self.stack_mut().last_mut().expect("a call frame should exist")
     }
 
     #[inline(always)]
@@ -371,7 +360,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn resolve(
         &self,
         def: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
         let _trace = enter_trace_span!(M, resolve::try_resolve, def = ?def);
         trace!("resolve: {:?}, {:#?}", def, args);
@@ -388,49 +377,41 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
-    /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
-    /// frame which is not `#[track_caller]`. This matches the `caller_location` intrinsic,
+    /// Grabs the implicit caller location argument, if there is one,
+    /// or falls back to the "current" span. This matches the `caller_location` intrinsic,
     /// and is primarily intended for the panic machinery.
-    pub(crate) fn find_closest_untracked_caller_location(&self) -> Span {
-        for frame in self.stack().iter().rev() {
-            debug!("find_closest_untracked_caller_location: checking frame {:?}", frame.instance);
+    pub(crate) fn caller_location(&self) -> Span {
+        let frame = self.frame();
 
-            // Assert that the frame we look at is actually executing code currently
-            // (`loc` is `Right` when we are unwinding and the frame does not require cleanup).
-            let loc = frame.loc.left().unwrap();
+        // Assert that the frame we look at is actually executing code currently
+        // (`loc` is `Right` when we are unwinding and the frame does not require cleanup).
+        let loc = frame.loc.left().unwrap();
 
-            // This could be a non-`Call` terminator (such as `Drop`), or not a terminator at all
-            // (such as `box`). Use the normal span by default.
-            let mut source_info = *frame.body.source_info(loc);
+        // FIXME: It would be nice to have the following redundant sanity check.
+        // However, `requires_caller_location` would return true on a promoted that's
+        // inside a `#[track_caller]` function, and we currently don't keep track of
+        // enough information to identify such cases happening.
+        // assert_eq!(
+        //     frame.track_caller_arg.is_some(),
+        //     frame.instance.def.requires_caller_location(*self.tcx)
+        // );
 
-            // If this is a `Call` terminator, use the `fn_span` instead.
-            let block = &frame.body.basic_blocks[loc.block];
-            if loc.statement_index == block.statements.len() {
-                debug!(
-                    "find_closest_untracked_caller_location: got terminator {:?} ({:?})",
-                    block.terminator(),
-                    block.terminator().kind,
-                );
-                if let mir::TerminatorKind::Call { fn_span, .. } = block.terminator().kind {
-                    source_info.span = fn_span;
-                }
-            }
+        // This could be a non-`Call` terminator (such as `Drop`), or not a terminator at all
+        // (such as `box`). Use the normal span by default.
+        let mut source_info = *frame.body.source_info(loc);
 
-            let caller_location = if frame.instance.def.requires_caller_location(*self.tcx) {
-                // We use `Err(())` as indication that we should continue up the call stack since
-                // this is a `#[track_caller]` function.
-                Some(Err(()))
-            } else {
-                None
-            };
-            if let Ok(span) =
-                frame.body.caller_location_span(source_info, caller_location, *self.tcx, Ok)
-            {
-                return span;
-            }
+        // If this is a `Call` terminator, use the `fn_span` instead.
+        let block = &frame.body.basic_blocks[loc.block];
+        if loc.statement_index == block.statements.len()
+            && let mir::TerminatorKind::Call { fn_span, .. } = block.terminator().kind
+        {
+            source_info.span = fn_span;
         }
 
-        span_bug!(self.cur_span(), "no non-`#[track_caller]` frame found")
+        // Directly returning `frame.track_caller_arg` would be wrong if we are
+        // in code that got inlined from another function. `caller_location_span`
+        // handles that for us.
+        frame.body.caller_location_span(source_info, frame.track_caller_arg, *self.tcx, identity)
     }
 
     /// Returns the actual dynamic size and alignment of the place at the given type.
@@ -500,7 +481,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 interp_ok(Some((full_size, full_align)))
             }
             ty::Dynamic(expected_trait, _) => {
-                let vtable = metadata.unwrap_meta().to_pointer(self)?;
+                let vtable = metadata.unwrap_meta().to_pointer(self);
                 // Read size and align from vtable (already checks size).
                 interp_ok(Some(self.get_vtable_size_and_align(vtable, Some(expected_trait))?))
             }
@@ -534,7 +515,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Jump to the given block.
     #[inline]
     pub fn go_to_block(&mut self, target: mir::BasicBlock) {
-        self.frame_mut().loc = Left(mir::Location { block: target, statement_index: 0 });
+        self.frame_mut().loc = Left(target.start_location());
     }
 
     /// *Return* to the given `target` basic block.
@@ -561,7 +542,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     #[cold] // usually we have normal returns, not unwinding
     pub fn unwind_to_block(&mut self, target: mir::UnwindAction) -> InterpResult<'tcx> {
         self.frame_mut().loc = match target {
-            mir::UnwindAction::Cleanup(block) => Left(mir::Location { block, statement_index: 0 }),
+            mir::UnwindAction::Cleanup(block) => Left(block.start_location()),
             mir::UnwindAction::Continue => Right(self.frame_mut().body.span),
             mir::UnwindAction::Unreachable => {
                 throw_ub_format!("unwinding past a stack frame that does not allow unwinding");

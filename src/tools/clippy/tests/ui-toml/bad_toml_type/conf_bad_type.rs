@@ -1,3 +1,3 @@
-//@error-in-other-file: invalid type: integer `42`, expected a sequence
+//@error-in-other-file: expected an array
 
 fn main() {}

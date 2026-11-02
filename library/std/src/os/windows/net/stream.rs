@@ -1,4 +1,6 @@
 #![unstable(feature = "windows_unix_domain_sockets", issue = "150487")]
+
+use crate::macros::rustdoc_skip_body;
 use crate::net::Shutdown;
 use crate::os::windows::io::{
     AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, RawSocket,
@@ -21,7 +23,8 @@ use crate::{fmt, io};
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(windows, doc = "```no_run")]
+#[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
 /// #![feature(windows_unix_domain_sockets)]
 /// use std::os::windows::net::UnixStream;
 /// use std::io::prelude::*;
@@ -54,7 +57,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixStream;
     ///
@@ -77,7 +81,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::{UnixListener, UnixStream};
     ///
@@ -112,7 +117,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixStream;
     ///
@@ -122,6 +128,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[rustdoc_skip_body]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { getsockname(self.0.as_raw(), addr, len) })
     }
@@ -130,7 +137,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixStream;
     ///
@@ -140,6 +148,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[rustdoc_skip_body]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { getpeername(self.0.as_raw(), addr, len) })
     }
@@ -148,7 +157,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixStream;
     /// use std::time::Duration;
@@ -160,6 +170,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[rustdoc_skip_body]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(SO_RCVTIMEO)
     }
@@ -168,7 +179,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixStream;
     ///
@@ -192,7 +204,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixStream;
     /// use std::time::Duration;
@@ -207,7 +220,8 @@ impl UnixStream {
     /// An [`Err`] is returned if the zero [`Duration`] is passed to this
     /// method:
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::io;
     /// use std::os::windows::net::UnixStream;
@@ -221,6 +235,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[rustdoc_skip_body]
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(dur, SO_RCVTIMEO)
     }
@@ -235,7 +250,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixStream;
     /// use std::time::Duration;
@@ -251,7 +267,8 @@ impl UnixStream {
     /// An [`Err`] is returned if the zero [`Duration`] is passed to this
     /// method:
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::io;
     /// use std::os::windows::net::UnixStream;
@@ -265,6 +282,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[rustdoc_skip_body]
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(dur, SO_SNDTIMEO)
     }
@@ -277,7 +295,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixStream;
     /// use std::net::Shutdown;
@@ -296,7 +315,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixStream;
     ///
@@ -321,7 +341,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixStream;
     ///
@@ -339,7 +360,8 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixStream;
     /// use std::time::Duration;
@@ -352,6 +374,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[rustdoc_skip_body]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(SO_SNDTIMEO)
     }
@@ -397,6 +420,7 @@ impl<'a> io::Write for &'a UnixStream {
 
 impl AsSocket for UnixStream {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_socket(&self) -> BorrowedSocket<'_> {
         self.0.as_socket()
     }
@@ -404,6 +428,7 @@ impl AsSocket for UnixStream {
 
 impl AsRawSocket for UnixStream {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_socket(&self) -> RawSocket {
         self.0.as_raw_socket()
     }
@@ -411,12 +436,14 @@ impl AsRawSocket for UnixStream {
 
 impl FromRawSocket for UnixStream {
     #[inline]
+    #[rustdoc_skip_body]
     unsafe fn from_raw_socket(sock: RawSocket) -> Self {
         unsafe { UnixStream(Socket::from_raw_socket(sock)) }
     }
 }
 
 impl IntoRawSocket for UnixStream {
+    #[rustdoc_skip_body]
     fn into_raw_socket(self) -> RawSocket {
         self.0.into_raw_socket()
     }

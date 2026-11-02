@@ -2,21 +2,18 @@ use std::fmt;
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
-use rustc_infer::traits::PredicateObligations;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 
 use crate::infer::canonical::{
-    CanonicalQueryInput, CanonicalQueryResponse, Certainty, OriginalQueryValues,
-    QueryRegionConstraints,
+    CanonicalQueryInput, CanonicalQueryResponse, OriginalQueryValues, QueryRegionConstraints,
 };
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::{ObligationCause, ObligationCtxt};
+use crate::traits::ObligationCause;
 
 pub mod ascribe_user_type;
 pub mod custom;
-pub mod implied_outlives_bounds;
 pub mod normalize;
 pub mod outlives;
 pub mod prove_predicate;
@@ -63,13 +60,13 @@ pub struct TypeOpOutput<'tcx, Op: TypeOp<'tcx>> {
 ///
 /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 'tcx {
-    type QueryResponse: TypeFoldable<TyCtxt<'tcx>>;
+    type QueryResponse: TypeFoldable<TyCtxt<'tcx>> + PartialEq;
 
     /// Give query the option for a simple fast path that never
     /// actually hits the tcx cache lookup etc. Return `Some(r)` with
     /// a final result or `None` to do the full path.
     fn try_fast_path(
-        tcx: TyCtxt<'tcx>,
+        infcx: &InferCtxt<'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse>;
 
@@ -83,55 +80,6 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
         tcx: TyCtxt<'tcx>,
         canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution>;
-
-    /// In the new trait solver, we already do caching in the solver itself,
-    /// so there's no need to canonicalize and cache via the query system.
-    /// Additionally, even if we were to canonicalize, we'd still need to
-    /// make sure to feed it predefined opaque types and the defining anchor
-    /// and that would require duplicating all of the tcx queries. Instead,
-    /// just perform these ops locally.
-    fn perform_locally_with_next_solver(
-        ocx: &ObligationCtxt<'_, 'tcx>,
-        key: ParamEnvAnd<'tcx, Self>,
-        span: Span,
-    ) -> Result<Self::QueryResponse, NoSolution>;
-
-    fn fully_perform_into(
-        query_key: ParamEnvAnd<'tcx, Self>,
-        infcx: &InferCtxt<'tcx>,
-        output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
-        span: Span,
-    ) -> Result<
-        (
-            Self::QueryResponse,
-            Option<CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>>,
-            PredicateObligations<'tcx>,
-            Certainty,
-        ),
-        NoSolution,
-    > {
-        if !infcx.disable_trait_solver_fast_paths()
-            && let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key)
-        {
-            return Ok((result, None, PredicateObligations::new(), Certainty::Proven));
-        }
-
-        let mut canonical_var_values = OriginalQueryValues::default();
-        let old_param_env = query_key.param_env;
-        let canonical_self = infcx.canonicalize_query(query_key, &mut canonical_var_values);
-        let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
-
-        let InferOk { value, obligations } = infcx
-            .instantiate_nll_query_response_and_region_obligations(
-                &ObligationCause::dummy_with_span(span),
-                old_param_env,
-                &canonical_var_values,
-                canonical_result,
-                output_query_region_constraints,
-            )?;
-
-        Ok((value, Some(canonical_self), obligations, canonical_result.value.certainty))
-    }
 }
 
 impl<'tcx, Q> TypeOp<'tcx> for ParamEnvAnd<'tcx, Q>
@@ -147,48 +95,44 @@ where
         root_def_id: LocalDefId,
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
-        // In the new trait solver, query type ops are performed locally. This
-        // is because query type ops currently use the old canonicalizer, and
-        // that doesn't preserve things like opaques which have been registered
-        // during MIR typeck. Even after the old canonicalizer is gone, it's
-        // probably worthwhile just keeping this run-locally logic, since we
-        // probably don't gain much from caching here given the new solver does
-        // caching internally.
-        if infcx.next_trait_solver() {
-            return Ok(scrape_region_constraints(
-                infcx,
-                root_def_id,
-                "query type op",
-                span,
-                |ocx| {
-                    if !infcx.disable_trait_solver_fast_paths()
-                        && let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &self)
-                    {
-                        return Ok(result);
-                    }
-                    QueryTypeOp::perform_locally_with_next_solver(ocx, self, span)
-                },
-            )?
-            .0);
+        if !infcx.disable_trait_solver_fast_paths()
+            && let Some(value) = QueryTypeOp::try_fast_path(infcx, &self)
+        {
+            debug_assert_eq!(value, infcx.deeply_resolve_ignoring_regions(value.clone()));
+
+            return Ok(TypeOpOutput { output: value, constraints: None, error_info: None });
         }
 
         let mut error_info = None;
         let mut region_constraints = QueryRegionConstraints::default();
 
-        // HACK(type_alias_impl_trait): When moving an opaque type to hidden type mapping from the query to the current inferctxt,
-        // we sometimes end up with `Opaque<'a> = Opaque<'b>` instead of an actual hidden type. In that case we don't register a
-        // hidden type but just equate the lifetimes. Thus we need to scrape the region constraints even though we're also manually
-        // collecting region constraints via `region_constraints`.
+        // HACK(type_alias_impl_trait): When moving an opaque type to hidden type mapping from the
+        // query to the current inferctxt, we sometimes end up with `Opaque<'a> = Opaque<'b>`
+        // instead of an actual hidden type. In that case we don't register a hidden type but just
+        // equate the lifetimes. Thus we need to scrape the region constraints even though we're
+        // also manually collecting region constraints via `region_constraints`.
         let (mut output, _) =
             scrape_region_constraints(infcx, root_def_id, "fully_perform", span, |ocx| {
-                let (output, ei, obligations, _) =
-                    Q::fully_perform_into(self, infcx, &mut region_constraints, span)?;
-                error_info = ei;
+                let mut canonical_var_values = OriginalQueryValues::default();
+                let old_param_env = self.param_env;
+                let canonical_self = infcx.canonicalize_query(self, &mut canonical_var_values);
+                let canonical_result = Q::perform_query(infcx.tcx, canonical_self)?;
 
+                let InferOk { value, obligations } = infcx
+                    .instantiate_nll_query_response_and_region_obligations(
+                        &ObligationCause::dummy_with_span(span),
+                        old_param_env,
+                        &canonical_var_values,
+                        canonical_result,
+                        &mut region_constraints,
+                    )?;
+
+                error_info = Some(canonical_self);
                 ocx.register_obligations(obligations);
-                Ok(output)
+                Ok(value)
             })?;
         output.error_info = error_info;
+
         if let Some(QueryRegionConstraints { constraints, assumptions }) = output.constraints {
             region_constraints.constraints.extend(constraints.iter().cloned());
             region_constraints.assumptions.extend(assumptions.iter().cloned());

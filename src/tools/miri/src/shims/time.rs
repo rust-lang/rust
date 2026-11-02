@@ -69,7 +69,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.assert_target_os_is_unix("clock_gettime");
 
         let clk_id = this.read_scalar(clk_id_op)?;
-        let tp = this.deref_pointer_as(tp_op, this.libc_ty_layout("timespec"))?;
+        let tp = this.deref_pointer(tp_op)?;
 
         let duration = match this.parse_clockid(clk_id) {
             Some(TimeoutClock::RealTime) => {
@@ -105,7 +105,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.assert_target_os_is_unix("gettimeofday");
         this.check_no_isolation("`gettimeofday`")?;
 
-        let tv = this.deref_pointer_as(tv_op, this.libc_ty_layout("timeval"))?;
+        let tv = this.deref_pointer(tv_op)?;
 
         // Using tz is obsolete and should always be null
         let tz = this.read_pointer(tz_op)?;
@@ -135,14 +135,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.assert_target_os_is_unix("localtime_r");
         this.check_no_isolation("`localtime_r`")?;
 
-        let time_layout = this.libc_ty_layout("time_t");
-        let timep = this.deref_pointer_as(timep, time_layout)?;
-        let result = this.deref_pointer_as(result_op, this.libc_ty_layout("tm"))?;
+        let timep = this.deref_pointer(timep)?;
+        let result = this.deref_pointer(result_op)?;
 
         // The input "represents the number of seconds elapsed since the Epoch,
         // 1970-01-01 00:00:00 +0000 (UTC)".
         let sec_since_epoch: i64 =
-            this.read_scalar(&timep)?.to_int(time_layout.size)?.try_into().unwrap();
+            this.read_scalar(&timep)?.to_int(timep.layout.size)?.try_into().unwrap();
         let dt_utc: DateTime<Utc> =
             DateTime::from_timestamp(sec_since_epoch, 0).expect("Invalid timestamp");
 
@@ -471,9 +470,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let nsec_field = this.project_field_named(tp, "tv_nsec")?;
         let nsec = this.read_scalar(&nsec_field)?.to_int(nsec_field.layout.size)?;
 
+        // tv_sec can be negative; this does not actually return EINVAL natively.
+        // Since we cannot represent a negative duration, we just don't support this for now.
+        if sec < 0 {
+            throw_unsup_format!("timespec with negative tv_sec is not supported");
+        }
         interp_ok(try {
-            // tv_sec must be non-negative.
-            let seconds: u64 = sec.try_into().ok()?;
+            let seconds: u64 = sec.try_into().expect("tv_sec should fit in 64 bits");
             // tv_nsec must be non-negative.
             let nanoseconds: u32 = nsec.try_into().ok()?;
             if nanoseconds >= 1_000_000_000 {
@@ -487,8 +490,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Parse a `timeval` struct and return it as a [`Duration`]. It returns [`None`]
     /// if the value in the `timeval` struct is invalid. Some libc functions will return
     /// EINVAL in this case.
-    fn read_timeval(&mut self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
-        let this = self.eval_context_mut();
+    fn read_timeval(&self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
+        let this = self.eval_context_ref();
         let sec_field = this.project_field_named(tp, "tv_sec")?;
         let sec = this.read_scalar(&sec_field)?.to_int(sec_field.layout.size)?;
 

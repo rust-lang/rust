@@ -1,8 +1,5 @@
 name: integration
 on:
-  push:
-    branches:
-      - main
   pull_request:
 
 permissions:
@@ -13,11 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     name: ${{ matrix.integration }}
     strategy:
-      # https://help.github.com/en/actions/getting-started-with-github-actions/about-github-actions#usage-limits
-      # There's a limit of 60 concurrent jobs across all repos in the rust-lang organization.
-      # In order to prevent overusing too much of that 60 limit, we throttle the
-      # number of rustfmt jobs that will run concurrently.
-      max-parallel: 4
       fail-fast: false
       matrix:
         integration: [
@@ -67,7 +59,7 @@ jobs:
 
     steps:
     - name: checkout
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Run build
     - name: install rustup
@@ -78,5 +70,5 @@ jobs:
     - name: run integration tests
       env:
         TARGET: x86_64-unknown-linux-gnu
-      run: cargo run --manifest-path ci/Cargo.toml integration ${{ matrix.integration }}
+      run: cargo run --locked --manifest-path ci/Cargo.toml integration ${{ matrix.integration }}
       continue-on-error: ${{ matrix.allow-failure == true }}

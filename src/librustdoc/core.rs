@@ -14,17 +14,19 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path};
+use rustc_lint as lint;
 use rustc_lint::{MissingDoc, late_lint_mod};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
+use rustc_session::Session;
 use rustc_session::config::{
-    self, CrateType, ErrorOutputType, Input, OutputType, OutputTypes, ResolveDocLinks,
+    self, ErrorOutputType, Input, OutputType, OutputTypes, ResolveDocLinks,
 };
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
-use rustc_session::{Session, lint};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use tracing::{debug, info};
+use rustc_structures::CrateType;
+use tracing::debug;
 
 use crate::clean::inline::build_trait;
 use crate::clean::{self, ItemId};
@@ -32,8 +34,6 @@ use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::html::macro_expansion::{ExpandedCode, source_macro_expansion};
 use crate::passes;
-use crate::passes::Condition::*;
-use crate::passes::collect_intra_doc_links::LinkCollector;
 
 pub(crate) struct DocContext<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
@@ -224,6 +224,7 @@ pub(crate) fn create_config(
         lint_opts,
         describe_lints,
         lint_cap,
+        prints,
         scrape_examples_options,
         remap_path_prefix,
         remap_path_scope,
@@ -284,6 +285,7 @@ pub(crate) fn create_config(
         diagnostic_width,
         edition,
         describe_lints,
+        prints,
         crate_name,
         test,
         remap_path_prefix,
@@ -365,13 +367,14 @@ pub(crate) fn run_global_ctxt(
 
     // NOTE: These are copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
     tcx.sess.time("wf_checking", || tcx.ensure_ok().check_type_wf(()));
+    tcx.sess.time("check_mod_attrs", || {
+        tcx.hir_for_each_module(|module| tcx.ensure_ok().check_mod_attrs(module))
+    });
+    rustc_interface::passes::emit_delayed_lints(tcx);
 
     tcx.dcx().abort_if_errors();
 
     tcx.sess.time("missing_docs", || rustc_lint::check_crate(tcx));
-    tcx.sess.time("check_mod_attrs", || {
-        tcx.hir_for_each_module(|module| tcx.ensure_ok().check_mod_attrs(module))
-    });
     rustc_passes::stability::check_unused_or_stable_features(tcx);
 
     let auto_traits =
@@ -426,31 +429,8 @@ pub(crate) fn run_global_ctxt(
         );
     }
 
-    info!("Executing passes");
-
-    let mut visited = FxHashMap::default();
-    let mut ambiguous = FxIndexMap::default();
-
-    for p in passes::defaults(show_coverage) {
-        let run = match p.condition {
-            Always => true,
-            WhenDocumentPrivate => ctxt.document_private(),
-            WhenNotDocumentPrivate => !ctxt.document_private(),
-            WhenNotDocumentHidden => !ctxt.document_hidden(),
-        };
-        if run {
-            debug!("running pass {}", p.pass.name);
-            if let Some(run_fn) = p.pass.run {
-                krate = tcx.sess.time(p.pass.name, || run_fn(krate, &mut ctxt));
-            } else {
-                let (k, LinkCollector { visited_links, ambiguous_links, .. }) =
-                    passes::collect_intra_doc_links::collect_intra_doc_links(krate, &mut ctxt);
-                krate = k;
-                visited = visited_links;
-                ambiguous = ambiguous_links;
-            }
-        }
-    }
+    let store;
+    (krate, store) = passes::run(krate, &mut ctxt, show_coverage);
 
     if show_coverage
         && let Err(error) = crate::calculate_doc_coverage::run(&krate, &mut ctxt, &render_options)
@@ -464,9 +444,7 @@ pub(crate) fn run_global_ctxt(
     krate =
         tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate, &render_options));
 
-    let mut collector =
-        LinkCollector { cx: &mut ctxt, visited_links: visited, ambiguous_links: ambiguous };
-    collector.resolve_ambiguities();
+    passes::finalize(&mut ctxt, store);
 
     tcx.dcx().abort_if_errors();
 

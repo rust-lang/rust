@@ -135,8 +135,8 @@ builtin_functions! {
     // float intrinsics
     fn __powisf2(a: f32, b: i32) -> f32;
     fn __powidf2(a: f64, b: i32) -> f64;
-    // FIXME(f16_f128): `compiler-builtins` doesn't currently support `__powitf2` on MSVC.
-    // fn __powitf2(a: f128, b: i32) -> f128;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+    fn __powitf2(a: f128, b: i32) -> f128;
     fn powf(a: f32, b: f32) -> f32;
     fn pow(a: f64, b: f64) -> f64;
     fn expf(f: f32) -> f32;
@@ -171,6 +171,10 @@ builtin_functions! {
     fn rintf16(f: f16) -> f16;
     #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn rintf128(f: f128) -> f128;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+    fn roundf16(f: f16) -> f16;
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+    fn roundf128(f: f128) -> f128;
     #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn sqrtf16(f: f16) -> f16;
     #[cfg(not(all(target_os = "windows", target_env = "gnu")))]

@@ -63,6 +63,8 @@ LL +     })
 error: large future with a size of 65540 bytes
   --> tests/ui/large_futures.rs:59:13
    |
+LL |       macro_rules! macro_ {
+LL |           () => {
 LL | /             async {
 LL | |
 LL | |                 let x = [0i32; 1024 * 16];
@@ -74,7 +76,6 @@ LL | |             }
 LL |       macro_!().await
    |       --------- in this macro invocation
    |
-   = note: this error originates in the macro `macro_` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider `Box::pin` on it
    |
 LL ~             Box::pin(async {

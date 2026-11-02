@@ -1,13 +1,15 @@
 use std::sync::Arc;
 
 use rustc_ast::{self as ast, *};
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_errors::StashKey;
-use rustc_hir::def::{DefKind, PartialRes, PerNS, Res};
+use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, GenericArg};
-use rustc_middle::{span_bug, ty};
+use rustc_hir::{self as hir, GenericArg, HirId};
+use rustc_middle::middle::resolve::PartialRes;
+use rustc_middle::ty;
 use rustc_session::diagnostics::add_feature_diagnostics;
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, span_bug, sym};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
@@ -74,7 +76,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let bound_modifier_allowed_features = if let Res::Def(DefKind::Trait, async_def_id) = res
             && self.tcx.async_fn_trait_kind_from_def_id(async_def_id).is_some()
         {
-            Some(Arc::clone(&self.allow_async_fn_traits))
+            Some(Arc::clone(&crate::ALLOW_ASYNC_FN_TRAITS))
         } else {
             None
         };
@@ -112,7 +114,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         }
                         // `a::b::Trait(Args)::TraitItem`
                         Res::Def(DefKind::AssocFn, _)
-                        | Res::Def(DefKind::AssocConst { .. }, _)
+                        | Res::Def(DefKind::AssocConst, _)
                         | Res::Def(DefKind::AssocTy, _)
                             if i + 2 == proj_start =>
                         {
@@ -262,6 +264,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         bound_modifier_allowed_features: Option<Arc<[Symbol]>>,
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment);
+
+        let res = self.expect_full_res(segment.id);
+        let hir_id = self.lower_node_id(segment.id);
+
         let (mut generic_args, infer_args) = if let Some(generic_args) = segment.args.as_deref() {
             match generic_args {
                 GenericArgs::AngleBracketed(data) => {
@@ -314,6 +320,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             data,
                             itctx,
                             bound_modifier_allowed_features,
+                            hir_id,
                         ),
                     GenericArgsMode::Err => {
                         // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
@@ -338,12 +345,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         } else {
                             None
                         };
-                        self.dcx().emit_err(GenericTypeWithParentheses { span: data.span, sub });
+                        let guar = self
+                            .dcx()
+                            .emit_err(GenericTypeWithParentheses { span: data.span, sub });
                         (
                             self.lower_angle_bracketed_parameter_data(
                                 &data.as_angle_bracketed_args(),
                                 param_mode,
-                                itctx,
+                                ImplTraitContext::AlreadyErrored(guar),
                             )
                             .0,
                             false,
@@ -395,13 +404,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             );
         }
 
-        let res = self.expect_full_res(segment.id);
-        let hir_id = self.lower_node_id(segment.id);
         debug!(
             "lower_path_segment: ident={:?} original-id={:?} new-id={:?}",
             segment.ident, segment.id, hir_id,
         );
-
         hir::PathSegment {
             ident: self.lower_ident(segment.ident),
             hir_id,
@@ -423,7 +429,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         segment_ident_span: Span,
         generic_args: &mut GenericArgsCtor<'hir>,
     ) {
-        let (start, end) = match self.owner.get_lifetime_res(segment_id) {
+        let (start, end) = match self.curr_owner.owner.get_lifetime_res(segment_id) {
             Some(LifetimeRes::ElidedAnchor { start, end }) => (start, end),
             None => return,
             Some(res) => {
@@ -505,6 +511,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         data: &ParenthesizedArgs,
         itctx: ImplTraitContext,
         bound_modifier_allowed_features: Option<Arc<[Symbol]>>,
+        segment_hir_id: HirId,
     ) -> (GenericArgsCtor<'hir>, bool) {
         // Switch to `PassThrough` mode for anonymous lifetimes; this
         // means that we permit things like `&Ref<T>`, where `Ref` has
@@ -512,8 +519,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // compatibility, even in contexts like an impl header where
         // we generally don't permit such things (see #51008).
         let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
-        let inputs = self.arena.alloc_from_iter(inputs.iter().map(|ty| {
-            self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
+
+        // FIXME uses the segments HIR id which is not correct, it should
+        // be the parameters HIR id instead. This is currently not lowered.
+        for input in inputs {
+            self.lower_attrs(
+                segment_hir_id,
+                &input.attrs,
+                input.span,
+                Target::Param,
+                AstTarget::Param(input),
+            );
+        }
+
+        let inputs = self.arena.alloc_from_iter(inputs.iter().map(|param| {
+            self.lower_ty(&param.ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
         }));
         let output_ty = match output {
             // Only allow `impl Trait` in return position. i.e.:

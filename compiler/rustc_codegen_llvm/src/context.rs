@@ -1,6 +1,6 @@
 use std::borrow::{Borrow, Cow};
 use std::cell::{Cell, RefCell};
-use std::ffi::{CStr, c_char, c_uint};
+use std::ffi::{CStr, c_uint};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::str;
@@ -17,14 +17,16 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
+    codegen_handle_fn_abi_err,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
+use rustc_sanitizers::ignorelist::{SanitizerIgnoreList, typename_for_ignore_list};
 use rustc_session::config::{
-    BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
+    BranchProtection, CFGuard, CFProtection, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
 use rustc_session::{PointerAuthSchema, Session};
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, bug, sym};
+use rustc_structures::CrateType;
 use rustc_target::spec::{
     Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport,
     Target, TlsModel,
@@ -32,6 +34,7 @@ use rustc_target::spec::{
 use smallvec::SmallVec;
 
 use crate::abi::to_llvm_calling_convention;
+use crate::back::llvm_backend::ModuleRefs;
 use crate::back::write::to_llvm_code_model;
 use crate::builder::gpu_offload::{OffloadGlobals, OffloadKernelGlobals};
 use crate::callee::get_fn;
@@ -44,8 +47,8 @@ use crate::{attributes, common, coverageinfo, debuginfo, llvm_util};
 /// other compiler pieces. Here we define a small subset which has enough information and can be
 /// moved around more freely.
 pub(crate) struct SCx<'ll> {
-    pub llmod: &'ll llvm::Module,
-    pub llcx: &'ll llvm::Context,
+    pub llmod: llvm::Module<'ll>,
+    pub llcx: llvm::Context<'ll>,
     pub isize_ty: &'ll Type,
 }
 
@@ -91,6 +94,7 @@ pub(crate) type CodegenCx<'ll, 'tcx> = GenericCx<'ll, FullCx<'ll, 'tcx>>;
 
 pub(crate) struct FullCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
+    pub bitcode_needed: bool,
     pub scx: SimpleCx<'ll>,
     pub use_dll_storage_attrs: bool,
     pub tls_model: llvm::ThreadLocalMode,
@@ -132,6 +136,7 @@ pub(crate) struct FullCx<'ll, 'tcx> {
     /// Extra per-CGU codegen state needed when coverage instrumentation is enabled.
     pub coverage_cx: Option<coverageinfo::CguCoverageContext<'ll, 'tcx>>,
     pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
+    pub sanitizer_ignorelist: Option<SanitizerIgnoreList>,
 
     eh_personality: Cell<Option<&'ll Value>>,
     pub rust_try_fn: Cell<Option<(&'ll Type, &'ll Value)>>,
@@ -179,45 +184,22 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
 
 pub(crate) unsafe fn create_module<'ll>(
     tcx: TyCtxt<'_>,
-    llcx: &'ll llvm::Context,
+    llcx: llvm::Context<'ll>,
     mod_name: &str,
-) -> &'ll llvm::Module {
-    let sess = tcx.sess;
-    let mod_name = SmallCStr::new(mod_name);
-    let llmod = unsafe { llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx) };
+) -> llvm::Module<'ll> {
+    let mod_name_cstr = SmallCStr::new(mod_name);
+    let llmod = unsafe { llvm::LLVMModuleCreateWithNameInContext(mod_name_cstr.as_ptr(), llcx) };
+    init_module(tcx, llcx, llmod);
+    llmod
+}
 
+fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: llvm::Module<'ll>) {
+    let sess = tcx.sess;
     let cx = SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size());
 
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
 
-    if llvm_version < (22, 0, 0) {
-        if sess.target.arch == Arch::Avr {
-            // LLVM 22.0 updated the default layout on avr: https://github.com/llvm/llvm-project/pull/153010
-            target_data_layout = target_data_layout.replace("n8:16", "n8")
-        }
-        if sess.target.arch == Arch::Nvptx64 {
-            // LLVM 22 updated the NVPTX layout to indicate 256-bit vector load/store: https://github.com/llvm/llvm-project/pull/155198
-            target_data_layout = target_data_layout.replace("-i256:256", "");
-        }
-        if sess.target.arch == Arch::PowerPC64 {
-            // LLVM 22 updated the ABI alignment for double on AIX: https://github.com/llvm/llvm-project/pull/144673
-            target_data_layout = target_data_layout.replace("-f64:32:64", "");
-
-            // LLVM 22 fixed the data layout calculation for targets that default to ELFv1
-            // when the ABI is set to ELFv2. With LLVM 21, the ELFv1 datalayout must be used,
-            // which will overalign function entries.
-            // https://github.com/llvm/llvm-project/pull/149725
-            if sess.target.llvm_target == "powerpc64-unknown-linux-gnu" {
-                target_data_layout = target_data_layout.replace("-Fn32", "-Fi64");
-            }
-        }
-        if sess.target.arch == Arch::AmdGpu {
-            // LLVM 22 specified ELF mangling in the amdgpu data layout:
-            // https://github.com/llvm/llvm-project/pull/163011
-            target_data_layout = target_data_layout.replace("-m:e", "");
-        }
-    }
     if llvm_version < (23, 0, 0) {
         if sess.target.arch == Arch::S390x {
             // LLVM 23 updated the s390x layout to specify the stack alignment: https://github.com/llvm/llvm-project/pull/176041
@@ -227,7 +209,7 @@ pub(crate) unsafe fn create_module<'ll>(
 
     // Ensure the data-layout values hardcoded remain the defaults.
     {
-        let tm = crate::back::write::create_informational_target_machine(sess, false);
+        let tm = crate::back::write::create_informational_target_machine(sess);
         unsafe {
             llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm.raw());
         }
@@ -280,6 +262,12 @@ pub(crate) unsafe fn create_module<'ll>(
     // See https://reviews.llvm.org/D52322 and https://reviews.llvm.org/D52323.
     unsafe {
         llvm::LLVMRustSetModuleCodeModel(llmod, to_llvm_code_model(sess.code_model()));
+    }
+
+    if let Some(large_data_threshold) = sess.opts.unstable_opts.large_data_threshold {
+        unsafe {
+            llvm::LLVMRustSetModuleLargeDataThreshold(llmod, large_data_threshold);
+        }
     }
 
     // If skipping the PLT is enabled, we need to add some module metadata
@@ -549,18 +537,48 @@ pub(crate) unsafe fn create_module<'ll>(
     let name_metadata = cx.create_metadata(rustc_producer.as_bytes());
     cx.module_add_named_metadata_node(llmod, c"llvm.ident", &[name_metadata]);
 
-    // Emit RISC-V specific target-abi metadata
-    // to workaround lld as the LTO plugin not
-    // correctly setting target-abi for the LTO object
-    // FIXME: https://github.com/llvm/llvm-project/issues/50591
+    // Emit the target-abi module flag for LoongArch and RISC-V to pass the ABI to LTO.
     let llvm_abiname = &sess.target.options.llvm_abiname;
-    if matches!(sess.target.arch, Arch::RiscV32 | Arch::RiscV64) {
+    if matches!(
+        sess.target.arch,
+        Arch::LoongArch32 | Arch::LoongArch64 | Arch::RiscV32 | Arch::RiscV64
+    ) {
         llvm::add_module_flag_str(
             llmod,
             llvm::ModuleFlagMergeBehavior::Error,
             "target-abi",
             llvm_abiname.desc(),
         );
+    }
+
+    if llvm_version >= (24, 0, 0)
+        && let Some(floatabi) = sess.target.llvm_floatabi
+    {
+        llvm::add_module_flag_str(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "float-abi",
+            floatabi.desc(),
+        );
+    }
+
+    if llvm_version >= (24, 0, 0) {
+        if sess.target.singlethread(&sess.internal_target_features) {
+            llvm::add_module_flag_str(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "thread-model",
+                "single",
+            );
+        }
+        if wants_wasm_eh(&sess.target) {
+            llvm::add_module_flag_str(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "exception-model",
+                "wasm",
+            );
+        }
     }
 
     // Add module flags specified via -Z llvm_module_flag
@@ -579,15 +597,14 @@ pub(crate) unsafe fn create_module<'ll>(
         };
         llvm::add_module_flag_u32(llmod, merge_behavior, key, *value);
     }
-
-    llmod
 }
 
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         codegen_unit: &'tcx CodegenUnit<'tcx>,
-        llvm_module: &'ll crate::ModuleLlvm,
+        module_refs: ModuleRefs<'ll>,
+        bitcode_needed: bool,
     ) -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
@@ -645,7 +662,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let tls_model = to_llvm_tls_model(tcx.sess.tls_model());
 
-        let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
+        let ModuleRefs { llcx, llmod, .. } = module_refs;
 
         let coverage_cx =
             tcx.sess.instrument_coverage().then(coverageinfo::CguCoverageContext::new);
@@ -662,9 +679,28 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             None
         };
 
+        // FIXME: This parses the ignorelist files for each CGU, which adds a performance overhead.
+        // Clang parses it once per frontend invocation. LLVM's `SpecialCaseList::inSection`
+        // mutates an internal `LazyInit` cache and is not thread-safe. We either need to wrap
+        // the queries in a lock or wait for LLVM to expose a thread-safe way to query it.
+        let sanitizer_ignorelist = if !tcx.sess.opts.unstable_opts.sanitizer_ignorelist.is_empty() {
+            for path in &tcx.sess.opts.unstable_opts.sanitizer_ignorelist {
+                let _ = tcx.sess.source_map().load_file(std::path::Path::new(path));
+            }
+            match SanitizerIgnoreList::new(&tcx.sess.opts.unstable_opts.sanitizer_ignorelist) {
+                Ok(list) => Some(list),
+                Err(err) => {
+                    tcx.dcx().fatal(format!("failed to parse sanitizer ignorelist: {}", err));
+                }
+            }
+        } else {
+            None
+        };
+
         GenericCx(
             FullCx {
                 tcx,
+                bitcode_needed,
                 scx: SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size()),
                 use_dll_storage_attrs,
                 tls_model,
@@ -681,6 +717,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 scalar_lltypes: Default::default(),
                 coverage_cx,
                 dbg_cx,
+                sanitizer_ignorelist,
                 eh_personality: Cell::new(None),
                 rust_try_fn: Cell::new(None),
                 intrinsics: Default::default(),
@@ -820,6 +857,17 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             1 << 6,
         );
     }
+
+    pub(crate) fn is_sanitizer_type_ignored(
+        &self,
+        sanitizer: &std::ffi::CStr,
+        fn_abi: &rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>,
+    ) -> bool {
+        self.sanitizer_ignorelist.as_ref().is_some_and(|ignorelist| {
+            let type_name = typename_for_ignore_list(self.tcx, fn_abi);
+            ignorelist.contains_prefix(sanitizer, c"type", &type_name)
+        })
+    }
 }
 impl<'ll> SimpleCx<'ll> {
     pub(crate) fn get_type_of_global(&self, val: &'ll Value) -> &'ll Type {
@@ -831,8 +879,8 @@ impl<'ll> SimpleCx<'ll> {
 }
 impl<'ll> SimpleCx<'ll> {
     pub(crate) fn new(
-        llmod: &'ll llvm::Module,
-        llcx: &'ll llvm::Context,
+        llmod: llvm::Module<'ll>,
+        llcx: llvm::Context<'ll>,
         pointer_size: Size,
     ) -> Self {
         let isize_ty = llvm::LLVMIntTypeInContext(llcx, pointer_size.bits() as c_uint);
@@ -865,25 +913,12 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         self.get_const_int(self.type_i8(), n)
     }
 
-    pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
-        let name = SmallCStr::new(name);
-        unsafe { llvm::LLVMGetNamedFunction((**self).borrow().llmod, name.as_ptr()) }
-    }
-
     pub(crate) fn get_md_kind_id(&self, name: &str) -> llvm::MetadataKindId {
-        unsafe {
-            llvm::LLVMGetMDKindIDInContext(
-                self.llcx(),
-                name.as_ptr() as *const c_char,
-                name.len() as c_uint,
-            )
-        }
+        unsafe { llvm::LLVMGetMDKindIDInContext(self.llcx(), name.as_ptr(), name.len() as c_uint) }
     }
 
     pub(crate) fn create_metadata(&self, name: &[u8]) -> &'ll Metadata {
-        unsafe {
-            llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr() as *const c_char, name.len())
-        }
+        unsafe { llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr(), name.len()) }
     }
 
     pub(crate) fn get_functions(&self) -> Vec<&'ll Value> {
@@ -966,9 +1001,9 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             return llpersonality;
         }
 
-        let name = if wants_msvc_seh(self.sess()) {
+        let name = if wants_msvc_seh(&self.sess().target) {
             Some("__CxxFrameHandler3")
-        } else if wants_wasm_eh(self.sess()) {
+        } else if wants_wasm_eh(&self.sess().target) {
             // LLVM specifically tests for the name of the personality function
             // There is no need for this function to exist anywhere, it will
             // not be called. However, its name has to be "__gxx_wasm_personality_v0"
@@ -985,13 +1020,20 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     tcx,
                     self.typing_env(),
                     def_id,
-                    ty::List::empty(),
+                    ty::GenericArgs::empty(),
                     DUMMY_SP,
                 ),
                 tcx.sess.pointer_authentication_functions(),
             ),
             _ => {
-                let name = name.unwrap_or("rust_eh_personality");
+                let mangled_symbol;
+                let name = match name {
+                    Some(name) => name,
+                    None => {
+                        mangled_symbol = rustc_symbol_mangling::eh_personality_symbol(tcx);
+                        mangled_symbol.as_str()
+                    }
+                };
                 if let Some(llfn) = self.get_declared_value(name) {
                     llfn
                 } else {
@@ -1183,7 +1225,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     /// - `LLVMAddNamedMetadataOperand` (to set that node as metadata of `kind_name` for `module`)
     pub(crate) fn module_add_named_metadata_node(
         &self,
-        module: &'ll Module,
+        module: Module<'ll>,
         kind_name: &CStr,
         md_list: &[&'ll Metadata],
     ) {
@@ -1194,7 +1236,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
 
     /// Helper method for the sequence of calls:
     /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
-    /// - `LLVMRustGlobalAddMetadata` (to set that node as metadata of `kind_id` for `global`)
+    /// - `LLVMGlobalAddMetadata` (to set that node as metadata of `kind_id` for `global`)
     pub(crate) fn global_add_metadata_node(
         &self,
         global: &'ll Value,
@@ -1202,7 +1244,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         md_list: &[&'ll Metadata],
     ) {
         let md = self.md_node_in_context(md_list);
-        unsafe { llvm::LLVMRustGlobalAddMetadata(global, kind_id, md) };
+        unsafe { llvm::LLVMGlobalAddMetadata(global, kind_id, md) };
     }
 
     /// Helper method for the sequence of calls:
@@ -1268,21 +1310,6 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
-        match err {
-            FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::InvalidSimd { .. }) => {
-                self.tcx.dcx().emit_fatal(Spanned { span, node: err });
-            }
-            _ => match fn_abi_request {
-                FnAbiRequest::OfFnPtr { sig, extra_args } => {
-                    span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}",);
-                }
-                FnAbiRequest::OfInstance { instance, extra_args } => {
-                    span_bug!(
-                        span,
-                        "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}",
-                    );
-                }
-            },
-        }
+        codegen_handle_fn_abi_err(self.tcx, err, span, fn_abi_request).raise_fatal()
     }
 }

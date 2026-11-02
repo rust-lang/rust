@@ -11,6 +11,7 @@ LL |     type Item<'a> = T;
 note: required by a bound in `UnsafeCopy::Item`
   --> $DIR/issue-68656-unsized-values.rs:4:36
    |
+LL | trait UnsafeCopy<T: Copy> {
 LL |     type Item<'a>: std::ops::Deref<Target = T>;
    |                                    ^^^^^^^^^^ required by this bound in `UnsafeCopy::Item`
 help: consider further restricting this bound

@@ -1,5 +1,5 @@
-// rustfmt-normalize_comments: true
-// rustfmt-format_macro_matchers: true
+//@ rustfmt-normalize_comments: true
+//@ rustfmt-format_macro_matchers: true
 itemmacro!(this, is.now().formatted(yay));
 
 itemmacro!(
@@ -1056,3 +1056,10 @@ f!(match a {
 
 // #3583
 foo!(|x = y|);
+
+// #3757
+f!(match a {
+    _ => (),
+});
+
+g!(1, 2, 3);

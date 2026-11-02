@@ -12,7 +12,6 @@ use rustc_const_eval::interpret::{
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
-use rustc_middle::bug;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -22,8 +21,8 @@ use rustc_mir_dataflow::lattice::{FlatSet, HasBottom};
 use rustc_mir_dataflow::value_analysis::{
     Map, PlaceCollectionMode, PlaceIndex, State, TrackElem, ValueOrPlace, debug_with_context,
 };
-use rustc_mir_dataflow::{Analysis, ResultsVisitor, visit_reachable_results};
-use rustc_span::DUMMY_SP;
+use rustc_mir_dataflow::{Analysis, ResultsVisitor, visit_results};
+use rustc_span::{DUMMY_SP, bug};
 use tracing::{debug, debug_span, instrument};
 
 use crate::PassPolicy;
@@ -36,8 +35,8 @@ const PLACE_LIMIT: usize = 100;
 pub(super) struct DataflowConstProp;
 
 impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() >= 3)
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 3)
     }
 
     #[instrument(skip_all level = "debug")]
@@ -71,8 +70,10 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
             .in_scope(|| ConstAnalysis::new(tcx, body, map).iterate_to_fixpoint(tcx, body, None));
 
         // Collect results and patch the body afterwards.
-        let mut visitor = Collector::new(tcx, body);
-        debug_span!("collect").in_scope(|| visit_reachable_results(body, &const_, &mut visitor));
+        let mut visitor = Collector::new(tcx, body, &const_.analysis.map);
+        debug_span!("collect").in_scope(|| {
+            visit_results(body, traversal::reachable(body).map(|(bb, _)| bb), &const_, &mut visitor)
+        });
         let mut patch = visitor.patch;
         debug_span!("patch").in_scope(|| patch.visit_body_preserves_cfg(body));
     }
@@ -118,20 +119,106 @@ impl<'tcx> Analysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         _location: Location,
     ) {
         if state.is_reachable() {
-            self.handle_statement(statement, state);
+            match &statement.kind {
+                StatementKind::Assign((place, rvalue)) => {
+                    self.handle_assign(*place, rvalue, state);
+                }
+                StatementKind::SetDiscriminant { place, variant_index } => {
+                    let place = (**place).as_ref();
+                    state.flood_discr(place, &self.map);
+                    if let Some(target) = self.map.find_discr(place) {
+                        let enum_ty = place.ty(self.local_decls, self.tcx).ty;
+                        if let Some(discr) = self.eval_discriminant(enum_ty, *variant_index) {
+                            state.insert_value_idx(target, FlatSet::Elem(discr), &self.map);
+                        }
+                    }
+                }
+                StatementKind::Intrinsic(intrinsic) => {
+                    match intrinsic {
+                        NonDivergingIntrinsic::Assume(..) => {
+                            // Could use this, but ignoring it is sound.
+                        }
+                        NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
+                            dst: _,
+                            src: _,
+                            count: _,
+                        }) => {
+                            // This statement represents `*dst = *src`, `count` times.
+                        }
+                    }
+                }
+                StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+                    // StorageLive leaves the local in an uninitialized state.
+                    // StorageDead makes it UB to access the local afterwards.
+                    state.flood_with(
+                        Place::from(*local).as_ref(),
+                        &self.map,
+                        FlatSet::<Scalar>::BOTTOM,
+                    );
+                }
+                StatementKind::ConstEvalCounter
+                | StatementKind::Nop
+                | StatementKind::FakeRead(..)
+                | StatementKind::PlaceMention(..)
+                | StatementKind::Coverage(..)
+                | StatementKind::BackwardIncompatibleDropHint { .. }
+                | StatementKind::AscribeUserType(..) => {}
+            }
         }
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn get_terminator_edges<'mir>(
         &self,
-        state: &mut Self::Domain,
+        state: &Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         _location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
         if state.is_reachable() {
-            self.handle_terminator(terminator, state)
+            if let TerminatorKind::SwitchInt { discr, targets } = &terminator.kind {
+                self.get_switch_int_edges(discr, targets, state)
+            } else {
+                terminator.edges()
+            }
         } else {
             TerminatorEdges::None
+        }
+    }
+
+    fn apply_primary_terminator_effect(
+        &self,
+        state: &mut Self::Domain,
+        terminator: &Terminator<'tcx>,
+        _location: Location,
+    ) {
+        if state.is_reachable() {
+            match &terminator.kind {
+                TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
+                    // Effect is applied by `apply_call_return_effect`.
+                }
+                TerminatorKind::Drop { place, .. } => {
+                    state.flood_with(place.as_ref(), &self.map, FlatSet::<Scalar>::BOTTOM);
+                }
+                TerminatorKind::Yield { .. } => {
+                    // They would have an effect, but are not allowed in this phase.
+                    bug!("encountered disallowed terminator");
+                }
+                TerminatorKind::TailCall { .. } => {
+                    // FIXME(explicit_tail_calls): determine if we need to do something here
+                    // (probably not)
+                }
+                TerminatorKind::SwitchInt { .. }
+                | TerminatorKind::Goto { .. }
+                | TerminatorKind::UnwindResume
+                | TerminatorKind::UnwindTerminate(_)
+                | TerminatorKind::Return
+                | TerminatorKind::Unreachable
+                | TerminatorKind::Assert { .. }
+                | TerminatorKind::CoroutineDrop
+                | TerminatorKind::FalseEdge { .. }
+                | TerminatorKind::FalseUnwind { .. } => {
+                    // These terminators have no effect on the analysis.
+                }
+            }
         }
     }
 
@@ -142,7 +229,9 @@ impl<'tcx> Analysis<'tcx> for ConstAnalysis<'_, 'tcx> {
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         if state.is_reachable() {
-            self.handle_call_return(return_places, state)
+            return_places.for_each(|place| {
+                state.flood(place.as_ref(), &self.map);
+            })
         }
     }
 }
@@ -159,134 +248,19 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         }
     }
 
-    fn handle_statement(&self, statement: &Statement<'tcx>, state: &mut State<FlatSet<Scalar>>) {
-        match &statement.kind {
-            StatementKind::Assign((place, rvalue)) => {
-                self.handle_assign(*place, rvalue, state);
-            }
-            StatementKind::SetDiscriminant { place, variant_index } => {
-                self.handle_set_discriminant(**place, *variant_index, state);
-            }
-            StatementKind::Intrinsic(intrinsic) => {
-                self.handle_intrinsic(intrinsic);
-            }
-            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                // StorageLive leaves the local in an uninitialized state.
-                // StorageDead makes it UB to access the local afterwards.
-                state.flood_with(
-                    Place::from(*local).as_ref(),
-                    &self.map,
-                    FlatSet::<Scalar>::BOTTOM,
-                );
-            }
-            StatementKind::ConstEvalCounter
-            | StatementKind::Nop
-            | StatementKind::FakeRead(..)
-            | StatementKind::PlaceMention(..)
-            | StatementKind::Coverage(..)
-            | StatementKind::BackwardIncompatibleDropHint { .. }
-            | StatementKind::AscribeUserType(..) => {}
-        }
-    }
-
-    fn handle_intrinsic(&self, intrinsic: &NonDivergingIntrinsic<'tcx>) {
-        match intrinsic {
-            NonDivergingIntrinsic::Assume(..) => {
-                // Could use this, but ignoring it is sound.
-            }
-            NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
-                dst: _,
-                src: _,
-                count: _,
-            }) => {
-                // This statement represents `*dst = *src`, `count` times.
-            }
-        }
-    }
-
-    fn handle_operand(
-        &self,
-        operand: &Operand<'tcx>,
-        state: &mut State<FlatSet<Scalar>>,
-    ) -> ValueOrPlace<FlatSet<Scalar>> {
+    fn handle_operand(&self, operand: &Operand<'tcx>) -> ValueOrPlace<FlatSet<Scalar>> {
         match operand {
             Operand::RuntimeChecks(_) => ValueOrPlace::TOP,
-            Operand::Constant(constant) => {
-                ValueOrPlace::Value(self.handle_constant(constant, state))
-            }
+            Operand::Constant(constant) => ValueOrPlace::Value(
+                constant
+                    .const_
+                    .try_eval_scalar(self.tcx, self.typing_env)
+                    .map_or(FlatSet::Top, FlatSet::Elem),
+            ),
             Operand::Copy(place) | Operand::Move(place) => {
                 // On move, we would ideally flood the place with bottom. But with the current
                 // framework this is not possible (similar to `InterpCx::eval_operand`).
                 self.map.find(place.as_ref()).map(ValueOrPlace::Place).unwrap_or(ValueOrPlace::TOP)
-            }
-        }
-    }
-
-    /// The effect of a successful function call return should not be
-    /// applied here, see [`Analysis::apply_primary_terminator_effect`].
-    fn handle_terminator<'mir>(
-        &self,
-        terminator: &'mir Terminator<'tcx>,
-        state: &mut State<FlatSet<Scalar>>,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        match &terminator.kind {
-            TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
-                // Effect is applied by `handle_call_return`.
-            }
-            TerminatorKind::Drop { place, .. } => {
-                state.flood_with(place.as_ref(), &self.map, FlatSet::<Scalar>::BOTTOM);
-            }
-            TerminatorKind::Yield { .. } => {
-                // They would have an effect, but are not allowed in this phase.
-                bug!("encountered disallowed terminator");
-            }
-            TerminatorKind::SwitchInt { discr, targets } => {
-                return self.handle_switch_int(discr, targets, state);
-            }
-            TerminatorKind::TailCall { .. } => {
-                // FIXME(explicit_tail_calls): determine if we need to do something here (probably
-                // not)
-            }
-            TerminatorKind::Goto { .. }
-            | TerminatorKind::UnwindResume
-            | TerminatorKind::UnwindTerminate(_)
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable
-            | TerminatorKind::Assert { .. }
-            | TerminatorKind::CoroutineDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. } => {
-                // These terminators have no effect on the analysis.
-            }
-        }
-        terminator.edges()
-    }
-
-    fn handle_call_return(
-        &self,
-        return_places: CallReturnPlaces<'_, 'tcx>,
-        state: &mut State<FlatSet<Scalar>>,
-    ) {
-        return_places.for_each(|place| {
-            state.flood(place.as_ref(), &self.map);
-        })
-    }
-
-    fn handle_set_discriminant(
-        &self,
-        place: Place<'tcx>,
-        variant_index: VariantIdx,
-        state: &mut State<FlatSet<Scalar>>,
-    ) {
-        state.flood_discr(place.as_ref(), &self.map);
-        if self.map.find_discr(place.as_ref()).is_some() {
-            let enum_ty = place.ty(self.local_decls, self.tcx).ty;
-            if let Some(discr) = self.eval_discriminant(enum_ty, variant_index) {
-                state.assign_discr(
-                    place.as_ref(),
-                    ValueOrPlace::Value(FlatSet::Elem(discr)),
-                    &self.map,
-                );
             }
         }
     }
@@ -297,12 +271,13 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         rvalue: &Rvalue<'tcx>,
         state: &mut State<FlatSet<Scalar>>,
     ) {
-        match rvalue {
+        let result = match rvalue {
             Rvalue::Use(operand, _) => {
                 state.flood(target.as_ref(), &self.map);
                 if let Some(target) = self.map.find(target.as_ref()) {
                     self.assign_operand(state, target, operand);
                 }
+                return;
             }
             Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
             Rvalue::Aggregate(kind, operands) => {
@@ -348,27 +323,35 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                         state.insert_value_idx(discr_idx, FlatSet::Elem(discr_val), &self.map);
                     }
                 }
+                return;
             }
-            Rvalue::BinaryOp(op, (left, right)) if op.is_overflowing() => {
-                // Flood everything now, so we can use `insert_value_idx` directly later.
-                state.flood(target.as_ref(), &self.map);
+            Rvalue::BinaryOp(op, (left, right)) => {
+                if op.is_overflowing() {
+                    // Flood everything now, so we can use `insert_value_idx` directly later.
+                    state.flood(target.as_ref(), &self.map);
 
-                let Some(target) = self.map.find(target.as_ref()) else { return };
+                    let Some(target) = self.map.find(target.as_ref()) else { return };
 
-                let value_target = self.map.apply(target, TrackElem::Field(0_u32.into()));
-                let overflow_target = self.map.apply(target, TrackElem::Field(1_u32.into()));
+                    let value_target = self.map.apply(target, TrackElem::Field(0_u32.into()));
+                    let overflow_target = self.map.apply(target, TrackElem::Field(1_u32.into()));
 
-                if value_target.is_some() || overflow_target.is_some() {
-                    let (val, overflow) = self.binary_op(state, *op, left, right);
+                    if value_target.is_some() || overflow_target.is_some() {
+                        let (val, overflow) = self.binary_op(state, *op, left, right);
 
-                    if let Some(value_target) = value_target {
-                        // We have flooded `target` earlier.
-                        state.insert_value_idx(value_target, val, &self.map);
+                        if let Some(value_target) = value_target {
+                            // We have flooded `target` earlier.
+                            state.insert_value_idx(value_target, val, &self.map);
+                        }
+                        if let Some(overflow_target) = overflow_target {
+                            // We have flooded `target` earlier.
+                            state.insert_value_idx(overflow_target, overflow, &self.map);
+                        }
                     }
-                    if let Some(overflow_target) = overflow_target {
-                        // We have flooded `target` earlier.
-                        state.insert_value_idx(overflow_target, overflow, &self.map);
-                    }
+                    return;
+                } else {
+                    // Overflows must be ignored here.
+                    let (val, _overflow) = self.binary_op(state, *op, left, right);
+                    ValueOrPlace::Value(val)
                 }
             }
             Rvalue::Cast(
@@ -376,7 +359,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 operand,
                 _,
             ) => {
-                let pointer = self.handle_operand(operand, state);
+                let pointer = self.handle_operand(operand);
                 state.assign(target.as_ref(), pointer, &self.map);
 
                 if let Some(target_len) = self.map.find_len(target.as_ref())
@@ -388,116 +371,82 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 {
                     state.insert_value_idx(target_len, FlatSet::Elem(len.into()), &self.map);
                 }
+                return;
             }
-            _ => {
-                let result = self.handle_rvalue(rvalue, state);
-                state.assign(target.as_ref(), result, &self.map);
-            }
-        }
-    }
-
-    fn handle_rvalue(
-        &self,
-        rvalue: &Rvalue<'tcx>,
-        state: &mut State<FlatSet<Scalar>>,
-    ) -> ValueOrPlace<FlatSet<Scalar>> {
-        let val = match rvalue {
             Rvalue::Cast(CastKind::IntToInt | CastKind::IntToFloat, operand, ty) => {
-                let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
-                    return ValueOrPlace::Value(FlatSet::Top);
-                };
-                match self.eval_operand(operand, state) {
-                    FlatSet::Elem(op) => self
-                        .ecx
-                        .int_to_int_or_float(&op, layout)
-                        .discard_err()
-                        .map_or(FlatSet::Top, |result| self.wrap_immediate(*result)),
-                    FlatSet::Bottom => FlatSet::Bottom,
-                    FlatSet::Top => FlatSet::Top,
-                }
+                ValueOrPlace::Value(
+                    if let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) {
+                        self.eval_operand(operand, state).and_then(|op| {
+                            self.ecx
+                                .int_to_int_or_float(&op, layout)
+                                .discard_err()
+                                .map_or(FlatSet::Top, |result| self.wrap_immediate(*result))
+                        })
+                    } else {
+                        FlatSet::Top
+                    },
+                )
             }
             Rvalue::Cast(CastKind::FloatToInt | CastKind::FloatToFloat, operand, ty) => {
-                let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
-                    return ValueOrPlace::Value(FlatSet::Top);
-                };
-                match self.eval_operand(operand, state) {
-                    FlatSet::Elem(op) => self
-                        .ecx
-                        .float_to_float_or_int(&op, layout)
-                        .discard_err()
-                        .map_or(FlatSet::Top, |result| self.wrap_immediate(*result)),
-                    FlatSet::Bottom => FlatSet::Bottom,
-                    FlatSet::Top => FlatSet::Top,
-                }
+                ValueOrPlace::Value(
+                    if let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) {
+                        self.eval_operand(operand, state).and_then(|op| {
+                            self.ecx
+                                .float_to_float_or_int(&op, layout)
+                                .discard_err()
+                                .map_or(FlatSet::Top, |result| self.wrap_immediate(*result))
+                        })
+                    } else {
+                        FlatSet::Top
+                    },
+                )
             }
             Rvalue::Cast(CastKind::Transmute | CastKind::Subtype, operand, _) => {
-                match self.eval_operand(operand, state) {
-                    FlatSet::Elem(op) => self.wrap_immediate(*op),
-                    FlatSet::Bottom => FlatSet::Bottom,
-                    FlatSet::Top => FlatSet::Top,
-                }
-            }
-            Rvalue::BinaryOp(op, (left, right)) if !op.is_overflowing() => {
-                // Overflows must be ignored here.
-                // The overflowing operators are handled in `handle_assign`.
-                let (val, _overflow) = self.binary_op(state, *op, left, right);
-                val
+                ValueOrPlace::Value(
+                    self.eval_operand(operand, state).and_then(|op| self.wrap_immediate(*op)),
+                )
             }
             Rvalue::UnaryOp(op, operand) => {
                 if let UnOp::PtrMetadata = op
                     && let Some(place) = operand.place()
                     && let Some(len) = self.map.find_len(place.as_ref())
                 {
-                    return ValueOrPlace::Place(len);
-                }
-                match self.eval_operand(operand, state) {
-                    FlatSet::Elem(value) => self
-                        .ecx
-                        .unary_op(*op, &value)
-                        .discard_err()
-                        .map_or(FlatSet::Top, |val| self.wrap_immediate(*val)),
-                    FlatSet::Bottom => FlatSet::Bottom,
-                    FlatSet::Top => FlatSet::Top,
+                    ValueOrPlace::Place(len)
+                } else {
+                    ValueOrPlace::Value(self.eval_operand(operand, state).and_then(|value| {
+                        self.ecx
+                            .unary_op(*op, &value)
+                            .discard_err()
+                            .map_or(FlatSet::Top, |val| self.wrap_immediate(*val))
+                    }))
                 }
             }
-            Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), &self.map),
-            Rvalue::Use(operand, _) => return self.handle_operand(operand, state),
-            Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
+            Rvalue::Discriminant(place) => {
+                ValueOrPlace::Value(state.get_discr(place.as_ref(), &self.map))
+            }
             Rvalue::Ref(..) | Rvalue::Reborrow(..) | Rvalue::RawPtr(..) => {
                 // We don't track such places.
-                return ValueOrPlace::TOP;
+                ValueOrPlace::TOP
             }
             Rvalue::Repeat(..)
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Cast(..)
-            | Rvalue::BinaryOp(..)
-            | Rvalue::Aggregate(..)
             | Rvalue::WrapUnsafeBinder(..) => {
                 // No modification is possible through these r-values.
-                return ValueOrPlace::TOP;
+                ValueOrPlace::TOP
             }
         };
-        ValueOrPlace::Value(val)
+        // For the arms that didn't return early.
+        state.assign(target.as_ref(), result, &self.map);
     }
 
-    fn handle_constant(
-        &self,
-        constant: &ConstOperand<'tcx>,
-        _state: &mut State<FlatSet<Scalar>>,
-    ) -> FlatSet<Scalar> {
-        constant
-            .const_
-            .try_eval_scalar(self.tcx, self.typing_env)
-            .map_or(FlatSet::Top, FlatSet::Elem)
-    }
-
-    fn handle_switch_int<'mir>(
+    fn get_switch_int_edges<'mir>(
         &self,
         discr: &'mir Operand<'tcx>,
         targets: &'mir SwitchTargets,
-        state: &mut State<FlatSet<Scalar>>,
+        state: &State<FlatSet<Scalar>>,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        let value = match self.handle_operand(discr, state) {
+        let value = match self.handle_operand(discr) {
             ValueOrPlace::Value(value) => value,
             ValueOrPlace::Place(place) => state.get_idx(place, &self.map),
         };
@@ -614,7 +563,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
 
     fn binary_op(
         &self,
-        state: &mut State<FlatSet<Scalar>>,
+        state: &State<FlatSet<Scalar>>,
         op: BinOp,
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
@@ -644,7 +593,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             // Exactly one side is known, attempt some algebraic simplifications.
             (FlatSet::Elem(const_arg), _) | (_, FlatSet::Elem(const_arg)) => {
                 let layout = const_arg.layout;
-                if !matches!(layout.backend_repr, rustc_abi::BackendRepr::Scalar(..)) {
+                if !layout.backend_repr.is_scalar() {
                     return (FlatSet::Top, FlatSet::Top);
                 }
 
@@ -674,24 +623,18 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     fn eval_operand(
         &self,
         op: &Operand<'tcx>,
-        state: &mut State<FlatSet<Scalar>>,
+        state: &State<FlatSet<Scalar>>,
     ) -> FlatSet<ImmTy<'tcx>> {
-        let value = match self.handle_operand(op, state) {
+        let value = match self.handle_operand(op) {
             ValueOrPlace::Value(value) => value,
             ValueOrPlace::Place(place) => state.get_idx(place, &self.map),
         };
-        match value {
-            FlatSet::Top => FlatSet::Top,
-            FlatSet::Elem(scalar) => {
-                let ty = op.ty(self.local_decls, self.tcx);
-                self.tcx
-                    .layout_of(self.typing_env.as_query_input(ty))
-                    .map_or(FlatSet::Top, |layout| {
-                        FlatSet::Elem(ImmTy::from_scalar(scalar, layout))
-                    })
-            }
-            FlatSet::Bottom => FlatSet::Bottom,
-        }
+        value.and_then(|scalar| {
+            let ty = op.ty(self.local_decls, self.tcx);
+            self.tcx
+                .layout_of(self.typing_env.as_query_input(ty))
+                .map_or(FlatSet::Top, |layout| FlatSet::Elem(ImmTy::from_scalar(scalar, layout)))
+        })
     }
 
     fn eval_discriminant(&self, enum_ty: Ty<'tcx>, variant_index: VariantIdx) -> Option<Scalar> {
@@ -750,7 +693,7 @@ struct Patch<'tcx> {
 }
 
 impl<'tcx> Patch<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
         Self { tcx, before_effect: FxHashMap::default(), assignments: FxHashMap::default() }
     }
 
@@ -763,23 +706,24 @@ struct Collector<'a, 'tcx> {
     patch: Patch<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
+    map: &'a Map<'tcx>,
 }
 
 impl<'a, 'tcx> Collector<'a, 'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, map: &'a Map<'tcx>) -> Self {
         Self {
             patch: Patch::new(tcx),
             local_decls: &body.local_decls,
             ecx: InterpCx::new(tcx, DUMMY_SP, body.typing_env(tcx), DummyMachine),
+            map,
         }
     }
 
-    #[instrument(level = "trace", skip(self, map), ret)]
+    #[instrument(level = "trace", skip(self), ret)]
     fn try_make_constant(
         &mut self,
         place: Place<'tcx>,
         state: &State<FlatSet<Scalar>>,
-        map: &Map<'tcx>,
     ) -> Option<Const<'tcx>> {
         let ty = place.ty(self.local_decls, self.patch.tcx).ty;
         let layout = self.ecx.layout_of(ty).ok()?;
@@ -792,9 +736,9 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
             return None;
         }
 
-        let place = map.find(place.as_ref())?;
+        let place = self.map.find(place.as_ref())?;
         if layout.backend_repr.is_scalar()
-            && let Some(value) = propagatable_scalar(place, state, map)
+            && let Some(value) = propagatable_scalar(place, state, self.map)
         {
             return Some(Const::Val(ConstValue::Scalar(value), ty));
         }
@@ -803,7 +747,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
             let alloc_id = self
                 .ecx
                 .intern_with_temp_alloc(layout, |ecx, dest| {
-                    try_write_constant(ecx, dest, place, ty, state, map)
+                    try_write_constant(ecx, dest, place, ty, state, self.map)
                 })
                 .discard_err()?;
             return Some(Const::Val(ConstValue::Indirect { alloc_id, offset: Size::ZERO }, ty));
@@ -900,7 +844,7 @@ fn try_write_constant<'tcx>(
             };
 
             for (i, field) in variant_def.fields.iter_enumerated() {
-                let ty = field.ty(*ecx.tcx, args).skip_norm_wip();
+                let ty = field.ty(*ecx.tcx, *args).skip_norm_wip();
                 let Some(field) = map.apply(variant_place, TrackElem::Field(i)) else {
                     throw_machine_stop_str!("missing field in ADT")
                 };
@@ -936,27 +880,24 @@ fn try_write_constant<'tcx>(
 }
 
 impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx> {
-    #[instrument(level = "trace", skip(self, analysis, statement))]
+    #[instrument(level = "trace", skip(self, statement))]
     fn visit_after_early_statement_effect(
         &mut self,
-        analysis: &ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         statement: &Statement<'tcx>,
         location: Location,
     ) {
         match &statement.kind {
             StatementKind::Assign((_, rvalue)) => {
-                OperandCollector { state, visitor: self, map: &analysis.map }
-                    .visit_rvalue(rvalue, location);
+                OperandCollector { state, visitor: self }.visit_rvalue(rvalue, location);
             }
             _ => (),
         }
     }
 
-    #[instrument(level = "trace", skip(self, analysis, statement))]
+    #[instrument(level = "trace", skip(self, statement))]
     fn visit_after_primary_statement_effect(
         &mut self,
-        analysis: &ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         statement: &Statement<'tcx>,
         location: Location,
@@ -966,7 +907,7 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
                 // Don't overwrite the assignment if it already uses a constant (to keep the span).
             }
             StatementKind::Assign((place, _)) => {
-                if let Some(value) = self.try_make_constant(place, state, &analysis.map) {
+                if let Some(value) = self.try_make_constant(place, state) {
                     self.patch.assignments.insert(location, value);
                 }
             }
@@ -976,13 +917,11 @@ impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx>
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        analysis: &ConstAnalysis<'_, 'tcx>,
         state: &State<FlatSet<Scalar>>,
         terminator: &Terminator<'tcx>,
         location: Location,
     ) {
-        OperandCollector { state, visitor: self, map: &analysis.map }
-            .visit_terminator(terminator, location);
+        OperandCollector { state, visitor: self }.visit_terminator(terminator, location);
     }
 }
 
@@ -1041,7 +980,6 @@ impl<'tcx> MutVisitor<'tcx> for Patch<'tcx> {
 struct OperandCollector<'a, 'b, 'tcx> {
     state: &'a State<FlatSet<Scalar>>,
     visitor: &'a mut Collector<'b, 'tcx>,
-    map: &'a Map<'tcx>,
 }
 
 impl<'tcx> Visitor<'tcx> for OperandCollector<'_, '_, 'tcx> {
@@ -1053,7 +991,7 @@ impl<'tcx> Visitor<'tcx> for OperandCollector<'_, '_, 'tcx> {
         location: Location,
     ) {
         if let PlaceElem::Index(local) = elem
-            && let Some(value) = self.visitor.try_make_constant(local.into(), self.state, self.map)
+            && let Some(value) = self.visitor.try_make_constant(local.into(), self.state)
         {
             self.visitor.patch.before_effect.insert((location, local.into()), value);
         }
@@ -1061,7 +999,7 @@ impl<'tcx> Visitor<'tcx> for OperandCollector<'_, '_, 'tcx> {
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         if let Some(place) = operand.place() {
-            if let Some(value) = self.visitor.try_make_constant(place, self.state, self.map) {
+            if let Some(value) = self.visitor.try_make_constant(place, self.state) {
                 self.visitor.patch.before_effect.insert((location, place), value);
             } else if !place.projection.is_empty() {
                 // Try to propagate into `Index` projections.

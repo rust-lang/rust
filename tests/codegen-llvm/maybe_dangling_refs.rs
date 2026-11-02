@@ -7,11 +7,17 @@
 #![crate_type = "lib"]
 #![feature(maybe_dangling)]
 
-use std::mem::MaybeDangling;
+use std::mem::{ManuallyDrop, MaybeDangling};
 
 // CHECK: define {{(dso_local )?}}noundef nonnull ptr @f(ptr noundef nonnull %x) unnamed_addr
 #[no_mangle]
 pub fn f(x: MaybeDangling<Box<u8>>) -> MaybeDangling<Box<u8>> {
+    x
+}
+
+// CHECK: define {{(dso_local )?}}noundef nonnull ptr @f2(ptr noundef nonnull %x) unnamed_addr
+#[no_mangle]
+pub fn f2(x: ManuallyDrop<Box<u8>>) -> ManuallyDrop<Box<u8>> {
     x
 }
 

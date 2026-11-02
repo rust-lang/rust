@@ -1,4 +1,4 @@
-use rustc_session::lint::LintPass;
+use rustc_lint_defs::LintPass;
 
 use crate::context::{EarlyContext, LateContext};
 
@@ -11,7 +11,7 @@ macro_rules! late_lint_methods {
             fn check_body_post(a: &rustc_hir::Body<'tcx>);
             fn check_crate();
             fn check_crate_post();
-            fn check_mod(a: &'tcx rustc_hir::Mod<'tcx>, b: rustc_hir::HirId);
+            fn check_mod(a: &'tcx rustc_hir::Mod<'tcx>, b: rustc_span::def_id::LocalModId);
             fn check_foreign_item(a: &'tcx rustc_hir::ForeignItem<'tcx>);
             fn check_item(a: &'tcx rustc_hir::Item<'tcx>);
             fn check_item_post(a: &'tcx rustc_hir::Item<'tcx>);
@@ -40,9 +40,9 @@ macro_rules! late_lint_methods {
             fn check_field_def(a: &'tcx rustc_hir::FieldDef<'tcx>);
             fn check_variant(a: &'tcx rustc_hir::Variant<'tcx>);
             fn check_path(a: &rustc_hir::Path<'tcx>, b: rustc_hir::HirId);
-            fn check_attribute(a: &'tcx rustc_hir::Attribute);
-            fn check_attributes(a: &'tcx [rustc_hir::Attribute]);
-            fn check_attributes_post(a: &'tcx [rustc_hir::Attribute]);
+            fn check_attribute(a: &'tcx rustc_attr_ir::Attribute);
+            fn check_attributes(a: &'tcx [rustc_attr_ir::Attribute]);
+            fn check_attributes_post(a: &'tcx [rustc_attr_ir::Attribute]);
         ]);
     )
 }

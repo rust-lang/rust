@@ -4,8 +4,10 @@ use std::cell::OnceCell;
 
 use base_db::{Crate, FxIndexSet, SourceDatabase};
 use cfg::CfgOptions;
+use either::Either;
 use hir_expand::{HirFileId, mod_path::PathKind, name::AsName, span_map::SpanMap};
 use la_arena::Arena;
+use rustc_hash::FxHashSet;
 use span::{AstIdMap, FileAstId, SyntaxContext};
 use syntax::{
     AstNode,
@@ -13,10 +15,10 @@ use syntax::{
 };
 
 use crate::item_tree::{
-    BigModItem, Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ImportAlias,
-    Interned, ItemTree, ItemTreeAstId, Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind,
-    ModPath, RawVisibility, RawVisibilityId, SmallModItem, Static, Struct, StructKind, Trait,
-    TypeAlias, Union, Use, UseTree, UseTreeKind, VisibilityExplicitness, attrs::AttrsOrCfg,
+    BigModItem, Const, Enum, ExternBlock, ExternCrate, Function, Impl, ImportAlias, Interned,
+    ItemTree, Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, ModPath, RawVisibility,
+    RawVisibilityId, SmallModItem, Static, Struct, StructKind, StructValueNsCtor, Trait, TypeAlias,
+    Union, Use, UseTree, UseTreeKind, VisibilityExplicitness, attrs::AttrsOrCfg,
 };
 
 pub(super) struct Ctx<'db> {
@@ -98,7 +100,7 @@ impl<'db> Ctx<'db> {
     }
 
     pub(super) fn lower_block(mut self, block: &ast::BlockExpr) -> ItemTree {
-        self.tree.top_attrs = self.lower_attrs(block);
+        self.add_attrs(ModItemId::TOP_OWNER, self.lower_attrs(block));
         self.top_level = block
             .statements()
             .filter_map(|stmt| match stmt {
@@ -124,68 +126,153 @@ impl<'db> Ctx<'db> {
     }
 
     fn lower_mod_item(&mut self, item: &ast::Item) -> Option<ModItemId> {
-        let mod_item: ModItemId = match item {
-            ast::Item::Struct(ast) => self.lower_struct(ast)?.into(),
-            ast::Item::Union(ast) => self.lower_union(ast)?.into(),
-            ast::Item::Enum(ast) => self.lower_enum(ast)?.into(),
-            ast::Item::Fn(ast) => self.lower_function(ast)?.into(),
-            ast::Item::TypeAlias(ast) => self.lower_type_alias(ast)?.into(),
-            ast::Item::Static(ast) => self.lower_static(ast)?.into(),
-            ast::Item::Const(ast) => self.lower_const(ast).into(),
-            ast::Item::Module(ast) => self.lower_module(ast)?.into(),
-            ast::Item::Trait(ast) => self.lower_trait(ast)?.into(),
-            ast::Item::Impl(ast) => self.lower_impl(ast).into(),
-            ast::Item::Use(ast) => self.lower_use(ast)?.into(),
-            ast::Item::ExternCrate(ast) => self.lower_extern_crate(ast)?.into(),
-            ast::Item::MacroCall(ast) => self.lower_macro_call(ast)?.into(),
-            ast::Item::MacroRules(ast) => self.lower_macro_rules(ast)?.into(),
-            ast::Item::MacroDef(ast) => self.lower_macro_def(ast)?.into(),
-            ast::Item::ExternBlock(ast) => self.lower_extern_block(ast).into(),
+        let mod_item = match item {
+            ast::Item::Struct(ast) => self.lower_struct(ast)?,
+            ast::Item::Union(ast) => self.lower_union(ast)?,
+            ast::Item::Enum(ast) => self.lower_enum(ast)?,
+            ast::Item::Fn(ast) => self.lower_function(ast)?,
+            ast::Item::TypeAlias(ast) => self.lower_type_alias(ast)?,
+            ast::Item::Static(ast) => self.lower_static(ast)?,
+            ast::Item::Const(ast) => self.lower_const(ast),
+            ast::Item::Module(ast) => self.lower_module(ast)?,
+            ast::Item::Trait(ast) => self.lower_trait(ast)?,
+            ast::Item::Impl(ast) => self.lower_impl(ast),
+            ast::Item::Use(ast) => self.lower_use(ast)?,
+            ast::Item::ExternCrate(ast) => self.lower_extern_crate(ast)?,
+            ast::Item::MacroCall(ast) => self.lower_macro_call(ast)?,
+            ast::Item::MacroRules(ast) => self.lower_macro_rules(ast)?,
+            ast::Item::MacroDef(ast) => self.lower_macro_def(ast)?,
+            ast::Item::ExternBlock(ast) => self.lower_extern_block(ast),
             // FIXME: Handle `global_asm!()`.
             ast::Item::AsmExpr(_) => return None,
         };
         let attrs = self.lower_attrs(item);
-        self.add_attrs(mod_item.ast_id(), attrs);
+        self.add_attrs(mod_item, attrs);
 
         Some(mod_item)
     }
 
-    fn add_attrs(&mut self, item: FileAstId<ast::Item>, attrs: AttrsOrCfg) {
+    pub(super) fn add_attrs(&mut self, item: ModItemId, attrs: AttrsOrCfg) {
         if !attrs.is_empty() {
-            self.tree.attrs.insert(item, attrs);
+            self.tree.attrs.push((item, attrs));
         }
     }
 
-    fn lower_struct(&mut self, strukt: &ast::Struct) -> Option<ItemTreeAstId<Struct>> {
-        let visibility = self.lower_visibility(strukt);
-        let name = strukt.name()?.as_name();
-        let ast_id = self.source_ast_id_map.ast_id(strukt);
-        let shape = adt_shape(strukt.kind());
-        let res = Struct { name, visibility, shape };
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Struct(res));
-
-        Some(ast_id)
+    fn alloc_small(&mut self, ast_id: FileAstId<ast::Item>, item: SmallModItem) -> ModItemId {
+        let index = self.tree.small_data.len() as u32;
+        self.tree.small_data.push((ast_id, item));
+        ModItemId::new_small(index)
     }
 
-    fn lower_union(&mut self, union: &ast::Union) -> Option<ItemTreeAstId<Union>> {
+    fn alloc_big(&mut self, ast_id: FileAstId<ast::Item>, item: BigModItem) -> ModItemId {
+        let index = self.tree.big_data.len() as u32;
+        self.tree.big_data.push((ast_id, item));
+        ModItemId::new_big(index)
+    }
+
+    fn lower_struct(&mut self, strukt: &ast::Struct) -> Option<ModItemId> {
+        let visibility = self.lower_visibility_from_ast(strukt);
+        let visibility_id = self.alloc_visibility(visibility.clone());
+        let name = strukt.name()?.as_name();
+        let ast_id = self.source_ast_id_map.ast_id(strukt);
+        let value_ns_ctor = match strukt.kind() {
+            StructKind::Record(_) => StructValueNsCtor::NoValueNsCtor,
+            StructKind::Unit => StructValueNsCtor::ValueNsCtorWithVis(visibility_id),
+            StructKind::Tuple(fields) => self.tuple_struct_ctor_vis(visibility, fields),
+        };
+        let res = Struct { name, visibility: visibility_id, value_ns_ctor };
+        Some(self.alloc_big(ast_id.upcast(), BigModItem::Struct(res)))
+    }
+
+    fn tuple_struct_ctor_vis(
+        &mut self,
+        struct_vis: RawVisibility,
+        fields: ast::TupleFieldList,
+    ) -> StructValueNsCtor {
+        if let RawVisibility::PubSelf(_) = struct_vis {
+            // `pub(self)` <= anything.
+            return StructValueNsCtor::ValueNsCtorWithVis(self.alloc_visibility(struct_vis));
+        }
+
+        let mut value_ns_ctor_vis = Either::Left(struct_vis);
+        for field in fields.fields() {
+            let field_vis = self.lower_visibility_from_ast(&field);
+            match (&field_vis, &mut value_ns_ctor_vis) {
+                (RawVisibility::PubSelf(_), _) => {
+                    // If there is a field private, the minimal visibility is private.
+                    value_ns_ctor_vis = Either::Left(field_vis);
+                    break;
+                }
+                (_, Either::Left(RawVisibility::Public)) => {
+                    // anything <= `pub`.
+                    value_ns_ctor_vis = Either::Left(field_vis);
+                }
+                (RawVisibility::Module(..), Either::Left(RawVisibility::PubCrate)) => {
+                    // `pub(in module)` <= `pub(crate)`.
+                    value_ns_ctor_vis = Either::Left(field_vis);
+                }
+                (
+                    RawVisibility::Public | RawVisibility::PubCrate,
+                    Either::Right(_)
+                    | Either::Left(RawVisibility::Module(..) | RawVisibility::PubCrate),
+                ) => {
+                    // `pub(in module) | pub(crate)` <= `pub(crate) | pub`.
+                }
+                (_, Either::Left(RawVisibility::PubSelf(_))) => {
+                    unreachable!("we early-exit on `PubSelf`");
+                }
+                (RawVisibility::Module(..), Either::Left(RawVisibility::Module(..))) => {
+                    let old_vis = match std::mem::replace(
+                        &mut value_ns_ctor_vis,
+                        Either::Left(RawVisibility::Public),
+                    ) {
+                        Either::Left(it) => it,
+                        _ => unreachable!(),
+                    };
+                    let mut multiple = FxHashSet::default();
+                    multiple.insert(old_vis);
+                    multiple.insert(field_vis);
+                    value_ns_ctor_vis = Either::Right(multiple);
+                }
+                (RawVisibility::Module(..), Either::Right(multiple)) => {
+                    multiple.insert(field_vis);
+                }
+            }
+        }
+
+        match value_ns_ctor_vis {
+            Either::Left(vis) => StructValueNsCtor::ValueNsCtorWithVis(self.alloc_visibility(vis)),
+            Either::Right(multiple) => {
+                if multiple.len() == 1 {
+                    StructValueNsCtor::ValueNsCtorWithVis(
+                        self.alloc_visibility(multiple.into_iter().next().unwrap()),
+                    )
+                } else {
+                    StructValueNsCtor::ValueNsCtorWithMinVis(
+                        multiple.into_iter().map(|vis| self.alloc_visibility(vis)).collect(),
+                    )
+                }
+            }
+        }
+    }
+
+    fn lower_union(&mut self, union: &ast::Union) -> Option<ModItemId> {
         let visibility = self.lower_visibility(union);
         let name = union.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(union);
         let res = Union { name, visibility };
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Union(res));
-        Some(ast_id)
+        Some(self.alloc_small(ast_id.upcast(), SmallModItem::Union(res)))
     }
 
-    fn lower_enum(&mut self, enum_: &ast::Enum) -> Option<ItemTreeAstId<Enum>> {
+    fn lower_enum(&mut self, enum_: &ast::Enum) -> Option<ModItemId> {
         let visibility = self.lower_visibility(enum_);
         let name = enum_.name()?.as_name();
         let ast_id = self.source_ast_id_map.ast_id(enum_);
         let res = Enum { name, visibility };
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Enum(res));
-        Some(ast_id)
+        Some(self.alloc_small(ast_id.upcast(), SmallModItem::Enum(res)))
     }
 
-    fn lower_function(&mut self, func: &ast::Fn) -> Option<ItemTreeAstId<Function>> {
+    fn lower_function(&mut self, func: &ast::Fn) -> Option<ModItemId> {
         let visibility = self.lower_visibility(func);
         let name = func.name()?.as_name();
 
@@ -193,41 +280,34 @@ impl<'db> Ctx<'db> {
 
         let res = Function { name, visibility };
 
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Function(res));
-        Some(ast_id)
+        Some(self.alloc_small(ast_id.upcast(), SmallModItem::Function(res)))
     }
 
-    fn lower_type_alias(
-        &mut self,
-        type_alias: &ast::TypeAlias,
-    ) -> Option<ItemTreeAstId<TypeAlias>> {
+    fn lower_type_alias(&mut self, type_alias: &ast::TypeAlias) -> Option<ModItemId> {
         let name = type_alias.name()?.as_name();
         let visibility = self.lower_visibility(type_alias);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
         let res = TypeAlias { name, visibility };
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::TypeAlias(res));
-        Some(ast_id)
+        Some(self.alloc_small(ast_id.upcast(), SmallModItem::TypeAlias(res)))
     }
 
-    fn lower_static(&mut self, static_: &ast::Static) -> Option<ItemTreeAstId<Static>> {
+    fn lower_static(&mut self, static_: &ast::Static) -> Option<ModItemId> {
         let name = static_.name()?.as_name();
         let visibility = self.lower_visibility(static_);
         let ast_id = self.source_ast_id_map.ast_id(static_);
         let res = Static { name, visibility };
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Static(res));
-        Some(ast_id)
+        Some(self.alloc_small(ast_id.upcast(), SmallModItem::Static(res)))
     }
 
-    fn lower_const(&mut self, konst: &ast::Const) -> ItemTreeAstId<Const> {
+    fn lower_const(&mut self, konst: &ast::Const) -> ModItemId {
         let name = konst.name().map(|it| it.as_name());
         let visibility = self.lower_visibility(konst);
         let ast_id = self.source_ast_id_map.ast_id(konst);
         let res = Const { name, visibility };
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Const(res));
-        ast_id
+        self.alloc_small(ast_id.upcast(), SmallModItem::Const(res))
     }
 
-    fn lower_module(&mut self, module: &ast::Module) -> Option<ItemTreeAstId<Mod>> {
+    fn lower_module(&mut self, module: &ast::Module) -> Option<ModItemId> {
         let name = module.name()?.as_name();
         let visibility = self.lower_visibility(module);
         let kind = if module.semicolon_token().is_some() {
@@ -247,30 +327,27 @@ impl<'db> Ctx<'db> {
         };
         let ast_id = self.source_ast_id_map.ast_id(module);
         let res = Mod { name, visibility, kind };
-        self.tree.big_data.insert(ast_id.upcast(), BigModItem::Mod(res));
-        Some(ast_id)
+        Some(self.alloc_big(ast_id.upcast(), BigModItem::Mod(res)))
     }
 
-    fn lower_trait(&mut self, trait_def: &ast::Trait) -> Option<ItemTreeAstId<Trait>> {
+    fn lower_trait(&mut self, trait_def: &ast::Trait) -> Option<ModItemId> {
         let name = trait_def.name()?.as_name();
         let visibility = self.lower_visibility(trait_def);
         let ast_id = self.source_ast_id_map.ast_id(trait_def);
 
         let def = Trait { name, visibility };
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Trait(def));
-        Some(ast_id)
+        Some(self.alloc_small(ast_id.upcast(), SmallModItem::Trait(def)))
     }
 
-    fn lower_impl(&mut self, impl_def: &ast::Impl) -> ItemTreeAstId<Impl> {
+    fn lower_impl(&mut self, impl_def: &ast::Impl) -> ModItemId {
         let ast_id = self.source_ast_id_map.ast_id(impl_def);
         // Note that trait impls don't get implicit `Self` unlike traits, because here they are a
         // type alias rather than a type parameter, so this is handled by the resolver.
         let res = Impl { is_trait_impl: impl_def.trait_().is_some() };
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Impl(res));
-        ast_id
+        self.alloc_small(ast_id.upcast(), SmallModItem::Impl(res))
     }
 
-    fn lower_use(&mut self, use_item: &ast::Use) -> Option<ItemTreeAstId<Use>> {
+    fn lower_use(&mut self, use_item: &ast::Use) -> Option<ModItemId> {
         let visibility = self.lower_visibility(use_item);
         let ast_id = self.source_ast_id_map.ast_id(use_item);
         let (use_tree, _) = lower_use_tree(self.db, use_item.use_tree()?, &mut |range| {
@@ -278,14 +355,10 @@ impl<'db> Ctx<'db> {
         })?;
 
         let res = Use { visibility, use_tree };
-        self.tree.big_data.insert(ast_id.upcast(), BigModItem::Use(res));
-        Some(ast_id)
+        Some(self.alloc_big(ast_id.upcast(), BigModItem::Use(res)))
     }
 
-    fn lower_extern_crate(
-        &mut self,
-        extern_crate: &ast::ExternCrate,
-    ) -> Option<ItemTreeAstId<ExternCrate>> {
+    fn lower_extern_crate(&mut self, extern_crate: &ast::ExternCrate) -> Option<ModItemId> {
         let name = extern_crate.name_ref()?.as_name();
         let alias = extern_crate.rename().map(|a| {
             a.name().map(|it| it.as_name()).map_or(ImportAlias::Underscore, ImportAlias::Alias)
@@ -294,11 +367,10 @@ impl<'db> Ctx<'db> {
         let ast_id = self.source_ast_id_map.ast_id(extern_crate);
 
         let res = ExternCrate { name, alias, visibility };
-        self.tree.big_data.insert(ast_id.upcast(), BigModItem::ExternCrate(res));
-        Some(ast_id)
+        Some(self.alloc_big(ast_id.upcast(), BigModItem::ExternCrate(res)))
     }
 
-    fn lower_macro_call(&mut self, m: &ast::MacroCall) -> Option<ItemTreeAstId<MacroCall>> {
+    fn lower_macro_call(&mut self, m: &ast::MacroCall) -> Option<ModItemId> {
         let span_map = self.span_map();
         let path = m.path()?;
         let range = path.syntax().text_range();
@@ -308,31 +380,28 @@ impl<'db> Ctx<'db> {
         let ast_id = self.source_ast_id_map.ast_id(m);
         let expand_to = hir_expand::ExpandTo::from_call_site(m);
         let res = MacroCall { path, expand_to, ctxt: span_map.span_for_range(range).ctx };
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::MacroCall(res));
-        Some(ast_id)
+        Some(self.alloc_small(ast_id.upcast(), SmallModItem::MacroCall(res)))
     }
 
-    fn lower_macro_rules(&mut self, m: &ast::MacroRules) -> Option<ItemTreeAstId<MacroRules>> {
+    fn lower_macro_rules(&mut self, m: &ast::MacroRules) -> Option<ModItemId> {
         let name = m.name()?;
         let ast_id = self.source_ast_id_map.ast_id(m);
 
         let res = MacroRules { name: name.as_name() };
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::MacroRules(res));
-        Some(ast_id)
+        Some(self.alloc_small(ast_id.upcast(), SmallModItem::MacroRules(res)))
     }
 
-    fn lower_macro_def(&mut self, m: &ast::MacroDef) -> Option<ItemTreeAstId<Macro2>> {
+    fn lower_macro_def(&mut self, m: &ast::MacroDef) -> Option<ModItemId> {
         let name = m.name()?;
 
         let ast_id = self.source_ast_id_map.ast_id(m);
         let visibility = self.lower_visibility(m);
 
         let res = Macro2 { name: name.as_name(), visibility };
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Macro2(res));
-        Some(ast_id)
+        Some(self.alloc_small(ast_id.upcast(), SmallModItem::Macro2(res)))
     }
 
-    fn lower_extern_block(&mut self, block: &ast::ExternBlock) -> ItemTreeAstId<ExternBlock> {
+    fn lower_extern_block(&mut self, block: &ast::ExternBlock) -> ModItemId {
         let ast_id = self.source_ast_id_map.ast_id(block);
         let children: Box<[_]> = block.extern_item_list().map_or(Box::new([]), |list| {
             list.extern_items()
@@ -341,28 +410,35 @@ impl<'db> Ctx<'db> {
                     // (in other words, the knowledge that they're in an extern block must not be used).
                     // This is because an extern block can contain macros whose ItemTree's top-level items
                     // should be considered to be in an extern block too.
-                    let mod_item: ModItemId = match &item {
-                        ast::ExternItem::Fn(ast) => self.lower_function(ast)?.into(),
-                        ast::ExternItem::Static(ast) => self.lower_static(ast)?.into(),
-                        ast::ExternItem::TypeAlias(ty) => self.lower_type_alias(ty)?.into(),
-                        ast::ExternItem::MacroCall(call) => self.lower_macro_call(call)?.into(),
+                    let mod_item = match &item {
+                        ast::ExternItem::Fn(ast) => self.lower_function(ast)?,
+                        ast::ExternItem::Static(ast) => self.lower_static(ast)?,
+                        ast::ExternItem::TypeAlias(ty) => self.lower_type_alias(ty)?,
+                        ast::ExternItem::MacroCall(call) => self.lower_macro_call(call)?,
                     };
                     let attrs = self.lower_attrs(&item);
-                    self.add_attrs(mod_item.ast_id(), attrs);
+                    self.add_attrs(mod_item, attrs);
                     Some(mod_item)
                 })
                 .collect()
         });
 
         let res = ExternBlock { children };
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::ExternBlock(res));
-        ast_id
+        self.alloc_small(ast_id.upcast(), SmallModItem::ExternBlock(res))
     }
 
     fn lower_visibility(&mut self, item: &dyn ast::HasVisibility) -> RawVisibilityId {
-        let vis = visibility_from_ast(self.db, item.visibility(), &mut |range| {
+        let vis = self.lower_visibility_from_ast(item);
+        self.alloc_visibility(vis)
+    }
+
+    fn lower_visibility_from_ast(&mut self, item: &dyn ast::HasVisibility) -> RawVisibility {
+        visibility_from_ast(self.db, item.visibility(), &mut |range| {
             self.span_map().span_for_range(range).ctx
-        });
+        })
+    }
+
+    fn alloc_visibility(&mut self, vis: RawVisibility) -> RawVisibilityId {
         match &vis {
             RawVisibility::Public => RawVisibilityId::PUB,
             RawVisibility::PubSelf(VisibilityExplicitness::Explicit) => {
@@ -484,12 +560,4 @@ pub(crate) fn visibility_from_ast(
         ast::VisibilityKind::Pub => return RawVisibility::Public,
     };
     RawVisibility::Module(Interned::new(path), VisibilityExplicitness::Explicit)
-}
-
-fn adt_shape(kind: StructKind) -> FieldsShape {
-    match kind {
-        StructKind::Record(_) => FieldsShape::Record,
-        StructKind::Tuple(_) => FieldsShape::Tuple,
-        StructKind::Unit => FieldsShape::Unit,
-    }
 }

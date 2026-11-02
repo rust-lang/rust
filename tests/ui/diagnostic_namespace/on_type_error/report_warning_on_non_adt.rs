@@ -31,7 +31,7 @@ impl SomeStruct {
 fn main() {
     // Create a type error with a valid ADT to ensure the feature works
     #[diagnostic::on_type_error(
-        note = "custom on_type_error note: expected `{Expected}`, found `{Found}`"
+        note = "custom on_type_error note: expected `{expected}`, found `{found}`"
     )]
     struct Valid<T>(T);
 

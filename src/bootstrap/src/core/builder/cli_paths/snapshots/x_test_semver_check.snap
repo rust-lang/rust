@@ -4,4 +4,4 @@ expression: test std-semver-check
 ---
 [Test] test::StdSemverCheck
     targets: [aarch64-unknown-linux-gnu]
-    - Set({test::std-semver-check})
+    - Set({std-semver-check})

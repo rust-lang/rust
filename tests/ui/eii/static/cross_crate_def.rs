@@ -1,8 +1,9 @@
+//@ revisions: rlib dylib
+//@[dylib] needs-crate-type: dylib
 //@ run-pass
 //@ check-run-results
 //@ aux-build: cross_crate_def.rs
 //@ compile-flags: -O
-//@ ignore-backends: gcc
 // FIXME(#125418): linking on Windows GNU targets is not yet supported.
 //@ ignore-windows-gnu
 // Tests whether calling EIIs works with the declaration and definition in another crate.

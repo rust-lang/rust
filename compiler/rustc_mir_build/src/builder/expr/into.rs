@@ -2,20 +2,19 @@
 
 use rustc_abi::FieldIdx;
 use rustc_ast::{AsmMacro, InlineAsmOptions};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
-use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::{DUMMY_SP, Spanned, sym};
+use rustc_span::{DUMMY_SP, Spanned, span_bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
 use crate::builder::expr::category::{Category, RvalueFunc};
-use crate::builder::matches::{DeclareLetBindings, Exhaustive, HasMatchGuard};
+use crate::builder::matches::{DeclareLetBindings, Exhaustive, HasMatchGuard, LowerIfCondArgs};
 use crate::builder::scope::LintLevel;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
 use crate::diagnostics::{LoopMatchArmWithGuard, LoopMatchUnsupportedType};
@@ -48,29 +47,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let block_and = match expr.kind {
             ExprKind::Scope { region_scope, hir_id, value } => {
                 let region_scope = (region_scope, source_info);
-                ensure_sufficient_stack(|| {
-                    this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
-                        this.expr_into_dest(destination, block, value)
-                    })
+                this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
+                    this.push_coverage_point_for_expr(block, source_info, hir_id);
+                    this.expr_into_dest(destination, block, value)
                 })
             }
             ExprKind::Block { block: ast_block } => {
                 this.ast_block(destination, block, ast_block, source_info)
             }
-            ExprKind::Match { scrutinee, ref arms, .. } => this.match_expr(
-                destination,
-                block,
-                scrutinee,
-                arms,
-                expr_span,
-                this.thir[scrutinee].span,
-            ),
+            ExprKind::Match { scrutinee, ref arms, .. } => {
+                this.match_expr(destination, block, scrutinee, arms, expr_span)
+            }
             ExprKind::If { cond, then, else_opt, if_then_scope } => {
                 let then_span = this.thir[then].span;
                 let then_source_info = this.source_info(then_span);
                 let condition_scope = this.local_scope();
 
-                let then_and_else_blocks = this.in_scope(
+                let true_and_false_blocks = this.in_scope(
                     (if_then_scope, then_source_info),
                     LintLevel::Inherited,
                     |this| {
@@ -84,47 +77,51 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             this.source_info(then_span)
                         };
 
-                        // Lower the condition, and have it branch into `then` and `else` blocks.
-                        let (then_block, else_block) =
+                        // Lower the condition, and have it branch into *true* and *false* blocks.
+                        let (true_block, false_block) =
                             this.in_if_then_scope(condition_scope, then_span, |this| {
-                                let then_blk = this
-                                    .then_else_break(
+                                let true_block = this
+                                    .lower_if_condition(
                                         block,
                                         cond,
-                                        Some(condition_scope), // Temp scope
-                                        source_info,
-                                        DeclareLetBindings::Yes, // Declare `let` bindings normally
+                                        LowerIfCondArgs {
+                                            temp_scope_override: Some(condition_scope),
+                                            variable_source_info: source_info,
+                                            declare_let_bindings: DeclareLetBindings::Yes,
+                                        },
                                     )
                                     .into_block();
 
                                 // Lower the `then` arm into its block.
-                                this.expr_into_dest(destination, then_blk, then)
+                                this.expr_into_dest(destination, true_block, then)
                             });
 
-                        // Pack `(then_block, else_block)` into `BlockAnd<BasicBlock>`.
-                        then_block.and(else_block)
+                        // Pack `(true_block, false_block)` into `BlockAnd<BasicBlock>`.
+                        true_block.and(false_block)
                     },
                 );
 
-                // Unpack `BlockAnd<BasicBlock>` into `(then_blk, else_blk)`.
-                let (then_blk, mut else_blk);
-                else_blk = unpack!(then_blk = then_and_else_blocks);
+                // Unpack `BlockAnd<BasicBlock>` into `(true_block, false_block)`.
+                let (true_block, mut false_block);
+                false_block = unpack!(true_block = true_and_false_blocks);
 
-                // If there is an `else` arm, lower it into `else_blk`.
+                // If there is an `else` arm, lower it into `false_block`.
                 if let Some(else_expr) = else_opt {
-                    else_blk = this.expr_into_dest(destination, else_blk, else_expr).into_block();
+                    false_block =
+                        this.expr_into_dest(destination, false_block, else_expr).into_block();
                 } else {
                     // There is no `else` arm, so we know both arms have type `()`.
                     // Generate the implicit `else {}` by assigning unit.
                     let correct_si = this.source_info(expr_span.shrink_to_hi());
-                    this.cfg.push_assign_unit(else_blk, correct_si, destination, this.tcx);
+                    this.push_coverage_point_for_implicit_else(false_block, correct_si, expr);
+                    this.cfg.push_assign_unit(false_block, correct_si, destination, this.tcx);
                 }
 
                 // The `then` and `else` arms have been lowered into their respective
                 // blocks, so make both of them meet up in a new block.
                 let join_block = this.cfg.start_new_block();
-                this.cfg.goto(then_blk, source_info, join_block);
-                this.cfg.goto(else_blk, source_info, join_block);
+                this.cfg.goto(true_block, source_info, join_block);
+                this.cfg.goto(false_block, source_info, join_block);
                 join_block.unit()
             }
             ExprKind::Let { .. } => {
@@ -161,48 +158,50 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let source_info = this.source_info(expr.span);
 
                 // We first evaluate the left-hand side of the predicate ...
-                let (then_block, else_block) =
+                let (true_block, false_block) =
                     this.in_if_then_scope(condition_scope, expr.span, |this| {
-                        this.then_else_break(
+                        this.lower_if_condition(
                             block,
                             lhs,
-                            Some(condition_scope), // Temp scope
-                            source_info,
-                            // This flag controls how inner `let` expressions are lowered,
-                            // but either way there shouldn't be any of those in here.
-                            DeclareLetBindings::LetNotPermitted,
+                            LowerIfCondArgs {
+                                temp_scope_override: Some(condition_scope),
+                                variable_source_info: source_info,
+                                declare_let_bindings: DeclareLetBindings::LetNotPermitted,
+                            },
                         )
                     });
-                let (short_circuit, continuation, constant) = match op {
-                    LogicalOp::And => (else_block, then_block, false),
-                    LogicalOp::Or => (then_block, else_block, true),
-                };
+
                 // At this point, the control flow splits into a short-circuiting path
                 // and a continuation path.
                 // - If the operator is `&&`, passing `lhs` leads to continuation of evaluation on `rhs`;
                 //   failing it leads to the short-circuting path which assigns `false` to the place.
                 // - If the operator is `||`, failing `lhs` leads to continuation of evaluation on `rhs`;
                 //   passing it leads to the short-circuting path which assigns `true` to the place.
+                let (short_circuit_block, short_circuit_value, continue_block) = match op {
+                    LogicalOp::And => (false_block, false, true_block),
+                    LogicalOp::Or => (true_block, true, false_block),
+                };
                 this.cfg.push_assign_constant(
-                    short_circuit,
+                    short_circuit_block,
                     source_info,
                     destination,
                     ConstOperand {
                         span: expr.span,
                         user_ty: None,
-                        const_: Const::from_bool(this.tcx, constant),
+                        const_: Const::from_bool(this.tcx, short_circuit_value),
                     },
                 );
                 let mut rhs_block =
-                    this.expr_into_dest(destination, continuation, rhs).into_block();
+                    this.expr_into_dest(destination, continue_block, rhs).into_block();
                 // Instrument the lowered RHS's value for condition coverage.
                 // (Does nothing if condition coverage is not enabled.)
                 this.visit_coverage_standalone_condition(rhs, destination, &mut rhs_block);
 
-                let target = this.cfg.start_new_block();
-                this.cfg.goto(rhs_block, source_info, target);
-                this.cfg.goto(short_circuit, source_info, target);
-                target.unit()
+                // Reunite the continuation path and the short-circuit path.
+                let join_block = this.cfg.start_new_block();
+                this.cfg.goto(rhs_block, source_info, join_block);
+                this.cfg.goto(short_circuit_block, source_info, join_block);
+                join_block.unit()
             }
             ExprKind::Loop { body } => {
                 // [block]
@@ -239,10 +238,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Execute the body, branching back to the test.
                     let body_block_end = this.expr_into_dest(tmp, body_block, body).into_block();
 
-                    let goto = this.cfg.goto(body_block_end, source_info, loop_block);
-                    if let Some(attrs) = this.thir.attributes.get(&expr_id) {
-                        goto.attributes = attrs.clone();
-                    }
+                    let loop_hint_attrs = this
+                        .thir
+                        .loop_hint_attrs
+                        .get(&expr_id)
+                        .map(|attrs| attrs.clone())
+                        .unwrap_or_else(|| ThinVec::new());
+                    this.cfg.goto_with_hints(
+                        body_block_end,
+                        source_info,
+                        loop_block,
+                        loop_hint_attrs,
+                    );
 
                     // Loops are only exited by `break` expressions.
                     None
@@ -299,9 +306,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     // Logic for `match`.
                     let scrutinee_span = this.thir.exprs[scrutinee].span;
-                    let scrutinee_place_builder = unpack!(
-                        body_block = this.lower_scrutinee(body_block, scrutinee, scrutinee_span)
-                    );
+                    let scrutinee_place_builder =
+                        unpack!(body_block = this.lower_scrutinee(body_block, scrutinee));
 
                     let match_start_span = match_span.shrink_to_lo().to(scrutinee_span);
 
@@ -412,8 +418,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     sym::write_via_move => {
                         // `write_via_move(ptr, val)` becomes `*ptr = val` but without any dropping.
 
-                        // The destination must have unit type (so we don't actually have to store anything
-                        // into it).
+                        // The destination must have unit type.
                         assert!(destination.ty(&this.local_decls, this.tcx).ty.is_unit());
 
                         // Compile this to an assignment of the argument into the destination.
@@ -425,7 +430,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             span_bug!(expr_span, "invalid write_via_move call")
                         };
                         let ptr_deref = ptr.project_deeper(&[ProjectionElem::Deref], this.tcx);
-                        this.expr_into_dest(ptr_deref, block, val)
+                        unpack!(block = this.expr_into_dest(ptr_deref, block, val));
+                        this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
+                        block.unit()
                     }
                     sym::write_box_via_move => {
                         // The signature is:
@@ -455,9 +462,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         let place = b.project_deeper(&[ProjectionElem::Deref], tcx);
                         // Current type: `MaybeUninit<T>`. Field #1 is `ManuallyDrop<T>`.
                         let place = place.project_to_field(FieldIdx::from_u32(1), decls, tcx);
-                        // Current type: `ManuallyDrop<T>`. Field #0 is `MaybeDangling<T>`.
-                        let place = place.project_to_field(FieldIdx::ZERO, decls, tcx);
-                        // Current type: `MaybeDangling<T>`. Field #0 is `T`.
+                        // Current type: `ManuallyDrop<T>`. Field #0 is `T`.
                         let place = place.project_to_field(FieldIdx::ZERO, decls, tcx);
                         // Sanity check.
                         assert_eq!(place.ty(decls, tcx).ty, generic_args.type_at(0));
@@ -475,7 +480,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         );
                         block.unit()
                     }
-                    _ => rustc_middle::bug!(),
+                    _ => rustc_span::bug!(),
                 }
             }
             ExprKind::Call { ty: _, fun, ref args, from_hir_call, fn_span } => {
@@ -532,7 +537,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let success = this.cfg.start_new_block();
                     let clone_trait = this.tcx.require_lang_item(LangItem::Clone, span);
                     let clone_fn = this.tcx.associated_item_def_ids(clone_trait)[0];
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                     let func =
                         Operand::function_handle(this.tcx, clone_fn, &[ty.into()], expr_span);
                     let ref_ty = Ty::new_imm_ref(this.tcx, this.tcx.lifetimes.re_erased, ty);
@@ -568,7 +572,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block.unit()
                 }
             }
-            ExprKind::Use { source } => this.expr_into_dest(destination, block, source),
+            ExprKind::ValueExpr { source } => this.expr_into_dest(destination, block, source),
             ExprKind::Borrow { arg, borrow_kind } => {
                 // We don't do this in `as_rvalue` because we use `as_place`
                 // for borrow expressions, so we cannot create an `RValue` that
@@ -778,7 +782,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             this.cfg.terminate(
                                 target,
                                 source_info,
-                                TerminatorKind::Goto { target: destination_block },
+                                TerminatorKind::goto(destination_block),
                             );
 
                             mir::InlineAsmOperand::Label { target_index }

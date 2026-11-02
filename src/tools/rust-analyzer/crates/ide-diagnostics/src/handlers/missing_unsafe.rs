@@ -425,7 +425,6 @@ fn main() {
         check_diagnostics(
             r#"
 //- minicore: index, slice
-#![allow(unused_variables)]
 
 fn main() {
 
@@ -1061,6 +1060,17 @@ fn foo() {}
 #[target_feature(enable = "avx2", enable = "fma")]
 fn bar() {
     foo();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn raw_ref_deref_raw_ref_deref() {
+        check_diagnostics(
+            r#"
+fn foo() {
+    &raw const *&raw const *&raw const *&2;
 }
         "#,
         );

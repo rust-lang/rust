@@ -3,11 +3,11 @@ use core::ops::ControlFlow;
 use either::Either;
 use hir::{ExprKind, Param};
 use rustc_abi::FieldIdx;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Expr, Node};
-use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::{
@@ -16,7 +16,7 @@ use rustc_middle::mir::{
     StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
-use rustc_span::{BytePos, DesugaringKind, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DesugaringKind, Span, Symbol, bug, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
@@ -179,6 +179,15 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         reason = String::new();
                     }
                 }
+            }
+
+            PlaceRef { local: _, projection: [ProjectionElem::PhantomDeref] } => {
+                item_msg = String::new();
+                reason = String::new();
+            }
+            PlaceRef { local: _, projection: [_proj_base @ .., ProjectionElem::PhantomDeref] } => {
+                item_msg = String::new();
+                reason = String::new();
             }
 
             PlaceRef {
@@ -918,8 +927,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 if let Node::TraitItem(ti) = self.infcx.tcx.hir_node_by_def_id(f_in_trait)
                     && let hir::TraitItemKind::Fn(sig, _) = ti.kind
                     && let Some(ty) = sig.decl.inputs.get(local.index() - 1)
-                    && let hir::TyKind::Ref(_, mut_ty) = ty.kind
-                    && let hir::Mutability::Not = mut_ty.mutbl
+                    && let hir::TyKind::Ref(_, _, hir::Mutability::Not) = ty.kind
                     && sig.decl.implicit_self().has_implicit_self()
                 {
                     Some(ty.span)
@@ -1086,62 +1094,76 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
             }
         }
-        if let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id())
-            && let Block(block, _) = body.value.kind
+        let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id()) else { return };
+        let Block(block, _) = body.value.kind else { return };
+        // `span` corresponds to the expression being iterated, find the `for`-loop desugared
+        // expression with that span in order to identify potential fixes when encountering a
+        // read-only iterator that should be mutable.
+        let mut expr = if let ControlFlow::Break(expr) = (Finder { span }).visit_block(block)
+            && let Call(_, [expr]) = expr.kind
         {
-            // `span` corresponds to the expression being iterated, find the `for`-loop desugared
-            // expression with that span in order to identify potential fixes when encountering a
-            // read-only iterator that should be mutable.
-            if let ControlFlow::Break(expr) = (Finder { span }).visit_block(block)
-                && let Call(_, [expr]) = expr.kind
-            {
-                match expr.kind {
-                    MethodCall(path_segment, _, _, span) => {
-                        // We have `for _ in iter.read_only_iter()`, try to
-                        // suggest `for _ in iter.mutable_iter()` instead.
-                        let opt_suggestions = tcx
-                            .typeck(path_segment.hir_id.owner.def_id)
-                            .type_dependent_def_id(expr.hir_id)
-                            .and_then(|def_id| tcx.impl_of_assoc(def_id))
-                            .map(|def_id| tcx.associated_items(def_id))
-                            .map(|assoc_items| {
-                                assoc_items
-                                    .in_definition_order()
-                                    .map(|assoc_item_def| assoc_item_def.ident(tcx))
-                                    .filter(|&ident| {
-                                        let original_method_ident = path_segment.ident;
-                                        original_method_ident != ident
-                                            && ident.as_str().starts_with(
-                                                &original_method_ident.name.to_string(),
-                                            )
-                                    })
-                                    .map(|ident| format!("{ident}()"))
-                                    .peekable()
-                            });
+            expr
+        } else {
+            return;
+        };
+        loop {
+            match expr.kind {
+                MethodCall(path_segment, _, _, span) => {
+                    // We have `for _ in iter.read_only_iter()`, try to
+                    // suggest `for _ in iter.mutable_iter()` instead.
+                    let opt_suggestions = tcx
+                        .typeck(path_segment.hir_id.owner.def_id)
+                        .type_dependent_def_id(expr.hir_id)
+                        .and_then(|def_id| tcx.impl_of_assoc(def_id))
+                        .map(|def_id| tcx.associated_items(def_id))
+                        .map(|assoc_items| {
+                            assoc_items
+                                .in_definition_order()
+                                .map(|assoc_item_def| assoc_item_def.ident(tcx))
+                                .filter(|&ident| {
+                                    let original_method_ident = path_segment.ident;
+                                    original_method_ident != ident
+                                        && ident
+                                            .as_str()
+                                            .starts_with(&original_method_ident.name.to_string())
+                                })
+                                .map(|ident| format!("{ident}()"))
+                                .peekable()
+                        });
 
-                        if let Some(mut suggestions) = opt_suggestions
-                            && suggestions.peek().is_some()
-                        {
-                            err.span_suggestions(
-                                span,
-                                "use mutable method",
-                                suggestions,
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                    }
-                    AddrOf(BorrowKind::Ref, Mutability::Not, expr) => {
-                        // We have `for _ in &i`, suggest `for _ in &mut i`.
-                        err.span_suggestion_verbose(
-                            expr.span.shrink_to_lo(),
-                            "use a mutable iterator instead",
-                            "mut ",
-                            Applicability::MachineApplicable,
+                    if let Some(mut suggestions) = opt_suggestions
+                        && suggestions.peek().is_some()
+                    {
+                        err.span_suggestions(
+                            span,
+                            "use mutable method",
+                            suggestions,
+                            Applicability::MaybeIncorrect,
                         );
                     }
-                    _ => {}
                 }
+                AddrOf(BorrowKind::Ref, Mutability::Not, expr) => {
+                    // We have `for _ in &i`, suggest `for _ in &mut i`.
+                    err.span_suggestion_verbose(
+                        expr.span.shrink_to_lo(),
+                        "use a mutable iterator instead",
+                        "mut ",
+                        Applicability::MachineApplicable,
+                    );
+                }
+                ExprKind::Path(hir::QPath::Resolved(None, path))
+                    if let hir::def::Res::Local(hir_id) = path.res
+                        && let hir::Node::LetStmt(stmt) =
+                            self.infcx.tcx.parent_hir_node(hir_id)
+                        && let Some(init) = stmt.init =>
+                {
+                    // We're iterating over a binding, try to suggest changing the binding's expr.
+                    expr = init;
+                    continue;
+                }
+                _ => {}
             }
+            break;
         }
     }
 
@@ -1203,7 +1225,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         err.span_label(closure_span, "in this closure");
         let closure_arg_has_fn_trait_bound =
-            |callee_def_id, input_index, generic_args: ty::GenericArgsRef<'tcx>| {
+            |callee_def_id, input_index, generic_args: ty::GenericArgs<'tcx>| {
                 let sig = tcx.fn_sig(callee_def_id).instantiate(tcx, generic_args).skip_binder();
                 let Some(input_ty): Option<Ty<'tcx>> = sig.inputs().get(input_index).copied()
                 else {
@@ -1213,7 +1235,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 tcx.clauses_of(callee_def_id).instantiate(tcx, generic_args).clauses.iter().any(
                     |clause| {
                         clause.as_trait_clause().is_some_and(|trait_pred| {
-                            trait_pred.polarity() == ty::PredicatePolarity::Positive
+                            trait_pred.polarity() == ty::ClausePolarity::Positive
                                 && tcx.fn_trait_kind_from_def_id(trait_pred.def_id())
                                     == Some(ty::ClosureKind::Fn)
                                 && trait_pred.self_ty().skip_binder().peel_refs()
@@ -1225,40 +1247,39 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         // If the HIR node is a function or method call, get the DefId
         // of the callee function or method, the span, and argument info for the call expr.
-        let get_call_details =
-            || -> Option<(DefId, Span, usize, usize, ty::GenericArgsRef<'tcx>)> {
-                let hir::Node::Expr(hir::Expr { hir_id, kind, .. }) = node else {
-                    return None;
-                };
-
-                let typeck_results = tcx.typeck(def_id);
-
-                match kind {
-                    hir::ExprKind::Call(expr, args) => {
-                        if let Some(ty::FnDef(def_id, generic_args)) =
-                            typeck_results.node_type_opt(expr.hir_id).as_ref().map(|ty| ty.kind())
-                        {
-                            let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
-                            Some((
-                                *def_id,
-                                expr.span,
-                                arg_pos,
-                                arg_pos,
-                                generic_args.no_bound_vars().unwrap(),
-                            ))
-                        } else {
-                            None
-                        }
-                    }
-                    hir::ExprKind::MethodCall(_, _, args, span) => {
-                        let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
-                        let def_id = typeck_results.type_dependent_def_id(*hir_id)?;
-                        let generic_args = typeck_results.node_args_opt(*hir_id)?;
-                        Some((def_id, *span, arg_pos, arg_pos + 1, generic_args))
-                    }
-                    _ => None,
-                }
+        let get_call_details = || -> Option<(DefId, Span, usize, usize, ty::GenericArgs<'tcx>)> {
+            let hir::Node::Expr(hir::Expr { hir_id, kind, .. }) = node else {
+                return None;
             };
+
+            let typeck_results = tcx.typeck(def_id);
+
+            match kind {
+                hir::ExprKind::Call(expr, args) => {
+                    if let Some(ty::FnDef(def_id, generic_args)) =
+                        typeck_results.node_type_opt(expr.hir_id).as_ref().map(|ty| ty.kind())
+                    {
+                        let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
+                        Some((
+                            *def_id,
+                            expr.span,
+                            arg_pos,
+                            arg_pos,
+                            generic_args.no_bound_vars().unwrap(),
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                hir::ExprKind::MethodCall(_, _, args, span) => {
+                    let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
+                    let def_id = typeck_results.type_dependent_def_id(*hir_id)?;
+                    let generic_args = typeck_results.node_args_opt(*hir_id)?;
+                    Some((def_id, *span, arg_pos, arg_pos + 1, generic_args))
+                }
+                _ => None,
+            }
+        };
 
         // If we can detect the expression to be a function or method call where the closure was
         // an argument, we point at the function or method definition argument...
@@ -1323,7 +1344,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     kind: hir::ImplItemKind::Fn(sig, _),
                     ..
                 }) => {
-                    err.span_label(ident.span, "");
+                    err.span_context(ident.span);
                     err.span_label(
                         sig.decl.output.span(),
                         "change this to return `FnMut` instead of `Fn`",
@@ -1616,7 +1637,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             match self
                 .infcx
                 .type_implements_trait_shallow(clone_trait, ty.peel_refs(), self.infcx.param_env)
-                .as_deref()
+                .as_ref()
+                .map(|it| it.as_slice())
             {
                 Some([]) => {
                     // FIXME: This error message isn't useful, since we're just
@@ -1913,11 +1935,11 @@ fn suggest_ampmut<'tcx>(
                     &call.kind
                 && let ty::FnDef(method_def_id, method_args) = *const_operand.ty().kind()
                 && let Some(trait_) = tcx.trait_of_assoc(method_def_id)
-                && tcx.is_lang_item(trait_, hir::LangItem::Index)
+                && tcx.is_lang_item(trait_, LangItem::Index)
             {
                 let trait_ref = ty::TraitRef::from_assoc(
                     tcx,
-                    tcx.require_lang_item(hir::LangItem::IndexMut, rhs_span),
+                    tcx.require_lang_item(LangItem::IndexMut, rhs_span),
                     method_args.no_bound_vars().unwrap(),
                 );
                 // The type only implements `Index` but not `IndexMut`, we must not suggest `&mut`.
@@ -1996,7 +2018,7 @@ fn get_mut_span_in_struct_field<'tcx>(
         // Now we're dealing with the actual struct that we're going to suggest a change to,
         // we can expect a field that is an immutable reference to a type.
         && let hir::Node::Field(field) = tcx.hir_node_by_def_id(field.did.as_local()?)
-        && let hir::TyKind::Ref(lt, hir::MutTy { mutbl: hir::Mutability::Not, ty }) = field.ty.kind
+        && let hir::TyKind::Ref(lt, ty, hir::Mutability::Not) = field.ty.kind
     {
         return Some(lt.ident.span.between(ty.span));
     }

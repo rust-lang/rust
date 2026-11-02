@@ -3,6 +3,8 @@
 // Run-time:
 //   status: 0
 
+#![feature(asm_goto_with_outputs)]
+
 #[cfg(target_arch = "x86_64")]
 use std::arch::{asm, global_asm};
 
@@ -30,6 +32,20 @@ pub unsafe fn mem_cpy(dst: *mut u8, src: *const u8, len: usize) {
         inout("rcx") len => _,
         options(preserves_flags, nostack)
     );
+}
+
+#[cfg(target_arch = "x86_64")]
+#[unsafe(no_mangle)]
+pub fn asm_goto_test(mut a: i16) -> i16 {
+    unsafe {
+        std::arch::asm!(
+            "jmp {op}",
+            inout("eax") a,
+            op = label { a = 7; },
+            options(nostack,nomem)
+        );
+        a
+    }
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -167,6 +183,21 @@ fn asm() {
     }
     assert_eq!(x, 42);
 
+    // check sym static used twice in the same template
+    let x: u64;
+    let y: u64;
+    unsafe {
+        asm!(
+            "mov {1}, qword ptr [rip + {0}]",
+            "mov {2}, qword ptr [rip + {0}]",
+            sym FOO,
+            lateout(reg) x,
+            lateout(reg) y,
+        );
+    }
+    assert_eq!(x, 42);
+    assert_eq!(y, 42);
+
     assert_eq!(unsafe { add_asm(40, 2) }, 42);
 
     let array1 = [1u8, 2, 3];
@@ -189,6 +220,14 @@ fn asm() {
         );
     }
     assert_eq!((x, y), (8, 8));
+
+    // Regression test for <https://github.com/rust-lang/rustc_codegen_gcc/issues/792>
+    // typed pointer inputs to explicit registers need a cast.
+    let mut x = 123_i32;
+    unsafe {
+        asm!("", in("rdi") &mut x, options(nostack, preserves_flags));
+    }
+    assert_eq!(x, 123);
 
     // sysv64 is the default calling convention on unix systems. The rdi register is
     // used to pass arguments in the sysv64 calling convention, so this register will be clobbered
@@ -227,6 +266,24 @@ fn asm() {
             out("r15b") _,
         );
     }
+
+    // Make sure the input value from inout is assigned to the input value
+    unsafe {
+        // Use a very distinctive value unlikely to live in any register.
+        let input: u64 = 0x1234567890ABCDEF;
+        let mut output: u64;
+
+        asm!(
+            "push {1}",
+            "pop   {0}",
+            out(reg) output,
+            inout(reg) input => _,
+        );
+
+        assert_eq!(output, 0x1234567890ABCDEF);
+    }
+
+    asm_goto_test(0);
 }
 
 #[cfg(not(target_arch = "x86_64"))]

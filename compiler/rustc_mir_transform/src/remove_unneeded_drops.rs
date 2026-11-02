@@ -29,7 +29,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
                 continue;
             }
             debug!("SUCCESS: replacing `drop` with goto({:?})", target);
-            terminator.kind = TerminatorKind::Goto { target };
+            terminator.kind = TerminatorKind::goto(target);
             should_simplify = true;
         }
 
@@ -40,7 +40,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
         }
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(true)
     }
 }

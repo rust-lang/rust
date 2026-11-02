@@ -1,6 +1,8 @@
 error[E0080]: attempt to compute `i8::MAX + 1_i8`, which would overflow
   --> $DIR/const-eval-overflow-3.rs:18:11
    |
+LL | const A_I8_I
+LL |     : [u32; (i8::MAX as usize) + 1]
 LL |     = [0; (i8::MAX + 1) as usize];
    |           ^^^^^^^^^^^^^ evaluation of `A_I8_I::{constant#1}` failed here
 

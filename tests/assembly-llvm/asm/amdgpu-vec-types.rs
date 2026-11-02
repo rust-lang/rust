@@ -14,11 +14,11 @@
 #![allow(
     asm_sub_register,
     improper_gpu_kernel_arg,
-    improper_ctypes_definitions,
     non_camel_case_types,
     unused_assignments,
     unused_variables
 )]
+#![deny(unfulfilled_lint_expectations)]
 
 extern crate minicore;
 use minicore::simd::*;

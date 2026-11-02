@@ -1,4 +1,4 @@
-// rustfmt-reorder_imports: false
+//@ rustfmt-reorder_imports: false
 
 use std :: fmt :: { self , Display } ;
 use std :: collections :: HashMap ;

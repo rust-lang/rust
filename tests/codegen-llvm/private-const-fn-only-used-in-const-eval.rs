@@ -27,7 +27,9 @@ const fn func2() {}
 // CHECK: define{{.*}}func2{{.*}}
 
 // `func3` isn't needed at runtime but the compiler can't tell for the reason mentioned above.
-pub const POLY_CONST_1<const C: bool>: () = if C { func3() };
+pub const POLY_CONST_1<const C: bool>: () = if C {
+    func3()
+};
 const fn func3() {}
 // CHECK: define{{.*}}func3{{.*}}
 

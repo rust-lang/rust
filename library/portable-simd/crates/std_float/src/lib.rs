@@ -1,18 +1,17 @@
-#![feature(impl_restriction)]
 #![cfg_attr(
     feature = "as_crate",
     feature(core_intrinsics),
     feature(portable_simd),
     feature(f16),
+    feature(impl_restriction),
     allow(internal_features)
 )]
+use core::intrinsics::simd as intrinsics;
 #[cfg(not(feature = "as_crate"))]
 use core::simd;
+
 #[cfg(feature = "as_crate")]
 use core_simd::simd;
-
-use core::intrinsics::simd as intrinsics;
-
 use simd::Simd;
 
 /// This trait provides a possibly-temporary implementation of float functions

@@ -3,9 +3,8 @@ use clippy_utils::is_from_proc_macro;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_hir::{BoundPolarity, GenericBound, Generics, PolyTraitRef, TraitBoundModifiers, WherePredicateKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{ClauseKind, PredicatePolarity, Unnormalized};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
+use rustc_middle::ty::{ClauseKind, ClausePolarity, Unnormalized};
 use rustc_span::symbol::Ident;
 
 declare_clippy_lint! {
@@ -99,7 +98,7 @@ fn path_to_sized_bound(cx: &LateContext<'_>, trait_bound: &PolyTraitRef<'_>) -> 
             .map(Unnormalized::skip_norm_wip)
         {
             if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
-                && trait_predicate.polarity == PredicatePolarity::Positive
+                && trait_predicate.polarity == ClausePolarity::Positive
                 && !path.contains(&trait_predicate.def_id())
             {
                 path.push(trait_predicate.def_id());

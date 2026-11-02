@@ -1,15 +1,15 @@
 use std::fmt::Write;
 
+use hir::HirId;
 use hir::def_id::DefId;
-use hir::{HirId, ItemKind};
 use rustc_ast::join_path_idents;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
-use rustc_hir as hir;
+use rustc_hir::{self as hir, Node};
 use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
-use rustc_middle::span_bug;
+use rustc_lint_defs::builtin::{RUST_2021_PRELUDE_COLLISIONS, RUST_2024_PRELUDE_COLLISIONS};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::lint::builtin::{RUST_2021_PRELUDE_COLLISIONS, RUST_2024_PRELUDE_COLLISIONS};
-use rustc_span::{Ident, STDLIB_STABLE_CRATES, Span, Symbol, kw, sym};
+use rustc_span::{Ident, STDLIB_STABLE_CRATES, Span, Symbol, kw, span_bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 
@@ -24,8 +24,8 @@ struct AmbiguousTraitMethodCall<'a, 'tcx> {
     edition: &'static str,
 }
 
-impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for AmbiguousTraitMethodCall<'b, 'tcx> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a, 'b, 'tcx> Diagnostic<'a> for AmbiguousTraitMethodCall<'b, 'tcx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let Self { segment_name, self_expr_span, pick, tcx, edition } = self;
         let mut lint = Diag::new(
             dcx,
@@ -91,8 +91,8 @@ struct AmbiguousTraitMethod<'a, 'tcx, 'fnctx> {
     this: &'a FnCtxt<'fnctx, 'tcx>,
 }
 
-impl<'a, 'c, 'tcx, 'fnctx> Diagnostic<'a, ()> for AmbiguousTraitMethod<'c, 'tcx, 'fnctx> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a, 'c, 'tcx, 'fnctx> Diagnostic<'a> for AmbiguousTraitMethod<'c, 'tcx, 'fnctx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let Self { segment, call_expr, self_expr, pick, args, edition, span, this } = self;
         let mut lint = Diag::new(
             dcx,
@@ -176,7 +176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We check that the self type is `Pin<&mut _>` to avoid false positives for this common name.
                 if !span.at_least_rust_2024()
                     && let ty::Adt(adt_def, args) = self_ty.kind()
-                    && self.tcx.is_lang_item(adt_def.did(), hir::LangItem::Pin)
+                    && self.tcx.is_lang_item(adt_def.did(), LangItem::Pin)
                     && let ty::Ref(_, _, ty::Mutability::Mut) =
                         args[0].as_type().unwrap().kind() =>
             {
@@ -289,8 +289,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self_ty: Ty<'tcx>,
         }
 
-        impl<'a, 'b, 'fnctx, 'tcx> Diagnostic<'a, ()> for AmbiguousTraitAssocFunc<'b, 'fnctx, 'tcx> {
-            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        impl<'a, 'b, 'fnctx, 'tcx> Diagnostic<'a> for AmbiguousTraitAssocFunc<'b, 'fnctx, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
                 let Self { method_name, this, pick, span, expr_id, self_ty_span, self_ty } = self;
                 let mut lint = Diag::new(
                     dcx,
@@ -436,33 +436,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let import_items: Vec<_> = applicable_trait
             .import_ids
             .iter()
-            .map(|&import_id| self.tcx.hir_expect_item(import_id))
+            .map(|&import_id| match self.tcx.hir_node_by_def_id(import_id) {
+                Node::NestedUseTree(tree) => *tree,
+                Node::Item(it) => it.expect_use(),
+                node => span_bug!(span, "expected use tree, found {node:#?}"),
+            })
             .collect();
 
         // Find an identifier with which this trait was imported (note that `_` doesn't count).
         for item in import_items.iter() {
-            let (_, kind) = item.expect_use();
-            match kind {
+            match item.kind {
                 hir::UseKind::Single(ident) => {
                     if ident.name != kw::Underscore {
                         return Some(format!("{}", ident.name));
                     }
                 }
                 hir::UseKind::Glob => return None, // Glob import, so just use its name.
-                hir::UseKind::ListStem => unreachable!(),
+                hir::UseKind::Nested { .. } => unreachable!(),
             }
         }
 
         // All that is left is `_`! We need to use the full path. It doesn't matter which one we
         // pick, so just take the first one.
-        match import_items[0].kind {
-            ItemKind::Use(path, _) => {
-                Some(join_path_idents(path.segments.iter().map(|seg| seg.ident)))
-            }
-            _ => {
-                span_bug!(span, "unexpected item kind, expected a use: {:?}", import_items[0].kind);
-            }
-        }
+        Some(join_path_idents(import_items[0].prefix.segments.iter().map(|seg| seg.ident)))
     }
 
     /// Creates a string version of the `expr` that includes explicit adjustments.

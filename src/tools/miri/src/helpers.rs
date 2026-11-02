@@ -10,10 +10,10 @@ use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
-use rustc_middle::ty::layout::{LayoutOf, MaybeResult, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FnSigKind, IntTy, Ty, TyCtxt, UintTy};
-use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
+use rustc_structures::CrateType;
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::Os;
 
@@ -109,6 +109,8 @@ pub fn resolve_path<'tcx>(
 /// Gets the layout of a type at a path.
 #[track_caller]
 pub fn path_ty_layout<'tcx>(cx: &impl LayoutOf<'tcx>, path: &[&str]) -> TyAndLayout<'tcx> {
+    use rustc_middle::ty::layout::MaybeResult;
+
     let ty = resolve_path(cx.tcx(), path, Namespace::TypeNS).ty(cx.tcx(), cx.typing_env());
     cx.layout_of(ty).to_result().ok().unwrap()
 }
@@ -132,15 +134,7 @@ pub fn iter_exported_symbols<'tcx>(
         if !(used || codegen_attrs.contains_extern_indicator()) {
             continue;
         }
-        // FIXME: `#[no_mangle]` makes no sense on a generic item, but still causes it to be
-        // considered "extern". Remove this once `no_mangle_generic_items` is a hard error.
-        let mono = {
-            let generics = tcx.generics_of(def_id);
-            !generics.requires_monomorphization(tcx)
-        };
-        if mono {
-            f(LOCAL_CRATE, def_id.into(), used)?;
-        }
+        f(LOCAL_CRATE, def_id.into(), used)?;
     }
 
     // Next, all our dependencies.
@@ -427,9 +421,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None => MPlaceTy::fake_alloc_zst(this.machine.layouts.unit),
         };
 
+        let with_caller_location = f.def.requires_caller_location(*this.tcx);
+
         // Construct a function pointer type representing the caller perspective.
         let sig = this.tcx.mk_fn_sig(
-            args.iter().map(|a| a.layout.ty),
+            args.iter()
+                .map(|a| a.layout.ty)
+                .chain(with_caller_location.then(|| this.tcx.caller_location_ty())),
             dest.layout.ty,
             // FIXME(splat): Do we need to set splatted here?
             // (Currently this also ignores c_variadic)
@@ -443,7 +441,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             mir,
             caller_fn_abi,
             &args.iter().map(|a| FnArg::Copy(a.clone().into())).collect::<Vec<_>>(),
-            /*with_caller_location*/ false,
+            with_caller_location,
             &dest.into(),
             cont,
         )
@@ -747,7 +745,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     {
         let this = self.eval_context_ref();
         let (ptr, len) = slice.to_scalar_pair();
-        let ptr = ptr.to_pointer(this)?;
+        let ptr = ptr.to_pointer(this);
         let len = len.to_target_usize(this)?;
         let bytes = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         interp_ok(bytes)
@@ -945,7 +943,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         target_feature: &str,
     ) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_ref();
-        if !this.tcx.sess.unstable_target_features.contains(&Symbol::intern(target_feature)) {
+        if !this.tcx.sess.internal_target_features.contains(&Symbol::intern(target_feature)) {
             throw_ub_format!(
                 "attempted to call intrinsic `{intrinsic}` that requires missing target feature {target_feature}"
             );
@@ -956,10 +954,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Lookup an array of immediates from any linker sections matching the provided predicate,
     /// with the spans of where they were found.
     fn lookup_link_section(
-        &mut self,
+        &self,
         include_name: impl Fn(&str) -> bool,
     ) -> InterpResult<'tcx, Vec<(ImmTy<'tcx>, Span)>> {
-        let this = self.eval_context_mut();
+        let this = self.eval_context_ref();
         let tcx = this.tcx.tcx;
 
         let mut array = vec![];
@@ -1093,7 +1091,7 @@ pub(crate) fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
 
 /// Check whether the local crate has the `#![no_core]` attribute.
 pub fn is_no_core(tcx: TyCtxt<'_>) -> bool {
-    rustc_hir::find_attr!(tcx, crate, NoCore)
+    rustc_attr_ir::find_attr!(tcx, crate, NoCore)
 }
 
 /// We don't support 16-bit systems, so let's have ergonomic conversion from `u32` to `usize`.

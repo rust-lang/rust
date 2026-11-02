@@ -1,10 +1,12 @@
 use std::borrow::Borrow;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::ops::Deref;
 
 use rustc_ast_ir::Movability;
 use rustc_ast_ir::visit::VisitorResult;
+#[cfg(feature = "nightly")]
+use rustc_data_structures::stable_hash::StableHash;
 use rustc_index::bit_set::DenseBitSet;
 
 use crate::fold::TypeFoldable;
@@ -13,15 +15,37 @@ use crate::intern::Interned;
 use crate::ir_print::IrPrint;
 use crate::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
+use crate::search_graph::RequiredDepth;
 use crate::solve::{
-    AccessedOpaques, CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect,
+    AccessedOpaques, CanonicalInputData, Certainty, ExternalConstraintsData, QueryResult, inspect,
 };
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
-    self as ty, BoundRegion, BoundVar, CanonicalParamEnvCacheEntry, DebruijnIndex, Region,
-    RegionKind, TraitRef, search_graph,
+    self as ty, AliasTermKind, BoundRegion, BoundVar, CanonicalParamEnvCache, Const, ConstKind,
+    DebruijnIndex, Region, RegionKind, RegionVid, TraitRef, ValTreeKind, WithCachedTypeInfo,
+    search_graph,
 };
 
+/// The central trait in the shared abstraction layer, specifying all implementation-specific
+/// details for rustc and rust-analyzer.
+///
+/// Among its essential responsibilities:
+/// - it specifies the concrete types used by each implementation via its associated types; these
+///   form the backbone of how each compiler frontend instantiates the shared IR.
+/// - it provides the context required by the solver (e.g., querying lang items, enumerating all
+///   blanket impls for a trait)
+/// - it implements [IrPrint] for formatting and tracing.
+///
+/// In rustc, it is [implemented by TyCtxt][interner-impl-doc]. In rust-analyzer, the implementing
+/// type is named [DbInterner][dbinterner-code] (as it performs most interning through the salsa
+/// database).
+///
+/// More information can also be found in the dedicated chapter in the dev-guide, in [this
+/// section][dev-guide].
+///
+/// [interner-impl-doc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#impl-Interner-for-TyCtxt%3C'tcx%3E
+/// [dbinterner-code]: https://github.com/rust-lang/rust-analyzer/blob/a50c1ccc9cf3dab1afdc857a965a9992fbad7a53/crates/hir-ty/src/next_solver/interner.rs#L272
+/// [dev-guide]: https://rustc-dev-guide.rust-lang.org/solve/sharing-crates-with-rust-analyzer.html#trait-interner
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
 pub trait Interner:
     Sized
@@ -29,11 +53,11 @@ pub trait Interner:
     + IrPrint<ty::AliasTy<Self>>
     + IrPrint<ty::AliasTerm<Self>>
     + IrPrint<ty::TraitRef<Self>>
-    + IrPrint<ty::TraitPredicate<Self>>
-    + IrPrint<ty::HostEffectPredicate<Self>>
+    + IrPrint<ty::TraitClause<Self>>
+    + IrPrint<ty::HostEffectClause<Self>>
     + IrPrint<ty::ExistentialTraitRef<Self>>
     + IrPrint<ty::ExistentialProjection<Self>>
-    + IrPrint<ty::ProjectionPredicate<Self>>
+    + IrPrint<ty::ProjectionClause<Self>>
     + IrPrint<ty::NormalizesTo<Self>>
     + IrPrint<ty::SubtypePredicate<Self>>
     + IrPrint<ty::CoercePredicate<Self>>
@@ -63,10 +87,10 @@ pub trait Interner:
     type AnonConstId: SpecificDefId<Self>;
     type TraitAssocTyId: SpecificDefId<Self>
         + Into<Self::TraitAssocTermId>
-        + TryFrom<Self::TraitAssocTermId>;
+        + TryFrom<Self::TraitAssocTermId, Error: Debug>;
     type TraitAssocConstId: SpecificDefId<Self>
         + Into<Self::TraitAssocTermId>
-        + TryFrom<Self::TraitAssocTermId>;
+        + TryFrom<Self::TraitAssocTermId, Error: Debug>;
     type TraitAssocTermId: SpecificDefId<Self>;
     type OpaqueTyId: SpecificDefId<Self, Self::LocalOpaqueTyId>;
     type LocalOpaqueTyId: Copy
@@ -89,11 +113,14 @@ pub trait Interner:
     type Span: Span<Self>;
 
     type GenericArgs: GenericArgs<Self>;
-    type GenericArgsSlice: Copy + Debug + Hash + Eq + SliceLike<Item = Self::GenericArg>;
+    type GenericArgsSlice<'a>: Copy + Debug + Hash + Eq + SliceLike<Item = Self::GenericArg>
+    where
+        Self: 'a;
     type GenericArg: GenericArg<Self>;
     type Term: Term<Self>;
 
     type BoundVarKinds: BoundVarKinds<Self>;
+    type TypingEnv: TypingEnv<Self>;
 
     type PredefinedOpaques: Copy
         + Debug
@@ -154,7 +181,11 @@ pub trait Interner:
     type Symbol: Symbol<Self>;
 
     // Things stored inside of tys
-    type ErrorGuaranteed: Copy + Debug + Hash + Eq;
+
+    // `TypeVisitable<Self>` is required to prevent a problem where the flags
+    // on `Const` indicated that an error was present, as the visitor could no
+    // longer reach the corresponding ErrorGuaranteed
+    type ErrorGuaranteed: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
     type BoundExistentialPredicates: BoundExistentialPredicates<Self>;
     type AllocId: Copy + Debug + Hash + Eq;
     type Pat: Copy
@@ -175,25 +206,53 @@ pub trait Interner:
     type Safety: Safety<Self>;
 
     // Kinds of consts
-    type Const: Const<Self>;
-    type Consts: Copy + Debug + Hash + Eq + SliceLike<Item = Self::Const> + Default;
+    type Consts: Copy + Debug + Hash + Eq + SliceLike<Item = Const<Self>> + Default;
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
-    type ValueConst: ValueConst<Self>;
+    type ValueConst: ValueConst<Self> + TypeFoldable<Self> + Display;
     type ExprConst: ExprConst<Self>;
     type ValTree: Copy + Debug + Hash + Eq + IntoKind<Kind = ty::ValTreeKind<Self>>;
-    type ScalarInt: Copy + Debug + Hash + Eq;
+    type ScalarInt: ScalarInt<Self>;
+    type Scalar: Copy + Debug + Hash + Eq;
 
     // Kinds of regions
-    type EarlyParamRegion: ParamLike;
-    type LateParamRegion: Copy + Debug + Hash + Eq;
+    /// (2026/08/13)
+    /// Do not uplift, the underlying types differ between r-a and rustc.
+    ///
+    /// See <https://github.com/rust-lang/rust/pull/160986#issuecomment-5269817932>.
+    type EarlyParamRegion: ParamLike + RegionName<Self>;
+    /// (2026/08/13)
+    /// Do not uplift, the underlying types differ between r-a and rustc.
+    ///
+    /// See <https://github.com/rust-lang/rust/pull/160986#issuecomment-5269817932>.
+    #[cfg(feature = "nightly")]
+    type LateParamRegionKind: Clone
+        + Copy
+        + Debug
+        + PartialEq
+        + Eq
+        + Hash
+        + StableHash
+        + DefIdGetter<Self>
+        + RegionName<Self>;
+
+    #[cfg(not(feature = "nightly"))]
+    type LateParamRegionKind: Clone
+        + Copy
+        + Debug
+        + PartialEq
+        + Eq
+        + Hash
+        + DefIdGetter<Self>
+        + RegionName<Self>;
 
     type InternedRegionKind: Interned<Self, Value = RegionKind<Self>>;
+    type InternedConstKind: Interned<Self, Value = WithCachedTypeInfo<ConstKind<Self>>>;
 
     type RegionAssumptions: Copy
         + Debug
         + Hash
         + Eq
-        + SliceLike<Item = ty::OutlivesPredicate<Self, Self::GenericArg>>
+        + SliceLike<Item = ty::OutlivesClause<Self, Self::GenericArg>>
         + TypeFoldable<Self>;
 
     // Predicates
@@ -204,11 +263,9 @@ pub trait Interner:
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
 
-    fn canonical_param_env_cache_get_or_insert<R>(
+    fn with_canonical_param_env_cache<R>(
         self,
-        param_env: Self::ParamEnv,
-        f: impl FnOnce() -> CanonicalParamEnvCacheEntry<Self>,
-        from_entry: impl FnOnce(&CanonicalParamEnvCacheEntry<Self>) -> R,
+        f: impl FnOnce(&mut CanonicalParamEnvCache<Self>) -> R,
     ) -> R;
 
     /// Useful for testing. If a cache entry is replaced, this should
@@ -233,8 +290,11 @@ pub trait Interner:
         self,
         def_id: Self::LocalOpaqueTyId,
     ) -> ty::EarlyBinder<Self, Self::Ty>;
-    fn is_type_const(self, def_id: Self::DefId) -> bool;
-    fn const_of_item(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Const>;
+    fn is_direct_const(self, alias: ty::AliasConstKind<Self>) -> bool;
+    fn const_of_item(
+        self,
+        alias: ty::AliasConstKind<Self>,
+    ) -> Option<ty::EarlyBinder<Self, Const<Self>>>;
     fn anon_const_kind(self, def_id: Self::DefId) -> ty::AnonConstKind;
 
     fn def_span(self, def_id: Self::DefId) -> Self::Span;
@@ -242,16 +302,11 @@ pub trait Interner:
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
-    fn alias_const_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasConstKind<Self>;
-
-    // FIXME: remove in favor of explicit construction
-    fn alias_term_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTermKind<Self>;
-
-    fn trait_ref_and_own_args_for_alias(
+    fn trait_ref_and_own_args_for_alias<'a>(
         self,
         def_id: Self::TraitAssocTermId,
-        args: Self::GenericArgs,
-    ) -> (ty::TraitRef<Self>, Self::GenericArgsSlice);
+        args: &'a Self::GenericArgs,
+    ) -> (ty::TraitRef<Self>, Self::GenericArgsSlice<'a>);
 
     fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs;
 
@@ -260,9 +315,18 @@ pub trait Interner:
         I: Iterator<Item = T>,
         T: CollectAndApply<Self::GenericArg, Self::GenericArgs>;
 
-    fn check_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs) -> bool;
+    fn check_alias_term_args_compatible(
+        self,
+        term_kind: AliasTermKind<Self>,
+        args: Self::GenericArgs,
+    ) -> bool;
 
     fn debug_assert_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
+    fn debug_assert_alias_term_args_compatible(
+        self,
+        term_kind: AliasTermKind<Self>,
+        args: Self::GenericArgs,
+    );
 
     /// Assert that the args from an `ExistentialTraitRef` or `ExistentialProjection`
     /// are compatible with the `DefId`.
@@ -272,6 +336,8 @@ pub trait Interner:
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<Self::Ty, Self::Tys>;
+
+    fn mk_ct_from_kind(self, kind: ConstKind<Self>) -> Const<Self>;
 
     fn projection_parent(self, def_id: Self::TraitAssocTermId) -> Self::TraitId;
 
@@ -288,6 +354,15 @@ pub trait Interner:
     fn assumptions_on_binders(self) -> bool;
 
     fn renormalize_rigid_aliases(self) -> bool;
+
+    fn erase_and_anonymize_regions<T: TypeFoldable<Self>>(self, value: T) -> T;
+
+    fn const_eval_resolve_for_typeck(
+        self,
+        typing_env: Self::TypingEnv,
+        ct: ty::AliasConst<Self>,
+        span: Self::Span,
+    ) -> ty::ConstEvalResult<Self>;
 
     fn coroutine_hidden_types(
         self,
@@ -340,12 +415,15 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
 
-    /// This is equivalent to computing the super-predicates of the trait for this impl
-    /// and filtering them to the outlives predicates. This is purely for performance.
+    /// This is equivalent to computing the super-clauses of the trait for this impl
+    /// and filtering them to the outlives clauses. This is purely for performance.
     fn impl_super_outlives(
         self,
         impl_def_id: Self::ImplId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+
+    fn supertrait_def_ids(self, trait_def_id: Self::TraitId)
+    -> impl Iterator<Item = Self::TraitId>;
 
     fn impl_is_const(self, def_id: Self::ImplId) -> bool;
     fn fn_is_const(self, def_id: Self::FunctionId) -> bool;
@@ -380,8 +458,6 @@ pub trait Interner:
     ) -> bool;
 
     fn is_trait_lang_item(self, def_id: Self::TraitId, lang_item: SolverTraitLangItem) -> bool;
-
-    fn is_adt_lang_item(self, def_id: Self::AdtId, lang_item: SolverAdtLangItem) -> bool;
 
     fn is_default_trait(self, def_id: Self::TraitId) -> bool;
 
@@ -427,6 +503,8 @@ pub trait Interner:
 
     fn trait_is_auto(self, trait_def_id: Self::TraitId) -> bool;
 
+    fn trait_is_marker(self, trait_def_id: Self::TraitId) -> bool;
+
     fn trait_is_coinductive(self, trait_def_id: Self::TraitId) -> bool;
 
     fn trait_is_alias(self, trait_def_id: Self::TraitId) -> bool;
@@ -438,9 +516,8 @@ pub trait Interner:
     /// Returns `true` if this is an `unsafe trait`.
     fn trait_is_unsafe(self, trait_def_id: Self::TraitId) -> bool;
 
-    fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
-
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;
+    fn span_delayed_bug(self, span: Self::Span, msg: impl ToString) -> Self::ErrorGuaranteed;
 
     fn is_general_coroutine(self, coroutine_def_id: Self::CoroutineId) -> bool;
     fn coroutine_is_async(self, coroutine_def_id: Self::CoroutineId) -> bool;
@@ -466,19 +543,15 @@ pub trait Interner:
     fn mk_probe(self, probe: inspect::Probe<Self>) -> Self::Probe;
     fn evaluate_root_goal_for_proof_tree_raw(
         self,
-        canonical_goal: CanonicalInput<Self>,
+        canonical_goal: Self::CanonicalInput,
         root_depth: usize,
-    ) -> (QueryResult<Self>, Self::Probe);
-
-    fn emit_next_solver_overflow_fcw(self, predicate: Self::Predicate, span: Self::Span);
+    ) -> (QueryResult<Self>, Self::Probe, RequiredDepth);
 
     fn item_name(self, item_index: Self::DefId) -> Self::Symbol;
 
-    fn get_anon_re_bounds_lifetime(self, idx: usize, var_idx: usize) -> Option<Region<Self>>;
-
-    fn get_anon_re_canonical_bounds_lifetime(self, idx: usize) -> Option<Region<Self>>;
-
     fn get_re_static_lifetime(self) -> Region<Self>;
+
+    fn intern_re_var(self, rv: RegionVid) -> Region<Self>;
 
     fn intern_region(self, region_kind: RegionKind<Self>) -> Region<Self>;
 
@@ -489,6 +562,13 @@ pub trait Interner:
     ) -> Region<Self>;
 
     fn intern_canonical_bound(self, var: BoundVar) -> Region<Self>;
+
+    fn intern_valtree(self, valtree_kind: ValTreeKind<Self>) -> Self::ValTree;
+
+    type CanonicalInput: Copy + Debug + Hash + Eq + Deref<Target = CanonicalInputData<Self>>;
+    fn mk_canonical_input(self, data: CanonicalInputData<Self>) -> Self::CanonicalInput;
+
+    fn const_zst(self) -> Self::ValTree;
 }
 
 macro_rules! declare_lift_into {
@@ -513,7 +593,6 @@ macro_rules! declare_lift_into {
 
 declare_lift_into! {
     BoundVarKinds,
-    Const,
     DefId,
     EarlyParamRegion,
     ErrorGuaranteed,
@@ -523,8 +602,8 @@ declare_lift_into! {
     GenericArgs,
     InherentAssocConstId,
     InherentAssocTyId,
+    InternedConstKind,
     InternedRegionKind,
-    LateParamRegion,
     OpaqueTyId,
     ParamEnv,
     PatList,
@@ -681,7 +760,7 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
 }
 
 impl<I: Interner> search_graph::Cx for I {
-    type Input = CanonicalInput<I>;
+    type Input = I::CanonicalInput;
     type Result = (QueryResult<I>, AccessedOpaques<I>);
     type AmbiguityKind = Certainty;
 

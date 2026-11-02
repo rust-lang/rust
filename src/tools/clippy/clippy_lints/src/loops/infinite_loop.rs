@@ -7,7 +7,7 @@ use rustc_hir::{
     self as hir, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, FnRetTy,
     FnSig, Node, TyKind,
 };
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_span::sym;
 
 use super::INFINITE_LOOP;

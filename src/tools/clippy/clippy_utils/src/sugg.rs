@@ -8,13 +8,13 @@ use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{UnOp, ast};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, Closure, ExprKind, HirId, MatchSource, MutTy, Node, TyKind};
+use rustc_hir::{self as hir, Closure, ExprKind, HirId, MatchSource, Node, TyKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::{FakeReadCause, Mutability};
 use rustc_middle::ty;
-use rustc_span::{BytePos, CharPos, Pos, Span, SyntaxContext};
+use rustc_span::{BytePos, CharPos, Pos as _, Span, SyntaxContext};
 use std::borrow::Cow;
 use std::fmt::{self, Display, Write as _};
 use std::ops::{Add, Neg, Not, Sub};
@@ -72,8 +72,8 @@ impl<'a> Sugg<'a> {
     ///
     /// - Applicability level `Unspecified` will never be changed.
     /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
-    /// - If the default value is used and the applicability level is `MachineApplicable`, change it
-    ///   to `HasPlaceholders`
+    /// - If the default value is used and the applicability level is `MachineApplicable`, change it to
+    ///   `HasPlaceholders`
     pub fn hir_with_applicability(
         cx: &LateContext<'_>,
         expr: &hir::Expr<'_>,
@@ -248,7 +248,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Array(..)
             | ast::ExprKind::While(..)
             | ast::ExprKind::Await(..)
-            | ast::ExprKind::DirectConstArg(..)
+            | ast::ExprKind::GcaMacro(..)
             | ast::ExprKind::Err(_)
             | ast::ExprKind::Dummy
             | ast::ExprKind::UnsafeBinderCast(..) => Sugg::NonParen(snippet(expr.span)),
@@ -391,6 +391,7 @@ impl<'a> Sugg<'a> {
         }
     }
 
+    /// Format this suggestion into a [`String`] to be displayed to the user.
     pub fn into_string(self) -> String {
         match self {
             Sugg::NonParen(p) | Sugg::MaybeParen(p) => p.into_owned(),
@@ -744,7 +745,7 @@ pub trait DiagExt<T: LintContext> {
     fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str, applicability: Applicability);
 }
 
-impl<T: LintContext> DiagExt<T> for rustc_errors::Diag<'_, ()> {
+impl<T: LintContext> DiagExt<T> for rustc_errors::Diag<'_> {
     fn suggest_item_with_attr<D: Display + ?Sized>(
         &mut self,
         cx: &T,
@@ -815,9 +816,8 @@ pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Opti
         let closure_body = cx.tcx.hir_body(body);
         // is closure arg a type annotated double reference (i.e.: `|x: &&i32| ...`)
         // a type annotation is present if param `kind` is different from `TyKind::Infer`
-        let closure_arg_is_type_annotated_double_ref = if let TyKind::Ref(_, MutTy { ty, .. }) = fn_decl.inputs[0].kind
-        {
-            matches!(ty.kind, TyKind::Ref(_, MutTy { .. }))
+        let closure_arg_is_type_annotated_double_ref = if let TyKind::Ref(_, ty, ..) = fn_decl.inputs[0].kind {
+            matches!(ty.kind, TyKind::Ref(..))
         } else {
             false
         };
@@ -966,8 +966,8 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                 // Note about method calls:
                 // - compiler automatically dereference references if the target type is a reference (works also for
                 //   function call)
-                // - `self` arguments in the case of `x.is_something()` are also automatically (de)referenced, and
-                //   no projection should be suggested
+                // - `self` arguments in the case of `x.is_something()` are also automatically (de)referenced, and no
+                //   projection should be suggested
                 if let Some(parent_expr) = get_parent_expr_for_hir(self.cx, cmt.hir_id) {
                     match &parent_expr.kind {
                         // given expression is the self argument and will be handled completely by the compiler

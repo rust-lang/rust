@@ -5,12 +5,13 @@
 // FIXME(const_trait_impl): This API should be really reworked. It's dangerously general for
 // having basically only two use-cases that act in different ways.
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::mir;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, AdtDef, Ty, TypingMode};
-use rustc_middle::{bug, mir};
+use rustc_span::bug;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use tracing::instrument;
 
@@ -40,15 +41,20 @@ pub fn in_any_value_of_ty<'tcx>(
 /// To accomplish this, const-checking and promotion use a value-based analysis (as opposed to a
 /// type-based one). Qualifications propagate structurally across variables: If a local (or a
 /// projection of a local) is assigned a qualified value, that local itself becomes qualified.
+///
+/// Note that whenever this analysis relies on something being UB and hence impossible in
+/// well-defined code, it is crucial that const-eval actually detects that UB! Const-eval is not
+/// guaranteed to detect all UB, and if it would skip this particular UB we may end up executing
+/// code that has not been const-checked.
 pub trait Qualif {
     /// The name of the file used to debug the dataflow analysis that computes this qualif.
     const ANALYSIS_NAME: &'static str;
 
     /// Whether this `Qualif` is cleared when a local is moved from.
-    const IS_CLEARED_ON_MOVE: bool = false;
+    const IS_CLEARED_ON_MOVE: bool;
 
     /// Whether this `Qualif` might be evaluated after the promotion and can encounter a promoted.
-    const ALLOW_PROMOTED: bool = false;
+    const ALLOW_PROMOTED: bool;
 
     /// Extracts the field of `ConstQualifs` that corresponds to this `Qualif`.
     fn in_qualifs(qualifs: &ConstQualifs) -> bool;
@@ -79,6 +85,8 @@ pub struct HasMutInterior;
 
 impl Qualif for HasMutInterior {
     const ANALYSIS_NAME: &'static str = "flow_has_mut_interior";
+    const IS_CLEARED_ON_MOVE: bool = false;
+    const ALLOW_PROMOTED: bool = false;
 
     fn in_qualifs(qualifs: &ConstQualifs) -> bool {
         qualifs.has_mut_interior
@@ -102,7 +110,7 @@ impl Qualif for HasMutInterior {
         let freeze_def_id = cx.tcx.require_lang_item(LangItem::Freeze, cx.body.span);
         let did = cx.body.source.def_id().expect_local();
 
-        let typing_env = if cx.tcx.use_typing_mode_post_typeck_until_borrowck() {
+        let typing_env = if cx.tcx.use_typing_mode_post_typeck_through_borrowck() {
             cx.typing_env
         } else {
             ty::TypingEnv::new(cx.typing_env.param_env, TypingMode::analysis_in_body(cx.tcx, did))
@@ -118,7 +126,7 @@ impl Qualif for HasMutInterior {
         );
         ocx.register_obligation(obligation);
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        !errors.is_empty()
+        !errors.no_errors()
     }
 
     fn is_structural_in_adt_value<'tcx>(_cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
@@ -195,7 +203,7 @@ impl Qualif for NeedsNonConstDrop {
                     },
                 ),
         ));
-        !ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+        !ocx.evaluate_obligations_error_on_ambiguity().no_errors()
     }
 
     fn is_structural_in_adt_value<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
@@ -290,6 +298,7 @@ where
             ProjectionElem::Index(index) if in_local(index) => return true,
 
             ProjectionElem::Deref
+            | ProjectionElem::PhantomDeref
             | ProjectionElem::Field(_, _)
             | ProjectionElem::OpaqueCast(_)
             | ProjectionElem::ConstantIndex { .. }

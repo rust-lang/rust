@@ -2,11 +2,11 @@
 //! as well as errors when attempting to call a non-const function in a const
 //! context.
 
+use rustc_attr_ir::lang_items::{self, LangItem};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{LangItem, lang_items};
 use rustc_middle::ty::{
-    self, AssocContainer, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv, Unnormalized,
+    self, AssocContainer, GenericArgs, Instance, Ty, TyCtxt, TypingEnv, Unnormalized,
 };
 use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, sym};
 use tracing::debug;
@@ -17,6 +17,8 @@ use crate::traits::specialization_graph;
 pub enum CallDesugaringKind {
     /// for _ in x {} calls x.into_iter()
     ForLoopIntoIter,
+    /// for await _ in x {} calls x.into_async_iter()
+    ForLoopIntoAsyncIter,
     /// for _ in x {} calls iter.next()
     ForLoopNext,
     /// x? calls x.branch()
@@ -30,9 +32,22 @@ pub enum CallDesugaringKind {
 }
 
 impl CallDesugaringKind {
+    pub fn name(&self) -> &'static str {
+        match self {
+            CallDesugaringKind::ForLoopIntoIter => "`for` loop",
+            CallDesugaringKind::ForLoopIntoAsyncIter => "`for await` loop",
+            CallDesugaringKind::ForLoopNext => "`for` loop",
+            CallDesugaringKind::QuestionBranch => "question mark operator",
+            CallDesugaringKind::QuestionFromResidual => "question mark operator",
+            CallDesugaringKind::TryBlockFromOutput => "try block",
+            CallDesugaringKind::Await => "`await`",
+        }
+    }
+
     pub fn trait_def_id(self, tcx: TyCtxt<'_>) -> DefId {
         match self {
             Self::ForLoopIntoIter => tcx.get_diagnostic_item(sym::IntoIterator).unwrap(),
+            Self::ForLoopIntoAsyncIter => tcx.get_diagnostic_item(sym::IntoAsyncIterator).unwrap(),
             Self::ForLoopNext => tcx.require_lang_item(LangItem::Iterator, DUMMY_SP),
             Self::QuestionBranch | Self::TryBlockFromOutput => {
                 tcx.require_lang_item(LangItem::Try, DUMMY_SP)
@@ -50,7 +65,7 @@ pub enum CallKind<'tcx> {
         self_arg: Option<Ident>,
         desugaring: Option<(CallDesugaringKind, Ty<'tcx>)>,
         method_did: DefId,
-        method_args: GenericArgsRef<'tcx>,
+        method_args: GenericArgs<'tcx>,
     },
     /// A call to `Fn(..)::call(..)`, desugared from `my_closure(a, b, c)`
     FnCall { fn_trait_id: DefId, self_ty: Ty<'tcx> },
@@ -70,7 +85,7 @@ pub fn call_kind<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: TypingEnv<'tcx>,
     method_did: DefId,
-    method_args: GenericArgsRef<'tcx>,
+    method_args: GenericArgs<'tcx>,
     fn_call_span: Span,
     from_hir_call: bool,
     self_arg: Option<Ident>,
@@ -136,6 +151,10 @@ pub fn call_kind<'tcx>(
         && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop)
     {
         Some((CallDesugaringKind::ForLoopIntoIter, method_args.type_at(0)))
+    } else if tcx.is_lang_item(method_did, LangItem::IntoAsyncIterIntoIter)
+        && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop)
+    {
+        Some((CallDesugaringKind::ForLoopIntoAsyncIter, method_args.type_at(0)))
     } else if tcx.is_lang_item(method_did, LangItem::IteratorNext)
         && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop)
     {

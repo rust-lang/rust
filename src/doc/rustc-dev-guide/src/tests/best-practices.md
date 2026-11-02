@@ -140,7 +140,7 @@ A good rule of thumb is non-trivial things exercised in
 the test deserves some explanation to help other contributors to understand.
 This may include remarks on:
 
-- How an ICE can get triggered if it's quite elaborate.
+- How an ICE or bug can get triggered if it's quite elaborate.
 - Related issues and tests (e.g. this test is like another test but is kept
   separate because...).
 - Platform-specific behaviors.

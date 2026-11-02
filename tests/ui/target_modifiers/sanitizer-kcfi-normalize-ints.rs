@@ -10,9 +10,10 @@
 //@[ok] check-pass
 
 #![feature(no_core)]
-//[wrong_flag]~^ ERROR mixing `-Zsanitizer-cfi-normalize-integers` will cause an ABI mismatch in crate `sanitizer_kcfi_normalize_ints`
-//[wrong_sanitizer]~^^ ERROR mixing `-Zsanitizer` will cause an ABI mismatch in crate `sanitizer_kcfi_normalize_ints`
 #![crate_type = "rlib"]
 #![no_core]
 
 extern crate kcfi_normalize_ints;
+
+//[wrong_flag]~? ERROR mixing `-Zsanitizer-cfi-normalize-integers` will cause an ABI mismatch in crate `sanitizer_kcfi_normalize_ints`
+//[wrong_sanitizer]~? ERROR mixing `-Zsanitizer` will cause an ABI mismatch in crate `sanitizer_kcfi_normalize_ints`

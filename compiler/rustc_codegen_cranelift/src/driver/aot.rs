@@ -10,6 +10,7 @@ use std::time::Instant;
 
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use rustc_ast::expand::allocator::AllocatorMethod;
+use rustc_attr_ir::Linkage as RLinkage;
 use rustc_codegen_ssa::back::lto::ThinModule;
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn, ThinLtoInput,
@@ -18,12 +19,11 @@ use rustc_codegen_ssa::traits::{ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
-use rustc_hir::attrs::Linkage as RLinkage;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mono::{MonoItem, MonoItemData, Visibility};
-use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames, OutputType};
+use rustc_session::{BorrowedIncrCompSession, Session};
 use rustc_span::Symbol;
 
 use crate::base::CodegenedFunction;
@@ -62,7 +62,11 @@ fn make_module(tcx: TyCtxt<'_>, cgu_name: &str) -> AotModule {
         tcx.sess.opts.unstable_opts.function_sections.unwrap_or(default_function_sections),
     );
 
-    let module = UnwindModule::new(ObjectModule::new(builder), true);
+    let module = UnwindModule::new(
+        ObjectModule::new(builder),
+        &rustc_symbol_mangling::eh_personality_symbol(tcx),
+        true,
+    );
 
     let producer = crate::debuginfo::producer(tcx.sess);
     let global_asm_config = GlobalAsmConfig::new(tcx.sess);
@@ -140,7 +144,6 @@ fn emit_module(
         bytecode: None,
         assembly: None,
         llvm_ir: None,
-        links_from_incr_cache: Vec::new(),
     })
 }
 
@@ -284,6 +287,7 @@ impl ExtraBackendMethods for AotDriver {
         &self,
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
+        _bitcode_needed: bool,
     ) -> (ModuleCodegen<Self::Module>, u64) {
         let start_time = Instant::now();
 
@@ -318,7 +322,6 @@ impl WriteBackendMethods for AotDriver {
         &self,
         _sess: &Session,
         _opt_level: OptLevel,
-        _target_features: &[String],
     ) -> TargetMachineFactoryFn<Self> {
         Arc::new(|_, _| ())
     }
@@ -338,6 +341,7 @@ impl WriteBackendMethods for AotDriver {
     fn run_thin_lto(
         _cgcx: &CodegenContext,
         _prof: &SelfProfilerRef,
+        _incr_comp_session: Option<&BorrowedIncrCompSession>,
         _dcx: rustc_errors::DiagCtxtHandle<'_>,
         _exported_symbols_for_lto: &[String],
         _each_linked_rlib_for_lto: &[PathBuf],

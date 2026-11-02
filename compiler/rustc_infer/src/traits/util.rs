@@ -47,6 +47,8 @@ impl<'tcx> PredicateSet<'tcx> {
 
 impl<'tcx> Extend<ty::Predicate<'tcx>> for PredicateSet<'tcx> {
     fn extend<I: IntoIterator<Item = ty::Predicate<'tcx>>>(&mut self, iter: I) {
+        let iter = iter.into_iter();
+        self.set.reserve(iter.size_hint().0);
         for pred in iter {
             self.insert(pred);
         }
@@ -81,7 +83,7 @@ impl<'tcx> Elaboratable<TyCtxt<'tcx>> for PredicateObligation<'tcx> {
         &self,
         clause: ty::Clause<'tcx>,
         span: Span,
-        parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        parent_trait_pred: ty::PolyTraitClause<'tcx>,
         index: usize,
     ) -> Self {
         let cause = self.cause.clone().derived_cause(parent_trait_pred, |derived| {
@@ -126,7 +128,7 @@ pub fn transitive_bounds_that_define_assoc_item<'tcx>(
                     .map(Unnormalized::skip_norm_wip)
                     .map(|(clause, _)| clause.instantiate_supertrait(tcx, trait_ref))
                     .filter_map(|clause| clause.as_trait_clause())
-                    .filter(|clause| clause.polarity() == ty::PredicatePolarity::Positive)
+                    .filter(|clause| clause.polarity() == ty::ClausePolarity::Positive)
                     .map(|clause| clause.map_bound(|clause| clause.trait_ref)),
             );
 

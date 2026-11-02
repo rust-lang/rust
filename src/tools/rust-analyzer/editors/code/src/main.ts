@@ -5,7 +5,7 @@ import * as commands from "./commands";
 import { type CommandFactory, Ctx, fetchWorkspace } from "./ctx";
 import * as diagnostics from "./diagnostics";
 import { activateTaskProvider } from "./tasks";
-import { setContextValue } from "./util";
+import { log, setContextValue } from "./util";
 import { initializeDebugSessionTrackingAndRebuild } from "./debug";
 
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
@@ -118,7 +118,19 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
             health: "stopped",
         });
     } else {
-        await ctx.start();
+        try {
+            await ctx.start();
+        } catch (err) {
+            // Continue extension activation with the server stopped, as if the server crashed.
+            await ctx.stopAndDispose();
+            ctx.setServerStatus({
+                health: "stopped",
+            });
+            log.error("Failed to start the rust-analyzer server", err);
+            void vscode.window.showErrorMessage(
+                `Cannot start rust-analyzer server: ${err instanceof Error ? err.message : err}. `,
+            );
+        }
     }
 
     return ctx;

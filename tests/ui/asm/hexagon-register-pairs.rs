@@ -7,8 +7,6 @@
 #![crate_type = "lib"]
 #![no_core]
 
-//~? WARN unstable feature specified for `-Ctarget-feature`: `hvx-length128b`
-
 extern crate minicore;
 use minicore::*;
 

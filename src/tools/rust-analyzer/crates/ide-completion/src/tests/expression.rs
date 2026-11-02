@@ -42,7 +42,7 @@ fn baz() {
             "#,
         // This should not contain `FooDesc {…}`.
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             en Enum                    Enum
             fn baz()                   fn()
             fn create_foo(…)   fn(&FooDesc)
@@ -141,7 +141,7 @@ impl Unit {
 "#,
         // `self` is in here twice, once as the module, once as the local
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             cp CONST_PARAM
             en Enum                    Enum
             fn function()              fn()
@@ -208,7 +208,7 @@ impl Unit {
 }
 "#,
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             en Enum                    Enum
             fn function()              fn()
             ma makro!(…) macro_rules! makro
@@ -344,6 +344,8 @@ fn complete_in_match_arm() {
             kw for
             kw if
             kw if let
+            kw let
+            kw letm
             kw loop
             kw match
             kw return
@@ -807,7 +809,7 @@ fn foo() {
 fn in_macro_expr_frag() {
     check(
         r#"
-macro_rules! m { ($e:expr) => { $e } }
+macro_rules! m { ($e:expr) => { let _ = $e; } }
 fn quux(x: i32) {
     m!($0);
 }
@@ -835,7 +837,7 @@ fn quux(x: i32) {
     );
     check(
         r"
-macro_rules! m { ($e:expr) => { $e } }
+macro_rules! m { ($e:expr) => { let _ = $e; } }
 fn quux(x: i32) {
     m!(x$0);
 }
@@ -859,11 +861,12 @@ fn quux(x: i32) {
             kw unsafe
             kw while
             kw while let
+            ex x
         "#]],
     );
     check(
         r#"
-macro_rules! m { ($e:expr) => { $e } }
+macro_rules! m { ($e:expr) => { let _ = $e; } }
 fn quux(x: i32) {
     let y = 92;
     m!(x$0
@@ -894,6 +897,56 @@ fn quux(x: i32) {
 }
 
 #[test]
+fn in_identity_macro() {
+    check(
+        r#"
+macro_rules! m { ($($t:tt)*) => { $($t)* } }
+fn quux(x: i32) {
+    m!(l$0);
+}
+"#,
+        expect![[r#"
+            fn quux(…)      fn(i32)
+            lc x                i32
+            ma m!(…) macro_rules! m
+            bt u32              u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
 fn enum_qualified() {
     check_with_base_items(
         r#"
@@ -907,12 +960,12 @@ fn func() {
 }
 "#,
         expect![[r#"
-            ct ASSOC_CONST  const ASSOC_CONST: ()
-            fn assoc_fn()                    fn()
-            ta AssocType      type AssocType = ()
-            ev RecordV {…} RecordV { field: u32 }
-            ev TupleV(…)              TupleV(u32)
-            ev UnitV                        UnitV
+            ct ASSOC_CONST  = () const ASSOC_CONST: ()
+            fn assoc_fn()                         fn()
+            ta AssocType           type AssocType = ()
+            ev RecordV {…}      RecordV { field: u32 }
+            ev TupleV(…)                   TupleV(u32)
+            ev UnitV                             UnitV
         "#]],
     );
 }
@@ -2658,7 +2711,7 @@ fn main() {
 }
     "#,
         expect![[r#"
-            ct CONST                     Unit
+            ct CONST  = Unit             Unit
             en Enum                      Enum
             fn function()                fn()
             fn main()                    fn()
@@ -2990,7 +3043,7 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            ct CONST                       Unit
+            ct CONST  = Unit               Unit
             en Enum                        Enum
             fn foo()                       fn()
             fn function()                  fn()
@@ -3061,7 +3114,7 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             en Enum                    Enum
             en Foo                      Foo
             fn foo()                   fn()
@@ -3289,7 +3342,7 @@ fn bar() {
             tt FromIterator
             tt IntoIterator
             tt Iterator
-            ta Result (use core::fmt::Result)
+            ta Result (use core::fmt::Result)     Result<(), Error>
             ev Err(…)                                        Err(E)
             ev None                                            None
             ev Ok(…)                                          Ok(T)
@@ -3949,6 +4002,64 @@ fn fn_field_in_previous_line_of_ambiguous_expr() {
 }
 
 #[test]
+fn let_not_in_non_in_block_like_ambiguous_expr() {
+    // For cases where postfix completion is good, path completion is not good
+    check(
+        r#"
+        fn f() {
+            &l$0
+            (1, 2).foo();
+        }"#,
+        expect![[r#"
+            fn f()  fn()
+            bt u32   u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw mut
+            kw raw
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+    check(
+        r#"
+        fn f() {
+            &l$0
+        }"#,
+        expect![[r#"
+            fn f()  fn()
+            bt u32   u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw mut
+            kw raw
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+}
+
+#[test]
 fn private_inherent_and_public_trait() {
     check(
         r#"
@@ -4094,20 +4205,23 @@ fn main() {
             ma bar macro_rules! bar
             ma foo macro_rules! foo
             bt u32              u32
-            kw const
             kw crate::
             kw false
             kw for
             kw if
             kw if let
+            kw let
+            kw letm
             kw loop
             kw match
             kw return
             kw self::
             kw true
-            kw unsafe
             kw while
             kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
         "#]],
     );
 }
@@ -4206,5 +4320,146 @@ fn foo(t: T) {
                 sn unsafe    unsafe {}
                 sn while while expr {}
             "#]],
+    );
+}
+
+#[test]
+fn complete_cfg_macro() {
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn main() {
+    if cfg!(a$0)
+}
+        "#,
+        expect![[r#"
+            ba all
+            ba any
+            ba dbg
+            ba false
+            ba not
+            ba opt_level
+            ba test
+            ba true
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn main() {
+    if cfg!($0)
+}
+        "#,
+        expect![[r#"
+            ba all
+            ba any
+            ba dbg
+            ba false
+            ba not
+            ba opt_level
+            ba test
+            ba true
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn main() {
+    if cfg!(all($0))
+}
+        "#,
+        expect![[r#"
+            ba all
+            ba any
+            ba dbg
+            ba false
+            ba not
+            ba opt_level
+            ba test
+            ba true
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn main() {
+    match true {
+        cfg!(all($0)) => (),
+    }
+}
+        "#,
+        expect![[r#"
+            ba all
+            ba any
+            ba dbg
+            ba false
+            ba not
+            ba opt_level
+            ba test
+            ba true
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn main() {
+    if cfg!(opt_level = $0)
+}
+        "#,
+        expect![[r#"
+            ba 2
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn main() {
+    if cfg!(opt_level = "$0")
+}
+        "#,
+        expect![[r#"
+            ba 2
+        "#]],
+    );
+}
+
+#[test]
+fn const_is_type_owner() {
+    check(
+        r#"
+pub struct Boo;
+pub struct A(Boo);
+impl A {
+    const X: A = A(B$0);
+}
+    "#,
+        expect![[r#"
+            sp Self    A
+            st A       A
+            st Boo   Boo
+            st Boo   Boo
+            bt u32   u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+            ex A::X.0
+            ex Boo
+        "#]],
     );
 }

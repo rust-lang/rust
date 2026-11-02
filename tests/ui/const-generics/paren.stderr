@@ -1,0 +1,85 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/paren.rs:12:19
+   |
+LL |     let _: [u32; (N)] = [5; _];
+   |                   ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
+
+error: generic parameters may not be used in const operations
+  --> $DIR/paren.rs:14:21
+   |
+LL |     let _: [u32; { (N) }] = [5; _];
+   |                     ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
+
+error: generic parameters may not be used in const operations
+  --> $DIR/paren.rs:15:22
+   |
+LL |     let _: [u32; { { N } }] = [5; _];
+   |                      ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
+
+error: generic parameters may not be used in const operations
+  --> $DIR/paren.rs:23:21
+   |
+LL |     let _: Thing<{ (N) }> = Thing;
+   |                     ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
+
+error: generic parameters may not be used in const operations
+  --> $DIR/paren.rs:24:22
+   |
+LL |     let _: Thing<{ { N } }> = Thing;
+   |                      ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
+
+error[E0573]: cannot find type `N` in this scope
+  --> $DIR/paren.rs:21:19
+   |
+LL |     let _: Thing<(N)> = Thing;
+   |                   ^ not found in this scope
+   |
+   = note: a const parameter named `N` exists in another namespace
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/paren.rs:9:20
+   |
+LL |     let _: [u32; { _ }] = [5; 5];
+   |                    ^ `_` not allowed here
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/paren.rs:10:21
+   |
+LL |     let _: [u32; { (_) }] = [5; 5];
+   |                     ^ `_` not allowed here
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/paren.rs:18:20
+   |
+LL |     let _: Thing<{ _ }> = Thing::<5>;
+   |                    ^ `_` not allowed here
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/paren.rs:19:21
+   |
+LL |     let _: Thing<{ (_) }> = Thing::<5>;
+   |                     ^ `_` not allowed here
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0573`.

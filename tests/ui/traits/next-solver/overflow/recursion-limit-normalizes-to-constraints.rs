@@ -1,4 +1,3 @@
-//@ compile-flags: -Znext-solver=coherence
 //@ check-pass
 #![feature(rustc_attrs)]
 #![rustc_no_implicit_bounds]

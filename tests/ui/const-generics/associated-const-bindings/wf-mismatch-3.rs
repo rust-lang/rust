@@ -1,16 +1,28 @@
 //! Check that we correctly handle associated const bindings
 //! where the RHS is a normalizable const projection (#151642).
 
-#![feature(min_generic_const_args, macroless_generic_const_args)]
+#![feature(gca_min_const_items, gca_macroless_args)]
 #![expect(incomplete_features)]
 
-trait Trait { type const CT: bool; }
+use std::gca;
 
-trait Bound { type const N: u32; }
-impl Bound for () { type const N: u32 = 0; }
+trait Trait {
+    #[rustc_always_gca]
+    const CT: bool;
+}
 
-fn f() { let _: dyn Trait<CT = { <() as Bound>::N }>; }
-//~^ ERROR the constant `0` is not of type `bool`
+trait Bound {
+    #[rustc_always_gca]
+    const N: u32;
+}
+impl Bound for () {
+    const N: u32 = gca!(0);
+}
+
+fn f() {
+    let _: dyn Trait<CT = { <() as Bound>::N }>;
+    //~^ ERROR the constant `0` is not of type `bool`
+}
 fn g(_: impl Trait<CT = { <() as Bound>::N }>) {}
 //~^ ERROR the constant `0` is not of type `bool`
 

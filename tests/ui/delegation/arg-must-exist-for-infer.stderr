@@ -1,0 +1,17 @@
+error: expected identifier, found keyword `Self`
+  --> $DIR/arg-must-exist-for-infer.rs:5:19
+   |
+LL | trait Trait<const Self: usize = 2> {
+   |                   ^^^^ expected identifier, found keyword
+
+error[E0283]: type annotations needed
+  --> $DIR/arg-must-exist-for-infer.rs:11:23
+   |
+LL |     reuse Trait::<_>::foo;
+   |                       ^^^ cannot infer type
+   |
+   = note: the type must implement `Trait<Self>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0283`.

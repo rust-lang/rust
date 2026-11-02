@@ -1,8 +1,12 @@
 error[E0201]: duplicate definitions with name `baz`:
   --> $DIR/E0201.rs:17:5
    |
+LL | trait Baz {
+LL |     type Quux;
 LL |     fn baz(&self) -> bool;
    |     ---------------------- item in trait
+...
+LL | impl Baz for Foo {
 ...
 LL |     fn baz(&self) -> bool { true }
    |     ------------------------------ previous definition here
@@ -12,9 +16,11 @@ LL |     fn baz(&self) -> bool { self.0 > 5 }
 error[E0201]: duplicate definitions with name `Quux`:
   --> $DIR/E0201.rs:18:5
    |
+LL | trait Baz {
 LL |     type Quux;
    |     ---------- item in trait
 ...
+LL | impl Baz for Foo {
 LL |     type Quux = u32;
    |     ---------------- previous definition here
 ...

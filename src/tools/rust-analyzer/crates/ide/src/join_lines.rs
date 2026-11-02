@@ -186,9 +186,10 @@ fn remove_newline(
         }
     }
 
+    // We can't use `prev` and `next`, since `DOC_COMMENT` has only one token, so `token` has no siblings.
     if let (Some(_), Some(next)) = (
-        prev.as_token().cloned().and_then(ast::Comment::cast),
-        next.as_token().cloned().and_then(ast::Comment::cast),
+        token.prev_token().and_then(ast::AnyComment::cast),
+        token.next_token().and_then(ast::AnyComment::cast),
     ) {
         // Removes: newline (incl. surrounding whitespace), start of the next comment
         edit.delete(TextRange::new(
@@ -674,14 +675,14 @@ fn foo() {
     fn test_join_lines_doc_comments() {
         check_join_lines(
             r"
+/// Hello$0
+/// world!
 fn foo() {
-    /// Hello$0
-    /// world!
 }
 ",
             r"
+/// Hello$0 world!
 fn foo() {
-    /// Hello$0 world!
 }
 ",
         );

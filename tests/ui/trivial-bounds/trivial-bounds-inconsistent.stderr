@@ -24,6 +24,12 @@ warning: trait bound i32: Foo does not depend on any type or lifetime parameters
 LL | union U where i32: Foo { f: i32 }
    |                    ^^^
 
+warning: trait bound i32: Foo does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:22:19
+   |
+LL | type Y where i32: Foo = ();
+   |                   ^^^
+
 warning: where clauses on type aliases are not enforced
   --> $DIR/trivial-bounds-inconsistent.rs:22:14
    |
@@ -39,12 +45,6 @@ help: remove this where clause
 LL - type Y where i32: Foo = ();
 LL + type Y  = ();
    |
-
-warning: trait bound i32: Foo does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent.rs:22:19
-   |
-LL | type Y where i32: Foo = ();
-   |                   ^^^
 
 warning: trait bound i32: Foo does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:26:28

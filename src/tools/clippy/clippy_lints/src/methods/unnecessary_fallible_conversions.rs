@@ -80,7 +80,7 @@ impl FunctionKind {
 fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &Expr<'_>,
-    node_args: ty::GenericArgsRef<'tcx>,
+    node_args: ty::GenericArgs<'tcx>,
     kind: FunctionKind,
     primary_span: Span,
 ) {
@@ -95,7 +95,7 @@ fn check<'tcx>(
         // If `T: TryFrom<U>` and `T: From<U>` both exist, then that means that the `TryFrom`
         // _must_ be from the blanket impl and cannot have been manually implemented
         // (else there would be conflicting impls, even with #![feature(spec)]), so we don't even need to check
-        // what `<T as TryFrom<U>>::Error` is: it's always `Infallible`
+        // what `<T as TryFrom<U>>::Error` is: it's always `!`
         && implements_trait(cx, self_ty, from_into_trait, &[other_ty])
         && let Some(other_ty) = other_ty.as_type()
     {

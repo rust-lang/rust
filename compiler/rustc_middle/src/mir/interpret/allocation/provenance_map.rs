@@ -290,7 +290,6 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
     }
 
     /// Removes all provenance inside the given range.
-    #[allow(irrefutable_let_patterns)] // these actually make the code more clear
     pub fn clear(&mut self, range: AllocRange, data_bytes: &[u8], cx: &impl HasDataLayout) {
         if range.size == Size::ZERO {
             return;

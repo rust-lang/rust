@@ -15,6 +15,12 @@ help: you might have meant to refer to the associated function
 LL |     reuse to_reuse::foo { Self::foo }
    |                           ++++++
 
-error: aborting due to 2 previous errors
+error: failed to resolve delegation callee
+  --> $DIR/ice-issue-124342.rs:6:21
+   |
+LL |     reuse to_reuse::foo { foo }
+   |                     ^^^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

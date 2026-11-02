@@ -51,18 +51,6 @@ error[E0271]: expected `IntoIter<u32>` to be an iterator that yields `i32`, but 
    |
 LL | fn chained() -> impl Iterator<Item = i32> {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `u32`
-   |
-note: the method call chain might not have had the expected associated types
-  --> $DIR/invalid-iterator-chain-in-return-position.rs:32:7
-   |
-LL |     let x = vec![0u32, 1, 2];
-   |             ---------------- this expression has type `Vec<u32>`
-LL |     x.into_iter().filter(|x| *x > 0).map(|x| x.checked_add(1)).flatten()
-   |       ^^^^^^^^^^^ ------------------ ------------------------- ^^^^^^^^^ `Iterator::Item` changed to `u32` here
-   |       |           |                  |
-   |       |           |                  `Iterator::Item` changed to `Option<u32>` here
-   |       |           `Iterator::Item` remains `u32` here
-   |       `Iterator::Item` is `u32` here
 
 error: aborting due to 3 previous errors
 

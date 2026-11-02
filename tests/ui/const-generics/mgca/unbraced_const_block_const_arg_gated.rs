@@ -1,5 +1,7 @@
 #![feature(adt_const_params)]
 
+use std::gca;
+
 #[derive(Eq, PartialEq, std::marker::ConstParamTy)]
 struct Inner<const N: usize>;
 
@@ -12,7 +14,7 @@ struct Foo<
 
 type Array = [(); const { 1 }];
 type NormalTy = Inner<const { 1 }>;
-    //~^ ERROR: unbraced const blocks as const args are experimental
+//~^ ERROR: unbraced const blocks as const args are experimental
 
 fn repeat() {
     [1_u8; const { 1 }];
@@ -32,10 +34,9 @@ fn generic<const N: usize>() {
 
 const NON_TYPE_CONST: usize = const { 1 };
 
-
-type const TYPE_CONST: usize = const { 1 };
-//~^ ERROR: `type const` syntax is experimental [E0658]
-//~| ERROR: top-level `type const` are unstable [E0658]
+const TYPE_CONST: usize = gca!(const { 1 });
+//~^ ERROR: use of unstable library feature `gca_min_const_items` [E0658]
+//~| ERROR: expected expression, found `gca!()` constant
 
 static STATIC: usize = const { 1 };
 

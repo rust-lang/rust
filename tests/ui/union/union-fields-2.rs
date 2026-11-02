@@ -1,3 +1,7 @@
+//@ reference: expr.struct.field.union-constraint
+//@ reference: items.union.init.intro
+//@ reference: items.union.pattern.one-field
+//@ reference: patterns.struct.constraint-union
 union U {
     a: u8,
     b: u16,

@@ -9,12 +9,10 @@ help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
    = note: required for `[{integer}]` to implement `Index<&usize>`
-   = note: 1 redundant requirement hidden
-   = note: required for `[{integer}; 3]` to implement `Index<&usize>`
 help: dereference this index
    |
 LL |     let one_item_please: i32 = [1, 2, 3][*i];

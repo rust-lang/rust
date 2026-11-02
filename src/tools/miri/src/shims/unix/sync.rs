@@ -184,11 +184,11 @@ fn mutex_create<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     mutex_ptr: &OpTy<'tcx>,
     kind: MutexKind,
-) -> InterpResult<'tcx, PthreadMutex> {
+) -> InterpResult<'tcx> {
     let mutex = ecx.deref_pointer_as(mutex_ptr, ecx.libc_ty_layout("pthread_mutex_t"))?;
     let data = PthreadMutex { mutex_ref: MutexRef::new(), kind };
-    ecx.init_immovable_sync(&mutex, mutex_init_offset(ecx)?, PTHREAD_INIT, data.clone())?;
-    interp_ok(data)
+    ecx.init_immovable_sync(&mutex, mutex_init_offset(ecx)?, PTHREAD_INIT, data)?;
+    interp_ok(())
 }
 
 /// Returns the mutex data stored at the address that `mutex_ptr` points to.
@@ -422,11 +422,11 @@ fn cond_create<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     cond_ptr: &OpTy<'tcx>,
     clock: TimeoutClock,
-) -> InterpResult<'tcx, PthreadCondvar> {
+) -> InterpResult<'tcx> {
     let cond = ecx.deref_pointer_as(cond_ptr, ecx.libc_ty_layout("pthread_cond_t"))?;
     let data = PthreadCondvar { condvar_ref: CondvarRef::new(), clock };
-    ecx.init_immovable_sync(&cond, cond_init_offset(ecx)?, PTHREAD_INIT, data.clone())?;
-    interp_ok(data)
+    ecx.init_immovable_sync(&cond, cond_init_offset(ecx)?, PTHREAD_INIT, data)?;
+    interp_ok(())
 }
 
 fn cond_get_data<'tcx, 'a>(
@@ -465,6 +465,65 @@ where
                 clock: TimeoutClock::RealTime,
             })
         },
+    )
+}
+
+// # sem_t
+// We store some data directly inside the type, ignoring the platform layout:
+// - init: u8
+
+fn sem_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> {
+    let offset = match &ecx.tcx.sess.target.os {
+        Os::Linux | Os::Illumos | Os::Solaris | Os::FreeBsd | Os::Android => 0,
+        // Explicitly *not* supported on macOS!
+        os => throw_unsup_format!("`sem` is not supported on {os}"),
+    };
+    interp_ok(Size::from_bytes(offset))
+}
+
+#[derive(Debug, Clone)]
+struct PthreadSem {
+    sem_ref: SemaphoreRef,
+}
+
+impl SyncObj for PthreadSem {
+    fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
+        if !self.sem_ref.queue_is_empty() {
+            throw_ub_format!("{access_kind} of `sem_t` is forbidden while the queue is non-empty");
+        }
+        interp_ok(())
+    }
+
+    fn delete_on_write(&self) -> bool {
+        true
+    }
+}
+
+fn sem_create<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    sem_ptr: &OpTy<'tcx>,
+    value: u32,
+) -> InterpResult<'tcx> {
+    let sem = ecx.deref_pointer_as(sem_ptr, ecx.libc_ty_layout("sem_t"))?;
+    let data = PthreadSem { sem_ref: SemaphoreRef::new(value.into()) };
+    ecx.init_immovable_sync(&sem, sem_init_offset(ecx)?, PTHREAD_INIT, data)?;
+    interp_ok(())
+}
+
+fn sem_get_data<'tcx, 'a>(
+    ecx: &'a mut MiriInterpCx<'tcx>,
+    sem_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx, &'a PthreadSem>
+where
+    'tcx: 'a,
+{
+    let sem = ecx.deref_pointer_as(sem_ptr, ecx.libc_ty_layout("sem_t"))?;
+    ecx.get_immovable_sync_with_static_init(
+        &sem,
+        sem_init_offset(ecx)?,
+        PTHREAD_UNINIT,
+        PTHREAD_INIT,
+        |_ecx| throw_ub_format!("`sem_t` value has not been initialized with `sem_init`"),
     )
 }
 
@@ -960,11 +1019,133 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_ub_format!("destroying an awaited conditional variable");
         }
 
-        // This write also deletes the interpreter state for this mutex.
+        // This write also deletes the interpreter state for this condvar.
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
         let cond_place = this.deref_pointer_as(cond_op, this.libc_ty_layout("pthread_cond_t"))?;
         this.write_uninit(&cond_place)?;
 
+        interp_ok(())
+    }
+
+    fn pthread_sem_init(
+        &mut self,
+        sem_op: &OpTy<'tcx>,
+        pshared_op: &OpTy<'tcx>,
+        value_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let pshared = this.read_scalar(pshared_op)?.to_i32()?;
+        let value = this.read_scalar(value_op)?.to_u32()?;
+
+        // We can ignore `pshared` since memory cannot actually be shared with other processes.
+        let _ignore = pshared;
+
+        sem_create(this, sem_op, value)?;
+
+        this.write_null(dest)?; // we always succeed
+        interp_ok(())
+    }
+
+    fn pthread_sem_wait(
+        &mut self,
+        sem_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let data = sem_get_data(this, sem_op)?.clone();
+        let dest = dest.clone();
+        this.semaphore_decrement(
+            data.sem_ref,
+            /* deadline */ None,
+            callback!(
+                @capture<'tcx> {
+                    dest: MPlaceTy<'tcx>,
+                }
+                |this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::Ready);
+                    this.write_null(&dest)?;
+                    interp_ok(())
+                }
+            ),
+        )?;
+
+        interp_ok(())
+    }
+
+    fn pthread_sem_timedwait(
+        &mut self,
+        sem_op: &OpTy<'tcx>,
+        abs_timeout_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.check_no_isolation("`pthread_sem_timedwait`")?;
+
+        let abs_timeout = this.deref_pointer_as(abs_timeout_op, this.libc_ty_layout("timespec"))?;
+
+        let Some(duration) = this.read_timespec(&abs_timeout)? else {
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
+        let deadline =
+            this.machine.timeout(TimeoutClock::RealTime, TimeoutStyle::Absolute, duration);
+        let data = sem_get_data(this, sem_op)?.clone();
+        let dest = dest.clone();
+        this.semaphore_decrement(
+            data.sem_ref,
+            Some(deadline),
+            callback!(
+                @capture<'tcx> {
+                    dest: MPlaceTy<'tcx>,
+                }
+                |this, unblock: UnblockKind| {
+                    match unblock {
+                        UnblockKind::Ready =>
+                            this.write_null(&dest),
+                        UnblockKind::TimedOut =>
+                            this.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest),
+                    }
+                }
+            ),
+        )?;
+
+        interp_ok(())
+    }
+
+    fn pthread_sem_post(
+        &mut self,
+        sem_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let data = sem_get_data(this, sem_op)?.clone();
+        this.semaphore_increment(&data.sem_ref)?;
+
+        this.write_null(dest)?; // we always succeed
+        interp_ok(())
+    }
+
+    fn pthread_sem_destroy(
+        &mut self,
+        sem_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let data = sem_get_data(this, sem_op)?.clone();
+        if !data.sem_ref.queue_is_empty() {
+            throw_ub_format!("destroying an awaited semaphore");
+        }
+
+        // This write also deletes the interpreter state for this semaphore.
+        // This might lead to false positives, see comment in pthread_mutexattr_destroy
+        let sem_place = this.deref_pointer_as(sem_op, this.libc_ty_layout("sem_t"))?;
+        this.write_uninit(&sem_place)?;
+
+        this.write_null(dest)?; // we always succeed
         interp_ok(())
     }
 }

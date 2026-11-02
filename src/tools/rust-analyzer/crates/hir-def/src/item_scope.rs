@@ -161,7 +161,7 @@ pub struct ItemScope {
     /// Module scoped macros will be inserted into `items` instead of here.
     // FIXME: Macro shadowing in one module is not properly handled. Non-item place macros will
     // be all resolved to the last one defined if shadowing happens.
-    legacy_macros: FxHashMap<Name, SmallVec<[MacroId; 2]>>,
+    legacy_macros: FxHashMap<Name, SmallVec<[MacroId; 1]>>,
     /// The attribute macro invocations in this scope.
     attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
     /// The macro invocations in this scope.
@@ -621,7 +621,11 @@ impl ItemScope {
                             // for that.
                         }
                         _ => {
-                            if glob_imports.types.remove(&lookup) {
+                            // A non-glob import either shadows a glob import of the same
+                            // name, or re-resolves a stale binding it recorded earlier.
+                            if glob_imports.types.remove(&lookup)
+                                || entry.get().is_reresolved_by(&fld.def, import)
+                            {
                                 let prev = std::mem::replace(&mut fld.import, import);
                                 if let Some(import) = import {
                                     self.use_imports_types.insert(
@@ -659,19 +663,22 @@ impl ItemScope {
                     changed = true;
                 }
                 Entry::Occupied(mut entry)
-                    if !matches!(import, Some(ImportOrExternCrate::Glob(..)))
-                        && glob_imports.values.remove(&lookup) =>
+                    if !matches!(import, Some(ImportOrExternCrate::Glob(..))) =>
                 {
-                    cov_mark::hit!(import_shadowed);
-
                     let import = import.and_then(ImportOrExternCrate::import_or_glob);
-                    let prev = std::mem::replace(&mut fld.import, import);
-                    if let Some(import) = import {
-                        self.use_imports_values
-                            .insert(import, prev.map_or(ImportOrDef::Def(fld.def), Into::into));
+                    if glob_imports.values.remove(&lookup)
+                        || entry.get().is_reresolved_by(&fld.def, import)
+                    {
+                        cov_mark::hit!(import_shadowed);
+
+                        let prev = std::mem::replace(&mut fld.import, import);
+                        if let Some(import) = import {
+                            self.use_imports_values
+                                .insert(import, prev.map_or(ImportOrDef::Def(fld.def), Into::into));
+                        }
+                        entry.insert(fld);
+                        changed = true;
                     }
-                    entry.insert(fld);
-                    changed = true;
                 }
                 _ => {}
             }
@@ -699,7 +706,8 @@ impl ItemScope {
                 }
                 Entry::Occupied(mut entry)
                     if !matches!(import, Some(ImportOrExternCrate::Glob(..)))
-                        && glob_imports.macros.remove(&lookup) =>
+                        && (glob_imports.macros.remove(&lookup)
+                            || entry.get().is_reresolved_by(&fld.def, import)) =>
                 {
                     cov_mark::hit!(import_shadowed);
                     let prev = std::mem::replace(&mut fld.import, import);
@@ -898,34 +906,50 @@ impl ItemScope {
 impl PerNs {
     pub(crate) fn from_def(
         def: ModuleDefId,
-        v: Visibility,
-        has_constructor: bool,
+        vis: Visibility,
+        value_ns_ctor_vis: Option<Visibility>,
         import: Option<ImportOrExternCrate>,
     ) -> PerNs {
         match def {
-            ModuleDefId::ModuleId(_) => PerNs::types(def, v, import),
+            ModuleDefId::ModuleId(_) => PerNs::types(def, vis, import),
             ModuleDefId::FunctionId(_) => {
-                PerNs::values(def, v, import.and_then(ImportOrExternCrate::import_or_glob))
+                PerNs::values(def, vis, import.and_then(ImportOrExternCrate::import_or_glob))
             }
             ModuleDefId::AdtId(adt) => match adt {
-                AdtId::UnionId(_) => PerNs::types(def, v, import),
-                AdtId::EnumId(_) => PerNs::types(def, v, import),
-                AdtId::StructId(_) => {
-                    if has_constructor {
-                        PerNs::both(def, def, v, import)
-                    } else {
-                        PerNs::types(def, v, import)
-                    }
-                }
+                AdtId::UnionId(_) => PerNs::types(def, vis, import),
+                AdtId::EnumId(_) => PerNs::types(def, vis, import),
+                AdtId::StructId(_) => match value_ns_ctor_vis {
+                    Some(value_ns_ctor_vis) => PerNs {
+                        types: Some(Item { def, vis, import }),
+                        values: Some(Item {
+                            def,
+                            vis: value_ns_ctor_vis,
+                            import: import.and_then(ImportOrExternCrate::import_or_glob),
+                        }),
+                        macros: None,
+                    },
+                    None => PerNs::types(def, vis, import),
+                },
             },
-            ModuleDefId::EnumVariantId(_) => PerNs::both(def, def, v, import),
+            ModuleDefId::EnumVariantId(_) => match value_ns_ctor_vis {
+                Some(value_ns_ctor_vis) => PerNs {
+                    types: Some(Item { def, vis, import }),
+                    values: Some(Item {
+                        def,
+                        vis: value_ns_ctor_vis,
+                        import: import.and_then(ImportOrExternCrate::import_or_glob),
+                    }),
+                    macros: None,
+                },
+                None => PerNs::types(def, vis, import),
+            },
             ModuleDefId::ConstId(_) | ModuleDefId::StaticId(_) => {
-                PerNs::values(def, v, import.and_then(ImportOrExternCrate::import_or_glob))
+                PerNs::values(def, vis, import.and_then(ImportOrExternCrate::import_or_glob))
             }
-            ModuleDefId::TraitId(_) => PerNs::types(def, v, import),
-            ModuleDefId::TypeAliasId(_) => PerNs::types(def, v, import),
-            ModuleDefId::BuiltinType(_) => PerNs::types(def, v, import),
-            ModuleDefId::MacroId(mac) => PerNs::macros(mac, v, import),
+            ModuleDefId::TraitId(_) => PerNs::types(def, vis, import),
+            ModuleDefId::TypeAliasId(_) => PerNs::types(def, vis, import),
+            ModuleDefId::BuiltinType(_) => PerNs::types(def, vis, import),
+            ModuleDefId::MacroId(mac) => PerNs::macros(mac, vis, import),
         }
     }
 }

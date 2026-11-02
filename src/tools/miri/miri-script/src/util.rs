@@ -178,7 +178,7 @@ impl MiriEnv {
         // parallelism in `./miri test` as we build Miri and its tests together.
         let mut cmd = self
             .cargo_cmd(crate_dir, "build", features)
-            .args(&["--all-targets"])
+            .args(["--all-targets"])
             .args(quiet_flag)
             .args(args);
         cmd.set_quiet(quiet);
@@ -194,7 +194,7 @@ impl MiriEnv {
     ) -> Result<PathBuf> {
         let cmd = self
             .cargo_cmd(crate_dir, "build", features)
-            .args(&["--all-targets", "--message-format=json"]);
+            .args(["--all-targets", "--message-format=json"]);
         let output = cmd.output()?;
         let mut bin = None;
         for line in output.stdout.lines() {
@@ -203,6 +203,8 @@ impl MiriEnv {
                 let json: serde_json::Value = serde_json::from_str(&line)?;
                 if json["reason"] == "compiler-artifact"
                     && !json["profile"]["test"].as_bool().unwrap()
+                    // The "miri" crate ships a second binary ("priroda"); pick the "miri" driver.
+                    && json["target"]["name"] == "miri"
                     && !json["executable"].is_null()
                 {
                     if bin.is_some() {

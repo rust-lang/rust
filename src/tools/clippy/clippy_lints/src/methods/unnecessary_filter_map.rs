@@ -1,13 +1,12 @@
 use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::ty::{is_copy, option_arg_ty};
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
-use clippy_utils::{as_some_expr, sym};
+use clippy_utils::{as_some_expr, is_none_expr, sym};
 use core::ops::ControlFlow;
 use rustc_hir as hir;
-use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 use std::fmt::Display;
@@ -111,25 +110,18 @@ impl Display for Kind {
 // returns (found_mapping, found_filtering)
 fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tcx hir::Expr<'_>) -> (bool, bool) {
     match expr.kind {
-        hir::ExprKind::Path(ref path)
-            if cx
-                .qpath_res(path, expr.hir_id)
-                .ctor_parent(cx)
-                .is_lang_item(cx, OptionNone) =>
-        {
+        hir::ExprKind::Path(_) if is_none_expr(cx, expr) => {
             // None
             (false, true)
         },
-        hir::ExprKind::Call(func, args) => {
-            if func.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome) {
-                if args[0].res_local_id() == Some(arg_id) {
-                    // Some(arg_id)
-                    return (false, false);
-                }
+        hir::ExprKind::Call(..) if let Some(found_arg) = as_some_expr(cx, expr) => {
+            if found_arg.res_local_id() == Some(arg_id) {
+                // Some(arg_id)
+                (false, false)
+            } else {
                 // Some(not arg_id)
-                return (true, false);
+                (true, false)
             }
-            (true, true)
         },
         hir::ExprKind::MethodCall(segment, recv, [arg], _)
             if segment.ident.name == sym::then_some

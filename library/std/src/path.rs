@@ -83,6 +83,7 @@
 
 use core::clone::CloneToUninit;
 
+use crate::alloc::Allocator;
 use crate::borrow::{Borrow, Cow};
 use crate::collections::TryReserveError;
 use crate::error::Error;
@@ -1972,10 +1973,10 @@ impl From<PathBuf> for Box<Path> {
 }
 
 #[stable(feature = "more_box_slice_clone", since = "1.29.0")]
-impl Clone for Box<Path> {
+impl<A: Allocator + Clone> Clone for Box<Path, A> {
     #[inline]
     fn clone(&self) -> Self {
-        self.to_path_buf().into_boxed_path()
+        Box::clone_from_ref_in(&**self, Self::allocator(self).clone())
     }
 }
 
@@ -2025,10 +2026,10 @@ impl From<String> for PathBuf {
 
 #[stable(feature = "path_from_str", since = "1.32.0")]
 impl FromStr for PathBuf {
-    type Err = core::convert::Infallible;
+    type Err = !;
 
     #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, !> {
         Ok(PathBuf::from(s))
     }
 }
@@ -2377,7 +2378,7 @@ pub struct NormalizeError;
 impl Path {
     // The following (private!) function allows construction of a path from a u8
     // slice, which is only safe when it is known to follow the OsStr encoding.
-    unsafe fn from_u8_slice(s: &[u8]) -> &Path {
+    pub(crate) unsafe fn from_u8_slice(s: &[u8]) -> &Path {
         unsafe { Path::new(OsStr::from_encoded_bytes_unchecked(s)) }
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
@@ -2487,7 +2488,7 @@ impl Path {
     /// Any non-UTF-8 sequences are replaced with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
-    /// [U+FFFD]: super::char::REPLACEMENT_CHARACTER
+    /// [U+FFFD]: char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
     ///
@@ -2673,7 +2674,7 @@ impl Path {
     #[stable(feature = "path_ancestors", since = "1.28.0")]
     #[inline]
     pub fn ancestors(&self) -> Ancestors<'_> {
-        Ancestors { next: Some(&self) }
+        Ancestors { next: Some(self) }
     }
 
     /// Returns the final component of the `Path`, if there is one.
@@ -2752,7 +2753,6 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// #![feature(trim_prefix_suffix)]
     /// use std::path::Path;
     ///
     /// let path = Path::new("/test/haha/foo.txt");
@@ -2770,7 +2770,7 @@ impl Path {
     /// assert_eq!(path.trim_prefix("/haha"), path);
     /// ```
     #[must_use = "this returns the remaining path as a new path, without modifying the original"]
-    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    #[stable(feature = "trim_prefix_suffix", since = "1.100.0")]
     pub fn trim_prefix<P>(&self, base: P) -> &Path
     where
         P: AsRef<Path>,
@@ -2933,7 +2933,7 @@ impl Path {
     #[stable(feature = "path_file_prefix", since = "1.91.0")]
     #[must_use]
     pub fn file_prefix(&self) -> Option<&OsStr> {
-        self.file_name().map(split_file_at_dot).and_then(|(before, _after)| Some(before))
+        self.file_name().map(split_file_at_dot).map(|(before, _after)| before)
     }
 
     /// Extracts the extension (without the leading dot) of [`self.file_name`], if possible.
@@ -2983,7 +2983,8 @@ impl Path {
     #[must_use]
     #[inline]
     pub fn has_trailing_sep(&self) -> bool {
-        self.as_os_str().as_encoded_bytes().last().copied().is_some_and(is_sep_byte)
+        let comps = self.components();
+        self.as_os_str().as_encoded_bytes().last().copied().is_some_and(|b| comps.is_sep_byte(b))
     }
 
     /// Ensures that a path has a trailing [separator](MAIN_SEPARATOR),
@@ -3034,10 +3035,11 @@ impl Path {
     #[must_use]
     #[inline]
     pub fn trim_trailing_sep(&self) -> &Path {
+        let comps = self.components();
         if self.has_trailing_sep() && (!self.has_root() || self.parent().is_some()) {
             let mut bytes = self.inner.as_encoded_bytes();
             while let Some((last, init)) = bytes.split_last()
-                && is_sep_byte(*last)
+                && comps.is_sep_byte(*last)
             {
                 bytes = init;
             }
@@ -3329,7 +3331,7 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path = Path::new("/Minas/tirith");
-    /// let metadata = path.metadata().expect("metadata call failed");
+    /// let metadata = path.metadata().expect("the path should point to an existing file or directory");
     /// println!("{:?}", metadata.file_type());
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
@@ -3348,7 +3350,7 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path = Path::new("/Minas/tirith");
-    /// let metadata = path.symlink_metadata().expect("symlink_metadata call failed");
+    /// let metadata = path.symlink_metadata().expect("the path should exist");
     /// println!("{:?}", metadata.file_type());
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
@@ -3424,6 +3426,8 @@ impl Path {
     ///
     /// </div>
     ///
+    /// On Windows this will convert all `/` to `\` unless a [verbatim](Prefix::is_verbatim()) path is given.
+    ///
     /// [`path::absolute`](absolute) is an alternative that preserves `..`.
     /// Or [`Path::canonicalize`] can be used to resolve any `..` by querying the filesystem.
     #[unstable(feature = "normalize_lexically", issue = "134694")]
@@ -3483,7 +3487,7 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path = Path::new("/laputa/sky_castle.rs");
-    /// let path_link = path.read_link().expect("read_link call failed");
+    /// let path_link = path.read_link().expect("the path should be an existing symbolic link");
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
     #[inline]
@@ -3504,7 +3508,7 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path = Path::new("/laputa");
-    /// for entry in path.read_dir().expect("read_dir call failed") {
+    /// for entry in path.read_dir().expect("the path should point to an existing directory") {
     ///     if let Ok(entry) = entry {
     ///         println!("{:?}", entry.path());
     ///     }
@@ -3569,7 +3573,7 @@ impl Path {
     ///
     /// ```no_run
     /// use std::path::Path;
-    /// assert!(!Path::new("does_not_exist.txt").try_exists().expect("Can't check existence of file does_not_exist.txt"));
+    /// assert!(!Path::new("does_not_exist.txt").try_exists().expect("the path's existence should be verifiable"));
     /// assert!(Path::new("/root/secret_file.txt").try_exists().is_err());
     /// ```
     ///

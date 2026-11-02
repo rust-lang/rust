@@ -21,6 +21,10 @@ mod ok {
     #[test]
     fn asm_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_expr.rs"); }
     #[test]
+    fn asm_keyword_name() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/asm_keyword_name.rs");
+    }
+    #[test]
     fn asm_kinds() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_kinds.rs"); }
     #[test]
     fn asm_label() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_label.rs"); }
@@ -103,6 +107,8 @@ mod ok {
     #[test]
     fn cfg_meta() { run_and_expect_no_errors("test_data/parser/inline/ok/cfg_meta.rs"); }
     #[test]
+    fn cfg_pred_pat() { run_and_expect_no_errors("test_data/parser/inline/ok/cfg_pred_pat.rs"); }
+    #[test]
     fn cfg_true_false_pred() {
         run_and_expect_no_errors("test_data/parser/inline/ok/cfg_true_false_pred.rs");
     }
@@ -119,6 +125,10 @@ mod ok {
     #[test]
     fn closure_params() {
         run_and_expect_no_errors("test_data/parser/inline/ok/closure_params.rs");
+    }
+    #[test]
+    fn closure_postfix_range_method_call() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/closure_postfix_range_method_call.rs");
     }
     #[test]
     fn closure_range_method_call() {
@@ -336,6 +346,10 @@ mod ok {
     #[test]
     fn global_asm() { run_and_expect_no_errors("test_data/parser/inline/ok/global_asm.rs"); }
     #[test]
+    fn guard_let_struct() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/guard_let_struct.rs");
+    }
+    #[test]
     fn half_open_range_pat() {
         run_and_expect_no_errors("test_data/parser/inline/ok/half_open_range_pat.rs");
     }
@@ -478,6 +492,10 @@ mod ok {
     #[test]
     fn nocontentexpr_after_item() {
         run_and_expect_no_errors("test_data/parser/inline/ok/nocontentexpr_after_item.rs");
+    }
+    #[test]
+    fn non_isolated_self() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/non_isolated_self.rs");
     }
     #[test]
     fn not_null_pat() { run_and_expect_no_errors("test_data/parser/inline/ok/not_null_pat.rs"); }
@@ -807,6 +825,10 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/async_without_semicolon.rs");
     }
     #[test]
+    fn attr_end_of_stmt_list() {
+        run_and_expect_errors("test_data/parser/inline/err/attr_end_of_stmt_list.rs");
+    }
+    #[test]
     fn bad_asm_expr() { run_and_expect_errors("test_data/parser/inline/err/bad_asm_expr.rs"); }
     #[test]
     fn closure_ret_recovery() {
@@ -833,12 +855,20 @@ mod err {
     #[test]
     fn empty_segment() { run_and_expect_errors("test_data/parser/inline/err/empty_segment.rs"); }
     #[test]
+    fn enum_variant_attrs_without_variant() {
+        run_and_expect_errors("test_data/parser/inline/err/enum_variant_attrs_without_variant.rs");
+    }
+    #[test]
     fn fn_pointer_type_missing_fn() {
         run_and_expect_errors("test_data/parser/inline/err/fn_pointer_type_missing_fn.rs");
     }
     #[test]
     fn fn_ret_recovery() {
         run_and_expect_errors("test_data/parser/inline/err/fn_ret_recovery.rs");
+    }
+    #[test]
+    fn function_missing_name() {
+        run_and_expect_errors("test_data/parser/inline/err/function_missing_name.rs");
     }
     #[test]
     fn function_ret_type_missing_arrow() {
@@ -916,6 +946,10 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/missing_static_type.rs");
     }
     #[test]
+    fn non_isolated_self_err() {
+        run_and_expect_errors("test_data/parser/inline/err/non_isolated_self_err.rs");
+    }
+    #[test]
     fn path_item_without_excl() {
         run_and_expect_errors("test_data/parser/inline/err/path_item_without_excl.rs");
     }
@@ -933,6 +967,10 @@ mod err {
     }
     #[test]
     fn pub_expr() { run_and_expect_errors("test_data/parser/inline/err/pub_expr.rs"); }
+    #[test]
+    fn record_field_attrs_without_field() {
+        run_and_expect_errors("test_data/parser/inline/err/record_field_attrs_without_field.rs");
+    }
     #[test]
     fn record_literal_before_ellipsis_recovery() {
         run_and_expect_errors(

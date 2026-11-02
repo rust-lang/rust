@@ -26,8 +26,8 @@ use syntax::{
 use syntax_bridge::DocCommentDesugarMode;
 
 use crate::{
-    AstId, EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile,
-    MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
+    AstId, EagerCallInfo, ExpandError, ExpandErrorKind, ExpandResult, ExpandTo, ExpansionSpanMap,
+    InFile, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
     ast::{self, AstNode},
     mod_path::ModPath,
 };
@@ -44,6 +44,8 @@ pub fn expand_eager_macro_input(
     ast_id: AstId<ast::MacroCall>,
     def: MacroDefId,
     call_site: SyntaxContext,
+    macro_depth: u32,
+    recursion_limit: u32,
     resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
     eager_callback: EagerCallBackFn<'_>,
 ) -> ExpandResult<Option<MacroCallId>> {
@@ -58,9 +60,10 @@ pub fn expand_eager_macro_input(
         krate,
         kind: MacroCallKind::FnLike { ast_id, expand_to: ExpandTo::Expr, eager: None },
         ctxt: call_site,
+        macro_depth,
     };
     let arg_id = MacroCallId::new(db, loc);
-    #[allow(deprecated)] // builtin eager macros are never derives
+    #[expect(deprecated, reason = "builtin eager macros are never derives")]
     let (_, _, span) = arg_id.macro_arg(db);
     let ExpandResult { value: (arg_exp, arg_exp_map), err: parse_err } =
         arg_id.parse_macro_expansion(db);
@@ -76,6 +79,8 @@ pub fn expand_eager_macro_input(
             InFile::new(arg_id.into(), arg_exp.syntax_node()),
             krate,
             call_site,
+            macro_depth,
+            recursion_limit,
             resolver,
             eager_callback,
         )
@@ -112,6 +117,7 @@ pub fn expand_eager_macro_input(
             })),
         },
         ctxt: call_site,
+        macro_depth,
     };
 
     ExpandResult { value: Some(MacroCallId::new(db, loc)), err }
@@ -124,6 +130,7 @@ fn lazy_expand<'db>(
     ast_id: AstId<ast::MacroCall>,
     krate: Crate,
     call_site: SyntaxContext,
+    macro_depth: u32,
     eager_callback: EagerCallBackFn<'_>,
 ) -> ExpandResult<(InFile<Parse<SyntaxNode>>, &'db ExpansionSpanMap)> {
     let expand_to = ExpandTo::from_call_site(macro_call);
@@ -132,6 +139,7 @@ fn lazy_expand<'db>(
         krate,
         MacroCallKind::FnLike { ast_id, expand_to, eager: None },
         call_site,
+        macro_depth,
     );
     eager_callback(ast_id.map(|ast_id| (AstPtr::new(macro_call), ast_id)), id);
 
@@ -148,6 +156,8 @@ fn eager_macro_recur(
     curr: InFile<SyntaxNode>,
     krate: Crate,
     call_site: SyntaxContext,
+    macro_depth: u32,
+    recursion_limit: u32,
     macro_resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
     eager_callback: EagerCallBackFn<'_>,
 ) -> ExpandResult<Option<(SyntaxNode, TextSize)>> {
@@ -206,6 +216,14 @@ fn eager_macro_recur(
             }
         };
         let ast_id = curr.file_id.ast_id_map(db).ast_id(&call);
+
+        if macro_depth > recursion_limit {
+            return ExpandResult::only_err(ExpandError::new(
+                span_map.span_at(call.syntax().text_range().start()),
+                ExpandErrorKind::RecursionOverflow,
+            ));
+        }
+
         let ExpandResult { value, err } = match def.kind {
             MacroDefKind::BuiltInEager(..) => {
                 let ExpandResult { value, err } = expand_eager_macro_input(
@@ -215,6 +233,8 @@ fn eager_macro_recur(
                     curr.with_value(ast_id),
                     def,
                     call_site,
+                    macro_depth + 1,
+                    recursion_limit,
                     macro_resolver,
                     eager_callback,
                 );
@@ -254,6 +274,7 @@ fn eager_macro_recur(
                     curr.with_value(ast_id),
                     krate,
                     call_site,
+                    macro_depth,
                     eager_callback,
                 );
 
@@ -267,6 +288,8 @@ fn eager_macro_recur(
                     parse.as_ref().map(|it| it.syntax_node()),
                     krate,
                     call_site,
+                    macro_depth + 1,
+                    recursion_limit,
                     macro_resolver,
                     eager_callback,
                 );

@@ -1,7 +1,7 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 use crate::pin::Pin;
 use crate::sync::atomic::Ordering::{Acquire, Release};
-use crate::sys::futex::{self, futex_wait, futex_wake};
+use crate::sys::sync::futex::{self, futex_wait, futex_wake};
 use crate::time::Duration;
 
 type Futex = futex::SmallFutex;

@@ -1,6 +1,6 @@
-// rustfmt-normalize_comments: true
-// rustfmt-wrap_comments: true
-// rustfmt-struct_lit_single_line: false
+//@ rustfmt-normalize_comments: true
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-struct_lit_single_line: false
 
 // Struct literal expressions.
 
@@ -49,9 +49,9 @@ fn main() {
     };
 
     A {
-        // Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec a diam lectus. Sed sit
-        // amet ipsum mauris. Maecenas congue ligula ac quam viverra nec consectetur ante hendrerit.
-        // Donec et mollis dolor.
+        // Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec a diam
+        // lectus. Sed sit amet ipsum mauris. Maecenas congue ligula ac quam
+        // viverra nec consectetur ante hendrerit. Donec et mollis dolor.
         first: item(),
         // Praesent et diam eget libero egestas mattis sit amet vitae augue.
         // Nam tincidunt congue enim, ut porta lorem lacinia consectetur.

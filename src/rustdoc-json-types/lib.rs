@@ -278,7 +278,7 @@ pub struct Item {
     /// The full markdown docstring of this item. Absent if there is no documentation at all,
     /// Some("") if there is some documentation but it is empty (EG `#[doc = ""]`).
     pub docs: Option<String>,
-    /// This mapping resolves [intra-doc links](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md) from the docstring to their IDs
+    /// This mapping resolves [intra-doc links](https://rust-lang.github.io/rfcs/1946-intra-rustdoc-links.html) from the docstring to their IDs
     pub links: HashMap<String, Id>,
     /// Attributes on this item.
     ///

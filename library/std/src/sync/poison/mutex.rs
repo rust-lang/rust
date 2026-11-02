@@ -68,7 +68,7 @@ use crate::sys::sync as sys;
 ///     }
 ///
 ///     pub fn replace_with(&self, f: impl FnOnce(T) -> T) {
-///         let ptr = self.data.lock().expect("poisoned");
+///         let ptr = self.data.lock().expect("`Mutex` should not be poisoned");
 ///         // While `f` is running, the data is moved out of `*ptr`. If `f`
 ///         // panics, `*ptr` keeps pointing at a dropped value. The intention
 ///         // is that this will poison the mutex, so the following calls to
@@ -216,7 +216,7 @@ use crate::sys::sync as sys;
 /// threads.into_iter().for_each(|thread| {
 ///     thread
 ///         .join()
-///         .expect("The thread creating or execution failed !")
+///         .expect("Thread creation or execution should not fail")
 /// });
 ///
 /// assert_eq!(*res_mutex.lock().unwrap(), 800);
@@ -224,7 +224,7 @@ use crate::sys::sync as sys;
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Mutex")]
-pub struct Mutex<T: ?Sized> {
+pub struct Mutex<#[rustc_assert_variance(invariant)] T: ?Sized> {
     inner: sys::Mutex,
     poison: poison::Flag,
     data: UnsafeCell<T>,
@@ -274,7 +274,10 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[clippy::has_significant_drop]
 #[cfg_attr(not(test), rustc_diagnostic_item = "MutexGuard")]
-pub struct MutexGuard<'a, T: ?Sized + 'a> {
+pub struct MutexGuard<
+    #[rustc_assert_variance(covariant)] 'a,
+    #[rustc_assert_variance(invariant)] T: ?Sized + 'a,
+> {
     lock: &'a Mutex<T>,
     poison: poison::Guard,
 }
@@ -317,7 +320,10 @@ unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
                       and cause Futures to not implement `Send`"]
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 #[clippy::has_significant_drop]
-pub struct MappedMutexGuard<'a, T: ?Sized + 'a> {
+pub struct MappedMutexGuard<
+    #[rustc_assert_variance(covariant)] 'a,
+    #[rustc_assert_variance(invariant)] T: ?Sized + 'a,
+> {
     // NB: we use a pointer instead of `&'a mut T` to avoid `noalias` violations, because a
     // `MappedMutexGuard` argument doesn't hold uniqueness for its whole scope, only until it drops.
     // `NonNull` is covariant over `T`, so we add a `PhantomData<&'a mut T>` field
@@ -482,7 +488,7 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// thread::spawn(move || {
     ///     *c_mutex.lock().unwrap() = 10;
-    /// }).join().expect("thread::spawn failed");
+    /// }).join().expect("`thread::spawn` should not fail");
     /// assert_eq!(*mutex.lock().unwrap(), 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -531,7 +537,7 @@ impl<T: ?Sized> Mutex<T> {
     ///     } else {
     ///         println!("try_lock failed");
     ///     }
-    /// }).join().expect("thread::spawn failed");
+    /// }).join().expect("`thread::spawn` should not fail");
     /// assert_eq!(*mutex.lock().unwrap(), 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

@@ -1,5 +1,5 @@
 use rustc_errors::codes::*;
-use rustc_errors::{DiagArgFromDisplay, DiagSymbolList};
+use rustc_errors::{DiagArgFromDisplay, DiagArgValue, DiagSymbolList, IntoDiagArg};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
@@ -148,8 +148,17 @@ pub(crate) struct ClosureCannotBeStatic {
 }
 
 #[derive(Diagnostic)]
-#[diag("`move(expr)` is only supported in plain closures")]
-pub(crate) struct MoveExprOnlyInPlainClosures {
+#[diag("`move(expr)` is only supported in closures, `async`, `gen`, and `async gen` blocks")]
+pub(crate) struct MoveExprOnlyInSupportedContexts {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "nested `move(expr)` requires another enclosing closure, `async`, `gen`, or `async gen` block"
+)]
+pub(crate) struct NestedMoveExprWithoutEnclosingContext {
     #[primary_span]
     pub span: Span,
 }
@@ -257,6 +266,18 @@ pub(crate) enum InvalidAsmTemplateModifierRegClassSub {
     SupportModifier { class_name: Symbol, modifiers: DiagSymbolList<char> },
     #[note("the `{$class_name}` register class does not support template modifiers")]
     DoesNotSupportModifier { class_name: Symbol },
+
+    /// Enabling a feature is needed to use the requested modifier.
+    #[note(
+        "the `{$class_name}` register class only supports the following template modifiers on stable: {$stable_modifiers}"
+    )]
+    #[note("enabling the `{$feature}` feature will allow using: {$all_modifiers}")]
+    ModifierIsGated {
+        class_name: Symbol,
+        feature: Symbol,
+        stable_modifiers: DiagSymbolList<char>,
+        all_modifiers: DiagSymbolList<char>,
+    },
 }
 
 #[derive(Diagnostic)]
@@ -576,6 +597,57 @@ pub(crate) struct DelegationInfersMismatch {
     "attempted to lower target expression with definitions more than once while mapping argument"
 )]
 pub(crate) struct DelegationAttemptedBlockWithDefsRelowering {
+    #[primary_span]
+    pub span: Span,
+}
+
+/// Whether resolving `impl` or `mut` restriction paths
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum ResolvingRestrictionKind {
+    Impl,
+    Mut,
+}
+
+impl IntoDiagArg for ResolvingRestrictionKind {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        use std::borrow::Cow;
+        match self {
+            ResolvingRestrictionKind::Impl => DiagArgValue::Str(Cow::Borrowed("impl")),
+            ResolvingRestrictionKind::Mut => DiagArgValue::Str(Cow::Borrowed("mut")),
+        }
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "{$kind ->
+    [impl] trait implementation
+    *[mut] field mutation
+} can only be restricted to ancestor modules"
+)]
+pub(crate) struct RestrictionAncestorOnly {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) kind: ResolvingRestrictionKind,
+}
+
+#[derive(Diagnostic)]
+#[diag("ambiguous delegation to inherent impl function")]
+pub(crate) struct AmbiguousDelegationToInherentImpl {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("delegation to inherent impl must contain parent generics")]
+pub(crate) struct DelegationToInherentImplMustContainParentGenerics {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("parent segment of delegation to inherent impl can not contain infers")]
+pub(crate) struct DelegationToInherentImplParentContainsInfer {
     #[primary_span]
     pub span: Span,
 }

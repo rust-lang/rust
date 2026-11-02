@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use rustc_errors::{Diag, FatalAbort};
+use rustc_errors::Diag;
 
 use super::UnstableOptions;
 use crate::EarlyDiagCtxt;
@@ -21,11 +21,13 @@ pub(crate) struct ExternOpt {
 ///
 /// The options field will be a string containing comma-separated options that will need further
 /// parsing and processing.
+///
+/// On error, the returned `Diag` is fatal.
 pub(crate) fn split_extern_opt<'a>(
     early_dcx: &'a EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
     extern_opt: &str,
-) -> Result<ExternOpt, Diag<'a, FatalAbort>> {
+) -> Result<ExternOpt, Diag<'a>> {
     let (name, path) = match extern_opt.split_once('=') {
         None => (extern_opt.to_string(), None),
         Some((name, path)) => (name.to_string(), Some(PathBuf::from(path))),

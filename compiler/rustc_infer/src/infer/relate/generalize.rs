@@ -1,12 +1,10 @@
 use std::mem;
 
 use rustc_data_structures::sso::SsoHashMap;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
-use rustc_middle::bug;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, InferConst, Term, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::Span;
+use rustc_middle::ty::{self, InferConst, Term, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
+use rustc_span::{Span, bug};
 use tracing::{debug, instrument, warn};
 
 use super::{PredicateEmittingRelation, Relate, RelateResult, TypeRelation};
@@ -161,81 +159,33 @@ impl<'tcx> InferCtxt<'tcx> {
             let Some(source_alias) = source_term.to_alias_term() else {
                 bug!("generalized `{source_term:?} to infer, not an alias");
             };
-            if self.next_trait_solver() {
-                if let Some(generalized_ty) = generalized_term.as_type() {
-                    match instantiation_variance {
-                        ty::Invariant => relation.register_predicates([ty::ProjectionPredicate {
-                            projection_term: source_alias.into(),
-                            term: generalized_ty.into(),
-                        }]),
-                        ty::Covariant => {
-                            // Generate a new var, then do:
-                            // `source_alias == ?A && ?A <: generalized_ty`
-                            let new_var = self.next_ty_var(relation.span());
-                            relation.register_predicates([
-                                ty::PredicateKind::Subtype(ty::SubtypePredicate {
-                                    a_is_expected: !target_is_expected,
-                                    a: new_var,
-                                    b: generalized_ty,
-                                }),
-                                ty::PredicateKind::Clause(ty::ClauseKind::Projection(
-                                    ty::ProjectionPredicate {
-                                        projection_term: source_alias.into(),
-                                        term: new_var.into(),
-                                    },
-                                )),
-                            ]);
-                        }
-                        ty::Contravariant => {
-                            // a :> b is b <: a
-                            let new_var = self.next_ty_var(relation.span());
-                            relation.register_predicates([
-                                ty::PredicateKind::Subtype(ty::SubtypePredicate {
-                                    a_is_expected: target_is_expected,
-                                    a: generalized_ty,
-                                    b: new_var,
-                                }),
-                                ty::PredicateKind::Clause(ty::ClauseKind::Projection(
-                                    ty::ProjectionPredicate {
-                                        projection_term: source_alias.into(),
-                                        term: new_var.into(),
-                                    },
-                                )),
-                            ]);
-                        }
-                        ty::Bivariant => unreachable!("bivariant generalization"),
-                    }
-                } else {
-                    debug_assert_eq!(instantiation_variance, ty::Variance::Invariant);
-                    relation.register_predicates([ty::ProjectionPredicate {
+            assert!(
+                !self.next_trait_solver(),
+                "nonrigid aliases should be handled in relations, not here"
+            );
+            match source_alias.kind {
+                ty::AliasTermKind::ProjectionTy { .. }
+                | ty::AliasTermKind::ProjectionConst { .. } => {
+                    // FIXME: This does not handle subtyping correctly, we could
+                    // instead create a new inference variable `?normalized_source`, emitting
+                    // `Projection(normalized_source, ?ty_normalized)` and
+                    // `?normalized_source <: generalized_term`.
+                    relation.register_predicates([ty::ProjectionClause {
                         projection_term: source_alias,
                         term: generalized_term,
                     }]);
                 }
-            } else {
-                match source_alias.kind {
-                    ty::AliasTermKind::ProjectionTy { .. }
-                    | ty::AliasTermKind::ProjectionConst { .. } => {
-                        // FIXME: This does not handle subtyping correctly, we could
-                        // instead create a new inference variable `?normalized_source`, emitting
-                        // `Projection(normalized_source, ?ty_normalized)` and
-                        // `?normalized_source <: generalized_term`.
-                        relation.register_predicates([ty::ProjectionPredicate {
-                            projection_term: source_alias,
-                            term: generalized_term,
-                        }]);
-                    }
-                    // The old solver only accepts projection predicates for associated types.
-                    ty::AliasTermKind::InherentTy { .. }
-                    | ty::AliasTermKind::FreeTy { .. }
-                    | ty::AliasTermKind::OpaqueTy { .. } => {
-                        return Err(TypeError::CyclicTy(source_term.expect_type()));
-                    }
-                    ty::AliasTermKind::InherentConst { .. }
-                    | ty::AliasTermKind::FreeConst { .. }
-                    | ty::AliasTermKind::AnonConst { .. } => {
-                        return Err(TypeError::CyclicConst(source_term.expect_const()));
-                    }
+                // The old solver only accepts projection predicates for associated types.
+                ty::AliasTermKind::InherentTy { .. }
+                | ty::AliasTermKind::FreeTy { .. }
+                | ty::AliasTermKind::OpaqueTy { .. } => {
+                    return Err(TypeError::CyclicTy(source_term.expect_type()));
+                }
+                ty::AliasTermKind::InherentConstSelf { .. }
+                | ty::AliasTermKind::InherentConstImpl { .. }
+                | ty::AliasTermKind::FreeConst { .. }
+                | ty::AliasTermKind::AnonConst { .. } => {
+                    return Err(TypeError::CyclicConst(source_term.expect_const()));
                 }
             }
         } else {
@@ -406,6 +356,15 @@ struct Generalizer<'me, 'tcx> {
     cache: SsoHashMap<(Ty<'tcx>, ty::Variance, bool), Ty<'tcx>>,
 }
 
+/// Do we need to generalize this type?
+const NEEDS_GENERALIZATION: TypeFlags = TypeFlags::from_bits(
+    TypeFlags::HAS_FREE_REGIONS.bits()
+        | TypeFlags::HAS_INFER.bits()
+        | TypeFlags::HAS_PLACEHOLDER.bits()
+        | TypeFlags::HAS_NON_RIGID_ALIAS.bits(),
+)
+.unwrap();
+
 impl<'tcx> Generalizer<'_, 'tcx> {
     /// Create an error that corresponds to the term kind in `root_term`
     fn cyclic_term_error(&self) -> TypeError<'tcx> {
@@ -495,9 +454,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
         a_ty: Ty<'tcx>,
         _: Ty<'tcx>,
         def_id: DefId,
-        a_args: ty::GenericArgsRef<'tcx>,
-        b_args: ty::GenericArgsRef<'tcx>,
-        mk: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+        a_args: ty::GenericArgs<'tcx>,
+        b_args: ty::GenericArgs<'tcx>,
+        mk: impl FnOnce(ty::GenericArgs<'tcx>) -> Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         let args = if self.ambient_variance == ty::Invariant {
             // Avoid fetching the variance if we are in an invariant
@@ -525,7 +484,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
         debug!(?self.ambient_variance, "new ambient variance");
         // Recursive calls to `relate` can overflow the stack. For example a deeper version of
         // `ui/associated-consts/issue-93775.rs`.
-        let r = ensure_sufficient_stack(|| self.relate(a, b));
+        let r = self.relate(a, b);
         self.ambient_variance = old_ambient_variance;
         r
     }
@@ -533,6 +492,10 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
     #[instrument(level = "debug", skip(self, t2), ret)]
     fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         assert_eq!(t, t2); // we are misusing TypeRelation here; both LHS and RHS ought to be ==
+
+        if !t.has_type_flags(NEEDS_GENERALIZATION) {
+            return Ok(t);
+        }
 
         if let Some(&result) = self.cache.get(&(t, self.ambient_variance, self.in_alias)) {
             return Ok(result);

@@ -1,2 +1,2 @@
 use ::self;
-use a::self;
+use a::self::b;

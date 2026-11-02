@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(layout_for_ptr)]
-
 use std::{mem, ptr};
 
 struct Foo(#[allow(dead_code)] u32);

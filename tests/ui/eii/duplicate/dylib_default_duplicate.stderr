@@ -1,5 +1,5 @@
 error: multiple implementations of `#[eii1]`
-  --> $DIR/dylib_default_duplicate.rs:15:1
+  --> $DIR/dylib_default_duplicate.rs:14:1
    |
 LL | fn other(x: u64) {
    | ^^^^^^^^^^^^^^^^ first implemented here in crate `dylib_default_duplicate`

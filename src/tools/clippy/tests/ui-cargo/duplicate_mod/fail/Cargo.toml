@@ -1,5 +1,5 @@
 [package]
-name = "duplicate_mod"
+name = "duplicate-mod"
 edition = "2021"
 publish = false
 version = "0.1.0"

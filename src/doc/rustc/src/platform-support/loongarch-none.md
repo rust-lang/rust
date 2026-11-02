@@ -4,8 +4,8 @@ Freestanding/bare-metal LoongArch binaries in ELF format: firmware, kernels, etc
 
 | Target | Description | Tier |
 |--------|-------------|------|
-| `loongarch32-unknown-none` | LoongArch 32-bit, ILP32D ABI (freestanding, hard-float) | Tier 3 |
-| `loongarch32-unknown-none-softfloat` | LoongArch 32-bit, ILP32S ABI (freestanding, soft-float) | Tier 3 |
+| `loongarch32-unknown-none` | LoongArch 32-bit, ILP32D ABI (freestanding, hard-float) | Tier 2 |
+| `loongarch32-unknown-none-softfloat` | LoongArch 32-bit, ILP32S ABI (freestanding, soft-float) | Tier 2 |
 | `loongarch64-unknown-none` | LoongArch 64-bit, LP64D ABI (freestanding, hard-float) | Tier 2 |
 | `loongarch64-unknown-none-softfloat` | LoongArch 64-bit, LP64S ABI (freestanding, soft-float) | Tier 2 |
 

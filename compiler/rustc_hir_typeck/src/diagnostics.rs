@@ -6,13 +6,13 @@ use rustc_abi::ExternAbi;
 use rustc_ast::{AssignOpKind, Label};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic,
-    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic, IntoDiagArg,
+    Level, MultiSpan, Subdiagnostic, msg,
 };
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::Ty;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::{Ident, Span, Spanned, Symbol};
 
@@ -262,17 +262,6 @@ pub(crate) enum NeverTypeFallbackFlowingIntoUnsafe {
     },
 }
 
-#[derive(Diagnostic)]
-#[help("specify the types explicitly")]
-#[diag("this function depends on never type fallback being `()`")]
-pub(crate) struct DependencyOnUnitNeverTypeFallback<'tcx> {
-    #[note("in edition 2024, the requirement `{$obligation}` will fail")]
-    pub obligation_span: Span,
-    pub obligation: ty::Predicate<'tcx>,
-    #[subdiagnostic]
-    pub sugg: SuggestAnnotations,
-}
-
 #[derive(Clone)]
 pub(crate) enum SuggestAnnotation {
     Unit(Span),
@@ -286,7 +275,7 @@ pub(crate) struct SuggestAnnotations {
     pub suggestions: Vec<SuggestAnnotation>,
 }
 impl Subdiagnostic for SuggestAnnotations {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         if self.suggestions.is_empty() {
             return;
         }
@@ -349,7 +338,7 @@ pub(crate) struct TypeMismatchFruTypo {
 }
 
 impl Subdiagnostic for TypeMismatchFruTypo {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.arg("expr", self.expr.as_deref().unwrap_or("NONE"));
 
         // Only explain that `a ..b` is a range if it's split up
@@ -371,7 +360,7 @@ impl Subdiagnostic for TypeMismatchFruTypo {
             );
         }
 
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             self.expr_span.shrink_to_hi(),
             msg!(
                 "to set the remaining fields{$expr ->
@@ -572,7 +561,7 @@ pub(crate) struct RemoveSemiForCoerce {
 }
 
 impl Subdiagnostic for RemoveSemiForCoerce {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let mut multispan: MultiSpan = self.semi.into();
         multispan.push_span_label(
             self.expr,
@@ -593,6 +582,14 @@ impl Subdiagnostic for RemoveSemiForCoerce {
             Applicability::MaybeIncorrect,
         );
     }
+}
+
+#[derive(Diagnostic)]
+#[diag("runtime values cannot be referenced in patterns", code = E0080)]
+pub(crate) struct NonConstPathInPattern {
+    #[primary_span]
+    #[label("references a runtime value")]
+    pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
@@ -690,6 +687,30 @@ pub(crate) struct SuggestPtrNullMut {
     pub span: Span,
 }
 
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "consider using `&mut` instead",
+    applicability = "maybe-incorrect",
+    style = "verbose",
+    code = "&mut "
+)]
+pub(crate) struct SuggestRefMut {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "consider using `&raw mut` instead",
+    applicability = "maybe-incorrect",
+    style = "verbose",
+    code = "&raw mut "
+)]
+pub(crate) struct SuggestRawMut {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(
     "trivial {$numeric ->
@@ -715,9 +736,9 @@ pub(crate) struct BreakNonLoop<'a> {
     pub break_expr_span: Span,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'_, G> for BreakNonLoop<'a> {
+impl<'a> Diagnostic<'_> for BreakNonLoop<'a> {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(dcx, level, msg!("`break` with value from a `{$kind}` loop"));
         diag.span(self.span);
         diag.code(E0571);
@@ -729,7 +750,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'_, G> for BreakNonLoop<'a> {
         if let Some(head) = self.head {
             diag.span_label(head, msg!("you can't `break` with a value in a `{$kind}` loop"));
         }
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             self.span,
             msg!("use `break` on its own without a value inside this `{$kind}` loop"),
             self.suggestion,
@@ -747,7 +768,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'_, G> for BreakNonLoop<'a> {
                     diag.downgrade_to_delayed_bug();
                 }
                 _ => {
-                    diag.span_suggestion(
+                    diag.span_suggestion_verbose(
                         self.break_expr_span,
                         msg!("alternatively, you might have meant to use the available loop label"),
                         label.ident,
@@ -819,10 +840,13 @@ pub(crate) struct OutsideLoop<'a> {
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct OutsideLoopSuggestion {
-    #[suggestion_part(code = "'block: ")]
+    #[suggestion_part(code = "{block_prefix}")]
     pub block_span: Span,
     #[suggestion_part(code = " 'block")]
     pub break_spans: Vec<Span>,
+    #[suggestion_part(code = " }}")]
+    pub wrap_end: Option<Span>,
+    pub block_prefix: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -870,7 +894,7 @@ pub(crate) struct NoAssociatedItem<'tcx> {
 )]
 pub(crate) struct CandidateTraitNote {
     #[primary_span]
-    pub span: Span,
+    pub span: MultiSpan,
     pub trait_name: String,
     pub item_name: Ident,
     pub action_or_ty: String,
@@ -914,7 +938,7 @@ pub(crate) enum CastUnknownPointerSub {
 }
 
 impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         match self {
             CastUnknownPointerSub::To(span) => {
                 let msg = msg!("needs more type information");
@@ -1210,9 +1234,9 @@ pub(crate) struct NakedFunctionsAsmBlock {
     pub non_asms: Vec<Span>,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
+impl Diagnostic<'_> for NakedFunctionsAsmBlock {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(
             dcx,
             level,
@@ -1257,7 +1281,7 @@ pub(crate) fn maybe_emit_plus_equals_diagnostic<'a>(
 
         err.span_label(assign_op.span, "cannot use `+=` in a let chain");
 
-        err.span_suggestion(
+        err.span_suggestion_short(
             assign_op.span,
             "you might have meant to compare with `==` instead of assigning with `+=`",
             "==",
@@ -1326,4 +1350,55 @@ pub(crate) struct FloatLiteralF32Fallback {
         applicability = "machine-applicable"
     )]
     pub span: Option<Span>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "parentheses are required to parse this as an expression",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct ExprParenthesesNeeded {
+    #[suggestion_part(code = "(")]
+    left: Span,
+    #[suggestion_part(code = ")")]
+    right: Span,
+}
+
+impl ExprParenthesesNeeded {
+    pub(crate) fn surrounding(s: Span) -> Self {
+        ExprParenthesesNeeded { left: s.shrink_to_lo(), right: s.shrink_to_hi() }
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[panic_handler]` functions can't be `unsafe`")]
+pub(crate) struct UnsafePanicHandlers;
+
+#[derive(Diagnostic)]
+#[diag("comptime functions can only be called at compile time")]
+pub(crate) struct ComptimeFnCalledOutsideConstContext {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub const_block: WrapConstBlock,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "wrap the call in a const block to force compile time evaluation",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct WrapConstBlock {
+    #[suggestion_part(code = "const {{ ")]
+    pub left: Span,
+    #[suggestion_part(code = " }}")]
+    pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("the `{$adt_name}` must contain one field for wrapping the return value in delegation")]
+pub(crate) struct DelegationInvalidAdtForReturnWrapping {
+    #[primary_span]
+    pub span: Span,
+    pub adt_name: String,
 }

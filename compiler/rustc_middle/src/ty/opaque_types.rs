@@ -1,12 +1,11 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::Span;
 use rustc_span::def_id::DefId;
+use rustc_span::{Span, bug};
 use tracing::{debug, instrument, trace};
 
-use crate::error::ConstNotUsedTraitAlias;
+use crate::diagnostics::ConstNotUsedTraitAlias;
 use crate::ty::{
-    self, GenericArg, GenericArgKind, RegionExt, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable,
+    self, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
 };
 
 pub type OpaqueTypeKey<'tcx> = rustc_type_ir::OpaqueTypeKey<TyCtxt<'tcx>>;
@@ -50,8 +49,8 @@ impl<'tcx> ReverseMapper<'tcx> {
     fn fold_closure_args(
         &mut self,
         def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> ty::GenericArgsRef<'tcx> {
+        args: ty::GenericArgs<'tcx>,
+    ) -> ty::GenericArgs<'tcx> {
         // I am a horrible monster and I pray for death. When
         // we encounter a closure here, it is always a closure
         // from within the function that we are currently
@@ -126,7 +125,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
             Some(u) => panic!("region mapped to unexpected kind: {u:?}"),
             None if self.do_not_error => self.tcx.lifetimes.re_static,
             None => {
-                let e = self
+                let guar = self
                     .tcx
                     .dcx()
                     .struct_span_err(self.span, "non-defining opaque type use in defining scope")
@@ -137,9 +136,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                              parameter list of the `impl Trait` type alias",
                         ),
                     )
-                    .emit();
+                    .emit_err();
 
-                ty::Region::new_error(self.cx(), e)
+                ty::Region::new_error(self.cx(), guar)
             }
         }
     }
@@ -180,7 +179,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                                           used in parameter list for the `impl Trait` type alias"
                                 ),
                             )
-                            .emit();
+                            .emit_err();
                         Ty::new_error(self.tcx, guar)
                     }
                 }
@@ -202,14 +201,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                     Some(GenericArgKind::Const(c1)) => c1,
                     Some(u) => panic!("const mapped to unexpected kind: {u:?}"),
                     None => {
-                        let guar = self
-                            .tcx
-                            .dcx()
-                            .create_err(ConstNotUsedTraitAlias {
-                                ct: ct.to_string(),
-                                span: self.span,
-                            })
-                            .emit();
+                        let guar = self.tcx.dcx().emit_err(ConstNotUsedTraitAlias {
+                            ct: ct.to_string(),
+                            span: self.span,
+                        });
                         ty::Const::new_error(self.tcx, guar)
                     }
                 }

@@ -5,14 +5,16 @@
 )]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
+#![feature(default_field_values)]
 #![feature(deref_patterns)]
+#![feature(exitcode_exit_method)]
 #![feature(file_buffered)]
 #![feature(formatting_options)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
+#![feature(iter_partition_in_place)]
 #![feature(rustc_private)]
 #![feature(test)]
-#![feature(trim_prefix_suffix)]
 #![feature(variant_count)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
@@ -30,6 +32,7 @@
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
+extern crate rustc_attr_ir;
 extern crate rustc_attr_parsing;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -43,7 +46,6 @@ extern crate rustc_infer;
 extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
-extern crate rustc_lint_defs;
 extern crate rustc_log;
 extern crate rustc_macros;
 extern crate rustc_metadata;
@@ -54,18 +56,10 @@ extern crate rustc_resolve;
 extern crate rustc_serialize;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_structures;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate test;
-
-/// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
-/// and https://github.com/rust-lang/rust/pull/146627 for why we need this.
-///
-/// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `rustc` crates
-/// above, instead of via Cargo as you'd normally do. This is currently needed for LTO due to
-/// https://github.com/rust-lang/cc-rs/issues/1613.
-#[cfg(feature = "jemalloc")]
-extern crate tikv_jemalloc_sys as _;
 
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
@@ -77,7 +71,7 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
+use rustc_session::config::{ErrorOutputType, Input, RustcOptGroup, make_crate_type_option};
 use rustc_session::{EarlyDiagCtxt, getopts};
 use rustc_span::{BytePos, Span, SyntaxContext};
 use tracing::info;
@@ -372,6 +366,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
         ),
         opt(
+            Unstable,
+            Opt,
+            "",
+            "crate-list-heading",
+            "heading under which to list this crate in the sidebar crate list",
+            "TEXT",
+        ),
+        opt(
             Stable,
             Opt,
             "",
@@ -550,6 +552,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "emit",
             "Comma separated list of types of output for rustdoc to emit",
             "[html-static-files,html-non-static-files,dep-info]",
+        ),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "print",
+            "Rustdoc information to print on stdout (or to a file)",
+            "<INFO>[=<FILE>]",
         ),
         opt(Unstable, FlagMulti, "", "no-run", "Compile doctests without running them", ""),
         opt(
@@ -773,25 +783,40 @@ fn run_renderer<
 /// Renders and writes cross-crate info files, like the search index. This function exists so that
 /// we can run rustdoc without a crate root in the `--merge=finalize` mode. Cross-crate info files
 /// discovered via `--read-doc-meta-dir` are combined and written to the doc root.
-fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
+fn run_merge_finalize(
+    render_options: config::RenderOptions,
+    compiler: &interface::Compiler,
+) -> Result<(), error::Error> {
     assert!(
-        opt.should_merge.write_rendered_cci,
+        render_options.should_merge.write_rendered_cci,
         "config.rs only allows us to return InputMode::NoInputMergeFinalize if --merge=finalize"
     );
     assert!(
-        !opt.should_merge.read_rendered_cci,
+        !render_options.should_merge.read_rendered_cci,
         "config.rs only allows us to return InputMode::NoInputMergeFinalize if --merge=finalize"
     );
-    let crates = html::render::CrateInfo::read_many(&opt.include_parts_dir)?;
-    let include_sources = !opt.html_no_source;
+    let crates = html::render::CrateInfo::read_many(&render_options.include_parts_dir)?;
+    let include_sources = !render_options.html_no_source;
+
     html::render::write_not_crate_specific(
         &crates,
-        &opt.output,
-        &opt,
-        &opt.themes,
-        opt.extension_css.as_deref(),
-        &opt.resource_suffix,
+        &render_options.output,
+        &render_options,
+        &render_options.themes,
+        render_options.extension_css.as_deref(),
+        &render_options.resource_suffix,
         include_sources,
+        &crate::html::layout::Layout {
+            logo: String::new(),
+            favicon: String::new(),
+            external_html: render_options.external_html.clone(),
+            default_settings: render_options.default_settings.clone(),
+            krate: String::new(),
+            krate_version: String::new(),
+            css_file_extension: render_options.extension_css.clone(),
+            scrape_examples_extension: false,
+        },
+        &compiler.sess,
     )?;
     Ok(())
 }
@@ -835,41 +860,74 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     let input = match input {
         config::InputMode::HasFile(input) => input,
         config::InputMode::NoInputMergeFinalize => {
+            if !options.prints.is_empty() {
+                dcx.fatal("`--print` is not supported for the `--write-doc-meta-dir` option");
+            }
+
+            let config = core::create_config(
+                Input::Str {
+                    name: rustc_span::FileName::Custom(String::new()),
+                    input: String::new(),
+                },
+                options,
+                &render_options,
+            );
             return wrap_return(
                 dcx,
-                rustc_span::create_session_globals_then(options.edition, &[], None, || {
-                    run_merge_finalize(render_options)
+                interface::run_compiler(config, |compiler| {
+                    run_merge_finalize(render_options, compiler)
                         .map_err(|e| format!("could not write merged cross-crate info: {e}"))
                 }),
             );
         }
     };
+    let md_input = config::markdown_input(&input);
 
-    let output_format = options.output_format;
+    if options.should_test || options.output_format == config::OutputFormat::Doctest {
+        if !options.prints.is_empty() {
+            dcx.fatal(format!(
+                "`--print` is not yet supported for the `{}` option",
+                if options.should_test { "--test" } else { "--output-format=doctest" }
+            ));
+        }
 
-    match (
-        options.should_test || output_format == config::OutputFormat::Doctest,
-        config::markdown_input(&input),
-    ) {
-        (true, Some(_)) => return wrap_return(dcx, doctest::test_markdown(&input, options, dcx)),
-        (true, None) => return doctest::run(dcx, input, options),
-        (false, Some(md_input)) => {
+        return match md_input {
+            Some(_) => wrap_return(dcx, doctest::test_markdown(&input, options, dcx)),
+            None => doctest::run(dcx, input, options),
+        };
+    }
+
+    if let Some(md_input) = md_input {
+        if !options.prints.is_empty() {
+            dcx.fatal("`--print` is not yet supported for standalone Markdown files");
+        }
+
+        return {
             let md_input = md_input.to_owned();
             let edition = options.edition;
             let config = core::create_config(input, options, &render_options);
+            let registered_lints = config.register_lints.is_some();
 
             // `markdown::render` can invoke `doctest::make_test`, which
             // requires session globals and a thread pool, so we use
             // `run_compiler`.
-            return wrap_return(
+            wrap_return(
                 dcx,
                 interface::run_compiler(config, |compiler| {
+                    let sess = &compiler.sess;
+
+                    // -W help
+                    if sess.opts.describe_lints {
+                        rustc_driver::describe_lints(sess, registered_lints);
+                        return Ok(());
+                    }
+
                     // construct a phony "crate" without actually running the parser
                     // allows us to use other compiler infrastructure like dep-info
-                    let file =
-                        compiler.sess.source_map().load_file(&md_input).map_err(|e| {
-                            format!("{md_input}: {e}", md_input = md_input.display())
-                        })?;
+                    let file = sess
+                        .source_map()
+                        .load_file(&md_input)
+                        .map_err(|e| format!("{md_input}: {e}", md_input = md_input.display()))?;
                     let inner_span = Span::new(
                         file.start_pos,
                         BytePos(file.start_pos.0 + file.normalized_source_len.0),
@@ -883,25 +941,27 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                         id: ast::DUMMY_NODE_ID,
                         is_placeholder: false,
                     };
-                    rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
-                        let has_dep_info = render_options.dep_info().is_some();
-                        if render_options.emit.contains(&EmitType::HtmlNonStaticFiles) {
-                            markdown::render_and_write(file, render_options, edition)?;
-                        }
-                        if has_dep_info {
-                            // Register the loaded external files in the source map so they show up in depinfo.
-                            // We can't load them via the source map because it gets created after we process the options.
-                            for external_path in &loaded_paths {
-                                let _ = compiler.sess.source_map().load_binary_file(external_path);
+                    let (res, _incr_comp_session) =
+                        rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
+                            let has_dep_info = render_options.dep_info().is_some();
+                            if render_options.emit.contains(&EmitType::HtmlNonStaticFiles) {
+                                markdown::render_and_write(file, render_options, edition)?;
                             }
-                            rustc_interface::passes::write_dep_info(tcx);
-                        }
-                        Ok(())
-                    })
+                            if has_dep_info {
+                                // Register the loaded external files in the source map so they show up in depinfo.
+                                // We can't load them via the source map because it gets created after we process the options.
+                                for external_path in &loaded_paths {
+                                    let _ =
+                                        compiler.sess.source_map().load_binary_file(external_path);
+                                }
+                                rustc_interface::passes::write_dep_info(tcx);
+                            }
+                            Ok(())
+                        });
+                    res
                 }),
-            );
-        }
-        (false, None) => {}
+            )
+        };
     }
 
     // need to move these items separately because we lose them by the time the closure is called,
@@ -923,7 +983,6 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
 
     let output_format = options.output_format;
     let config = core::create_config(input, options, &render_options);
-
     let registered_lints = config.register_lints.is_some();
 
     interface::run_compiler(config, |compiler| {
@@ -935,8 +994,16 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             let _ = sess.source_map().load_binary_file(external_path);
         }
 
+        // -W help
         if sess.opts.describe_lints {
             rustc_driver::describe_lints(sess, registered_lints);
+            return;
+        }
+
+        // --print
+        if rustc_driver::print_crate_info(&*compiler.codegen_backend, sess, true)
+            == rustc_driver::Compilation::Stop
+        {
             return;
         }
 
@@ -963,8 +1030,6 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             }
 
             cache.crate_version = crate_version;
-
-            rustc_interface::passes::emit_delayed_lints(tcx);
 
             if render_opts.dep_info().is_some() {
                 rustc_interface::passes::write_dep_info(tcx);
@@ -1006,7 +1071,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                     unreachable!()
                 }
             }
-        })
+        });
     })
 }
 

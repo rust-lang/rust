@@ -1,6 +1,8 @@
 error[E0080]: accessing memory based on pointer with alignment ALIGN, but alignment ALIGN is required
   --> tests/fail/const-ub-checks.rs:LL:CC
    |
+LL | const UNALIGNED_READ: () = unsafe {
+...
 LL |     ptr.read();
    |     ^^^^^^^^^^ evaluation of `UNALIGNED_READ` failed here
 

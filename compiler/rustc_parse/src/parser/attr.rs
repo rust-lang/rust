@@ -211,7 +211,12 @@ impl<'a> Parser<'a> {
             AttrWrapper::empty(),
             true,
             false,
-            FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true },
+            FnParseMode {
+                req_name: |_, _| true,
+                context: FnContext::Free,
+                req_body: true,
+                allow_const_params: true,
+            },
             ForceCollect::No,
             AllowConstBlockItems::Yes,
         ) {
@@ -310,11 +315,15 @@ impl<'a> Parser<'a> {
     /// Parses an inner part of an attribute (the path and following tokens).
     /// The tokens must be either a delimited token stream, or empty token stream,
     /// or the "legacy" key-value form.
-    ///     PATH `(` TOKEN_STREAM `)`
-    ///     PATH `[` TOKEN_STREAM `]`
-    ///     PATH `{` TOKEN_STREAM `}`
-    ///     PATH
-    ///     PATH `=` UNSUFFIXED_LIT
+    ///
+    /// ```text
+    /// PATH `(` TOKEN_STREAM `)`
+    /// PATH `[` TOKEN_STREAM `]`
+    /// PATH `{` TOKEN_STREAM `}`
+    /// PATH
+    /// PATH `=` UNSUFFIXED_LIT
+    /// ```
+    ///
     /// The delimiters or `=` are still put into the resulting token stream.
     pub fn parse_attr_item(
         &mut self,
@@ -384,7 +393,7 @@ impl<'a> Parser<'a> {
             if let Some(attr) = attr {
                 // If we are currently capturing tokens (i.e. we are within a call to
                 // `Parser::collect_tokens`) record the token positions of this inner attribute,
-                // for possible later processing in a `LazyAttrTokenStream`.
+                // for possible later processing in a `LazyTokenStream`.
                 if let Capturing::Yes = self.capture_state.capturing {
                     let end_pos = self.num_bump_calls;
                     let parser_range = ParserRange(start_pos..end_pos);
@@ -438,7 +447,7 @@ impl<'a> Parser<'a> {
                     })
                     .unwrap()
                     .node;
-                Ok(attr_item.meta(attr_item.path.span).unwrap())
+                Ok(attr_item.meta(attr_item.span).unwrap())
             } else {
                 self.unexpected_any()
             };
@@ -502,5 +511,43 @@ impl<'a> Parser<'a> {
         }
 
         Err(self.dcx().create_err(err))
+    }
+
+    /// Recover from outer attributes in places where none were expected.
+    pub fn recover_from_outer_attributes(&mut self, target: &str) -> PResult<'a, ()> {
+        // We check the token ourselves first to prevent `#`
+        // from getting added to the set of expected tokens.
+        if !self.may_recover() || !matches!(self.token.kind, token::Pound | token::DocComment(..)) {
+            return Ok(());
+        }
+
+        let attrs = self.parse_outer_attributes()?;
+        if attrs.is_empty() {
+            return Ok(());
+        }
+
+        let attrs = attrs.take_for_recovery(self.psess);
+        let span = attrs.first().unwrap().span.to(attrs.last().unwrap().span);
+
+        let subject = if attrs.iter().all(|attr| matches!(attr.kind, ast::AttrKind::DocComment(..)))
+        {
+            "doc comments"
+        } else {
+            "attributes"
+        };
+
+        self.dcx()
+            .struct_span_err(span, format!("{subject} cannot be applied to {target}"))
+            .with_span_label(span, format!("{subject} are not allowed here"))
+            .with_span_suggestion_with_style(
+                span.until(self.token.span),
+                format!("remove these {subject}"),
+                String::new(),
+                rustc_errors::Applicability::MachineApplicable,
+                rustc_errors::SuggestionStyle::CompletelyHidden,
+            )
+            .emit();
+
+        Ok(())
     }
 }

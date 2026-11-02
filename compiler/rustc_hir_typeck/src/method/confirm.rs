@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 use std::ops::Deref;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir as hir;
-use rustc_hir::GenericArg;
 use rustc_hir::def_id::DefId;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_value_path, lower_generic_args,
@@ -13,7 +13,8 @@ use rustc_hir_analysis::hir_ty_lowering::{
 use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferOk, RegionVariableOrigin,
 };
-use rustc_lint::builtin::{
+use rustc_infer::traits::WellFormedLoc;
+use rustc_lint_defs::builtin::{
     AMBIGUOUS_GLOB_IMPORTED_TRAITS, RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
 };
 use rustc_middle::traits::ObligationCauseCode;
@@ -22,11 +23,10 @@ use rustc_middle::ty::adjustment::{
     PointerCoercion,
 };
 use rustc_middle::ty::{
-    self, AssocContainer, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, Unnormalized, UserArgs,
+    self, AssocContainer, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, Unnormalized, UserArgs,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, bug, span_bug};
 use rustc_trait_selection::traits;
 use tracing::debug;
 
@@ -40,6 +40,7 @@ pub(crate) struct ConfirmContext<'a, 'tcx> {
     self_expr: &'tcx hir::Expr<'tcx>,
     call_expr: &'tcx hir::Expr<'tcx>,
     skip_record_for_diagnostics: bool,
+    call_args: Option<&'tcx [hir::Expr<'tcx>]>,
 }
 
 impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
@@ -64,6 +65,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unadjusted_self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
         segment: &'tcx hir::PathSegment<'tcx>,
+        args: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> ConfirmResult<'tcx> {
         debug!(
             "confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
@@ -71,6 +73,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let mut confirm_cx = ConfirmContext::new(self, span, self_expr, call_expr);
+        confirm_cx.call_args = args;
         confirm_cx.confirm(unadjusted_self_ty, pick, segment)
     }
 
@@ -96,7 +99,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self_expr: &'tcx hir::Expr<'tcx>,
         call_expr: &'tcx hir::Expr<'tcx>,
     ) -> ConfirmContext<'a, 'tcx> {
-        ConfirmContext { fcx, span, self_expr, call_expr, skip_record_for_diagnostics: false }
+        ConfirmContext {
+            fcx,
+            span,
+            self_expr,
+            call_expr,
+            skip_record_for_diagnostics: false,
+            call_args: None,
+        }
     }
 
     fn confirm(
@@ -257,7 +267,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 let region = self.next_region_var(RegionVariableOrigin::Autoref(self.span));
 
                 target = match target.kind() {
-                    ty::Adt(pin, args) if self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) => {
+                    ty::Adt(pin, args) if self.tcx.is_lang_item(pin.did(), LangItem::Pin) => {
                         let inner_ty = match args[0].expect_ty().kind() {
                             ty::Ref(_, ty, _) => *ty,
                             _ => bug!("Expected a reference type for argument to Pin"),
@@ -291,7 +301,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
-    ) -> GenericArgsRef<'tcx> {
+    ) -> GenericArgs<'tcx> {
         match pick.kind {
             probe::InherentImplPick => {
                 let impl_def_id = pick.item.container_id(self.tcx);
@@ -346,7 +356,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 })
             }
 
-            probe::TraitPick(_) => {
+            probe::TraitPick { .. } => {
                 let trait_def_id = pick.item.container_id(self.tcx);
 
                 // Make a trait reference `$0 : Trait<$1...$n>`
@@ -409,8 +419,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         pick: &probe::Pick<'tcx>,
         seg: &hir::PathSegment<'tcx>,
-        parent_args: GenericArgsRef<'tcx>,
-    ) -> GenericArgsRef<'tcx> {
+        parent_args: GenericArgs<'tcx>,
+    ) -> GenericArgs<'tcx> {
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
         // variables.
@@ -450,23 +460,23 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 &mut self,
                 preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
-                arg: &GenericArg<'tcx>,
+                arg: &hir::GenericArg<'_>,
             ) -> ty::GenericArg<'tcx> {
                 match (&param.kind, arg) {
-                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => self
+                    (GenericParamDefKind::Lifetime, hir::GenericArg::Lifetime(lt)) => self
                         .cfcx
                         .fcx
                         .lowerer()
                         .lower_lifetime(lt, RegionInferReason::Param(param))
                         .into(),
-                    (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
+                    (GenericParamDefKind::Type { .. }, hir::GenericArg::Type(ty)) => {
                         // We handle the ambig portions of `Ty` in the match arms below
                         self.cfcx.lower_ty(ty.as_unambig_ty()).raw.into()
                     }
-                    (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
+                    (GenericParamDefKind::Type { .. }, hir::GenericArg::Infer(inf)) => {
                         self.cfcx.lower_ty(&inf.to_ty()).raw.into()
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
+                    (GenericParamDefKind::Const { .. }, hir::GenericArg::Const(ct)) => self
                         .cfcx
                         // We handle the ambig portions of `ConstArg` in the match arms below
                         .lower_const_arg(
@@ -478,7 +488,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                                 .skip_norm_wip(),
                         )
                         .into(),
-                    (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
+                    (GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
                         self.cfcx.ct_infer(Some(param), inf.span).into()
                     }
                     (kind, arg) => {
@@ -489,10 +499,19 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             fn inferred_kind(
                 &mut self,
-                _preceding_args: &[ty::GenericArg<'tcx>],
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 _infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
+                if let Some(pos) = param.kind.arg_pos()
+                    && let Some(args) = self.cfcx.call_args
+                    && let Some(arg) = pos.checked_sub(1).and_then(|index| args.get(index as usize))
+                {
+                    let tcx = self.cfcx.tcx;
+                    let ty =
+                        tcx.type_of(param.def_id).instantiate(tcx, preceding_args).skip_norm_wip();
+                    return self.cfcx.lower_const_arg_expr(arg, ty).into();
+                }
                 self.cfcx.var_for_def(self.cfcx.span, param)
             }
         }
@@ -500,7 +519,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let args = lower_generic_args(
             self.fcx,
             pick.item.def_id,
-            parent_args,
+            parent_args.as_slice(),
             false,
             None,
             &arg_count_correct,
@@ -561,7 +580,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             self_ty, method_self_ty, self.span, pick
         );
         let cause = self.cause(self.self_expr.span, ObligationCauseCode::Misc);
-        match self.at(&cause, self.param_env).sup(DefineOpaqueTypes::Yes, method_self_ty, self_ty) {
+        match self.sup_raw(&cause, self.param_env, DefineOpaqueTypes::Yes, method_self_ty, self_ty)
+        {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
             }
@@ -594,7 +614,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn instantiate_method_sig(
         &mut self,
         pick: &probe::Pick<'tcx>,
-        all_args: GenericArgsRef<'tcx>,
+        all_args: GenericArgs<'tcx>,
     ) -> (ty::FnSig<'tcx>, ty::InstantiatedClauses<'tcx>) {
         debug!("instantiate_method_sig(pick={:?}, all_args={:?})", pick, all_args);
 
@@ -618,7 +638,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn add_obligations(
         &mut self,
         sig: ty::FnSig<'tcx>,
-        all_args: GenericArgsRef<'tcx>,
+        all_args: GenericArgs<'tcx>,
         method_clauses: ty::InstantiatedClauses<'tcx>,
         def_id: DefId,
     ) {
@@ -649,7 +669,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         // this is a projection from a trait reference, so we have to
         // make sure that the trait reference inputs are well-formed.
-        self.add_wf_bounds(all_args, self.call_expr.span);
+        self.add_wf_bounds(all_args, self.call_expr.span, self.call_expr.hir_id);
 
         // the function type must also be well-formed (this is not
         // implied by the args being well-formed because of inherent
@@ -658,7 +678,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             self.register_wf_obligation(
                 ty.into(),
                 self.span,
-                ObligationCauseCode::WellFormed(None),
+                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(self.call_expr.hir_id)),
             );
         }
     }
@@ -755,7 +775,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         pick: &probe::Pick<'_>,
         segment: &hir::PathSegment<'tcx>,
     ) {
-        if pick.kind != probe::PickKind::TraitPick(true) {
+        if pick.kind != (probe::PickKind::TraitPick { is_ambiguously_imported: true }) {
             return;
         }
         let trait_name = self.tcx.item_name(pick.item.container_id(self.tcx));
@@ -766,11 +786,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             segment.hir_id,
             rustc_errors::DiagDecorator(|diag| {
                 diag.primary_message(format!(
-                    "Use of ambiguously glob imported trait `{trait_name}`"
+                    "use of ambiguously glob imported trait `{trait_name}`"
                 ))
                 .span(segment.ident.span)
                 .span_label(import_span, format!("`{trait_name}` imported ambiguously here"))
-                .help(format!("Import `{trait_name}` explicitly"));
+                .help(format!("import `{trait_name}` explicitly"));
             }),
         );
     }

@@ -1,3 +1,4 @@
+use crate::fmt;
 use crate::os::xous::ffi::Error as XousError;
 
 pub fn errno() -> i32 {
@@ -12,6 +13,7 @@ pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
     crate::io::ErrorKind::Uncategorized
 }
 
-pub fn error_string(errno: i32) -> String {
-    Into::<XousError>::into(errno).to_string()
+pub fn format_error(errno: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let error = XousError::from(errno);
+    write!(f, "{error}")
 }

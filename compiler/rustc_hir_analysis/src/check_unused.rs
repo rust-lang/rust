@@ -2,8 +2,8 @@ use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_lint_defs::builtin::UNUSED_IMPORTS;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint;
 use rustc_span::Span;
 use tracing::debug;
 
@@ -12,8 +12,8 @@ struct UnusedImport<'tcx> {
     span: Span,
 }
 
-impl<'a, 'tcx> Diagnostic<'a, ()> for UnusedImport<'tcx> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a, 'tcx> Diagnostic<'a> for UnusedImport<'tcx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let Self { tcx, span } = self;
         if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
             Diag::new(dcx, level, format!("unused import: `{snippet}`"))
@@ -44,16 +44,15 @@ pub(super) fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
         if used_trait_imports.contains(&id) {
             continue;
         }
-        let item = tcx.hir_expect_item(id);
-        if item.span.is_dummy() {
+        let span = tcx.def_span(id);
+        if span.is_dummy() {
             continue;
         }
-        let (path, _) = item.expect_use();
         tcx.emit_node_span_lint(
-            lint::builtin::UNUSED_IMPORTS,
-            item.hir_id(),
-            path.span,
-            UnusedImport { tcx, span: path.span },
+            UNUSED_IMPORTS,
+            tcx.local_def_id_to_hir_id(id),
+            span,
+            UnusedImport { tcx, span },
         );
     }
 }

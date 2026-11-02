@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::in_automatically_derived;
 use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
 use rustc_span::{ExpnKind, MacroKind, Span};
 
 declare_clippy_lint! {
@@ -17,15 +17,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// fn main() {
-    ///     println!("Hello world")
-    /// }
+    /// println!("Hello world")
     /// ```
     /// Use instead:
     /// ```no_run
-    /// fn main() {
-    ///     println!("Hello world");
-    /// }
+    /// println!("Hello world");
     /// ```
     #[clippy::version = "1.52.0"]
     pub SEMICOLON_IF_NOTHING_RETURNED,
@@ -40,6 +36,7 @@ impl<'tcx> LateLintPass<'tcx> for SemicolonIfNothingReturned {
         if !block.span.from_expansion()
             && let Some(expr) = block.expr
             && !from_attr_macro(expr.span)
+            && !in_automatically_derived(cx.tcx, expr.hir_id)
             && let t_expr = cx.typeck_results().expr_ty(expr)
             && t_expr.is_unit()
             && let mut app = Applicability::MachineApplicable

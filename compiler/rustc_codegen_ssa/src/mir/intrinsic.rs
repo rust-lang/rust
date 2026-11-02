@@ -1,9 +1,8 @@
 use rustc_abi::{Align, FieldIdx, WrappingRange};
 use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::{ErrorGuaranteed, sym};
+use rustc_span::{ErrorGuaranteed, bug, span_bug, sym};
 use rustc_target::spec::Arch;
 
 use super::operand::{OperandRef, OperandValue};
@@ -121,11 +120,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if args.is_empty() {
             match name {
-                sym::abort
+                sym::abort_immediate
                 | sym::unreachable
                 | sym::cold_path
                 | sym::gpu_launch_sized_workgroup_mem
                 | sym::breakpoint
+                | sym::codeview_annotation
                 | sym::amdgpu_dispatch_ptr
                 | sym::assert_zero_valid
                 | sym::assert_mem_uninitialized_valid
@@ -135,6 +135,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | sym::atomic_fence
                 | sym::atomic_singlethreadfence
                 | sym::caller_location
+                | sym::offload_get_num_devices
                 | sym::return_address => {}
                 _ => {
                     span_bug!(
@@ -151,8 +152,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let op_val: OperandValue<_> = match name {
-            sym::abort => {
-                bx.abort();
+            sym::abort_immediate => {
+                bx.abort_immediate();
                 OperandValue::ZeroSized
             }
 
@@ -164,13 +165,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::size_of_val => {
                 let tp_ty = fn_args.type_at(0);
                 let (_, meta) = args[0].val.pointer_parts();
-                let (llsize, _) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
+                let (llsize, _) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta, span);
                 OperandValue::Immediate(llsize)
             }
             sym::align_of_val => {
                 let tp_ty = fn_args.type_at(0);
                 let (_, meta) = args[0].val.pointer_parts();
-                let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
+                let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta, span);
                 OperandValue::Immediate(llalign)
             }
             sym::vtable_size | sym::vtable_align => {
@@ -180,11 +181,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
                     _ => bug!(),
                 };
-                let value = meth::VirtualIndex::from_index(idx).get_usize(
-                    bx,
-                    vtable,
-                    instance.ty(bx.tcx(), bx.typing_env()),
-                );
+                let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
                 match name {
                     // Size is always <= isize::MAX.
                     sym::vtable_size => {
@@ -206,7 +203,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let layout = bx.layout_of(ty);
                 let ptr = args[0].immediate();
                 let offset = args[1].immediate();
-                OperandValue::Immediate(bx.gep(bx.backend_type(layout), ptr, &[offset]))
+                OperandValue::Immediate(bx.gep(layout.size, ptr, offset))
             }
             sym::copy => {
                 copy_intrinsic(
@@ -381,12 +378,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return IntrinsicResult::Err(err);
                 }
                 let ordering = fn_args.const_at(1).to_value();
+                let volatile = fn_args.const_at(2).to_value();
                 let layout = bx.layout_of(ty);
                 let source = args[0].immediate();
                 OperandValue::Immediate(bx.atomic_load(
                     bx.backend_type(layout),
                     source,
                     parse_atomic_ordering(ordering),
+                    volatile.to_leaf().try_to_bool().unwrap(),
                     layout.size,
                 ))
             }
@@ -397,10 +396,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return IntrinsicResult::Err(err);
                 }
                 let ordering = fn_args.const_at(1).to_value();
+                let volatile = fn_args.const_at(2).to_value();
                 let size = bx.layout_of(ty).size;
                 let val = args[1].immediate();
                 let ptr = args[0].immediate();
-                bx.atomic_store(val, ptr, parse_atomic_ordering(ordering), size);
+                bx.atomic_store(
+                    val,
+                    ptr,
+                    parse_atomic_ordering(ordering),
+                    volatile.to_leaf().try_to_bool().unwrap(),
+                    size,
+                );
                 OperandValue::ZeroSized
             }
             // These are all AtomicRMW ops
@@ -424,8 +430,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     parse_atomic_ordering(fail_ordering),
                     weak,
                 );
-                let val = bx.from_immediate(val);
-                let success = bx.from_immediate(success);
 
                 let mut builder = OperandRefBuilder::new(result_layout);
                 builder.insert_imm(FieldIdx::from_u32(0), val);

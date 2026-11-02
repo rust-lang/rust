@@ -2,26 +2,26 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::{is_from_proc_macro, trait_ref_of_method};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_ast::visit::{try_visit, walk_list};
+use rustc_attr_ir::lang_items;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
-use rustc_hir::intravisit::{IgnoreNested, NestedFilter};
 use rustc_hir::intravisit::{
-    Visitor, VisitorExt, walk_fn_decl, walk_generic_args, walk_generic_param, walk_generics, walk_impl_item_ref,
-    walk_param_bound, walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty, walk_where_predicate,
+    IgnoreNested, NestedFilter, Visitor, walk_fn_decl, walk_generic_args, walk_generic_param, walk_generics,
+    walk_impl_item_ref, walk_param_bound, walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty,
+    walk_where_predicate,
 };
 use rustc_hir::{
     AmbigArg, BodyId, FnDecl, FnPtrTy, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind,
     Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeKind, LifetimeParamKind, Node,
     PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, TraitRef, Ty, TyKind, WhereBoundPredicate,
-    WherePredicate, WherePredicateKind, lang_items,
+    WherePredicate, WherePredicateKind,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, kw};
@@ -136,7 +136,7 @@ pub struct Lifetimes {
 
 impl Lifetimes {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -226,7 +226,7 @@ fn check_fn_inner<'tcx>(
         .filter(|param| matches!(param.kind, GenericParamKind::Type { .. }));
 
     for typ in types {
-        if !typ.span.eq_ctxt(span) {
+        if typ.span.ctxt() != span.ctxt() {
             return;
         }
 
@@ -269,7 +269,7 @@ fn check_fn_inner<'tcx>(
     let elidable = could_use_elision(cx, sig.decl, body, trait_sig, generics.params, msrv);
     let has_elidable_lts = elidable
         .as_ref()
-        .is_some_and(|(_, usages)| !usages.iter().any(|usage| !usage.ident.span.eq_ctxt(span)));
+        .is_some_and(|(_, usages)| !usages.iter().any(|usage| usage.ident.span.ctxt() != span.ctxt()));
 
     // Only check is_from_proc_macro if we're about to emit a lint (it's an expensive check)
     if (has_elidable_lts || report_extra_lifetimes) && is_from_proc_macro() {
@@ -323,7 +323,7 @@ fn could_use_elision<'tcx>(
         input_visitor.visit_generic_param(lt);
     }
 
-    if input_visitor.abort() || output_visitor.abort() {
+    if input_visitor.saw_unelided_trait_object_lifetime() || output_visitor.saw_unelided_trait_object_lifetime() {
         return None;
     }
 
@@ -376,8 +376,8 @@ fn could_use_elision<'tcx>(
 
     // A lifetime can be newly elided if:
     // - It occurs only once among the inputs.
-    // - If there are multiple input lifetimes, then the newly elided lifetime does not occur among the
-    //   outputs (because eliding such an lifetime would create an ambiguity).
+    // - If there are multiple input lifetimes, then the newly elided lifetime does not occur among the outputs (because
+    //   eliding such an lifetime would create an ambiguity).
     let elidable_lts = named_lifetime_occurrences(&input_lts)
         .into_iter()
         .filter_map(|(def_id, occurrences)| {
@@ -482,7 +482,7 @@ impl<'a, 'tcx> RefVisitor<'a, 'tcx> {
             .collect::<Vec<_>>()
     }
 
-    fn abort(&self) -> bool {
+    fn saw_unelided_trait_object_lifetime(&self) -> bool {
         self.unelided_trait_object_lifetime
     }
 }
@@ -503,6 +503,7 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
             let mut sub_visitor = RefVisitor::new(self.cx);
             sub_visitor.visit_trait_ref(trait_ref);
             self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());
+            self.unelided_trait_object_lifetime |= sub_visitor.unelided_trait_object_lifetime;
         } else {
             walk_poly_trait_ref(self, poly_tref);
         }
@@ -547,6 +548,9 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
                 // now walk the bounds
                 for bound in pred.bounds {
                     walk_param_bound(&mut visitor, bound);
+                }
+                if visitor.saw_unelided_trait_object_lifetime() {
+                    return true;
                 }
                 // and check that all lifetimes are allowed
                 for lt in visitor.all_lts() {
@@ -914,10 +918,10 @@ fn elision_suggestions(
         vec![(generics.span, String::new())]
     } else {
         // 1. Start from the last elidable lifetime
-        // 2. While the lifetimes preceding it are also elidable, construct spans going from the current
-        //    lifetime to the comma before it
-        // 3. Once this chain of elidable lifetimes stops, switch to constructing spans going from the
-        //    current lifetime to the comma _after_ it
+        // 2. While the lifetimes preceding it are also elidable, construct spans going from the current lifetime to the
+        //    comma before it
+        // 3. Once this chain of elidable lifetimes stops, switch to constructing spans going from the current lifetime
+        //    to the comma _after_ it
         let mut end: Option<LocalDefId> = None;
         elidable_lts
             .iter()

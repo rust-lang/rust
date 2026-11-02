@@ -1,7 +1,7 @@
 //@ check-pass
 //@ compile-flags: --crate-type=lib
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![feature(fn_delegation)]
 #![feature(adt_const_params)]
 #![feature(unsized_const_params)]

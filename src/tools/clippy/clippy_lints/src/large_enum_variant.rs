@@ -5,9 +5,8 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{AdtVariantInfo, approx_ty_size, is_copy};
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -80,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
             && adt.variants().len() > 1
             && !item.span.in_external_macro(cx.tcx.sess.source_map())
         {
-            let variants_size = AdtVariantInfo::new(cx, *adt, subst);
+            let variants_size = AdtVariantInfo::new(cx, *adt, *subst);
 
             let mut difference = variants_size[0].size - variants_size[1].size;
             if difference > self.maximum_size_difference_allowed {

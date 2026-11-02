@@ -1,25 +1,36 @@
-// Test for specific details of how we handle higher-ranked subtyping to make
-// sure that any changes are made deliberately.
+// A test checking whether we eagerly apply subtype requirements
+// when relating types. This relies on incomplete inference with
+// higher-ranked types. If we eagerly apply the `?x <: ?y` subtype
+// requirements after constraining `?x` to `for<'a> fn(&'a ())` we
+// would incorrectly constrain `?y` to also be `for<'a> fn(&'a ())`.
 //
-// - `let y = x` creates a `Subtype` obligation that is deferred for later.
-// - `w = a` sets the type of `x` to `Option<for<'a> fn(&'a ())>` and generalizes
-//   `z` first to `Option<_>` and then to `Option<fn(&'0 ())>`.
-//  - The various subtyping obligations are then processed.
+// This would then result in an error when relating `y` with `Inv<fn(&'static ())>`.
 //
-// This requires that
-// 1. the `Subtype` obligation from `y = x` isn't processed while the types of
-//    `w` and `a` are being unified.
-// 2. the pending subtype obligation isn't considered when determining the type
-//    to generalize `z` to first (when related to the type of `y`).
-//
-// Found when considering fixes to #117151
+// It's fine for this behavior to change, we should do so intentionally however.
+
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@ check-pass
 
+fn to_inv<T>(x: Option<T>) -> Inv<T> {
+    Inv(None)
+}
+#[derive(Copy, Clone)]
+struct Inv<T>(Option<*mut T>);
+
 fn main() {
-    let mut x = None;
+    let x = None;
     let y = x;
-    let z = Default::default();
-    let mut w = (&mut x, z, z);
-    let a = (&mut None::<fn(&())>, y, None::<fn(&'static ())>);
+    let mut x = to_inv(x);
+    let y = to_inv(y);
+    // deferred ?x <: ?y
+    let z = Inv(None);
+    // type_of(w) = (Inv<?x>, Inv<?z>, Inv<?z>)
+    let mut w = (x, z, z);
+    // type_of(a) = (Inv<for<'a> fn(&'a ())>, Inv<?y>, Inv<fn(&'static ())>)
+    let a = (Inv::<fn(&())>(None), y, Inv::<fn(&'static ())>(None));
+    // ?x = for<'a> fn(&'a ())
+    // ?y = fn(&'static ())
     w = a;
 }

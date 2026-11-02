@@ -1,11 +1,20 @@
-FROM ubuntu:22.04
+FROM ubuntu:26.04
 
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY scripts/crosstool-ng.sh /scripts/
+RUN curl https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
+  echo 'deb http://apt.llvm.org/resolute/ llvm-toolchain-resolute-23 main' | tee -a /etc/apt/sources.list
+
+RUN apt-get update && \
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+  clang-23 \
+  llvm-23 \
+  lld-23
+
+COPY scripts/crosstool-ng-git.sh /scripts/
 COPY scripts/crosstool-ng-sha256-20260705.diff /scripts/
-RUN sh /scripts/crosstool-ng.sh
+RUN sh /scripts/crosstool-ng-git.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
@@ -18,13 +27,26 @@ RUN /scripts/crosstool-ng-build.sh
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV PATH=$PATH:/x-tools/loongarch64-unknown-linux-musl/bin
+ENV PATH=/usr/lib/llvm-23/bin:$PATH:/x-tools/loongarch64-unknown-linux-musl/bin
 
-ENV CC_loongarch64_unknown_linux_musl=loongarch64-unknown-linux-musl-gcc \
-    AR_loongarch64_unknown_linux_musl=loongarch64-unknown-linux-musl-ar \
-    CXX_loongarch64_unknown_linux_musl=loongarch64-unknown-linux-musl-g++ \
-    CFLAGS_loongarch64_unknown_linux_musl="-mcmodel=medium" \
-    CXXFLAGS_loongarch64_unknown_linux_musl="-mcmodel=medium"
+# --no-rosegment keeps read-only code in the first LOAD segment, matching the
+# segment layout produced by GNU ld. This allows Linux to make better use of
+# file-backed PMD mappings and reduces iTLB misses.
+ENV CLANG_FLAGS="--target=loongarch64-unknown-linux-musl -fuse-ld=lld \
+    --gcc-toolchain=/x-tools/loongarch64-unknown-linux-musl \
+    --sysroot=/x-tools/loongarch64-unknown-linux-musl/loongarch64-unknown-linux-musl/sysroot \
+    -Wl,--no-rosegment"
+
+ENV CC=clang \
+    CXX=clang++ \
+    CC_loongarch64_unknown_linux_musl=clang \
+    CXX_loongarch64_unknown_linux_musl=clang++ \
+    CFLAGS_loongarch64_unknown_linux_musl="$CLANG_FLAGS -mcmodel=medium" \
+    CXXFLAGS_loongarch64_unknown_linux_musl="$CLANG_FLAGS -mcmodel=medium" \
+    AR_loongarch64_unknown_linux_musl=llvm-ar \
+    RANLIB_loongarch64_unknown_linux_musl=llvm-ranlib \
+    CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_MUSL_LINKER=clang \
+    CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="-Clink-arg=${CLANG_FLAGS// / -Clink-arg=}"
 
 ENV HOSTS=loongarch64-unknown-linux-musl
 
@@ -33,7 +55,9 @@ ENV RUST_CONFIGURE_ARGS="--enable-extended \
       --enable-profiler \
       --enable-sanitizers \
       --disable-docs \
-      --set rust.override-allocator=jemalloc \
+      --set build.allocator=jemalloc \
+      --set llvm.link-shared=true \
+      --set llvm.thin-lto=true \
       --set rust.lto=thin \
       --set rust.codegen-units=1 \
       --set target.loongarch64-unknown-linux-musl.crt-static=false \

@@ -1,5 +1,5 @@
 use crate::intrinsics;
-use crate::iter::{TrustedLen, TrustedRandomAccess, from_fn};
+use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, from_fn};
 use crate::num::NonZero;
 use crate::ops::{Range, Try};
 use crate::range::RangeIter;
@@ -136,6 +136,11 @@ where
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
 
+// StepBy stops yielding items once the underlying iterator does, so it is fused
+// whenever the underlying iterator is fused.
+#[stable(feature = "step_by_fused", since = "1.99.0")]
+impl<I> FusedIterator for StepBy<I> where I: FusedIterator {}
+
 // SAFETY: This adapter is shortening. TrustedLen requires the upper bound to be calculated correctly.
 // These requirements can only be satisfied when the upper bound of the inner iterator's upper
 // bound is never `None`. I: TrustedRandomAccess happens to provide this guarantee while
@@ -254,9 +259,9 @@ unsafe impl<I: Iterator> StepByImpl<I> for StepBy<I> {
     default fn spec_nth(&mut self, mut n: usize) -> Option<I::Item> {
         if self.first_take {
             self.first_take = false;
-            let first = self.iter.next();
+            let first = self.iter.next()?;
             if n == 0 {
-                return first;
+                return Some(first);
             }
             n -= 1;
         }
@@ -266,7 +271,7 @@ unsafe impl<I: Iterator> StepByImpl<I> for StepBy<I> {
         // n + 1 could overflow
         // thus, if n is usize::MAX, instead of adding one, we call .nth(step)
         if n == usize::MAX {
-            self.iter.nth(step - 1);
+            self.iter.nth(step - 1)?;
         } else {
             n += 1;
         }
@@ -290,7 +295,8 @@ unsafe impl<I: Iterator> StepByImpl<I> for StepBy<I> {
                 n -= div_step;
                 nth_step
             };
-            self.iter.nth(nth - 1);
+
+            self.iter.nth(nth - 1)?;
         }
     }
 

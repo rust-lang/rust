@@ -7,6 +7,8 @@
 
 //@ needs-profiler-runtime
 //@ ignore-cross-compile
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{
     cwd, has_extension, has_prefix, llvm_filecheck, llvm_profdata, rfs, run_with_args, rustc,

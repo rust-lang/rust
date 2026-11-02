@@ -12,7 +12,7 @@ may be able to use more compact addressing modes.
 
 The specific ranges depend on target architectures and addressing modes available to them. \
 For x86 more detailed description of its code models can be found in
-[System V Application Binary Interface](https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf)
+[System V Application Binary Interface](https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf?job=build)
 specification.
 
 Supported values for this option are:
@@ -151,6 +151,14 @@ at start-up, because the combination is invalid.
 > This also may make you wonder why the default is `yes` for this option. The
 > reason for that is that it's how it was for rustc 1.44 and prior. In 1.45 this
 > option was added to turn off what had always been the default.
+
+## embed-metadata
+
+This option instructs `rustc` to include the full metadata in `rlib` and `dylib`
+crate types. The default value is `yes` (enabled). If disabled (`no`), only stub
+metadata will be stored in these files, to reduce their size on disk. When using
+`-Cembed-metadata=no`, you will probably want to use `--emit=metadata` to produce
+the full metadata into a separate `.rmeta` file.
 
 ## extra-filename
 
@@ -524,6 +532,15 @@ profiling data for use with profile-guided optimization (PGO). The flag takes
 an optional argument which is the path to a directory into which the
 instrumented binary will emit the collected data. See the chapter on
 [profile-guided optimization] for more information.
+
+## profile-sample-use
+
+This flag specifies the profiling data file to be used for sample-based
+profile-guided optimization (SPGO). The flag takes a mandatory argument which
+is the path to a valid `.prof` file. See the chapter on
+[profile-guided optimization] for more information.
+The `-Zdebuginfo-for-profiling` can be used to improve the quality of the
+profiling data.
 
 ## profile-use
 

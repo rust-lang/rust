@@ -12,6 +12,7 @@ const EXPECTED = [
         'query': '-> !',
         'others': [
             { 'path': 'never_search', 'name': 'loops' },
+            { 'path': 'never_search::never', 'name': 'try_from' },
         ],
     },
     {
@@ -19,6 +20,7 @@ const EXPECTED = [
         'others': [
             { 'path': 'never_search', 'name': 'loops' },
             { 'path': 'never_search', 'name': 'returns' },
+            { 'path': 'never_search::never', 'name': 'try_from' },
         ],
     },
     {

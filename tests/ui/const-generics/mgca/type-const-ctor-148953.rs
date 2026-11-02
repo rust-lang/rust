@@ -7,16 +7,17 @@
 
 //@ check-pass
 
-#![feature(min_generic_const_args, adt_const_params)]
+#![feature(gca_min_const_items, adt_const_params)]
 #![expect(incomplete_features)]
 
+use std::gca;
 use std::marker::ConstParamTy;
 
 #[derive(ConstParamTy, PartialEq, Eq)]
 struct S;
 
 impl S {
-    type const N: S = S;
+    const N: S = gca!(S);
 }
 
 #[derive(ConstParamTy, PartialEq, Eq)]
@@ -25,7 +26,7 @@ enum E {
 }
 
 impl E {
-    type const M: E = { E::V };
+    const M: E = gca!({ E::V });
 }
 
 fn main() {}

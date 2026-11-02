@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::{
@@ -12,15 +12,14 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
+use rustc_hir::intravisit::{InferKind, Visitor, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, Item, MatchSource, Mutability,
     Node, OwnerId, Pat, PatKind, Path, QPath, TyKind, UnOp,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, AssocTag, Ty, TyCtxt, TypeVisitableExt, TypeckResults, Unnormalized};
-use rustc_session::impl_lint_pass;
+use rustc_middle::ty::{self, AssocTag, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults, Unnormalized};
 use rustc_span::{Span, Symbol, SyntaxContext};
 use std::borrow::Cow;
 
@@ -381,8 +380,9 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                                     && let arg_ty = cx.tcx.erase_and_anonymize_regions(adjusted_ty)
                                     && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
-                                    && let args =
-                                        typeck.node_args_opt(hir_id).map(|args| &args[1..]).unwrap_or_default()
+                                    && let args = typeck
+                                        .node_args_opt(hir_id)
+                                        .map_or_default(|args| cx.tcx.mk_args(&args.as_slice()[1..]))
                                     && let impl_ty = if cx
                                         .tcx
                                         .fn_sig(fn_id)
@@ -406,7 +406,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                             cx,
                                             impl_ty,
                                             trait_id,
-                                            &args[..cx.tcx.generics_of(trait_id).own_params.len() - 1],
+                                            &args.as_slice()[..cx.tcx.generics_of(trait_id).own_params.len() - 1],
                                         ))
                                         // If there's an inherent method, or a method from another trait,
                                         // with the same name that's also implemented on this same type,
@@ -802,7 +802,7 @@ fn is_in_method_chain<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool
     }
 
     if let Some(parent) = get_parent_expr(cx, e)
-        && parent.span.eq_ctxt(e.span)
+        && parent.span.ctxt() == e.span.ctxt()
     {
         match parent.kind {
             ExprKind::Call(child, _) | ExprKind::MethodCall(_, child, _, _) | ExprKind::Index(child, _, _)
@@ -855,14 +855,14 @@ impl TyCoercionStability {
     // Here `y1` and `y2` would resolve to different types, so the type `&Box<_>` is not stable when
     // switching to auto-dereferencing.
     fn for_hir_ty<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Self {
-        let TyKind::Ref(_, ty) = &ty.kind else {
+        let TyKind::Ref(_, ty, _) = ty.kind else {
             return Self::None;
         };
         let mut ty = ty;
 
         loop {
-            break match ty.ty.kind {
-                TyKind::Ref(_, ref ref_ty) => {
+            break match ty.kind {
+                TyKind::Ref(_, ref_ty, _) => {
                     ty = ref_ty;
                     continue;
                 },
@@ -889,7 +889,7 @@ impl TyCoercionStability {
                 },
                 TyKind::Slice(_)
                 | TyKind::Array(..)
-                | TyKind::Ptr(_)
+                | TyKind::Ptr(..)
                 | TyKind::FnPtr(_)
                 | TyKind::Pat(..)
                 | TyKind::FieldOf(..)
@@ -905,7 +905,7 @@ impl TyCoercionStability {
                 TyKind::View(ty, _) => {
                     // FIXME(scrabsha): what are the semantics of view types here?
                     Self::for_hir_ty(ty)
-                }
+                },
                 TyKind::UnsafeBinder(..) => Self::None,
             };
         }

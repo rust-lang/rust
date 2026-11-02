@@ -2,14 +2,12 @@
 
 #![feature(rustc_attrs)]
 
-extern "Rust" {
-    #[rustc_std_internal_symbol]
-    fn __rust_alloc(size: usize, align: usize) -> *mut u8;
-}
+#[path = "../../utils/mod.no_std.rs"]
+mod utils;
 
 fn main() {
     unsafe {
-        __rust_alloc(1, 3);
+        utils::miri_alloc(1, 3);
         //~^ERROR: creating allocation with non-power-of-two alignment
     }
 }

@@ -1,9 +1,9 @@
 use crate::assist_context::{AssistContext, Assists};
 use ide_db::{assists::AssistId, defs::Definition, search::SearchScope};
 use syntax::{
-    AstNode, AstToken, SyntaxKind, T,
+    AstNode, SyntaxKind, T,
     ast::{
-        self, HasDocComments, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit,
+        self, HasAttrs, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit,
         syntax_factory::SyntaxFactory,
     },
     syntax_editor::{Position, SyntaxEditor},
@@ -117,7 +117,7 @@ pub(crate) fn generate_trait_from_impl(
             let params = used_params(&impl_ast, make, ctx);
             let trait_ast = make.trait_(
                 false,
-                &trait_name(&impl_assoc_items, make).text(),
+                trait_name(&impl_assoc_items, make).text(),
                 params.clone(),
                 impl_ast.where_clause(),
                 trait_items,
@@ -204,7 +204,7 @@ fn trait_name(items: &ast::AssocItemList, make: &SyntaxFactory) -> ast::Name {
     fn_names
         .next()
         .and_then(|name| {
-            fn_names.next().is_none().then(|| make.name(&stdx::to_camel_case(&name.text())))
+            fn_names.next().is_none().then(|| make.name(&stdx::to_camel_case(name.text())))
         })
         .unwrap_or_else(|| make.name("NewTrait"))
 }
@@ -226,7 +226,7 @@ fn remove_items_visibility(editor: &SyntaxEditor, item: &ast::AssocItem) {
 
 fn remove_doc_comments(editor: &SyntaxEditor, item: &ast::AssocItem) {
     for doc in item.doc_comments() {
-        if let Some(next) = doc.syntax().next_token()
+        if let Some(next) = doc.syntax().last_token().and_then(|it| it.next_token())
             && next.kind() == SyntaxKind::WHITESPACE
         {
             editor.delete(next);

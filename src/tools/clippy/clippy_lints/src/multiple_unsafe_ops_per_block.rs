@@ -6,10 +6,9 @@ use rustc_ast::{BorrowKind, Mutability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor, walk_body, walk_expr};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt, TypeckResults};
-use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -123,8 +122,59 @@ impl<'tcx> UnsafeExprCollector<'tcx> {
             .into_iter()
             .map(|(span, msg)| (msg, span))
             .collect::<Vec<_>>();
-        unsafe_ops.sort_unstable();
+        unsafe_ops.sort_unstable_by_key(|(s, span)| (*s, span.lo_hi()));
         unsafe_ops
+    }
+
+    fn visit_raw_addr_of(&mut self, inner: &'tcx hir::Expr<'tcx>) {
+        let mut base = inner;
+        let mut has_fields = false;
+        while let ExprKind::Field(prefix, _) = base.kind
+            && self.typeck_results.expr_adjustments(prefix).is_empty()
+        {
+            base = prefix;
+            has_fields = true;
+        }
+
+        if has_fields {
+            return self.visit_expr(base);
+        }
+
+        // Direct address-of operations under `&raw` do not read/write the place, so they are safe
+        // for mutable statics and raw pointer dereferences.
+        if let ExprKind::Path(QPath::Resolved(
+            _,
+            hir::Path {
+                res:
+                    Res::Def(
+                        DefKind::Static {
+                            mutability: Mutability::Mut,
+                            ..
+                        },
+                        _,
+                    ),
+                ..
+            },
+        )) = base.kind
+        {
+            return;
+        }
+        if let ExprKind::Unary(UnOp::Deref, ptr_expr) = base.kind
+            && self.typeck_results.expr_ty(ptr_expr).is_raw_ptr()
+        {
+            return self.visit_expr(ptr_expr);
+        }
+
+        self.visit_expr(base);
+    }
+
+    fn visit_lhs(&mut self, mut expr: &'tcx hir::Expr<'tcx>) {
+        while let ExprKind::Field(base, _) = expr.kind
+            && self.typeck_results.expr_adjustments(base).is_empty()
+        {
+            expr = base;
+        }
+        self.visit_expr(expr);
     }
 }
 
@@ -157,13 +207,8 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
 
             ExprKind::InlineAsm(_) => self.insert_span(expr.span, "inline assembly used here"),
 
-            ExprKind::AddrOf(BorrowKind::Raw, _, mut inner) => {
-                while let ExprKind::Field(prefix, _) = inner.kind
-                    && self.typeck_results.expr_adjustments(prefix).is_empty()
-                {
-                    inner = prefix;
-                }
-                return self.visit_expr(inner);
+            ExprKind::AddrOf(BorrowKind::Raw, _, inner) => {
+                return self.visit_raw_addr_of(inner);
             },
 
             ExprKind::Field(e, _) if self.typeck_results.expr_ty(e).is_union() => {
@@ -212,7 +257,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
                 }
             },
 
-            ExprKind::AssignOp(_, lhs, rhs) | ExprKind::Assign(lhs, rhs, _) => {
+            ExprKind::AssignOp(_, lhs, rhs) | ExprKind::Assign(lhs, rhs, _)
                 if matches!(
                     lhs.kind,
                     ExprKind::Path(QPath::Resolved(
@@ -228,10 +273,17 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
                             ..
                         }
                     ))
-                ) {
-                    self.insert_span(expr.span, "modification of a mutable static occurs here");
-                    return self.visit_expr(rhs);
-                }
+                ) =>
+            {
+                self.insert_span(expr.span, "modification of a mutable static occurs here");
+                self.visit_expr(rhs);
+                return;
+            },
+
+            ExprKind::Assign(lhs, rhs, _) => {
+                self.visit_lhs(lhs);
+                self.visit_expr(rhs);
+                return;
             },
 
             _ => {},

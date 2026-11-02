@@ -92,7 +92,7 @@ fn print_error(tool: &str, submodule: &str) {
     eprintln!("If you do NOT intend to update '{tool}', please ensure you did not accidentally");
     eprintln!("change the submodule at '{submodule}'. You may ask your reviewer for the");
     eprintln!("proper steps.");
-    crate::exit!(3);
+    helpers::exit_process(3);
 }
 
 fn check_changed_files(builder: &Builder<'_>, toolstates: &HashMap<Box<str>, ToolState>) {
@@ -170,7 +170,7 @@ impl CommandLineStep for ToolStateCheck {
         }
 
         if did_error {
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
 
         check_changed_files(builder, &toolstates);
@@ -214,7 +214,7 @@ impl CommandLineStep for ToolStateCheck {
         }
 
         if did_error {
-            crate::exit!(1);
+            helpers::exit_process(1);
         }
 
         if builder.config.channel == "nightly" && env::var_os("TOOLSTATE_PUBLISH").is_some() {

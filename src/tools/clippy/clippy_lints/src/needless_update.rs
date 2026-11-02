@@ -1,8 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{Expr, ExprKind, StructTailExpr};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -34,11 +33,10 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```rust,ignore
-    /// // Missing field `z`
     /// Point {
     ///     x: 1,
     ///     y: 1,
-    ///     ..zero_point
+    ///     z: 1
     /// };
     /// ```
     #[clippy::version = "pre 1.29.0"]

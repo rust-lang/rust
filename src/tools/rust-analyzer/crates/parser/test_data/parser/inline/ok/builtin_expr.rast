@@ -44,10 +44,10 @@ SOURCE_FILE
             COMMA ","
             WHITESPACE " "
             FORMAT_ARGS_ARG
-              FORMAT_ARGS_ARG_NAME
+              NAME
                 IDENT "a"
-                WHITESPACE " "
-                EQ "="
+              WHITESPACE " "
+              EQ "="
               WHITESPACE " "
               BIN_EXPR
                 LITERAL
@@ -98,6 +98,29 @@ SOURCE_FILE
             DOT "."
             NAME_REF
               INT_NUMBER "0"
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CFG_PRED_EXPR
+            BUILTIN_KW "builtin"
+            POUND "#"
+            CFG_KW "cfg"
+            L_PAREN "("
+            CFG_COMPOSITE
+              IDENT "any"
+              L_PAREN "("
+              CFG_ATOM
+                TRUE_KW "true"
+              COMMA ","
+              WHITESPACE " "
+              CFG_ATOM
+                IDENT "x"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                STRING "\"y\""
+              R_PAREN ")"
             R_PAREN ")"
           SEMICOLON ";"
         WHITESPACE "\n"

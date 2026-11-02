@@ -2,7 +2,7 @@
 
 use hir_def::FindPathConfig;
 use hir_expand::mod_path::ModPath;
-use hir_ty::{
+use hir_ide::{
     db::HirDatabase,
     display::{DisplaySourceCodeError, DisplayTarget, HirDisplay},
 };

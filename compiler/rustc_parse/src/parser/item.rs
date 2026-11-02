@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::mem;
 
-use ast::token::IdentIsRaw;
+use ast::token::IdentKind;
 use rustc_ast as ast;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, Delimiter, MetaVarKind, TokenKind};
@@ -109,7 +109,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let inject_use_span = post_attr_lo.data().with_hi(post_attr_lo.lo());
+        let inject_use_span = post_attr_lo.with_hi(post_attr_lo.lo());
         let mod_spans = ModSpans { inner_span: lo.to(self.prev_token.span), inject_use_span };
         Ok((attrs, items, mod_spans))
     }
@@ -126,8 +126,12 @@ impl<'a> Parser<'a> {
         force_collect: ForceCollect,
         allow_const_block_items: AllowConstBlockItems,
     ) -> PResult<'a, Option<Box<Item>>> {
-        let fn_parse_mode =
-            FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true };
+        let fn_parse_mode = FnParseMode {
+            req_name: |_, _| true,
+            context: FnContext::Free,
+            req_body: true,
+            allow_const_params: true,
+        };
         self.parse_item_(fn_parse_mode, force_collect, allow_const_block_items)
             .map(|i| i.map(Box::new))
     }
@@ -283,7 +287,7 @@ impl<'a> Parser<'a> {
                 contract,
                 body,
                 define_opaque: None,
-                eii_impls: ThinVec::new(),
+                eii_impl: None,
             }))
         } else if self.eat_keyword_case(exp!(Extern), case) {
             if self.eat_keyword_case(exp!(Crate), case) {
@@ -328,7 +332,6 @@ impl<'a> Parser<'a> {
                 generics,
                 ty,
                 body,
-                kind: ConstItemKind::Body,
                 define_opaque: None,
             }))
         } else if let Some(kind) = self.is_reuse_item() {
@@ -339,27 +342,8 @@ impl<'a> Parser<'a> {
             // MODULE ITEM
             self.parse_item_mod(attrs)?
         } else if self.eat_keyword_case(exp!(Type), case) {
-            if let Const::Yes(const_span) = self.parse_constness(case) {
-                // TYPE CONST (mgca)
-                self.recover_const_mut(const_span);
-                self.recover_missing_kw_before_item()?;
-                let (ident, generics, ty, body) = self.parse_const_item(const_span)?;
-                // Make sure this is only allowed if the feature gate is enabled.
-                // #![feature(mgca_type_const_syntax)]
-                self.psess.gated_spans.gate(sym::mgca_type_const_syntax, lo.to(const_span));
-                ItemKind::Const(Box::new(ConstItem {
-                    defaultness: def_(),
-                    ident,
-                    generics,
-                    ty,
-                    body,
-                    kind: ConstItemKind::TypeConst,
-                    define_opaque: None,
-                }))
-            } else {
-                // TYPE ITEM
-                self.parse_type_alias(def_())?
-            }
+            // TYPE ITEM
+            self.parse_type_alias(def_())?
         } else if self.eat_keyword_case(exp!(Enum), case) {
             // ENUM ITEM
             self.parse_item_enum()?
@@ -404,6 +388,14 @@ impl<'a> Parser<'a> {
                 Case::Insensitive,
             );
         } else if macros_allowed && self.check_path() {
+            // Detect `field_name: Type` or `self: Type` inside a trait body and emit
+            // a clearer diagnostic before falling through to the macro invocation path.
+            let is_field_in_trait = fn_parse_mode.context == FnContext::Trait
+                && self.token.is_path_start()
+                && self.look_ahead(1, |t| t.kind == token::Colon);
+            if is_field_in_trait {
+                return self.recover_field_in_trait();
+            }
             if self.isnt_macro_invocation() {
                 self.recover_missing_kw_before_item()?;
             }
@@ -433,8 +425,38 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn recover_field_in_trait(&mut self) -> PResult<'a, Option<ItemKind>> {
+        let ident_span = self.token.span;
+        let ident_str = pprust::token_to_string(&self.token).into_owned();
+        let is_self = self.token.is_keyword(kw::SelfLower);
+
+        self.bump(); // identifier or `self`
+        self.bump(); // `:`
+
+        let ty_str = match self.parse_ty() {
+            Ok(ty) => pprust::ty_to_string(&ty),
+            Err(e) => {
+                e.cancel();
+                String::from("Type")
+            }
+        };
+        // Eat the trailing separator so the parser doesn't trip over it.
+        let _ = self.eat(exp!(Comma));
+        let _ = self.eat(exp!(Semi));
+
+        let span = ident_span.to(self.prev_token.span);
+        let sugg = if is_self {
+            diagnostics::FieldNotAllowedInTraitSugg::SelfReceiver { ty: ty_str }
+        } else {
+            diagnostics::FieldNotAllowedInTraitSugg::Method { ident: ident_str, ty: ty_str }
+        };
+        let err = self.dcx().create_err(diagnostics::FieldNotAllowedInTrait { span, sugg });
+        Err(err)
+    }
+
     fn parse_use_item(&mut self) -> PResult<'a, ItemKind> {
-        let tree = self.parse_use_tree()?;
+        let use_token_span = self.prev_token.span;
+        let tree = self.parse_use_tree(use_token_span, None)?;
         if let Err(mut e) = self.expect_semi() {
             match tree.kind {
                 UseTreeKind::Glob(_) => {
@@ -1071,7 +1093,7 @@ impl<'a> Parser<'a> {
         // However, we must avoid keywords that occur as binary operators.
         // Currently, the only applicable keyword is `as` (`default as Ty`).
         if self.check_keyword(exp!(Default))
-            && self.look_ahead(1, |t| t.is_non_raw_ident_where(|i| i.name != kw::As))
+            && self.look_ahead(1, |t| t.non_raw_ident().is_some_and(|i| i.name != kw::As))
         {
             self.psess.gated_spans.gate(sym::specialization, self.token.span);
             self.bump(); // `default`
@@ -1217,8 +1239,12 @@ impl<'a> Parser<'a> {
         &mut self,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Option<Box<AssocItem>>>> {
-        let fn_parse_mode =
-            FnParseMode { req_name: |_, _| true, context: FnContext::Impl, req_body: true };
+        let fn_parse_mode = FnParseMode {
+            req_name: |_, _| true,
+            context: FnContext::Impl,
+            req_body: true,
+            allow_const_params: true,
+        };
         self.parse_assoc_item(fn_parse_mode, force_collect)
     }
 
@@ -1230,6 +1256,7 @@ impl<'a> Parser<'a> {
             req_name: |edition, _| edition >= Edition::Edition2018,
             context: FnContext::Trait,
             req_body: false,
+            allow_const_params: true,
         };
         self.parse_assoc_item(fn_parse_mode, force_collect)
     }
@@ -1257,7 +1284,7 @@ impl<'a> Parser<'a> {
                             mutability: _,
                             expr,
                             define_opaque,
-                            eii_impls: _,
+                            eii_impl: _,
                         }) => {
                             self.dcx()
                                 .emit_err(diagnostics::AssociatedStaticItemNotAllowed { span });
@@ -1267,7 +1294,6 @@ impl<'a> Parser<'a> {
                                 generics: Generics::default(),
                                 ty,
                                 body: expr,
-                                kind: ConstItemKind::Body,
                                 define_opaque,
                             }))
                         }
@@ -1317,7 +1343,11 @@ impl<'a> Parser<'a> {
     ///            PATH `::` `{` USE_TREE_LIST `}` |
     ///            PATH [`as` IDENT]
     /// ```
-    fn parse_use_tree(&mut self) -> PResult<'a, UseTree> {
+    fn parse_use_tree<'b>(
+        &mut self,
+        use_token_span: Span,
+        use_path: Option<&'b UsePathList<'b>>,
+    ) -> PResult<'a, UseTree> {
         let lo = self.token.span;
 
         let mut prefix = ast::Path { segments: ThinVec::new(), span: lo.shrink_to_lo() };
@@ -1331,13 +1361,14 @@ impl<'a> Parser<'a> {
                         .push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
                 }
 
-                self.parse_use_tree_glob_or_nested()?
+                self.parse_use_tree_glob_or_nested(use_token_span, use_path)?
             } else {
                 // `use path::*;` or `use path::{...};` or `use path;` or `use path as bar;`
                 prefix = self.parse_path(PathStyle::Mod)?;
 
                 if self.eat_path_sep() {
-                    self.parse_use_tree_glob_or_nested()?
+                    let use_path = UsePathList { elements: &prefix.segments, prev: use_path };
+                    self.parse_use_tree_glob_or_nested(use_token_span, Some(&use_path))?
                 } else {
                     // Recover from using a colon as path separator.
                     while self.eat_noexpect(&token::Colon) {
@@ -1358,13 +1389,17 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `*` or `{...}`.
-    fn parse_use_tree_glob_or_nested(&mut self) -> PResult<'a, UseTreeKind> {
+    fn parse_use_tree_glob_or_nested<'b>(
+        &mut self,
+        use_token_span: Span,
+        use_path: Option<&'b UsePathList<'b>>,
+    ) -> PResult<'a, UseTreeKind> {
         Ok(if self.eat(exp!(Star)) {
             UseTreeKind::Glob(self.prev_token.span)
         } else {
             let lo = self.token.span;
             UseTreeKind::Nested {
-                items: self.parse_use_tree_list()?,
+                items: self.parse_use_tree_list(use_token_span, use_path)?,
                 span: lo.to(self.prev_token.span),
             }
         })
@@ -1375,12 +1410,83 @@ impl<'a> Parser<'a> {
     /// ```text
     /// USE_TREE_LIST = ∅ | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
-    fn parse_use_tree_list(&mut self) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
+    fn parse_use_tree_list<'b>(
+        &mut self,
+        use_token_span: Span,
+        prefix: Option<&'b UsePathList<'b>>,
+    ) -> PResult<'a, ThinVec<UseTreeAndId>> {
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |p| {
             p.recover_vcs_conflict_marker();
-            Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
+
+            let mut attr_span = None;
+            let attrs = p.parse_outer_attributes()?;
+            if !attrs.is_empty() {
+                let raw_attrs = attrs.take_for_recovery(&p.psess);
+                attr_span =
+                    Some(raw_attrs.first().unwrap().span.to(raw_attrs.last().unwrap().span));
+            }
+
+            let use_tree = p.parse_use_tree(use_token_span, prefix)?;
+
+            if let Some(attr_span) = attr_span {
+                p.emit_error_attr_in_use_tree(use_token_span, prefix, use_tree.span(), attr_span);
+            }
+
+            Ok(UseTreeAndId { inner: use_tree, id: DUMMY_NODE_ID })
         })
         .map(|(r, _)| r)
+    }
+
+    fn emit_error_attr_in_use_tree(
+        &self,
+        use_token_span: Span,
+        mut prefix: Option<&UsePathList<'_>>,
+        use_tree_span: Span,
+        attr_span: Span,
+    ) {
+        let Ok(attr) = self.psess.source_map().span_to_snippet(attr_span) else { return };
+
+        let prefix: Vec<_> = {
+            let mut tmp = Vec::new();
+            while let Some(prefix_) = prefix {
+                tmp.push(prefix_.elements);
+                prefix = prefix_.prev;
+            }
+            tmp.reverse();
+            tmp.into_iter().flatten().collect()
+        };
+
+        let prefix: String = prefix
+            .iter()
+            .map(|seg| if seg.ident.name == kw::PathRoot { "" } else { seg.ident.as_str() })
+            .intersperse("::")
+            .collect();
+
+        let mut comma_reached = false;
+        let Ok(tree_span) = self.psess.source_map().span_extend_while(use_tree_span, |c| {
+            if comma_reached {
+                return false;
+            }
+            comma_reached = c == ',';
+            c.is_whitespace() || comma_reached
+        }) else {
+            return;
+        };
+
+        let Ok(use_tree) = self.psess.source_map().span_to_snippet(use_tree_span) else { return };
+
+        // FIXME: duplicate the attributes that are at the root of the initial use-item.
+        let code = format!("{attr}\nuse {prefix}::{use_tree};\n");
+
+        self.dcx().emit_err(crate::diagnostics::AttrInUseTree {
+            attr_span,
+            sub: Some(crate::diagnostics::AttrInUseTreeSugg {
+                use_lo: use_token_span.shrink_to_lo(),
+                attr_span,
+                tree_span,
+                code,
+            }),
+        });
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
@@ -1392,12 +1498,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, Ident> {
-        match self.token.ident() {
-            Some((ident @ Ident { name: kw::Underscore, .. }, IdentIsRaw::No)) => {
-                self.bump();
-                Ok(ident)
-            }
-            _ => self.parse_ident(),
+        if let Some(ident @ Ident { name: kw::Underscore, .. }) = self.token.non_raw_ident() {
+            self.bump();
+            Ok(ident)
+        } else {
+            self.parse_ident()
         }
     }
 
@@ -1498,6 +1603,7 @@ impl<'a> Parser<'a> {
             req_name: |_, is_dot_dot_dot| is_dot_dot_dot == IsDotDotDot::No,
             context: FnContext::Free,
             req_body: false,
+            allow_const_params: false,
         };
         Ok(self
             .parse_item_(
@@ -1523,7 +1629,7 @@ impl<'a> Parser<'a> {
                                 expr: body,
                                 safety: Safety::Default,
                                 define_opaque: None,
-                                eii_impls: ThinVec::default(),
+                                eii_impl: None,
                             }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
@@ -1661,15 +1767,8 @@ impl<'a> Parser<'a> {
 
         self.expect_semi()?;
 
-        let item = StaticItem {
-            ident,
-            ty,
-            safety,
-            mutability,
-            expr,
-            define_opaque: None,
-            eii_impls: ThinVec::default(),
-        };
+        let item =
+            StaticItem { ident, ty, safety, mutability, expr, define_opaque: None, eii_impl: None };
         Ok(ItemKind::Static(Box::new(item)))
     }
 
@@ -1901,7 +2000,7 @@ impl<'a> Parser<'a> {
                             this.bump(); // }
                             err.span_label(span, "while parsing this enum");
                             err.help(help);
-                            let guar = err.emit();
+                            let guar = err.emit_err();
                             (thin_vec![], Recovered::Yes(guar))
                         }
                     };
@@ -2077,7 +2176,7 @@ impl<'a> Parser<'a> {
                             ConsumeClosingDelim::No,
                         );
                         err.span_label(ident_span, format!("while parsing this {adt_ty}"));
-                        let guar = err.emit();
+                        let guar = err.emit_err();
                         recovered = Recovered::Yes(guar);
                         break;
                     }
@@ -2383,15 +2482,15 @@ impl<'a> Parser<'a> {
         self.expect_field_ty_separator()?;
         let ty = self.parse_ty()?;
         if self.token == token::Colon && self.look_ahead(1, |&t| t != token::Colon) {
-            self.dcx()
+            return Err(self
+                .dcx()
                 .struct_span_err(self.token.span, "found single colon in a struct field type path")
                 .with_span_suggestion_verbose(
                     self.token.span,
                     "write a path separator here",
                     "::",
                     Applicability::MaybeIncorrect,
-                )
-                .emit();
+                ));
         }
         let default = if self.token == token::Eq {
             self.bump();
@@ -2417,17 +2516,20 @@ impl<'a> Parser<'a> {
     /// Parses a field identifier. Specialized version of `parse_ident_common`
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
-        let (ident, is_raw) = self.ident_or_err(true)?;
-        if is_raw == IdentIsRaw::No
-            && ident.is_reserved()
+        let (ident, kind) = self.ident_or_err(true)?;
+        if token::ident_of_kind_is_reserved(ident, kind)
             && !(ident.name == kw::Underscore && adt_ty == "enum")
         {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
                 let inherited_vis = Visibility { span: DUMMY_SP, kind: VisibilityKind::Inherited };
                 // We use `parse_fn` to get a span for the function
-                let fn_parse_mode =
-                    FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true };
+                let fn_parse_mode = FnParseMode {
+                    req_name: |_, _| true,
+                    context: FnContext::Free,
+                    req_body: true,
+                    allow_const_params: true,
+                };
                 match self.parse_fn(
                     &mut AttrVec::new(),
                     fn_parse_mode,
@@ -2615,6 +2717,180 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parses the contents of a `test_binder_constraints!`. Perma-unstable and for testing only.
+    pub fn parse_test_binder_constraints(&mut self) -> PResult<'a, Box<TestBinderConstraints>> {
+        self.expect_keyword(exp!(Impl))?;
+        let mut generics = self.parse_generics()?;
+        generics.where_clause = self.parse_where_clause()?;
+        let body = self.parse_test_binder_body()?;
+        Ok(Box::new(TestBinderConstraints { generics, body: Box::new(body) }))
+    }
+
+    pub fn parse_test_binder_body(&mut self) -> PResult<'a, TestBinderBody> {
+        let mut foralls = ThinVec::new();
+        let mut exists = ThinVec::new();
+        let mut region_equalities = Vec::new();
+        let mut constraints = Vec::new();
+        let mut predicates = Vec::new();
+        let mut span = self.token.span;
+        self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
+            match this.token.ident() {
+                Some((Ident { name: sym::predicates, .. }, IdentKind::Normal)) => {
+                    let span = this.token.span;
+                    this.bump();
+                    predicates.extend(this.parse_where_clause_predicates(None, span)?.0);
+                }
+                Some((Ident { name: sym::forall, .. }, IdentKind::Normal)) => {
+                    foralls.push(this.parse_test_binder_forall()?)
+                }
+                Some((Ident { name: sym::exists, .. }, IdentKind::Normal)) => {
+                    exists.push(this.parse_test_binder_exists()?)
+                }
+
+                _ if this.token.is_lifetime() && this.look_ahead(1, |t| t.kind == token::Eq) => {
+                    let lhs = this.expect_lifetime();
+                    this.expect(exp!(Eq))?;
+                    if !this.check_lifetime() {
+                        this.unexpected()?;
+                    }
+                    let rhs = this.expect_lifetime();
+                    region_equalities.push(TestBinderRegionEquality { lhs, rhs });
+                }
+                _ => constraints.push(this.parse_test_binder_constraint()?),
+            }
+            Ok(())
+        })?;
+        span = span.to(self.prev_token.span);
+        Ok(TestBinderBody { foralls, exists, region_equalities, constraints, predicates, span })
+    }
+
+    pub fn parse_test_binder_forall(&mut self) -> PResult<'a, TestBinderForall> {
+        let span = self.token.span;
+        self.bump();
+
+        let mut generics = self.parse_generics()?;
+        generics.where_clause = self.parse_where_clause()?;
+
+        let body = self.parse_test_binder_body()?;
+
+        let assert_on_exit = if let Some((i, IdentKind::Normal)) = self.token.ident()
+            && i.name == sym::expect
+        {
+            self.bump();
+            let items = self
+                .parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
+                    this.parse_test_binder_constraint()
+                })?
+                .0;
+            Some(items)
+        } else {
+            None
+        };
+
+        Ok(TestBinderForall { span, node_id: DUMMY_NODE_ID, generics, body, assert_on_exit })
+    }
+
+    pub fn parse_test_binder_exists(&mut self) -> PResult<'a, TestBinderExists> {
+        let span = self.token.span;
+        self.bump();
+        let params = self.parse_generics()?.params;
+        let body = self.parse_test_binder_body()?;
+        Ok(TestBinderExists { span, node_id: DUMMY_NODE_ID, params, body })
+    }
+
+    pub fn parse_test_binder_constraint(&mut self) -> PResult<'a, TestBinderConstraint> {
+        match self.token.ident() {
+            Some((Ident { name: sym::and, .. }, IdentKind::Normal)) => {
+                self.bump();
+                let items = self
+                    .parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
+                        this.parse_test_binder_constraint()
+                    })?
+                    .0;
+                Ok(TestBinderConstraint::And { items })
+            }
+            Some((Ident { name: sym::or, .. }, IdentKind::Normal)) => {
+                self.bump();
+                let items = self
+                    .parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
+                        this.parse_test_binder_constraint()
+                    })?
+                    .0;
+                Ok(TestBinderConstraint::Or { items })
+            }
+            Some((Ident { name: sym::ambiguity, .. }, IdentKind::Normal)) => {
+                let span = self.token.span;
+                self.bump();
+                Ok(TestBinderConstraint::Ambiguity { span })
+            }
+            _ if self.check_keyword(exp!(For)) => {
+                let bound_type_constraint = self.parse_test_binder_bound_type_constraint()?;
+                Ok(TestBinderConstraint::AliasOutlives { bound_type_constraint })
+            }
+            _ if self.token.lifetime().is_some() => {
+                let lhs = self.expect_lifetime();
+                self.expect(exp!(Colon))?;
+                if !self.check_lifetime() {
+                    self.unexpected()?;
+                }
+                let rhs = self.expect_lifetime();
+                Ok(TestBinderConstraint::Lifetime { lhs, rhs })
+            }
+            _ if self.token.can_begin_type() => {
+                let lhs = self.parse_ty_for_where_clause()?;
+                self.expect(exp!(Colon))?;
+                if !self.check_lifetime() {
+                    self.unexpected()?;
+                }
+                let rhs = self.expect_lifetime();
+                Ok(TestBinderConstraint::PlaceholderOutlives { lhs, rhs })
+            }
+            _ => Err(self.dcx().struct_span_err(self.token.span, "unexpected token")),
+        }
+    }
+
+    fn parse_test_binder_bound_type_constraint(
+        &mut self,
+    ) -> PResult<'a, TestBinderBoundTypeConstraint> {
+        let lo = self.token.span;
+        let ast::WhereBoundPredicate { bound_generic_params, bounded_ty, bounds } =
+            self.parse_ty_where_predicate_kind()?;
+        let mut rhs = None;
+        for bound in bounds {
+            match bound {
+                GenericBound::Trait(poly_trait_ref) => {
+                    self.dcx().span_err(poly_trait_ref.span, "trait bounds aren't supported here");
+                }
+                GenericBound::Use(_, span) => {
+                    self.dcx().span_err(span, "use bounds aren't supported here");
+                }
+                GenericBound::Outlives(lifetime) => {
+                    if rhs.is_some() {
+                        self.dcx().span_err(
+                            lifetime.ident.span,
+                            "only one lifetime on the rhs supported",
+                        );
+                    } else {
+                        rhs = Some(lifetime);
+                    }
+                }
+            }
+        }
+        match rhs {
+            Some(rhs) => Ok(TestBinderBoundTypeConstraint {
+                span: lo.to(self.prev_token.span),
+                node_id: DUMMY_NODE_ID,
+                params: bound_generic_params,
+                lhs: bounded_ty,
+                rhs,
+            }),
+            None => Err(self.dcx().struct_span_err(
+                bounded_ty.span,
+                "expected a single lifetime on the rhs of this constraint",
+            )),
+        }
+    }
+
     fn report_invalid_macro_expansion_item(&self, args: &DelimArgs, path: Option<&Path>) {
         let span = args.dspan.entire();
         let mut err = self.dcx().struct_span_err(
@@ -2744,7 +3020,13 @@ impl<'a> Parser<'a> {
         }
     }
 }
+
 enum IsMacroRulesItem {
     Yes { has_bang: bool },
     No,
+}
+
+struct UsePathList<'a> {
+    elements: &'a [ast::PathSegment],
+    prev: Option<&'a Self>,
 }

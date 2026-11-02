@@ -15,9 +15,9 @@ use std::hint::black_box;
 #[no_mangle]
 pub fn score_round_enumerate(candidates: &[bool]) {
     // The length check itself can still fail.
-    // CHECK: call void {{.*}}unwrap_failed
+    // CHECK: tail call {{.*}}unwrap_failed
     // But the checked conversion inside the loop should not add another panic path.
-    // CHECK-NOT: call void {{.*}}unwrap_failed
+    // CHECK-NOT: tail call {{.*}}unwrap_failed
     // CHECK: ret void
     u32::try_from(candidates.len()).unwrap();
 
@@ -31,9 +31,9 @@ pub fn score_round_enumerate(candidates: &[bool]) {
 #[no_mangle]
 pub fn score_round_range(candidates: &[bool]) {
     // The length check itself can still fail.
-    // CHECK: call void {{.*}}unwrap_failed
+    // CHECK: tail call {{.*}}unwrap_failed
     // But the checked conversion inside the loop should not add another panic path.
-    // CHECK-NOT: call void {{.*}}unwrap_failed
+    // CHECK-NOT: tail call {{.*}}unwrap_failed
     // CHECK: ret void
     u32::try_from(candidates.len()).unwrap();
 

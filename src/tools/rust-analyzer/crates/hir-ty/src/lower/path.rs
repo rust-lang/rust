@@ -214,7 +214,6 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                     span,
                                 );
                                 let args = GenericArgs::new_from_iter(
-                                    self.ctx.interner,
                                     trait_ref
                                         .args
                                         .iter()
@@ -334,7 +333,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
 
     #[tracing::instrument(skip(self), ret)]
     pub(crate) fn resolve_path_in_type_ns(&mut self) -> Option<(TypeNs, Option<usize>)> {
-        let (resolution, remaining_index, _, prefix_info) =
+        let (resolution, remaining_index, _, prefix_info, _) =
             self.ctx.resolver.resolve_path_in_type_ns_with_prefix_info(self.ctx.db, self.path)?;
 
         let segments = self.segments;
@@ -385,7 +384,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         &mut self,
         hygiene_id: HygieneId,
     ) -> Option<ResolveValueResult> {
-        let (res, prefix_info) = self.ctx.resolver.resolve_path_in_value_ns_with_prefix_info(
+        let (res, prefix_info, _) = self.ctx.resolver.resolve_path_in_value_ns_with_prefix_info(
             self.ctx.db,
             self.path,
             hygiene_id,
@@ -544,7 +543,6 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         let substs = self.substs_from_path_segment(assoc_type.into(), infer_args, None, true, span);
 
         let substs = GenericArgs::new_from_iter(
-            interner,
             trait_args.iter().chain(substs.iter().skip(trait_args.len())),
         );
 
@@ -576,7 +574,6 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         lowering_assoc_type_generics: bool,
         span: Span,
     ) -> GenericArgs<'db> {
-        let interner = self.ctx.interner;
         let prev_current_segment_idx = self.current_segment_idx;
         let prev_current_segment = self.current_or_prev_segment;
 
@@ -586,7 +583,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             ValueTyDefId::UnionId(it) => it.into(),
             ValueTyDefId::ConstId(it) => it.into(),
             ValueTyDefId::StaticId(_) => {
-                return GenericArgs::empty(interner);
+                return GenericArgs::empty();
             }
             ValueTyDefId::EnumVariantId(var) => {
                 // the generic args for an enum variant may be either specified
@@ -746,7 +743,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         };
                         self.ctx
                             .ctx
-                            .lower_const(konst, const_param_ty(self.ctx.ctx.db, const_id))
+                            .lower_const(konst, const_param_ty(self.ctx.ctx.db, const_id), false)
                             .into()
                     }
                     _ => unreachable!("unmatching param kinds were passed to `provided_kind()`"),
@@ -929,7 +926,6 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         )
                     });
                 let args = GenericArgs::new_from_iter(
-                    interner,
                     super_trait_args.iter().chain(args.iter().skip(super_trait_args.len())),
                 );
                 let projection_term = AliasTerm::new_from_args(
@@ -1234,6 +1230,12 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
         };
         params.next();
         substs.push(self_ty);
+    } else if has_self_arg {
+        // A qualified path `<T as Trait>::Assoc` where `Trait` resolved to something without a
+        // `Self` parameter, e.g. a struct. `check_generic_args_len()` skips the self type
+        // unconditionally, so drop it here too instead of matching it against a real parameter.
+        // FIXME: Report a diagnostic here, rustc emits `E0404: expected trait, found struct`.
+        args.next();
     }
 
     loop {

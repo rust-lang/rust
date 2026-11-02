@@ -13,6 +13,8 @@ note: `Foo` defines an item `foo`, perhaps you need to implement it
    |
 LL | trait Foo<A> {
    | ^^^^^^^^^^^^
+LL |     fn foo(&self, a: A) -> A {
+   |
 
 error: aborting due to 1 previous error
 

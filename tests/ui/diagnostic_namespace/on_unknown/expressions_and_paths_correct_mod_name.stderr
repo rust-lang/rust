@@ -1,0 +1,30 @@
+error[E0432]: this=b, unresolved=x
+  --> $DIR/expressions_and_paths_correct_mod_name.rs:14:5
+   |
+LL | use c::d::x;
+   |     ^^^^^^-
+   |           |
+   |           no `x` in `a::b`
+   |
+   = note: unresolved import `c::d::x`
+
+error[E0425]: this=b, unresolved=X
+  --> $DIR/expressions_and_paths_correct_mod_name.rs:17:19
+   |
+LL |     let _ = c::d::X();
+   |                   ^ not found in `c::d`
+   |
+   = note: cannot find function, tuple struct or tuple variant `X` in module `c::d`
+
+error[E0425]: this=b, unresolved=X
+  --> $DIR/expressions_and_paths_correct_mod_name.rs:19:18
+   |
+LL |     let _: c::d::X;
+   |                  ^ not found in `c::d`
+   |
+   = note: cannot find type `X` in module `c::d`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0432.
+For more information about an error, try `rustc --explain E0425`.

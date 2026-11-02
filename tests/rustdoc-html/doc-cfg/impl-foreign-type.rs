@@ -6,8 +6,8 @@
 #![feature(doc_cfg)]
 #![crate_name = "foo"]
 
-//@has 'foo/trait.Blob.html'
-//@has - '//*[@id="impl-Blob-for-Box%3CR%3E"]//*[@class="stab portability"]' 'Available on non-crate feature alloc only.'
+//@ has 'foo/trait.Blob.html'
+//@ has - '//*[@id="impl-Blob-for-Box%3CR%3E"]//*[@class="stab portability"]' 'Available on non-crate feature alloc only.'
 
 pub trait Blob {}
 

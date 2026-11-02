@@ -3,8 +3,7 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{FormatArgsStorage, root_macro_call_first_node};
 use clippy_utils::{is_in_test, sym};
 use rustc_hir::{Expr, Impl, Item, ItemKind, OwnerId};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 
 mod empty_string;
 mod literal;
@@ -16,8 +15,7 @@ declare_clippy_lint! {
     /// This lint warns about the use of literals as `print!`/`println!` args.
     ///
     /// ### Why is this bad?
-    /// Using literals as `println!` args is inefficient
-    /// (c.f., https://github.com/matthiaskrgr/rust-str-bench) and unnecessary
+    /// Using literals as `println!` args is [inefficient] and unnecessary
     /// (i.e., just put the literal in the format string)
     ///
     /// ### Example
@@ -28,6 +26,8 @@ declare_clippy_lint! {
     /// ```no_run
     /// println!("foo");
     /// ```
+    ///
+    /// [inefficient]: https://github.com/matthiaskrgr/rust-str-bench
     #[clippy::version = "pre 1.29.0"]
     pub PRINT_LITERAL,
     style,
@@ -154,8 +154,7 @@ declare_clippy_lint! {
     /// This lint warns about the use of literals as `write!`/`writeln!` args.
     ///
     /// ### Why is this bad?
-    /// Using literals as `writeln!` args is inefficient
-    /// (c.f., https://github.com/matthiaskrgr/rust-str-bench) and unnecessary
+    /// Using literals as `writeln!` args is [inefficient] and unnecessary
     /// (i.e., just put the literal in the format string)
     ///
     /// ### Example
@@ -171,6 +170,8 @@ declare_clippy_lint! {
     /// # let mut buf = String::new();
     /// writeln!(buf, "foo");
     /// ```
+    ///
+    /// [inefficient]: https://github.com/matthiaskrgr/rust-str-bench
     #[clippy::version = "pre 1.29.0"]
     pub WRITE_LITERAL,
     style,

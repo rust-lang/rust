@@ -4,6 +4,7 @@
 
 //@ ignore-compare-mode-polonius (explicit revisions)
 //@ revisions: nll polonius legacy
+//@ [nll] compile-flags: -Z polonius=off
 //@ [polonius] check-pass
 //@ [polonius] compile-flags: -Z polonius=next
 //@ [legacy] check-pass

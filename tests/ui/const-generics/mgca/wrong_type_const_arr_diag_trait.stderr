@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/wrong_type_const_arr_diag_trait.rs:17:51
+  --> $DIR/wrong_type_const_arr_diag_trait.rs:16:51
    |
 LL |     let _: TakesArr<{ [<u8 as Trait>::ASSOC] }> = TakesArr::<{ [1] }>;
    |            ------------------------------------   ^^^^^^^^^^^^^^^^^^^ expected `[<u8 as Trait>::ASSOC]`, found `*b"\x01"`

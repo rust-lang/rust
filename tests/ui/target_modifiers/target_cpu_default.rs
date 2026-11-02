@@ -23,8 +23,8 @@
 //@[explicit_mismatch] compile-flags: -Ctarget-cpu=sm_70
 
 #![feature(no_core)]
-//[implicit_mismatch]~^ ERROR mixing `-Ctarget-cpu` will cause an ABI mismatch
-//[explicit_mismatch]~^^ ERROR mixing `-Ctarget-cpu` will cause an ABI mismatch
+//[implicit_mismatch]~? ERROR mixing `-Ctarget-cpu` will cause an ABI mismatch
+//[explicit_mismatch]~? ERROR mixing `-Ctarget-cpu` will cause an ABI mismatch
 #![crate_type = "rlib"]
 #![no_core]
 

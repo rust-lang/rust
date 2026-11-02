@@ -50,9 +50,9 @@ impl ArmInlineAsmRegClass {
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::reg => types! { _: I8, I16, I32, F16, F32; },
-            Self::sreg | Self::sreg_low16 => types! { vfp2: I32, F16, F32; },
+            Self::sreg | Self::sreg_low16 => types! { fpregs: I32, F16, F32; },
             Self::dreg_low16 | Self::dreg_low8 => types! {
-                vfp2: I64, F64;
+                fpregs: I64, F64;
                 neon: VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF16(4), VecF32(2);
             },
             Self::dreg => types! {

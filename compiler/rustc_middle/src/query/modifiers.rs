@@ -1,4 +1,5 @@
-//! This contains documentation which is linked from query modifiers used in the `rustc_queries!` proc macro.
+//! This contains documentation which is linked from query modifiers used in the `rustc_queries!`
+//! proc macro.
 //!
 //! The dummy items in this module are used to enable hover documentation for
 //! modifier names in the query list, and to allow find-all-references to list
@@ -10,10 +11,12 @@
 /// # `arena_cache` query modifier
 ///
 /// Query return values must impl `Copy` and be small, but some queries must return values that
-/// doesn't meet those criteria. Queries marked with this modifier have their values allocated in
-/// an arena and the query returns a reference to the value. There are two cases.
+/// don't meet those criteria. Queries marked with this modifier have their values allocated in
+/// an arena and the query returns a reference to the value. There are three cases.
 /// - If the provider function returns `T` then the query will return `&'tcx T`.
 /// - If the provider function returns `Option<T>` then the query will return `Option<&'tcx T>`.
+/// - If the provider function returns `Result<T, ErrorGuaranteed>` then the query will return
+///   `Result<&'tcx T, ErrorGuaranteed>`.
 ///
 /// The query plumbing takes care of the arenas and the type manipulations.
 pub(crate) struct arena_cache;

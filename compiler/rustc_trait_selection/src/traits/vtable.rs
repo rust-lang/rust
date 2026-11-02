@@ -3,13 +3,12 @@ use std::ops::ControlFlow;
 
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::util::PredicateSet;
-use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
     VtblEntry,
 };
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, bug};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
@@ -310,9 +309,14 @@ fn vtable_entries<'tcx>(
 
 // Given a `dyn Subtrait: Supertrait` trait ref, find corresponding first slot
 // for `Supertrait`'s methods in the vtable of `Subtrait`.
-pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRef<'tcx>) -> usize {
+//
+// Returns `None` if and only if an error was already reported elsewhere.
+pub(crate) fn first_method_vtable_slot<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: ty::TraitRef<'tcx>,
+) -> Option<usize> {
     debug_assert!(!key.has_non_region_infer() && !key.has_non_region_param());
-    tcx.debug_assert_fully_normalized(ty::TypingEnv::fully_monomorphized(), key);
+    tcx.assert_fully_normalized(ty::TypingEnv::fully_monomorphized(), key);
 
     let ty::Dynamic(source, _) = *key.self_ty().kind() else {
         bug!();
@@ -325,7 +329,7 @@ pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRe
     if tcx
         .instantiate_and_check_impossible_clauses((source_principal.def_id, source_principal.args))
     {
-        return 0;
+        return Some(0);
     }
 
     let target_principal = ty::ExistentialTraitRef::erase_self_ty(tcx, key);
@@ -356,7 +360,19 @@ pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRe
         }
     };
 
-    prepare_vtable_segments(tcx, source_principal, vtable_segment_callback).unwrap()
+    let index = prepare_vtable_segments(tcx, source_principal, vtable_segment_callback);
+
+    if index.is_none() {
+        // This can happen if the trait hierarchy is malformed (e.g., due to
+        // missing generics on a supertrait bound). There should already be an error
+        // emitted for this, so we just delay the ICE.
+        tcx.dcx().delayed_bug(format!(
+            "could not find the supertrait vtable slot for `{}` -> `{}`",
+            source, target_principal
+        ));
+    }
+
+    index
 }
 
 /// Given a `dyn Subtrait` and `dyn Supertrait` trait object, find the slot of

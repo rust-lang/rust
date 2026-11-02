@@ -1,12 +1,11 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{SpanlessEq, higher, peel_hir_expr_while, sym};
 use rustc_hir::{Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, SyntaxContext};
 
@@ -101,7 +100,7 @@ fn try_parse_op_call<'tcx>(
         });
         let receiver = receiver.peel_borrows();
         let receiver_ty = cx.typeck_results().expr_ty(receiver).peel_refs();
-        if value.span.eq_ctxt(expr.span) && path.ident.name == symbol {
+        if value.span.ctxt() == expr.span.ctxt() && path.ident.name == symbol {
             for sym in &[sym::HashSet, sym::BTreeSet] {
                 if receiver_ty.is_diag_item(cx, *sym) {
                     return Some((OpExpr { receiver, value, span }, *sym));

@@ -16,24 +16,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         flags_op: &OpTy<'tcx>,
         thread_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, ThreadId> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let security = this.read_pointer(security_op)?;
+        let security = ecx.read_pointer(security_op)?;
         // stacksize is ignored, but still needs to be a valid usize
-        this.read_target_usize(stacksize_op)?;
-        let start_routine = this.read_pointer(start_op)?;
-        let func_arg = this.read_immediate(arg_op)?;
-        let flags = this.read_scalar(flags_op)?.to_u32()?;
+        ecx.read_target_usize(stacksize_op)?;
+        let start_routine = ecx.read_pointer(start_op)?;
+        let func_arg = ecx.read_immediate(arg_op)?;
+        let flags = ecx.read_scalar(flags_op)?.to_u32()?;
 
-        let thread = if this.ptr_is_null(this.read_pointer(thread_op)?)? {
+        let thread = if ecx.ptr_is_null(ecx.read_pointer(thread_op)?)? {
             None
         } else {
-            let thread_info_place = this.deref_pointer_as(thread_op, this.machine.layouts.u32)?;
+            let thread_info_place = ecx.deref_pointer_as(thread_op, ecx.machine.layouts.u32)?;
             Some(thread_info_place)
         };
 
         let stack_size_param_is_a_reservation =
-            this.eval_windows_u32("c", "STACK_SIZE_PARAM_IS_A_RESERVATION");
+            ecx.eval_windows_u32("c", "STACK_SIZE_PARAM_IS_A_RESERVATION");
 
         // We ignore the stack size, so we also ignore the
         // `STACK_SIZE_PARAM_IS_A_RESERVATION` flag.
@@ -41,16 +41,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("unsupported `dwCreationFlags` {} in `CreateThread`", flags)
         }
 
-        if !this.ptr_is_null(security)? {
+        if !ecx.ptr_is_null(security)? {
             throw_unsup_format!("non-null `lpThreadAttributes` in `CreateThread`")
         }
 
-        this.start_regular_thread(
+        ecx.start_regular_thread(
             thread,
             start_routine,
             ExternAbi::System { unwind: false },
             func_arg,
-            this.layout_of(this.tcx.types.u32)?,
+            ecx.layout_of(ecx.tcx.types.u32)?,
         )
     }
 
@@ -60,26 +60,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         timeout_op: &OpTy<'tcx>,
         return_dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let handle = this.read_handle(handle_op, "WaitForSingleObject")?;
-        let timeout = this.read_scalar(timeout_op)?.to_u32()?;
+        let handle = ecx.read_handle(handle_op, "WaitForSingleObject")?;
+        let timeout = ecx.read_scalar(timeout_op)?.to_u32()?;
 
         let joined_thread_id = match handle {
             Handle::Thread(thread) => thread,
             // Unlike on posix, the outcome of joining the current thread is not documented.
             // On current Windows, it just deadlocks.
-            Handle::Pseudo(PseudoHandle::CurrentThread) => this.active_thread(),
-            _ => this.invalid_handle("WaitForSingleObject")?,
+            Handle::Pseudo(PseudoHandle::CurrentThread) => ecx.active_thread(),
+            _ => ecx.invalid_handle("WaitForSingleObject")?,
         };
 
-        if timeout != this.eval_windows_u32("c", "INFINITE") {
+        if timeout != ecx.eval_windows_u32("c", "INFINITE") {
             throw_unsup_format!("`WaitForSingleObject` with non-infinite timeout");
         }
 
-        this.join_thread(
+        ecx.join_thread(
             joined_thread_id,
-            /* success_retval */ this.eval_windows("c", "WAIT_OBJECT_0"),
+            /* success_retval */ ecx.eval_windows("c", "WAIT_OBJECT_0"),
             return_dest,
         )?;
 

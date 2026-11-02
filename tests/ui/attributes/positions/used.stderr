@@ -3,6 +3,7 @@ error: the `used` attribute cannot be used on functions
    |
 LL | #[used]
    |   ^^^^
+LL | fn foo() {}
    |
    = help: the `used` attribute can only be applied to statics
 
@@ -11,6 +12,7 @@ error: the `used` attribute cannot be used on structs
    |
 LL | #[used]
    |   ^^^^
+LL | struct Foo {}
    |
    = help: the `used` attribute can only be applied to statics
 
@@ -19,6 +21,7 @@ error: the `used` attribute cannot be used on traits
    |
 LL | #[used]
    |   ^^^^
+LL | trait Bar {}
    |
    = help: the `used` attribute can only be applied to statics
 
@@ -27,6 +30,7 @@ error: the `used` attribute cannot be used on trait impl blocks
    |
 LL | #[used]
    |   ^^^^
+LL | impl Bar for Foo {}
    |
    = help: the `used` attribute can only be applied to statics
 
@@ -35,6 +39,7 @@ error: the `used` attribute cannot be used on foreign statics
    |
 LL |     #[used]
    |       ^^^^
+LL |     static BAR: i32;
    |
    = help: the `used` attribute can only be applied to statics
 

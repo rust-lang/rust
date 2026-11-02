@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_hir::attrs::ReprAttr;
-use rustc_hir::{HirId, Item, ItemKind, find_attr};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_attr_ir::{ReprAttr, find_attr};
+use rustc_hir::{HirId, Item, ItemKind};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
+use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, FieldDef};
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -87,13 +86,13 @@ fn is_union_with_two_non_zst_fields<'tcx>(cx: &LateContext<'tcx>, item: &Item<'t
             .skip_norm_wip()
             .kind()
     {
-        adt_def.all_fields().filter(|f| !is_zst(cx, f, args)).count() >= 2
+        adt_def.all_fields().filter(|f| !is_zst(cx, f, *args)).count() >= 2
     } else {
         false
     }
 }
 
-fn is_zst<'tcx>(cx: &LateContext<'tcx>, field: &FieldDef, args: ty::GenericArgsRef<'tcx>) -> bool {
+fn is_zst<'tcx>(cx: &LateContext<'tcx>, field: &FieldDef, args: ty::GenericArgs<'tcx>) -> bool {
     let ty = field.ty(cx.tcx, args).skip_norm_wip();
     if let Ok(layout) = cx.layout_of(ty) {
         layout.is_zst()

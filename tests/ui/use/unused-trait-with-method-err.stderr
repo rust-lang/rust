@@ -13,6 +13,8 @@ note: `Bar` defines an item `uwu`, perhaps you need to implement it
    |
 LL |     pub trait Bar {
    |     ^^^^^^^^^^^^^
+LL |         fn uwu(&self) {}
+   |
 
 error: aborting due to 1 previous error
 

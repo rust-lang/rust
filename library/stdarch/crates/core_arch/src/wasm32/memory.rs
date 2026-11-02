@@ -1,7 +1,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[cfg_attr(target_pointer_width = "32", link_name = "llvm.wasm.memory.grow.i32")]
     #[cfg_attr(target_pointer_width = "64", link_name = "llvm.wasm.memory.grow.i64")]
     fn llvm_memory_grow(mem: u32, pages: usize) -> usize;

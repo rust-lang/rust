@@ -2,7 +2,8 @@
 //!
 //! # Examples
 //!
-//! ```
+#![cfg_attr(target_os = "solid", doc = "```")]
+#![cfg_attr(not(target_os = "solid"), doc = "```ignore (needs solid)")]
 //! use std::ffi::OsString;
 //! use std::os::solid::ffi::OsStringExt;
 //!
@@ -17,7 +18,8 @@
 //! assert_eq!(bytes, b"foo");
 //! ```
 //!
-//! ```
+#![cfg_attr(target_os = "solid", doc = "```")]
+#![cfg_attr(not(target_os = "solid"), doc = "```ignore (needs solid)")]
 //! use std::ffi::OsStr;
 //! use std::os::solid::ffi::OsStrExt;
 //!

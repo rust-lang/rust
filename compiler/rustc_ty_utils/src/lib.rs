@@ -5,10 +5,8 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![feature(associated_type_defaults)]
 #![feature(deref_patterns)]
 #![feature(iterator_try_collect)]
-#![feature(never_type)]
 #![feature(option_into_flat_iter)]
 // tidy-alphabetical-end
 
@@ -26,7 +24,6 @@ mod needs_drop;
 mod nested_bodies;
 mod opaque_types;
 mod representability;
-pub mod sig_types;
 mod structural_match;
 mod ty;
 

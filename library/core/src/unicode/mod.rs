@@ -18,6 +18,8 @@ pub(crate) use unicode_data::lt::lookup as Lt;
 pub(crate) use unicode_data::n::lookup as N;
 pub(crate) use unicode_data::uppercase::lookup as Uppercase;
 pub(crate) use unicode_data::white_space::lookup as White_Space;
+pub(crate) use unicode_data::xid_continue::lookup as XID_Continue;
+pub(crate) use unicode_data::xid_start::lookup as XID_Start;
 
 #[allow(unreachable_pub)]
 pub mod unicode_data;

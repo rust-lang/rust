@@ -11,7 +11,8 @@
 //!
 //! # Examples
 //!
-//! ```no_run
+#![cfg_attr(target_family = "unix", doc = "```no_run")]
+#![cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 //! use std::fs::File;
 //! use std::os::unix::prelude::*;
 //!
@@ -94,7 +95,6 @@ pub mod net;
 pub mod process;
 pub mod raw;
 pub mod thread;
-pub mod xdg;
 
 /// A prelude for conveniently writing platform-specific code.
 ///

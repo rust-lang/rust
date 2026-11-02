@@ -1,7 +1,7 @@
 use rustc_middle::mir::BinOp;
 use rustc_span::Symbol;
 
-use crate::intrinsics::math::compute_crc32;
+use crate::intrinsics::math::{compute_crc32, sha256};
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -21,7 +21,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // `left` input, the second half of the output from the `right` input.
             // https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxq_u8
             "neon.umaxp.v16i8" => {
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -63,7 +63,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //
             // Used by `vpadd_{s8, u8, s16, u16, s32, u32}`.
             name if name.starts_with("neon.addp.") => {
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -107,7 +107,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //
             // Used by `vpaddl_{u8, u16, u32}` and `vpaddlq_{u8, u16, u32}`.
             name if name.starts_with("neon.uaddlp.") => {
-                let [src] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [src] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let (src, src_len) = this.project_to_simd(src)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
@@ -150,7 +150,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //
             // https://developer.arm.com/architectures/instruction-sets/intrinsics#f:@navigationhierarchiessimdisa=[Neon]&q=vqdmulh
             name if name.starts_with("neon.sqdmulh.") => {
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -196,14 +196,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // have either 8 or 16 elements.
                 let (table_segments, indices) = match unprefixed_name {
                     "neon.tbl1.v8i8" | "neon.tbl1.v16i8" => {
-                        let [table, indices] = this.check_shim_sig_unadjusted(link_name, args)?;
+                        let [table, indices] =
+                            this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                         let (table, len) = this.project_to_simd(table)?;
                         assert_eq!(len, 16);
                         (vec![table], indices)
                     }
                     "neon.tbl2.v8i8" | "neon.tbl2.v16i8" => {
                         let [table0, table1, indices] =
-                            this.check_shim_sig_unadjusted(link_name, args)?;
+                            this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                         let (table0, len0) = this.project_to_simd(table0)?;
                         let (table1, len1) = this.project_to_simd(table1)?;
                         assert_eq!([len0, len1], [16; 2]);
@@ -211,7 +212,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                     "neon.tbl3.v8i8" | "neon.tbl3.v16i8" => {
                         let [table0, table1, table2, indices] =
-                            this.check_shim_sig_unadjusted(link_name, args)?;
+                            this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                         let (table0, len0) = this.project_to_simd(table0)?;
                         let (table1, len1) = this.project_to_simd(table1)?;
                         let (table2, len2) = this.project_to_simd(table2)?;
@@ -220,7 +221,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                     "neon.tbl4.v8i8" | "neon.tbl4.v16i8" => {
                         let [table0, table1, table2, table3, indices] =
-                            this.check_shim_sig_unadjusted(link_name, args)?;
+                            this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                         let (table0, len0) = this.project_to_simd(table0)?;
                         let (table1, len1) = this.project_to_simd(table1)?;
                         let (table2, len2) = this.project_to_simd(table2)?;
@@ -275,7 +276,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                let [crc, data] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [crc, data] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 let crc = this.read_scalar(crc)?;
                 let data = this.read_scalar(data)?;
 
@@ -303,7 +304,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Also see <https://gcc.gnu.org/pipermail/gcc-patches/2023-February/612088.html>.
                 this.expect_target_feature_for_intrinsic(link_name, "aes")?;
 
-                let [left, right] = this.check_shim_sig_unadjusted(link_name, args)?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 let left = this.read_scalar(left)?.to_u64()?;
                 let right = this.read_scalar(right)?.to_u64()?;
 
@@ -314,8 +315,163 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_u128(result), &dest)?;
             }
 
+            // Used to implement the vsha256hq_u32 function.
+            // https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha256hq_u32
+            "crypto.sha256h" => {
+                this.expect_target_feature_for_intrinsic(link_name, "sha2")?;
+
+                let [abcd, efgh, wk] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                let (abcd, abcd_len) = this.project_to_simd(abcd)?;
+                let (efgh, efgh_len) = this.project_to_simd(efgh)?;
+                let (wk, wk_len) = this.project_to_simd(wk)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
+
+                assert_eq!(abcd_len, 4);
+                assert_eq!(efgh_len, 4);
+                assert_eq!(wk_len, 4);
+                assert_eq!(dest_len, 4);
+
+                let abcd: [u32; 4] = read_u32x4(this, &abcd)?;
+                let efgh: [u32; 4] = read_u32x4(this, &efgh)?;
+                let wk: [u32; 4] = read_u32x4(this, &wk)?;
+
+                let result = sha256h(abcd, efgh, wk);
+
+                write_u32x4(this, &dest, result)?;
+            }
+            // Used to implement the vsha256h2q_u32 function.
+            // https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha256h2q_u32
+            "crypto.sha256h2" => {
+                this.expect_target_feature_for_intrinsic(link_name, "sha2")?;
+
+                let [efgh, abcd, wk] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                let (efgh, efgh_len) = this.project_to_simd(efgh)?;
+                let (abcd, abcd_len) = this.project_to_simd(abcd)?;
+                let (wk, wk_len) = this.project_to_simd(wk)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
+
+                assert_eq!(efgh_len, 4);
+                assert_eq!(abcd_len, 4);
+                assert_eq!(wk_len, 4);
+                assert_eq!(dest_len, 4);
+
+                let efgh: [u32; 4] = read_u32x4(this, &efgh)?;
+                let abcd: [u32; 4] = read_u32x4(this, &abcd)?;
+                let wk: [u32; 4] = read_u32x4(this, &wk)?;
+
+                let result = sha256h2(efgh, abcd, wk);
+
+                write_u32x4(this, &dest, result)?;
+            }
+            // Used to implement the vsha256su0q_u32 function.
+            // https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha256su0q_u32
+            "crypto.sha256su0" => {
+                this.expect_target_feature_for_intrinsic(link_name, "sha2")?;
+
+                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                let (a, a_len) = this.project_to_simd(a)?;
+                let (b, b_len) = this.project_to_simd(b)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
+
+                assert_eq!(a_len, 4);
+                assert_eq!(b_len, 4);
+                assert_eq!(dest_len, 4);
+
+                let a: [u32; 4] = read_u32x4(this, &a)?;
+                let b: [u32; 4] = read_u32x4(this, &b)?;
+
+                let result = sha256su0(a, b);
+
+                write_u32x4(this, &dest, result)?;
+            }
+            // Used to implement the vsha256su1q_u32 function.
+            // https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha256su1q_u32
+            "crypto.sha256su1" => {
+                this.expect_target_feature_for_intrinsic(link_name, "sha2")?;
+
+                let [a, b, c] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                let (a, a_len) = this.project_to_simd(a)?;
+                let (b, b_len) = this.project_to_simd(b)?;
+                let (c, c_len) = this.project_to_simd(c)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
+
+                assert_eq!(a_len, 4);
+                assert_eq!(b_len, 4);
+                assert_eq!(c_len, 4);
+                assert_eq!(dest_len, 4);
+
+                let a: [u32; 4] = read_u32x4(this, &a)?;
+                let b: [u32; 4] = read_u32x4(this, &b)?;
+                let c: [u32; 4] = read_u32x4(this, &c)?;
+
+                let result = sha256su1(a, b, c);
+
+                write_u32x4(this, &dest, result)?;
+            }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }
         interp_ok(EmulateItemResult::NeedsReturn)
     }
+}
+
+/// Reads a `[u32; 4]` array.
+fn read_u32x4<'c>(ecx: &mut MiriInterpCx<'c>, vec: &OpTy<'c>) -> InterpResult<'c, [u32; 4]> {
+    let mut res = [0; 4];
+    for (i, dst) in res.iter_mut().enumerate() {
+        let projected = &ecx.project_index(vec, i.try_into().unwrap())?;
+        *dst = ecx.read_scalar(projected)?.to_u32()?;
+    }
+    interp_ok(res)
+}
+
+fn write_u32x4<'c>(
+    ecx: &mut MiriInterpCx<'c>,
+    dest: &MPlaceTy<'c>,
+    val: [u32; 4],
+) -> InterpResult<'c, ()> {
+    for (i, part) in val.into_iter().enumerate() {
+        let projected = &ecx.project_index(dest, i.to_u64())?;
+        ecx.write_scalar(Scalar::from_u32(part), projected)?;
+    }
+    interp_ok(())
+}
+
+fn sha256su0(v0: [u32; 4], v1: [u32; 4]) -> [u32; 4] {
+    [
+        v0[0].wrapping_add(sha256::sigma0(v0[1])),
+        v0[1].wrapping_add(sha256::sigma0(v0[2])),
+        v0[2].wrapping_add(sha256::sigma0(v0[3])),
+        v0[3].wrapping_add(sha256::sigma0(v1[0])),
+    ]
+}
+
+fn sha256su1(v0: [u32; 4], v1: [u32; 4], v2: [u32; 4]) -> [u32; 4] {
+    let r0 = v0[0].wrapping_add(v1[1]).wrapping_add(sha256::sigma1(v2[2]));
+    let r1 = v0[1].wrapping_add(v1[2]).wrapping_add(sha256::sigma1(v2[3]));
+    let r2 = v0[2].wrapping_add(v1[3]).wrapping_add(sha256::sigma1(r0));
+    let r3 = v0[3].wrapping_add(v2[0]).wrapping_add(sha256::sigma1(r1));
+    [r0, r1, r2, r3]
+}
+
+// SHA256H/SHA256H2 do four compression rounds on the abcd/efgh layout.
+// https://developer.arm.com/architectures/instruction-sets/intrinsics/#f:@navigationhierarchiesinstructiongroup=[Cryptography,SHA256]
+fn sha256hash(abcd: [u32; 4], efgh: [u32; 4], wk: [u32; 4]) -> ([u32; 4], [u32; 4]) {
+    let mut state = [abcd[0], abcd[1], abcd[2], abcd[3], efgh[0], efgh[1], efgh[2], efgh[3]];
+    for &wk_i in &wk {
+        state = sha256::round(state, wk_i);
+    }
+    ([state[0], state[1], state[2], state[3]], [state[4], state[5], state[6], state[7]])
+}
+
+fn sha256h(abcd: [u32; 4], efgh: [u32; 4], wk: [u32; 4]) -> [u32; 4] {
+    sha256hash(abcd, efgh, wk).0
+}
+
+// sha256h2 takes efgh as the first argument. abcd and efgh are swapped when calling sha256hash.
+fn sha256h2(efgh: [u32; 4], abcd: [u32; 4], wk: [u32; 4]) -> [u32; 4] {
+    sha256hash(abcd, efgh, wk).1
 }

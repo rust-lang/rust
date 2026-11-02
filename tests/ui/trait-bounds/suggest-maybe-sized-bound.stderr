@@ -25,6 +25,7 @@ LL |         type P<X> = [u8];
 note: required by a bound in `main::Trait::P`
   --> $DIR/suggest-maybe-sized-bound.rs:13:9
    |
+LL |     trait Trait {
 LL |         type P<X>;
    |         ^^^^^^^^^^ required by this bound in `Trait::P`
 help: consider relaxing the implicit `Sized` restriction

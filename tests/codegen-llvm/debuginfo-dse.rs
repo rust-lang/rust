@@ -55,7 +55,7 @@ struct Aggregate_4xi8(i8, i8, i8, i8); // scalar(i32)
 
 // The pass mode is indirect and the backend represent is simd vector.
 #[repr(simd)]
-struct Simd_i32x4([i32; 4]);
+struct Simd_i32x8([i32; 8]);
 
 unsafe extern "Rust" {
     #[rustc_nounwind]
@@ -169,10 +169,10 @@ fn indirect(
     tuple_sliceref_scalar: Tuple_SliceRef_Scalar,
     array: Array,
     typle_i32_i64_i8: Typle_i32_i64_i8,
-    simd_i32x4: Simd_i32x4,
+    simd_i32x8: Simd_i32x8,
 ) {
     // CHECK-LABEL: define{{( dso_local)?}} void @indirect
-    // CHECK-SAME: (ptr{{.*}} %tuple_sliceref_scalar, ptr{{.*}} %array, ptr{{.*}} %typle_i32_i64_i8, ptr{{.*}} %simd_i32x4)
+    // CHECK-SAME: (ptr{{.*}} %tuple_sliceref_scalar, ptr{{.*}} %array, ptr{{.*}} %typle_i32_i64_i8, ptr{{.*}} %simd_i32x8)
     // CHECK: call void @opaque_fn()
     opaque_fn();
     // CHECK-NEXT: #dbg_value(ptr %tuple_sliceref_scalar, [[ref_tuple_sliceref_scalar:![0-9]+]], !DIExpression()
@@ -183,8 +183,8 @@ fn indirect(
     let ref_1_array = &array[1];
     // CHECK-NEXT: #dbg_value(ptr %typle_i32_i64_i8, [[ref_1_typle_i32_i64_i8:![0-9]+]], !DIExpression()
     let ref_1_typle_i32_i64_i8 = &typle_i32_i64_i8.1;
-    // CHECK-NEXT: #dbg_value(ptr %simd_i32x4, [[ref_simd_i32x4:![0-9]+]], !DIExpression()
-    let ref_simd_i32x4 = &simd_i32x4;
+    // CHECK-NEXT: #dbg_value(ptr %simd_i32x8, [[ref_simd_i32x8:![0-9]+]], !DIExpression()
+    let ref_simd_i32x8 = &simd_i32x8;
     // CHECK: call void @opaque_fn()
     opaque_fn();
 }
@@ -334,7 +334,7 @@ fn index(slice: &[i32; 4], idx: usize) -> i32 {
 // CHECK-DAG: [[ref_1_tuple_sliceref_scalar]] = !DILocalVariable(name: "ref_1_tuple_sliceref_scalar"
 // CHECK-DAG: [[ref_1_array]] = !DILocalVariable(name: "ref_1_array"
 // CHECK-DAG: [[ref_1_typle_i32_i64_i8]] = !DILocalVariable(name: "ref_1_typle_i32_i64_i8"
-// CHECK-DAG: [[ref_simd_i32x4]] = !DILocalVariable(name: "ref_simd_i32x4"
+// CHECK-DAG: [[ref_simd_i32x8]] = !DILocalVariable(name: "ref_simd_i32x8"
 
 // CHECK-DAG: [[ref_direct_ref]] = !DILocalVariable(name: "ref_direct_ref"
 // CHECK-DAG: [[ref_1_direct_ref]] = !DILocalVariable(name: "ref_1_direct_ref"

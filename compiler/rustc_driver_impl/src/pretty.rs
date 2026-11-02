@@ -7,15 +7,16 @@ use std::io;
 
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust as pprust_ast;
+use rustc_hir::intravisit;
 use rustc_hir_pretty as pprust_hir;
-use rustc_middle::bug;
+use rustc_hir_pretty::PpAnn;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_build::thir::print::{thir_flat, thir_tree};
 use rustc_public::rustc_internal::pretty::write_smir_pretty;
 use rustc_session::Session;
 use rustc_session::config::{OutFileName, OutputType, PpHirMode, PpMode, PpSourceMode};
-use rustc_span::{FileName, Ident};
+use rustc_span::{FileName, Ident, bug};
 use tracing::debug;
 
 pub use self::PpMode::*;
@@ -71,7 +72,8 @@ struct HirIdentifiedAnn<'tcx> {
 
 impl<'tcx> pprust_hir::PpAnn for HirIdentifiedAnn<'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
-        self.tcx.nested(state, nested)
+        let this = &self.tcx as &dyn intravisit::HirTyCtxt<'_>;
+        this.nested(state, nested)
     }
 
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
@@ -149,11 +151,12 @@ struct HirTypedAnn<'tcx> {
 
 impl<'tcx> pprust_hir::PpAnn for HirTypedAnn<'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
+        let this = &self.tcx as &dyn intravisit::HirTyCtxt<'_>;
         let old_maybe_typeck_results = self.maybe_typeck_results.get();
         if let pprust_hir::Nested::Body(id) = nested {
             self.maybe_typeck_results.set(Some(self.tcx.typeck_body(id)));
         }
-        self.tcx.nested(state, nested);
+        this.nested(state, nested);
         self.maybe_typeck_results.set(old_maybe_typeck_results);
     }
 
@@ -281,7 +284,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
                 )
             };
             match s {
-                PpHirMode::Normal => f(&tcx),
+                PpHirMode::Normal => f(&(&tcx as &dyn intravisit::HirTyCtxt<'_>) as &dyn PpAnn),
                 PpHirMode::Identified => {
                     let annotation = HirIdentifiedAnn { tcx };
                     f(&annotation)

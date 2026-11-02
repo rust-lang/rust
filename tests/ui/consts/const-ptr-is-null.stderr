@@ -1,6 +1,8 @@
 error[E0080]: evaluation panicked: null-ness of this pointer cannot be determined in const context
   --> $DIR/const-ptr-is-null.rs:22:14
    |
+LL | const MAYBE_NULL: () = {
+...
 LL |     assert!(!ptr.wrapping_sub(512).is_null());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `MAYBE_NULL` failed inside this call
    |

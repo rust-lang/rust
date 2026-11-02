@@ -2,14 +2,10 @@ use std::env;
 use std::process::Command;
 
 use camino::{Utf8Path, Utf8PathBuf};
+pub(crate) use shim_utils::ArgFileCommand;
 
 #[cfg(test)]
 mod tests;
-
-#[path = "../../../build_helper/src/arg_file_command.rs"]
-mod arg_file_command;
-
-pub(crate) use arg_file_command::ArgFileCommand;
 
 pub(crate) fn make_new_path(path: &str) -> String {
     assert!(cfg!(windows));

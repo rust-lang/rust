@@ -2,7 +2,7 @@ error[E0425]: cannot find type `usize8` in this scope
   --> $DIR/align-on-fields-143987.rs:17:8
    |
 LL |     x: usize8,
-   |        ^^^^^^
+   |        ^^^^^^ not found in this scope
    |
 help: a builtin type with a similar name exists
    |
@@ -15,6 +15,7 @@ error: the `rustc_align` attribute cannot be used on struct fields
    |
 LL |     #[rustc_align(8)]
    |       ^^^^^^^^^^^
+LL |     x: usize,
    |
    = help: the `rustc_align` attribute can only be applied to functions
 
@@ -23,6 +24,7 @@ error: the `rustc_align` attribute cannot be used on struct fields
    |
 LL |     #[rustc_align(8)]
    |       ^^^^^^^^^^^
+LL |     x: usize8,
    |
    = help: the `rustc_align` attribute can only be applied to functions
 
@@ -31,6 +33,7 @@ error: the `rustc_align` attribute cannot be used on struct fields
    |
 LL |     #[rustc_align(32)]
    |       ^^^^^^^^^^^
+LL |     u32
    |
    = help: the `rustc_align` attribute can only be applied to functions
 

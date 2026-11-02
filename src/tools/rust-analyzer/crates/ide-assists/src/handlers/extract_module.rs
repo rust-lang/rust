@@ -354,6 +354,16 @@ impl Module {
                             self.expand_and_group_usages_file_wise(ctx,replace_range, Definition::Macro(nod), &mut refs, &mut use_stmts_to_be_inserted);
                         }
                     },
+                    ast::Module(it) => {
+                        if let Some(nod) = ctx.sema.to_def(&it) {
+                            self.expand_and_group_usages_file_wise(ctx,replace_range, Definition::Module(nod), &mut refs, &mut use_stmts_to_be_inserted);
+                        }
+                    },
+                    ast::Trait(it) => {
+                        if let Some(nod) = ctx.sema.to_def(&it) {
+                            self.expand_and_group_usages_file_wise(ctx,replace_range, Definition::Trait(nod), &mut refs, &mut use_stmts_to_be_inserted);
+                        }
+                    },
                     _ => (),
                 }
             }
@@ -469,7 +479,10 @@ impl Module {
                     syntax.children_with_tokens().find(|nt| {
                         !matches!(
                             nt.kind(),
-                            SyntaxKind::COMMENT | SyntaxKind::ATTR | SyntaxKind::WHITESPACE
+                            SyntaxKind::COMMENT
+                                | SyntaxKind::DOC_COMMENT
+                                | SyntaxKind::ATTR
+                                | SyntaxKind::WHITESPACE
                         )
                     })
                 })
@@ -1325,6 +1338,7 @@ mod modname {
             extract_module,
             r"
             mod impl_play2 {
+impl impl_play::A {}
 $0mod impl_play {
     pub struct A {}
 }$0
@@ -1332,6 +1346,7 @@ $0mod impl_play {
             ",
             r"
             mod impl_play2 {
+impl modname::impl_play::A {}
 mod modname {
     pub(crate) mod impl_play {
         pub struct A {}
@@ -1403,6 +1418,23 @@ mod modname {
     }
 }
 modname::m! {}
+            ",
+        );
+    }
+
+    #[test]
+    fn test_extract_module_trait() {
+        check_assist(
+            extract_module,
+            r"
+$0trait Foo {}$0
+impl Foo for () {}
+            ",
+            r"
+mod modname {
+    pub(crate) trait Foo {}
+}
+impl modname::Foo for () {}
             ",
         );
     }

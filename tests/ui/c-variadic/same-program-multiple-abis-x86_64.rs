@@ -1,6 +1,5 @@
 //@ run-pass
 //@ only-x86_64
-#![feature(c_variadic_naked_functions)]
 
 // Check that multiple c-variadic calling conventions can be used in the same program.
 //

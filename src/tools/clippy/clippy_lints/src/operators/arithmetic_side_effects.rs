@@ -3,14 +3,13 @@ use crate::clippy_utils::res::MaybeQPath as _;
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::{expr_or_init, is_from_proc_macro, is_lint_allowed, peel_hir_expr_refs, peel_hir_expr_unary, sym};
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, Ty, UintTy};
-use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
 
 pub struct ArithmeticSideEffects {
@@ -39,7 +38,7 @@ impl ArithmeticSideEffects {
                 FxHashSet::from_iter(["str", "std::string::String"]),
             ),
         ]);
-        for (lhs, rhs) in &conf.arithmetic_side_effects_allowed_binary {
+        for [lhs, rhs] in &conf.arithmetic_side_effects_allowed_binary {
             allowed_binary.entry(lhs).or_default().insert(rhs);
         }
         for s in &conf.arithmetic_side_effects_allowed {

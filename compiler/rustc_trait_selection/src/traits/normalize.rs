@@ -1,19 +1,19 @@
 //! Deeply normalize types using the old trait solver.
 
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::{
-    FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine,
+    FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine, TraitErrors,
 };
 use rustc_macros::extension;
-use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{
-    self, AliasTerm, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
-    TypeVisitableExt, TypingMode, Unnormalized,
+    self, AliasTerm, PredicateProxy, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitable, TypeVisitableExt, TypingMode, Unnormalized,
 };
+use rustc_span::span_bug;
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use super::{BoundVarReplacer, PlaceholderReplacer, SelectionContext, project};
@@ -58,7 +58,7 @@ impl<'tcx> At<'_, 'tcx> {
         self,
         value: Unnormalized<'tcx, T>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
-    ) -> Result<T, Vec<E>>
+    ) -> Result<T, ThinVec<E>>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
         E: FromSolverError<'tcx, NextSolverError<'tcx>>,
@@ -78,15 +78,16 @@ impl<'tcx> At<'_, 'tcx> {
                 .normalize(value)
                 .into_value_registering_obligations(self.infcx, &mut *fulfill_cx);
             let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self.infcx);
-            let value = self.infcx.resolve_vars_if_possible(value);
-            if errors.is_empty() {
-                Ok(value)
-            } else {
-                // Drop pending obligations, since deep normalization may happen
-                // in a loop and we don't want to trigger the assertion on the next
-                // iteration due to pending ambiguous obligations we've left over.
-                let _ = fulfill_cx.collect_remaining_errors(self.infcx);
-                Err(errors)
+            let value = self.infcx.deeply_resolve_ignoring_regions(value);
+            match errors {
+                TraitErrors::NoErrors => Ok(value),
+                TraitErrors::HasErrors(errors) => {
+                    // Drop pending obligations, since deep normalization may happen
+                    // in a loop and we don't want to trigger the assertion on the next
+                    // iteration due to pending ambiguous obligations we've left over.
+                    let _ = fulfill_cx.collect_remaining_errors(self.infcx);
+                    Err(errors)
+                }
             }
         }
     }
@@ -122,9 +123,7 @@ where
 {
     debug!(obligations.len = obligations.len());
     let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth, obligations);
-    let result = ensure_sufficient_stack(|| {
-        AssocTypeNormalizer::fold(&mut normalizer, value.skip_normalization())
-    });
+    let result = AssocTypeNormalizer::fold(&mut normalizer, value.skip_normalization());
     debug!(?result, obligations.len = normalizer.obligations.len());
     debug!(?normalizer.obligations,);
     result
@@ -140,11 +139,13 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     // so we can ignore those.
     match infcx.typing_mode_raw().assert_not_erased() {
         // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
-        TypingMode::Coherence
-        | TypingMode::Typeck { .. }
-        | TypingMode::PostTypeckUntilBorrowck { .. }
+        TypingMode::Typeck { .. }
+        | TypingMode::PostTypeckThroughBorrowck { .. }
         | TypingMode::PostBorrowck { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
         TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {}
+        TypingMode::Coherence => {
+            unreachable!("old solver coherence")
+        }
     }
 
     value.has_type_flags(flags)
@@ -172,7 +173,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 
     fn fold<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, value: T) -> T {
-        let value = self.selcx.infcx.resolve_vars_if_possible(value);
+        let value = self.selcx.infcx.deeply_resolve_ignoring_regions(value);
         debug!(?value);
 
         assert!(
@@ -350,9 +351,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                 .fold_with(self)
                 .into()
         } else {
-            infcx
-                .tcx
-                .const_of_item(def_id)
+            project::const_of_item_or_delayed_bug(infcx.tcx, def_id)
                 .instantiate(infcx.tcx, free.args)
                 .skip_norm_wip()
                 .fold_with(self)
@@ -429,9 +428,8 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.selcx.typing_mode() {
                     // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
-                    TypingMode::Coherence
-                    | TypingMode::Typeck { .. }
-                    | TypingMode::PostTypeckUntilBorrowck { .. }
+                    TypingMode::Typeck { .. }
+                    | TypingMode::PostTypeckThroughBorrowck { .. }
                     | TypingMode::PostBorrowck { .. } => ty.super_fold_with(self),
                     TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {
                         let recursion_limit = self.cx().recursion_limit();
@@ -452,6 +450,9 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                         self.depth -= 1;
                         folded_ty
                     }
+                    TypingMode::Coherence => {
+                        unreachable!("old solver coherence")
+                    }
                 }
             }
 
@@ -470,7 +471,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 
         if tcx.features().generic_const_exprs()
             // Normalize type_const items even with feature `generic_const_exprs`.
-            && !matches!(ct.kind(), ty::ConstKind::Alias(_, alias_const) if alias_const.kind.is_type_const(tcx))
+            && !matches!(ct.kind(), ty::ConstKind::Alias(_, alias_const) if alias_const.kind.is_direct_const(tcx))
             || !needs_normalization(self.selcx.infcx, &ct)
         {
             return ct;
@@ -482,7 +483,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
         };
 
         // Note that the Projection/Inherent/Free cases are unreachable on stable,
-        // unless a `min_generic_const_args` feature gate error has already
+        // unless a `gca_min_const_items` feature gate error has already
         // been emitted earlier in compilation.
         //
         // That's because we can only end up with an Alias ty::Const for a const item
@@ -492,7 +493,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             ty::AliasConstKind::Projection { .. } => {
                 self.normalize_trait_projection(alias_const.into()).expect_const()
             }
-            ty::AliasConstKind::Inherent { .. } => {
+            ty::AliasConstKind::InherentSelf { .. } | ty::AliasConstKind::InherentImpl { .. } => {
                 self.normalize_inherent_projection(alias_const.into()).expect_const()
             }
             ty::AliasConstKind::Free { .. } => {
@@ -515,7 +516,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
     }
 
     #[inline]
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
         if p.allow_normalization() && needs_normalization(self.selcx.infcx, &p) {
             p.super_fold_with(self)
         } else {

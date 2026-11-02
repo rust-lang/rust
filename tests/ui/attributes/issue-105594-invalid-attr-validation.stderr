@@ -3,6 +3,7 @@ error: the `track_caller` attribute cannot be used on statics
    |
 LL | #[track_caller]
    |   ^^^^^^^^^^^^
+LL | static _A: () = panic!();
    |
    = help: the `track_caller` attribute can only be applied to functions
 

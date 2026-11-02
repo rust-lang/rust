@@ -82,6 +82,9 @@ Options:
         --sort-modules-by-appearance 
                         sort modules by where they appear in the program,
                         rather than alphabetically
+        --crate-list-heading TEXT
+                        heading under which to list this crate in the sidebar
+                        crate list
         --default-theme THEME
                         Set the default theme. THEME should be the theme name,
                         generally lowercase. If an unknown default theme is
@@ -155,6 +158,8 @@ Options:
         --emit [html-static-files,html-non-static-files,dep-info]
                         Comma separated list of types of output for rustdoc to
                         emit
+        --print <INFO>[=<FILE>]
+                        Rustdoc information to print on stdout (or to a file)
         --no-run        Compile doctests without running them
         --merge-doctests yes|no|auto
                         Force all doctests to be compiled as a single binary,

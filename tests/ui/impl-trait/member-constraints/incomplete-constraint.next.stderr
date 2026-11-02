@@ -1,0 +1,26 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/incomplete-constraint.rs:15:5
+   |
+LL |     new_defining_use(rpit1::<'a, 'b>);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&'b ()`, got `&'static ()`
+   |
+note: previous use here
+  --> $DIR/incomplete-constraint.rs:14:1
+   |
+LL | fn rpit1<'a,  'b: 'b>(x: &'b ()) -> impl Sized + use<'a, 'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/incomplete-constraint.rs:21:5
+   |
+LL |     new_defining_use(rpit2::<'a>);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Inv<'a, 'static>`, got `Inv<'a, 'a>`
+   |
+note: previous use here
+  --> $DIR/incomplete-constraint.rs:20:1
+   |
+LL | fn rpit2<'a>(_: ()) -> impl Sized + use<'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,4 +1,4 @@
-//@ only-wasm32-wasip1
+//@ only-wasm32
 //@ compile-flags: -Ctarget-feature=-simd128 --crate-type=lib
 //@ build-pass
 

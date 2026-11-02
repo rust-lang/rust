@@ -11,7 +11,7 @@
 ///
 /// This macro requires the following crates:
 /// * `icu_list`
-/// * `icu_locale/compiled_data`
+/// * `icu_locale_fallback/compiled_data`
 /// * `icu_provider`
 /// * `icu_provider/baked`
 /// * `zerovec`
@@ -19,9 +19,9 @@
 #[macro_export]
 macro_rules! __impl_list_and_v1 {
     ($ provider : ty) => {
-        #[clippy::msrv = "1.86"]
+        #[clippy::msrv = "1.88"]
         const _: () = <$provider>::MUST_USE_MAKE_PROVIDER_MACRO;
-        #[clippy::msrv = "1.86"]
+        #[clippy::msrv = "1.88"]
         impl $provider {
             const DATA_LIST_AND_V1: icu_provider::baked::zerotrie::Data<icu_list::provider::ListAndV1> = {
                 const TRIE: icu_provider::baked::zerotrie::ZeroTrieSimpleAscii<&'static [u8]> = icu_provider::baked::zerotrie::ZeroTrieSimpleAscii { store: b"\xC8efijprtz\x18#.9DOZ\xC2ns\n\x1E\xC3NSW\x01\x02\x80\x85\x8A\x1E\xC3NSW\x01\x02\x81\x81\x81r\x1E\xC3NSW\x01\x02\x80\x86\x86t\x1E\xC3NSW\x01\x02\x82\x82\x82a\x1E\xC3NSW\x01\x02\x83\x83\x83t\x1E\xC3NSW\x01\x02\x80\x82\x82u\x1E\xC3NSW\x01\x02\x80\x87\x87r\x1E\xC3NSW\x01\x02\x80\x88\x88h\xC2\x1E-\t\xC3NSW\x01\x02\x83\x89\x89Han\xC2st\n\x1E\xC3NSW\x01\x02\x83\x89\x89\x1E\xC3NSW\x01\x02\x84\x89\x89" };
@@ -29,14 +29,14 @@ macro_rules! __impl_list_and_v1 {
                 unsafe { icu_provider::baked::zerotrie::Data::from_trie_and_values_unchecked(TRIE, VALUES) }
             };
         }
-        #[clippy::msrv = "1.86"]
+        #[clippy::msrv = "1.88"]
         impl icu_provider::DataProvider<icu_list::provider::ListAndV1> for $provider {
             fn load(&self, req: icu_provider::DataRequest) -> Result<icu_provider::DataResponse<icu_list::provider::ListAndV1>, icu_provider::DataError> {
                 let mut metadata = icu_provider::DataResponseMetadata::default();
                 let payload = if let Some(payload) = icu_provider::baked::DataStore::get(&Self::DATA_LIST_AND_V1, req.id, req.metadata.attributes_prefix_match) {
                     payload
                 } else {
-                    const FALLBACKER: icu_locale::fallback::LocaleFallbackerWithConfig<'static> = icu_locale::fallback::LocaleFallbacker::new().for_config(<icu_list::provider::ListAndV1 as icu_provider::DataMarker>::INFO.fallback_config);
+                    const FALLBACKER: icu_locale_fallback::LocaleFallbackerWithConfig<'static> = icu_locale_fallback::LocaleFallbacker::new().for_config(<icu_list::provider::ListAndV1 as icu_provider::DataMarker>::INFO.fallback_config);
                     let mut fallback_iterator = FALLBACKER.fallback_for(req.id.locale.clone());
                     loop {
                         if let Some(payload) = icu_provider::baked::DataStore::get(&Self::DATA_LIST_AND_V1, icu_provider::DataIdentifierBorrowed::for_marker_attributes_and_locale(req.id.marker_attributes, fallback_iterator.get()), req.metadata.attributes_prefix_match) {
@@ -55,7 +55,7 @@ macro_rules! __impl_list_and_v1 {
     };
     ($ provider : ty , ITER) => {
         __impl_list_and_v1!($provider);
-        #[clippy::msrv = "1.86"]
+        #[clippy::msrv = "1.88"]
         impl icu_provider::IterableDataProvider<icu_list::provider::ListAndV1> for $provider {
             fn iter_ids(&self) -> Result<std::collections::BTreeSet<icu_provider::DataIdentifierCow<'static>>, icu_provider::DataError> {
                 Ok(icu_provider::baked::DataStore::iter(&Self::DATA_LIST_AND_V1).collect())

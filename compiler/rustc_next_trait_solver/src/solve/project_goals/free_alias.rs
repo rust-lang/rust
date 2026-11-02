@@ -17,7 +17,7 @@ where
 {
     pub(super) fn normalize_free_alias(
         &mut self,
-        goal: Goal<I, ty::ProjectionPredicate<I>>,
+        goal: Goal<I, ty::ProjectionClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
         let free_alias = goal.predicate.projection_term;
@@ -34,17 +34,19 @@ where
         let actual = match free_alias.kind {
             ty::AliasTermKind::FreeTy { def_id } => {
                 let free = cx.type_of(def_id.into()).instantiate(cx, free_alias.args);
-                let free = self.normalize(GoalSource::Misc, goal.param_env, free)?;
+                let free = self.normalize(goal.param_env, free)?;
                 free.into()
             }
-            ty::AliasTermKind::FreeConst { def_id } if cx.is_type_const(def_id.into()) => {
-                let free = cx.const_of_item(def_id.into()).instantiate(cx, free_alias.args);
-                let free = self.normalize(GoalSource::Misc, goal.param_env, free)?;
+            ty::AliasTermKind::FreeConst { def_id }
+                if let Some(free) = cx.const_of_item(ty::AliasConstKind::Free { def_id }) =>
+            {
+                let free = free.instantiate(cx, free_alias.args);
+                let free = self.normalize(goal.param_env, free)?;
 
                 free.into()
             }
             ty::AliasTermKind::FreeConst { .. } => {
-                return self.evaluate_const_and_instantiate_projection_term(
+                return self.evaluate_const(
                     goal.param_env,
                     free_alias,
                     goal.predicate.term,

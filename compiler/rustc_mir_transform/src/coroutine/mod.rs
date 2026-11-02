@@ -63,19 +63,18 @@ use drop::{
 pub(super) use layout::mir_coroutine_witnesses;
 use layout::{CoroutineSavedLocals, compute_layout, locals_live_across_suspend_points};
 use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
-use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
+use rustc_index::bit_set::{BitMatrix, DenseBitSet};
 use rustc_index::{Idx, IndexVec, indexvec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{
-    self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, ShimKind, Ty, TyCtxt,
+    self, CoroutineArgs, CoroutineArgsExt, GenericArgs, InstanceKind, ShimKind, Ty, TyCtxt,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::always_storage_live_locals;
 use rustc_span::def_id::DefId;
+use rustc_span::{bug, span_bug};
 use tracing::{debug, instrument};
 
 use crate::deref_separator::deref_finder;
@@ -172,7 +171,7 @@ struct SuspensionPoint<'tcx> {
     /// Which block to jump to if the coroutine is dropped in this state.
     drop: Option<BasicBlock>,
     /// Set of locals that have live storage while at this suspension point.
-    storage_liveness: GrowableBitSet<Local>,
+    storage_liveness: DenseBitSet<Local>,
 }
 
 struct TransformVisitor<'tcx> {
@@ -253,11 +252,7 @@ impl<'tcx> TransformVisitor<'tcx> {
 
         body.basic_blocks_mut().push(BasicBlockData::new_stmts(
             statements,
-            Some(Terminator {
-                source_info,
-                kind: TerminatorKind::Return,
-                attributes: ThinVec::new(),
-            }),
+            Some(Terminator { source_info, kind: TerminatorKind::Return }),
             false,
         ));
 
@@ -394,7 +389,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         visitor.visit_body(body);
         for suspension in &mut self.suspension_points {
             let ctxt = PlaceContext::MutatingUse(MutatingUseContext::Yield);
-            let location = Location { block: START_BLOCK, statement_index: 0 };
+            let location = Location::START;
             visitor.visit_place(&mut suspension.resume_arg, ctxt, location);
         }
     }
@@ -454,7 +449,8 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
             | PlaceElem::Deref
             | PlaceElem::ConstantIndex { .. }
             | PlaceElem::Subslice { .. }
-            | PlaceElem::Downcast(..) => None,
+            | PlaceElem::Downcast(..)
+            | PlaceElem::PhantomDeref => None,
         }
     }
 
@@ -509,8 +505,8 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                     replace_base(&mut resume_arg, self.make_field(variant, idx, ty), self.tcx);
                 }
 
-                let storage_liveness: GrowableBitSet<Local> =
-                    self.storage_liveness[block].clone().unwrap().into();
+                let storage_liveness: DenseBitSet<Local> =
+                    self.storage_liveness[block].clone().unwrap();
 
                 for i in 0..self.always_live_locals.domain_size() {
                     let l = Local::new(i);
@@ -545,7 +541,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 fn make_aggregate_adt<'tcx>(
     def_id: DefId,
     variant_idx: VariantIdx,
-    args: GenericArgsRef<'tcx>,
+    args: GenericArgs<'tcx>,
     operands: IndexVec<FieldIdx, Operand<'tcx>>,
 ) -> Rvalue<'tcx> {
     Rvalue::Aggregate(Box::new(AggregateKind::Adt(def_id, variant_idx, args, None, None)), operands)
@@ -697,7 +693,7 @@ fn eliminate_get_context_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                 terminator.source_info,
                 StatementKind::Assign(Box::new((*destination, arg))),
             );
-            terminator.kind = TerminatorKind::Goto { target: target.unwrap() };
+            terminator.kind = TerminatorKind::goto(target.unwrap());
             bb_data.statements.push(assign);
         }
     }
@@ -740,30 +736,20 @@ fn insert_switch<'tcx>(
     }
 
     let switch = TerminatorKind::SwitchInt { discr: Operand::Move(discr), targets: switch_targets };
-    body.basic_blocks_mut()[START_BLOCK].terminator = Some(Terminator {
-        source_info: SourceInfo::outermost(body.span),
-        kind: switch,
-        attributes: ThinVec::new(),
-    });
+    body.basic_blocks_mut()[START_BLOCK].terminator =
+        Some(Terminator { source_info: SourceInfo::outermost(body.span), kind: switch });
 }
 
 fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
     let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().push(BasicBlockData::new(
-        Some(Terminator { source_info, kind, attributes: ThinVec::new() }),
-        false,
-    ))
+    body.basic_blocks_mut().push(BasicBlockData::new(Some(Terminator { source_info, kind }), false))
 }
 
 fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) -> Statement<'tcx> {
     // Poll::Ready(())
     let poll_def_id = tcx.require_lang_item(LangItem::Poll, source_info.span);
     let args = tcx.mk_args(&[tcx.types.unit.into()]);
-    let val = Operand::Constant(Box::new(ConstOperand {
-        span: source_info.span,
-        user_ty: None,
-        const_: Const::zero_sized(tcx.types.unit),
-    }));
+    let val = Operand::zero_sized_constant(tcx.types.unit, source_info.span);
     let ready_val = Rvalue::Aggregate(
         Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::from_usize(0), args, None, None)),
         indexvec![val],
@@ -775,7 +761,7 @@ fn insert_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Ba
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData::new_stmts(
         [return_poll_ready_assign(tcx, source_info)].to_vec(),
-        Some(Terminator { source_info, kind: TerminatorKind::Return, attributes: ThinVec::new() }),
+        Some(Terminator { source_info, kind: TerminatorKind::Return }),
         false,
     ))
 }
@@ -799,6 +785,37 @@ fn insert_panic_block<'tcx>(
     };
 
     insert_term_block(body, kind)
+}
+
+fn return_poll_pending<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    source_info: SourceInfo,
+    return_type: Ty<'tcx>,
+) -> Statement<'tcx> {
+    // Poll::Pending
+    let poll_def_id = tcx.require_lang_item(LangItem::Poll, source_info.span);
+    let args = tcx.mk_args(&[return_type.into()]);
+    let pending_val = Rvalue::Aggregate(
+        Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::from_usize(1), args, None, None)),
+        indexvec![],
+    );
+    Statement::new(
+        source_info,
+        StatementKind::Assign(Box::new((Place::return_place(), pending_val))),
+    )
+}
+
+fn insert_poll_pending_block<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    return_type: Ty<'tcx>,
+) -> BasicBlock {
+    let source_info = SourceInfo::outermost(body.span);
+    body.basic_blocks_mut().push(BasicBlockData::new_stmts(
+        [return_poll_pending(tcx, source_info, return_type)].to_vec(),
+        Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        false,
+    ))
 }
 
 fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
@@ -830,12 +847,7 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
     let source_info = SourceInfo::outermost(body.span);
     let poison_block = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
         vec![transform.set_discr(VariantIdx::new(CoroutineArgs::POISONED), source_info)],
-        Some(Terminator {
-            source_info,
-            kind: TerminatorKind::UnwindResume,
-
-            attributes: ThinVec::new(),
-        }),
+        Some(Terminator { source_info, kind: TerminatorKind::UnwindResume }),
         true,
     ));
 
@@ -846,12 +858,8 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
             // An existing `Resume` terminator is redirected to jump to our dedicated
             // "poisoning block" above.
             if idx != poison_block {
-                *block.terminator_mut() = Terminator {
-                    source_info,
-                    kind: TerminatorKind::Goto { target: poison_block },
-
-                    attributes: ThinVec::new(),
-                };
+                *block.terminator_mut() =
+                    Terminator { source_info, kind: TerminatorKind::goto(poison_block) };
             }
         } else if !block.is_cleanup
             // Any terminators that *can* unwind but don't have an unwind target set are also
@@ -889,7 +897,11 @@ fn create_coroutine_resume_function<'tcx>(
             1,
             (
                 CoroutineArgs::POISONED,
-                insert_panic_block(tcx, body, ResumedAfterPanic(transform.coroutine_kind)),
+                if tcx.sess.opts.unstable_opts.async_panic {
+                    insert_panic_block(tcx, body, ResumedAfterPanic(transform.coroutine_kind))
+                } else {
+                    insert_poll_pending_block(tcx, body, transform.old_ret_ty)
+                },
             ),
         );
     }
@@ -903,7 +915,11 @@ fn create_coroutine_resume_function<'tcx>(
                 if tcx.is_async_drop_in_place_coroutine(body.source.def_id()) {
                     insert_poll_ready_block(tcx, body)
                 } else {
-                    insert_panic_block(tcx, body, ResumedAfterReturn(transform.coroutine_kind))
+                    if tcx.sess.opts.unstable_opts.async_panic {
+                        insert_panic_block(tcx, body, ResumedAfterReturn(transform.coroutine_kind))
+                    } else {
+                        insert_poll_pending_block(tcx, body, transform.old_ret_ty)
+                    }
                 }
             }
             CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)
@@ -928,6 +944,25 @@ fn create_coroutine_resume_function<'tcx>(
         CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
             make_coroutine_state_argument_indirect(tcx, body);
         }
+    }
+
+    // Iterator::next has no resume argument, so initialize the unit resume
+    // local at the start of each invocation.
+    if let CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) = transform.coroutine_kind {
+        let source_info = SourceInfo::outermost(body.span);
+        body.basic_blocks_mut()[START_BLOCK].statements.insert(
+            0,
+            Statement::new(
+                source_info,
+                StatementKind::Assign(Box::new((
+                    CTX_ARG.into(),
+                    Rvalue::Use(
+                        Operand::zero_sized_constant(tcx.types.unit, source_info.span),
+                        WithRetag::Yes,
+                    ),
+                ))),
+            ),
+        );
     }
 
     // Make sure we remove dead blocks to remove
@@ -990,7 +1025,7 @@ fn create_cases<'tcx>(
 
                 // Create StorageLive instructions for locals with live storage
                 for l in body.local_decls.indices() {
-                    let needs_storage_live = point.storage_liveness.contains(l)
+                    let needs_storage_live = point.storage_liveness.contains_loose(l)
                         && !transform.remap.contains(l)
                         && !transform.always_live_locals.contains(l);
                     if needs_storage_live {
@@ -1014,12 +1049,7 @@ fn create_cases<'tcx>(
                 // Then jump to the real target
                 let block = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
                     statements,
-                    Some(Terminator {
-                        source_info,
-                        kind: TerminatorKind::Goto { target },
-
-                        attributes: ThinVec::new(),
-                    }),
+                    Some(Terminator { source_info, kind: TerminatorKind::goto(target) }),
                     false,
                 ));
 
@@ -1219,7 +1249,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         create_coroutine_resume_function(tcx, transform, body, can_return, can_unwind);
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Implements coroutine semantics by lowering the coroutine body to a state machine.
         PassPolicy::Required
     }

@@ -69,7 +69,8 @@ impl DepKind {
         if u > Self::MAX {
             panic!("Invalid DepKind {u}");
         }
-        // SAFETY: See comment on DEP_KIND_NUM_VARIANTS
+        // SAFETY: `DepKind` is `repr(u16)`, its variants are `0..=MAX`, and `u` was checked
+        // against `MAX` above.
         unsafe { std::mem::transmute(u) }
     }
 
@@ -83,9 +84,16 @@ impl DepKind {
         *self as usize
     }
 
+    /// The number of dep kind variants.
+    pub(crate) const NUM_VARIANTS: usize = std::mem::variant_count::<DepKind>();
+
     /// This is the highest value a `DepKind` can have. It's used during encoding to
-    /// pack information into the unused bits.
-    pub(crate) const MAX: u16 = DEP_KIND_NUM_VARIANTS - 1;
+    /// pack information into the unused bits. u16 matches the `repr(u16)` on `DepKind`.
+    pub(crate) const MAX: u16 = {
+        let max = Self::NUM_VARIANTS - 1;
+        assert!(max < u16::MAX as usize);
+        max as u16
+    };
 }
 
 /// Combination of a [`DepKind`] and a key fingerprint that uniquely identifies
@@ -279,39 +287,14 @@ macro_rules! define_dep_nodes {
             $( $(#[$q_attr])* $q_name, )*
         }
 
-        // This computes the number of dep kind variants. Along the way, it sanity-checks that the
-        // discriminants of the variants have been assigned consecutively from 0 so that they can
-        // be used as a dense index, and that all discriminants fit in a `u16`.
-        pub(crate) const DEP_KIND_NUM_VARIANTS: u16 = {
-            let deps = &[
-                $(DepKind::$nq_name,)*
-                $(DepKind::$q_name,)*
-            ];
-            let mut i = 0;
-            while i < deps.len() {
-                if i != deps[i].as_usize() {
-                    panic!();
-                }
-                i += 1;
-            }
-            assert!(deps.len() <= u16::MAX as usize);
-            deps.len() as u16
-        };
-
-        pub(super) fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
+        /// Converts a string to a `DepKind`. Used for handling attributes like `rustc_clean` that
+        /// name dep kinds.
+        fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
             match label {
                 $( stringify!($nq_name) => Ok(self::DepKind::$nq_name), )*
                 $( stringify!($q_name) => Ok(self::DepKind::$q_name), )*
                 _ => Err(()),
             }
-        }
-
-        /// Contains variant => str representations for constructing
-        /// DepNode groups for tests.
-        #[expect(non_upper_case_globals)]
-        pub mod label_strs {
-            $( pub const $nq_name: &str = stringify!($nq_name); )*
-            $( pub const $q_name: &str = stringify!($q_name); )*
         }
     };
 }

@@ -1,7 +1,7 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+gfni,+avx512f
-//@run-native
+//@run-native: ignore-output
 
 // The constants in the tests below are just bit patterns. They should not
 // be interpreted as integers; signedness does not make sense for them, but

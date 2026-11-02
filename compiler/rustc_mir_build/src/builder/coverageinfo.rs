@@ -2,16 +2,22 @@ use std::assert_matches;
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::mir::coverage::{BlockMarkerId, BranchSpan, CoverageInfoHi, CoverageKind};
-use rustc_middle::mir::{self, BasicBlock, SourceInfo, UnOp};
-use rustc_middle::thir::{ExprId, ExprKind, Pat, Thir};
+use rustc_hir::HirId;
+use rustc_middle::mir::coverage::{
+    BlockMarkerId, BranchSpan, CoverageEarlyInfo, CoverageKind, PointKind,
+};
+use rustc_middle::mir::{self, BasicBlock, SourceInfo, Statement, UnOp};
+use rustc_middle::thir::{self, ExprId, ExprKind, Pat, Thir};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 
 use crate::builder::{Builder, CFG};
 
 /// Collects coverage-related information during MIR building, to eventually be
-/// turned into a function's [`CoverageInfoHi`] when MIR building is complete.
+/// turned into a function's [`CoverageEarlyInfo`] when MIR building is complete.
+///
+/// FIXME(Zalathar): Now that we have [`CoverageKind::Point`], we should be able
+/// to remove this and perform HIR-aware analysis during instrumentation instead.
 pub(crate) struct CoverageInfoBuilder {
     /// Maps condition expressions to their enclosing `!`, for better instrumentation.
     nots: FxHashMap<ExprId, NotInfo>,
@@ -120,7 +126,7 @@ impl CoverageInfoBuilder {
                 self.visit_with_not_info(thir, arg, not_info);
             }
             ExprKind::Scope { value, .. } => self.visit_with_not_info(thir, value, not_info),
-            ExprKind::Use { source } => self.visit_with_not_info(thir, source, not_info),
+            ExprKind::ValueExpr { source } => self.visit_with_not_info(thir, source, not_info),
             // All other expressions (including `&&` and `||`) don't need any
             // special handling of their contents, so stop visiting.
             _ => {}
@@ -147,7 +153,7 @@ impl CoverageInfoBuilder {
         });
     }
 
-    pub(crate) fn into_done(self) -> Box<CoverageInfoHi> {
+    pub(crate) fn into_done(self) -> Box<CoverageEarlyInfo> {
         let Self { nots: _, markers: BlockMarkerGen { num_block_markers }, branch_info } = self;
 
         let branch_spans =
@@ -155,10 +161,10 @@ impl CoverageInfoBuilder {
 
         // For simplicity, always return an info struct (without Option), even
         // if there's nothing interesting in it.
-        Box::new(CoverageInfoHi { num_block_markers, branch_spans })
+        Box::new(CoverageEarlyInfo { num_block_markers, branch_spans })
     }
 
-    pub(crate) fn as_done(&self) -> Box<CoverageInfoHi> {
+    pub(crate) fn as_done(&self) -> Box<CoverageEarlyInfo> {
         let &Self { nots: _, markers: BlockMarkerGen { num_block_markers }, ref branch_info } =
             self;
 
@@ -170,11 +176,78 @@ impl CoverageInfoBuilder {
 
         // For simplicity, always return an info struct (without Option), even
         // if there's nothing interesting in it.
-        Box::new(CoverageInfoHi { num_block_markers, branch_spans })
+        Box::new(CoverageEarlyInfo { num_block_markers, branch_spans })
     }
 }
 
 impl<'tcx> Builder<'_, 'tcx> {
+    /// Does nothing if `-Cinstrument-coverage` is not enabled.
+    ///
+    /// Otherwise, pushes a marker statement to `block` indicating that this is where
+    /// the HIR expression `hir_id` is being evaluated.
+    pub(crate) fn push_coverage_point_for_expr(
+        &mut self,
+        block: BasicBlock,
+        source_info: SourceInfo,
+        hir_id: HirId,
+    ) {
+        if !self.tcx.sess.instrument_coverage() {
+            return;
+        }
+        self.push_coverage_point_inner(block, source_info, PointKind::Expr, hir_id);
+    }
+
+    /// Does nothing if `-Cinstrument-coverage` is not enabled.
+    ///
+    /// Otherwise, pushes a marker statement to `block` indicating that this is where
+    /// the one-sided if-expression `if_expr` will generate its synthetic `else {}`
+    /// path, since it lacks an explicit `else` block.
+    pub(crate) fn push_coverage_point_for_implicit_else(
+        &mut self,
+        block: BasicBlock,
+        source_info: SourceInfo,
+        if_expr: &thir::Expr<'tcx>,
+    ) {
+        if !self.tcx.sess.instrument_coverage() {
+            return;
+        }
+        // Recover the full HirId by combining a local ID with the function's owner ID.
+        let hir_id = HirId { owner: self.hir_id.owner, local_id: if_expr.temp_scope_id };
+        self.push_coverage_point_inner(block, source_info, PointKind::ImplicitElse, hir_id);
+    }
+
+    /// Does nothing if `-Cinstrument-coverage` is not enabled.
+    ///
+    /// Otherwise, pushes a marker statement to `block` indicating that this is where
+    /// the function `fn_hir_id` would implicitly return at the end of its body.
+    pub(crate) fn push_coverage_point_for_fn_end(
+        &mut self,
+        block: BasicBlock,
+        source_info: SourceInfo,
+        fn_hir_id: HirId,
+    ) {
+        if !self.tcx.sess.instrument_coverage() {
+            return;
+        }
+        self.push_coverage_point_inner(block, source_info, PointKind::FunctionEnd, fn_hir_id);
+    }
+
+    fn push_coverage_point_inner(
+        &mut self,
+        block: BasicBlock,
+        source_info: SourceInfo,
+        point_kind: PointKind,
+        hir_id: HirId,
+    ) {
+        assert!(self.tcx.sess.instrument_coverage());
+
+        let stmt = Statement::new(
+            source_info,
+            mir::StatementKind::Coverage(CoverageKind::Point { point_kind, hir_id }),
+        );
+        self.cfg.push(block, stmt);
+    }
+
     /// If condition coverage is enabled, inject extra blocks and marker statements
     /// that will let us track the value of the condition in `place`.
     pub(crate) fn visit_coverage_standalone_condition(
@@ -190,7 +263,7 @@ impl<'tcx> Builder<'_, 'tcx> {
         };
 
         // Remove any wrappers, so that we can inspect the real underlying expression.
-        while let ExprKind::Use { source: inner } | ExprKind::Scope { value: inner, .. } =
+        while let ExprKind::ValueExpr { source: inner } | ExprKind::Scope { value: inner, .. } =
             self.thir[expr_id].kind
         {
             expr_id = inner;
@@ -232,13 +305,13 @@ impl<'tcx> Builder<'_, 'tcx> {
         *block = join_block;
     }
 
-    /// If branch coverage is enabled, inject marker statements into `then_block`
-    /// and `else_block`, and record their IDs in the table of branch spans.
+    /// If branch coverage is enabled, inject marker statements into `true_block`
+    /// and `false_block`, and record their IDs in the table of branch spans.
     pub(crate) fn visit_coverage_branch_condition(
         &mut self,
         mut expr_id: ExprId,
-        mut then_block: BasicBlock,
-        mut else_block: BasicBlock,
+        mut true_block: BasicBlock,
+        mut false_block: BasicBlock,
     ) {
         // Bail out if coverage is not enabled for this function.
         let Some(coverage_info) = self.coverage_info.as_mut() else { return };
@@ -248,13 +321,13 @@ impl<'tcx> Builder<'_, 'tcx> {
         if let Some(&NotInfo { enclosing_not, is_flipped }) = coverage_info.nots.get(&expr_id) {
             expr_id = enclosing_not;
             if is_flipped {
-                std::mem::swap(&mut then_block, &mut else_block);
+                std::mem::swap(&mut true_block, &mut false_block);
             }
         }
 
         let source_info = SourceInfo { span: self.thir[expr_id].span, scope: self.source_scope };
 
-        coverage_info.register_two_way_branch(&mut self.cfg, source_info, then_block, else_block);
+        coverage_info.register_two_way_branch(&mut self.cfg, source_info, true_block, false_block);
     }
 
     /// If branch coverage is enabled, inject marker statements into `true_block`

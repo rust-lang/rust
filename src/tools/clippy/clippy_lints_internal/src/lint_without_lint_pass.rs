@@ -3,14 +3,14 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::{is_lint_allowed, sym};
 use rustc_ast::ast::LitKind;
+use rustc_attr_ir::AttrArgs;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{CRATE_HIR_ID, ExprKind, HirId, Item, MutTy, Mutability, Path, TyKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::{CRATE_HIR_ID, ExprKind, HirId, Item, Mutability, Path, TyKind};
+use rustc_lint::{LateContext, LateLintPass, declare_tool_lint, impl_lint_pass};
 use rustc_middle::hir::nested_filter;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, Spanned};
 
@@ -196,15 +196,9 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
 }
 
 pub(super) fn is_lint_ref_type(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
-    if let TyKind::Ref(
-        _,
-        MutTy {
-            ty: inner,
-            mutbl: Mutability::Not,
-        },
-    ) = ty.kind
-        && let TyKind::Path(ref path) = inner.kind
-        && let Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, inner.hir_id)
+    if let TyKind::Ref(_, inner_ty, Mutability::Not) = ty.kind
+        && let TyKind::Path(ref path) = inner_ty.kind
+        && let Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, inner_ty.hir_id)
     {
         internal_paths::LINT.matches(cx, def_id)
     } else {
@@ -243,20 +237,14 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
 /// This function extracts the version value of a `clippy::version` attribute if the given value has
 /// one
 pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Option<Symbol> {
-    let attrs = cx.tcx.hir_attrs(item.hir_id());
-    attrs.iter().find_map(|attr| {
-        if let hir::Attribute::Unparsed(attr_kind) = &attr
-            // Identify attribute
-            && let [tool_name, attr_name] = &attr_kind.path.segments[..]
-            && tool_name == &sym::clippy
-            && attr_name == &sym::version
-            && let Some(version) = attr.value_str()
-        {
-            Some(version)
-        } else {
-            None
-        }
-    })
+    let attr = cx
+        .tcx
+        .hir_tool_attrs(item.hir_id(), &[sym::clippy, sym::version])
+        .next()?;
+    let AttrArgs::Eq { expr, .. } = &attr.args else {
+        return None;
+    };
+    expr.value_as_str()
 }
 
 struct LintCollector<'a, 'tcx> {

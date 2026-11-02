@@ -2428,6 +2428,31 @@ fn test_split_off_large_random_sorted() {
     assert!(right.into_iter().eq(data.into_iter().filter(|x| x.0 >= key)));
 }
 
+// Regression test for #158165: a comparator that panics partway through
+// `split_off`, after a suffix has already been moved into the new right-hand
+// tree, used to leave `self` with a tree structure inconsistent with its own
+// recorded length. Iterating or dropping the map afterwards could then double
+// free values that had already been moved into the right-hand tree.
+// `split_off` now aborts the process instead of unwinding out of that
+// inconsistent state; the abort can't be observed from within a single
+// process, so this test only checks that ordinary multi-level splits remain
+// correct. See the reproducer on the issue for the double free.
+#[test]
+fn test_split_off_multi_level_panic_guard_happy_path() {
+    // MIN_INSERTS_HEIGHT_2 consecutive keys guarantee a 3-level tree, so
+    // `split_off` walks down and moves a suffix at more than one level for
+    // most of these split points.
+    let n = MIN_INSERTS_HEIGHT_2;
+    for split_at in [0, 1, 2, n / 2, n - 2, n - 1, n] {
+        let mut map = BTreeMap::from_iter((0..n).map(|i| (i, i)));
+        let right = map.split_off(&split_at);
+        map.check();
+        right.check();
+        assert!(map.keys().copied().eq(0..split_at));
+        assert!(right.keys().copied().eq(split_at..n));
+    }
+}
+
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_into_iter_drop_leak_height_0() {
@@ -2513,6 +2538,114 @@ fn test_into_iter_drop_leak_height_1() {
         catch_unwind(move || drop(map.into_iter())).unwrap_err();
         for i in 0..size {
             assert_eq!(dummies[i].dropped(), 2);
+        }
+    }
+}
+
+#[test]
+fn test_drop_map_elements_multi_level() {
+    for size in [1, MIN_INSERTS_HEIGHT_1, MIN_INSERTS_HEIGHT_2] {
+        let keys = Vec::from_iter((0..size).map(CrashTestDummy::new));
+        let vals = Vec::from_iter((0..size).map(CrashTestDummy::new));
+        let map = {
+            let mut map = BTreeMap::new();
+
+            (0..size).map(|i| (keys[i].spawn(Panic::Never), vals[i].spawn(Panic::Never))).for_each(
+                |(k, v)| {
+                    map.insert(k, v);
+                },
+            );
+            map
+        };
+
+        drop(map);
+
+        for i in 0..size {
+            assert_eq!(keys[i].dropped(), 1);
+            assert_eq!(vals[i].dropped(), 1);
+        }
+    }
+}
+
+#[test]
+fn test_drop_empty_map_allocator() {
+    use core::alloc::{AllocError, Allocator, AllocatorClone, Layout};
+    use core::cell::Cell;
+    use core::ptr::NonNull;
+
+    struct CountedAllocator<'a>(&'a Cell<usize>);
+
+    impl Clone for CountedAllocator<'_> {
+        fn clone(&self) -> Self {
+            Self(self.0)
+        }
+    }
+
+    impl Drop for CountedAllocator<'_> {
+        fn drop(&mut self) {
+            self.0.set(self.0.get() + 1);
+        }
+    }
+
+    unsafe impl Allocator for CountedAllocator<'_> {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            Global.allocate(layout)
+        }
+
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            unsafe { Global.deallocate(ptr, layout) }
+        }
+    }
+
+    unsafe impl AllocatorClone for CountedAllocator<'_> {}
+
+    let dropped = Cell::new(0);
+    let map = BTreeMap::<i32, i32, _>::new_in(CountedAllocator(&dropped));
+    assert!(map.root.is_none());
+
+    drop(map);
+
+    assert_eq!(dropped.get(), 1);
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_drop_map_elements_multi_level_panic() {
+    for size in [1, MIN_INSERTS_HEIGHT_1, MIN_INSERTS_HEIGHT_2] {
+        for panic_point in [0, size / 2, size - 1] {
+            for panic_in_key in [true, false] {
+                let keys = Vec::from_iter((0..size).map(CrashTestDummy::new));
+                let vals = Vec::from_iter((0..size).map(CrashTestDummy::new));
+                let map = {
+                    let mut map = BTreeMap::new();
+
+                    (0..size)
+                        .map(|i| {
+                            let key_panic = if panic_in_key && i == panic_point {
+                                Panic::InDrop
+                            } else {
+                                Panic::Never
+                            };
+                            let val_panic = if !panic_in_key && i == panic_point {
+                                Panic::InDrop
+                            } else {
+                                Panic::Never
+                            };
+                            (keys[i].spawn(key_panic), vals[i].spawn(val_panic))
+                        })
+                        .for_each(|(k, v)| {
+                            map.insert(k, v);
+                        });
+                    map
+                };
+
+                catch_unwind(move || drop(map)).unwrap_err();
+
+                for i in 0..size {
+                    assert_eq!(keys[i].dropped(), 1);
+                    assert_eq!(vals[i].dropped(), 1);
+                }
+            }
         }
     }
 }

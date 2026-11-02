@@ -2,7 +2,7 @@
 // Format width has no effect for certain traits (issue #15039)
 
 #![warn(clippy::unused_format_specs)]
-#![allow(clippy::zero_ptr, clippy::manual_dangling_ptr)]
+#![expect(clippy::manual_dangling_ptr, clippy::zero_ptr)]
 
 fn main() {
     // Integer formats with # (alternate): 0x/0o/0b prefix makes min width 4

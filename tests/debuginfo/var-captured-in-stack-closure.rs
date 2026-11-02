@@ -1,3 +1,10 @@
+//@ revisions: msvc
+
+// On MSVC, this test requires LLDB to be able to read `S_DEFRANGE_REGISTER_REL_INDIR` PDB nodes,
+// which is only possible on lldb 23.1+
+//@ [msvc] only-msvc
+//@ [msvc] min-llvm-lldb-version: 23.1.0
+
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc

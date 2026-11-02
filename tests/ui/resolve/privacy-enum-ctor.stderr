@@ -59,9 +59,6 @@ LL +         (m::Z::Fn(/* fields */));
 error[E0423]: cannot find value `E` in module `m`
   --> $DIR/privacy-enum-ctor.rs:42:19
    |
-LL |     fn f() {
-   |     ------ similarly named function `f` defined here
-...
 LL |     let _: E = m::E;
    |                   ^
    |
@@ -77,6 +74,11 @@ LL | |         },
 LL | |         Unit,
 LL | |     }
    | |_____^
+note: similarly named function `f` defined here
+  --> $DIR/privacy-enum-ctor.rs:23:5
+   |
+LL |     fn f() {
+   |     ^^^^^^
 help: you might have meant to use the following enum variant
    |
 LL -     let _: E = m::E;
@@ -149,12 +151,14 @@ LL + use std::f64::consts::E;
 error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:58:12
    |
-LL |     pub enum E {
-   |     ---------- similarly named enum `E` defined here
-...
 LL |     let _: Z = m::n::Z;
-   |            ^
+   |            ^ not found in this scope
    |
+note: similarly named enum `E` defined here
+  --> $DIR/privacy-enum-ctor.rs:3:5
+   |
+LL |     pub enum E {
+   |     ^^^^^^^^^^
 note: enum `m::Z` exists but is inaccessible
   --> $DIR/privacy-enum-ctor.rs:12:9
    |
@@ -198,12 +202,14 @@ LL +     let _: Z = (m::Z::Fn(/* fields */));
 error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:62:12
    |
-LL |     pub enum E {
-   |     ---------- similarly named enum `E` defined here
-...
 LL |     let _: Z = m::n::Z::Fn;
-   |            ^
+   |            ^ not found in this scope
    |
+note: similarly named enum `E` defined here
+  --> $DIR/privacy-enum-ctor.rs:3:5
+   |
+LL |     pub enum E {
+   |     ^^^^^^^^^^
 note: enum `m::Z` exists but is inaccessible
   --> $DIR/privacy-enum-ctor.rs:12:9
    |
@@ -218,12 +224,14 @@ LL +     let _: E = m::n::Z::Fn;
 error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:65:12
    |
-LL |     pub enum E {
-   |     ---------- similarly named enum `E` defined here
-...
 LL |     let _: Z = m::n::Z::Struct;
-   |            ^
+   |            ^ not found in this scope
    |
+note: similarly named enum `E` defined here
+  --> $DIR/privacy-enum-ctor.rs:3:5
+   |
+LL |     pub enum E {
+   |     ^^^^^^^^^^
 note: enum `m::Z` exists but is inaccessible
   --> $DIR/privacy-enum-ctor.rs:12:9
    |
@@ -238,12 +246,14 @@ LL +     let _: E = m::n::Z::Struct;
 error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:69:12
    |
-LL |     pub enum E {
-   |     ---------- similarly named enum `E` defined here
-...
 LL |     let _: Z = m::n::Z::Unit {};
-   |            ^
+   |            ^ not found in this scope
    |
+note: similarly named enum `E` defined here
+  --> $DIR/privacy-enum-ctor.rs:3:5
+   |
+LL |     pub enum E {
+   |     ^^^^^^^^^^
 note: enum `m::Z` exists but is inaccessible
   --> $DIR/privacy-enum-ctor.rs:12:9
    |

@@ -5,7 +5,6 @@
 #![allow(incomplete_features)]
 #![allow(unused_features)]
 #![feature(auto_traits)]
-#![feature(box_patterns)]
 #![feature(const_block_items)]
 #![feature(const_trait_impl)]
 #![feature(coroutines)]
@@ -579,9 +578,6 @@ fn test_pat() {
     c1!(pat, [ (true,) ], "(true,)");
     c1!(pat, [ (true, false) ], "(true, false)");
 
-    // PatKind::Box
-    c1!(pat, [ box pat ], "box pat");
-
     // PatKind::Ref
     c1!(pat, [ &pat ], "&pat");
     c1!(pat, [ &mut pat ], "&mut pat");
@@ -1005,3 +1001,5 @@ fn test_punct() {
     p!([ ,; ;, ** @@ $+$ >< <> ?? +== ], ",; ;, ** @@ $+$ >< <> ?? +==");
     p!([ :#!@|$=&*,+;*~? ], ":#!@|$=&*,+;*~?");
 }
+
+//@ reference: items.union.fieldless

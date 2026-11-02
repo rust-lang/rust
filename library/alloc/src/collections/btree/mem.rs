@@ -19,12 +19,14 @@ pub(super) fn replace<T, R>(v: &mut T, change: impl FnOnce(T) -> (T, R)) -> R {
     struct PanicGuard;
     impl Drop for PanicGuard {
         fn drop(&mut self) {
-            intrinsics::abort()
+            intrinsics::abort_immediate()
         }
     }
     let guard = PanicGuard;
+    // SAFETY: v is valid for reads and we write a new value before returning.
     let value = unsafe { ptr::read(v) };
     let (new_value, ret) = change(value);
+    // SAFETY: new_value is T and v is valid for writes.
     unsafe {
         ptr::write(v, new_value);
     }

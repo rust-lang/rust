@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 
+use rustc_ast::ast;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -22,7 +23,7 @@ use crate::Session;
 use crate::lint::{Lint, LintId};
 
 /// Collected spans during parsing for places where a certain feature was
-/// used and should be feature gated accordingly in `check_crate`.
+/// used and should be feature gated accordingly in `check_crate` in `rustc_ast_passes`.
 #[derive(Default)]
 pub struct GatedSpans {
     pub spans: Lock<FxHashMap<Symbol, Vec<Span>>>,
@@ -84,10 +85,21 @@ pub struct ParseSess {
     pub bad_unicode_identifiers: Lock<FxIndexMap<Symbol, Vec<Span>>>,
     source_map: Arc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
-    /// Contains the spans of block expressions that could have been incomplete based on the
-    /// operation token that followed it, but that the parser cannot identify without further
-    /// analysis.
-    pub ambiguous_block_expr_parse: Lock<FxIndexMap<Span, Span>>,
+    /// Places where *complete* stmt exprs are followed by a token that would've been interpreted as
+    /// a binary operator instead of the start of a following stmt or pat *if we weren't in a stmt
+    /// expr context*.
+    ///
+    /// **For error recovery and diagnostic purposes only!**
+    ///
+    /// Maps from the [`start_point`] of the bin op lookalike to the span of the complete stmt expr
+    /// (e.g., block) that could be interpreted as its left operand.
+    ///
+    /// Examples: Given `fn f() { { dbg!(); } *ptr = 0; }` it maps the span of `*` to the span of
+    /// `{ dbg!(); }`; given `fn f() { { true } && panic!(); }` it maps the span of the first `&` to
+    /// the span of `{ true }`.
+    ///
+    /// [`start_point`]: SourceMap::start_point
+    pub complete_stmt_exprs_before_bin_op_lookalike: Lock<FxIndexMap<Span, Span>>,
     pub gated_spans: GatedSpans,
     pub symbol_gallery: SymbolGallery,
     /// Used to generate new `AttrId`s. Every `AttrId` is unique.
@@ -114,7 +126,7 @@ impl ParseSess {
             bad_unicode_identifiers: Lock::new(Default::default()),
             source_map,
             buffered_lints: Lock::new(vec![]),
-            ambiguous_block_expr_parse: Lock::new(Default::default()),
+            complete_stmt_exprs_before_bin_op_lookalike: Lock::new(Default::default()),
             gated_spans: GatedSpans::default(),
             symbol_gallery: SymbolGallery::default(),
             attr_id_generator: AttrIdGenerator::new(),
@@ -147,8 +159,18 @@ impl ParseSess {
         self.opt_span_buffer_lint(lint, Some(span.into()), node_id, diagnostic.into())
     }
 
+    /// Buffer a crate-level lint. This is used for lints that are associated with command-line
+    /// arguments and dependency structure.
+    pub fn buffer_crate_lint(
+        &self,
+        lint: &'static Lint,
+        diagnostic: impl Into<DecorateDiagCompat>,
+    ) {
+        self.opt_span_buffer_lint(lint, None, ast::CRATE_NODE_ID, diagnostic.into())
+    }
+
     pub fn dyn_buffer_lint<
-        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSync + DynSend + 'static,
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a> + DynSync + DynSend + 'static,
     >(
         &self,
         lint: &'static Lint,
@@ -165,7 +187,7 @@ impl ParseSess {
     }
 
     pub fn dyn_buffer_lint_sess<
-        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a, ()>
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a>
             + DynSync
             + DynSend
             + 'static,

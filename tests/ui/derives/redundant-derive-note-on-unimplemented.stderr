@@ -21,8 +21,6 @@ LL | #[derive(Debug)]
    |          ----- in this derive macro expansion
 LL | struct S<T>(T);
    |        ^ - type parameter would need to implement `Debug`
-   = help: consider manually implementing `Debug` to avoid undesired bounds caused by "imperfect derives"
-   = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
 help: consider annotating `X` with `#[derive(Debug)]`
    |
 LL + #[derive(Debug)]

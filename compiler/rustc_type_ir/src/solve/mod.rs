@@ -13,15 +13,16 @@ use rustc_type_ir_macros::{
 use thin_vec::ThinVec;
 use tracing::debug;
 
+use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
 use crate::region_constraint::RegionConstraint;
-use crate::search_graph::PathKind;
 use crate::{
-    self as ty, Canonical, CanonicalVarValues, CantBeErased, Interner, TyVid, TypingMode, Upcast,
+    self as ty, Canonical, CantBeErased, Const, ConstVid, FloatVid, GenericArgKind, InferConst,
+    IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
 };
 
-pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
-    ty::CanonicalQueryInput<I, QueryInput<I, T>>;
+pub type CanonicalInputData<I> =
+    ty::CanonicalQueryInput<I, QueryInput<I, <I as Interner>::Predicate>>;
 pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 /// The result of evaluating a canonical query.
 ///
@@ -79,17 +80,21 @@ impl From<RerunNonErased> for NoSolutionOrRerunNonErased {
     }
 }
 
+/// A small set of up to 3 `Copy` elements, used as an optimization in [`RerunCondition`].
+/// The entire set can be `Copy`ed because of this requirement.
+///
+/// Set properties maintained using [`union`](SmallCopySet::union), which deduplicates values.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-pub enum SmallCopyList<T: Copy + Debug + Hash + Eq> {
+pub enum SmallCopySet<T: Copy + Debug + Hash + Eq> {
     Empty,
     One([T; 1]),
     Two([T; 2]),
     Three([T; 3]),
 }
 
-impl<T: Copy + Debug + Hash + Eq> SmallCopyList<T> {
+impl<T: Copy + Debug + Hash + Eq> SmallCopySet<T> {
     fn empty() -> Self {
         Self::Empty
     }
@@ -99,6 +104,21 @@ impl<T: Copy + Debug + Hash + Eq> SmallCopyList<T> {
     }
 
     /// Computes the union of two lists. Duplicates are removed.
+    ///
+    /// Since the set can hold at most 3 elements, returns `None` if the resulting set cannot be
+    /// represented.
+    ///
+    /// In the context of [`RerunCondition`], this means we fall back to rerunning unconditionally.
+    /// This can be beneficial, since at some point, tracking all the conditions under which a query
+    /// has to be rerun becomes slower than just rerunning unconditionally. This is especially so,
+    /// since as long as rerun conditions are tracked, we keep executing the current query. As soon as
+    /// we cannot track anymore, and unconditionally rerun, we also abort the current query.
+    /// By at some point opting to abort early, we may save a lot of time skipping further work
+    /// that will have to likely be redone anyway.
+    ///
+    /// note that *not* all cases are handled. you can union two lists of two elements with equal
+    /// elements, and still get `none` back. checking for all cases is more work than just rerunning
+    /// in some cases.
     fn union(self, other: Self) -> Option<Self> {
         match (self, other) {
             (Self::Empty, other) | (other, Self::Empty) => Some(other),
@@ -122,12 +142,15 @@ impl<T: Copy + Debug + Hash + Eq> SmallCopyList<T> {
             (Self::One([a]), Self::Two([b, c])) | (Self::Two([a, b]), Self::One([c])) => {
                 Some(Self::Three([a, b, c]))
             }
+            // There are some more cases we could handle, like 2 + 2 => 3 if there's one duplicate,
+            // But the check seems to be more expensive than the gain. Even then, the difference is
+            // tiny, and could just be noise. Not worth it regardless.
             _ => None,
         }
     }
 }
 
-impl<T: Copy + Debug + Hash + Eq> AsRef<[T]> for SmallCopyList<T> {
+impl<T: Copy + Debug + Hash + Eq> AsRef<[T]> for SmallCopySet<T> {
     fn as_ref(&self) -> &[T] {
         match self {
             Self::Empty => &[],
@@ -165,12 +188,12 @@ pub enum RerunCondition<I: Interner> {
     /// Note that this only reruns according to the condition *if* we are in [`TypingMode::Typeck`].
     AnyOpaqueHasInferAsHidden,
     /// Note: unconditionally reruns in postanalysis
-    OpaqueInStorage(SmallCopyList<I::LocalDefId>),
+    OpaqueInStorage(SmallCopySet<I::LocalDefId>),
 
     /// Merges [`Self::AnyOpaqueHasInferAsHidden`] and [`Self::OpaqueInStorage`].
     /// Note that just like the unmerged [`Self::OpaqueInStorage`], that part of the
     /// condition only matters in [`TypingMode::Typeck`]
-    OpaqueInStorageOrAnyOpaqueHasInferAsHidden(SmallCopyList<I::LocalDefId>),
+    OpaqueInStorageOrAnyOpaqueHasInferAsHidden(SmallCopySet<I::LocalDefId>),
 
     Always,
 }
@@ -210,7 +233,7 @@ impl<I: Interner> RerunCondition<I> {
             | (
                 Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
                 Self::AnyOpaqueHasInferAsHidden,
-            ) => Self::OpaqueInStorage(a),
+            ) => Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
 
             (
                 Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
@@ -327,7 +350,7 @@ impl<I: Interner> AccessedOpaques<I> {
         debug!("set rerun if post analysis");
         self.update(AccessedOpaques {
             reason: Some(reason),
-            rerun: RerunCondition::OpaqueInStorage(SmallCopyList::empty()),
+            rerun: RerunCondition::OpaqueInStorage(SmallCopySet::empty()),
         })
     }
 
@@ -339,7 +362,7 @@ impl<I: Interner> AccessedOpaques<I> {
         debug!("set rerun if opaque type {defid:?} in storage");
         self.update(AccessedOpaques {
             reason: Some(reason),
-            rerun: RerunCondition::OpaqueInStorage(SmallCopyList::new(defid.into())),
+            rerun: RerunCondition::OpaqueInStorage(SmallCopySet::new(defid.into())),
         })
     }
 
@@ -387,22 +410,15 @@ impl<I: Interner, P> Goal<I, P> {
 
 /// Why a specific goal has to be proven.
 ///
-/// This is necessary as we treat nested goals different depending on
-/// their source. This is used to decide whether a cycle is coinductive.
-/// See the documentation of `EvalCtxt::step_kind_for_source` for more details
-/// about this.
+/// This is used by proof tree visitors, especially for diagnostics purposes.
 ///
-/// It is also used by proof tree visitors, e.g. for diagnostics purposes.
+/// FIXME(-Znext-solver=coinductive): This will also matter in the future when
+/// deciding whether a step in a cycle is coinductive. We're currently still
+/// matching the old solver behavior here for now, so the `GoalSource` is ignored.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum GoalSource {
     Misc,
-    /// A nested goal required to prove that types are equal/subtypes.
-    /// This is always an unproductive step.
-    ///
-    /// This is also used for all `NormalizesTo` goals as we they are used
-    /// to relate types in `AliasRelate`.
-    TypeRelating,
     /// We're proving a where-bound of an impl.
     ImplWhereBound,
     /// Const conditions that need to hold for `[const]` alias bounds to hold.
@@ -414,12 +430,8 @@ pub enum GoalSource {
     /// 2. for rigid projections's trait goal,
     /// 3. for GAT where clauses.
     AliasWellFormed,
-    /// In case normalizing aliases in nested goals cycles, eagerly normalizing these
-    /// aliases in the context of the parent may incorrectly change the cycle kind.
-    /// Normalizing aliases in goals therefore tracks the original path kind for this
-    /// nested goal. See the comment of the `ReplaceAliasWithInfer` visitor for more
-    /// details.
-    NormalizeGoal(PathKind),
+    /// Normalizing happens in the current context and is unproductive by itself.
+    Normalization,
 }
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, Goal<I, P>)]
@@ -553,10 +565,12 @@ pub enum BuiltinImplSource {
     /// unless more specific information is necessary.
     Misc,
     /// A built-in impl for trait objects. The index is only used in winnowing.
+    // FIXME(-Znext-solver=no): The new solver does not need this index, remove!
     Object(usize),
     /// A built-in implementation of `Upcast` for trait objects to other trait objects.
     ///
     /// The index is only used for winnowing.
+    // FIXME(-Znext-solver=no): The new solver does not need this index, remove!
     TraitUpcasting(usize),
 }
 
@@ -568,14 +582,69 @@ pub enum FetchEligibleAssocItemResponse<I: Interner> {
     NotFoundBecauseErased,
 }
 
+/// The variant order here matters for the `PartialOrd`/`Ord` impls.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+pub enum IsIdentity {
+    No,
+    ModuloRegions,
+    Yes,
+}
+
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub struct Response<I: Interner> {
     pub certainty: Certainty,
-    pub var_values: CanonicalVarValues<I>,
+    pub var_values: I::GenericArgs,
+    /// Is `var_values` an identity?
+    pub var_values_is_identity: IsIdentity,
     /// Additional constraints returned by this query.
     pub external_constraints: I::ExternalConstraints,
+}
+
+impl<I: Interner> Response<I> {
+    pub fn update_var_values_is_identity(&mut self) {
+        // We start optimistic and downgrade if necessary along the way.
+        self.var_values_is_identity = IsIdentity::Yes;
+
+        let mut bv = ty::BoundVar::ZERO;
+        for arg in self.var_values.iter() {
+            match arg.kind() {
+                ty::GenericArgKind::Lifetime(r) => {
+                    if let ty::ReBound(ty::BoundVarIndexKind::Canonical, br) = r.kind()
+                        && bv == br.var()
+                    {
+                        bv = bv + 1;
+                    } else {
+                        // If this region var isn't an identity variable we can't be
+                        // `IsIdentity::Yes`, but we can still be `IsIdentity::ModuloRegions`.
+                        self.var_values_is_identity = IsIdentity::ModuloRegions;
+                    }
+                }
+                ty::GenericArgKind::Type(ty) => {
+                    if let ty::Bound(ty::BoundVarIndexKind::Canonical, bt) = ty.kind()
+                        && bv == bt.var()
+                    {
+                        bv = bv + 1;
+                    } else {
+                        self.var_values_is_identity = IsIdentity::No;
+                        break;
+                    }
+                }
+                ty::GenericArgKind::Const(ct) => {
+                    if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) = ct.kind()
+                        && bv == bc.var()
+                    {
+                        bv = bv + 1;
+                    } else {
+                        self.var_values_is_identity = IsIdentity::No;
+                        break;
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<I: Interner> Eq for Response<I> {}
@@ -984,18 +1053,17 @@ pub enum GoalStalledOnOpaques<I: Interner> {
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct GoalStalledOn<I: Interner> {
     // `ThinVec` is important for performance. See #160005.
-    pub stalled_vars: ThinVec<I::GenericArg>,
+    pub stalled_vars: ThinVec<TyOrConstInferVar>,
     // `ThinVec` is important for performance. See #160005.
     pub sub_roots: ThinVec<TyVid>,
-    /// The certainty that will be returned on subsequent evaluations if this
+    /// The `MaybeInfo` that will be returned on subsequent evaluations if this
     /// goal remains stalled.
-    pub stalled_certainty: Certainty,
+    pub stalled_maybe_info: MaybeInfo,
     pub opaques: GoalStalledOnOpaques<I>,
 }
 
 /// For some goals we can trivially answer some questions without going through
 /// canonicalization. There are three options:
-
 #[derive(Clone, Debug)]
 pub enum ComputeGoalFastPathOutcome<I: Interner> {
     /// Do not attempt the fast path. Compute as normal.
@@ -1005,4 +1073,70 @@ pub enum ComputeGoalFastPathOutcome<I: Interner> {
     /// The goal is trivially stalled: we know for sure that it makes no sense to compute it right
     /// now, but can return information about what its stalled on and when it can be computed for real.
     TriviallyStalled { stalled_on: GoalStalledOn<I> },
+}
+
+/// Helper for `InferCtxt::ty_or_const_infer_var_changed` (see comment on that), used
+/// for `traits::fulfill`'s list of `stalled_on` inference variables and for merging
+/// ambiguity errors caused by the same inference variable during error reporting.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TyOrConstInferVar {
+    /// Equivalent to `ty::Infer(ty::TyVar(_))`.
+    Ty(TyVid),
+    /// Equivalent to `ty::Infer(ty::IntVar(_))`.
+    TyInt(IntVid),
+    /// Equivalent to `ty::Infer(ty::FloatVar(_))`.
+    TyFloat(FloatVid),
+
+    /// Equivalent to `ty::ConstKind::Infer(ty::InferConst::Var(_))`.
+    Const(ConstVid),
+}
+
+impl TyOrConstInferVar {
+    pub fn as_type<I: Interner>(&self, interner: I) -> Option<I::Ty> {
+        match self {
+            Self::Ty(vid) => Some(I::Ty::new_var(interner, *vid)),
+            Self::TyInt(_) | Self::TyFloat(_) | Self::Const(_) => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a type or a constant, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    pub fn maybe_from_generic_arg<I: Interner>(arg: I::GenericArg) -> Option<Self> {
+        match arg.kind() {
+            GenericArgKind::Type(ty) => Self::maybe_from_ty::<I>(ty),
+            GenericArgKind::Const(ct) => Self::maybe_from_const::<I>(ct),
+            GenericArgKind::Lifetime(_) => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a type or a constant, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    pub fn maybe_from_term<I: Interner>(term: I::Term) -> Option<Self> {
+        match term.kind() {
+            TermKind::Ty(ty) => Self::maybe_from_ty::<I>(ty),
+            TermKind::Const(ct) => Self::maybe_from_const::<I>(ct),
+        }
+    }
+
+    /// Tries to extract an inference variable from a type, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`).
+    fn maybe_from_ty<I: Interner>(ty: I::Ty) -> Option<Self> {
+        match ty.kind() {
+            ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
+            ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
+            ty::Infer(ty::FloatVar(v)) => Some(TyOrConstInferVar::TyFloat(v)),
+            _ => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a constant, returns `None`
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    fn maybe_from_const<I: Interner>(ct: Const<I>) -> Option<Self> {
+        match ct.kind() {
+            ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
+            _ => None,
+        }
+    }
 }

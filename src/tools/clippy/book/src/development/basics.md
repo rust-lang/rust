@@ -12,7 +12,7 @@ codebase take a look at [Adding Lints] or [Common Tools].
   - [Building and Testing](#building-and-testing)
   - [`cargo dev`](#cargo-dev)
   - [lintcheck](#lintcheck)
-  - [PR](#pr)
+  - [PR](#on-prs)
   - [Common Abbreviations](#common-abbreviations)
   - [Install from source](#install-from-source)
 
@@ -33,11 +33,11 @@ If you've already cloned Clippy in the past, update it to the latest version:
 git remote add upstream https://github.com/rust-lang/rust-clippy
 # upstream has to be the remote of the rust-lang/rust-clippy repo
 git fetch upstream
-# make sure that you are on the master branch
-git checkout master
-# rebase your master branch on the upstream master
-git rebase upstream/master
-# push to the master branch of your fork
+# make sure that you are on the main branch
+git checkout main
+# rebase your main branch on the upstream main
+git rebase upstream/main
+# push to the main branch of your fork
 git push
 ```
 
@@ -72,7 +72,8 @@ cargo bless
 For example, this is necessary if you fix a typo in an error message of a lint,
 or if you modify a test file to add a test case.
 
-> _Note:_ This command may update more files than you intended. In that case
+> [!NOTE]
+> This command may update more files than you intended. In that case
 > only commit the files you wanted to update.
 
 [UI test]: https://rustc-dev-guide.rust-lang.org/tests/adding.html#ui-test-walkthrough
@@ -99,11 +100,13 @@ cargo dev setup git-hook
 cargo dev setup intellij
 # runs the `dogfood` tests
 cargo dev dogfood
+# lints all Markdown files with remark
+cargo dev remark
 ```
 
 More about [intellij] command usage and reasons.
 
-[intellij]: https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md#rustrover
+[intellij]: https://github.com/rust-lang/rust-clippy/blob/HEAD/CONTRIBUTING.md#rustrover
 
 ## lintcheck
 
@@ -115,12 +118,15 @@ are no false positives and that the suggestions are valid.
 
 Refer to the tools [README] for more details.
 
-[README]: https://github.com/rust-lang/rust-clippy/blob/master/lintcheck/README.md
+[README]: https://github.com/rust-lang/rust-clippy/blob/HEAD/lintcheck/README.md
 
-## PR
+## On PRs
 
 We follow a rustc no merge-commit policy. See
 <https://rustc-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.
+
+Before opening your pull request, know that we follow an LLM policy.
+See [LLM policy](llm_usage.md)
 
 ## Common Abbreviations
 

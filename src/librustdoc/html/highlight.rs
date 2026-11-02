@@ -33,7 +33,7 @@ pub(crate) struct HrefContext<'a, 'tcx> {
     pub(crate) file_span: Span,
     /// This field is used to know "how far" from the top of the directory we are to link to either
     /// documentation pages or other source pages.
-    pub(crate) root_path: &'a str,
+    pub(crate) jump_to_def_path_depth: usize,
     /// This field is used to calculate precise local URLs.
     pub(crate) current_href: String,
 }
@@ -58,10 +58,15 @@ pub(crate) fn render_example_with_highlighting(
     tooltip: Option<&Tooltip>,
     playground_button: Option<&str>,
     extra_classes: &[String],
+    edition: Edition,
 ) -> impl Display {
     fmt::from_fn(move |f| {
         write_header("rust-example-rendered", tooltip, extra_classes).fmt(f)?;
-        write_code(f, src, None, None, None);
+        let edition = match tooltip {
+            Some(Tooltip::Edition(edition)) => *edition,
+            _ => edition,
+        };
+        write_code(f, src, None, None, edition, None);
         write_footer(playground_button).fmt(f)
     })
 }
@@ -553,6 +558,7 @@ pub(super) fn write_code(
     src: &str,
     href_context: Option<HrefContext<'_, '_>>,
     decoration_info: Option<&DecorationInfo>,
+    edition: Edition,
     line_info: Option<LineInfo>,
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
@@ -606,6 +612,7 @@ pub(super) fn write_code(
         &src,
         token_handler.href_context.as_ref().map_or(DUMMY_SP, |c| c.file_span),
         decoration_info,
+        edition,
         &mut |span, highlight| match highlight {
             Highlight::Token { text, class } => {
                 token_handler.push_token(class, Cow::Borrowed(text));
@@ -892,6 +899,7 @@ fn classify<'src>(
     src: &'src str,
     file_span: Span,
     decoration_info: Option<&DecorationInfo>,
+    edition: Edition,
     sink: &mut dyn FnMut(Span, Highlight<'src>),
 ) {
     let offset = rustc_lexer::strip_shebang(src);
@@ -901,7 +909,7 @@ fn classify<'src>(
     }
 
     let mut classifier =
-        Classifier::new(src, offset.unwrap_or_default(), file_span, decoration_info);
+        Classifier::new(src, offset.unwrap_or_default(), file_span, decoration_info, edition);
 
     loop {
         if let Some(decs) = classifier.decorations.as_mut() {
@@ -946,6 +954,7 @@ struct Classifier<'src> {
     file_span: Span,
     src: &'src str,
     decorations: Option<Decorations>,
+    edition: Edition,
 }
 
 impl<'src> Classifier<'src> {
@@ -956,6 +965,7 @@ impl<'src> Classifier<'src> {
         byte_pos: usize,
         file_span: Span,
         decoration_info: Option<&DecorationInfo>,
+        edition: Edition,
     ) -> Self {
         Classifier {
             tokens: PeekIter::new(TokenIter::new(&src[byte_pos..])),
@@ -966,6 +976,7 @@ impl<'src> Classifier<'src> {
             file_span,
             src,
             decorations: decoration_info.map(Decorations::new),
+            edition,
         }
     }
 
@@ -996,7 +1007,7 @@ impl<'src> Classifier<'src> {
             if let Some((TokenKind::Ident, text)) =
                 self.tokens.peek_next_if(|(token, _)| token == TokenKind::Ident)
                 && let symbol = Symbol::intern(text)
-                && (symbol.is_path_segment_keyword() || !is_keyword(symbol))
+                && (symbol.is_path_segment_keyword() || !self.is_keyword(symbol))
             {
                 has_ident = true;
                 nb_items += 1;
@@ -1264,7 +1275,7 @@ impl<'src> Classifier<'src> {
                     "self" | "Self" => Class::Self_(span()),
                     "Option" | "Result" => Class::PreludeTy(span()),
                     "Some" | "None" | "Ok" | "Err" => Class::PreludeVal(span()),
-                    _ if self.is_weak_keyword(text) || is_keyword(Symbol::intern(text)) => {
+                    _ if self.is_weak_keyword(text) || self.is_keyword(Symbol::intern(text)) => {
                         // So if it's not a keyword which can be followed by a value (like `if` or
                         // `return`) and the next non-whitespace token is a `!`, then we consider
                         // it's a macro.
@@ -1286,6 +1297,7 @@ impl<'src> Classifier<'src> {
             TokenKind::RawIdent | TokenKind::UnknownPrefix | TokenKind::InvalidIdent => {
                 Class::Ident(new_span(before, text, file_span))
             }
+            TokenKind::ForcedKeywordIdent => Class::KeyWord,
             TokenKind::Lifetime { .. }
             | TokenKind::RawLifetime
             | TokenKind::UnknownPrefixLifetime => Class::Lifetime,
@@ -1317,6 +1329,10 @@ impl<'src> Classifier<'src> {
             _ => return false,
         };
         matches!(self.peek_non_trivia(), Some((TokenKind::Ident, text)) if matches(text))
+    }
+
+    fn is_keyword(&self, symbol: Symbol) -> bool {
+        symbol.is_reserved(|| self.edition)
     }
 
     fn peek(&mut self) -> Option<TokenKind> {
@@ -1370,11 +1386,6 @@ impl<'src> Classifier<'src> {
     }
 }
 
-fn is_keyword(symbol: Symbol) -> bool {
-    // FIXME(#148221): Don't hard-code the edition. The classifier should take it as an argument.
-    symbol.is_reserved(|| Edition::Edition2024)
-}
-
 fn generate_link_to_def(
     out: &mut impl Write,
     text_s: &str,
@@ -1396,23 +1407,30 @@ fn generate_link_to_def(
                     LinkFromSrc::Local(span) => {
                         context.href_from_span_relative(*span, &href_context.current_href)
                     }
-                    LinkFromSrc::External(def_id) => {
-                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
-                            .ok()
-                            .map(|HrefInfo { url, .. }| url)
-                    }
-                    LinkFromSrc::Primitive(prim) => format::href_with_root_path(
-                        PrimitiveType::primitive_locations(context.tcx())[prim],
+                    LinkFromSrc::External(def_id) => format::href_with_jump_to_def_path_depth(
+                        *def_id,
                         context,
-                        Some(href_context.root_path),
+                        Some(href_context.jump_to_def_path_depth),
+                        None,
                     )
                     .ok()
                     .map(|HrefInfo { url, .. }| url),
-                    LinkFromSrc::Doc(def_id) => {
-                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
-                            .ok()
-                            .map(|HrefInfo { url, .. }| url)
-                    }
+                    LinkFromSrc::Primitive(prim) => format::href_with_jump_to_def_path_depth(
+                        PrimitiveType::primitive_locations(context.tcx())[prim],
+                        context,
+                        Some(href_context.jump_to_def_path_depth),
+                        None,
+                    )
+                    .ok()
+                    .map(|HrefInfo { url, .. }| url),
+                    LinkFromSrc::Doc(def_id) => format::href_with_jump_to_def_path_depth(
+                        *def_id,
+                        context,
+                        Some(href_context.jump_to_def_path_depth),
+                        None,
+                    )
+                    .ok()
+                    .map(|HrefInfo { url, .. }| url),
                 }
             })
     {

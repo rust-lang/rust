@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+//@ rustfmt-wrap_comments: true
 
 // Preserve two trailing whitespaces in doc comment,
 // but trim any whitespaces in normal comment.

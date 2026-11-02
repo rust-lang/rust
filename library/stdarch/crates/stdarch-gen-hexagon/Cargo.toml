@@ -6,5 +6,6 @@ license = "MIT OR Apache-2.0"
 edition = "2021"
 
 [dependencies]
+clap = { version = "4", features = ["derive", "env"] }
 regex = "1.10"
 stdarch-gen-common = { path = "../stdarch-gen-common" }

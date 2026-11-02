@@ -1,4 +1,5 @@
 //@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@ [next] compile-flags: -Znext-solver
 #![expect(incomplete_features)]
 #![feature(field_projections)]
@@ -12,6 +13,7 @@ pub struct Struct<'a> {
 fn consume<'a>(_: field_of!(Struct<'a>, field), _: field_of!(Struct<'a>, field)) {}
 
 fn assert_invariant<'a, 'b>(x: field_of!(Struct<'a>, field), y: field_of!(Struct<'b>, field)) {
+    //~^ ERROR one or more lifetime errors
     consume(x, y);
     //~^ ERROR: lifetime may not live long enough
     //~^^ ERROR: lifetime may not live long enough

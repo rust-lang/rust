@@ -3,6 +3,8 @@ error: the `repr(align(...))` attribute cannot be used on type aliases
    |
 LL | #[repr(align(16))]
    |   ^^^^^^^^^^^^^^^
+LL |
+LL | pub type Foo = i32;
    |
    = help: the `repr(align(...))` attribute can only be applied to data types
 

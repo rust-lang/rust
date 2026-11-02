@@ -1,4 +1,5 @@
-#![allow(clippy::redundant_closure)]
+#![warn(clippy::unnecessary_filter_map)]
+#![expect(clippy::redundant_closure)]
 
 fn main() {
     let _ = (0..4).filter_map(|x| if x > 1 { Some(x) } else { None });
@@ -54,7 +55,6 @@ mod comment_483920107 {
 
     impl S {
         fn foo(&mut self, server_errors: Vec<ServerError>) {
-            #[allow(unused_variables)]
             let errors: Vec<ServerError> = server_errors
                 .into_iter()
                 .filter_map(|se| match se.severity() {

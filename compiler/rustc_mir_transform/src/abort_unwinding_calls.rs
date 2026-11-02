@@ -1,9 +1,8 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::InlineAsmOptions;
 use rustc_middle::mir::*;
-use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt, layout};
-use rustc_span::sym;
+use rustc_span::{span_bug, sym};
 use rustc_target::spec::PanicStrategy;
 
 use crate::PassPolicy;
@@ -140,7 +139,7 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
         super::simplify::remove_dead_blocks(body);
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Implements part of MIR semantics, turning effectively implicit aborts into explicit
         // ones.
         PassPolicy::Required

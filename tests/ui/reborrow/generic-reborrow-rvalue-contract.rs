@@ -1,7 +1,8 @@
 //@ check-pass
-// Regression test for rust-lang/rust#156482.
-// This used to ICE in MIR building when a THIR `ExprKind::Reborrow`
-// was categorized as a place but `expr_as_place` treated it as unreachable.
+
+//! Regression test for rust-lang/rust#156482.
+//! This used to ICE in MIR building when a THIR `ExprKind::Reborrow`
+//! was categorized as a place but `expr_as_place` treated it as unreachable.
 
 #![feature(reborrow)]
 

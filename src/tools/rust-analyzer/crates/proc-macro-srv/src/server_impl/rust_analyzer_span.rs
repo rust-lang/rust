@@ -46,10 +46,6 @@ impl server::Server for RaSpanServer<'_> {
         f(symbol.as_str())
     }
 
-    fn injected_env_var(&mut self, _: &str) -> Option<std::string::String> {
-        None
-    }
-
     fn track_env_var(&mut self, var: &str, value: Option<&str>) {
         self.tracked_env.env_vars.insert(var.into(), value.map(Into::into));
     }

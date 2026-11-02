@@ -9,7 +9,7 @@ trait TraitLt<'a: 'a> {
     fn hello() -> impl Sized + use<Self>;
     //~^ ERROR `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
 }
-fn trait_lt<'a, 'b, T: for<'r> TraitLt<'r>> () {
+fn trait_lt<'a, 'b, T: for<'r> TraitLt<'r>> () { //~ ERROR one or more lifetime errors
     eq_types(
         //~^ ERROR lifetime may not live long enough
         //~| ERROR lifetime may not live long enough

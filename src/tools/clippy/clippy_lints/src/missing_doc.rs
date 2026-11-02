@@ -1,15 +1,12 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{is_doc_hidden, is_from_proc_macro};
-use rustc_hir::attrs::AttributeKind;
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{
-    AttrArgs, Attribute, Body, BodyId, FieldDef, HirId, ImplItem, Item, ItemKind, Node, TraitItem, Variant,
-};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::{Body, BodyId, FieldDef, HirId, ImplItem, Item, ItemKind, Node, TraitItem, Variant};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::ty::Visibility;
-use rustc_session::impl_lint_pass;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::sym;
 use rustc_span::symbol::kw;
@@ -97,7 +94,7 @@ impl MissingDoc {
             None => {},
         }
 
-        !cx.tcx.hir_attrs(hir_id).iter().any(is_doc_attr)
+        !cx.tcx.hir_attrs(hir_id).iter().any(is_doc_comment)
     }
 }
 
@@ -141,10 +138,11 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm { .. }
-            | ItemKind::Use(..) => return,
+            | ItemKind::Use(..)
+            | ItemKind::TestBinderConstraints { .. } => return,
 
             ItemKind::Mod(ident, ..) => {
-                if item.span.from_expansion() && item.span.eq_ctxt(ident.span) {
+                if item.span.from_expansion() && item.span.ctxt() == ident.span.ctxt() {
                     self.module_depth += 1;
                     self.require_visibility_at = cx.tcx.opt_local_parent(item.owner_id.def_id);
                     self.macro_module_depth = self.module_depth;
@@ -283,15 +281,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 }
 
-fn is_doc_attr(attr: &Attribute) -> bool {
-    match attr {
-        Attribute::Parsed(AttributeKind::DocComment { .. }) => true,
-        Attribute::Unparsed(attr)
-            if let [name] = &*attr.path.segments
-                && *name == sym::doc =>
-        {
-            matches!(attr.args, AttrArgs::Eq { .. })
-        },
-        _ => false,
-    }
+fn is_doc_comment(attr: &Attribute) -> bool {
+    matches!(attr, Attribute::Parsed(AttributeKind::DocComment { .. }))
 }

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{find_assert_args, root_macro_call_first_node};
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sym;
 use clippy_utils::ty::{has_debug_impl, is_copy};
@@ -8,9 +8,8 @@ use clippy_utils::usage::local_used_after_expr;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, Node};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

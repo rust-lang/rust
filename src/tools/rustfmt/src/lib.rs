@@ -3,7 +3,6 @@
 #![warn(unreachable_pub)]
 #![recursion_limit = "256"]
 #![allow(clippy::match_like_matches_macro)]
-#![allow(unreachable_pub)]
 
 // N.B. these crates are loaded from the sysroot, so they need extern crate.
 extern crate rustc_ast;
@@ -390,6 +389,18 @@ fn format_code_block(
     let block_len = formatted
         .snippet
         .rfind('}')
+        // trim whitespace when using `fn_single_line=true`
+        // ```
+        //                        | `block_len` starts at the index of `}`
+        // fn main { some_func(); }
+        //                      | remove whitespace to move it to the index of `;`
+        // ```
+        // aka, strip off any whitespace between the end of the code and the `}`
+        .map(|i| {
+            formatted.snippet[..i]
+                .strip_suffix(char::is_whitespace)
+                .map_or(i, str::len)
+        })
         .unwrap_or_else(|| formatted.snippet.len());
 
     // It's possible that `block_len < FN_MAIN_PREFIX.len()`. This can happen if the code block was
@@ -464,7 +475,7 @@ impl<'b, T: Write + 'b> Session<'b, T> {
     }
 
     /// The main entry point for Rustfmt. Formats the given input according to the
-    /// given config. `out` is only necessary if required by the configuration.
+    /// session's config.
     pub fn format(&mut self, input: Input) -> Result<FormatReport, ErrorKind> {
         self.format_input_inner(input, false)
     }

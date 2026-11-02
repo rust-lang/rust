@@ -95,6 +95,24 @@ fn main() {
     let xx = "xx";
     let _ = xx.to_string();
     //~^ useless_format
+
+    // Issue #3361: `&format!("literal")` should suggest the literal directly
+    let _: &str = "hello"; //~ useless_format
+    let _: &str = "{}"; //~ useless_format
+    let _: &str = r"hello"; //~ useless_format
+    let _: &str = r#"world"#; //~ useless_format
+    let _: &str = r##"foo"##; //~ useless_format
+    let _: &str = r##"hello "\u{007B}""##; //~ useless_format
+    // Only immutable borrows: `&mut format!` is not handled
+    let _: &mut String = &mut "hello".to_string(); //~ useless_format
+
+    fn literal(lit: &str) {}
+    literal("hello"); //~ useless_format
+    literal(&"hello"); //~ useless_format
+
+    let lit = "hello";
+    literal(lit); //~ useless_format
+    literal(lit); //~ useless_format
 }
 
 // `format!` as the tail expression of a block emitted by another macro

@@ -18,12 +18,13 @@ pub(super) fn check<'tcx>(
     cast_to: &'tcx Ty<'_>,
     msrv: Msrv,
 ) -> bool {
-    if let TyKind::Ptr(target) = cast_to.kind
-        && !matches!(target.ty.kind, TyKind::TraitObject(..))
+    if let TyKind::Ptr(target, _) = cast_to.kind
+        && !matches!(target.kind, TyKind::TraitObject(..))
         && let ExprKind::AddrOf(BorrowKind::Ref, mutability, e) = cast_expr.kind
         && !is_lint_allowed(cx, BORROW_AS_PTR, expr.hir_id)
         // Fix #9884
         && !is_expr_temporary_value(cx, e)
+        && !expr.span.in_external_macro(cx.tcx.sess.source_map())
         && !is_from_proc_macro(cx, expr)
     {
         let mut app = Applicability::MachineApplicable;

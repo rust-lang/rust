@@ -8,7 +8,7 @@
 use rustc_macros::{StableHash, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 
-use crate::error::DropCheckOverflow;
+use crate::diagnostics::DropCheckOverflow;
 use crate::infer::canonical::{Canonical, CanonicalQueryInput, QueryResponse};
 use crate::traits::solve;
 pub use crate::traits::solve::NoSolution;
@@ -91,7 +91,17 @@ pub type CanonicalImpliedOutlivesBoundsGoal<'tcx> =
 pub type CanonicalDropckOutlivesGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::DropckOutlives<'tcx>>>;
 
-#[derive(Clone, Debug, Default, StableHash, TypeFoldable, TypeVisitable)]
+/// The implied bounds and normalized MIR signature used by borrowck.
+#[derive(Clone, Debug, StableHash, TypeFoldable, TypeVisitable)]
+pub struct MirBorrowckImpliedOutlivesBounds<'tcx> {
+    pub outlives_bounds: Vec<OutlivesBound<'tcx>>,
+
+    /// The normalized function signature. We need to return this from implied
+    /// bounds computation to deal with #136547.
+    pub normalized_inputs_and_output: Vec<Ty<'tcx>>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, StableHash, TypeFoldable, TypeVisitable)]
 pub struct DropckOutlivesResult<'tcx> {
     pub kinds: Vec<GenericArg<'tcx>>,
     pub overflows: Vec<Ty<'tcx>>,
@@ -197,7 +207,7 @@ pub struct NormalizationResult<'tcx> {
 /// case they are called implied bounds). They are fed to the
 /// `OutlivesEnv` which in turn is supplied to the region checker and
 /// other parts of the inference system.
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, StableHash)]
+#[derive(Copy, Clone, Debug, PartialEq, TypeFoldable, TypeVisitable, StableHash)]
 pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
     RegionSubParam(ty::Region<'tcx>, ty::ParamTy),

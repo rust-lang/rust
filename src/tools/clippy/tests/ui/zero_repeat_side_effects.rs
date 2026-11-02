@@ -1,9 +1,11 @@
 #![warn(clippy::zero_repeat_side_effects)]
-#![allow(
-    clippy::unnecessary_operation,
-    clippy::useless_vec,
+#![expect(
     clippy::needless_late_init,
     clippy::single_match,
+    clippy::unnecessary_operation,
+    clippy::useless_vec
+)]
+#![allow(
     clippy::no_effect // only fires _after_ the fix
 )]
 
@@ -123,4 +125,11 @@ fn issue_15824() {
         //~^ zero_repeat_side_effects
         _ => {},
     }
+}
+
+#[allow(clippy::diverging_sub_expression)] // only fires *before* the fix
+fn diverging() {
+    // Used to not be fixable when `!` wasn't stable yet and thus not nameable
+    let _data = [panic!(); 0];
+    //~^ zero_repeat_side_effects
 }

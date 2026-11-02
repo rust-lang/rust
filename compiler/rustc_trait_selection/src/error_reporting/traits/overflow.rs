@@ -1,13 +1,13 @@
 use std::fmt;
 
-use rustc_data_structures::Limit;
-use rustc_errors::{Diag, E0275, EmissionGuarantee, ErrorGuaranteed, struct_span_code_err};
+use rustc_errors::{Diag, E0275, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_middle::ty::print::{FmtPrinter, Print};
 use rustc_middle::ty::{self, TyCtxt, Upcast};
 use rustc_span::Span;
+use rustc_structures::Limit;
 use tracing::debug;
 
 use crate::error_reporting::TypeErrCtxt;
@@ -17,10 +17,7 @@ pub enum OverflowCause<'tcx> {
     TraitSolver(ty::Predicate<'tcx>),
 }
 
-pub fn suggest_new_overflow_limit<'tcx, G: EmissionGuarantee>(
-    tcx: TyCtxt<'tcx>,
-    err: &mut Diag<'_, G>,
-) {
+pub fn suggest_new_overflow_limit<'tcx>(tcx: TyCtxt<'tcx>, err: &mut Diag<'_>) {
     let suggested_limit = match tcx.recursion_limit() {
         Limit(0) => Limit(2),
         limit => limit * 2,
@@ -49,7 +46,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> ! {
         let mut err = self.build_overflow_error(cause, span, suggest_increasing_limit);
         mutate(&mut err);
-        err.emit().raise_fatal();
+        err.emit_err().raise_fatal();
     }
 
     pub fn build_overflow_error(
@@ -77,7 +74,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let mut err = match cause {
             OverflowCause::DeeplyNormalize(alias_term) => {
-                let alias_term = self.resolve_vars_if_possible(alias_term);
+                let alias_term = self.deeply_resolve_ignoring_regions(alias_term);
                 let kind = alias_term.kind.descr();
                 let alias_str = with_short_path(self.tcx, alias_term);
                 struct_span_code_err!(
@@ -88,7 +85,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 )
             }
             OverflowCause::TraitSolver(predicate) => {
-                let predicate = self.resolve_vars_if_possible(predicate);
+                let predicate = self.deeply_resolve_ignoring_regions(predicate);
                 match predicate.kind().skip_binder() {
                     ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, a_is_expected: _ })
                     | ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
@@ -143,7 +140,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         T: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + Clone,
     {
         let predicate = obligation.predicate.clone().upcast(self.tcx);
-        let predicate = self.resolve_vars_if_possible(predicate);
+        let predicate = self.deeply_resolve_ignoring_regions(predicate);
         self.report_overflow_error(
             OverflowCause::TraitSolver(predicate),
             obligation.cause.span,
@@ -168,7 +165,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// we do not suggest increasing the overflow limit, which is not
     /// going to help).
     pub fn report_overflow_obligation_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> ! {
-        let cycle = self.resolve_vars_if_possible(cycle.to_owned());
+        let cycle = self.deeply_resolve_ignoring_regions(cycle.to_owned());
         assert!(!cycle.is_empty());
 
         debug!(?cycle, "report_overflow_error_cycle");
@@ -186,13 +183,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         obligation: PredicateObligation<'tcx>,
         suggest_increasing_limit: bool,
     ) -> ErrorGuaranteed {
-        let obligation = self.resolve_vars_if_possible(obligation);
+        let obligation = self.deeply_resolve_ignoring_regions(obligation);
         let mut err = self.build_overflow_error(
             OverflowCause::TraitSolver(obligation.predicate),
             obligation.cause.span,
             suggest_increasing_limit,
         );
         self.note_obligation_cause(&mut err, &obligation);
-        err.emit()
+        err.emit_err()
     }
 }

@@ -381,7 +381,7 @@ fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> Covera
         | Drop { target, .. }
         | FalseEdge { real_target: target, .. }
         | FalseUnwind { real_target: target, .. }
-        | Goto { target } => slice::from_ref(target),
+        | Goto { target, .. } => slice::from_ref(target),
 
         // A call terminator can normally be chained, except when it has no
         // successor because it is known to diverge.

@@ -1,9 +1,8 @@
 //@aux-build:proc_macros.rs
 
 #![warn(clippy::uninlined_format_args)]
-#![allow(named_arguments_used_positionally, unused)]
-#![allow(
-    clippy::eq_op,
+#![allow(named_arguments_used_positionally)]
+#![expect(
     clippy::format_in_format_args,
     clippy::print_literal,
     clippy::unnecessary_literal_unwrap
@@ -381,9 +380,10 @@ fn nested_format_args_user() {
     let local_i32 = 1;
     let local_f64 = 2.0;
 
-    // false negative: should warn but currently doesn't because the inner format_args
-    // is not processed when it's used as an argument to another format_args
     nested_format_args!("{}", local_i32);
+    //~^ uninlined_format_args
     nested_format_args!("val='{}'", local_i32);
+    //~^ uninlined_format_args
     nested_format_args!("{:.1}", local_f64);
+    //~^ uninlined_format_args
 }

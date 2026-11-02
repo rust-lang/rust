@@ -6,16 +6,17 @@
 
 use std::ops::ControlFlow;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::FatalError;
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, EarlyBinder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
     Upcast, elaborate,
 };
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, kw, sym};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -222,7 +223,7 @@ fn predicate_references_self<'tcx>(
     match predicate.kind().skip_binder() {
         ty::ClauseKind::Trait(ref data) => {
             // In the case of a trait predicate, we can skip the "self" type.
-            data.trait_ref.args[1..]
+            data.trait_ref.args.as_slice()[1..]
                 .iter()
                 .any(|&arg| {
                     contains_illegal_self_type_reference(
@@ -250,7 +251,7 @@ fn predicate_references_self<'tcx>(
             //
             // This is ALT2 in issue #56288, see that for discussion of the
             // possible alternatives.
-            data.projection_term.args[1..]
+            data.projection_term.args.as_slice()[1..]
                 .iter()
                 .any(|&arg| {
                     contains_illegal_self_type_reference(
@@ -360,17 +361,17 @@ pub fn dyn_compatibility_violations_for_assoc_item(
     let span = || item.ident(tcx).span;
 
     match item.kind {
-        ty::AssocKind::Const { name, is_type_const } => {
+        ty::AssocKind::Const { name } => {
             // We will permit type associated consts if they are explicitly mentioned in the
             // trait object type. We can't check this here, as here we only check if it is
             // guaranteed to not be possible.
 
             let mut errors = Vec::new();
 
-            if tcx.features().min_generic_const_args() {
+            if tcx.features().gca_min_const_items() {
                 if !tcx.generics_of(item.def_id).is_own_empty() {
                     errors.push(AssocConstViolation::Generic);
-                } else if !is_type_const {
+                } else if !tcx.is_always_gca(item.def_id) && !tcx.features().gca_const_items() {
                     errors.push(AssocConstViolation::NonType);
                 }
 
@@ -402,7 +403,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
                     // Get an accurate span depending on the violation.
                     let span = match (&v, node) {
                         (MethodViolation::ReferencesSelfInput(Some(span)), _) => *span,
-                        (MethodViolation::UndispatchableReceiver(Some(span)), _) => *span,
+                        (MethodViolation::UndispatchableReceiver(Some((span, _))), _) => *span,
                         (MethodViolation::ReferencesImplTraitInTrait(span), _) => *span,
                         (MethodViolation::ReferencesSelfOutput, Some(node)) => {
                             node.fn_decl().map_or(item.ident(tcx).span, |decl| decl.output.span())
@@ -518,16 +519,40 @@ fn virtual_call_violations_for_method<'tcx>(
     // `Receiver: Unsize<Receiver[Self => dyn Trait]>`.
     if receiver_ty != tcx.types.self_param {
         if !receiver_is_dispatchable(tcx, method, receiver_ty) {
-            let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(sig, _),
+            let span_n_lt = if let Some(hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(sig, trait_fn),
                 ..
             })) = tcx.hir_get_if_local(method.def_id).as_ref()
             {
-                Some(sig.decl.inputs[0].span)
+                // If we have `self: &'a Ty`, get `'a`, so that we can suggest `&'a self`.
+                let lt = match sig.decl.inputs[0].kind {
+                    hir::TyKind::Ref(lt, ..) if lt.ident.name == kw::UnderscoreLifetime => {
+                        sym::empty
+                    }
+                    hir::TyKind::Ref(lt, ..) => lt.ident.name,
+                    _ => sym::empty,
+                };
+                // Get the `Span` for all of `self: Ty`, not just `Ty`.
+                match trait_fn {
+                    hir::TraitFn::Required([Some(name), ..])
+                        if name.span.ctxt() == sig.decl.inputs[0].span.ctxt() =>
+                    {
+                        Some(name.span.to(sig.decl.inputs[0].span))
+                    }
+                    hir::TraitFn::Provided(body_id)
+                        if let body = tcx.hir_body(*body_id)
+                            && let Some(p) = body.params.get(0)
+                            && p.span.ctxt() == p.ty_span.ctxt() =>
+                    {
+                        Some(p.span.to(p.ty_span))
+                    }
+                    _ => None,
+                }
+                .map(|sp| (sp, lt))
             } else {
                 None
             };
-            errors.push(MethodViolation::UndispatchableReceiver(span));
+            errors.push(MethodViolation::UndispatchableReceiver(span_n_lt));
         } else {
             // We confirm that the `receiver_is_dispatchable` is accurate later,
             // see `check_receiver_correct`. It should be kept in sync with this code.
@@ -563,9 +588,9 @@ fn virtual_call_violations_for_method<'tcx>(
         // only if the autotrait is one of the trait object's trait bounds, like
         // in `dyn Trait + AutoTrait`. This guarantees that trait objects only
         // implement auto traits if the underlying type does as well.
-        if let ty::ClauseKind::Trait(ty::TraitPredicate {
+        if let ty::ClauseKind::Trait(ty::TraitClause {
             trait_ref: pred_trait_ref,
-            polarity: ty::PredicatePolarity::Positive,
+            polarity: ty::ClausePolarity::Positive,
         }) = clause.kind().skip_binder()
             && pred_trait_ref.self_ty() == tcx.types.self_param
             && tcx.trait_is_auto(pred_trait_ref.def_id)
@@ -724,6 +749,62 @@ fn receiver_is_dispatchable<'tcx>(
         let trait_predicate = ty::TraitRef::new_from_args(tcx, trait_def_id, args);
         clauses.push(trait_predicate.upcast(tcx));
 
+        // U satisfies Trait's trait bounds. Supertrait bounds are already included by the expansion
+        // of `U: Trait<...>` done by param-env normalization. However, normalizing aliases in the
+        // arguments of those supertrait bounds can generate trait obligations which may only be
+        // provable using other where-clauses from Trait (#161621).
+        clauses.extend(
+            tcx.clauses_of(trait_def_id)
+                .instantiate(tcx, args)
+                .clauses
+                .into_iter()
+                .map(Unnormalized::skip_norm_wip)
+                // For simplicity, add all trait clauses, though strictly this should only need to
+                // add non-supertrait clauses involving Self.
+                .filter(|clause| matches!(clause.kind().skip_binder(), ty::ClauseKind::Trait(_))),
+        );
+
+        // When Self appears in the arguments of a projection clause, we also need a corresponding
+        // projection for U. We don't want U in the targets of projections that doesn't also have
+        // U in the alias, since that can lead to ambiguity (#163550). For example, if we have
+        // `(): HasAssoc<Assoc = Self>` in Trait's clauses, `<() as HasAssoc>::Assoc` normalizes to
+        // Self during dispatchability checking, since we assume `method`'s clauses. This should be
+        // fine: if `dyn Trait<...>: Trait<...>` isn't satisfied, you can't call methods on such a
+        // trait object anyway.
+        //
+        // HACK: This relies on param-env normalization jank. We don't normalize the left-hand side
+        // of bounds like `<Self as HasAssoc1>::Assoc: HasAssoc2<Assoc = Self>` in the param-env we
+        // use to normalize our param-env. If it's someday possible for `<Self as HasAssoc1>::Assoc`
+        // to normalize there, we won't know whether Self is in the arguments of
+        // `<<Self as HasAssoc1>::Assoc as HasAssoc2>::Assoc == Self` or not. In that case, this may
+        // need first to normalize Trait's projection clauses or do additional hacks to avoid adding
+        // ambiguity.
+        clauses.extend(
+            tcx.clauses_of(trait_def_id)
+                .instantiate_identity(tcx)
+                .clauses
+                .into_iter()
+                .map(Unnormalized::skip_norm_wip)
+                .filter_map(|clause| -> Option<ty::Clause<'tcx>> {
+                    clause
+                        .as_projection_clause()
+                        // For each clause `Alias == ProjectionTarget` with Self in Alias, make a
+                        // copy of the clause with U in place of Self. Strictly, this should only
+                        // need to add clauses that didn't come from supertrait bounds.
+                        .filter(|proj| {
+                            proj.skip_binder().projection_term.args.iter().any(|arg| {
+                                arg.as_type().is_some_and(|arg| arg.contains(tcx.types.self_param))
+                            })
+                        })
+                        .map(|proj| {
+                            proj.map_bound(|proj| {
+                                EarlyBinder::bind(tcx, proj).instantiate(tcx, args).skip_norm_wip()
+                            })
+                            .upcast(tcx)
+                        })
+                }),
+        );
+
         let meta_sized_predicate = {
             let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, DUMMY_SP);
             ty::TraitRef::new(tcx, meta_sized_did, [unsized_self_ty])
@@ -732,7 +813,7 @@ fn receiver_is_dispatchable<'tcx>(
 
         normalize_param_env_or_error(
             tcx,
-            ty::ParamEnv::new(tcx.mk_clauses(&clauses)),
+            ty::ParamEnv::new(tcx, clauses),
             ObligationCause::dummy_with_span(tcx.def_span(method.def_id)),
         )
     };
@@ -765,7 +846,7 @@ enum AllowSelfProjections {
 /// associated type of the current trait, since we retain the value of those associated
 /// types in the trait object type itself.
 ///
-/// The same thing holds for associated consts under feature `min_generic_const_args`.
+/// The same thing holds for associated consts under feature `gca_min_const_items`.
 ///
 /// ```rust,ignore (example)
 /// trait SuperTrait {
@@ -889,7 +970,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
             ty::ConstKind::Alias(
                 _,
                 ty::AliasConst { kind: ty::AliasConstKind::Projection { def_id }, args, .. },
-            ) if self.tcx.features().min_generic_const_args() => {
+            ) if self.tcx.features().gca_min_const_items() => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes => {
                         let trait_def_id = self.tcx.parent(def_id);

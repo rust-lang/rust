@@ -1,3 +1,7 @@
 org = "rust-lang"
 repo = "stdarch"
 path = "library/stdarch"
+
+[[post-pull]]
+cmd = ["cargo", "fmt"]
+commit-message = "Run `cargo fmt`"

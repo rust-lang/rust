@@ -145,8 +145,8 @@ This is essentially equivalent to one assignment
 statement per aggregate field plus an assignment to the discriminant in the
 case of `enum`s.
 
-[MIR]: ./index.html
-[HIR]: ../hir.html
+[MIR]: ./index.md
+[HIR]: ../hir.md
 [THIR]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/index.html
 
 [`rustc_mir_build::thir::cx::expr`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/cx/expr/index.html

@@ -7,7 +7,7 @@
 // of the file.
 #![allow(unused)]
 
-use m::Foo;
+use crate::m::Foo;
 fn main() {
     let s = m::S;
     s.abc(); //~ ERROR no method named `abc`

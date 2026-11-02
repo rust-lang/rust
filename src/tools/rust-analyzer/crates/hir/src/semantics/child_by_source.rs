@@ -11,9 +11,10 @@ use span::AstIdNode;
 use syntax::{AstPtr, ast};
 
 use hir_def::{
-    AdtId, AssocItemId, AstIdLoc, DefWithBodyId, EnumId, FieldId, GenericDefId, ImplId,
+    AdtId, AssocItemId, AstIdLoc, AttrDefId, DefWithBodyId, EnumId, FieldId, GenericDefId, ImplId,
     LifetimeParamId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, TypeOrConstParamId,
     VariantId,
+    attrs::{AttrFlags, Docs},
     dyn_map::{
         DynMap,
         keys::{self, Key},
@@ -32,6 +33,25 @@ pub(crate) trait ChildBySource {
         res
     }
     fn child_by_source_to(&self, db: &dyn SourceDatabase, map: &mut DynMap, file_id: HirFileId);
+}
+
+impl ChildBySource for Docs {
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, res: &mut DynMap, file_id: HirFileId) {
+        self.macro_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
+            |(ast_id, call_id)| {
+                let ptr = ast_id.to_ptr(db);
+                res[keys::MACRO_CALL].insert(ptr, call_id);
+            },
+        );
+    }
+}
+
+impl ChildBySource for AttrDefId {
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, map: &mut DynMap, file_id: HirFileId) {
+        if let Some(docs) = AttrFlags::docs(db, *self) {
+            docs.child_by_source_to(db, map, file_id);
+        }
+    }
 }
 
 impl ChildBySource for TraitId {
@@ -57,6 +77,8 @@ impl ChildBySource for TraitId {
                 res[keys::MACRO_CALL].insert(ast.value, exp_id);
             },
         );
+
+        AttrDefId::from(*self).child_by_source_to(db, res, file_id);
     }
 }
 
@@ -82,6 +104,8 @@ impl ChildBySource for ImplId {
                 res[keys::MACRO_CALL].insert(ast.value, exp_id);
             },
         );
+
+        AttrDefId::from(*self).child_by_source_to(db, res, file_id);
     }
 }
 
@@ -90,6 +114,8 @@ impl ChildBySource for ModuleId {
         let def_map = self.def_map(db);
         let module_data = &def_map[*self];
         module_data.scope.child_by_source_to(db, res, file_id);
+
+        AttrDefId::from(*self).child_by_source_to(db, res, file_id);
     }
 }
 
@@ -177,7 +203,7 @@ impl ChildBySource for ItemScope {
 }
 
 impl ChildBySource for VariantId {
-    fn child_by_source_to(&self, db: &dyn SourceDatabase, res: &mut DynMap, _: HirFileId) {
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, res: &mut DynMap, file_id: HirFileId) {
         let arena_map = self.child_source(db);
         let arena_map = arena_map.as_ref();
         let parent = *self;
@@ -190,6 +216,12 @@ impl ChildBySource for VariantId {
         }
         let (_, sm) = self.fields_with_source_map(db);
         sm.expansions().for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
+
+        AttrDefId::from(*self).child_by_source_to(db, res, file_id);
+        AttrFlags::fields_docs(db, *self)
+            .values()
+            .flatten()
+            .for_each(|docs| docs.child_by_source_to(db, res, file_id));
     }
 }
 
@@ -210,6 +242,8 @@ impl ChildBySource for EnumId {
             .expansions()
             .filter(|(ast, _)| ast.file_id == file_id)
             .for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
+
+        AttrDefId::from(*self).child_by_source_to(db, res, file_id);
     }
 }
 
@@ -273,6 +307,17 @@ impl ChildBySource for GenericDefId {
             .expansions()
             .filter(|(ast, _)| ast.file_id == file_id)
             .for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
+
+        let attr_def = match *self {
+            GenericDefId::AdtId(it) => AttrDefId::from(it),
+            GenericDefId::ConstId(it) => it.into(),
+            GenericDefId::FunctionId(it) => it.into(),
+            GenericDefId::ImplId(it) => it.into(),
+            GenericDefId::StaticId(it) => it.into(),
+            GenericDefId::TraitId(it) => it.into(),
+            GenericDefId::TypeAliasId(it) => it.into(),
+        };
+        attr_def.child_by_source_to(db, res, file_id);
     }
 }
 

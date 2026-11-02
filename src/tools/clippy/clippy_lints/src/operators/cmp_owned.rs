@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::MaybeQPath as _;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sym;
 use clippy_utils::ty::{implements_trait, is_copy};
@@ -36,7 +36,7 @@ fn symmetric_partial_eq<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, other: Ty<'t
 }
 
 fn check_op(cx: &LateContext<'_>, outer: &Expr<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool) {
-    if !outer.span.eq_ctxt(expr.span) {
+    if outer.span.ctxt() != expr.span.ctxt() {
         return;
     }
 
@@ -111,7 +111,7 @@ fn check_op(cx: &LateContext<'_>, outer: &Expr<'_>, expr: &Expr<'_>, other: &Exp
             } else {
                 let span = expr.span.to(other.span);
 
-                let cmp_span = if other.span < expr.span {
+                let cmp_span = if other.span.lo_hi() < expr.span.lo_hi() {
                     other.span.between(expr.span)
                 } else {
                     expr.span.between(other.span)

@@ -1,8 +1,8 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
-use clippy_utils::source::{SpanExt, snippet_with_context};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
+use clippy_utils::source::{SpanExt as _, snippet_with_context};
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{parent_item_name, peel_ref_operators, sym};
@@ -10,9 +10,8 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PatExprKind, PatKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Spanned, Symbol};
 
 declare_clippy_lint! {
@@ -96,7 +95,7 @@ pub struct LenZero {
 
 impl LenZero {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 

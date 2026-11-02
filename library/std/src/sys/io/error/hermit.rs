@@ -1,4 +1,4 @@
-use crate::io;
+use crate::{fmt, io};
 
 pub fn errno() -> i32 {
     unsafe { hermit_abi::get_errno() }
@@ -30,6 +30,7 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
     }
 }
 
-pub fn error_string(errno: i32) -> String {
-    hermit_abi::error_string(errno).to_string()
+pub fn format_error(errno: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let description = hermit_abi::error_string(errno);
+    f.write_str(description)
 }

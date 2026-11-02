@@ -54,11 +54,11 @@ use std::cmp::max;
 use std::iter;
 
 use rustc_hir as hir;
-use rustc_middle::bug;
 use rustc_middle::mir::{
     Body, BorrowKind, FakeBorrowKind, MutBorrowKind, Place, PlaceElem, PlaceRef, ProjectionElem,
 };
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
 use crate::{AccessDepth, ArtificialField, Deep, Overlap, Shallow};
@@ -223,14 +223,25 @@ fn place_components_conflict<'tcx>(
                     debug!("borrow_conflicts_with_place: shallow access behind ptr");
                     return false;
                 }
-                (ProjectionElem::Deref, ty::Ref(_, _, hir::Mutability::Not), _) => {
-                    // Shouldn't be tracked
+                (ProjectionElem::Deref, ty::Ref(_, _, hir::Mutability::Not), _)
+                    if !(base.projection.is_empty()
+                        && body.local_decls[borrow_local].is_ref_to_thread_local()) =>
+                {
+                    // The only shared borrows we track are from temporaries created as references
+                    // to thread-local statics. See `crate::place_ext::PlaceExt::ignore_borrow`.
                     bug!("Tracking borrow behind shared reference.");
                 }
                 (ProjectionElem::Deref, ty::Ref(_, _, hir::Mutability::Mut), AccessDepth::Drop) => {
                     // Values behind a mutable reference are not access either by dropping a
                     // value, or by StorageDead
                     debug!("borrow_conflicts_with_place: drop access behind ptr");
+                    return false;
+                }
+
+                (ProjectionElem::PhantomDeref, _, Shallow(None)) => {
+                    // e.g., a reborrow of `x.y` while we shallowly access `x.y` or some prefix
+                    // thereof - the shallow access cannot invalidate the reborrowed copy.
+                    debug!("borrow_conflicts_with_place: shallow access behind reborrow");
                     return false;
                 }
 
@@ -244,6 +255,7 @@ fn place_components_conflict<'tcx>(
 
                 (ProjectionElem::Deref, _, Deep)
                 | (ProjectionElem::Deref, _, AccessDepth::Drop)
+                | (ProjectionElem::PhantomDeref, _, _)
                 | (ProjectionElem::Field { .. }, _, _)
                 | (ProjectionElem::Index { .. }, _, _)
                 | (ProjectionElem::ConstantIndex { .. }, _, _)
@@ -299,6 +311,11 @@ fn place_projection_conflict<'tcx>(
         (ProjectionElem::Deref, ProjectionElem::Deref) => {
             // derefs (e.g., `*x` vs. `*x`) - recur.
             debug!("place_element_conflict: DISJOINT-OR-EQ-DEREF");
+            Overlap::EqualOrDisjoint
+        }
+        (ProjectionElem::PhantomDeref, ProjectionElem::PhantomDeref) => {
+            // phantom derefs (e.g., `x` vs. `x`) - recur.
+            debug!("place_element_conflict: DISJOINT-OR-EQ-PHANTOM-DEREF");
             Overlap::EqualOrDisjoint
         }
         (ProjectionElem::OpaqueCast(_), ProjectionElem::OpaqueCast(_)) => {
@@ -506,6 +523,7 @@ fn place_projection_conflict<'tcx>(
         }
         (
             ProjectionElem::Deref
+            | ProjectionElem::PhantomDeref
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }

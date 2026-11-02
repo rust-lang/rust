@@ -1,10 +1,12 @@
 //@ needs-rustc-debug-assertions
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![feature(generic_const_exprs)]
 #![expect(incomplete_features)]
 
-type const A: u8 = A;
-//~^ ERROR overflow normalizing the const alias `A`
+use std::gca;
+
+const A: u8 = gca!(A);
+//~^ ERROR cycle detected when computing the type-level value for `A`
 
 fn main() {}

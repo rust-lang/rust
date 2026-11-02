@@ -22,9 +22,7 @@ float_bench! {
     asm: [],
 }
 
-// FIXME(f16_f128): can be changed to only `f128_enabled` once `__multf3` and `__divtf3` are
-// distributed by nightly.
-#[cfg(all(f128_enabled, not(no_sys_f128)))]
+#[cfg(f128_enabled)]
 float_bench! {
     name: powi_f128,
     sig: (a: f128, b: i32) -> f128,
@@ -42,7 +40,7 @@ pub fn float_pow() {
     powi_f32(&mut criterion);
     powi_f64(&mut criterion);
 
-    #[cfg(all(f128_enabled, not(no_sys_f128)))]
+    #[cfg(f128_enabled)]
     powi_f128(&mut criterion);
 }
 

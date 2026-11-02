@@ -5,8 +5,7 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {
   /// ### What it does
@@ -56,7 +55,9 @@ fn check_for_parens(cx: &LateContext<'_>, e: &Expr<'_>, is_start: bool) {
     }
     if let ExprKind::Lit(literal) = e.kind
         // the indicator that parenthesis surround the literal is that the span of the expression and the literal differ
-        && (literal.span.data().hi - literal.span.data().lo) != (e.span.data().hi - e.span.data().lo)
+        && let (literal_span_lo, literal_span_hi) = literal.span.lo_hi()
+        && let (e_span_lo, e_span_hi) = e.span.lo_hi()
+        && literal_span_hi - literal_span_lo != e_span_hi - e_span_lo
         // inspect the source code of the expression for parenthesis
         && snippet_enclosed_in_parenthesis(&snippet(cx, e.span, ""))
     {

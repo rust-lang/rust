@@ -3,12 +3,15 @@ error[E0532]: expected unit struct, unit variant or constant, found tuple varian
    |
 LL |     Bar(i32),
    |     -------- `Foo::Bar` defined here
-LL |     Baz
-   |     --- similarly named unit variant `Baz` defined here
 ...
 LL |         Foo::Bar => {}
    |         ^^^^^^^^
    |
+note: similarly named unit variant `Baz` defined here
+  --> $DIR/constructor-type-mismatch.rs:4:5
+   |
+LL |     Baz
+   |     ^^^
 help: use the tuple variant pattern syntax instead
    |
 LL |         Foo::Bar(_) => {}

@@ -1,10 +1,9 @@
 use clippy_utils::macros::FormatArgsStorage;
-use clippy_utils::source::{SpanExt, walk_span_to_context};
+use clippy_utils::source::{SpanExt as _, walk_span_to_context};
 use rustc_ast::{Crate, Expr, ExprKind, FormatArgs};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, SpanData};
 use std::mem;
@@ -110,9 +109,9 @@ impl FormatArgsCollector {
             .explicit_args()
             .iter()
             .try_fold(src.range.end, |start, arg| {
-                let expr_sp = walk_span_to_context(arg.expr.span, fmt_sp.ctxt)?.data();
-                let expr_start = (expr_sp.lo.0 - src.sf.start_pos.0) as usize;
-                let expr_end = (expr_sp.hi.0 - src.sf.start_pos.0) as usize;
+                let (expr_sp_lo, expr_sp_hi) = walk_span_to_context(arg.expr.span, fmt_sp.ctxt)?.lo_hi();
+                let expr_start = (expr_sp_lo.0 - src.sf.start_pos.0) as usize;
+                let expr_end = (expr_sp_hi.0 - src.sf.start_pos.0) as usize;
                 let mut tks = tokenize(src_text.get(start..expr_start)?, FrontmatterAllowed::No)
                     .map(|x| x.kind)
                     .filter(|x| {

@@ -5,7 +5,7 @@
 #[cfg(not(all(
     doc,
     any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_family = "wasm", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]

@@ -32,7 +32,7 @@ use crate::{fmt, mem};
 /// assert!(cell.get().is_some());
 /// ```
 #[stable(feature = "once_cell", since = "1.70.0")]
-pub struct OnceCell<T> {
+pub struct OnceCell<#[rustc_assert_variance(invariant)] T> {
     // Invariant: written to at most once.
     inner: UnsafeCell<Option<T>>,
 }
@@ -45,6 +45,31 @@ impl<T> OnceCell<T> {
     #[rustc_const_stable(feature = "once_cell", since = "1.70.0")]
     pub const fn new() -> OnceCell<T> {
         OnceCell { inner: UnsafeCell::new(None) }
+    }
+
+    /// Creates a new initialized cell.
+    ///
+    /// This is equivalent to `OnceCell::from(value)`, but can be used in
+    /// const contexts, unlike the `From` implementation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_cell_new_init)]
+    /// use std::cell::OnceCell;
+    ///
+    /// const CELL: OnceCell<i32> = OnceCell::new_init(1);
+    /// assert_eq!(CELL.get(), Some(&1));
+    ///
+    /// let cell = OnceCell::new_init(String::from("kitty"));
+    /// assert_eq!(cell.set(String::from("puppy")), Err(String::from("puppy")));
+    /// assert_eq!(cell.get(), Some(&"kitty".to_string()));
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "once_cell_new_init", issue = "159859")]
+    pub const fn new_init(init_value: T) -> OnceCell<T> {
+        OnceCell { inner: UnsafeCell::new(Some(init_value)) }
     }
 
     /// Gets the reference to the underlying value.

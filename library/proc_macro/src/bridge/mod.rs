@@ -33,7 +33,6 @@ use crate::{Delimiter, Level};
 macro_rules! with_api {
     ($m:ident, $TokenStream: path, $Span: path, $Symbol: path) => {
         $m! {
-            fn injected_env_var(var: &str) -> Option<String>;
             fn track_env_var(var: &str, value: Option<&str>);
             fn track_path(path: &str);
             fn literal_from_str(s: &str) -> Result<Literal<$Span, $Symbol>, String>;
@@ -223,6 +222,7 @@ mark_noop! {
     usize,
     Delimiter,
     LitKind,
+    IdentKind,
     Level,
     Bound<usize>,
     Range<usize>,
@@ -386,11 +386,36 @@ compound_traits!(struct Punct<Span> { ch, joint, span });
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Ident<Span, Symbol> {
     pub sym: Symbol,
-    pub is_raw: bool,
+    pub kind: IdentKind,
     pub span: Span,
 }
 
-compound_traits!(struct Ident<Span, Symbol> { sym, is_raw, span });
+compound_traits!(struct Ident<Span, Symbol> { sym, kind, span });
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub enum IdentKind {
+    Normal,
+    Raw,
+    ForcedKeyword,
+}
+
+impl IdentKind {
+    pub fn prefix(self) -> Option<&'static str> {
+        match self {
+            Self::Normal => None,
+            Self::Raw => Some("r#"),
+            Self::ForcedKeyword => Some("k#"),
+        }
+    }
+}
+
+rpc_encode_decode!(
+    enum IdentKind {
+        Normal,
+        Raw,
+        ForcedKeyword,
+    }
+);
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Literal<Span, Symbol> {

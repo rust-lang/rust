@@ -4,6 +4,8 @@
 // and allowing users to build with lto=thin.
 
 //@ only-x86_64-unknown-linux-gnu
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{dynamic_lib_name, llvm_objdump, rustc};
 

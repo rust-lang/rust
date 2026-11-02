@@ -162,8 +162,10 @@ pub enum SyntaxKind {
     ERROR,
     FRONTMATTER,
     IDENT,
+    INNER_DOC_COMMENT,
     LIFETIME_IDENT,
     NEWLINE,
+    OUTER_DOC_COMMENT,
     SHEBANG,
     WHITESPACE,
     ABI,
@@ -197,6 +199,8 @@ pub enum SyntaxKind {
     CFG_ATTR_META,
     CFG_COMPOSITE,
     CFG_META,
+    CFG_PRED_EXPR,
+    CFG_PRED_PAT,
     CLOSURE_EXPR,
     CONST,
     CONST_ARG,
@@ -204,6 +208,7 @@ pub enum SyntaxKind {
     CONST_PARAM,
     CONTINUE_EXPR,
     DEREF_PAT,
+    DOC_COMMENT,
     DYN_TRAIT_TYPE,
     ENUM,
     EXPR_STMT,
@@ -214,7 +219,6 @@ pub enum SyntaxKind {
     FN,
     FN_PTR_TYPE,
     FORMAT_ARGS_ARG,
-    FORMAT_ARGS_ARG_NAME,
     FORMAT_ARGS_EXPR,
     FOR_BINDER,
     FOR_EXPR,
@@ -385,6 +389,8 @@ impl SyntaxKind {
             | CFG_ATTR_META
             | CFG_COMPOSITE
             | CFG_META
+            | CFG_PRED_EXPR
+            | CFG_PRED_PAT
             | CLOSURE_EXPR
             | CONST
             | CONST_ARG
@@ -392,6 +398,7 @@ impl SyntaxKind {
             | CONST_PARAM
             | CONTINUE_EXPR
             | DEREF_PAT
+            | DOC_COMMENT
             | DYN_TRAIT_TYPE
             | ENUM
             | EXPR_STMT
@@ -402,7 +409,6 @@ impl SyntaxKind {
             | FN
             | FN_PTR_TYPE
             | FORMAT_ARGS_ARG
-            | FORMAT_ARGS_ARG_NAME
             | FORMAT_ARGS_EXPR
             | FOR_BINDER
             | FOR_EXPR
@@ -528,8 +534,10 @@ impl SyntaxKind {
             | ERROR
             | FRONTMATTER
             | IDENT
+            | INNER_DOC_COMMENT
             | LIFETIME_IDENT
             | NEWLINE
+            | OUTER_DOC_COMMENT
             | SHEBANG
             | WHITESPACE => panic!("no text for these `SyntaxKind`s"),
             DOLLAR => "$",
@@ -1228,6 +1236,8 @@ macro_rules ! T_ {
     [string] => { $ crate :: SyntaxKind :: STRING };
     [shebang] => { $ crate :: SyntaxKind :: SHEBANG };
     [frontmatter] => { $ crate :: SyntaxKind :: FRONTMATTER };
+    [inner_doc_comment] => { $ crate :: SyntaxKind :: INNER_DOC_COMMENT };
+    [outer_doc_comment] => { $ crate :: SyntaxKind :: OUTER_DOC_COMMENT };
 }
 
 impl ::core::marker::Copy for SyntaxKind {}

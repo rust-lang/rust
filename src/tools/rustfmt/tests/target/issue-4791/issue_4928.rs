@@ -1,22 +1,22 @@
-// rustfmt-brace_style: SameLineWhere
-// rustfmt-comment_width: 100
-// rustfmt-edition: 2018
-// rustfmt-fn_params_layout: Compressed
-// rustfmt-hard_tabs: false
-// rustfmt-match_block_trailing_comma: true
-// rustfmt-max_width: 100
-// rustfmt-merge_derives: false
-// rustfmt-newline_style: Unix
-// rustfmt-normalize_doc_attributes: true
-// rustfmt-overflow_delimited_expr: true
-// rustfmt-reorder_imports: false
-// rustfmt-reorder_modules: true
-// rustfmt-struct_field_align_threshold: 20
-// rustfmt-tab_spaces: 4
-// rustfmt-trailing_comma: Never
-// rustfmt-use_small_heuristics: Max
-// rustfmt-use_try_shorthand: true
-// rustfmt-wrap_comments: true
+//@ rustfmt-brace_style: SameLineWhere
+//@ rustfmt-comment_width: 100
+//@ rustfmt-edition: 2018
+//@ rustfmt-fn_params_layout: Compressed
+//@ rustfmt-hard_tabs: false
+//@ rustfmt-match_block_trailing_comma: true
+//@ rustfmt-max_width: 100
+//@ rustfmt-merge_derives: false
+//@ rustfmt-newline_style: Unix
+//@ rustfmt-normalize_doc_attributes: true
+//@ rustfmt-overflow_delimited_expr: true
+//@ rustfmt-reorder_imports: false
+//@ rustfmt-reorder_modules: true
+//@ rustfmt-struct_field_align_threshold: 20
+//@ rustfmt-tab_spaces: 4
+//@ rustfmt-trailing_comma: Never
+//@ rustfmt-use_small_heuristics: Max
+//@ rustfmt-use_try_shorthand: true
+//@ rustfmt-wrap_comments: true
 
 /// Lorem ipsum dolor sit amet.
 #[repr(C)]

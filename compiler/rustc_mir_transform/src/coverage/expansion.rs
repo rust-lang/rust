@@ -103,17 +103,17 @@ pub(crate) fn build_expn_tree(
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
 ) -> Result<ExpnTree, MappingsError> {
-    let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, graph);
+    let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, hir_info, graph);
 
     let mut nodes = FxIndexMap::default();
-    let new_node = |&context: &SyntaxContext| ExpnNode::for_context(context);
+    let new_node = |context: SyntaxContext| ExpnNode::for_context(context);
 
     for from_mir::RawSpanFromMir { raw_span, bcb } in raw_spans {
         let span_with_bcb = SpanWithBcb { span: raw_span, bcb };
 
         // Create a node for this span's enclosing expansion, and add the span to it.
         let context = span_with_bcb.span.ctxt();
-        let node = nodes.entry(context).or_insert_with_key(new_node);
+        let node = nodes.entry(context).or_insert_with_key(|&c| new_node(c));
         node.spans.push(span_with_bcb);
 
         // Now walk up the expansion call-site chain, creating nodes and registering children.
@@ -123,7 +123,7 @@ pub(crate) fn build_expn_tree(
             let entry = nodes.entry(context);
             let node_existed = matches!(entry, IndexEntry::Occupied(_));
 
-            let node = entry.or_insert_with_key(new_node);
+            let node = entry.or_insert_with_key(|&c| new_node(c));
             node.child_contexts.insert(prev);
 
             if node_existed {
@@ -173,8 +173,8 @@ pub(crate) fn build_expn_tree(
 
     // Associate each branch span (recorded during MIR building) with its
     // corresponding expansion tree node.
-    if let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() {
-        for branch_span in &coverage_info_hi.branch_spans {
+    if let Some(early_info) = mir_body.coverage_early_info.as_deref() {
+        for branch_span in &early_info.branch_spans {
             if let Some(node) = nodes.get_mut(&branch_span.span.ctxt()) {
                 node.branch_spans.push(BranchSpan::clone(branch_span));
             }

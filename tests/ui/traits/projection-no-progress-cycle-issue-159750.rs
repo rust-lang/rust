@@ -20,7 +20,7 @@ trait Queryable {
 }
 
 fn follow<E>() -> impl Queryable<Container = Option<E>> {
-    //~^ ERROR the trait bound `(): Queryable` is not satisfied
+    //~^ ERROR the trait bound `!: Queryable` is not satisfied
     loop {}
 }
 

@@ -24,7 +24,7 @@ error: key-value macro attributes are not supported
 LL | #[empty_attr = "y"]
    | ^^^^^^^^^^^^^^^^^^^
 
-error[E0658]: custom attributes cannot be applied to statements
+error[E0658]: macro attributes on statements are unstable
   --> $DIR/proc-macro-gates.rs:26:5
    |
 LL |     #[empty_attr]
@@ -34,7 +34,7 @@ LL |     #[empty_attr]
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: custom attributes cannot be applied to statements
+error[E0658]: macro attributes on statements are unstable
   --> $DIR/proc-macro-gates.rs:30:5
    |
 LL |     #[empty_attr]
@@ -44,7 +44,7 @@ LL |     #[empty_attr]
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: custom attributes cannot be applied to statements
+error[E0658]: macro attributes on statements are unstable
   --> $DIR/proc-macro-gates.rs:34:5
    |
 LL |     #[empty_attr]
@@ -54,7 +54,7 @@ LL |     #[empty_attr]
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: custom attributes cannot be applied to expressions
+error[E0658]: macro attributes on expressions are unstable
   --> $DIR/proc-macro-gates.rs:38:14
    |
 LL |     let _x = #[identity_attr] 2;
@@ -64,7 +64,7 @@ LL |     let _x = #[identity_attr] 2;
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: custom attributes cannot be applied to expressions
+error[E0658]: macro attributes on expressions are unstable
   --> $DIR/proc-macro-gates.rs:41:15
    |
 LL |     let _x = [#[identity_attr] 2];
@@ -74,7 +74,7 @@ LL |     let _x = [#[identity_attr] 2];
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: custom attributes cannot be applied to expressions
+error[E0658]: macro attributes on expressions are unstable
   --> $DIR/proc-macro-gates.rs:44:14
    |
 LL |     let _x = #[identity_attr] println!();

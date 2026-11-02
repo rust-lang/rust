@@ -11,16 +11,16 @@ define-function: (
     block {
         call-function: ("switch-theme", {"theme": |theme|})
         assert-css: (".top-doc .docblock table tbody tr:nth-child(1)", {
-            "background-color": "rgba(0, 0, 0, 0)",
+            "background-color": |zebra_stripe_color|,
         })
         assert-css: (".top-doc .docblock table tbody tr:nth-child(2)", {
-            "background-color": |zebra_stripe_color|,
-        })
-        assert-css: (".top-doc .docblock table tbody tr:nth-child(3)", {
             "background-color": "rgba(0, 0, 0, 0)",
         })
-        assert-css: (".top-doc .docblock table tbody tr:nth-child(4)", {
+        assert-css: (".top-doc .docblock table tbody tr:nth-child(3)", {
             "background-color": |zebra_stripe_color|,
+        })
+        assert-css: (".top-doc .docblock table tbody tr:nth-child(4)", {
+            "background-color": "rgba(0, 0, 0, 0)",
         })
         assert-css: (".top-doc .docblock table td", {
             "border-style": "solid",
@@ -38,12 +38,12 @@ define-function: (
 call-function: ("check-colors", {
     "theme": "ayu",
     "border_color": "#5c6773",
-    "zebra_stripe_color": "#191f26",
+    "zebra_stripe_color": "#000",
 })
 call-function: ("check-colors", {
     "theme": "dark",
     "border_color": "#e0e0e0",
-    "zebra_stripe_color": "#2a2a2a",
+    "zebra_stripe_color": "#1d1d1d",
 })
 call-function: ("check-colors", {
     "theme": "light",

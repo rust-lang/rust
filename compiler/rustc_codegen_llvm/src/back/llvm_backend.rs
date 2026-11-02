@@ -1,0 +1,563 @@
+//! Module containing [`LlvmCodegenBackend`], which implements [`CodegenBackend`]
+//! and related traits for the LLVM codegen backend.
+
+use std::any::Any;
+use std::cell::OnceCell;
+use std::ffi::CStr;
+use std::marker::PhantomData;
+use std::mem::ManuallyDrop;
+use std::path::PathBuf;
+use std::ptr;
+
+use rustc_ast::expand::allocator::AllocatorMethod;
+use rustc_codegen_ssa::back::lto::ThinModule;
+use rustc_codegen_ssa::back::write::{
+    CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryConfig,
+    TargetMachineFactoryFn, ThinLtoInput,
+};
+use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
+use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
+use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_errors::{DiagCtxt, DiagCtxtHandle};
+use rustc_metadata::EncodedMetadata;
+use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
+use rustc_middle::ty::TyCtxt;
+use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::{
+    BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
+};
+use rustc_span::{Symbol, sym};
+use rustc_target::spec::{RelocModel, TlsModel};
+
+use crate::back::owned_target_machine::OwnedTargetMachine;
+use crate::back::write::{create_informational_target_machine, create_target_machine};
+use crate::context::{self, SimpleCx};
+use crate::llvm::{self, ToLlvmBool};
+use crate::llvm_util::{self, target_config};
+use crate::{allocator, back, base};
+
+#[derive(Clone)]
+pub struct LlvmCodegenBackend(());
+
+struct TimeTraceProfiler {}
+
+impl TimeTraceProfiler {
+    fn new() -> Self {
+        unsafe { llvm::LLVMRustTimeTraceProfilerInitialize() }
+        TimeTraceProfiler {}
+    }
+}
+
+impl Drop for TimeTraceProfiler {
+    fn drop(&mut self) {
+        unsafe { llvm::LLVMRustTimeTraceProfilerFinishThread() }
+    }
+}
+
+impl ExtraBackendMethods for LlvmCodegenBackend {
+    type Module = ModuleLlvm;
+
+    fn codegen_allocator<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        module_name: &str,
+        methods: &[AllocatorMethod],
+    ) -> ModuleLlvm {
+        let module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
+        module_llvm.with_module_refs(|ModuleRefs { llcx, llmod, .. }| {
+            let cx = SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size());
+            unsafe { allocator::codegen(tcx, cx, module_name, methods) };
+        });
+        module_llvm
+    }
+    fn compile_codegen_unit(
+        &self,
+        tcx: TyCtxt<'_>,
+        cgu_name: Symbol,
+        bitcode_needed: bool,
+    ) -> (ModuleCodegen<ModuleLlvm>, u64) {
+        base::compile_codegen_unit(tcx, cgu_name, bitcode_needed)
+    }
+}
+
+impl WriteBackendMethods for LlvmCodegenBackend {
+    type Module = ModuleLlvm;
+    type ModuleBuffer = back::lto::ModuleBuffer;
+    type TargetMachine = OwnedTargetMachine;
+    type ThinData = back::lto::ThinData;
+
+    fn thread_profiler() -> Box<dyn Any> {
+        Box::new(TimeTraceProfiler::new())
+    }
+    fn target_machine_factory(
+        &self,
+        sess: &Session,
+        optlvl: OptLevel,
+    ) -> TargetMachineFactoryFn<Self> {
+        back::write::target_machine_factory(sess, optlvl)
+    }
+    fn optimize_and_codegen_fat_lto(
+        sess: &Session,
+        cgcx: &CodegenContext,
+        shared_emitter: &SharedEmitter,
+        tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
+        exported_symbols_for_lto: &[String],
+        each_linked_rlib_for_lto: &[PathBuf],
+        modules: Vec<FatLtoInput<Self>>,
+    ) -> CompiledModule {
+        let mut module = back::lto::run_fat(
+            cgcx,
+            &sess.prof,
+            shared_emitter,
+            tm_factory,
+            exported_symbols_for_lto,
+            each_linked_rlib_for_lto,
+            modules,
+        );
+
+        let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
+        let dcx = dcx.handle();
+        back::lto::run_pass_manager(cgcx, &sess.prof, dcx, &mut module, false);
+
+        back::write::codegen(cgcx, &sess.prof, shared_emitter, module, &cgcx.module_config)
+    }
+    fn run_thin_lto(
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
+        incr_comp_session: Option<&BorrowedIncrCompSession>,
+        dcx: DiagCtxtHandle<'_>,
+        exported_symbols_for_lto: &[String],
+        each_linked_rlib_for_lto: &[PathBuf],
+        modules: Vec<ThinLtoInput<Self>>,
+    ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
+        back::lto::run_thin(
+            cgcx,
+            prof,
+            incr_comp_session,
+            dcx,
+            exported_symbols_for_lto,
+            each_linked_rlib_for_lto,
+            modules,
+        )
+    }
+    fn optimize(
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
+        shared_emitter: &SharedEmitter,
+        module: &mut ModuleCodegen<Self::Module>,
+        config: &ModuleConfig,
+    ) {
+        back::write::optimize(cgcx, prof, shared_emitter, module, config);
+    }
+    fn optimize_and_codegen_thin(
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
+        shared_emitter: &SharedEmitter,
+        tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
+        thin: ThinModule<Self>,
+    ) -> CompiledModule {
+        back::lto::optimize_and_codegen_thin_module(cgcx, prof, shared_emitter, tm_factory, thin)
+    }
+    fn codegen(
+        cgcx: &CodegenContext,
+        prof: &SelfProfilerRef,
+        shared_emitter: &SharedEmitter,
+        module: ModuleCodegen<Self::Module>,
+        config: &ModuleConfig,
+    ) -> CompiledModule {
+        back::write::codegen(cgcx, prof, shared_emitter, module, config)
+    }
+    fn serialize_module(module: Self::Module, is_thin: bool) -> Self::ModuleBuffer {
+        module.with_module_refs(|ModuleRefs { llmod, .. }| {
+            back::lto::ModuleBuffer::new(llmod, is_thin)
+        })
+    }
+}
+
+impl LlvmCodegenBackend {
+    pub fn new() -> Box<dyn CodegenBackend> {
+        Box::new(LlvmCodegenBackend(()))
+    }
+}
+
+impl CodegenBackend for LlvmCodegenBackend {
+    fn name(&self) -> &'static str {
+        "llvm"
+    }
+
+    fn init(&mut self, sess: &EarlySession) -> CodegenBackendInit {
+        llvm_util::init(sess); // Make sure llvm is inited
+
+        let global_backend_features =
+            llvm_util::global_llvm_features(sess, /* for_cfg */ false);
+
+        // autodiff is based on Enzyme, a library which we might not have available, when it was
+        // neither build, nor downloaded via rustup. If autodiff is used, but not available we emit
+        // an early error here and abort compilation.
+        {
+            use rustc_session::config::AutoDiff;
+
+            use crate::back::lto::enable_autodiff_settings;
+            if sess.opts.unstable_opts.autodiff.contains(&AutoDiff::Enable) {
+                match llvm::EnzymeWrapper::get_or_init(&sess.opts.sysroot) {
+                    Ok(_) => {}
+                    Err(llvm::EnzymeLibraryError::NotFound { err }) => {
+                        sess.dcx().emit_fatal(crate::diagnostics::AutoDiffComponentMissing { err });
+                    }
+                    Err(llvm::EnzymeLibraryError::LoadFailed { err }) => {
+                        sess.dcx()
+                            .emit_fatal(crate::diagnostics::AutoDiffComponentUnavailable { err });
+                    }
+                }
+                enable_autodiff_settings(&sess.opts.unstable_opts.autodiff);
+            }
+        }
+
+        // Intrinsics whose fallback body will not be used by the LLVM backend.
+        let replaced_intrinsics = {
+            #[rustfmt::skip]
+            let will_not_use_fallback = vec![
+                // These are mapped to LLVM intrinsics instead.
+                sym::unchecked_funnel_shl,
+                sym::unchecked_funnel_shr,
+                sym::carrying_mul_add,
+                sym::carryless_mul,
+                sym::integer_max,
+                sym::integer_min,
+
+                // Fallback via libm/compiler-builtins, but the LLVM intrinsic is used instead.
+                sym::sin,
+                sym::cos,
+                sym::powf,
+                sym::powi,
+                sym::sqrt,
+                sym::exp,
+                sym::exp2,
+                sym::log,
+                sym::log10,
+                sym::log2,
+                sym::floor, sym::ceil, sym::trunc,
+                sym::round, sym::round_ties_even,
+                sym::fma,
+
+                sym::copysignf16, sym::copysignf32, sym::copysignf64, sym::copysignf128,
+            ];
+
+            will_not_use_fallback
+        };
+
+        // `type_id_eq` is a safe choice since *all* backends use the fallback body for that. When
+        // adding more intrinsics, keep in mind that the distributed standard library is compiled
+        // with the LLVM backend but might later be included in a project built with cranelift or
+        // GCC. Adding an intrinsic here can therefore mean the fallback body is used with
+        // cranelift/GCC even if they have dedicated implementations.
+        let fallback_intrinsics = vec![sym::type_id_eq];
+
+        CodegenBackendInit {
+            global_backend_features,
+            replaced_intrinsics,
+            fallback_intrinsics,
+            thin_lto_supported: true,
+        }
+    }
+
+    fn print(&self, req: &PrintRequest, out: &mut String, sess: &Session) {
+        use std::fmt::Write;
+        match req.kind {
+            PrintKind::RelocationModels => {
+                writeln!(out, "Available relocation models:").unwrap();
+                for name in RelocModel::ALL.iter().map(RelocModel::desc).chain(["default"]) {
+                    writeln!(out, "    {name}").unwrap();
+                }
+                writeln!(out).unwrap();
+            }
+            PrintKind::CodeModels => {
+                writeln!(out, "Available code models:").unwrap();
+                for name in &["tiny", "small", "kernel", "medium", "large"] {
+                    writeln!(out, "    {name}").unwrap();
+                }
+                writeln!(out).unwrap();
+            }
+            PrintKind::TlsModels => {
+                writeln!(out, "Available TLS models:").unwrap();
+                for name in TlsModel::ALL.iter().map(TlsModel::desc) {
+                    writeln!(out, "    {name}").unwrap();
+                }
+                writeln!(out).unwrap();
+            }
+            PrintKind::StackProtectorStrategies => {
+                writeln!(
+                    out,
+                    r#"Available stack protector strategies:
+    all
+        Generate stack canaries in all functions.
+
+    strong
+        Generate stack canaries in a function if it either:
+        - has a local variable of `[T; N]` type, regardless of `T` and `N`
+        - takes the address of a local variable.
+
+          (Note that a local variable being borrowed is not equivalent to its
+          address being taken: e.g. some borrows may be removed by optimization,
+          while by-value argument passing may be implemented with reference to a
+          local stack variable in the ABI.)
+
+    basic
+        Generate stack canaries in functions with local variables of `[T; N]`
+        type, where `T` is byte-sized and `N` >= 8.
+
+    none
+        Do not generate stack canaries.
+"#
+                )
+                .unwrap();
+            }
+            _other => llvm_util::print(req, out, sess),
+        }
+    }
+
+    fn print_passes(&self) {
+        llvm_util::print_passes();
+    }
+
+    fn print_version(&self) {
+        llvm_util::print_version();
+    }
+
+    fn has_zstd(&self) -> bool {
+        llvm::LLVMRustLLVMHasZstdCompression()
+    }
+
+    fn has_mnemonic(&self, sess: &Session, mnemonic: &str) -> bool {
+        llvm_util::target_has_mnemonic(sess, mnemonic)
+    }
+
+    fn target_config(&self, sess: &EarlySession) -> TargetConfig {
+        target_config(sess)
+    }
+
+    fn target_cpu(&self, sess: &Session) -> String {
+        crate::llvm_util::target_cpu(sess).to_string()
+    }
+
+    fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
+        use rustc_session::config::Offload;
+
+        if tcx.sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Device(_)))
+            || tcx.sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Host(_)))
+        {
+            match llvm::RustOffloadWrapper::get_or_init(&tcx.sess.opts.sysroot) {
+                Ok(_) => {}
+                Err(llvm::RustOffloadLibraryError::NotFound { err }) => {
+                    tcx.sess
+                        .dcx()
+                        .emit_fatal(crate::diagnostics::RustOffloadComponentMissing { err });
+                }
+                Err(llvm::RustOffloadLibraryError::LoadFailed { err }) => {
+                    tcx.sess
+                        .dcx()
+                        .emit_fatal(crate::diagnostics::RustOffloadComponentUnavailable { err });
+                }
+            }
+        }
+
+        Box::new(rustc_codegen_ssa::base::codegen_crate(LlvmCodegenBackend(()), tcx))
+    }
+
+    fn join_codegen(
+        &self,
+        ongoing_codegen: Box<dyn Any>,
+        sess: &Session,
+        incr_comp_session: Option<&IncrCompSession>,
+        outputs: &OutputFilenames,
+        crate_info: &CrateInfo,
+    ) -> (CompiledModules, WorkProductMap) {
+        let (compiled_modules, work_products) = ongoing_codegen
+            .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
+            .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
+            .join(sess, incr_comp_session, crate_info);
+
+        if sess.opts.unstable_opts.llvm_time_trace {
+            sess.time("llvm_dump_timing_file", || {
+                let file_name = outputs.with_extension("llvm_timings.json");
+                llvm_util::time_trace_profiler_finish(&file_name);
+            });
+        }
+
+        if sess.codegen_units().as_usize() == 1 && sess.opts.unstable_opts.time_llvm_passes {
+            let timings =
+                llvm::build_string(|s| unsafe { llvm::LLVMRustPrintPassTimings(s) }).unwrap();
+            print!("{timings}");
+        }
+
+        if sess.print_llvm_stats() {
+            let stats =
+                llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
+            print!("{stats}");
+        }
+
+        if let Some(out_path) = sess.print_llvm_stats_json() {
+            let llvm_stats_json =
+                llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatisticsJSON(s) }).unwrap();
+
+            if !llvm_stats_json.is_empty() {
+                if let Err(e) = std::fs::write(&out_path, llvm_stats_json) {
+                    sess.dcx().err(format!("failed to write stats to {out_path}: {e}"));
+                }
+            } else {
+                sess.dcx().warn(format!(
+                    "requested to print LLVM statistics to JSON file {out_path}, but the codegen backend \
+                    did not provide any statistics",
+                ));
+            }
+        }
+
+        (compiled_modules, work_products)
+    }
+
+    fn link(
+        &self,
+        sess: &Session,
+        compiled_modules: CompiledModules,
+        crate_info: CrateInfo,
+        metadata: EncodedMetadata,
+        outputs: &OutputFilenames,
+    ) {
+        use rustc_codegen_ssa::back::link::link_binary;
+
+        use crate::back::archive::LlvmArchiveBuilderBuilder;
+
+        // Run the linker on any artifacts that resulted from the LLVM run.
+        // This should produce either a finished executable or library.
+        link_binary(
+            sess,
+            &LlvmArchiveBuilderBuilder,
+            compiled_modules,
+            crate_info,
+            metadata,
+            outputs,
+            self.name(),
+        );
+    }
+}
+
+pub struct ModuleLlvm {
+    llcx_raw: ptr::NonNull<llvm::ContextRaw>,
+    llmod_raw: ptr::NonNull<llvm::ModuleRaw>,
+
+    // This field is `ManuallyDrop` because it is important that the `TargetMachine`
+    // is disposed prior to the `Context` being disposed otherwise UAFs can occur.
+    tm: ManuallyDrop<OwnedTargetMachine>,
+
+    /// Saved ThinLTO buffer for embedding in the object file.
+    ///
+    /// This is currently a `OnceCell` to avoid aliasing problems when writing to it
+    /// from code that also wants to pass around a shared ref to `ModuleCodegen`.
+    pub(crate) thin_lto_buffer: OnceCell<Vec<u8>>,
+}
+
+// An LLVM context can only be used by one thread at a time. But we can move the entire context and
+// all objects inside it to another thread (needed for parallel codegen). This is sound because
+// `ModuleLlvm` owns the context and only allows borrowing LLVM objects tied to the context.
+unsafe impl Send for ModuleLlvm {}
+
+/// Shared helper to call [`llvm::LLVMContextCreate`] and then configure
+/// [`llvm::LLVMContextSetDiscardValueNames`].
+fn create_context_and_set_fewer_names(fewer_names: bool) -> ptr::NonNull<llvm::ContextRaw> {
+    unsafe {
+        let llcx_raw = llvm::LLVMContextCreate();
+        llvm::LLVMContextSetDiscardValueNames(
+            llvm::wrap_llcx(llcx_raw),
+            fewer_names.to_llvm_bool(),
+        );
+        llcx_raw
+    }
+}
+
+impl ModuleLlvm {
+    pub(crate) fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
+        unsafe {
+            let llcx_raw = create_context_and_set_fewer_names(tcx.sess.fewer_names());
+            let llmod_raw =
+                context::create_module(tcx, llvm::wrap_llcx(llcx_raw), mod_name).llmod_raw();
+            ModuleLlvm {
+                llmod_raw,
+                llcx_raw,
+                tm: ManuallyDrop::new(create_target_machine(tcx, mod_name)),
+                thin_lto_buffer: OnceCell::new(),
+            }
+        }
+    }
+
+    pub(crate) fn new_metadata(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
+        unsafe {
+            let llcx_raw = create_context_and_set_fewer_names(tcx.sess.fewer_names());
+            let llmod_raw =
+                context::create_module(tcx, llvm::wrap_llcx(llcx_raw), mod_name).llmod_raw();
+            ModuleLlvm {
+                llmod_raw,
+                llcx_raw,
+                tm: ManuallyDrop::new(create_informational_target_machine(tcx.sess)),
+                thin_lto_buffer: OnceCell::new(),
+            }
+        }
+    }
+
+    pub(crate) fn parse(
+        cgcx: &CodegenContext,
+        tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
+        name: &CStr,
+        buffer: &[u8],
+        dcx: DiagCtxtHandle<'_>,
+    ) -> Self {
+        unsafe {
+            let llcx_raw = create_context_and_set_fewer_names(cgcx.fewer_names);
+            let llmod_raw =
+                back::lto::parse_module(llvm::wrap_llcx(llcx_raw), name, buffer, dcx).llmod_raw();
+            let tm = tm_factory(dcx, TargetMachineFactoryConfig::new(cgcx, name.to_str().unwrap()));
+
+            ModuleLlvm {
+                llmod_raw,
+                llcx_raw,
+                tm: ManuallyDrop::new(tm),
+                thin_lto_buffer: OnceCell::new(),
+            }
+        }
+    }
+
+    /// Passes a [`ModuleRefs`] struct to a callback function, giving it scoped
+    /// access to the resources owned by this module.
+    ///
+    /// Passing the references to a callback ensures that they have coherent
+    /// `'ll` lifetimes, and that they can't escape the callback.
+    pub(crate) fn with_module_refs<R>(
+        &self,
+        inner_fn: impl for<'ll> FnOnce(ModuleRefs<'ll>) -> R,
+    ) -> R {
+        let llcx = unsafe { llvm::wrap_llcx(self.llcx_raw) };
+        let llmod = unsafe { llvm::wrap_llmod(llcx, self.llmod_raw) };
+        inner_fn(ModuleRefs { llcx, llmod, tm: self.tm.raw(), _ph: PhantomData })
+    }
+}
+
+impl Drop for ModuleLlvm {
+    fn drop(&mut self) {
+        unsafe {
+            ManuallyDrop::drop(&mut self.tm);
+            llvm::LLVMContextDispose(self.llcx_raw);
+        }
+    }
+}
+
+/// Bundle of references provided by [`ModuleLlvm::with_module_refs`].
+#[derive(Clone, Copy)]
+pub(crate) struct ModuleRefs<'ll> {
+    pub(crate) llcx: llvm::Context<'ll>,
+    pub(crate) llmod: llvm::Module<'ll>,
+    pub(crate) tm: &'ll llvm::TargetMachine,
+    /// Make sure `'ll` is invariant, even if no fields happen to require that.
+    ///
+    /// FIXME(Zalathar): Consider using `PhantomInvariantLifetime` when the API
+    /// for that is settled.
+    _ph: PhantomData<fn(&'ll ()) -> &'ll ()>,
+}

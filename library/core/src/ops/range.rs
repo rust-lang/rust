@@ -56,6 +56,10 @@ impl fmt::Debug for RangeFull {
 /// The range `start..end` contains all values with `start <= x < end`.
 /// It is empty if `start >= end`.
 ///
+/// Note that this type is not suited to represent all possible ranges. For example, `Range<u8>`
+/// cannot represent the range that covers all of `u8`. Use [`(Bound<T>, Bound<T>)`][Bound] if you
+/// need a type that can store an arbitrary range.
+///
 /// # Examples
 ///
 /// The `start..end` syntax is a `Range`:
@@ -148,6 +152,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     #[inline]
     #[stable(feature = "range_is_empty", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_range", issue = "none")]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "incomparable ranges are empty")]
     pub const fn is_empty(&self) -> bool
     where
         Idx: [const] PartialOrd<Idx>,
@@ -568,6 +573,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     #[stable(feature = "range_is_empty", since = "1.47.0")]
     #[inline]
     #[rustc_const_unstable(feature = "const_range", issue = "none")]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "incomparable ranges are empty")]
     pub const fn is_empty(&self) -> bool
     where
         Idx: [const] PartialOrd,

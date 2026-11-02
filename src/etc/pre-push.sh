@@ -35,7 +35,7 @@ echo "Running pre-push script $ROOT_DIR/x test tidy"
 cd "$ROOT_DIR"
 ./x test tidy \
     --set build.locked-deps=true \
-    --extra-checks auto:py,auto:cpp,auto:js
+    --extra-checks auto:py,auto:cpp,auto:js,if-installed:auto:spellcheck
 if [ $? -ne 0 ]; then
     echo "You may use \`git push --no-verify\` to skip this check."
     exit 1

@@ -1,0 +1,22 @@
+error[E0277]: the size for values of type `[{integer}]` cannot be known at compilation time
+  --> $DIR/closure-capture-uninferred-upvars-issue-162440.rs:8:15
+   |
+LL |     Some([0]).map(|s| s[..]);
+   |               ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[{integer}]`
+note: required by an implicit `Sized` bound in `Option::<T>::map`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+
+error[E0277]: the size for values of type `[{integer}]` cannot be known at compilation time
+  --> $DIR/closure-capture-uninferred-upvars-issue-162440.rs:8:23
+   |
+LL |     Some([0]).map(|s| s[..]);
+   |                       ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[{integer}]`
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

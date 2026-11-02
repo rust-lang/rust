@@ -1,8 +1,8 @@
 //@ run-pass
 #![allow(dead_code)]
-#![allow(improper_ctypes)]
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct QuadFloats {
     a: f32,
     b: f32,

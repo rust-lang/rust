@@ -1,5 +1,5 @@
 //@ compile-flags: -Znext-solver
-#![feature(generic_const_items, min_generic_const_args, generic_const_args)]
+#![feature(generic_const_items, gca_min_const_items, gca_const_items)]
 #![expect(incomplete_features)]
 
 // computing the same value with different constant items but same generic arguments should fail

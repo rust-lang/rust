@@ -8,6 +8,7 @@ members = [
   "src/rustc-std-workspace/rustc-std-workspace-core",
   "src/rustc-std-workspace/rustc-std-workspace-std",
   "src/rustdoc-json-types",
+  "src/shim_utils",
   "src/tools/build-manifest",
   "src/tools/bump-stage0",
   "src/tools/cargotest",
@@ -59,13 +60,6 @@ exclude = [
   "obj",
 ]
 
-[profile.release.package.rustc_thread_pool]
-# The rustc fork of Rayon has deadlock detection code which intermittently
-# causes overflows in the CI (see https://github.com/rust-lang/rust/issues/90227)
-# so we turn overflow checks off for now.
-# FIXME: This workaround should be removed once #90227 is fixed.
-overflow-checks = false
-
 # These are very thin wrappers around executing lld with the right binary name.
 # Basically nothing within them can go wrong without having been explicitly logged anyway.
 # We ship these in every rustc tarball and even after compression they add up
@@ -77,7 +71,8 @@ strip = true
 debug = 0
 strip = true
 
-# Bigint libraries are slow without optimization, speed up testing
+# Bigint libraries are slow without optimization, speed up testing. Note that this doesn't affect
+# its dependencies, it should still be run in release mode where possible.
 [profile.dev.package.test-float-parse]
 opt-level = 3
 
@@ -92,4 +87,3 @@ codegen-units = 1
 # If you want to use a crate with local modifications, you can set a path or git dependency here.
 # For git dependencies, also add your source to ALLOWED_SOURCES in src/tools/tidy/src/extdeps.rs.
 #[patch.crates-io]
-

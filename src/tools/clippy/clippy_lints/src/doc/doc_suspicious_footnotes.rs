@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::attr::AttributeExt as _;
 use rustc_ast::token::{CommentKind, DocFragmentKind};
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_errors::Applicability;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{AttrStyle, Attribute};
-use rustc_lint::{LateContext, LintContext};
+use rustc_hir::AttrStyle;
+use rustc_lint::{LateContext, LintContext as _};
 
 use std::ops::Range;
 
@@ -44,7 +44,7 @@ pub fn check(cx: &LateContext<'_>, doc: &str, range: Range<usize>, fragments: &F
                 "looks like a footnote ref, but has no matching footnote",
                 |diag| {
                     if let DocFragmentKind::Sugared(_) = this_fragment.kind {
-                        let (doc_attr, doc_attr_comment_kind, attr_style) = attrs
+                        let (doc_attr_comment_kind, attr_style, doc_attr_span) = attrs
                             .iter()
                             .filter(|attr| {
                                 matches!(
@@ -55,12 +55,12 @@ pub fn check(cx: &LateContext<'_>, doc: &str, range: Range<usize>, fragments: &F
                             })
                             .rev()
                             .find_map(|attr| {
-                                let (_, fragment) = attr.doc_str_and_fragment_kind()?;
+                                let (_, fragment, span) = attr.doc_str_and_fragment_kind()?;
                                 let fragment = match fragment {
                                     DocFragmentKind::Sugared(kind) => kind,
                                     DocFragmentKind::Raw(_) => CommentKind::Line,
                                 };
-                                Some((attr, fragment, attr.doc_resolution_scope()?))
+                                Some((fragment, attr.doc_resolution_scope()?, span))
                             })
                             .unwrap();
                         let (to_add, terminator) = match (doc_attr_comment_kind, attr_style) {
@@ -70,7 +70,7 @@ pub fn check(cx: &LateContext<'_>, doc: &str, range: Range<usize>, fragments: &F
                             (CommentKind::Block, AttrStyle::Inner) => ("\n/*! ", " */"),
                         };
                         diag.span_suggestion_verbose(
-                            doc_attr.span().shrink_to_hi(),
+                            doc_attr_span.shrink_to_hi(),
                             "add footnote definition",
                             format!(
                                 "{to_add}{label}: <!-- description -->{terminator}",

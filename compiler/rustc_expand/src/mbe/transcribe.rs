@@ -1,7 +1,7 @@
 use std::mem;
 
 use rustc_ast::token::{
-    self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, MetaVarKind, Token, TokenKind,
+    self, Delimiter, IdentKind, InvisibleOrigin, Lit, LitKind, MetaVarKind, Token, TokenKind,
 };
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{ExprKind, StmtKind, TyKind, UnOp};
@@ -25,7 +25,7 @@ use crate::diagnostics::{
 };
 use crate::mbe::macro_parser::NamedMatch;
 use crate::mbe::macro_parser::NamedMatch::*;
-use crate::mbe::metavar_expr::{MetaVarExprConcatElem, RAW_IDENT_ERR};
+use crate::mbe::metavar_expr::{MetaVarExprConcatElem, validate_ident_kind};
 use crate::mbe::{self, KleeneOp, MetaVarExpr};
 
 /// Context needed to perform transcription of metavariable expressions.
@@ -84,7 +84,10 @@ impl<'psess> TranscrCtx<'psess, '_> {
 struct Marker {
     expand_id: LocalExpnId,
     transparency: Transparency,
-    cache: FxHashMap<SyntaxContext, SyntaxContext>,
+    // Most macro bodies have only one context. Keep that entry inline and
+    // allocate the map only for additional contexts in generated macros.
+    cache: Option<(SyntaxContext, SyntaxContext)>,
+    fallback_cache: FxHashMap<SyntaxContext, SyntaxContext>,
 }
 
 impl Marker {
@@ -94,11 +97,17 @@ impl Marker {
         // by itself. All tokens in a macro body typically have the same syntactic context, unless
         // it's some advanced case with macro-generated macros. So if we cache the marked version
         // of that context once, we'll typically have a 100% cache hit rate after that.
-        *span = span.map_ctxt(|ctxt| {
-            *self
-                .cache
+        *span = span.map_ctxt(|ctxt| match self.cache {
+            Some((original, marked)) if original == ctxt => marked,
+            None => {
+                let marked = ctxt.apply_mark(self.expand_id.to_expn_id(), self.transparency);
+                self.cache = Some((ctxt, marked));
+                marked
+            }
+            _ => *self
+                .fallback_cache
                 .entry(ctxt)
-                .or_insert_with(|| ctxt.apply_mark(self.expand_id.to_expn_id(), self.transparency))
+                .or_insert_with(|| ctxt.apply_mark(self.expand_id.to_expn_id(), self.transparency)),
         });
     }
 }
@@ -179,7 +188,7 @@ pub(super) fn transcribe<'a>(
     let mut tscx = TranscrCtx {
         psess,
         interp,
-        marker: Marker { expand_id, transparency, cache: Default::default() },
+        marker: Marker { expand_id, transparency, cache: None, fallback_cache: Default::default() },
         repeats: Vec::new(),
         stack: smallvec![Frame::new_delimited(
             src,
@@ -489,10 +498,10 @@ fn transcribe_pnr<'tx>(
             // parsing priorities.
             maybe_use_metavar_location(tscx.psess, &tscx.stack, sp, tt, &mut tscx.marker)
         }
-        ParseNtResult::Ident(ident, is_raw) => {
+        ParseNtResult::Ident(ident, kind) => {
             tscx.marker.mark_span(&mut sp);
             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
-            let kind = token::NtIdent(*ident, *is_raw);
+            let kind = token::NtIdent(*ident, *kind);
             TokenTree::token_alone(kind, sp)
         }
         ParseNtResult::Lifetime(ident, is_raw) => {
@@ -566,7 +575,7 @@ fn transcribe_pnr<'tx>(
             let leading_if_span =
                 guard.span_with_leading_if.with_hi(guard.span_with_leading_if.lo() + BytePos(2));
             let ts = std::iter::once(TokenTree::token_alone(
-                token::Ident(kw::If, IdentIsRaw::No),
+                token::Ident(kw::If, IdentKind::Normal),
                 leading_if_span,
             ))
             .chain(TokenStream::from_ast(&guard.cond).iter().cloned())
@@ -588,7 +597,8 @@ fn transcribe_metavar_expr<'tx>(
 ) -> PResult<'tx, ()> {
     let dcx = tscx.psess.dcx();
     let tt = match *expr {
-        MetaVarExpr::Concat(ref elements) => metavar_expr_concat(tscx, dspan, elements)?,
+        MetaVarExpr::ConcatIdent(ref elements) => metavar_expr_concat_ident(tscx, dspan, elements)?,
+        MetaVarExpr::ConcatStr(ref elements) => metavar_expr_concat_str(tscx, dspan, elements)?,
         MetaVarExpr::Count(original_ident, depth) => {
             let matched = matched_from_ident(dcx, original_ident, tscx.interp)?;
             let count = count_repetitions(dcx, depth, matched, &tscx.repeats, &dspan)?;
@@ -626,11 +636,52 @@ fn transcribe_metavar_expr<'tx>(
 }
 
 /// Handle the `${concat(...)}` metavariable expression.
-fn metavar_expr_concat<'tx>(
+fn metavar_expr_concat_ident<'tx>(
     tscx: &mut TranscrCtx<'tx, '_>,
     dspan: DelimSpan,
     elements: &[MetaVarExprConcatElem],
 ) -> PResult<'tx, TokenTree> {
+    let (symbol, concatenated_span) = metavar_expr_concat(tscx, dspan, elements)?;
+    if !rustc_lexer::is_ident(symbol.as_str()) {
+        return Err(tscx.psess.dcx().create_err(ConcatInvalidIdent {
+            span: concatenated_span,
+            reason: InvalidIdentReason::new(symbol),
+        }));
+    }
+    tscx.psess.symbol_gallery.insert(symbol, concatenated_span);
+
+    // The current implementation marks the span as coming from the macro regardless of
+    // contexts of the concatenated identifiers but this behavior may change in the
+    // future.
+    Ok(TokenTree::Token(
+        Token::from_ast_ident(Ident::new(symbol, concatenated_span)),
+        Spacing::Alone,
+    ))
+}
+
+/// Handle the `${concat_str(...)}` metavariable expression.
+fn metavar_expr_concat_str<'tx>(
+    tscx: &mut TranscrCtx<'tx, '_>,
+    dspan: DelimSpan,
+    elements: &[MetaVarExprConcatElem],
+) -> PResult<'tx, TokenTree> {
+    let (symbol, concatenated_span) = metavar_expr_concat(tscx, dspan, elements)?;
+
+    // The current implementation marks the span as coming from the macro regardless of
+    // contexts of the concatenated identifiers but this behavior may change in the
+    // future.
+    Ok(TokenTree::Token(
+        Token::new(TokenKind::lit(LitKind::Str, symbol, None), concatenated_span),
+        Spacing::Alone,
+    ))
+}
+
+/// Shared logic for concat/concat_str metavariable expressions
+fn metavar_expr_concat<'tx>(
+    tscx: &mut TranscrCtx<'tx, '_>,
+    dspan: DelimSpan,
+    elements: &[MetaVarExprConcatElem],
+) -> PResult<'tx, (Symbol, Span)> {
     let dcx = tscx.psess.dcx();
     let mut concatenated = String::new();
     for element in elements {
@@ -659,21 +710,7 @@ fn metavar_expr_concat<'tx>(
     }
     let symbol = nfc_normalize(&concatenated);
     let concatenated_span = tscx.visited_dspan(dspan);
-    if !rustc_lexer::is_ident(symbol.as_str()) {
-        return Err(dcx.create_err(ConcatInvalidIdent {
-            span: concatenated_span,
-            reason: InvalidIdentReason::new(symbol),
-        }));
-    }
-    tscx.psess.symbol_gallery.insert(symbol, concatenated_span);
-
-    // The current implementation marks the span as coming from the macro regardless of
-    // contexts of the concatenated identifiers but this behavior may change in the
-    // future.
-    Ok(TokenTree::Token(
-        Token::from_ast_ident(Ident::new(symbol, concatenated_span)),
-        Spacing::Alone,
-    ))
+    Ok((symbol, concatenated_span))
 }
 
 /// Store the metavariable span for this original span into a side table.
@@ -995,22 +1032,16 @@ fn extract_symbol_from_pnr<'a>(
     span_err: Span,
 ) -> PResult<'a, Symbol> {
     match pnr {
-        ParseNtResult::Ident(nt_ident, is_raw) => {
-            if let IdentIsRaw::Yes = is_raw {
-                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
-            } else {
-                Ok(nt_ident.name)
-            }
+        ParseNtResult::Ident(nt_ident, kind) => {
+            validate_ident_kind(dcx, *kind, span_err)?;
+            Ok(nt_ident.name)
         }
         ParseNtResult::Tt(TokenTree::Token(
-            Token { kind: TokenKind::Ident(symbol, is_raw), .. },
+            Token { kind: TokenKind::Ident(symbol, kind), .. },
             _,
         )) => {
-            if let IdentIsRaw::Yes = is_raw {
-                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
-            } else {
-                Ok(*symbol)
-            }
+            validate_ident_kind(dcx, *kind, span_err)?;
+            Ok(*symbol)
         }
         ParseNtResult::Tt(TokenTree::Token(
             Token {

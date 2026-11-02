@@ -1,4 +1,4 @@
-// rustfmt-normalize_comments: true
+//@ rustfmt-normalize_comments: true
 
 // https://github.com/rust-lang/rustfmt/issues/4909
 pub enum E {

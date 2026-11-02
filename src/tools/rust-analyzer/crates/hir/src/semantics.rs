@@ -17,7 +17,7 @@ use hir_def::{
     StructId, TraitId, VariantId,
     attrs::parse_extra_crate_attrs,
     expr_store::{Body, ExprOrPatSource, ExpressionStore, HygieneId, path::Path},
-    hir::{BindingId, Expr, ExprId, ExprOrPatId},
+    hir::{BindingId, Expr, ExprId, ExprOrPatId, Unsafe},
     nameres::{ModuleOrigin, crate_def_map},
     resolver::{self, HasResolver, Resolver, TypeNs, ValueNs},
     type_ref::Mutability,
@@ -30,7 +30,7 @@ use hir_expand::{
     mod_path::{ModPath, PathKind},
     name::AsName,
 };
-use hir_ty::{
+use hir_ide::{
     InferBodyId, InferenceResult, LoweringMode,
     db::AnonConstId,
     diagnostics::unsafe_operations,
@@ -1563,7 +1563,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     /// Attempts to map the node out of macro expanded files.
-    /// This only work for attribute expansions, as other ones do not have nodes as input.
+    /// This only works for attribute expansions, as other ones do not have nodes as input.
     pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
         self.wrap_node_infile(node).original_ast_node_rooted(self.db).map(
             |InRealFile { file_id, value }| {
@@ -1574,7 +1574,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     /// Attempts to map the node out of macro expanded files.
-    /// This only work for attribute expansions, as other ones do not have nodes as input.
+    /// This only works for attribute expansions, as other ones do not have nodes as input.
     pub fn original_syntax_node_rooted(&self, node: &SyntaxNode) -> Option<SyntaxNode> {
         let InFile { file_id, .. } = self.find_file(node);
         InFile::new(file_id, node).original_syntax_node_rooted(self.db).map(
@@ -1633,6 +1633,9 @@ impl<'db> SemanticsImpl<'db> {
                 self.with_ctx(|ctx| {
                     let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
                     expansion_info.arg().map(|node| node?.parent()).transpose()
+                })
+                .inspect(|node| {
+                    self.cache(node.value.tree_top(), node.file_id);
                 })
             }
         })
@@ -1724,8 +1727,8 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn expr_adjustments(&self, expr: &ast::Expr) -> Option<Vec<Adjustment<'db>>> {
         let mutability = |m| match m {
-            hir_ty::next_solver::Mutability::Not => Mutability::Shared,
-            hir_ty::next_solver::Mutability::Mut => Mutability::Mut,
+            hir_ide::next_solver::Mutability::Not => Mutability::Shared,
+            hir_ide::next_solver::Mutability::Mut => Mutability::Mut,
         };
 
         let analyzer = self.analyze(expr.syntax())?;
@@ -1737,20 +1740,20 @@ impl<'db> SemanticsImpl<'db> {
                 .map(|adjust| {
                     let target = analyzer.ty(adjust.target.as_ref());
                     let kind = match adjust.kind {
-                        hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
-                        hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
+                        hir_ide::Adjust::NeverToAny => Adjust::NeverToAny,
+                        hir_ide::Adjust::Deref(Some(hir_ide::OverloadedDeref(m))) => {
                             // FIXME: Should we handle unknown mutability better?
                             Adjust::Deref(Some(OverloadedDeref(mutability(m))))
                         }
-                        hir_ty::Adjust::Deref(None) => Adjust::Deref(None),
-                        hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::RawPtr(m)) => {
+                        hir_ide::Adjust::Deref(None) => Adjust::Deref(None),
+                        hir_ide::Adjust::Borrow(hir_ide::AutoBorrow::RawPtr(m)) => {
                             Adjust::Borrow(AutoBorrow::RawPtr(mutability(m)))
                         }
-                        hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::Ref(m)) => {
+                        hir_ide::Adjust::Borrow(hir_ide::AutoBorrow::Ref(m)) => {
                             // FIXME: Handle lifetimes here
                             Adjust::Borrow(AutoBorrow::Ref(mutability(m.into())))
                         }
-                        hir_ty::Adjust::Pointer(pc) => Adjust::Pointer(pc),
+                        hir_ide::Adjust::Pointer(pc) => Adjust::Pointer(pc),
                     };
 
                     // Update `source_ty` for the next adjustment
@@ -1827,7 +1830,7 @@ impl<'db> SemanticsImpl<'db> {
         let AnyFunctionId::FunctionId(func) = func.id else { return Some(func) };
         let interner = DbInterner::new_no_crate(self.db);
         let mut subst = subst.into_iter();
-        let substs = hir_ty::next_solver::GenericArgs::for_item(
+        let substs = hir_ide::next_solver::GenericArgs::for_item(
             interner,
             trait_.id.into(),
             |_, id, _, _| {
@@ -2187,13 +2190,9 @@ impl<'db> SemanticsImpl<'db> {
         def: DefWithoutBodyWithAnonConsts,
     ) -> &'a ExprToAnonConst<'db> {
         cache.entry(def).or_insert_with(|| match def {
-            Either::Left(def) => {
-                let all_anon_consts =
-                    AnonConstId::all_from_signature(self.db, def).into_iter().flatten().copied();
-                all_anon_consts
-                    .map(|anon_const| (anon_const.loc(self.db).expr, anon_const))
-                    .collect()
-            }
+            Either::Left(def) => AnonConstId::all_from_signature(self.db, def)
+                .map(|anon_const| (anon_const.loc(self.db).expr, anon_const))
+                .collect(),
             Either::Right(def) => {
                 let all_anon_consts =
                     self.db.field_types_with_diagnostics(def).defined_anon_consts().iter().copied();
@@ -2427,7 +2426,7 @@ impl<'db> SemanticsImpl<'db> {
             if let Some(parent) = ast::Expr::cast(parent.clone())
                 && let Some(ExprOrPatId::ExprId(expr_id)) =
                     source_map.node_expr(InFile { file_id, value: &parent })
-                && let Expr::Unsafe { .. } = body[expr_id]
+                && let Expr::Block { unsafe_: Unsafe::Yes, .. } = body[expr_id]
             {
                 break true;
             }
@@ -2589,7 +2588,7 @@ impl<'db> SemanticsImpl<'db> {
                             && let Some(tree) = proof_tree
                         {
                             let data =
-                                dump_proof_tree_structured(tree, hir_ty::Span::Dummy, infer_ctxt);
+                                dump_proof_tree_structured(tree, hir_ide::Span::Dummy, infer_ctxt);
                             RESULT.with(|ctx| ctx.borrow_mut().push(data));
                         }
                     }),
@@ -2849,7 +2848,7 @@ impl<'db> SemanticsScope<'db> {
         else {
             return;
         };
-        hir_ty::associated_type_shorthand_candidates(self.db, def, resolution, |_, id| {
+        hir_ide::associated_type_shorthand_candidates(self.db, def, resolution, |_, id| {
             cb(id.into());
             false
         });

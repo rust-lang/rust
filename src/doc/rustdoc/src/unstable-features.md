@@ -75,8 +75,21 @@ on them: `#[doc(notable_trait)]`. This means that you can apply this attribute
 to your own trait to include it in the "Notable traits" dialog in documentation.
 
 In addition to the "Notable traits" dialog, every type that implements a
-`#[doc(notable_trait)]` trait renders a colored badge for that trait at the top
+`#[doc(notable_trait)]` trait renders a badge for that trait at the top
 of its page, making the relationship easy to spot when browsing the type.
+To set a color for the badge, write `#[doc(notable_trait(color="red"))]` or
+one of the other colors in the list (from the [ANSI 3 bit terminal palette][]):
+
+[ANSI 3 bit terminal palette]: https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
+
+- grey
+- red
+- green
+- yellow
+- blue
+- magenta
+- cyan
+- transparent
 
 The `#[doc(notable_trait)]` attribute currently requires the `#![feature(doc_notable_trait)]`
 feature gate. For more information, see [its chapter in the Unstable Book][unstable-notable_trait]
@@ -130,7 +143,7 @@ To do so, the `#[doc(keyword = "...")]` attribute is used. Example:
 
 /// Some documentation about the keyword.
 #[doc(keyword = "break")]
-mod empty_mod {}
+const _: () = ();
 ```
 
 ### Document builtin attributes
@@ -147,7 +160,7 @@ To do so, the `#[doc(attribute = "...")]` attribute is used. Example:
 
 /// Some documentation about the attribute.
 #[doc(attribute = "repr")]
-mod empty_mod {}
+const _: () = ();
 ```
 
 ### Use the Rust logo as the crate logo
@@ -210,17 +223,15 @@ This is very easy to use in scripts that manually invoke rustdoc, but it's also 
 performs O(crates) work on every crate, meaning it performs O(crates<sup>2</sup>) work. When
 `--write-doc-meta-dir` and/or `--read-doc-meta-dir` are supplied, this is turned off.
 
-When `--write-doc-meta-dir` is supplied, rustdoc will write the crate's metadata to that directory.
-If this parameter is supplied but `--read-doc-meta-dir` isn't, it runs in *intermediate mode*:
-some pages may be written to the output dir, but there is a lot of functionality that won't work
-until rustdoc is run in *finalize mode*.
+When `--write-doc-meta-dir` is supplied, rustdoc will write the crate's shared metadata to
+that directory. This is an *intermediate mode* where it may write some files to the doc output
+directory, but some features won't work until it is finalized.
 
-When `--read-doc-meta-dir` is supplied, rustdoc runs in *finalize mode*. It will read the data from
-the supplied directory, and will write it to the doc output directory in the form that the web
-frontend will use.
+When `--read-doc-meta-dir` is supplied, rustdoc runs in *finalize mode*. No crate source code is
+passed to rustdoc when it runs in this mode. Multiple `--read-doc-meta-dir` can be passed to
+rustdoc, so your build system can split the state between multiple directories if that helps.
 
-If both `--write-doc-meta-dir` and `--read-doc-meta-dir` are specified, the crate metadata will be
-written to both the HTML `--out-dir` and to the supplied `--write-doc-meta-dir`.
+`--write-doc-meta-dir` and `--read-doc-meta-dir` cannot both be passed to the same rustdoc invocation.
 
 ```console
 $ rustdoc crate1.rs --out-dir=doc
@@ -234,11 +245,30 @@ rd_("fcrate1fcrate2")
 To delay shared-data merging until the end of a build, so that you only have to perform O(crates)
 work, use `--write-doc-meta-dir` on every crate, and the last will use `--read-doc-meta-dir`.
 
+You can use separate metadata directories:
+
 ```console
-$ rustdoc +nightly crate1.rs --write-doc-meta=crate1.d -Zunstable-options
+$ rustdoc +nightly crate1.rs --write-doc-meta-dir=crate1.d -Zunstable-options
 $ cat doc/search.index/crateNames/*
 cat: 'doc/search.index/crateNames/*': No such file or directory
-$ rustdoc +nightly crate2.rs --read-doc-meta=crate1.d -Zunstable-options
+$ rustdoc +nightly crate2.rs --write-doc-meta-dir=crate2.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+cat: 'doc/search.index/crateNames/*': No such file or directory
+$ rustdoc +nightly --read-doc-meta-dir=crate1.d --read-doc-meta-dir=crate2.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+rd_("fcrate1fcrate2")
+```
+
+Or you can use a single metadata directory for all of the crates:
+
+```console
+$ rustdoc +nightly crate1.rs --write-doc-meta-dir=meta.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+cat: 'doc/search.index/crateNames/*': No such file or directory
+$ rustdoc +nightly crate2.rs --write-doc-meta-dir=meta.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+cat: 'doc/search.index/crateNames/*': No such file or directory
+$ rustdoc +nightly --read-doc-meta-dir=meta.d -Zunstable-options
 $ cat doc/search.index/crateNames/*
 rd_("fcrate1fcrate2")
 ```
@@ -795,8 +825,7 @@ Defines which scopes of paths should be remapped by --remap-path-prefix.
 `rustdoc` (and by extension `rustc`) have a special `documentation` remapping scope, it
 permits remapping source paths that ends up in the generated documentation.
 
-Currently the scope can only be specified from `rustc`, due to the lack of an equivalent
-`--remap-path-scope` flag in `rustc`.
+It can specified with `--remap-path-scope=documentation`.
 
 ## `#[doc(cfg)]` and `#[doc(auto_cfg)]`
 

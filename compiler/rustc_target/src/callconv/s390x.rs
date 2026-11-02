@@ -1,10 +1,44 @@
 // Reference: ELF Application Binary Interface s390x Supplement
 // https://github.com/IBM/s390x-abi
 
-use rustc_abi::{BackendRepr, HasDataLayout, TyAbiInterface};
+use rustc_abi::{BackendRepr, FieldsShape, HasDataLayout, Primitive, TyAbiInterface, TyAndLayout};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg};
 use crate::spec::{Env, HasTargetSpec, Os};
+
+/// Is this a struct with a single float field?
+fn is_single_fp_element<'a, Ty, C>(mut layout: TyAndLayout<'a, Ty>, cx: &C) -> bool
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    // Contrary to X86, trailing padding is allowed on s390x.
+
+    loop {
+        // We're only looking for scalar types that are non-ZST.
+        layout = layout.peel_transparent_wrappers_from_non_1zst(cx);
+
+        return match layout.backend_repr {
+            BackendRepr::Scalar(scalar) => match scalar.primitive() {
+                Primitive::Float(_) => true,
+                Primitive::Int(_, _) | Primitive::Pointer(_) => false,
+            },
+            BackendRepr::Memory { .. } => {
+                // A single-element array or union does not qualify.
+                if let FieldsShape::Arbitrary { .. } = layout.fields
+                    && layout.fields.count() == 1
+                    && layout.fields.offset(0).bytes() == 0
+                {
+                    layout = layout.field(cx, 0);
+                    continue;
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        };
+    }
+}
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     let size = ret.layout.size;
@@ -31,13 +65,18 @@ where
         // s390x-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
         if cx.target_spec().os == Os::Linux
             && matches!(cx.target_spec().env, Env::Gnu | Env::Musl | Env::Uclibc)
-            && arg.layout.is_zst()
+            && arg.layout.is_repr_c()
         {
             arg.make_indirect_from_ignore();
         }
         return;
     }
     if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+        return;
+    }
+
+    if arg.layout.is_complex_number(cx) {
         arg.make_indirect();
         return;
     }
@@ -60,8 +99,19 @@ where
         return;
     }
 
-    if arg.layout.is_single_fp_element(cx) {
+    if is_single_fp_element(arg.layout, cx) {
+        // Match GCC and Clang by explicitly passing padding, even though their behavior violates
+        // (our reading of) the specification, which says that:
+        //
+        // > Structures equivalent to a floating point type are passed in floating point registers.
+        // > A structure is equivalent to a floating point type if and only if it has exactly one
+        // > member, which is either of floating point type of itself a structure equivalent to a
+        // > floating point type.
+        //
+        // When the alignment is higher than 8, we pass the argument indirectly, which violates
+        // the specification but is consistent with GCC and Clang.
         match size.bytes() {
+            2 => arg.cast_to(Reg::f16()),
             4 => arg.cast_to(Reg::f32()),
             8 => arg.cast_to(Reg::f64()),
             _ => arg.make_indirect(),

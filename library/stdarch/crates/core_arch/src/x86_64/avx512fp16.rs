@@ -211,7 +211,7 @@ pub fn _mm_cvtt_roundsh_u64<const SAE: i32>(a: __m128h) -> u64 {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.x86.avx512fp16.vcvtsi642sh"]
     fn vcvtsi642sh(a: __m128h, b: i64, rounding: i32) -> __m128h;
     #[link_name = "llvm.x86.avx512fp16.vcvtusi642sh"]
@@ -227,6 +227,7 @@ unsafe extern "unadjusted" {
 }
 
 #[cfg(test)]
+#[cfg(target_has_reliable_f16)]
 mod tests {
     use crate::core_arch::{x86::*, x86_64::*};
     use stdarch_test::simd_test;

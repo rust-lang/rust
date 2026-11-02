@@ -477,7 +477,7 @@ impl UseTree {
                 // This needs to be done before sorting use items.
                 let items = itemize_list(
                     context.snippet_provider,
-                    list.iter().map(|(tree, _)| tree),
+                    list.iter().map(|tree| &tree.inner),
                     "}",
                     ",",
                     |tree| tree.prefix.span.lo(),
@@ -501,7 +501,7 @@ impl UseTree {
                     list.iter()
                         .zip(items)
                         .map(|(t, list_item)| {
-                            Self::from_ast(context, &t.0, Some(list_item), None, None, None)
+                            Self::from_ast(context, &t.inner, Some(list_item), None, None, None)
                         })
                         .collect(),
                 );

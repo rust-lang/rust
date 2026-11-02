@@ -76,9 +76,21 @@ pub struct Fixture {
     /// Version and repository URL of the crate can optionally be specified; if
     /// either one is specified, the other must also be specified.
     ///
+    /// Target kind can optionally be specified, accepted values are:
+    /// - lib (default)
+    /// - proc-macro
+    /// - bin
+    /// - example
+    /// - test
+    /// - bench
+    /// - custom-build
+    /// - other
+    ///
     /// Syntax:
     /// - `crate:my_awesome_lib`
     /// - `crate:my_awesome_lib@0.0.1,https://example.com/repo.git`
+    /// - `crate:bin:my_awesome_lib`
+    /// - `crate:bin:my_awesome_lib@0.0.1,https://example.com/repo.git`
     pub krate: Option<String>,
     /// Specifies dependencies of this crate. This must be used with `crate` meta.
     ///

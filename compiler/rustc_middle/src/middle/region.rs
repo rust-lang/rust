@@ -13,7 +13,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::{HirId, ItemLocalMap, Node};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, span_bug};
 use tracing::debug;
 
 use crate::ty::{self, TyCtxt};

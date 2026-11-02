@@ -4,8 +4,8 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::ty::{
-    self, DefiningScopeKind, GenericArgKind, GenericArgs, OpaqueTypeKey, RegionUtilitiesExt, Ty,
-    TyCtxt, TypeVisitableExt, TypingMode, fold_regions,
+    self, DefiningScopeKind, GenericArgKind, GenericArgs, OpaqueTypeKey, Ty, TyCtxt,
+    TypeVisitableExt, TypingMode, fold_regions,
 };
 use rustc_span::{ErrorGuaranteed, Span};
 
@@ -51,7 +51,7 @@ impl<'tcx> NonDefiningUseReason<'tcx> {
                     .dcx()
                     .struct_span_err(span, "non-defining opaque type use in defining scope")
                     .with_span_note(spans, format!("{descr} used multiple times"))
-                    .emit()
+                    .emit_err()
             }
         }
     }
@@ -137,7 +137,7 @@ struct LazyOpaqueTyEnv<'tcx> {
     ///     `type Opaque<'a: 'static, 'b: 'c, 'c: 'b> = impl Sized;`
     ///     Identity args: `['a, 'b, 'c]`
     ///     Canonical args: `['static, 'b, 'b]`
-    canonical_args: std::cell::OnceCell<ty::GenericArgsRef<'tcx>>,
+    canonical_args: std::cell::OnceCell<GenericArgs<'tcx>>,
 }
 
 impl<'tcx> LazyOpaqueTyEnv<'tcx> {
@@ -158,7 +158,7 @@ impl<'tcx> LazyOpaqueTyEnv<'tcx> {
         self.get_canonical_args()[param_index].error_reported()
     }
 
-    fn get_canonical_args(&self) -> ty::GenericArgsRef<'tcx> {
+    fn get_canonical_args(&self) -> GenericArgs<'tcx> {
         if let Some(&canonical_args) = self.canonical_args.get() {
             return canonical_args;
         }
@@ -231,5 +231,5 @@ pub fn report_item_does_not_constrain_error<'tcx>(
             format!("this use of `{opaque_ty}` does not have unique universal generic arguments"),
         );
     }
-    err.emit()
+    err.emit_err()
 }

@@ -137,6 +137,21 @@ fn expand_contract_clause_tts(
     annotated: TokenStream,
     clause_keyword: rustc_span::Symbol,
 ) -> Result<TokenStream, ErrorGuaranteed> {
+    if annotation.is_empty() {
+        let (name, example) = if clause_keyword == kw::ContractRequires {
+            ("requires", "condition")
+        } else {
+            ("ensures", "|result: &T| condition")
+        };
+        ecx.sess.dcx().span_err(
+            attr_span,
+            format!("`{name}` attribute requires an argument, e.g., `#[{name}({example})]`"),
+        );
+        // Returning `Err` would replace it with a dummy fragment and cause cascading name-resolution errors.
+        // Instead, we return the original token stream so that there is no later noises.
+        return Ok(annotated);
+    }
+
     let feature_span = ecx.with_def_site_ctxt(attr_span);
     expand_contract_clause(ecx, attr_span, annotated, |new_tts| {
         new_tts.push(TokenTree::Token(

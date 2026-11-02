@@ -1,7 +1,7 @@
 use std::iter;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{SpanExt, indent_of, reindent_multiline};
+use clippy_utils::source::{SpanExt as _, indent_of, reindent_multiline};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::expr_type_is_certain;
 use clippy_utils::{is_empty_block, is_expr_default, is_from_proc_macro};
@@ -40,14 +40,12 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         .into_iter()
         .chain(args)
         .filter(|arg| {
-            if cx.typeck_results().expr_ty(arg).is_unit() && !utils::is_unit_literal(arg) {
-                !matches!(
+            cx.typeck_results().expr_ty(arg).is_unit()
+                && !utils::is_unit_literal(arg)
+                && !matches!(
                     &arg.kind,
                     ExprKind::Match(.., MatchSource::TryDesugar(_)) | ExprKind::Path(..)
                 )
-            } else {
-                false
-            }
         })
         .collect::<Vec<_>>();
     if !args_to_recover.is_empty() && !is_from_proc_macro(cx, expr) {

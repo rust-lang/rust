@@ -39,9 +39,7 @@
    LL|       |
    LL|     15|    match value {
    LL|     12|        Enum::D(x) | Enum::C(x) => consume(x),
-                              ^8           ^4
    LL|      3|        Enum::B(y) | Enum::A(y) => consume(y),
-                              ^2           ^1
    LL|       |    }
    LL|       |
    LL|     15|    consume(0);
@@ -50,20 +48,24 @@
    LL|     45|fn guards(value: Enum, cond: bool) {
    LL|     45|    no_merge!();
    LL|       |
-   LL|      3|    match value {
-   LL|      8|        Enum::D(d) if cond => consume(d),
+   LL|     45|    match value {
+   LL|     24|        Enum::D(d) if cond => consume(d),
+                                            ^8
   ------------------
   |  Branch (LL:23): [True: 8, False: 16]
   ------------------
-   LL|      4|        Enum::C(c) if cond => consume(c),
+   LL|     12|        Enum::C(c) if cond => consume(c),
+                                            ^4
   ------------------
   |  Branch (LL:23): [True: 4, False: 8]
   ------------------
-   LL|      2|        Enum::B(b) if cond => consume(b),
+   LL|      6|        Enum::B(b) if cond => consume(b),
+                                            ^2
   ------------------
   |  Branch (LL:23): [True: 2, False: 4]
   ------------------
-   LL|      1|        Enum::A(a) if cond => consume(a),
+   LL|      3|        Enum::A(a) if cond => consume(a),
+                                            ^1
   ------------------
   |  Branch (LL:23): [True: 1, False: 2]
   ------------------

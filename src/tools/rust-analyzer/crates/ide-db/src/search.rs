@@ -11,8 +11,8 @@ use base_db::{SourceDatabase, all_crates};
 use either::Either;
 use hir::{
     Adt, AsAssocItem, DefWithBody, EditionedFileId, ExpressionStoreOwner, FileRange,
-    FileRangeWrapper, HasAttrs, HasContainer, HasSource, InFile, InFileWrapper, InRealFile,
-    InlineAsmOperand, ItemContainer, ModuleSource, PathResolution, Semantics, Visibility,
+    FileRangeWrapper, HasContainer, HasSource, InFile, InFileWrapper, InRealFile, InlineAsmOperand,
+    ItemContainer, ModuleSource, PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
@@ -119,13 +119,13 @@ impl FileReferenceNode {
             _ => None,
         }
     }
-    pub fn text(&self) -> syntax::TokenText<'_> {
+    pub fn text(&self) -> &str {
         match self {
             FileReferenceNode::NameRef(name_ref) => name_ref.text(),
             FileReferenceNode::Name(name) => name.text(),
             FileReferenceNode::Lifetime(lifetime) => lifetime.text(),
             FileReferenceNode::FormatStringEntry(it, range) => {
-                syntax::TokenText::borrowed(&it.text()[*range - it.syntax().text_range().start()])
+                &it.text()[*range - it.syntax().text_range().start()]
             }
         }
     }
@@ -394,24 +394,6 @@ impl<'db> Definition<'db> {
                     def.as_ref().original_file_range_with_macro_call_input(db),
                 ),
                 None => SearchScope::single_file(file_id),
-            };
-        }
-
-        if let Definition::Macro(macro_def) = self {
-            return match macro_def.kind(db) {
-                hir::MacroKind::Declarative => {
-                    if macro_def.attrs(db).is_macro_export() {
-                        SearchScope::reverse_dependencies(db, module.krate(db))
-                    } else {
-                        SearchScope::krate(db, module.krate(db))
-                    }
-                }
-                hir::MacroKind::AttrBuiltIn
-                | hir::MacroKind::DeriveBuiltIn
-                | hir::MacroKind::DeclarativeBuiltIn => SearchScope::crate_graph(db),
-                hir::MacroKind::Derive | hir::MacroKind::Attr | hir::MacroKind::ProcMacro => {
-                    SearchScope::reverse_dependencies(db, module.krate(db))
-                }
             };
         }
 
@@ -751,7 +733,7 @@ impl<'a, 'db> FindUsages<'a, 'db> {
                                     insert_type_alias(
                                         sema.db,
                                         &mut to_process,
-                                        name.text().as_str(),
+                                        name.text(),
                                         def.into(),
                                     );
                                 } else {
@@ -814,7 +796,7 @@ impl<'a, 'db> FindUsages<'a, 'db> {
                                             insert_type_alias(
                                                 sema.db,
                                                 &mut to_process,
-                                                name.text().as_str(),
+                                                name.text(),
                                                 def.into(),
                                             );
                                         } else {

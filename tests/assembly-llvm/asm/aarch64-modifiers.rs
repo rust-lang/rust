@@ -1,11 +1,11 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3 -C panic=abort
-//@ compile-flags: --target aarch64-unknown-linux-gnu
+//@ compile-flags: --target aarch64-unknown-linux-gnu -C target-feature=+sve
 //@ compile-flags: -Zmerge-functions=disabled
 //@ needs-llvm-components: aarch64
 
-#![feature(no_core)]
+#![feature(asm_experimental_reg, no_core)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register)]
@@ -84,6 +84,12 @@ check!(vreg_q vreg "ldr {:q}, [x0]");
 // CHECK: add v0.4s, v0.4s, v0.4s
 // CHECK: //NO_APP
 check!(vreg_v vreg "add {0:v}.4s, {0:v}.4s, {0:v}.4s");
+
+// CHECK-LABEL: vreg_z:
+// CHECK: //APP
+// CHECK: mov z0.d, z0.d
+// CHECK: //NO_APP
+check!(vreg_z vreg "mov {0:z}.d, {0:z}.d");
 
 // CHECK-LABEL: vreg_low16:
 // CHECK: //APP

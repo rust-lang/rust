@@ -93,55 +93,55 @@ impl<S: ?Sized + AsyncIterator + Unpin> AsyncIterator for Box<S> {
     }
 }
 
-/// This implementation is required to make sure that the `Box<[I]>: IntoIterator`
+/// This implementation is required to make sure that the `Box<[T]>: IntoIterator`
 /// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
 #[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
-impl<I, A: Allocator> !Iterator for Box<[I], A> {}
+impl<T, A: Allocator> !Iterator for Box<[T], A> {}
 
-/// This implementation is required to make sure that the `&Box<[I]>: IntoIterator`
+/// This implementation is required to make sure that the `&Box<[T]>: IntoIterator`
 /// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
 #[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
-impl<'a, I, A: Allocator> !Iterator for &'a Box<[I], A> {}
+impl<'a, T, A: Allocator> !Iterator for &'a Box<[T], A> {}
 
-/// This implementation is required to make sure that the `&mut Box<[I]>: IntoIterator`
+/// This implementation is required to make sure that the `&mut Box<[T]>: IntoIterator`
 /// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
 #[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
-impl<'a, I, A: Allocator> !Iterator for &'a mut Box<[I], A> {}
+impl<'a, T, A: Allocator> !Iterator for &'a mut Box<[T], A> {}
 
 // Note: the `#[rustc_skip_during_method_dispatch(boxed_slice)]` on `trait IntoIterator`
 // hides this implementation from explicit `.into_iter()` calls on editions < 2024,
 // so those calls will still resolve to the slice implementation, by reference.
 #[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
-impl<I, A: Allocator> IntoIterator for Box<[I], A> {
-    type IntoIter = vec::IntoIter<I, A>;
-    type Item = I;
-    fn into_iter(self) -> vec::IntoIter<I, A> {
+impl<T, A: Allocator> IntoIterator for Box<[T], A> {
+    type IntoIter = vec::IntoIter<T, A>;
+    type Item = T;
+    fn into_iter(self) -> vec::IntoIter<T, A> {
         self.into_vec().into_iter()
     }
 }
 
 #[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
-impl<'a, I, A: Allocator> IntoIterator for &'a Box<[I], A> {
-    type IntoIter = slice::Iter<'a, I>;
-    type Item = &'a I;
-    fn into_iter(self) -> slice::Iter<'a, I> {
+impl<'a, T, A: Allocator> IntoIterator for &'a Box<[T], A> {
+    type IntoIter = slice::Iter<'a, T>;
+    type Item = &'a T;
+    fn into_iter(self) -> slice::Iter<'a, T> {
         self.iter()
     }
 }
 
 #[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]
-impl<'a, I, A: Allocator> IntoIterator for &'a mut Box<[I], A> {
-    type IntoIter = slice::IterMut<'a, I>;
-    type Item = &'a mut I;
-    fn into_iter(self) -> slice::IterMut<'a, I> {
+impl<'a, T, A: Allocator> IntoIterator for &'a mut Box<[T], A> {
+    type IntoIter = slice::IterMut<'a, T>;
+    type Item = &'a mut T;
+    fn into_iter(self) -> slice::IterMut<'a, T> {
         self.iter_mut()
     }
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_slice_from_iter", since = "1.32.0")]
-impl<I> FromIterator<I> for Box<[I]> {
-    fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {
+impl<T> FromIterator<T> for Box<[T]> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         iter.into_iter().collect::<Vec<_>>().into_boxed_slice()
     }
 }
@@ -149,7 +149,7 @@ impl<I> FromIterator<I> for Box<[I]> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
 impl FromIterator<char> for Box<str> {
-    fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
+    fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> Self {
         String::from_iter(iter).into_boxed_str()
     }
 }
@@ -157,7 +157,7 @@ impl FromIterator<char> for Box<str> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
 impl<'a> FromIterator<&'a char> for Box<str> {
-    fn from_iter<T: IntoIterator<Item = &'a char>>(iter: T) -> Self {
+    fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> Self {
         String::from_iter(iter).into_boxed_str()
     }
 }
@@ -165,7 +165,7 @@ impl<'a> FromIterator<&'a char> for Box<str> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
 impl<'a> FromIterator<&'a str> for Box<str> {
-    fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
+    fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> Self {
         String::from_iter(iter).into_boxed_str()
     }
 }
@@ -173,7 +173,7 @@ impl<'a> FromIterator<&'a str> for Box<str> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
 impl FromIterator<String> for Box<str> {
-    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
+    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> Self {
         String::from_iter(iter).into_boxed_str()
     }
 }
@@ -181,7 +181,7 @@ impl FromIterator<String> for Box<str> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
 impl<A: Allocator> FromIterator<Box<str, A>> for Box<str> {
-    fn from_iter<T: IntoIterator<Item = Box<str, A>>>(iter: T) -> Self {
+    fn from_iter<I: IntoIterator<Item = Box<str, A>>>(iter: I) -> Self {
         String::from_iter(iter).into_boxed_str()
     }
 }
@@ -189,27 +189,27 @@ impl<A: Allocator> FromIterator<Box<str, A>> for Box<str> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
 impl<'a> FromIterator<Cow<'a, str>> for Box<str> {
-    fn from_iter<T: IntoIterator<Item = Cow<'a, str>>>(iter: T) -> Self {
+    fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> Self {
         String::from_iter(iter).into_boxed_str()
     }
 }
 
 /// This implementation is required to make sure that the `Box<[I; N]>: IntoIterator`
 /// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<I, const N: usize, A: Allocator> !Iterator for Box<[I; N], A> {}
 
 /// This implementation is required to make sure that the `&Box<[I; N]>: IntoIterator`
 /// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<'a, const N: usize, I, A: Allocator> !Iterator for &'a Box<[I; N], A> {}
 
 /// This implementation is required to make sure that the `&mut Box<[I; N]>: IntoIterator`
 /// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<'a, const N: usize, I, A: Allocator> !Iterator for &'a mut Box<[I; N], A> {}
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<'a, T, const N: usize, A: Allocator> IntoIterator for &'a Box<[T; N], A> {
     type IntoIter = slice::Iter<'a, T>;
     type Item = &'a T;
@@ -218,7 +218,7 @@ impl<'a, T, const N: usize, A: Allocator> IntoIterator for &'a Box<[T; N], A> {
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<'a, T, const N: usize, A: Allocator> IntoIterator for &'a mut Box<[T; N], A> {
     type IntoIter = slice::IterMut<'a, T>;
     type Item = &'a mut T;
@@ -228,7 +228,7 @@ impl<'a, T, const N: usize, A: Allocator> IntoIterator for &'a mut Box<[T; N], A
 }
 
 /// A by-value `Box<[T; N]>` iterator.
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 #[rustc_insignificant_dtor]
 pub struct BoxedArrayIntoIter<T, const N: usize, A: Allocator = Global> {
     // FIXME: make a more efficient implementation (without the need to store capacity)
@@ -238,19 +238,19 @@ pub struct BoxedArrayIntoIter<T, const N: usize, A: Allocator = Global> {
 impl<T, const N: usize, A: Allocator> BoxedArrayIntoIter<T, N, A> {
     /// Returns an immutable slice of all elements that have not been yielded
     /// yet.
-    #[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
     pub fn as_slice(&self) -> &[T] {
         self.inner.as_slice()
     }
 
     /// Returns a mutable slice of all elements that have not been yielded yet.
-    #[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self.inner.as_mut_slice()
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T, const N: usize, A: Allocator> Iterator for BoxedArrayIntoIter<T, N, A> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
@@ -283,7 +283,7 @@ impl<T, const N: usize, A: Allocator> Iterator for BoxedArrayIntoIter<T, N, A> {
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T, const N: usize, A: Allocator> DoubleEndedIterator for BoxedArrayIntoIter<T, N, A> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.next_back()
@@ -302,7 +302,7 @@ impl<T, const N: usize, A: Allocator> DoubleEndedIterator for BoxedArrayIntoIter
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T, const N: usize, A: Allocator> ExactSizeIterator for BoxedArrayIntoIter<T, N, A> {
     fn len(&self) -> usize {
         self.inner.len()
@@ -313,21 +313,21 @@ impl<T, const N: usize, A: Allocator> ExactSizeIterator for BoxedArrayIntoIter<T
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T, const N: usize, A: Allocator> FusedIterator for BoxedArrayIntoIter<T, N, A> {}
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 unsafe impl<T, const N: usize, A: Allocator> TrustedLen for BoxedArrayIntoIter<T, N, A> {}
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T: Clone, const N: usize, A: Clone + Allocator> Clone for BoxedArrayIntoIter<T, N, A> {
     fn clone(&self) -> Self {
         Self { inner: self.inner.clone() }
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T: fmt::Debug, const N: usize, A: Allocator> fmt::Debug for BoxedArrayIntoIter<T, N, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Only print the elements that were not yielded yet: we cannot
@@ -336,7 +336,7 @@ impl<T: fmt::Debug, const N: usize, A: Allocator> fmt::Debug for BoxedArrayIntoI
     }
 }
 
-#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 impl<T, const N: usize, A: Allocator> IntoIterator for Box<[T; N], A> {
     type IntoIter = BoxedArrayIntoIter<T, N, A>;
     type Item = T;

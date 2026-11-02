@@ -1,10 +1,10 @@
 use rustc_hir::def::DefKind;
 use rustc_infer::traits::ObligationCause;
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, DefiningScopeKind, DefinitionSiteHiddenType, OpaqueTypeKey, ProvisionalHiddenType,
     TypeVisitableExt, Unnormalized,
 };
+use rustc_span::bug;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::opaque_types::{
     NonDefiningUseReason, opaque_type_has_defining_use_args, report_item_does_not_constrain_error,
@@ -93,7 +93,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         error_on_missing_defining_use: bool,
     ) {
         for entry in opaque_types.iter_mut() {
-            *entry = self.resolve_vars_if_possible(*entry);
+            *entry = self.deeply_resolve_ignoring_regions(*entry);
         }
         debug!(?opaque_types);
 
@@ -104,7 +104,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             }
             ty::TypingMode::Coherence
             | ty::TypingMode::Reflection
-            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+            | ty::TypingMode::PostTypeckThroughBorrowck { .. }
             | ty::TypingMode::PostBorrowck { .. }
             | ty::TypingMode::PostAnalysis
             | ty::TypingMode::Codegen => {
@@ -190,15 +190,24 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                             .filter_map(ty::GenericArg::as_term)
                             .find(|term| term.is_infer())
                             .unwrap_or_else(|| hidden_type.ty.into());
-                        self.err_ctxt()
-                            .emit_inference_failure_err(
-                                self.body_def_id,
-                                hidden_type.span,
-                                infer_var,
-                                TypeAnnotationNeeded::E0282,
-                                false,
-                            )
-                            .emit()
+                        let mut err = self.err_ctxt().emit_inference_failure_err(
+                            self.body_def_id,
+                            hidden_type.span,
+                            infer_var,
+                            TypeAnnotationNeeded::E0282,
+                            false,
+                        );
+                        // The shared E0282 label only says "cannot infer type", which gives no
+                        // hint that the ambiguity is in an opaque's hidden type rather than an
+                        // ordinary local inference failure.
+                        let msg = "cannot infer type of hidden type of opaque";
+                        let opaque_span = self.tcx.def_span(def_id);
+                        if err.span.primary_span().is_some_and(|sp| opaque_span.contains(sp)) {
+                            err.note(msg);
+                        } else {
+                            err.span_note(opaque_span, msg);
+                        }
+                        err.emit_err()
                     }
                 }
             };

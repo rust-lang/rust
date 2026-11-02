@@ -3,6 +3,8 @@ error: the `export_stable` attribute cannot be used on traits
    |
 LL |     #[export_stable]
    |       ^^^^^^^^^^^^^
+LL |
+LL |     pub trait Trait {}
    |
    = help: the `export_stable` attribute can be applied to associated types, data types, functions, inherent impl blocks, modules, type aliases, and use statements
 
@@ -11,6 +13,8 @@ error: the `export_stable` attribute cannot be used on constants
    |
 LL |     #[export_stable]
    |       ^^^^^^^^^^^^^
+LL |
+LL |     pub const C: i32 = 0;
    |
    = help: the `export_stable` attribute can be applied to associated types, data types, functions, inherent impl blocks, modules, type aliases, and use statements
 

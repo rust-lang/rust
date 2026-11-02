@@ -7,7 +7,6 @@
 //@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes
 #![crate_type = "lib"]
 
-use std::ptr::without_provenance_mut;
 use std::sync::atomic::AtomicPtr;
 use std::sync::atomic::Ordering::Relaxed;
 

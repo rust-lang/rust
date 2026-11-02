@@ -7,17 +7,15 @@
 
 #![feature(iter_collect_into)]
 #![warn(
+    rust_2018_idioms,
     trivial_casts,
     trivial_numeric_casts,
-    rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications
 )]
-#![allow(
-    clippy::collapsible_else_if,
-    clippy::needless_borrows_for_generic_args,
-    clippy::module_name_repetitions,
-    clippy::literal_string_with_formatting_args
+#![expect(
+    clippy::literal_string_with_formatting_args,
+    clippy::needless_borrows_for_generic_args
 )]
 
 mod config;
@@ -368,8 +366,13 @@ fn lintcheck(config: LintcheckConfig) {
             .collect_into(&mut lint_level_args);
     }
 
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(config.max_jobs)
+        .build_global()
+        .unwrap();
+
     let crates: Vec<Crate> = crates
-        .into_iter()
+        .into_par_iter()
         .filter(|krate| {
             if let Some(only_one_crate) = &config.only {
                 krate.name == *only_one_crate
@@ -387,16 +390,6 @@ fn lintcheck(config: LintcheckConfig) {
         );
         std::process::exit(1);
     }
-
-    // run parallel with rayon
-
-    // This helps when we check many small crates with dep-trees that don't have a lot of branches in
-    // order to achieve some kind of parallelism
-
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(config.max_jobs)
-        .build_global()
-        .unwrap();
 
     let server = config.recursive.then(|| {
         let _: io::Result<()> = fs::remove_dir_all(format!("{}/lintcheck/shared_target_dir/recursive", target_dir()));
@@ -521,7 +514,6 @@ fn lintcheck_test() {
         .args(args)
         .current_dir("..") // repo root
         .status();
-    //.output();
 
     assert!(status.unwrap().success());
 }

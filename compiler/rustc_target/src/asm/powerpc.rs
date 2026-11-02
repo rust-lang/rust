@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_span::Symbol;
 
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
-use crate::spec::{CfgAbi, RelocModel, RustcAbi, Target};
+use crate::spec::{RelocModel, RustcAbi, Target};
 
 def_reg_class! {
     PowerPC PowerPCInlineAsmRegClass {
@@ -54,15 +54,17 @@ impl PowerPCInlineAsmRegClass {
                     types! { _: I8, I16, I32, I64; }
                 }
             }
+            // FIXME(f16): Add `f16` if/when it becomes the standard ABI.
+            // (see https://github.com/llvm/llvm-project/pull/196559)
             Self::freg => types! { _: F32, F64; },
             // FIXME: vsx also supports integers?: https://github.com/rust-lang/rust/pull/131551#discussion_r1862535963
             Self::vreg => types! {
                 altivec: VecI8(16), VecI16(8), VecI32(4), VecF32(4);
-                vsx: F32, F64, VecI64(2), VecF64(2);
+                vsx: F16, F32, F64, F128, VecI64(2), VecF16(8), VecF64(2);
             },
             // VSX is a superset of altivec.
             Self::vsreg => types! {
-                vsx: F32, F64, VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
+                vsx: F16, F32, F64, F128, VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2);
             },
             Self::cr | Self::ctr | Self::lr | Self::xer | Self::spe_acc => &[],
         }
@@ -105,11 +107,8 @@ fn reserved_v20to31(
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
     if target.is_like_aix {
-        match &target.options.cfg_abi {
-            CfgAbi::VecDefault => Err("v20-v31 (vs52-vs63) are reserved on vec-default ABI"),
-            CfgAbi::VecExtAbi => Ok(()),
-            abi => unreachable!("unrecognized AIX ABI: {abi}"),
-        }
+        // We do not support the vec-extabi at the moment.
+        Err("v20-v31 (vs52-vs63) are reserved on vec-default ABI")
     } else {
         Ok(())
     }

@@ -225,7 +225,7 @@ pub trait PointeeSized {
 ///
 /// [`ops::CoerceUnsized`]: crate::ops::CoerceUnsized
 /// [`Rc`]: ../../std/rc/struct.Rc.html
-/// [RFC982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
+/// [RFC982]: https://rust-lang.github.io/rfcs/0982-dst-coercion.html
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 /// [^1]: Formerly known as *object safe*.
 #[unstable(feature = "unsize", issue = "18598")]
@@ -480,7 +480,7 @@ marker_impls! {
 
 }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "1.100.0")]
 impl Copy for ! {}
 
 /// Shared references can be copied, but mutable references *cannot*!
@@ -1074,15 +1074,22 @@ pub const trait Destruct: PointeeSized {}
 #[rustc_dyn_incompatible_trait]
 pub trait Tuple {}
 
+// HACK(khyperia): if this is missing, the gca macro's `implied_by = "gca_adts"` emits an error
+#[unstable(feature = "gca_adts", issue = "163420")]
+#[expect(dead_code)]
+struct HackGcaAdtsFeature;
+
 /// Creates a new style directly represented const argument.
 /// ```ignore (cannot test this from within core yet)
-/// type const BAR<const N: usize>: usize = N;
-/// type const FOO<const N: usize>: usize = direct!(BAR::<N>);
+/// const BAR<const N: usize>: usize = gca!(N);
+/// const FOO<const N: usize>: usize = gca!(BAR::<N>);
 /// ```
-#[rustc_builtin_macro(direct_const_arg)]
-#[unstable(feature = "min_generic_const_args", issue = "132980")]
+#[rustc_builtin_macro(gca)]
+// HACK: abuse implied_by, this should be enabled if gca_min_const_items or gca_adts is enabled,
+// neither one is more particularly special than the other
+#[unstable(feature = "gca_min_const_items", issue = "132980", implied_by = "gca_adts")]
 #[macro_export]
-macro_rules! direct_const_arg {
+macro_rules! gca {
     ($($arg:tt)*) => {
         /* compiler built-in */
     };
@@ -1128,31 +1135,12 @@ marker_impls! {
 }
 
 marker_impls! {
-    #[unstable(feature = "unsized_const_params", issue = "95174")]
+    #[unstable(feature = "unsized_const_params", issue = "128028")]
     #[unstable_feature_bound(unsized_const_params)]
     ConstParamTy_ for
         str,
         {T: ConstParamTy_} [T],
         {T: ConstParamTy_ + ?Sized} &T,
-}
-
-/// A common trait implemented by all function pointers.
-//
-// Note that while the trait is internal and unstable it is nevertheless
-// exposed as a public bound of the stable `core::ptr::fn_addr_eq` function.
-#[unstable(
-    feature = "fn_ptr_trait",
-    issue = "none",
-    reason = "internal trait for implementing various traits for all function pointers"
-)]
-#[lang = "fn_ptr_trait"]
-#[fundamental]
-#[rustc_deny_explicit_impl]
-#[rustc_dyn_incompatible_trait]
-pub trait FnPtr: Copy + Clone {
-    /// Returns the address of the function pointer.
-    #[lang = "fn_ptr_addr"]
-    fn addr(self) -> *const ();
 }
 
 /// Derive macro that makes a smart pointer usable with trait objects.
@@ -1321,7 +1309,7 @@ pub trait FnPtr: Copy + Clone {
 ///             value,
 ///         });
 ///         Self {
-///             inner: NonNull::from(Box::leak(inner)),
+///             inner: Box::into_non_null(inner),
 ///         }
 ///     }
 /// }
@@ -1373,10 +1361,28 @@ pub trait Reborrow {
     /* compiler built-in */
 }
 
+/// Derive macro generating an impl of the trait `Reborrow`.
+#[rustc_builtin_macro(Reborrow)]
+#[allow_internal_unstable(reborrow)]
+#[unstable(feature = "reborrow", issue = "145612")]
+pub macro Reborrow($item:item) {
+    /* compiler built-in */
+}
+
 /// Allows reborrowable value to be reborrowed as shared, creating a copy
 /// that disables the source for writes for the lifetime of the copy.
 #[lang = "coerce_shared"]
 #[unstable(feature = "reborrow", issue = "145612")]
 pub trait CoerceShared<Target: Copy>: Reborrow {
+    /* compiler built-in */
+}
+
+/// Derive macro generating an impl of the trait `CoerceShared`.
+///
+/// The shared target type must be specified with `#[coerce_shared(Target)]`.
+#[rustc_builtin_macro(CoerceShared, attributes(coerce_shared))]
+#[allow_internal_unstable(reborrow)]
+#[unstable(feature = "reborrow", issue = "145612")]
+pub macro CoerceShared($item:item) {
     /* compiler built-in */
 }

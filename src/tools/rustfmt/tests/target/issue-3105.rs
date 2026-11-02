@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+//@ rustfmt-wrap_comments: true
 
 /// Although the indentation of the skipped method is off, it shouldn't be
 /// changed.

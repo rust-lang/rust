@@ -4,8 +4,7 @@ use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Diag, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, ErrorGuaranteed, Level,
-    MultiSpan, StashKey,
+    Diag, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, Level, MultiSpan, StashKey,
 };
 use rustc_feature::{GateIssue, find_feature_issue};
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -96,11 +95,7 @@ pub fn feature_warn_issue(
 
 /// Adds the diagnostics for a feature to an existing error.
 /// Must be a language feature!
-pub fn add_feature_diagnostics<G: EmissionGuarantee>(
-    err: &mut Diag<'_, G>,
-    sess: &Session,
-    feature: Symbol,
-) {
+pub fn add_feature_diagnostics(err: &mut Diag<'_>, sess: &Session, feature: Symbol) {
     add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language, false, None);
 }
 
@@ -109,8 +104,8 @@ pub fn add_feature_diagnostics<G: EmissionGuarantee>(
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer
 /// `add_feature_diagnostics`.
-pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
-    err: &mut Diag<'_, G>,
+pub fn add_feature_diagnostics_for_issue(
+    err: &mut Diag<'_>,
     sess: &Session,
     feature: Symbol,
     issue: GateIssue,
@@ -197,9 +192,9 @@ pub(crate) struct FeatureGateError {
     pub(crate) explain: DiagMessage,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for FeatureGateError {
+impl<'a> Diagnostic<'a> for FeatureGateError {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         Diag::new(dcx, level, self.explain).with_span(self.span).with_code(E0658)
     }
 }
@@ -338,6 +333,24 @@ pub(crate) struct SanitizerCfiGeneralizePointersRequiresCfi;
 pub(crate) struct SanitizerCfiNormalizeIntegersRequiresCfi;
 
 #[derive(Diagnostic)]
+#[diag("`-Zsanitizer-cfi-recover` requires `-Zsanitizer=cfi`")]
+pub(crate) struct SanitizerCfiRecoverRequiresCfi;
+
+#[derive(Diagnostic)]
+#[diag("`-Zsanitizer-cfi-diag` requires `-Zsanitizer=cfi`")]
+pub(crate) struct SanitizerCfiDiagRequiresCfi;
+
+#[derive(Diagnostic)]
+#[diag("`-Zsanitizer-cfi-minimal-runtime` requires `-Zsanitizer=cfi`")]
+pub(crate) struct SanitizerCfiMinimalRuntimeRequiresCfi;
+
+#[derive(Diagnostic)]
+#[diag(
+    "`-Zsanitizer-cfi-minimal-runtime` requires `-Zsanitizer-cfi-recover` or `-Zsanitizer-cfi-diag`"
+)]
+pub(crate) struct SanitizerCfiMinimalRuntimeRequiresCfiRecoverOrDiag;
+
+#[derive(Diagnostic)]
 #[diag("`-Zsanitizer-kcfi-arity` requires `-Zsanitizer=kcfi`")]
 pub(crate) struct SanitizerKcfiArityRequiresKcfi;
 
@@ -449,24 +462,6 @@ pub(crate) struct InvalidCharacterInCrateName {
 #[help("you might have meant to use `--crate-name={$suggested_name}`")]
 pub(crate) struct InvalidCharacterInCrateNameSuggestion {
     pub(crate) suggested_name: String,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    "parentheses are required to parse this as an expression",
-    applicability = "machine-applicable"
-)]
-pub struct ExprParenthesesNeeded {
-    #[suggestion_part(code = "(")]
-    left: Span,
-    #[suggestion_part(code = ")")]
-    right: Span,
-}
-
-impl ExprParenthesesNeeded {
-    pub fn surrounding(s: Span) -> Self {
-        ExprParenthesesNeeded { left: s.shrink_to_lo(), right: s.shrink_to_hi() }
-    }
 }
 
 #[derive(Diagnostic)]
@@ -593,7 +588,7 @@ pub fn report_lit_error(
     lit: token::Lit,
     span: Span,
 ) -> ErrorGuaranteed {
-    create_lit_error(psess, err, lit, span).emit()
+    create_lit_error(psess, err, lit, span).emit_err()
 }
 
 pub fn create_lit_error(psess: &ParseSess, err: LitError, lit: token::Lit, span: Span) -> Diag<'_> {
@@ -738,4 +733,12 @@ pub(crate) struct UnsupportedPackedStack;
 pub(crate) struct NativeTargetCpuNotAllowed<'a> {
     pub(crate) target_triple: &'a TargetTuple,
     pub(crate) need_explicit_cpu: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag("cannot resolve relative path in non-file source `{$path}`")]
+pub(crate) struct ResolveRelativePath {
+    #[primary_span]
+    pub span: Span,
+    pub path: String,
 }

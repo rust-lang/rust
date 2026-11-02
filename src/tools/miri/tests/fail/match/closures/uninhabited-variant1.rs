@@ -1,6 +1,5 @@
 // Motivated by rust-lang/rust#138961, this shows how invalid discriminants interact with
 // closure captures.
-#![feature(never_type)]
 
 #[repr(C)]
 #[allow(dead_code)]

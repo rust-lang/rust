@@ -54,12 +54,7 @@ fn fixes<'db>(ctx: &DiagnosticsContext<'_, 'db>, d: &hir::TypedHole<'db>) -> Opt
         sema: &ctx.sema,
         scope: &scope,
         goal: d.expected.clone(),
-        config: TermSearchConfig {
-            fuel: ctx.config.term_search_fuel,
-            enable_borrowcheck: ctx.config.term_search_borrowck,
-
-            ..Default::default()
-        },
+        config: TermSearchConfig { fuel: ctx.config.term_search_fuel, ..Default::default() },
     };
     let paths = term_search(&term_search_ctx);
 
@@ -468,6 +463,20 @@ fn main() {
     unsafe {
         m!(generic::<i32>);
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn term_search_lookup_const() {
+        check_diagnostics(
+            r#"
+struct S { f: i32 }
+const C: i32 = 0;
+fn main() {
+    let _: S = _;
+             //^ 💡 error: invalid `_` expression, expected type `S`
 }
 "#,
         );

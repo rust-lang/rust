@@ -3,6 +3,7 @@
 //! out with ambiguity.
 
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 struct Bar<T>(T);

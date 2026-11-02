@@ -5,24 +5,25 @@ use std::path::{Path, PathBuf};
 use std::{env, iter, mem, str};
 
 use find_msvc_tools;
-use rustc_hir::attrs::WindowsSubsystemKind;
+use rustc_attr_ir::WindowsSubsystemKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_metadata::{
-    find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
-};
-use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
     self, ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
 use rustc_middle::ty::{SymbolName, TyCtxt};
 use rustc_session::Session;
-use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
+use rustc_session::config::{self, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
+use rustc_span::bug;
+use rustc_structures::CrateType;
 use rustc_target::spec::{Arch, Cc, CfgAbi, LinkOutputKind, LinkerFlavor, Lld, Os};
 use tracing::{debug, warn};
 
 use super::command::Command;
 use super::symbol_export;
+use crate::back::link::{
+    find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
+};
 use crate::back::symbol_export::allocator_shim_symbols;
 use crate::base::needs_allocator_shim_for_linking;
 use crate::{SymbolExport, diagnostics};
@@ -137,9 +138,6 @@ pub(crate) fn get_linker<'a>(
     // to the linker args construction.
     assert!(cmd.get_args().is_empty() || sess.target.cfg_abi == CfgAbi::Uwp);
     match flavor {
-        LinkerFlavor::Unix(Cc::No) if sess.target.os == Os::L4Re => {
-            Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>
-        }
         LinkerFlavor::Unix(Cc::No) if sess.target.os == Os::Aix => {
             Box::new(AixLinker::new(cmd, sess)) as Box<dyn Linker>
         }
@@ -279,7 +277,6 @@ generate_arg_methods! {
     MsvcLinker<'_>
     EmLinker<'_>
     WasmLd<'_>
-    L4Bender<'_>
     AixLinker<'_>
     LlbcLinker<'_>
     BpfLinker<'_>
@@ -417,7 +414,7 @@ impl<'a> GccLinker<'a> {
             config::OptLevel::Aggressive => "O3",
         };
 
-        if let Some(path) = &self.sess.opts.unstable_opts.profile_sample_use {
+        if let Some(path) = &self.sess.opts.cg.profile_sample_use {
             self.link_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
         };
         let prefix = if self.codegen_backend == "gcc" {
@@ -536,7 +533,8 @@ impl<'a> Linker for GccLinker<'a> {
             LinkOutputKind::StaticNoPicExe => {
                 // `-static` works for both gcc wrapper and ld.
                 self.link_or_cc_arg("-static");
-                if !self.is_ld && self.is_gnu {
+                // noop on windows w/ gcc, warning w/ clang
+                if !self.is_ld && self.is_gnu && !self.sess.target.is_like_windows {
                     self.cc_arg("-no-pie");
                 }
             }
@@ -902,7 +900,14 @@ impl<'a> Linker for GccLinker<'a> {
     fn linker_plugin_lto(&mut self) {
         match self.sess.opts.cg.linker_plugin_lto {
             LinkerPluginLto::Disabled => {
-                // Nothing to do
+                // GCC, when used as a linker, will perform LTO even without -flto when it sees
+                // object files with the GCC IR (which can happen when using rustc_codegen_gcc).
+                // Since the std is compiled with -Cembed-bitcode=yes, any program using the std
+                // will have the linker do LTO.
+                // So, we disable this with -fno-lto when linker plugin LTO is not requested.
+                if self.is_cc() && self.codegen_backend == "gcc" {
+                    self.cc_arg("-fno-lto");
+                }
             }
             LinkerPluginLto::LinkerPluginAuto => {
                 self.push_linker_plugin_lto_args(None);
@@ -1465,128 +1470,6 @@ impl<'a> WasmLd<'a> {
             config::OptLevel::Size | config::OptLevel::SizeMin => "O2",
         };
         self.link_arg(&format!("--lto-{opt_level}"));
-    }
-}
-
-/// Linker shepherd script for L4Re (Fiasco)
-struct L4Bender<'a> {
-    cmd: Command,
-    sess: &'a Session,
-    hinted_static: bool,
-}
-
-impl<'a> Linker for L4Bender<'a> {
-    fn cmd(&mut self) -> &mut Command {
-        &mut self.cmd
-    }
-
-    fn set_output_kind(
-        &mut self,
-        _output_kind: LinkOutputKind,
-        _crate_type: CrateType,
-        _out_filename: &Path,
-    ) {
-    }
-
-    fn link_staticlib_by_name(&mut self, name: &str, _verbatim: bool, whole_archive: bool) {
-        self.hint_static();
-        if !whole_archive {
-            self.link_arg(format!("-PC{name}"));
-        } else {
-            self.link_arg("--whole-archive")
-                .link_or_cc_arg(format!("-l{name}"))
-                .link_arg("--no-whole-archive");
-        }
-    }
-
-    fn link_staticlib_by_path(&mut self, path: &Path, whole_archive: bool) {
-        self.hint_static();
-        if !whole_archive {
-            self.link_or_cc_arg(path);
-        } else {
-            self.link_arg("--whole-archive").link_or_cc_arg(path).link_arg("--no-whole-archive");
-        }
-    }
-
-    fn full_relro(&mut self) {
-        self.link_args(&["-z", "relro", "-z", "now"]);
-    }
-
-    fn partial_relro(&mut self) {
-        self.link_args(&["-z", "relro"]);
-    }
-
-    fn no_relro(&mut self) {
-        self.link_args(&["-z", "norelro"]);
-    }
-
-    fn gc_sections(&mut self, keep_metadata: bool) {
-        if !keep_metadata {
-            self.link_arg("--gc-sections");
-        }
-    }
-
-    fn optimize(&mut self) {
-        // GNU-style linkers support optimization with -O. GNU ld doesn't
-        // need a numeric argument, but other linkers do.
-        if self.sess.opts.optimize == config::OptLevel::More
-            || self.sess.opts.optimize == config::OptLevel::Aggressive
-        {
-            self.link_arg("-O1");
-        }
-    }
-
-    fn pgo_gen(&mut self) {}
-
-    fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
-        match strip {
-            Strip::None => {}
-            Strip::Debuginfo => {
-                self.link_arg("--strip-debug");
-            }
-            Strip::Symbols => {
-                self.link_arg("--strip-all");
-            }
-        }
-    }
-
-    fn no_default_libraries(&mut self) {
-        self.cc_arg("-nostdlib");
-    }
-
-    fn export_symbols(&mut self, _: &Path, _: CrateType, _: &[SymbolExport]) {
-        // ToDo, not implemented, copy from GCC
-        self.sess.dcx().emit_warn(diagnostics::L4BenderExportingSymbolsUnimplemented);
-    }
-
-    fn windows_subsystem(&mut self, subsystem: WindowsSubsystemKind) {
-        let subsystem = subsystem.as_str();
-        self.link_arg(&format!("--subsystem {subsystem}"));
-    }
-
-    fn reset_per_library_state(&mut self) {
-        self.hint_static(); // Reset to default before returning the composed command line.
-    }
-
-    fn linker_plugin_lto(&mut self) {}
-
-    fn control_flow_guard(&mut self) {}
-
-    fn ehcont_guard(&mut self) {}
-
-    fn no_crt_objects(&mut self) {}
-}
-
-impl<'a> L4Bender<'a> {
-    fn new(cmd: Command, sess: &'a Session) -> L4Bender<'a> {
-        L4Bender { cmd, sess, hinted_static: false }
-    }
-
-    fn hint_static(&mut self) {
-        if !self.hinted_static {
-            self.link_or_cc_arg("-static");
-            self.hinted_static = true;
-        }
     }
 }
 

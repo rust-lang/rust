@@ -18,3 +18,4 @@ fn main() {
 }
 
 //~? ERROR are too big for the target architecture
+//~? ERROR are too big for the target architecture

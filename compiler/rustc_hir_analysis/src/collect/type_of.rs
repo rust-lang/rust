@@ -1,18 +1,19 @@
 use core::ops::ControlFlow;
 
+use rustc_attr_ir::find_attr;
 use rustc_errors::{Applicability, StashKey, Suggestions};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg, HirId};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_types_for_suggestion};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefiningScopeKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Ident, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, bug, span_bug};
 use tracing::instrument;
 
 use super::{HirPlaceholderCollector, ItemCtxt, bad_placeholder};
 use crate::check::wfcheck::check_static_item;
+use crate::diagnostics::ParamInTyOfConstParam;
 use crate::hir_ty_lowering::HirTyLowerer;
 
 mod opaque;
@@ -59,24 +60,51 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         None => {}
     }
 
-    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+    let new_bound_fn_def = |hir: HirId, did| {
+        let args = ty::GenericArgs::identity_for_item(tcx, def_id);
+        Ty::new_fn_def(
+            tcx,
+            did,
+            match &tcx
+                .late_bound_vars_map(hir.owner)
+                .get(&hir.local_id)
+                .cloned()
+                .map(|x| tcx.mk_bound_variable_kinds(&x))
+            {
+                Some(late_bound) => ty::Binder::bind_with_vars(args, late_bound),
+                None => ty::Binder::dummy(args),
+            },
+        )
+    };
 
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+    let hir_node = tcx.hir_node(hir_id);
+    let def_id = match hir_node {
+        // For generic params, we lower in the context of the overarching item to be able to resolve
+        // type-relative paths in type param defaults & const param types.
+        // FIXME: Remove this special case again & simply set the `Generics.parent` for generic
+        //        params in `generics_of` similar to struct fields. However, that's blocked on the
+        //        removal of GCE in favor of mGCA. Doing this change now would introduce tons of
+        //        query cycles for GCE.
+        Node::GenericParam(_) => tcx.local_parent(def_id),
+        _ => def_id,
+    };
     let icx = ItemCtxt::new(tcx, def_id);
 
-    let output = match tcx.hir_node(hir_id) {
+    let output = match hir_node {
         Node::TraitItem(item) => match item.kind {
-            TraitItemKind::Fn(..) => {
-                let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                Ty::new_fn_def(tcx, def_id.to_def_id(), ty::Binder::dummy(args))
-            }
+            TraitItemKind::Fn(_, _) => new_bound_fn_def(item.hir_id(), def_id.to_def_id()),
             TraitItemKind::Const(ty, rhs) => rhs
                 .and_then(|rhs| {
                     ty.is_suggestable_infer_ty().then(|| {
+                        let hir_body_id = match rhs {
+                            ConstItemRhs::Body(body) => Some(body.hir_id),
+                            ConstItemRhs::Direct(_) => None,
+                        };
                         infer_placeholder_type(
                             icx.lowerer(),
                             def_id,
-                            rhs.hir_id(),
+                            hir_body_id,
                             ty.span,
                             rhs.span(tcx),
                             item.ident,
@@ -87,22 +115,22 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 .unwrap_or_else(|| icx.lower_ty(ty)),
             TraitItemKind::Type(_, Some(ty)) => icx.lower_ty(ty),
             TraitItemKind::Type(_, None) => {
-                span_bug!(item.span, "associated type missing default");
+                span_bug!(item.span, "type_of: associated type missing default");
             }
         },
 
         Node::ImplItem(item) => match item.kind {
-            ImplItemKind::Fn(..) => {
-                let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                Ty::new_fn_def(tcx, def_id.to_def_id(), ty::Binder::dummy(args))
-            }
+            ImplItemKind::Fn(_, _) => new_bound_fn_def(item.hir_id(), def_id.to_def_id()),
             ImplItemKind::Const(ty, rhs) => {
                 if ty.is_suggestable_infer_ty() {
+                    let hir_body_id = match rhs {
+                        ConstItemRhs::Body(body) => Some(body.hir_id),
+                        ConstItemRhs::Direct(_) => None,
+                    };
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        rhs.hir_id(),
+                        hir_body_id,
                         ty.span,
                         rhs.span(tcx),
                         item.ident,
@@ -127,7 +155,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        body_id.hir_id,
+                        Some(body_id.hir_id),
                         ty.span,
                         tcx.hir_body(body_id).value.span,
                         ident,
@@ -147,10 +175,14 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             }
             ItemKind::Const(ident, _, ty, rhs) => {
                 if ty.is_suggestable_infer_ty() {
+                    let hir_body_id = match rhs {
+                        ConstItemRhs::Body(body) => Some(body.hir_id),
+                        ConstItemRhs::Direct(_) => None,
+                    };
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        rhs.hir_id(),
+                        hir_body_id,
                         ty.span,
                         rhs.span(tcx),
                         ident,
@@ -171,11 +203,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 }
                 _ => icx.lower_ty(self_ty),
             },
-            ItemKind::Fn { .. } => {
-                let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                Ty::new_fn_def(tcx, def_id.to_def_id(), ty::Binder::dummy(args))
-            }
+            ItemKind::Fn { .. } => new_bound_fn_def(item.hir_id(), def_id.to_def_id()),
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
                 let def = tcx.adt_def(def_id);
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
@@ -188,18 +216,17 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             | ItemKind::Mod(..)
             | ItemKind::ForeignMod { .. }
             | ItemKind::ExternCrate(..)
-            | ItemKind::Use(..) => {
-                span_bug!(item.span, "compute_type_of_item: unexpected item type: {:?}", item.kind);
+            | ItemKind::Use(..)
+            | ItemKind::TestBinderConstraints { .. } => {
+                span_bug!(item.span, "type_of: unexpected item kind: {:?}", item.kind);
             }
         },
 
         Node::OpaqueTy(..) => tcx.type_of_opaque(def_id).instantiate_identity().skip_norm_wip(),
 
         Node::ForeignItem(foreign_item) => match foreign_item.kind {
-            ForeignItemKind::Fn(..) => {
-                let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                Ty::new_fn_def(tcx, def_id.to_def_id(), ty::Binder::dummy(args))
+            ForeignItemKind::Fn(_, _, _generics) => {
+                new_bound_fn_def(foreign_item.hir_id(), def_id.to_def_id())
             }
             ForeignItemKind::Static(ty, _, _) => {
                 let ty = icx.lower_ty(ty);
@@ -219,11 +246,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             VariantData::Unit(..) | VariantData::Struct { .. } => {
                 tcx.type_of(tcx.hir_get_parent_item(hir_id)).instantiate_identity().skip_norm_wip()
             }
-            VariantData::Tuple(_, _, ctor) => {
-                let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                Ty::new_fn_def(tcx, ctor.to_def_id(), ty::Binder::dummy(args))
-            }
+            VariantData::Tuple(_, hir_id, ctor) => new_bound_fn_def(*hir_id, ctor.to_def_id()),
         },
 
         Node::Field(field) => icx.lower_ty(field.ty),
@@ -240,14 +263,21 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         }
 
         Node::GenericParam(param) => match &param.kind {
-            GenericParamKind::Type { default: Some(ty), .. }
-            | GenericParamKind::Const { ty, .. } => icx.lower_ty(ty),
-            x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
+            GenericParamKind::Type { default: Some(ty), .. } => icx.lower_ty(ty),
+            GenericParamKind::Const { ty, .. } => {
+                let lowered_ty = icx.lower_ty(ty);
+                if !tcx.features().generic_const_parameter_types() && lowered_ty.has_param() {
+                    let guar =
+                        tcx.dcx().emit_err(ParamInTyOfConstParam { span: ty.span, ty: lowered_ty });
+                    Ty::new_error(tcx, guar)
+                } else {
+                    lowered_ty
+                }
+            }
+            _ => bug!("type_of: unexpected node kind {hir_node:?}"),
         },
 
-        x => {
-            bug!("unexpected sort of node in type_of(): {:?}", x);
-        }
+        node => bug!("type_of: unexpected node kind: {node:?}"),
     };
     if let Err(e) = icx.check_tainted_by_errors()
         && !output.references_error()
@@ -419,28 +449,28 @@ fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: S
 fn infer_placeholder_type<'tcx>(
     cx: &dyn HirTyLowerer<'tcx>,
     def_id: LocalDefId,
-    hir_id: HirId,
+    hir_body_id: Option<HirId>,
     ty_span: Span,
     body_span: Span,
     item_ident: Ident,
     kind: &'static str,
 ) -> Ty<'tcx> {
     let tcx = cx.tcx();
-    // If the type is omitted on a `type const` we can't run
-    // type check on since that requires the const have a body
-    // which `type const`s don't.
-    let ty = if tcx.is_type_const(def_id.to_def_id()) {
-        if let Some(trait_item_def_id) = tcx.trait_item_of(def_id.to_def_id()) {
-            tcx.type_of(trait_item_def_id).instantiate_identity().skip_norm_wip()
-        } else {
-            Ty::new_error_with_message(
-                tcx,
-                ty_span,
-                "constant with `type const` requires an explicit type",
-            )
+    // If the type is omitted on const with `ConstItemRhs::Direct`, we can't run type check on it,
+    // since that requires the const have a body, i.e. `ConstItemRhs::Body`.
+    let ty = match hir_body_id {
+        Some(hir_id) => tcx.typeck(def_id).node_type(hir_id),
+        None => {
+            if let Some(trait_item_def_id) = tcx.trait_item_of(def_id.to_def_id()) {
+                tcx.type_of(trait_item_def_id).instantiate_identity().skip_norm_wip()
+            } else {
+                Ty::new_error_with_message(
+                    tcx,
+                    ty_span,
+                    "directly represented const requires an explicit type",
+                )
+            }
         }
-    } else {
-        tcx.typeck(def_id).node_type(hir_id)
     };
 
     // If this came from a free `const` or `static mut?` item,
@@ -520,7 +550,7 @@ fn infer_placeholder_type<'tcx>(
                 }
             }
 
-            diag.emit()
+            diag.emit_err()
         });
     Ty::new_error(tcx, guar)
 }
@@ -541,9 +571,18 @@ fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
 
 pub(crate) fn type_alias_is_checked<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
     use hir::intravisit::Visitor;
+
+    // FIXME(checked_type_aliases, type_alias_impl_trait):
+    //     Should `#[rustc_unchecked_type_alias] type Tait = impl Trait;`
+    //     actually be legal or is it beyond borked?
+    if find_attr!(tcx, def_id, UncheckedTypeAlias) {
+        return false;
+    }
+
     if tcx.features().checked_type_aliases() {
         return true;
     }
+
     struct HasTait;
     impl<'tcx> Visitor<'tcx> for HasTait {
         type Result = ControlFlow<()>;
@@ -555,5 +594,7 @@ pub(crate) fn type_alias_is_checked<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId)
             }
         }
     }
-    HasTait.visit_ty_unambig(tcx.hir_expect_item(def_id).expect_ty_alias().2).is_break()
+
+    let (_ident, _generics, ty) = tcx.hir_expect_item(def_id).expect_ty_alias();
+    HasTait.visit_ty_unambig(ty).is_break()
 }

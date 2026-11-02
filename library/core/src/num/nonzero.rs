@@ -1,6 +1,6 @@
 //! Definitions of integer that is known not to equal zero.
 
-use super::{IntErrorKind, ParseIntError};
+use super::{IntErrorKind, ParseIntError, TryFromIntError};
 use crate::clone::{TrivialClone, UseCloned};
 use crate::cmp::Ordering;
 use crate::hash::{Hash, Hasher};
@@ -9,7 +9,7 @@ use crate::num::imp;
 use crate::ops::{BitOr, BitOrAssign, Div, DivAssign, Neg, Rem, RemAssign};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::str::FromStr;
-use crate::{fmt, intrinsics, ptr, ub_checks};
+use crate::{fmt, intrinsics, ptr, slice, ub_checks};
 
 /// A marker trait for primitive types which can be zero.
 ///
@@ -73,7 +73,7 @@ impl_zeroable_primitive!(
 /// For example, `Option<NonZero<u32>>` is the same size as `u32`:
 ///
 /// ```
-/// use core::{num::NonZero};
+/// use core::num::NonZero;
 ///
 /// assert_eq!(size_of::<Option<NonZero<u32>>>(), size_of::<u32>());
 /// ```
@@ -305,6 +305,114 @@ where
     }
 }
 
+#[stable(feature = "more_from_nonzero", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T> From<&'a NonZero<T>> for &'a T
+where
+    T: ZeroablePrimitive,
+{
+    #[inline]
+    fn from(nonzero: &'a NonZero<T>) -> &'a T {
+        nonzero.as_ref()
+    }
+}
+
+// FIXME: see library/std/tests/slice-from-array-issue-113238.rs
+/*
+#[stable(feature = "more_from_nonzero", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T> From<&'a [NonZero<T>]> for &'a [T]
+where
+    T: ZeroablePrimitive,
+{
+    #[inline]
+    fn from(nonzero: &'a [NonZero<T>]) -> &'a [T] {
+        nonzero.as_zeroable()
+    }
+}
+impl<T> [NonZero<T>]
+where
+    T: ZeroablePrimitive,
+{
+    /// Implementation of `From<&[NonZero<T>]> for &[T]`.
+    #[must_use]
+    #[inline]
+    fn as_zeroable(&self) -> &[T] {
+        // SAFETY: `repr(transparent)` ensures that `NonZero<T>` has same layout as `T`, and thus
+        //   `[NonZero<T>]` has same layout as `[T]`
+        unsafe { &*(slice::from_raw_parts(self.as_ptr().cast::<T>(), self.len())) }
+    }
+}
+*/
+
+#[stable(feature = "more_from_nonzero", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> From<[NonZero<T>; N]> for [T; N]
+where
+    T: ZeroablePrimitive,
+{
+    #[inline]
+    fn from(nonzero: [NonZero<T>; N]) -> [T; N] {
+        nonzero.into_zeroable()
+    }
+}
+
+// FIXME: can't detect that ZeroablePrimitive is a sealed trait
+macro_rules! impl_ref_try_from {
+    ($($t:ty),* $(,)?) => {
+        $(
+            #[stable(feature = "more_from_nonzero", since = "CURRENT_RUSTC_VERSION")]
+            impl<'a> TryFrom<&'a $t> for &'a NonZero<$t> {
+                type Error = TryFromIntError;
+
+                #[inline]
+                fn try_from(zeroable: &'a $t) -> Result<&'a NonZero<$t>, TryFromIntError> {
+                    NonZero::from_ref(zeroable).ok_or(TryFromIntError(IntErrorKind::Zero))
+                }
+            }
+        )*
+    }
+}
+
+impl_ref_try_from! {
+    u8,
+    u16,
+    u32,
+    u64,
+    u128,
+    usize,
+    i8,
+    i16,
+    i32,
+    i64,
+    i128,
+    isize,
+    char,
+}
+
+#[stable(feature = "more_from_nonzero", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T> TryFrom<&'a [T]> for &'a [NonZero<T>]
+where
+    T: ZeroablePrimitive,
+{
+    type Error = TryFromIntError;
+
+    #[inline]
+    fn try_from(zeroable: &'a [T]) -> Result<&'a [NonZero<T>], TryFromIntError> {
+        NonZero::from_slice(zeroable).ok_or(TryFromIntError(IntErrorKind::Zero))
+    }
+}
+
+#[stable(feature = "more_from_nonzero", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> TryFrom<[T; N]> for [NonZero<T>; N]
+where
+    T: ZeroablePrimitive,
+{
+    type Error = TryFromIntError;
+
+    #[inline]
+    fn try_from(zeroable: [T; N]) -> Result<[NonZero<T>; N], TryFromIntError> {
+        NonZero::from_array(zeroable).ok_or(TryFromIntError(IntErrorKind::Zero))
+    }
+}
+
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
 const impl<T> BitOr for NonZero<T>
@@ -460,6 +568,45 @@ where
         }
     }
 
+    /// Implementation of `From<&NonZero<T>> for &T`.
+    #[must_use]
+    #[inline]
+    fn as_ref(&self) -> &T {
+        // SAFETY: `repr(transparent)` ensures that `NonZero<T>` has same layout as `T`
+        unsafe { &*(ptr::from_ref(self).cast::<T>()) }
+    }
+
+    /// Implementation of `TryFrom<&T> for &NonZero<T>`.
+    #[must_use]
+    #[inline]
+    fn from_ref(n: &T) -> Option<&Self> {
+        // SAFETY: Memory layout optimization guarantees that `Option<NonZero<T>>` has
+        //         the same layout and size as `T`, with `0` representing `None`.
+        let opt_n = unsafe { &*(ptr::from_ref(n).cast::<Option<Self>>()) };
+
+        opt_n.as_ref()
+    }
+
+    /// Implementation of `TryFrom<&[T]> for &[NonZero<T>]`.
+    #[must_use]
+    #[inline]
+    fn from_slice(n: &[T]) -> Option<&[Self]> {
+        if n.iter().all(|x| NonZero::new(*x).is_some()) {
+            // SAFETY: We explicitly checked that all elements are nonzero, and because of `repr(transparent)`
+            //   the layout remains unchanged
+            Some(unsafe { slice::from_raw_parts(n.as_ptr().cast::<NonZero<T>>(), n.len()) })
+        } else {
+            None
+        }
+    }
+
+    /// Implementation of `TryFrom<[T; N]> for [NonZero<T>; N]`.
+    #[must_use]
+    #[inline]
+    fn from_array<const N: usize>(n: [T; N]) -> Option<[Self; N]> {
+        n.try_map(NonZero::new)
+    }
+
     /// Returns the contained value as a primitive type.
     #[stable(feature = "nonzero", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
@@ -484,6 +631,18 @@ where
         // SAFETY: `ZeroablePrimitive` guarantees that the size and bit validity
         // of `.0` is such that this transmute is sound.
         unsafe { intrinsics::transmute_unchecked(self) }
+    }
+}
+
+impl<T, const N: usize> [NonZero<T>; N]
+where
+    T: ZeroablePrimitive,
+{
+    /// Implementation of `From<[NonZero<T>; N]> for [T; N]`.
+    #[must_use]
+    #[inline]
+    fn into_zeroable(self) -> [T; N] {
+        self.map(NonZero::get)
     }
 }
 
@@ -1072,6 +1231,66 @@ macro_rules! nonzero_integer {
                 }
             }
 
+            /// Multiplies two non-zero integers together, panicking if
+            /// overflow occurs.
+            ///
+            /// # Panics
+            ///
+            /// ## Overflow behavior
+            ///
+            /// This function always panics on overflow, regardless of whether
+            /// overflow checks are enabled.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// #![feature(nonzero_strict_ops)]
+            ///
+            /// # use std::num::NonZero;
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let three = NonZero::new(3", stringify!($Int), ")?;")]
+            #[doc = concat!("let nine = NonZero::new(9", stringify!($Int), ")?;")]
+            ///
+            /// assert_eq!(nine, three.strict_mul(three));
+            /// # Some(())
+            /// # }
+            /// ```
+            ///
+            /// The following panics because of overflow:
+            ///
+            /// ```should_panic
+            /// #![feature(nonzero_strict_ops)]
+            ///
+            /// # use std::num::NonZero;
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let two = NonZero::new(2", stringify!($Int), ")?;")]
+            #[doc = concat!("let max = NonZero::new(", stringify!($Int), "::MAX)?;")]
+            ///
+            /// let _ = max.strict_mul(two);
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "nonzero_strict_ops", issue = "164850")]
+            #[rustc_const_unstable(feature = "const_nonzero_strict_ops", issue = "164850")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            #[track_caller]
+            pub const fn strict_mul(self, other: Self) -> Self {
+                // SAFETY:
+                // - `$Int::strict_mul` panics on overflow;
+                // - `self` and `other` are nonzero;
+                // - the only way to get zero from a multiplication without
+                //   overflow is for either operand to be zero.
+                //
+                // So the result cannot be zero.
+                unsafe { Self::new_unchecked(self.get().strict_mul(other.get())) }
+            }
+
             /// Multiplies two non-zero integers together.
             #[doc = concat!("Return [`NonZero::<", stringify!($Int), ">::MAX`] on overflow.")]
             ///
@@ -1115,17 +1334,8 @@ macro_rules! nonzero_integer {
             ///
             /// # Safety
             ///
-            /// This results in undefined behavior when
-            #[doc = sign_dependent_expr!{
-                $signedness ?
-                if signed {
-                    concat!("`self * rhs > ", stringify!($Int), "::MAX`, ",
-                            "or `self * rhs < ", stringify!($Int), "::MIN`.")
-                }
-                if unsigned {
-                    concat!("`self * rhs > ", stringify!($Int), "::MAX`.")
-                }
-            }]
+            /// This results in undefined behavior when overflow occurs, i.e.
+            /// when [`checked_mul`] would return `None`.
             ///
             /// # Examples
             ///
@@ -1143,6 +1353,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
+            ///
+            /// [`checked_mul`]: Self::checked_mul
             #[unstable(feature = "nonzero_ops", issue = "84186")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
@@ -1190,6 +1402,65 @@ macro_rules! nonzero_integer {
                 } else {
                     None
                 }
+            }
+
+            /// Raises a non-zero value to an integer power, panicking if
+            /// overflow occurs.
+            ///
+            /// # Panics
+            ///
+            /// ## Overflow behavior
+            ///
+            /// This function always panics on overflow, regardless of whether
+            /// overflow checks are enabled.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// #![feature(nonzero_strict_ops)]
+            ///
+            /// # use std::num::NonZero;
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let two = NonZero::new(2", stringify!($Int), ")?;")]
+            #[doc = concat!("let sixteen = NonZero::new(16", stringify!($Int), ")?;")]
+            ///
+            /// assert_eq!(sixteen, two.strict_pow(4));
+            /// # Some(())
+            /// # }
+            /// ```
+            ///
+            /// The following panics because of overflow:
+            ///
+            /// ```should_panic
+            /// #![feature(nonzero_strict_ops)]
+            ///
+            /// # use std::num::NonZero;
+            /// #
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let half_max = NonZero::new(", stringify!($Int), "::MAX / 2)?;")]
+            ///
+            /// let _ = half_max.strict_pow(2);
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "nonzero_strict_ops", issue = "164850")]
+            #[rustc_const_unstable(feature = "const_nonzero_strict_ops", issue = "164850")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            #[track_caller]
+            pub const fn strict_pow(self, exp: u32) -> Self {
+                // SAFETY:
+                // - `$Int::strict_pow` panics on overflow;
+                // - `self` is nonzero;
+                // - the only way to get zero from an exponentiation without
+                //   overflow is for the base to be zero.
+                //
+                // So the result cannot be zero.
+                unsafe { Self::new_unchecked(self.get().strict_pow(exp)) }
             }
 
             /// Raise non-zero value to an integer power.
@@ -1347,10 +1618,12 @@ macro_rules! nonzero_integer {
 
             #[inline]
             const fn from_ascii_bytes_radix_impl(src: &[u8], radix: u32) -> Result<Self, ParseIntError> {
+                // FIXME(const-hack): This should use `?` again, once it's `const`
                 let n = match <$Int>::from_ascii_bytes_radix_impl(src, radix) {
                     Ok(n) => n,
                     Err(err) => return Err(err),
                 };
+                // FIXME(const-hack): This should use `Option::ok_or` again, once it's `const`
                 if let Some(n) = Self::new(n) {
                     Ok(n)
                 } else {
@@ -1412,8 +1685,44 @@ macro_rules! nonzero_integer {
         }
 
         #[stable(feature = "nonzero_parse", since = "1.35.0")]
-        impl FromStr for NonZero<$Int> {
+        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        const impl FromStr for NonZero<$Int> {
             type Err = ParseIntError;
+
+            /// Parses a non-zero integer from a string slice with decimal digits.
+            ///
+            /// The characters are expected to be an optional
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    " `+` or `-` "
+                }
+                if unsigned {
+                    " `+` "
+                }
+            }]
+            /// sign followed by only digits. Leading and trailing non-digit characters (including
+            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
+            /// also represent an error.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use std::num::NonZero;
+            /// use std::str::FromStr;
+            ///
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::from_str(\"+10\"), Ok(NonZero::new(10).unwrap()));")]
+            /// ```
+            ///
+            /// Trailing space returns error:
+            ///
+            /// ```
+            /// use std::num::NonZero;
+            /// use std::str::FromStr;
+            ///
+            #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_str(\"1 \").is_err());")]
+            /// ```
+            #[inline]
             fn from_str(src: &str) -> Result<Self, Self::Err> {
                 Self::from_str_radix(src, 10)
             }
@@ -1537,35 +1846,6 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
                 *self = *self % other;
             }
         }
-
-        impl NonZero<$Int> {
-            /// Calculates the quotient of `self` and `rhs`, rounding the result towards positive infinity.
-            ///
-            /// The result is guaranteed to be non-zero.
-            ///
-            /// # Examples
-            ///
-            /// ```
-            /// # use std::num::NonZero;
-            #[doc = concat!("let one = NonZero::new(1", stringify!($Int), ").unwrap();")]
-            #[doc = concat!("let max = NonZero::new(", stringify!($Int), "::MAX).unwrap();")]
-            /// assert_eq!(one.div_ceil(max), one);
-            ///
-            #[doc = concat!("let two = NonZero::new(2", stringify!($Int), ").unwrap();")]
-            #[doc = concat!("let three = NonZero::new(3", stringify!($Int), ").unwrap();")]
-            /// assert_eq!(three.div_ceil(two), two);
-            /// ```
-            #[stable(feature = "unsigned_nonzero_div_ceil", since = "1.92.0")]
-            #[rustc_const_stable(feature = "unsigned_nonzero_div_ceil", since = "1.92.0")]
-            #[must_use = "this returns the result of the operation, \
-                          without modifying the original"]
-            #[inline]
-            pub const fn div_ceil(self, rhs: Self) -> Self {
-                let v = self.get().div_ceil(rhs.get());
-                // SAFETY: ceiled division of two positive integers can never be zero.
-                unsafe { Self::new_unchecked(v) }
-            }
-        }
     };
     // Impls for signed nonzero types only.
     (signed $Int:ty) => {
@@ -1663,6 +1943,65 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             }
         }
 
+        /// Adds an unsigned integer to a non-zero value, panicking
+        /// if overflow occurs.
+        ///
+        /// # Panics
+        ///
+        /// ## Overflow behavior
+        ///
+        /// This function always panics on overflow, regardless of whether
+        /// overflow checks are enabled.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(nonzero_strict_ops)]
+        ///
+        /// # use std::num::NonZero;
+        /// #
+        /// # fn main() { test().unwrap(); }
+        /// # fn test() -> Option<()> {
+        #[doc = concat!("let two = NonZero::new(2", stringify!($Int), ")?;")]
+        #[doc = concat!("let three = NonZero::new(3", stringify!($Int), ")?;")]
+        ///
+        /// assert_eq!(three, two.strict_add(1));
+        /// # Some(())
+        /// # }
+        /// ```
+        ///
+        /// The following panics because of overflow:
+        ///
+        /// ```should_panic
+        /// #![feature(nonzero_strict_ops)]
+        ///
+        /// # use std::num::NonZero;
+        /// #
+        /// # fn main() { test().unwrap(); }
+        /// # fn test() -> Option<()> {
+        #[doc = concat!("let max = NonZero::new(", stringify!($Int), "::MAX)?;")]
+        ///
+        /// let _ = max.strict_add(1);
+        /// # Some(())
+        /// # }
+        /// ```
+        #[unstable(feature = "nonzero_strict_ops", issue = "164850")]
+        #[rustc_const_unstable(feature = "const_nonzero_strict_ops", issue = "164850")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[track_caller]
+        pub const fn strict_add(self, other: $Int) -> Self {
+            // SAFETY:
+            // - `$Int::strict_add` panics on overflow;
+            // - `self` is nonzero;
+            // - the only way to get zero from an unsigned addition without
+            //   overflow is for both addends to be zero.
+            //
+            // So the result cannot be zero.
+            unsafe { Self::new_unchecked(self.get().strict_add(other)) }
+        }
+
         /// Adds an unsigned integer to a non-zero value.
         #[doc = concat!("Return [`NonZero::<", stringify!($Int), ">::MAX`] on overflow.")]
         ///
@@ -1705,8 +2044,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self + rhs > ", stringify!($Int), "::MAX`.")]
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_add`] would return `None`.
         ///
         /// # Examples
         ///
@@ -1724,6 +2063,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Some(())
         /// # }
         /// ```
+        ///
+        /// [`checked_add`]: Self::checked_add
         #[unstable(feature = "nonzero_ops", issue = "84186")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
@@ -1731,6 +2072,36 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         pub const unsafe fn unchecked_add(self, other: $Int) -> Self {
             // SAFETY: The caller ensures there is no overflow.
             unsafe { Self::new_unchecked(self.get().unchecked_add(other)) }
+        }
+
+        /// Calculates the quotient of `self` and `rhs`, rounding the result towards positive infinity.
+        ///
+        /// The result is guaranteed to be non-zero.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// # use std::num::NonZero;
+        #[doc = concat!("let one = NonZero::new(1", stringify!($Int), ").unwrap();")]
+        #[doc = concat!("let max = NonZero::new(", stringify!($Int), "::MAX).unwrap();")]
+        /// assert_eq!(one.div_ceil(max), one);
+        ///
+        #[doc = concat!("let two = NonZero::new(2", stringify!($Int), ").unwrap();")]
+        #[doc = concat!("let three = NonZero::new(3", stringify!($Int), ").unwrap();")]
+        /// assert_eq!(three.div_ceil(two), two);
+        /// ```
+        #[stable(feature = "unsigned_nonzero_div_ceil", since = "1.92.0")]
+        #[rustc_const_stable(feature = "unsigned_nonzero_div_ceil", since = "1.92.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn div_ceil(self, rhs: Self) -> Self {
+            // An implementation of the function without calculating the remainder.
+            // It is better than the implementation for normal integers, but it can only
+            // be used here because of the possibility to subtract by one without overflow.
+            let v = (self.get() - 1) / rhs.get() + 1;
+            // SAFETY: ceiled division of two positive integers can never be zero.
+            unsafe { Self::new_unchecked(v) }
         }
 
         /// Returns the smallest power of two greater than or equal to `self`.
@@ -2300,6 +2671,64 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             None
         }
 
+        /// Checked negation. Computes `-self`, panicking if `self == MIN`.
+        ///
+        /// # Panics
+        ///
+        /// ## Overflow behavior
+        ///
+        /// This function always panics on overflow, regardless of whether
+        /// overflow checks are enabled.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(nonzero_strict_ops)]
+        ///
+        /// # use std::num::NonZero;
+        /// #
+        /// # fn main() { test().unwrap(); }
+        /// # fn test() -> Option<()> {
+        #[doc = concat!("let pos_six = NonZero::new(6", stringify!($Int), ")?;")]
+        #[doc = concat!("let neg_six = NonZero::new(-6", stringify!($Int), ")?;")]
+        ///
+        /// assert_eq!(pos_six.strict_neg(), neg_six);
+        /// # Some(())
+        /// # }
+        /// ```
+        ///
+        /// The following panics because of overflow:
+        ///
+        /// ```should_panic
+        /// #![feature(nonzero_strict_ops)]
+        ///
+        /// # use std::num::NonZero;
+        /// #
+        /// # fn main() { test().unwrap(); }
+        /// # fn test() -> Option<()> {
+        #[doc = concat!("let min = NonZero::new(", stringify!($Int), "::MIN)?;")]
+        ///
+        /// let _ = min.strict_neg();
+        /// # Some(())
+        /// # }
+        /// ```
+        #[unstable(feature = "nonzero_strict_ops", issue = "164850")]
+        #[rustc_const_unstable(feature = "const_nonzero_strict_ops", issue = "164850")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[track_caller]
+        pub const fn strict_neg(self) -> Self {
+            // SAFETY:
+            // - `$Int::strict_neg` panics on overflow;
+            // - `self` is nonzero;
+            // - the only way to get zero from a negation without overflow
+            //   is for the input to be zero.
+            //
+            // So the result cannot be zero.
+            unsafe { Self::new_unchecked(self.get().strict_neg()) }
+        }
+
         /// Negates self, overflowing if this is equal to the minimum value.
         ///
         #[doc = concat!("See [`", stringify!($Int), "::overflowing_neg`]")]
@@ -2414,6 +2843,50 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         pub const fn cast_unsigned(self) -> NonZero<$Uint> {
             // SAFETY: `self.get()` can't be zero
             unsafe { NonZero::new_unchecked(self.get().cast_unsigned()) }
+        }
+
+        /// Clamps this number to a symmetric range centred around zero.
+        ///
+        /// The method clamps the number's magnitude (absolute value) to be at most `limit`.
+        ///
+        /// This is functionally equivalent to `self.clamp(-limit, limit)`, but is more
+        /// explicit about the intent.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(clamp_magnitude)]
+        /// # use std::num::NonZero;
+        /// #
+        #[doc = concat!("let limit = NonZero::<", stringify!($Uint), ">::new(100).unwrap();")]
+        ///
+        /// assert_eq!(
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(120).unwrap().clamp_magnitude(limit),")]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(100).unwrap(),")]
+        /// );
+        ///
+        /// assert_eq!(
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(-120).unwrap().clamp_magnitude(limit),")]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(-100).unwrap(),")]
+        /// );
+        ///
+        /// assert_eq!(
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(80).unwrap().clamp_magnitude(limit),")]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(80).unwrap(),")]
+        /// );
+        ///
+        /// assert_eq!(
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(-80).unwrap().clamp_magnitude(limit),")]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(-80).unwrap(),")]
+        /// );
+        /// ```
+        #[inline]
+        #[must_use = "method returns a new number and does not mutate the original value"]
+        #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+        #[unstable(feature = "clamp_magnitude", issue = "148519")]
+        pub const fn clamp_magnitude(self, limit: NonZero<$Uint>) -> Self {
+            // SAFETY: a non-zero value clamped to the magnitude of a non-zero value is still non-zero.
+            unsafe { Self::new_unchecked(self.get().clamp_magnitude(limit.get())) }
         }
 
     };

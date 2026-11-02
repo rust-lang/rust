@@ -30,6 +30,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for GlobalAsmContext<'_, 'tcx> {
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         _line_spans: &[Span],
+        _extra_rust_target_features: &[String],
     ) {
         codegen_global_asm_inner(self.tcx, self.global_asm, template, operands, options);
     }
@@ -199,7 +200,7 @@ impl GlobalAsmConfig {
         GlobalAsmConfig {
             assembler: crate::toolchain::get_toolchain_binary(sess, "as"),
             target: match &sess.opts.target_triple {
-                rustc_target::spec::TargetTuple::TargetTuple(triple) => triple.clone(),
+                rustc_target::spec::TargetTuple::TargetTuple(tuple) => tuple.clone(),
                 rustc_target::spec::TargetTuple::TargetJson { path_for_rustdoc, .. } => {
                     path_for_rustdoc.to_str().unwrap().to_owned()
                 }

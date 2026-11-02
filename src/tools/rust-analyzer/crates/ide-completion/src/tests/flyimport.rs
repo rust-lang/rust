@@ -179,10 +179,10 @@ fn main() {
 }
 "#,
         expect![[r#"
-            ct RC (use dep::RC)                    ()
+            ct RC  = () (use dep::RC)              ()
             st Rc (use dep::Rc)                    Rc
             st Rcar (use dep::Rcar)              Rcar
-            ct RC (use dep::some_module::RC)       ()
+            ct RC  = () (use dep::some_module::RC) ()
             st Rc (use dep::some_module::Rc)       Rc
             st Rcar (use dep::some_module::Rcar) Rcar
         "#]],
@@ -207,8 +207,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-            ct RC (use dep::RC)              ()
-            ct RC (use dep::some_module::RC) ()
+            ct RC  = () (use dep::RC)              ()
+            ct RC  = () (use dep::some_module::RC) ()
         "#]],
     );
 }
@@ -1004,7 +1004,7 @@ fn main() {
     check(
         fixture,
         expect![[r#"
-            ct TEST_ASSOC (use foo::Item) usize
+            ct TEST_ASSOC  = 3 (use foo::Item) usize
         "#]],
     );
 
@@ -1048,7 +1048,7 @@ fn main() {
     check(
         fixture,
         expect![[r#"
-            ct TEST_ASSOC (use foo::bar) usize
+            ct TEST_ASSOC  = 3 (use foo::bar) usize
         "#]],
     );
 
@@ -1142,7 +1142,7 @@ fn main() {
     TES$0
 }"#,
         expect![[r#"
-            ct TEST_CONST (use foo::TEST_CONST) usize
+            ct TEST_CONST  = 3 (use foo::TEST_CONST) usize
         "#]],
     );
 
@@ -1159,7 +1159,7 @@ fn main() {
     tes$0
 }"#,
         expect![[r#"
-            ct TEST_CONST (use foo::TEST_CONST)               usize
+            ct TEST_CONST  = 3 (use foo::TEST_CONST)          usize
             fn test_function() (use foo::test_function) fn() -> i32
         "#]],
     );
@@ -1435,7 +1435,7 @@ fn function() {
 }
 "#,
         expect![[r#"
-            ct FooConst (use module::FooConst)
+            ct FooConst  = () (use module::FooConst)
             st FooStruct (use module::FooStruct)
         "#]],
     );

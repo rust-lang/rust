@@ -1,3 +1,5 @@
+//@ reference: items.union.field-restrictions
+//@ reference: type.union.constraint
 #[repr(C)]
 union PtrRepr<T: ?Sized> {
     const_ptr: *const T,

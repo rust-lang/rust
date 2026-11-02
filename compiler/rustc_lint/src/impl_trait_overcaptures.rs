@@ -9,6 +9,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
 use rustc_macros::Diagnostic;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::ty::relate::{
@@ -16,13 +17,10 @@ use rustc_middle::ty::relate::{
     structurally_relate_tys,
 };
 use rustc_middle::ty::{
-    self, RegionExt, RegionUtilitiesExt, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, Unnormalized,
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    Unnormalized,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_session::lint::fcw;
-use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, bug, span_bug};
 use rustc_trait_selection::diagnostics::{
     AddPreciseCapturingForOvercapture, impl_trait_overcapture_suggestion,
 };
@@ -454,12 +452,12 @@ struct ImplTraitOvercapturesLint<'tcx> {
     suggestion: Option<AddPreciseCapturingForOvercapture>,
 }
 
-impl<'a> Diagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
+impl<'a> Diagnostic<'a> for ImplTraitOvercapturesLint<'_> {
     fn into_diag(
         self,
         dcx: rustc_errors::DiagCtxtHandle<'a>,
         level: rustc_errors::Level,
-    ) -> rustc_errors::Diag<'a, ()> {
+    ) -> rustc_errors::Diag<'a> {
         let mut diag = rustc_errors::Diag::new(
             dcx,
             level,
@@ -544,9 +542,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
         a_ty: Ty<'tcx>,
         _: Ty<'tcx>,
         def_id: DefId,
-        a_args: ty::GenericArgsRef<'tcx>,
-        b_args: ty::GenericArgsRef<'tcx>,
-        _: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+        a_args: ty::GenericArgs<'tcx>,
+        b_args: ty::GenericArgs<'tcx>,
+        _: impl FnOnce(ty::GenericArgs<'tcx>) -> Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         let variances = self.cx().variances_of(def_id);
         relate_args_with_variances(self, variances, a_args, b_args)?;

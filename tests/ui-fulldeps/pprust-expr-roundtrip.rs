@@ -124,7 +124,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(Box<Expr>)) {
                         binder: ClosureBinder::NotPresent,
                         capture_clause: CaptureBy::Value { move_kw: DUMMY_SP },
                         constness: Const::No,
-                        coroutine_kind: None,
+                        coroutine_marker: None,
                         movability: Movability::Movable,
                         fn_decl: decl.clone(),
                         body: e,

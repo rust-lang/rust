@@ -1,5 +1,5 @@
+use rustc_attr_ir::{DebugVisualizer, DebuggerVisualizerType};
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{DebugVisualizer, DebuggerVisualizerType};
 
 use super::prelude::*;
 

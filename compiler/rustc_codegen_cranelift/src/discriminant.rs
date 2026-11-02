@@ -14,7 +14,7 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
     variant_index: VariantIdx,
 ) {
     let layout = place.layout();
-    if layout.for_variant(fx, variant_index).is_uninhabited() {
+    if layout.is_variant_uninhabited(variant_index) {
         return;
     }
     match layout.variants {

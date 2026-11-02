@@ -136,20 +136,8 @@ impl Emitter for JsonEmitter {
     fn emit_future_breakage_report(&mut self, diags: Vec<crate::DiagInner>) {
         let data: Vec<FutureBreakageItem<'_>> = diags
             .into_iter()
-            .map(|mut diag| {
-                // Allowed or expected lints don't normally (by definition) emit a lint
-                // but future incompat lints are special and are emitted anyway.
-                //
-                // So to avoid ICEs and confused users we "upgrade" the lint level for
-                // those `FutureBreakageItem` to warn.
-                if matches!(diag.level, crate::Level::Allow | crate::Level::Expect) {
-                    diag.level = crate::Level::Warning;
-                }
-                FutureBreakageItem {
-                    diagnostic: EmitTyped::Diagnostic(Diagnostic::from_errors_diagnostic(
-                        diag, self,
-                    )),
-                }
+            .map(|diag| FutureBreakageItem {
+                diagnostic: EmitTyped::Diagnostic(Diagnostic::from_errors_diagnostic(diag, self)),
             })
             .collect();
         let report = FutureIncompatReport { future_incompat_report: data };
@@ -379,20 +367,13 @@ impl Diagnostic {
         let buf = Arc::try_unwrap(buf.0).unwrap().into_inner().unwrap();
         let buf = String::from_utf8(buf).unwrap();
 
-        Diagnostic {
-            message: formatted_message.to_string(),
-            code,
-            level,
-            spans,
-            children,
-            rendered: Some(buf),
-        }
+        Diagnostic { message: formatted_message, code, level, spans, children, rendered: Some(buf) }
     }
 
     fn from_sub_diagnostic(subdiag: &Subdiag, args: &DiagArgMap, je: &JsonEmitter) -> Diagnostic {
         let formatted_message = format_diag_messages(&subdiag.messages, args);
         Diagnostic {
-            message: formatted_message.to_string(),
+            message: formatted_message,
             code: None,
             level: subdiag.level.to_str(),
             spans: DiagnosticSpan::from_multispan(&subdiag.span, args, je),

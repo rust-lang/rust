@@ -1,4 +1,4 @@
-// rustfmt-normalize_comments: true
+//@ rustfmt-normalize_comments: true
 
  extern crate       foo    ;   
     extern crate       foo       as bar    ;   

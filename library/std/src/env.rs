@@ -132,6 +132,7 @@ impl !Sync for VarsOs {}
 /// [`env::vars_os()`]: vars_os
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "env_vars")]
 pub fn vars() -> Vars {
     Vars { inner: vars_os() }
 }
@@ -157,6 +158,7 @@ pub fn vars() -> Vars {
 /// ```
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "env_vars_os")]
 pub fn vars_os() -> VarsOs {
     VarsOs { inner: env_imp::env() }
 }
@@ -502,6 +504,57 @@ impl fmt::Debug for SplitPaths<'_> {
     }
 }
 
+/// An iterator that splits an environment variable into paths according to
+/// platform-specific conventions.
+///
+/// The iterator element type is <code>&[Path]</code>.
+///
+/// This structure is created by [`env::split_paths_ref()`]. See its
+/// documentation for more.
+///
+/// [`env::split_paths_ref()`]: split_paths_ref
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[unstable(feature = "env_split_paths_ref", issue = "none")]
+pub struct SplitPathsRef<'a> {
+    inner: paths_imp::SplitPathsRef<'a>,
+}
+
+/// Parses input according to platform conventions for the `PATH`
+/// environment variable.
+///
+/// Unlike [`split_paths`], this function does not allocate and instead yields
+/// [`Path`]s borrowed from `unparsed`. Returns `None` on platforms that may
+/// require allocations to handle `PATH` splitting conventions.
+///
+/// # Platform-specific behavior
+///
+/// Returns `Some` on Unix platforms and `None` on all other platforms.
+/// Note that this [may change in the future][changes].
+///
+/// [changes]: io#platform-specific-behavior
+#[unstable(feature = "env_split_paths_ref", issue = "none")]
+pub fn split_paths_ref<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> Option<SplitPathsRef<'_>> {
+    Some(SplitPathsRef { inner: paths_imp::split_paths_ref(unparsed.as_ref())? })
+}
+
+#[unstable(feature = "env_split_paths_ref", issue = "none")]
+impl<'a> Iterator for SplitPathsRef<'a> {
+    type Item = &'a Path;
+    fn next(&mut self) -> Option<&'a Path> {
+        self.inner.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+#[unstable(feature = "env_split_paths_ref", issue = "none")]
+impl fmt::Debug for SplitPathsRef<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SplitPathsRef").finish_non_exhaustive()
+    }
+}
+
 /// The error type for operations on the `PATH` variable. Possibly returned from
 /// [`env::join_paths()`].
 ///
@@ -592,7 +645,7 @@ impl fmt::Display for JoinPathsError {
 
 #[stable(feature = "env", since = "1.0.0")]
 impl Error for JoinPathsError {
-    #[allow(deprecated, deprecated_in_future)]
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         self.inner.description()
     }
@@ -606,7 +659,6 @@ impl Error for JoinPathsError {
 /// For example, [XDG Base Directories] on Unix or the `LOCALAPPDATA` and `APPDATA` environment variables on Windows.
 ///
 /// [XDG Base Directories]: https://specifications.freedesktop.org/basedir-spec/latest/
-//  feature(xdg_basedir): This should link to std::os::unix::xdg once it's stabilized
 ///
 /// # Unix
 ///
@@ -718,6 +770,11 @@ pub fn temp_dir() -> PathBuf {
 /// If the executable is renamed while it is running, platforms may return the
 /// path at the time it was loaded instead of the new path.
 ///
+/// On Linux, if the executable is deleted while it is running, this function
+/// may return the path with the string `" (deleted)"` appended.
+///
+/// Note that the platform-specific behavior [may change in the future][changes].
+///
 /// # Errors
 ///
 /// Acquiring the path of the current executable is a platform-specific operation
@@ -753,6 +810,8 @@ pub fn temp_dir() -> PathBuf {
 ///     Err(e) => println!("failed to get current exe path: {e}"),
 /// };
 /// ```
+///
+/// [changes]: crate::io#platform-specific-behavior
 #[stable(feature = "env", since = "1.0.0")]
 pub fn current_exe() -> io::Result<PathBuf> {
     paths_imp::current_exe()

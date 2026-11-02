@@ -71,12 +71,14 @@ LL |     x = &raw mut 1;
 error[E0425]: cannot find function `f` in this scope
   --> $DIR/raw-no-const-mut.rs:17:5
    |
-LL | fn a() {
-   | ------ similarly named function `a` defined here
-...
 LL |     f(&raw 2);
-   |     ^
+   |     ^ not found in this scope
    |
+note: similarly named function `a` defined here
+  --> $DIR/raw-no-const-mut.rs:1:1
+   |
+LL | fn a() {
+   | ^^^^^^
 help: a function with a similar name exists
    |
 LL -     f(&raw 2);

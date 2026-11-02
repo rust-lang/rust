@@ -1,21 +1,20 @@
 use rustc_ast::TraitObjectSyntax;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
-use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, StashKey,
-    Suggestions, struct_span_code_err,
-};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, LangItem};
+use rustc_hir::{self as hir, HirId};
 use rustc_lint_defs::builtin::{BARE_TRAIT_OBJECTS, UNUSED_ASSOCIATED_TYPE_BOUNDS};
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{
-    self, BottomUpFolder, ExistentialPredicateStableCmpExt as _, RegionUtilitiesExt, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, Upcast,
+    self, BottomUpFolder, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, Upcast,
 };
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{ErrorGuaranteed, Span};
+use rustc_trait_selection::diagnostics::AssocTypeWithSameName;
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::traits;
@@ -36,7 +35,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_bounds: &[hir::PolyTraitRef<'tcx>],
+        hir_bounds: &[hir::PolyTraitRef<'_>],
         lifetime: &hir::Lifetime,
         syntax: TraitObjectSyntax,
     ) -> Ty<'tcx> {
@@ -137,7 +136,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         trait_pred.def_id(),
                         &violations,
                     )
-                    .emit();
+                    .emit_err();
                     return Ty::new_error(tcx, reported);
                 }
             }
@@ -206,7 +205,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         if let Some((principal_trait, ref spans)) = principal_trait {
             let principal_trait = principal_trait.map_bound(|trait_pred| {
-                assert_eq!(trait_pred.polarity, ty::PredicatePolarity::Positive);
+                assert_eq!(trait_pred.polarity, ty::ClausePolarity::Positive);
                 trait_pred.trait_ref
             });
 
@@ -231,9 +230,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         ordered_associated_items.extend(
                             tcx.associated_items(pred.trait_ref.def_id)
                                 .in_definition_order()
-                                // Only associated types & type consts can possibly be
-                                // constrained in a trait object type via a binding.
-                                .filter(|item| item.is_type() || item.is_type_const())
+                                .filter(|item| item.can_have_equality_constraint(tcx))
                                 // Traits with RPITITs are simply not dyn compatible (for now).
                                 .filter(|item| !item.is_impl_trait_in_trait())
                                 .map(|item| (item.def_id, trait_ref)),
@@ -351,7 +348,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let principal_trait_ref = principal_trait.map(|(trait_pred, spans)| {
             trait_pred.map_bound(|trait_pred| {
                 let trait_ref = trait_pred.trait_ref;
-                assert_eq!(trait_pred.polarity, ty::PredicatePolarity::Positive);
+                assert_eq!(trait_pred.polarity, ty::ClausePolarity::Positive);
                 assert_eq!(trait_ref.self_ty(), dummy_self);
 
                 let span = *spans.first().unwrap();
@@ -402,12 +399,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 // Like for trait refs, verify that `dummy_self` did not leak inside default type
                 // parameters.
-                let references_self = b.projection_term.args.iter().skip(1).any(|arg| {
-                    if arg.walk().any(|arg| arg == dummy_self.into()) {
-                        return true;
-                    }
-                    false
-                });
+                let references_self = b
+                    .projection_term
+                    .args
+                    .iter()
+                    .skip(1)
+                    .any(|arg| arg.walk().any(|arg| arg == dummy_self.into()));
                 if references_self {
                     let guar = tcx
                         .dcx()
@@ -424,7 +421,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut auto_trait_predicates: Vec<_> = auto_traits
             .into_iter()
             .map(|(trait_pred, _)| {
-                assert_eq!(trait_pred.polarity(), ty::PredicatePolarity::Positive);
+                assert_eq!(trait_pred.polarity(), ty::ClausePolarity::Positive);
                 assert_eq!(trait_pred.self_ty().skip_binder(), dummy_self);
 
                 ty::Binder::dummy(ty::ExistentialPredicate::AutoTrait(trait_pred.def_id()))
@@ -477,7 +474,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// `elaborated-predicates-unconstrained-late-bound.rs` for a test.
     fn check_elaborated_projection_mentions_input_lifetimes(
         &self,
-        pred: ty::PolyProjectionPredicate<'tcx>,
+        pred: ty::PolyProjectionClause<'tcx>,
         span: Span,
         supertrait_span: Span,
     ) {
@@ -570,7 +567,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_bounds: &[hir::PolyTraitRef<'tcx>],
+        hir_bounds: &[hir::PolyTraitRef<'_>],
     ) -> Option<ErrorGuaranteed> {
         struct TraitObjectWithoutDyn<'a, 'tcx> {
             span: Span,
@@ -579,8 +576,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             this: &'a dyn HirTyLowerer<'tcx>,
         }
 
-        impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for TraitObjectWithoutDyn<'b, 'tcx> {
-            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        impl<'a, 'b, 'tcx> Diagnostic<'a> for TraitObjectWithoutDyn<'b, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
                 let Self { span, hir_id, sugg, this } = self;
                 let mut lint =
                     Diag::new(dcx, level, "trait objects without an explicit `dyn` are deprecated");
@@ -656,17 +653,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 poly_trait_ref.trait_ref.trait_def_id(),
                 &mut diag,
             );
-            // In case there is an associated type with the same name
-            // Add the suggestion to this error
-            if let Some(mut sugg) =
-                self.dcx().steal_non_err(span, StashKey::AssociatedTypeSuggestion)
-                && let Suggestions::Enabled(ref mut s1) = diag.suggestions
-                && let Suggestions::Enabled(ref mut s2) = sugg.suggestions
+            // If there is an associated type with the same name, add the suggestion to this error.
+            if self
+                .tcx()
+                .resolutions(())
+                .paths_matching_assoc_types
+                .contains(&span.with_parent(None))
             {
-                s1.append(s2);
-                sugg.cancel();
+                diag.subdiagnostic(AssocTypeWithSameName { span: span.shrink_to_lo() });
             }
-            Some(diag.emit())
+            Some(diag.emit_err())
         } else {
             tcx.emit_node_span_lint(
                 BARE_TRAIT_OBJECTS,
@@ -740,11 +736,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Make sure that we are in the condition to suggest the blanket implementation.
-    fn maybe_suggest_blanket_trait_impl<G: EmissionGuarantee>(
+    fn maybe_suggest_blanket_trait_impl(
         &self,
         span: Span,
         hir_id: hir::HirId,
-        diag: &mut Diag<'_, G>,
+        diag: &mut Diag<'_>,
     ) {
         let tcx = self.tcx();
         let parent_id = tcx.hir_get_parent_item(hir_id).def_id;
@@ -872,7 +868,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_bounds: &[hir::PolyTraitRef<'tcx>],
+        hir_bounds: &[hir::PolyTraitRef<'_>],
         diag: &mut Diag<'_>,
     ) -> bool {
         let tcx = self.tcx();
@@ -1036,7 +1032,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             };
             let hi = obj_ty.span;
 
-            if !lo.eq_ctxt(hi) {
+            if lo.ctxt() != hi.ctxt() {
                 return;
             }
 
@@ -1085,6 +1081,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ),
                 typo,
                 Applicability::MaybeIncorrect,
+            );
+        } else {
+            diag.span_label(
+                segment.ident.span,
+                format!(
+                    "not an associated item of trait `{trait_name}`, so `{trait_name}` is \
+                    interpreted as a type",
+                    trait_name = tcx.item_name(trait_def_id),
+                ),
             );
         }
     }

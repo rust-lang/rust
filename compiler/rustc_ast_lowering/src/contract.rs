@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use thin_vec::thin_vec;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_span::sym;
 
 use crate::LoweringContext;
 
@@ -142,11 +143,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let req_span = self.mark_span_with_reason(
             rustc_span::DesugaringKind::Contract,
             lowered_req.span,
-            Some(Arc::clone(&self.allow_contracts)),
+            Some(Arc::clone(&crate::ALLOW_CONTRACTS)),
         );
         let precond = self.expr_call_lang_item_fn_mut(
             req_span,
-            rustc_hir::LangItem::ContractCheckRequires,
+            LangItem::ContractCheckRequires,
             &*arena_vec![self; lowered_req],
         );
         self.stmt_expr(req.span, precond)
@@ -160,12 +161,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let ens_span = self.mark_span_with_reason(
             rustc_span::DesugaringKind::Contract,
             ens_span,
-            Some(Arc::clone(&self.allow_contracts)),
+            Some(Arc::clone(&crate::ALLOW_CONTRACTS)),
         );
         let lowered_ens = self.lower_expr_mut(&ens);
         self.expr_call_lang_item_fn(
             ens_span,
-            rustc_hir::LangItem::ContractBuildCheckEnsures,
+            LangItem::ContractBuildCheckEnsures,
             &*arena_vec![self; lowered_ens],
         )
     }
@@ -208,7 +209,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let postcond_checker = self.arena.alloc(self.expr_enum_variant_lang_item(
             postcond_checker.span,
-            rustc_hir::lang_items::LangItem::OptionSome,
+            LangItem::OptionSome,
             &*arena_vec![self; *postcond_checker],
         ));
         let then_block_stmts = self.block_all(span, stmts, Some(postcond_checker));
@@ -216,7 +217,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let none_expr = self.arena.alloc(self.expr_enum_variant_lang_item(
             postcond_checker.span,
-            rustc_hir::lang_items::LangItem::OptionNone,
+            LangItem::OptionNone,
             Default::default(),
         ));
         let else_block = self.block_expr(none_expr);
@@ -237,7 +238,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         postcond_span: rustc_span::Span,
     ) -> &'hir rustc_hir::Block<'hir> {
         let check_ident: rustc_span::Ident =
-            rustc_span::Ident::from_str_and_span("__ensures_checker", postcond_span);
+            rustc_span::Ident::new(sym::__ensures_checker, postcond_span);
         let (check_hir_id, postcond_decl) = {
             // Set up the postcondition `let` statement.
             let (checker_pat, check_hir_id) = self.pat_ident_binding_mode_mut(
@@ -307,7 +308,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         //         ret
         //     }
         // }
-        let ret_ident: rustc_span::Ident = rustc_span::Ident::from_str_and_span("__ret", span);
+        let ret_ident: rustc_span::Ident = rustc_span::Ident::new(sym::__ret, span);
 
         // Set up the return `let` statement.
         let (ret_pat, ret_hir_id) =
@@ -326,7 +327,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let cond_fn = self.expr_ident(span, cond_ident, cond_hir_id);
         let contract_check = self.expr_call_lang_item_fn_mut(
             span,
-            rustc_hir::LangItem::ContractCheckEnsures,
+            LangItem::ContractCheckEnsures,
             arena_vec![self; *cond_fn, *ret],
         );
         let contract_check = self.arena.alloc(contract_check);
@@ -347,9 +348,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 Some(ret_block),
             ),
         ));
-
-        let attrs: rustc_ast::AttrVec = thin_vec![self.unreachable_code_attr(span)];
-        self.lower_attrs(contract_check.hir_id, &attrs, span, rustc_hir::Target::Expression);
 
         let ret_block = self.block_all(span, arena_vec![self; ret_stmt], Some(contract_check));
         self.arena.alloc(self.expr_block(self.arena.alloc(ret_block)))

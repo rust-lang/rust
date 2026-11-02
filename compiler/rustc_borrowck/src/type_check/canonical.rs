@@ -3,11 +3,10 @@ use std::fmt;
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
-use rustc_middle::bug;
 use rustc_middle::mir::{Body, ConstraintCategory};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Unnormalized, Upcast};
-use rustc_span::Span;
 use rustc_span::def_id::DefId;
+use rustc_span::{Span, bug};
 use rustc_trait_selection::traits::ObligationCause;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
 use tracing::{debug, instrument};
@@ -24,7 +23,7 @@ pub(crate) fn fully_perform_op_raw<'tcx, R: fmt::Debug, Op>(
     body: &Body<'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
     region_bound_pairs: &RegionBoundPairs<'tcx>,
-    known_type_outlives_obligations: &[ty::PolyTypeOutlivesPredicate<'tcx>],
+    known_type_outlives_obligations: &[ty::PolyTypeOutlivesClause<'tcx>],
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
     locations: Locations,
     category: ConstraintCategory<'tcx>,
@@ -131,9 +130,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory<'tcx>,
     ) {
         self.prove_clause(
-            ty::ClauseKind::Trait(ty::TraitPredicate {
+            ty::ClauseKind::Trait(ty::TraitClause {
                 trait_ref,
-                polarity: ty::PredicatePolarity::Positive,
+                polarity: ty::ClausePolarity::Positive,
             }),
             locations,
             category,
@@ -143,15 +142,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub(super) fn normalize_and_prove_instantiated_clauses(
         &mut self,
-        // Keep this parameter for now, in case we start using
-        // it in `ConstraintCategory` at some point.
-        _def_id: DefId,
+        def_id: DefId,
         instantiated_clauses: ty::InstantiatedClauses<'tcx>,
         locations: Locations,
     ) {
         for (clause, span) in instantiated_clauses {
             debug!(?span, ?clause);
-            let category = ConstraintCategory::Predicate(span);
+            let category = ConstraintCategory::Predicate(span, def_id);
             let clause = self.normalize_with_category(clause, locations, category);
             self.prove_clause(clause, locations, category);
         }

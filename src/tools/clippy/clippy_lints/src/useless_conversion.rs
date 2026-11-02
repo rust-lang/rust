@@ -1,21 +1,21 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
 use clippy_utils::ty::{is_copy, same_type_modulo_regions};
-use clippy_utils::{get_parent_expr, is_ty_alias, sym};
+use clippy_utils::{get_parent_expr, in_automatically_derived, is_ty_alias, sym};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BindingMode, Expr, ExprKind, HirId, LangItem, MatchSource, Mutability, Node, PatKind};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, PatKind};
+use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::Obligation;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
-use rustc_session::impl_lint_pass;
+use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgs, Ty, TypeVisitableExt as _};
 use rustc_span::Span;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -86,7 +86,7 @@ fn into_iter_bound<'tcx>(
     into_iter_did: DefId,
     into_iter_receiver: Ty<'tcx>,
     param_index: u32,
-    node_args: GenericArgsRef<'tcx>,
+    node_args: GenericArgs<'tcx>,
 ) -> Option<Span> {
     let mut into_iter_span = None;
 
@@ -343,8 +343,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             && let Some(self_ty) = inputs.first()
                             && let ty::Ref(_, _, Mutability::Mut) = self_ty.kind()
                             && let Some(second_ty) = inputs.get(1)
-                            && let clauses = cx.tcx.param_env(def_id).caller_bounds()
-                            && clauses.iter().any(|clause| {
+                            && cx.tcx.param_env(def_id).caller_bounds().any(|clause| {
                                 if let ty::ClauseKind::Trait(trait_pred) = clause.kind().skip_binder() {
                                     trait_pred.self_ty() == *second_ty
                                         && cx.tcx.lang_items().fn_mut_trait() == Some(trait_pred.def_id())
@@ -399,7 +398,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     && let b = cx.typeck_results().expr_ty(recv)
                     && a.is_diag_item(cx, sym::Result)
                     && let ty::Adt(_, args) = a.kind()
-                    && let Some(a_type) = args.types().next()
+                    && let Some(a_type) = args.iter().next().and_then(GenericArg::as_type)
                     && same_type_modulo_regions(a_type, b)
                 {
                     span_lint_and_help(
@@ -424,7 +423,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     if name == sym::try_from_fn
                         && a.is_diag_item(cx, sym::Result)
                         && let ty::Adt(_, args) = a.kind()
-                        && let Some(a_type) = args.types().next()
+                        && let Some(a_type) = args.iter().next().and_then(GenericArg::as_type)
                         && same_type_modulo_regions(a_type, b)
                     {
                         let hint = format!("consider removing `{}()`", snippet(cx, path.span, "TryFrom::try_from"));
@@ -436,7 +435,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             None,
                             hint,
                         );
-                    } else if name == sym::from_fn && same_type_modulo_regions(a, b) {
+                    } else if name == sym::from_fn
+                        && same_type_modulo_regions(a, b)
+                        && !in_automatically_derived(cx.tcx, e.hir_id)
+                    {
                         let mut app = Applicability::MachineApplicable;
                         let sugg = Sugg::hir_with_context(cx, arg, e.span.ctxt(), "<expr>", &mut app).maybe_paren();
                         let sugg_msg = format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));

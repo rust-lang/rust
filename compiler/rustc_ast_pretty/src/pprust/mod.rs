@@ -100,6 +100,11 @@ pub fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
     State::to_string(f)
 }
 
+/// Pretty prints a crate from its AST representation.
+///
+/// As the source text is not available, regular (non-doc) comments are not preserved.
+/// Doc-comments can survive since they are represented in the AST.
+/// To pretty-print a crate including its comments, use [`print_crate`] instead.
 pub fn crate_to_string_for_macros(krate: &ast::Crate) -> String {
     State::to_string(|s| {
         s.print_inner_attributes(&krate.attrs);

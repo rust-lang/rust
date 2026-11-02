@@ -15,5 +15,5 @@ fn test(f: impl AsyncFn()) {}
 
 fn main() {
     test(unsafety); //~ ERROR the trait bound
-    test(abi); //~ ERROR the trait bound
+    test(abi);
 }

@@ -3,6 +3,7 @@ error: the `pin_v2` attribute cannot be used on macro calls
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | macro_def!();
    |
    = help: the `pin_v2` attribute can only be applied to data types
    = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
@@ -42,6 +43,7 @@ error: the `pin_v2` attribute cannot be used on enum variants
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     UnitVariant,
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -58,6 +60,7 @@ error: the `pin_v2` attribute cannot be used on struct fields
    |
 LL |         #[pin_v2]
    |           ^^^^^^
+LL |         field: U,
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -66,6 +69,7 @@ error: the `pin_v2` attribute cannot be used on traits
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | trait Trait {
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -74,6 +78,7 @@ error: the `pin_v2` attribute cannot be used on associated consts
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     const ASSOC_CONST: () = ();
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -82,6 +87,7 @@ error: the `pin_v2` attribute cannot be used on associated types
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     type AssocType = ();
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -90,6 +96,7 @@ error: the `pin_v2` attribute cannot be used on required trait methods
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     fn method();
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -98,6 +105,7 @@ error: the `pin_v2` attribute cannot be used on provided trait methods
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     fn method_with_body() {}
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -106,6 +114,7 @@ error: the `pin_v2` attribute cannot be used on trait aliases
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | trait TraitAlias = Trait;
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -114,6 +123,7 @@ error: the `pin_v2` attribute cannot be used on inherent impl blocks
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | impl Struct {
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -122,6 +132,7 @@ error: the `pin_v2` attribute cannot be used on delegations
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     reuse <Struct as std::any::Any>::type_id;
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -130,6 +141,7 @@ error: the `pin_v2` attribute cannot be used on inherent methods
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     fn method() {}
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -138,6 +150,7 @@ error: the `pin_v2` attribute cannot be used on trait impl blocks
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | impl Trait for Enum {
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -146,6 +159,7 @@ error: the `pin_v2` attribute cannot be used on trait methods in impl blocks
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     fn method() {}
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -154,6 +168,7 @@ error: the `pin_v2` attribute cannot be used on extern crates
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | extern crate alloc;
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -162,6 +177,7 @@ error: the `pin_v2` attribute cannot be used on use statements
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | use std::pin::Pin;
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -170,6 +186,7 @@ error: the `pin_v2` attribute cannot be used on statics
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | static STATIC: () = ();
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -178,6 +195,7 @@ error: the `pin_v2` attribute cannot be used on constants
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | const CONST: () = ();
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -186,6 +204,7 @@ error: the `pin_v2` attribute cannot be used on functions
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | fn f<T, U>(#[pin_v2] param: Foo<T, U>)
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -202,6 +221,7 @@ error: the `pin_v2` attribute cannot be used on closures
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     || ();
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -210,6 +230,7 @@ error: the `pin_v2` attribute cannot be used on expressions
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     [(), (), ()];
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -218,6 +239,7 @@ error: the `pin_v2` attribute cannot be used on struct fields
    |
 LL |         #[pin_v2]
    |           ^^^^^^
+LL |         field: (),
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -226,6 +248,7 @@ error: the `pin_v2` attribute cannot be used on statements
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     let _: Foo<(), ()> = Foo::StructVariant {
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -234,6 +257,7 @@ error: the `pin_v2` attribute cannot be used on match arms
    |
 LL |         #[pin_v2]
    |           ^^^^^^
+LL |         Foo::UnitVariant => {}
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -242,6 +266,7 @@ error: the `pin_v2` attribute cannot be used on pattern fields
    |
 LL |             #[pin_v2]
    |               ^^^^^^
+LL |             field,
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -250,6 +275,8 @@ error: the `pin_v2` attribute cannot be used on where predicates
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |
+LL |     T:,
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -258,6 +285,7 @@ error: the `pin_v2` attribute cannot be used on modules
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | mod m {}
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -266,6 +294,7 @@ error: the `pin_v2` attribute cannot be used on foreign modules
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | extern "C" {
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -274,6 +303,7 @@ error: the `pin_v2` attribute cannot be used on foreign types
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     type ForeignTy;
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -282,6 +312,7 @@ error: the `pin_v2` attribute cannot be used on foreign statics
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     static EXTERN_STATIC: ();
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -290,6 +321,7 @@ error: the `pin_v2` attribute cannot be used on foreign functions
    |
 LL |     #[pin_v2]
    |       ^^^^^^
+LL |     fn extern_fn();
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -298,6 +330,7 @@ error: the `pin_v2` attribute cannot be used on type aliases
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | type Type = ();
    |
    = help: the `pin_v2` attribute can only be applied to data types
 
@@ -306,6 +339,7 @@ error: the `pin_v2` attribute cannot be used on macro defs
    |
 LL | #[pin_v2]
    |   ^^^^^^
+LL | macro_rules! macro_def {
    |
    = help: the `pin_v2` attribute can only be applied to data types
 

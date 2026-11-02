@@ -14,11 +14,17 @@ LL |     x = unconstrained_map();
              where Args: std::marker::Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
            - impl<F, Args> Fn<Args> for SyncView<F>
              where F: Sync, F: Fn<Args>, Args: std::marker::Tuple;
+   = note: cannot satisfy `<_ as FnOnce<()>>::Output == _`
 note: required by a bound in `unconstrained_map`
   --> $DIR/well-formed-in-relate.rs:21:25
    |
 LL | fn unconstrained_map<T: Fn() -> U, U>() -> <Map<T, U> as Mirror>::Assoc { todo!() }
    |                         ^^^^^^^^^ required by this bound in `unconstrained_map`
+note: required by a bound in `unconstrained_map`
+  --> $DIR/well-formed-in-relate.rs:21:33
+   |
+LL | fn unconstrained_map<T: Fn() -> U, U>() -> <Map<T, U> as Mirror>::Assoc { todo!() }
+   |                                 ^ required by this bound in `unconstrained_map`
 help: consider giving `x` an explicit type, where the type for type parameter `T` is specified
    |
 LL |     let x: Map<T, U>;

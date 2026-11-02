@@ -1,5 +1,4 @@
 #![warn(clippy::single_component_path_imports)]
-#![allow(unused_imports)]
 
 use core;
 
@@ -32,13 +31,11 @@ fn main() {
 mod hello_mod {
     use regex;
     //~^ single_component_path_imports
-    #[allow(dead_code)]
     fn hello_mod() {}
 }
 
 mod hi_mod {
     use self::regex::{Regex, RegexSet};
     use regex;
-    #[allow(dead_code)]
     fn hi_mod() {}
 }

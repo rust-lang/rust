@@ -2,7 +2,7 @@ use crate::spec::{Arch, CfgAbi, FloatAbi, Target, TargetMetadata, TargetOptions,
 
 pub(crate) fn target() -> Target {
     Target {
-        llvm_target: "armv7-unknown-freebsd-gnueabihf".into(),
+        llvm_target: "arm-unknown-freebsd-gnueabihf".into(),
         metadata: TargetMetadata {
             description: Some("Armv7-A FreeBSD".into()),
             tier: Some(3),
@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             cfg_abi: CfgAbi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
-            features: "+v7,+vfp3d16,+thumb2,-neon".into(),
+            features: "+v7,+db,+dsp,+aclass,+perfmon,+vfp3d16,+thumb2".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}__gnu_mcount_nc".into(),
             ..base::freebsd::opts()

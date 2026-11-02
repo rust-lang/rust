@@ -6,13 +6,20 @@ use super::read_config;
 use crate::modules::{ModuleResolutionError, ModuleResolutionErrorKind};
 use crate::{ErrorKind, Input, Session};
 
+/// Load the config, but hide expected parse errors
+fn read_config_hide_parse_errors(filename: &std::path::Path) -> crate::Config {
+    let mut config = read_config(&filename).expect("config should be valid");
+    config.set().show_parse_errors(false);
+    config
+}
+
 #[test]
 fn parser_errors_in_submods_are_surfaced() {
     // See also https://github.com/rust-lang/rustfmt/issues/4126
     let filename = "tests/parser/issue-4126/lib.rs";
     let input_file = PathBuf::from(filename);
     let exp_mod_name = "invalid";
-    let config = read_config(&input_file);
+    let config = read_config_hide_parse_errors(&input_file);
     let mut session = Session::<io::Stdout>::new(config, None);
     if let Err(ErrorKind::ModuleResolutionError(ModuleResolutionError { module, kind })) =
         session.format(Input::File(filename.into()))
@@ -36,7 +43,7 @@ fn parser_errors_in_submods_are_surfaced() {
 
 fn assert_parser_error(filename: &str) {
     let file = PathBuf::from(filename);
-    let config = read_config(&file);
+    let config = read_config_hide_parse_errors(&file);
     let mut session = Session::<io::Stdout>::new(config, None);
     let _ = session.format(Input::File(filename.into())).unwrap();
     assert!(session.has_parsing_errors());
@@ -67,5 +74,17 @@ fn crate_parsing_stashed_diag() {
 fn crate_parsing_stashed_diag2() {
     // See also https://github.com/rust-lang/rust/issues/121517
     let filename = "tests/parser/stashed-diag2.rs";
+    assert_parser_error(filename);
+}
+
+#[test]
+fn try_macro_cant_be_chain_child() {
+    let filename = "tests/parser/try_macro_cant_be_chain_child.rs";
+    assert_parser_error(filename);
+}
+
+#[test]
+fn try_macro_literal_cant_be_chain_child() {
+    let filename = "tests/parser/try_macro_literal_cant_be_chain_child.rs";
     assert_parser_error(filename);
 }

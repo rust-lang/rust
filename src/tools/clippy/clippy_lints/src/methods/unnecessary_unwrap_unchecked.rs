@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::MaybeQPath as _;
 use clippy_utils::ty::{option_or_result_arg_ty, same_type_modulo_regions};
 use clippy_utils::{is_from_proc_macro, last_path_segment, over};
 use rustc_errors::Applicability;
@@ -126,8 +126,8 @@ fn find_unchecked_sibling_method<'tcx>(
 /// Checks that `checked_def_id` and `unchecked_def_id` refer to functions with:
 /// - same visibility
 /// - identical signatures, apart from unsafety
-/// - "matching" return types: the checked version returns `Option<T>`/`Result<T, E>`, while the
-///   unchecked one returns `T`
+/// - "matching" return types: the checked version returns `Option<T>`/`Result<T, E>`, while the unchecked one returns
+///   `T`
 fn same_functions_modulo_safety<'tcx>(
     cx: &LateContext<'tcx>,
     checked_def_id: DefId,

@@ -3,14 +3,13 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, RegionExt, SizedTraitKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
-    Unnormalized, Upcast, fold_regions,
+    self, SizedTraitKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Unnormalized,
+    Upcast, fold_regions,
 };
-use rustc_span::DUMMY_SP;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
+use rustc_span::{DUMMY_SP, bug};
 use rustc_trait_selection::traits;
 use tracing::instrument;
 
@@ -197,7 +196,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
 
     let local_did = def_id.as_local().unwrap_or(CRATE_DEF_ID);
 
-    let unnormalized_env = ty::ParamEnv::new(tcx.mk_clauses(&clauses));
+    let unnormalized_env = ty::ParamEnv::new(tcx, clauses);
 
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), local_did);
     traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
@@ -262,7 +261,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
 
             self.clauses.push(
                 ty::Binder::bind_with_vars(
-                    ty::ProjectionPredicate {
+                    ty::ProjectionClause {
                         projection_term: shifted_alias_ty.projection_to_alias_ty().into(),
                         term: default_ty.into(),
                     },

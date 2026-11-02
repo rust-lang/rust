@@ -3,7 +3,7 @@
 
 //@ dont-require-annotations: NOTE
 
-#![feature(min_generic_const_args, generic_const_items)]
+#![feature(gca_min_const_items, generic_const_items)]
 #![expect(incomplete_features)]
 
 trait Trait {

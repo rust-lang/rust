@@ -2,19 +2,25 @@
 //!
 //! We attempt to retag every argument and return value of a function, and every rvalue
 //! of an assignment. The first step to retagging is to generate a [`RetagPlan`], which
-//! describes which pointers within the place or operand can be retagged.
+//! describes which pointers within the place or operand can be retagged. Then, we traverse
+//! the [`RetagPlan`] to emit the calls.
 
 use rustc_abi::{FieldIdx, FieldsShape, Size, VariantIdx, Variants};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::range_set::RangeSet;
+use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::mir::{Rvalue, WithRetag};
-use rustc_middle::ty;
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
+use rustc_middle::ty::{self, Ty};
 
-use crate::mir::FunctionCx;
+use crate::common::IntPredicate;
 use crate::mir::operand::{OperandRef, OperandRefBuilder, OperandValue};
 use crate::mir::place::PlaceRef;
-use crate::traits::{BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods};
+use crate::mir::{FunctionCx, bug};
+use crate::traits::{
+    BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods, StaticCodegenMethods,
+};
 use crate::{RetagFlags, RetagInfo};
 
 pub(crate) fn rvalue_needs_retag(rvalue: &Rvalue<'_>) -> bool {
@@ -30,9 +36,20 @@ enum RetagPlan<V> {
     /// Indicates that one or more fields or variants of this type
     /// contain pointers that need to be retagged.
     Recurse {
-        field_plans: FxIndexMap<FieldIdx, RetagPlan<V>>,
+        field_plans: Option<RetagFields<V>>,
         variant_plans: FxIndexMap<VariantIdx, RetagPlan<V>>,
     },
+}
+
+/// The layout of the fields that need to be retagged.
+///
+/// This mirrors [`FieldsShape`] but excludes unions,
+/// which are never retagged, and primitives, which fall
+/// into [`RetagPlan::EmitRetag`].
+#[derive(Debug)]
+enum RetagFields<V> {
+    Arbitrary(FxIndexMap<FieldIdx, RetagPlan<V>>),
+    Array(Box<RetagPlan<V>>),
 }
 
 impl<V> RetagPlan<V> {
@@ -40,7 +57,10 @@ impl<V> RetagPlan<V> {
     fn for_field(self, ix: FieldIdx) -> Self {
         let mut field_plans = FxIndexMap::default();
         field_plans.insert(ix, self);
-        RetagPlan::Recurse { field_plans, variant_plans: FxIndexMap::default() }
+        RetagPlan::Recurse {
+            field_plans: Some(RetagFields::Arbitrary(field_plans)),
+            variant_plans: FxIndexMap::default(),
+        }
     }
 }
 
@@ -68,7 +88,7 @@ impl<'a, 'tcx, V> RetagPlan<V> {
             //  the outermost `Box` is what determines the permission that gets created.
             ty::Adt(adt, _) if adt.is_box() => Self::visit_box(bx, layout, is_fn_entry),
             // Skip traversing for everything inside of `MaybeDangling`
-            ty::Adt(adt, _) if adt.is_maybe_dangling() => None,
+            _ if layout.ty.is_like_maybe_dangling() => None,
             _ => Self::walk_value(bx, layout, is_fn_entry),
         }
     }
@@ -79,21 +99,27 @@ impl<'a, 'tcx, V> RetagPlan<V> {
         layout: TyAndLayout<'tcx>,
         is_fn_entry: bool,
     ) -> Option<RetagPlan<Bx::Value>> {
-        let mut field_plans = FxIndexMap::default();
-        let mut variant_plans = FxIndexMap::default();
-
-        match &layout.fields {
-            FieldsShape::Union(_) | FieldsShape::Primitive => {}
-            _ => {
+        let field_plans = match &layout.fields {
+            FieldsShape::Union(_) | FieldsShape::Primitive => None,
+            FieldsShape::Arbitrary { .. } => {
+                let mut field_plans = FxIndexMap::default();
                 for ix in layout.fields.index_by_increasing_offset() {
                     let field_layout = layout.field(bx, ix);
                     if let Some(plan) = Self::build(bx, field_layout, is_fn_entry) {
                         field_plans.insert(FieldIdx::from_usize(ix), plan);
                     }
                 }
+                (!field_plans.is_empty()).then_some(RetagFields::Arbitrary(field_plans))
             }
-        }
+            FieldsShape::Array { count, .. } if *count > 0 => {
+                let field_layout = layout.field(bx, 0);
+                Self::build(bx, field_layout, is_fn_entry)
+                    .map(|plan| RetagFields::Array(Box::new(plan)))
+            }
+            FieldsShape::Array { .. } => None,
+        };
 
+        let mut variant_plans = FxIndexMap::default();
         match &layout.variants {
             Variants::Single { .. } | Variants::Empty => {}
             Variants::Multiple { variants, .. } => {
@@ -106,7 +132,7 @@ impl<'a, 'tcx, V> RetagPlan<V> {
             }
         }
 
-        (!field_plans.is_empty() || !variant_plans.is_empty())
+        (field_plans.is_some() || !variant_plans.is_empty())
             .then(|| RetagPlan::Recurse { field_plans, variant_plans })
     }
 
@@ -125,7 +151,7 @@ impl<'a, 'tcx, V> RetagPlan<V> {
             let boxed_ty = layout.ty.expect_boxed_ty();
             let boxed_layout = bx.layout_of(boxed_ty);
             if let Some(mut plan) = Self::emit_retag(bx, boxed_layout, None, is_fn_entry) {
-                // `Unique<T>`
+                // `BoxRaw<T>`
                 let unique = layout.field(bx, 0);
                 assert_eq!(unique.fields.count(), 2);
                 plan = plan.for_field(FieldIdx::ZERO);
@@ -152,8 +178,10 @@ impl<'a, 'tcx, V> RetagPlan<V> {
             field_plans.insert(FieldIdx::ONE, plan);
         }
 
-        (!field_plans.is_empty())
-            .then(|| RetagPlan::Recurse { field_plans, variant_plans: FxIndexMap::default() })
+        (!field_plans.is_empty()).then(|| RetagPlan::Recurse {
+            field_plans: Some(RetagFields::Arbitrary(field_plans)),
+            variant_plans: FxIndexMap::default(),
+        })
     }
 
     /// Determines if a pointer needs to be retagged, when it points to
@@ -167,27 +195,62 @@ impl<'a, 'tcx, V> RetagPlan<V> {
         is_fn_entry: bool,
     ) -> Option<RetagPlan<Bx::Value>> {
         let tcx = bx.tcx();
+        let retag_opts = tcx.sess.opts.unstable_opts.codegen_emit_retag.unwrap_or_default();
 
         let pointee_ty = pointee_layout.ty;
 
         let is_mutable = matches!(ptr_kind, Some(Mutability::Mut) | None);
-        let is_unpin = pointee_ty.is_unpin(tcx, bx.typing_env());
-        let is_freeze = pointee_ty.is_freeze(tcx, bx.typing_env());
+        let is_unpin = UnsafePinnedRanges::excludes(bx, pointee_ty);
+        let is_freeze = UnsafeCellRanges::excludes(bx, pointee_ty);
         let is_box = ptr_kind.is_none();
 
         // `&mut !Unpin` is not protected
         let is_protected = is_fn_entry && (!is_mutable || is_unpin);
 
+        let pin_ranges = UnsafePinnedRanges::collect(bx, pointee_layout, retag_opts.no_precise_pin);
+
+        if is_mutable {
+            // Everything is `UnsafePinned` if the collected ranges
+            // cover the entire size of the layout.
+            let all_pinned = matches!(
+                pin_ranges.as_slice(),
+                [(Size::ZERO, size)] if *size == pointee_layout.size,
+            );
+
+            // Otherwise, if we can't find any `UnsafePinned`,
+            // the type is still might be `!Unpin` or `!UnsafeUnpin`,
+            // so we should include the entire range.
+            let implicitly_pinned = pin_ranges.is_empty() && !is_unpin;
+
+            if all_pinned || implicitly_pinned {
+                return None;
+            }
+        }
+
         if is_mutable && !is_unpin {
             return None;
         }
 
-        let im_layout = bx.const_null(bx.type_ptr());
-        let pin_layout = bx.const_null(bx.type_ptr());
+        let im_ranges = UnsafeCellRanges::collect(bx, pointee_layout, retag_opts.no_precise_im);
+        let all_im = matches!(
+            im_ranges.as_slice(),
+            [(Size::ZERO, size)] if *size == pointee_layout.size,
+        );
+
+        let pin_layout = Self::alloc_ranges(bx, pin_ranges);
+
+        // If the entire type is covered by `UnsafeCell`, then we can
+        // defer to checking if the type is `Freeze` via `RetagFlags`,
+        // to avoid allocating a global array.
+        let im_layout =
+            if all_im { bx.const_null(bx.type_ptr()) } else { Self::alloc_ranges(bx, im_ranges) };
 
         let mut flags = RetagFlags::empty();
         flags.set(RetagFlags::IS_PROTECTED, is_protected);
         flags.set(RetagFlags::IS_MUTABLE, is_mutable);
+        // Even though we have a list of interior mutable ranges,
+        // we still need a separate flag for `Freeze` types, for when
+        // we retag interior mutable ZSTs.
         flags.set(RetagFlags::IS_FREEZE, is_freeze);
         flags.set(RetagFlags::IS_BOX, is_box);
 
@@ -197,6 +260,137 @@ impl<'a, 'tcx, V> RetagPlan<V> {
             pin_layout,
             flags,
         }))
+    }
+
+    /// Creates a pointer to a global static allocation containing adjacent pairs of `u64` bytes,
+    /// which indicate the offset and width of a range within the layout of a type. Returns a null
+    /// pointer if the list of ranges is empty.
+    fn alloc_ranges<Bx: BuilderMethods<'a, 'tcx>>(
+        bx: &mut Bx,
+        ranges: Vec<(Size, Size)>,
+    ) -> Bx::Value {
+        let tcx = bx.tcx();
+        let data_layout = &tcx.data_layout;
+
+        if ranges.is_empty() {
+            return bx.const_null(bx.type_ptr());
+        }
+
+        let mut bytes: Vec<u8> = vec![];
+        for (start, end) in ranges.iter() {
+            bytes.extend_from_slice(&start.bytes().to_ne_bytes());
+            bytes.extend_from_slice(&end.bytes().to_ne_bytes());
+        }
+
+        let intptr_ty = data_layout.ptr_sized_integer();
+        let align = intptr_ty.align(data_layout);
+
+        let alloc = Allocation::from_bytes(&bytes, align, Mutability::Not, ());
+        let const_alloc = tcx.mk_const_alloc(alloc);
+
+        // Different IDs are produced, but identical range lists
+        // will resolve to the same allocation.
+        let alloc_id = tcx.reserve_and_set_memory_alloc(const_alloc);
+        let global_alloc = tcx.global_alloc(alloc_id);
+        let global_mem = global_alloc.unwrap_memory();
+
+        bx.cx().static_addr_of(global_mem, None)
+    }
+}
+
+/// A visitor trait for collecting the ranges within a layout that satisfy a given predicate.
+trait PerByteTracking<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
+    /// Indicates that we can exclude the range of bytes that contains this type.
+    /// This tells us that [`PerByteTracking::contains`] is false for every
+    /// field or variant without having to recurse any further into the layout of the type.
+    fn excludes(bx: &mut Bx, ty: Ty<'tcx>) -> bool;
+
+    /// Indicates that we should include the range containing this type.
+    fn contains(bx: &mut Bx, ty: Ty<'tcx>) -> bool;
+
+    /// Traverses through the layout of a type to find each range satisfying
+    /// the predicate.
+    ///
+    /// If `imprecise` is true, then the entire size of the type will be included,
+    /// even if only one of its fields satisfies the predicate.
+    fn visit_layout(
+        bx: &mut Bx,
+        offset: Size,
+        ranges: &mut RangeSet<Size>,
+        layout: TyAndLayout<'tcx>,
+        imprecise: bool,
+    ) {
+        if layout.is_zst() {
+            return;
+        }
+
+        if Self::excludes(bx, layout.ty) {
+            return;
+        }
+
+        if imprecise {
+            return ranges.add_range(offset, layout.size);
+        }
+
+        let union_or_primitive =
+            matches!(layout.fields, FieldsShape::Union(..) | FieldsShape::Primitive);
+        let has_multiple_variants = matches!(layout.variants, Variants::Multiple { .. });
+
+        if Self::contains(bx, layout.ty) || union_or_primitive || has_multiple_variants {
+            ranges.add_range(offset, layout.size);
+        } else {
+            // We know at this point that we have an array or an arbitrary layout.
+            for ix in layout.fields.index_by_increasing_offset() {
+                // We need to find the offset for this field relative
+                // to the entire type, not just the current aggregate
+                // that we are visiting here.
+                let field_offset = layout.fields.offset(ix);
+                let layout_offset = field_offset + offset;
+
+                let field = layout.field(bx, ix);
+                Self::visit_layout(bx, layout_offset, ranges, field, imprecise);
+            }
+        }
+    }
+    /// Collects the ranges within a type that satisfy the given predicate.
+    fn collect(bx: &mut Bx, layout: TyAndLayout<'tcx>, imprecise: bool) -> Vec<(Size, Size)> {
+        let mut ranges = RangeSet::<Size>::new();
+        Self::visit_layout(bx, Size::ZERO, &mut ranges, layout, imprecise);
+        ranges.0
+    }
+}
+
+/// Collects the ranges within a type that are covered by `UnsafeCell`.
+struct UnsafeCellRanges;
+
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> PerByteTracking<'a, 'tcx, Bx> for UnsafeCellRanges {
+    fn excludes(bx: &mut Bx, ty: Ty<'tcx>) -> bool {
+        ty.is_freeze(bx.tcx(), bx.cx().typing_env())
+    }
+
+    fn contains(bx: &mut Bx, ty: Ty<'tcx>) -> bool {
+        let tcx = bx.tcx();
+        match ty.kind() {
+            ty::Adt(adt, _) => Some(adt.did()) == tcx.lang_items().unsafe_cell_type(),
+            _ => false,
+        }
+    }
+}
+
+/// Collects the ranges within a type that are covered by `UnsafePinned`.
+struct UnsafePinnedRanges;
+
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> PerByteTracking<'a, 'tcx, Bx> for UnsafePinnedRanges {
+    fn excludes(bx: &mut Bx, ty: Ty<'tcx>) -> bool {
+        ty.is_unpin(bx.tcx(), bx.typing_env()) && ty.is_unsafe_unpin(bx.tcx(), bx.typing_env())
+    }
+
+    fn contains(bx: &mut Bx, ty: Ty<'tcx>) -> bool {
+        let tcx = bx.tcx();
+        match ty.kind() {
+            ty::Adt(adt, _) => Some(adt.did()) == tcx.lang_items().unsafe_pinned_type(),
+            _ => false,
+        }
     }
 }
 
@@ -247,21 +441,38 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             RetagPlan::Recurse { field_plans, variant_plans } => {
                 let layout = curr_operand.layout;
-                for (ix, plan) in field_plans {
-                    let inner_offset = layout.fields.offset(ix.as_usize());
-                    let field_offset = offset + inner_offset;
+                if let Some(plans) = field_plans {
+                    let mut retag_field = |ix: FieldIdx, plan: &RetagPlan<Bx::Value>| {
+                        let inner_offset = layout.fields.offset(ix.as_usize());
+                        let field_offset = offset + inner_offset;
+                        let field_layout = curr_operand.layout.field(bx, ix.index());
+                        if curr_operand.layout.is_ssa_standalone()
+                            && !field_layout.is_ssa_standalone()
+                        {
+                            // FIXME: Nothing should be looking at the *array* inside a `repr(simd)` type,
+                            // as that array doesn't really exist. Perhaps this should be a `bug!`,
+                            // with simd types handled before getting here?
+                        } else {
+                            let field_operand = curr_operand.extract_field(self, bx, ix.as_usize());
+                            self.retag_operand(bx, plan, field_operand, builder, field_offset);
+                        }
+                    };
 
-                    let field_layout = curr_operand.layout.field(bx, ix.index());
-                    // Part of https://github.com/rust-lang/compiler-team/issues/838
-                    if curr_operand.layout.is_ssa_standalone() && !field_layout.is_ssa_standalone()
-                    {
-                        // FIXME: support vector types, requires insert_element as part of cg-ssa
-                        // FIXME: Nothing should be looking at the *array* inside a `repr(simd)` type,
-                        // as that array doesn't really exist. Perhaps this should be a `bug!`,
-                        // with simd types handled before getting here?
-                    } else {
-                        let field_operand = curr_operand.extract_field(self, bx, ix.as_usize());
-                        self.retag_operand(bx, &plan, field_operand, builder, field_offset);
+                    match plans {
+                        RetagFields::Arbitrary(field_plans) => {
+                            for (ix, plan) in field_plans {
+                                retag_field(*ix, plan);
+                            }
+                        }
+                        RetagFields::Array(plan) => {
+                            let FieldsShape::Array { count, .. } = layout.fields else {
+                                bug!("Expected `FieldsShape::Array` but found {:?}", layout.fields);
+                            };
+                            for idx in 0..count {
+                                let idx = FieldIdx::from_usize(idx as usize);
+                                retag_field(idx, plan)
+                            }
+                        }
                     }
                 }
 
@@ -278,8 +489,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             self.retag_operand(bx, plan, variant_op, builder, offset);
                         }
                     } else {
-                        // We create a temporary place to store the operand, because its value will differ
-                        // depending on the variant that we have.
+                        // We create a temporary place to store the operand, because its
+                        // value will differ depending on the variant that we have.
                         let scratch = PlaceRef::alloca(bx, curr_operand.layout);
                         scratch.storage_live(bx);
                         curr_operand.store_with_annotation(bx, scratch);
@@ -316,9 +527,33 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.retag_mem(place.val.llval, info);
             }
             RetagPlan::Recurse { field_plans, variant_plans } => {
-                for (ix, plan) in field_plans {
-                    let field_place = place.project_field(bx, ix.as_usize());
-                    self.retag_place(bx, &plan, field_place);
+                if let Some(field_plans) = field_plans {
+                    let mut retag_field = |ix: FieldIdx, plan: &RetagPlan<Bx::Value>| {
+                        let field_place = place.project_field(bx, ix.as_usize());
+                        self.retag_place(bx, plan, field_place);
+                    };
+                    match field_plans {
+                        RetagFields::Arbitrary(fields) => {
+                            for (ix, plan) in fields {
+                                retag_field(*ix, plan);
+                            }
+                        }
+                        RetagFields::Array(plan) => {
+                            let FieldsShape::Array { count, .. } = place.layout.fields else {
+                                bug!(
+                                    "Expected `FieldsShape::Array` but found {:?}",
+                                    place.layout.fields
+                                );
+                            };
+                            // When an array of N references needs to be retagged (e.g. `[&T; N]`),
+                            // it is more efficient to emit a loop for large values of N than
+                            // to emit N retags in succession.
+                            within_loop(bx, count, |bx: &mut Bx, ix: Bx::Value| {
+                                let field_place = place.project_index(bx, ix);
+                                self.retag_place(bx, plan, field_place);
+                            });
+                        }
+                    }
                 }
                 if !variant_plans.is_empty() {
                     let operand = bx.load_operand(place);
@@ -362,4 +597,46 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx.switch(discr, join_block, variant_blocks.into_iter());
         bx.switch_to_block(join_block);
     }
+}
+
+/// Creates a simple loop, iterating the specified number of times.
+/// The dynamic value of the loop counter is passed as an argument
+/// to the closure.
+fn within_loop<'a, 'tcx, F, Bx: BuilderMethods<'a, 'tcx>>(bx: &mut Bx, max_iter: u64, mut op: F)
+where
+    F: FnMut(&mut Bx, Bx::Value),
+{
+    // Avoid emitting a no-op loop
+    if max_iter == 0 {
+        return;
+    }
+
+    // Initialize the loop counter to zero.
+    let counter_layout = bx.layout_of(bx.tcx().types.usize);
+    let counter_alloca = PlaceRef::alloca(bx, counter_layout);
+    counter_alloca.storage_live(bx);
+    bx.store_to_place(bx.const_usize(0), counter_alloca.val);
+
+    // Jump to a new block for the body of the loop.
+    let loop_body = bx.append_sibling_block("retag_loop");
+    bx.br(loop_body);
+
+    bx.switch_to_block(loop_body);
+
+    // Load the value of the counter, and pass it to the closure.
+    let curr_count = bx.load_from_place(bx.type_isize(), counter_alloca.val);
+    op(bx, curr_count);
+
+    let next_count = bx.unchecked_uadd(curr_count, bx.const_usize(1));
+    bx.store_to_place(next_count, counter_alloca.val);
+
+    // If the next count is equal to the maximum number of
+    // iterations, then exit the loop.
+    let max_count = bx.const_usize(max_iter);
+    let loop_exit = bx.append_sibling_block("retag_loop_exit");
+    let should_exit_loop = bx.icmp(IntPredicate::IntEQ, next_count, max_count);
+    bx.cond_br(should_exit_loop, loop_exit, loop_body);
+
+    bx.switch_to_block(loop_exit);
+    counter_alloca.storage_dead(bx);
 }

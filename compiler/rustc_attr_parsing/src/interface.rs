@@ -6,14 +6,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, CRATE_NODE_ID, NodeId, Safety};
+use rustc_attr_ir::target::{AstTarget, Target};
+use rustc_attr_ir::{AttrArgs, AttrItem, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
-use rustc_feature::{BUILTIN_ATTRIBUTE_MAP, Features};
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
-use rustc_lint_defs::RegisteredTools;
+use rustc_feature::{BUILTIN_ATTRIBUTE_SET, Features};
+use rustc_lint_defs::{LintId, RegisteredTools};
 use rustc_session::Session;
-use rustc_session::lint::LintId;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
@@ -21,14 +20,15 @@ use crate::context::{
     ATTRIBUTE_PARSERS, AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext,
     FinalizeFn, FinalizeOutput, SharedContext,
 };
+use crate::diagnostics::ParsedDescription;
+use crate::generated::GeneratedAttrState;
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
-use crate::session_diagnostics::ParsedDescription;
 use crate::synthetic::SyntheticAttrState;
-use crate::{AttributeTemplate, OmitDoc, ShouldEmit};
+use crate::{AttributeTemplate, ShouldEmit};
 
 pub struct EmitAttribute(
     pub  Box<
-        dyn for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a, ()>
+        dyn for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a>
             + DynSend
             + DynSync
             + 'static,
@@ -162,7 +162,7 @@ impl<'sess> AttributeParser<'sess> {
             attrs,
             target_span,
             target,
-            OmitDoc::Skip,
+            AstTarget::None,
             std::convert::identity,
             |lint_id, span, kind| {
                 sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, kind.0)
@@ -178,6 +178,7 @@ impl<'sess> AttributeParser<'sess> {
         target_span: Span,
         target_node_id: NodeId,
         target: Target,
+        ast_target: AstTarget<'_>,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
         parse_fn: fn(cx: &mut AcceptContext<'_, '_>, item: &ArgParser) -> Option<T>,
@@ -208,6 +209,7 @@ impl<'sess> AttributeParser<'sess> {
             target_span,
             target_node_id,
             target,
+            ast_target,
             features,
             emit_errors,
             &args,
@@ -230,6 +232,7 @@ impl<'sess> AttributeParser<'sess> {
         target_span: Span,
         target_node_id: NodeId,
         target: Target,
+        ast_target: AstTarget<'_>,
         features: Option<&'sess Features>,
         should_emit: ShouldEmit,
         args: &I,
@@ -257,6 +260,7 @@ impl<'sess> AttributeParser<'sess> {
                 emit_lint: &mut emit_lint,
                 #[cfg(debug_assertions)]
                 has_lint_been_emitted: AtomicBool::new(false),
+                ast_target,
             },
             attr_span,
             inner_span,
@@ -267,6 +271,7 @@ impl<'sess> AttributeParser<'sess> {
             attr_path,
             #[cfg(debug_assertions)]
             has_target_been_checked: false,
+            attr_id: None,
         };
         parse_fn(&mut cx, args)
     }
@@ -292,6 +297,7 @@ impl<'sess> AttributeParser<'sess> {
         self.sess
     }
 
+    #[track_caller]
     pub(crate) fn features(&self) -> &'sess Features {
         self.features.expect("features not available at this point in the compiler")
     }
@@ -304,26 +310,27 @@ impl<'sess> AttributeParser<'sess> {
         self.sess().dcx()
     }
 
+    #[track_caller]
     pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> ErrorGuaranteed {
         self.should_emit.emit_err(self.sess.dcx().create_err(diag))
     }
 
     /// Parse a list of attributes.
     ///
-    /// `target_span` is the span of the thing this list of attributes is applied to,
-    /// and when `omit_doc` is set, doc attributes are filtered out.
+    /// `target_span` is the span of the thing this list of attributes is applied to.
     pub fn parse_attribute_list(
         &mut self,
         attrs: &[ast::Attribute],
         target_span: Span,
         target: Target,
-        omit_doc: OmitDoc,
+        ast_target: AstTarget<'_>,
         lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut synthetic_attr_state = SyntheticAttrState::default();
+        let mut generated_attr_state = GeneratedAttrState::default();
 
         let mut finalizers: Vec<FinalizeFn> = Vec::with_capacity(attrs.len());
 
@@ -335,23 +342,9 @@ impl<'sess> AttributeParser<'sess> {
                 }
             }
 
-            // Sometimes, for example for `#![doc = include_str!("readme.md")]`,
-            // doc still contains a non-literal. You might say, when we're lowering attributes
-            // that's expanded right? But no, sometimes, when parsing attributes on macros,
-            // we already use the lowering logic and these are still there. So, when `omit_doc`
-            // is set we *also* want to ignore these.
-            let is_doc_attribute = attr.has_name(sym::doc);
-            if omit_doc == OmitDoc::Skip && is_doc_attribute {
-                continue;
-            }
-
             let attr_span = lower_span(attr.span);
             match &attr.kind {
                 ast::AttrKind::DocComment(comment_kind, symbol) => {
-                    if omit_doc == OmitDoc::Skip {
-                        continue;
-                    }
-
                     attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                         style: attr.style,
                         kind: DocFragmentKind::Sugared(*comment_kind),
@@ -361,6 +354,9 @@ impl<'sess> AttributeParser<'sess> {
                 }
                 ast::AttrKind::Synthetic(synthetic) => {
                     synthetic_attr_state.accept_synthetic_attr(attr_span, lower_span, synthetic);
+                }
+                ast::AttrKind::Generated(generated) => {
+                    generated_attr_state.accept_generated_attr(attr_span, generated)
                 }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
@@ -379,7 +375,7 @@ impl<'sess> AttributeParser<'sess> {
                         );
                         self.check_attribute_stability(&attr_path, attr_span, accept.stability);
                         if let [part] = parts.as_slice() {
-                            debug_assert!(BUILTIN_ATTRIBUTE_MAP.contains(part));
+                            debug_assert!(BUILTIN_ATTRIBUTE_SET.contains(part));
                         }
 
                         let Some(args) = ArgParser::from_attr_args(
@@ -407,7 +403,7 @@ impl<'sess> AttributeParser<'sess> {
                         // bla
                         // blob
                         // a
-                        if is_doc_attribute
+                        if attr.has_name(sym::doc)
                             && let ArgParser::NameValue(nv) = &args
                             // If not a string key/value, it should emit an error, but to make
                             // things simpler, it's handled in `DocParser` because it's simpler to
@@ -431,6 +427,7 @@ impl<'sess> AttributeParser<'sess> {
                                 emit_lint: &mut emit_lint,
                                 #[cfg(debug_assertions)]
                                 has_lint_been_emitted: AtomicBool::new(false),
+                                ast_target,
                             },
                             attr_span,
                             inner_span,
@@ -441,6 +438,7 @@ impl<'sess> AttributeParser<'sess> {
                             attr_path: attr_path.clone(),
                             #[cfg(debug_assertions)]
                             has_target_been_checked: false,
+                            attr_id: Some(HashIgnoredAttrId { attr_id: attr.id }),
                         };
 
                         (accept.accept_fn)(&mut cx, &args);
@@ -451,11 +449,12 @@ impl<'sess> AttributeParser<'sess> {
                         if !cx.shared.has_lint_been_emitted.load(Ordering::Relaxed) {
                             cx.shared.cx.check_args_used(attr, &args)
                         }
+                    } else if let [sym::diagnostic, _unknown, ..] = &*parts {
+                        self.unknown_diagnostic_attr(&n.item.path.segments[1], &mut emit_lint);
                     } else {
                         let attr = AttrItem {
                             path: attr_path.clone(),
                             args: self.lower_attr_args(&n.item.args, lower_span),
-                            id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,
                             span: attr_span,
                         };
@@ -474,13 +473,20 @@ impl<'sess> AttributeParser<'sess> {
                             self.check_invalid_crate_level_attr_item(&attr, inner_span);
                         }
 
-                        attributes.push(Attribute::Unparsed(Box::new(attr)));
+                        let attr = match attr_path.segments.len() {
+                            0 => unreachable!("no path for {attr:?}"),
+                            1 => Attribute::DeriveHelper(Box::new(attr)),
+                            _ => Attribute::Tool(Box::new(attr)),
+                        };
+
+                        attributes.push(attr);
                     };
                 }
             }
         }
 
         synthetic_attr_state.finalize_synthetic_attrs(&mut attributes);
+        generated_attr_state.finalize_generated_attrs(&mut attributes);
 
         // First, run all finalizers to produce the parsed attributes. Cross-attribute
         // checks that need to inspect the fully parsed attributes are deferred until all
@@ -493,6 +499,7 @@ impl<'sess> AttributeParser<'sess> {
                     cx: self,
                     target_span,
                     target,
+                    ast_target,
                     emit_lint: &mut emit_lint,
                     #[cfg(debug_assertions)]
                     has_lint_been_emitted: AtomicBool::new(false),
@@ -509,22 +516,25 @@ impl<'sess> AttributeParser<'sess> {
 
         // Now that all attributes have been parsed, run the deferred checks. These can
         // inspect the fully parsed attributes via `FinalizeCheckContext::parsed_attrs`.
-        for (check, attr_span) in deferred_checks {
-            check(
-                &FinalizeCheckContext {
-                    shared: SharedContext {
-                        cx: self,
-                        target_span,
-                        target,
-                        emit_lint: &mut emit_lint,
-                        #[cfg(debug_assertions)]
-                        has_lint_been_emitted: AtomicBool::new(false),
+        if !matches!(self.should_emit, ShouldEmit::Nothing) {
+            for (check, attr_span) in deferred_checks {
+                check(
+                    &mut FinalizeCheckContext {
+                        shared: SharedContext {
+                            cx: self,
+                            target_span,
+                            target,
+                            ast_target,
+                            emit_lint: &mut emit_lint,
+                            #[cfg(debug_assertions)]
+                            has_lint_been_emitted: AtomicBool::new(false),
+                        },
+                        all_attrs: &attr_paths,
+                        parsed_attrs: &attributes,
                     },
-                    all_attrs: &attr_paths,
-                    parsed_attrs: &attributes,
-                },
-                attr_span,
-            );
+                    attr_span,
+                );
+            }
         }
 
         if !matches!(self.should_emit, ShouldEmit::Nothing) && target == Target::WherePredicate {

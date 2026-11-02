@@ -52,24 +52,24 @@ LL |     async { async { f().await + 1 }.await }
 error: this async expression only awaits a single future
   --> tests/ui/redundant_async_block.rs:155:13
    |
+LL |     macro_rules! mac {
+...
 LL |             async { async { 42 }.await }
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `async { 42 }`
 ...
 LL |     mac!()
    |     ------ in this macro invocation
-   |
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this async expression only awaits a single future
   --> tests/ui/redundant_async_block.rs:176:13
    |
+LL |     macro_rules! mac {
+...
 LL |             async { async { $e }.await }
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `async { $e }`
 ...
 LL |     mac!(42)
    |     -------- in this macro invocation
-   |
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 10 previous errors
 

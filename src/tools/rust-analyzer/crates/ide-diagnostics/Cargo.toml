@@ -18,6 +18,7 @@ either.workspace = true
 itertools.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
+smallvec.workspace = true
 
 # local deps
 stdx.workspace = true

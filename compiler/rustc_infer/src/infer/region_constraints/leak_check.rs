@@ -2,8 +2,8 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_index::Idx;
-use rustc_middle::span_bug;
 use rustc_middle::ty::error::TypeError;
+use rustc_span::span_bug;
 use tracing::{debug, instrument};
 
 use super::*;
@@ -392,7 +392,8 @@ impl<'tcx> MiniGraph<'tcx> {
             {
                 match undo_entry {
                     &AddConstraint(i) => {
-                        region_constraints.data().constraints[i].0.iter_outlives().for_each(
+                        // FIXME(-Zassumptions-on-binders): Handle solver_data here and elsewhere in this fn
+                        region_constraints.legacy_data().constraints[i].0.iter_outlives().for_each(
                             |Constraint { kind: _, sub, sup, visible_for_leak_check }| {
                                 match visible_for_leak_check {
                                     ty::VisibleForLeakCheck::Yes => each_edge(sub, sup),
@@ -403,15 +404,17 @@ impl<'tcx> MiniGraph<'tcx> {
                         );
                     }
                     &AddVerify(i) => span_bug!(
-                        region_constraints.data().verifys[i].origin.span(),
+                        region_constraints.legacy_data().verifys[i].origin.span(),
                         "we never add verifications while doing higher-ranked things",
                     ),
                     &AddCombination(..) | &AddVar(..) => {}
+                    // FIXME(-Zassumptions-on-binders): we probably need to handle this in some manner
+                    &OverwriteSolverRegionConstraint { .. } => {}
                 }
             }
         } else {
             region_constraints
-                .data()
+                .legacy_data()
                 .constraints
                 .iter()
                 .flat_map(|(c, _)| c.iter_outlives())

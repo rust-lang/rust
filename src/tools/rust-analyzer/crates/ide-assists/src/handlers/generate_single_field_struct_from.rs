@@ -4,14 +4,11 @@ use ide_db::{
     RootDatabase, famous_defs::FamousDefs, helpers::mod_path_to_ast_with_factory,
     imports::import_assets::item_for_path_search,
 };
-use syntax::syntax_editor::{Position, SyntaxEditor};
-use syntax::{
-    TokenText,
-    ast::{
-        self, AstNode, HasAttrs, HasGenericParams, HasName, edit::AstNodeEdit,
-        syntax_factory::SyntaxFactory,
-    },
+use syntax::ast::{
+    self, AstNode, HasAttrs, HasGenericParams, HasName, edit::AstNodeEdit,
+    syntax_factory::SyntaxFactory,
 };
+use syntax::syntax_editor::{Position, SyntaxEditor};
 
 use crate::{
     AssistId,
@@ -71,8 +68,7 @@ pub(crate) fn generate_single_field_struct_from(
         return None;
     }
 
-    let main_field_name =
-        names.as_ref().map_or(TokenText::borrowed("value"), |names| names[main_field_i].text());
+    let main_field_name = names.as_ref().map_or("value", |names| names[main_field_i].text());
     let main_field_ty = types[main_field_i].clone();
 
     acc.add(
@@ -92,10 +88,10 @@ pub(crate) fn generate_single_field_struct_from(
                 false,
             ));
 
-            let ty = make.ty(&strukt_name.text());
+            let ty = make.ty(strukt_name.text());
 
             let constructor =
-                make_adt_constructor(names.as_deref(), constructors, &main_field_name, make);
+                make_adt_constructor(names.as_deref(), constructors, main_field_name, make);
             let body = make.block_expr([], Some(constructor));
 
             let fn_ = make
@@ -108,7 +104,7 @@ pub(crate) fn generate_single_field_struct_from(
                     make.param_list(
                         None,
                         [make.param(
-                            make.path_pat(make.path_from_text(&main_field_name)),
+                            make.path_pat(make.path_from_text(main_field_name)),
                             main_field_ty,
                         )],
                     ),
@@ -161,12 +157,12 @@ pub(crate) fn generate_single_field_struct_from(
 fn make_adt_constructor(
     names: Option<&[ast::Name]>,
     constructors: Vec<Option<ast::Expr>>,
-    main_field_name: &TokenText<'_>,
+    main_field_name: &str,
     make: &SyntaxFactory,
 ) -> ast::Expr {
     if let Some(names) = names {
         let fields = make.record_expr_field_list(names.iter().zip(constructors).map(
-            |(name, initializer)| make.record_expr_field(make.name_ref(&name.text()), initializer),
+            |(name, initializer)| make.record_expr_field(make.name_ref(name.text()), initializer),
         ));
         make.record_expr(make.path_from_text("Self"), fields).into()
     } else {

@@ -6,13 +6,13 @@ use std::rc::Rc;
 use std::str::FromStr;
 
 use polonius_engine::{Algorithm, AllFacts, Output};
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::frozen::Frozen;
-use rustc_hir::find_attr;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::pretty::PrettyPrintMirOptions;
 use rustc_middle::mir::{Body, MirDumper, PassWhere, Promoted};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, RegionExt, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_session::config::MirIncludeSpans;
@@ -46,7 +46,7 @@ pub(crate) struct NllOutput<'tcx> {
 
     /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics, e.g.
     /// localized typeck and liveness constraints.
-    pub polonius_context: Option<PoloniusContext>,
+    pub polonius_context: Option<PoloniusContext<'tcx>>,
 }
 
 /// Rewrites the regions in the MIR to use NLL variables, also scraping out the set of universal
@@ -96,14 +96,15 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
         &universal_region_relations,
         infcx,
     );
-    let mut regioncx = RegionInferenceContext::new(
+    let (_, closure_region_requirements, _nll_errors) = RegionInferenceContext::solve(
         &infcx,
         lowered_constraints,
         universal_region_relations.clone(),
         location_map,
+        body,
+        None,
     );
 
-    let (closure_region_requirements, _nll_errors) = regioncx.solve(infcx, body, None);
     closure_region_requirements
 }
 
@@ -121,12 +122,12 @@ pub(crate) fn compute_regions<'tcx>(
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     constraints: MirTypeckRegionConstraints<'tcx>,
     mut polonius_facts: Option<AllFacts<RustcFacts>>,
-    mut polonius_context: Option<PoloniusContext>,
+    mut polonius_context: Option<PoloniusContext<'tcx>>,
 ) -> NllOutput<'tcx> {
     let polonius_output = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_output())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
 
-    let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
+    let mut lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
         constraints,
         &universal_region_relations,
         infcx,
@@ -144,17 +145,21 @@ pub(crate) fn compute_regions<'tcx>(
         &lowered_constraints,
     );
 
-    let mut regioncx = RegionInferenceContext::new(
-        infcx,
-        lowered_constraints,
-        universal_region_relations,
-        location_map,
-    );
-
-    // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives constraints
-    // and use them to compute loan liveness.
+    // If requested for `-Zpolonius=next`, compute loan liveness information.
+    // This is done prior to `RegionInferenceContext::new`, because we may add
+    // additional liveness constraints.
     if let Some(polonius_context) = polonius_context.as_mut() {
-        polonius_context.compute_loan_liveness(&mut regioncx, body, borrow_set)
+        let _timer = infcx.tcx.prof.generic_activity("borrowck_polonius_loan_liveness");
+        polonius_context.compute_loan_liveness(
+            infcx,
+            &mut lowered_constraints.liveness_constraints,
+            lowered_constraints.outlives_constraints.outlives().iter().copied(),
+            &universal_region_relations.universal_regions,
+            body,
+            move_data,
+            &location_map,
+            borrow_set,
+        );
     }
 
     // If requested: dump NLL facts, and run legacy polonius analysis.
@@ -179,8 +184,14 @@ pub(crate) fn compute_regions<'tcx>(
     });
 
     // Solve the region constraints.
-    let (closure_region_requirements, nll_errors) =
-        regioncx.solve(infcx, body, polonius_output.clone());
+    let (regioncx, closure_region_requirements, nll_errors) = RegionInferenceContext::solve(
+        infcx,
+        lowered_constraints,
+        universal_region_relations,
+        location_map,
+        body,
+        polonius_output.clone(),
+    );
 
     NllOutput {
         regioncx,

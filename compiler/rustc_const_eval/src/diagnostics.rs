@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
-use rustc_errors::{Diag, DiagArgValue, EmissionGuarantee, MultiSpan, Subdiagnostic, msg};
+use rustc_errors::{Diag, DiagArgValue, MultiSpan, Subdiagnostic, msg};
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{Mutability, Ty};
@@ -102,7 +102,7 @@ pub(crate) struct UnstableInStableExposed {
         code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
         applicability = "has-placeholders"
     )]
-    pub attr_span: Span,
+    pub suggest_const_unstable: Option<Span>,
 }
 
 #[derive(Diagnostic)]
@@ -310,6 +310,7 @@ pub(crate) struct NonConstImplNote {
 #[derive(Clone)]
 pub(crate) struct FrameNote {
     pub span: Span,
+    pub span_context: Vec<Span>,
     pub times: i32,
     pub where_: &'static str,
     pub instance: String,
@@ -317,10 +318,13 @@ pub(crate) struct FrameNote {
 }
 
 impl Subdiagnostic for FrameNote {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let mut span: MultiSpan = self.span.into();
         if self.has_label && !self.span.is_dummy() {
             span.push_span_label(self.span, msg!("the failure occurred here"));
+        }
+        for sp in &self.span_context {
+            span.push_span_context(*sp);
         }
         let msg = msg!(
             r#"{$times ->

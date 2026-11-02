@@ -72,7 +72,7 @@ fn actual_main() -> anyhow::Result<ExitCode> {
         flags::RustAnalyzerCmd::Symbols(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Highlight(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::AnalysisStats(cmd) => cmd.run(verbosity)?,
-        flags::RustAnalyzerCmd::Diagnostics(cmd) => cmd.run()?,
+        flags::RustAnalyzerCmd::Diagnostics(cmd) => cmd.run(verbosity)?,
         flags::RustAnalyzerCmd::UnresolvedReferences(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Ssr(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Search(cmd) => cmd.run()?,
@@ -166,8 +166,6 @@ fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
     Ok(())
 }
 
-const STACK_SIZE: usize = 1024 * 1024 * 8;
-
 /// Parts of rust-analyzer can use a lot of stack space, and some operating systems only give us
 /// 1 MB by default (eg. Windows), so this spawns a new thread with hopefully sufficient stack
 /// space.
@@ -176,8 +174,7 @@ fn with_extra_thread(
     thread_intent: stdx::thread::ThreadIntent,
     f: impl FnOnce() -> anyhow::Result<()> + Send + 'static,
 ) -> anyhow::Result<()> {
-    let handle =
-        stdx::thread::Builder::new(thread_intent, thread_name).stack_size(STACK_SIZE).spawn(f)?;
+    let handle = stdx::thread::Builder::new(thread_intent, thread_name).spawn(f)?;
 
     handle.join()?;
 
@@ -189,6 +186,7 @@ fn run_server(startup_notice: Option<String>) -> anyhow::Result<()> {
 
     rayon::ThreadPoolBuilder::new()
         .thread_name(|ix| format!("RayonWorker{}", ix))
+        .stack_size(stdx::thread::DEFAULT_STACK_SIZE)
         .build_global()
         .unwrap();
 

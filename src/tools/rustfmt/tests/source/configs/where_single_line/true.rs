@@ -1,4 +1,4 @@
-// rustfmt-where_single_line: true
+//@ rustfmt-where_single_line: true
 // Where style
 
 

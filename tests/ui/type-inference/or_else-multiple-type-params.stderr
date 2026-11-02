@@ -3,7 +3,13 @@ error[E0282]: type annotations needed for `Result<Child, _>`
    |
 LL |         .or_else(|err| {
    |                  ^^^^^
+LL |             panic!("oh no: {:?}", err);
+LL |         }).unwrap();
+   |            ------ required by a bound introduced by this call
    |
+   = note: the type must also implement `Debug`
+note: required by a bound in `Result::<T, E>::unwrap`
+  --> $SRC_DIR/core/src/result.rs:LL:COL
 help: try giving this closure an explicit return type
    |
 LL |         .or_else(|err| -> Result<_, F> {

@@ -8,7 +8,7 @@ something. We appreciate any sort of contributions, and don't want a wall of rul
 
 Clippy welcomes contributions from everyone. There are many ways to contribute to Clippy and the following document
 explains how you can contribute and how to get started.  If you have any questions about contributing or need help with
-anything, feel free to ask questions on issues or visit the `#clippy` on [Zulip].
+anything, feel free to ask questions on issues or visit the `#t-clippy` on [Zulip].
 
 All contributors are expected to follow the [Rust Code of Conduct].
 
@@ -24,7 +24,7 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [Contributions](#contributions)
   - [License](#license)
 
-[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/clippy
+[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/t-clippy
 [Rust Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
 
 ## The Clippy book
@@ -49,7 +49,7 @@ a [developer guide] and is a good place to start your journey.
 All issues on Clippy are mentored, if you want help simply ask someone from the
 Clippy team directly by mentioning them in the issue or over on [Zulip]. All
 currently active team members can be found
-[here](https://github.com/rust-lang/rust-clippy/blob/master/triagebot.toml#L18)
+[here](https://github.com/rust-lang/rust-clippy/blob/HEAD/triagebot.toml#L18)
 
 Some issues are easier than others. The [`good first issue`] label can be used to find the easy
 issues. You can use `@rustbot claim` to assign the issue to yourself.
@@ -108,7 +108,7 @@ For [`rust-analyzer`][ra_homepage] to work correctly make sure that in the `rust
 You should be able to see information on things like `Expr` or `EarlyContext` now if you hover them, also
 a lot more type hints.
 
-To have `rust-analyzer` also work in the `clippy_dev` and `lintcheck` crates, add the following configuration
+To have `rust-analyzer` also work in the `clippy-dev` and `lintcheck` crates, add the following configuration
 
 ```json
 {
@@ -176,7 +176,7 @@ via the `LateContext` parameter.
 That's why the `else_if_without_else` example is listed in `early_lint_methods!`. Because the
 [actual lint logic][else_if_without_else] does not depend on any type information.
 
-[lint_crate_entry]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/lib.rs
+[lint_crate_entry]: https://github.com/rust-lang/rust-clippy/blob/HEAD/clippy_lints/src/lib.rs
 [else_if_without_else]: https://github.com/rust-lang/rust-clippy/blob/4253aa7137cb7378acc96133c787e49a345c2b3c/clippy_lints/src/else_if_without_else.rs
 [`LintStore`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html
 [early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html
@@ -227,6 +227,22 @@ Contributions to Clippy should be made in the form of GitHub pull requests. Each
 be reviewed by a core contributor (someone with permission to land patches) and either landed in the
 main tree or given feedback for changes that would be required.
 
+We also encourage community contributors to help review pull requests.
+When someone opens a PR, `@rustbot` prompts them to review another contributor’s PR.
+This process distributes the review workload across more people and
+gives contributors an opportunity to become more familiar with Clippy’s internals.
+PRs with less than two community reviews are [labeled with `S-waiting-on-community-reviews`].
+
+Like the rust compiler, we follow the [`git rebase` workflow].
+This means that a PR is merged as-is via a merge commit rather than being squashed into a single commit.
+Because of this, you may be asked to clean up your commit history before merge.
+This can mean e.g. [squashing] "fix review comments" commits into the commit they belong to, or
+splitting unrelated changes into their own commits.
+Keeping each commit a self-contained, logical change allows us to use [`git bisect`] effectively and
+revert just the commit that broke something, instead of the entire PR.
+Don't worry, this does not make reviews harder.
+A [range-diff] is attached to every review comment, so everyone can see exactly what changed since the last review.
+
 All PRs should include a `changelog` entry with a short comment explaining the change. The rule of thumb is basically,
 "what do you believe is important from an outsider's perspective?" Often, PRs are only related to a single property of a
 lint, and then it's good to mention that one. Otherwise, it's better to include too much detail than too little.
@@ -255,7 +271,19 @@ changelog: Something 2
 changelog: Something 3
 ```
 
+[labeled with `S-waiting-on-community-reviews`]: https://github.com/rust-lang/rust-clippy/issues?q=state%3Aopen%20label%3AS-waiting-on-community-reviews%20label%3AS-waiting-on-review
+[`git rebase` workflow]: https://rustc-dev-guide.rust-lang.org/git.html#no-merge-policy
+[`git bisect`]: https://git-scm.com/docs/git-bisect
+[range-diff]: https://rustc-dev-guide.rust-lang.org/git.html#git-range-diff
+[squashing]: https://rustc-dev-guide.rust-lang.org/git.html#squash-your-commits
 [changelog]: CHANGELOG.md
+
+## LLM policy
+
+Clippy adopts the same [LLM usage policy] as `rust-lang/rust`.
+You can consult the [LLM usage chapter] in the Clippy book to see
+what that means, how it applies.
+
 
 ## License
 
@@ -265,3 +293,5 @@ All code in this repository is under the [Apache-2.0] or the [MIT] license.
 
 [Apache-2.0]: https://www.apache.org/licenses/LICENSE-2.0
 [MIT]: https://opensource.org/licenses/MIT
+[LLM usage policy]: https://forge.rust-lang.org/policies/llm-usage.html
+[LLM usage chapter]: https://doc.rust-lang.org/nightly/clippy/development/llm_usage.html

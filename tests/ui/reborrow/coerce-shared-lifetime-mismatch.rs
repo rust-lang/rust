@@ -1,3 +1,5 @@
+//! Test that CoerceShared cannot be implemented with spurious 'static lifetimes.
+
 #![feature(reborrow)]
 
 // The impl is accepted, but using it to coerce a local marker into a `'static`
@@ -13,11 +15,11 @@ impl<'a> Reborrow for CustomMarker<'a> {}
 struct StaticMarkerRef<'a>(PhantomData<&'a ()>);
 
 impl<'a> CoerceShared<StaticMarkerRef<'static>> for CustomMarker<'a> {}
+//~^ ERROR
 
 fn method(_a: StaticMarkerRef<'static>) {}
 
 fn main() {
     let a = CustomMarker(PhantomData);
     method(a);
-    //~^ ERROR
 }

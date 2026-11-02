@@ -1,6 +1,8 @@
 //! The home of `HirDatabase`, which is the Salsa database containing all the
 //! type inference-related queries.
 
+use std::sync::LazyLock;
+
 use arrayvec::ArrayVec;
 use base_db::{Crate, SourceDatabase, target::TargetLoadError};
 use either::Either;
@@ -10,29 +12,31 @@ use hir_def::{
     StaticId, TraitId, TypeAliasId, VariantId,
     builtin_derive::BuiltinDeriveImplMethod,
     expr_store::ExpressionStore,
-    hir::{ClosureKind, ExprId, generics::LocalTypeOrConstParamId},
+    hir::{ClosureKind, ExprId},
     layout::TargetDataLayout,
     resolver::{HasResolver, Resolver},
     signatures::{ConstSignature, StaticSignature},
 };
 use la_arena::ArenaMap;
-use salsa::Update;
+use salsa::SalsaValue;
 use span::Edition;
 use stdx::impl_from;
 use triomphe::Arc;
 
 use crate::{
     FieldType, GenericDefaultsRef, GenericPredicates, ImplTraitId, InferBodyId, TyDefId,
-    TyLoweringResult, ValueTyDefId,
+    TyLoweringDiagnostic, TyLoweringResult, ValueTyDefId,
     consteval::ConstEvalError,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
-    lower::{GenericDefaults, TrackedStructToken, TypeAliasBounds},
+    lower::{
+        ConstParamTypes, FieldTypes, GenericDefaults, SelfAndAssocBounds, TrackedStructToken,
+        WithDefinedOpaques,
+    },
     mir::{MirBody, MirLowerError},
     next_solver::{
-        Allocation, Clause, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, StoredClauses,
-        StoredEarlyBinder, StoredGenericArgs, StoredPolyFnSig, StoredTraitRef, StoredTy, TraitRef,
-        Ty, VariancesOf,
+        Allocation, Clause, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, StoredEarlyBinder,
+        StoredGenericArgs, StoredPolyFnSig, StoredTraitRef, StoredTy, TraitRef, Ty, VariancesOf,
     },
     traits::{ParamEnvAndCrate, StoredParamEnvAndCrate},
 };
@@ -159,6 +163,13 @@ pub trait HirDatabase: SourceDatabase + 'static {
         crate::layout::target_data_layout_query(db, krate).map_err(|err| err.clone())
     }
 
+    fn target_data_layout_or_default(&self, krate: Crate) -> &TargetDataLayout {
+        static DEFAULT: LazyLock<TargetDataLayout> = LazyLock::new(TargetDataLayout::default);
+
+        let db = self.as_dyn();
+        crate::layout::target_data_layout_query(db, krate).unwrap_or_else(|_| &*DEFAULT)
+    }
+
     fn dyn_compatibility_of_trait(&self, trait_: TraitId) -> Option<DynCompatibilityViolation> {
         let db = self.as_dyn();
         crate::dyn_compatibility::dyn_compatibility_of_trait_query(db, trait_)
@@ -172,7 +183,7 @@ pub trait HirDatabase: SourceDatabase + 'static {
     fn type_for_type_alias_with_diagnostics<'db>(
         &'db self,
         def: TypeAliasId,
-    ) -> &'db TyLoweringResult<'db, StoredEarlyBinder<StoredTy>> {
+    ) -> &'db TyLoweringResult<'db, WithDefinedOpaques<StoredEarlyBinder<StoredTy>>> {
         let db = self.as_dyn();
         crate::lower::type_for_type_alias_with_diagnostics(db, def)
     }
@@ -226,12 +237,12 @@ pub trait HirDatabase: SourceDatabase + 'static {
     fn const_param_types_with_diagnostics<'db>(
         &'db self,
         def: GenericDefId,
-    ) -> &'db TyLoweringResult<'db, ArenaMap<LocalTypeOrConstParamId, StoredTy>> {
+    ) -> &'db TyLoweringResult<'db, ConstParamTypes> {
         let db = self.as_dyn();
         crate::lower::const_param_types_with_diagnostics(db, def)
     }
 
-    fn const_param_types(&self, def: GenericDefId) -> &ArenaMap<LocalTypeOrConstParamId, StoredTy> {
+    fn const_param_types(&self, def: GenericDefId) -> &ConstParamTypes {
         let db = self.as_dyn();
         crate::lower::const_param_types(db, def)
     }
@@ -257,7 +268,7 @@ pub trait HirDatabase: SourceDatabase + 'static {
     fn field_types_with_diagnostics<'db>(
         &'db self,
         var: VariantId,
-    ) -> &'db TyLoweringResult<'db, ArenaMap<LocalFieldId, FieldType>> {
+    ) -> &'db TyLoweringResult<'db, FieldTypes> {
         let db = self.as_dyn();
         crate::lower::field_types_with_diagnostics(db, var)
     }
@@ -275,12 +286,12 @@ pub trait HirDatabase: SourceDatabase + 'static {
         crate::lower::callable_item_signature(db, def)
     }
 
-    fn callable_item_signature_with_diagnostics<'db>(
+    fn fn_sig_for_fn_with_diagnostics<'db>(
         &'db self,
-        def: CallableDefId,
-    ) -> &'db TyLoweringResult<'db, StoredEarlyBinder<StoredPolyFnSig>> {
+        def: FunctionId,
+    ) -> &'db TyLoweringResult<'db, WithDefinedOpaques<StoredEarlyBinder<StoredPolyFnSig>>> {
         let db = self.as_dyn();
-        crate::lower::callable_item_signature_with_diagnostics(db, def)
+        crate::lower::fn_sig_for_fn(db, def)
     }
 
     fn trait_environment<'db>(&'db self, def: GenericDefId) -> ParamEnv<'db> {
@@ -307,7 +318,7 @@ pub trait HirDatabase: SourceDatabase + 'static {
     fn type_alias_bounds_with_diagnostics<'db>(
         &'db self,
         type_alias: TypeAliasId,
-    ) -> &'db TyLoweringResult<'db, TypeAliasBounds<StoredEarlyBinder<StoredClauses>>> {
+    ) -> &'db TyLoweringResult<'db, SelfAndAssocBounds> {
         let db = self.as_dyn();
         crate::lower::type_alias_bounds_with_diagnostics(db, type_alias)
     }
@@ -332,13 +343,9 @@ pub trait HirDatabase: SourceDatabase + 'static {
         let db = self.as_dyn();
         crate::variance::variances_of(db, def)
     }
-}
 
-#[salsa::db]
-impl<T: SourceDatabase> HirDatabase for T {
-    fn as_dyn(&self) -> &dyn HirDatabase {
-        self
-    }
+    // HACK: We need this for MIR intrinsic `type_name()`, and it can't access the display infra because it is inside `hir-ide`.
+    fn type_name<'db>(&'db self, ty: Ty<'db>, module: ModuleId) -> String;
 }
 
 #[test]
@@ -349,10 +356,11 @@ fn hir_database_is_dyn_compatible() {
 #[salsa::interned(debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedOpaqueTyId {
+    #[returns(copy)]
     pub loc: ImplTraitId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub struct InternedClosure<'db> {
     pub owner: InferBodyId<'db>,
     pub expr: ExprId,
@@ -362,6 +370,7 @@ pub struct InternedClosure<'db> {
 #[salsa::interned(constructor = new_impl, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedClosureId<'db> {
+    #[returns(copy)]
     pub loc: InternedClosure<'db>,
 }
 
@@ -390,6 +399,7 @@ impl<'db> InternedClosureId<'db> {
 #[salsa::interned(constructor = new_impl, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedCoroutineId<'db> {
+    #[returns(copy)]
     pub loc: InternedClosure<'db>,
 }
 
@@ -419,6 +429,7 @@ impl<'db> InternedCoroutineId<'db> {
 #[salsa::interned(constructor = new_impl, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedCoroutineClosureId<'db> {
+    #[returns(copy)]
     pub loc: InternedClosure<'db>,
 }
 
@@ -490,41 +501,53 @@ impl HasResolver for AnonConstId<'_> {
     }
 }
 
+pub fn signature_anon_consts_and_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
+    def: GenericDefId,
+) -> ArrayVec<(&'db [AnonConstId<'db>], &'db [TyLoweringDiagnostic]), 5> {
+    let mut result = ArrayVec::new();
+
+    // Queries common to all generic defs:
+    push(&mut result, db.generic_defaults_with_diagnostics(def));
+    push(&mut result, GenericPredicates::query_with_diagnostics(db, def));
+    push(&mut result, db.const_param_types_with_diagnostics(def));
+
+    match def {
+        GenericDefId::ImplId(id) => {
+            push(&mut result, db.impl_self_ty_with_diagnostics(id));
+            if let Some(trait_ref) = db.impl_trait_with_diagnostics(id) {
+                push(&mut result, trait_ref);
+            }
+        }
+        GenericDefId::TypeAliasId(id) => {
+            push(&mut result, db.type_for_type_alias_with_diagnostics(id));
+            push(&mut result, db.type_alias_bounds_with_diagnostics(id));
+        }
+        GenericDefId::FunctionId(id) => push(&mut result, db.fn_sig_for_fn_with_diagnostics(id)),
+        GenericDefId::ConstId(def) => push(&mut result, db.type_for_const_with_diagnostics(def)),
+        GenericDefId::StaticId(def) => push(&mut result, db.type_for_static_with_diagnostics(def)),
+        GenericDefId::TraitId(_) | GenericDefId::AdtId(_) => {}
+    }
+
+    return result;
+
+    fn push<'db, T>(
+        result: &mut ArrayVec<(&'db [AnonConstId<'db>], &'db [TyLoweringDiagnostic]), 5>,
+        item: &'db TyLoweringResult<'db, T>,
+    ) {
+        result.push((item.defined_anon_consts(), item.diagnostics()));
+    }
+}
+
 impl<'db> AnonConstId<'db> {
     pub fn all_from_signature(
         db: &'db dyn HirDatabase,
         def: GenericDefId,
-    ) -> ArrayVec<&'db [Self], 5> {
-        let mut result = ArrayVec::new();
-
-        // Queries common to all generic defs:
-        result.push(db.generic_defaults_with_diagnostics(def).defined_anon_consts());
-        result.push(GenericPredicates::query_with_diagnostics(db, def).defined_anon_consts());
-        result.push(db.const_param_types_with_diagnostics(def).defined_anon_consts());
-
-        match def {
-            GenericDefId::ImplId(id) => {
-                result.push(db.impl_self_ty_with_diagnostics(id).defined_anon_consts());
-                if let Some(trait_ref) = db.impl_trait_with_diagnostics(id) {
-                    result.push(trait_ref.defined_anon_consts());
-                }
-            }
-            GenericDefId::TypeAliasId(id) => {
-                result.push(db.type_for_type_alias_with_diagnostics(id).defined_anon_consts());
-                result.push(db.type_alias_bounds_with_diagnostics(id).defined_anon_consts());
-            }
-            GenericDefId::FunctionId(id) => result
-                .push(db.callable_item_signature_with_diagnostics(id.into()).defined_anon_consts()),
-            GenericDefId::ConstId(def) => {
-                result.push(db.type_for_const_with_diagnostics(def).defined_anon_consts())
-            }
-            GenericDefId::StaticId(def) => {
-                result.push(db.type_for_static_with_diagnostics(def).defined_anon_consts())
-            }
-            GenericDefId::TraitId(_) | GenericDefId::AdtId(_) => {}
-        }
-
-        result
+    ) -> impl Iterator<Item = AnonConstId<'db>> {
+        signature_anon_consts_and_diagnostics(db, def)
+            .into_iter()
+            .flat_map(|(anon_consts, _)| anon_consts)
+            .copied()
     }
 }
 

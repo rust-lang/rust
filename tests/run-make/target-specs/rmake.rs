@@ -5,6 +5,7 @@
 // using them correctly, or fails with the right error message when using them improperly.
 // See https://github.com/rust-lang/rust/pull/16156
 //@ needs-llvm-components: x86
+//@ ignore-backends: gcc
 
 use run_make_support::{diff, rfs, rustc};
 
@@ -95,5 +96,10 @@ fn main() {
         .crate_type("lib")
         .arg("-Ctarget-cpu=generic")
         .run();
-    rustc().arg("-Zunstable-options").target("require-explicit-cpu").print("target-cpus").run();
+    rustc()
+        .arg("-Zunstable-options")
+        .target("require-explicit-cpu")
+        .print("target-cpus")
+        .run()
+        .assert_stdout_not_contains("default target CPU");
 }

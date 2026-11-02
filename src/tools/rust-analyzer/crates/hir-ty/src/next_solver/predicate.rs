@@ -16,8 +16,8 @@ use rustc_type_ir::{
 };
 
 use crate::next_solver::{
-    GenericArg, TraitIdWrapper, impl_foldable_for_interned_slice, impl_stored_interned_slice,
-    interned_slice,
+    GenericArg, TraitIdWrapper, default_types, impl_foldable_for_interned_slice,
+    impl_stored_interned_slice, interned_slice,
 };
 
 use super::{Binder, BoundVarKinds, DbInterner, Region, Ty};
@@ -136,8 +136,6 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for BoundExistentialPre
         a: Self,
         b: Self,
     ) -> rustc_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
-        let interner = relation.cx();
-
         // We need to perform this deduplication as we sometimes generate duplicate projections in `a`.
         let mut a_v: Vec<_> = a.into_iter().collect();
         let mut b_v: Vec<_> = b.into_iter().collect();
@@ -180,7 +178,7 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for BoundExistentialPre
             },
         );
 
-        BoundExistentialPredicates::new_from_iter(interner, v)
+        BoundExistentialPredicates::new_from_iter(v)
     }
 }
 
@@ -274,12 +272,24 @@ impl<'db> std::fmt::Debug for Clauses<'db> {
 
 impl<'db> Clauses<'db> {
     #[inline]
-    pub fn empty(interner: DbInterner<'db>) -> Self {
-        interner.default_types().empty.clauses
+    pub fn empty() -> Self {
+        default_types().empty.clauses
     }
 
     #[inline]
     pub fn new_from_slice(slice: &[Clause<'db>]) -> Self {
+        if slice.is_empty() {
+            // Common case: avoid looking up the empty slice.
+            Self::empty()
+        } else {
+            Self::new_from_slice_no_empty_check(slice)
+        }
+    }
+
+    /// Same as [`Self::new_from_slice()`] but won't use the global empty slice `slice.is_empty()`, because someone
+    /// needs to intern the global slice as well.
+    #[inline]
+    pub(crate) fn new_from_slice_no_empty_check(slice: &[Clause<'db>]) -> Self {
         let slice = unsafe { ::std::mem::transmute::<&[Clause<'db>], &[Clause<'static>]>(slice) };
         let flags = FlagComputation::<DbInterner<'db>>::for_clauses(slice);
         let flags = ClausesCachedTypeInfo(WithCachedTypeInfo {
@@ -291,7 +301,7 @@ impl<'db> Clauses<'db> {
     }
 
     #[inline]
-    pub fn new_from_iter<I, T>(_interner: DbInterner<'db>, args: I) -> T::Output
+    pub fn new_from_iter<I, T>(args: I) -> T::Output
     where
         I: IntoIterator<Item = T>,
         T: CollectAndApply<Clause<'db>, Self>,
@@ -318,6 +328,13 @@ impl<'db> Clauses<'db> {
     #[inline]
     pub fn is_empty(self) -> bool {
         self.as_slice().is_empty()
+    }
+}
+
+impl Default for Clauses<'_> {
+    #[inline]
+    fn default() -> Self {
+        Self::empty()
     }
 }
 
@@ -362,14 +379,14 @@ impl<'db> rustc_type_ir::TypeSuperFoldable<DbInterner<'db>> for Clauses<'db> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Clauses::new_from_iter(folder.cx(), self.iter().map(|clause| clause.try_fold_with(folder)))
+        Clauses::new_from_iter(self.iter().map(|clause| clause.try_fold_with(folder)))
     }
 
     fn super_fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(
         self,
         folder: &mut F,
     ) -> Self {
-        Clauses::new_from_iter(folder.cx(), self.iter().map(|clause| clause.fold_with(folder)))
+        Clauses::new_from_iter(self.iter().map(|clause| clause.fold_with(folder)))
     }
 }
 
@@ -437,8 +454,9 @@ pub struct ParamEnv<'db> {
 }
 
 impl<'db> ParamEnv<'db> {
-    pub fn empty(interner: DbInterner<'db>) -> Self {
-        ParamEnv { clauses: Clauses::empty(interner) }
+    #[inline]
+    pub fn empty() -> Self {
+        ParamEnv { clauses: Clauses::empty() }
     }
 
     pub fn clauses(self) -> Clauses<'db> {
@@ -883,7 +901,7 @@ impl<'db> rustc_type_ir::inherent::Clause<DbInterner<'db>> for Clause<'db> {
             .skip_norm_wip();
         // 3) ['x] + ['b] -> ['x, 'b]
         let bound_vars =
-            BoundVarKinds::new_from_iter(cx, trait_bound_vars.iter().chain(pred_bound_vars.iter()));
+            BoundVarKinds::new_from_iter(trait_bound_vars.iter().chain(pred_bound_vars.iter()));
 
         let predicate: Predicate<'db> =
             ty::Binder::bind_with_vars(PredicateKind::Clause(new), bound_vars).upcast(cx);

@@ -25,6 +25,9 @@ fn main() {
 
     let x = Foo::Bar { a: 1 };
     if let Foo::Bar { .. } = x { //~ NOTE this pattern
-        println!("{a}"); //~ ERROR cannot find value `a` in this scope
+        println!("{a}");
+        //~^ ERROR cannot find value `a` in this scope
+        //~| NOTE not found in this scope
+
     }
 }

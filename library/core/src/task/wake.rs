@@ -90,6 +90,8 @@ impl RawWaker {
 /// pointers to *different* functions can compare equal (since identical functions can be
 /// deduplicated within a codegen unit).
 ///
+/// This struct is guaranteed to be aligned to at least 8 bytes.
+///
 /// # Thread safety
 /// If the [`RawWaker`] will be used to construct a [`Waker`] then
 /// these functions must all be thread-safe (even though [`RawWaker`] is
@@ -106,6 +108,8 @@ impl RawWaker {
 #[stable(feature = "futures_api", since = "1.36.0")]
 #[allow(unpredictable_function_pointer_comparisons)]
 #[derive(PartialEq, Copy, Clone, Debug)]
+// For bit-stuffing pointers we guarantee align >= 8.
+#[repr(align(8))]
 pub struct RawWakerVTable {
     /// This function will be called when the [`RawWaker`] gets cloned, e.g. when
     /// the [`Waker`] in which the [`RawWaker`] is stored gets cloned.
@@ -245,14 +249,14 @@ impl<'a> Context<'a> {
     #[stable(feature = "futures_api", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_waker", since = "1.82.0")]
     pub const fn waker(&self) -> &'a Waker {
-        &self.waker
+        self.waker
     }
 
     /// Returns a reference to the [`LocalWaker`] for the current task.
     #[inline]
     #[unstable(feature = "local_waker", issue = "118959")]
     pub const fn local_waker(&self) -> &'a LocalWaker {
-        &self.local_waker
+        self.local_waker
     }
 
     /// Returns a reference to the extension data for the current task.
@@ -839,9 +843,10 @@ impl LocalWaker {
 
     /// Creates a new `LocalWaker` from [`RawWaker`].
     ///
+    /// # Safety
+    ///
     /// The behavior of the returned `LocalWaker` is undefined if the contract defined
     /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
-    /// Therefore this method is unsafe.
     #[inline]
     #[must_use]
     #[unstable(feature = "local_waker", issue = "118959")]

@@ -1,8 +1,6 @@
 name: rustdoc check
 on:
-  push:
-    branches:
-      - main
+  merge_group:
   pull_request:
 
 permissions:
@@ -14,7 +12,7 @@ jobs:
     name: rustdoc check
     steps:
     - name: checkout
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: install rustup
       run: |
@@ -25,4 +23,4 @@ jobs:
     - name: document rustfmt
       env:
         RUSTDOCFLAGS: --document-private-items --enable-index-page --show-type-layout --generate-link-to-definition -Zunstable-options -Dwarnings
-      run: cargo doc -Zskip-rustdoc-fingerprint --no-deps -p rustfmt-nightly -p rustfmt-config_proc_macro
+      run: cargo doc --locked -Zskip-rustdoc-fingerprint --no-deps -p rustfmt-nightly -p rustfmt-config_proc_macro

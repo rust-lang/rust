@@ -1,7 +1,7 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::min_ident_chars)]
 #![expect(irrefutable_let_patterns, nonstandard_style)]
-#![allow(clippy::struct_field_names)]
+#![allow(non_local_definitions, clippy::struct_field_names)]
 
 extern crate proc_macros;
 use proc_macros::{external, with_span};
@@ -173,3 +173,38 @@ impl D for Issue13396 {
     }
     fn long(long: i32) {}
 }
+
+const _: () = {
+    trait A {
+        //~^ min_ident_chars
+        fn f(h: [u32; 0]);
+        //~^ min_ident_chars
+        //~| min_ident_chars
+    }
+    impl A for () {
+        fn f(
+            h: [u32; {
+                impl A for u32 {
+                    fn f(
+                        h: [u32; {
+                            impl A for i32 {
+                                fn f(h: [u32; 0]) {
+                                    let h = 0; //~ min_ident_chars
+                                }
+                            }
+                            let h = 0; //~ min_ident_chars
+                            0
+                        }],
+                    ) {
+                        let h = 0; //~ min_ident_chars
+                    }
+                }
+                let h = 0; //~ min_ident_chars
+                0
+            }],
+        ) {
+            let h = 0; //~ min_ident_chars
+        }
+    }
+    let h = 0; //~ min_ident_chars
+};

@@ -21,6 +21,7 @@ pub enum SolverAdtLangItem {
     // tidy-alphabetical-start
     DynMetadata,
     Option,
+    OwnedBox,
     Poll,
     // tidy-alphabetical-end
 }
@@ -45,6 +46,7 @@ pub enum SolverTraitLangItem {
     FnMut,
     FnOnce,
     FnPtrTrait,
+    Freeze,
     FusedIterator,
     Future,
     Iterator,

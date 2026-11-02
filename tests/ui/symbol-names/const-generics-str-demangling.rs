@@ -8,38 +8,38 @@ pub struct Str<const S: &'static str>;
 
 #[rustc_dump_symbol_name]
 //~^ ERROR symbol-name
-//~| ERROR demangling
-//~| ERROR demangling-alt(<c::Str<"abc">>)
+//~| NOTE demangling
+//~| NOTE demangling-alt(<c::Str<"abc">>)
 impl Str<"abc"> {}
 
 #[rustc_dump_symbol_name]
 //~^ ERROR symbol-name
-//~| ERROR demangling
-//~| ERROR demangling-alt(<c::Str<"'">>)
+//~| NOTE demangling
+//~| NOTE demangling-alt(<c::Str<"'">>)
 impl Str<"'"> {}
 
 #[rustc_dump_symbol_name]
 //~^ ERROR symbol-name
-//~| ERROR demangling
-//~| ERROR demangling-alt(<c::Str<"\t\n">>)
+//~| NOTE demangling
+//~| NOTE demangling-alt(<c::Str<"\t\n">>)
 impl Str<"\t\n"> {}
 
 #[rustc_dump_symbol_name]
 //~^ ERROR symbol-name
-//~| ERROR demangling
-//~| ERROR demangling-alt(<c::Str<"∂ü">>)
+//~| NOTE demangling
+//~| NOTE demangling-alt(<c::Str<"∂ü">>)
 impl Str<"∂ü"> {}
 
 #[rustc_dump_symbol_name]
 //~^ ERROR symbol-name
-//~| ERROR demangling
-//~| ERROR demangling-alt(<c::Str<"საჭმელად_გემრიელი_სადილი">>)
+//~| NOTE demangling
+//~| NOTE demangling-alt(<c::Str<"საჭმელად_გემრიელი_სადილი">>)
 impl Str<"საჭმელად_გემრიელი_სადილი"> {}
 
 #[rustc_dump_symbol_name]
 //~^ ERROR symbol-name
-//~| ERROR demangling
-//~| ERROR demangling-alt(<c::Str<"🐊🦈🦆🐮 § 🐶👒☕🔥 § 🧡💛💚💙💜">>)
+//~| NOTE demangling
+//~| NOTE demangling-alt(<c::Str<"🐊🦈🦆🐮 § 🐶👒☕🔥 § 🧡💛💚💙💜">>)
 impl Str<"🐊🦈🦆🐮 § 🐶👒☕🔥 § 🧡💛💚💙💜"> {}
 
 fn main() {}

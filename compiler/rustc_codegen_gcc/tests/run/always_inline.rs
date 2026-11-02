@@ -3,7 +3,7 @@
 // Run-time:
 //   status: 0
 
-#![feature(no_core)]
+#![feature(no_core, rustc_private)]
 #![no_std]
 #![no_core]
 #![no_main]
@@ -47,7 +47,7 @@ fn fib_a(n: u8) -> u8 {
 #[no_mangle]
 extern "C" fn main(argc: i32, _argv: *const *const u8) -> i32 {
     if fib(2) != fib_a(2) {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
     0
 }

@@ -1,16 +1,15 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::{indent_of, snippet};
-use clippy_utils::{expr_or_init, get_builtin_attr, peel_hir_expr_unary, sym};
+use clippy_utils::{expr_or_init, get_clippy_attr, peel_hir_expr_unary, sym};
 use rustc_ast::BindingMode;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{self as hir, HirId};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{GenericArgKind, Ty, Unnormalized};
-use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span};
 use std::borrow::Cow;
@@ -168,20 +167,15 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
     }
 
     fn has_sig_drop_attr_uncached(&mut self, ty: Ty<'tcx>, depth: usize) -> bool {
-        if let Some(adt) = ty.ty_adt_def() {
-            let mut iter = get_builtin_attr(
-                #[allow(deprecated)]
-                self.cx.tcx.get_all_attrs(adt.did()),
-                sym::has_significant_drop,
-            );
-            if iter.next().is_some() {
-                return true;
-            }
+        if let Some(adt) = ty.ty_adt_def()
+            && get_clippy_attr(self.cx.tcx, adt.did(), sym::has_significant_drop).is_some()
+        {
+            return true;
         }
         match ty.kind() {
             rustc_middle::ty::Adt(a, b) => {
                 for f in a.all_fields() {
-                    let ty = f.ty(self.cx.tcx, b).skip_norm_wip();
+                    let ty = f.ty(self.cx.tcx, *b).skip_norm_wip();
                     if self.has_sig_drop_attr(ty, depth) {
                         return true;
                     }

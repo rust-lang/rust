@@ -6,10 +6,18 @@
 
 use crate::fs::{self, Metadata, OpenOptions, Permissions};
 use crate::io::BorrowedCursor;
+use crate::macros::rustdoc_skip_body;
 use crate::path::Path;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::time::SystemTime;
 use crate::{io, sys};
+
+mod dirs;
+
+#[unstable(feature = "fs_home_dirs", issue = "162082")]
+pub use dirs::HomeDirsExt;
+#[unstable(feature = "fs_media_dirs", issue = "162083")]
+pub use dirs::MediaDirsExt;
 
 /// Windows-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
@@ -31,7 +39,8 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::io;
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
@@ -49,6 +58,65 @@ pub trait FileExt {
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize>;
 
+    /// Seeks to a given position and reads the exact number of bytes required to fill `buf`.
+    ///
+    /// The offset is relative to the start of the file and thus independent
+    /// from the current cursor. The current cursor **is** affected by this
+    /// function, it is set to the end of the read.
+    ///
+    /// Similar to [`io::Read::read_exact`] but uses [`seek_read`] instead of `read`.
+    ///
+    /// [`seek_read`]: FileExt::seek_read
+    ///
+    /// # Errors
+    ///
+    ///
+    /// If this function encounters an "end of file" before completely filling
+    /// the buffer, it returns an error of the kind [`io::ErrorKind::UnexpectedEof`].
+    /// The contents of `buf` are unspecified in this case.
+    ///
+    /// If any other read error is encountered then this function immediately
+    /// returns. The contents of `buf` are unspecified in this case.
+    ///
+    /// If this function returns an error, it is unspecified how many bytes it
+    /// has read, but it will never read more than would be necessary to
+    /// completely fill the buffer.
+    ///
+    /// # Examples
+    ///
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
+    /// #![feature(seek_read_exact_seek_write_all)]
+    ///
+    /// use std::io;
+    /// use std::fs::File;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut file = File::open("foo.txt")?;
+    ///     let mut buffer = [0; 10];
+    ///
+    ///     // Read 10 bytes, starting 72 bytes from the
+    ///     // start of the file.
+    ///     file.seek_read_exact(&mut buffer[..], 72)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "seek_read_exact_seek_write_all", issue = "162868")]
+    fn seek_read_exact(&self, mut buf: &mut [u8], mut offset: u64) -> io::Result<()> {
+        while !buf.is_empty() {
+            match self.seek_read(buf, offset) {
+                Ok(0) => break,
+                Ok(n) => {
+                    buf = &mut buf[n..];
+                    offset += n as u64;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        if !buf.is_empty() { Err(io::Error::READ_EXACT_EOF) } else { Ok(()) }
+    }
+
     /// Seeks to a given position and reads some bytes into the buffer.
     ///
     /// This is equivalent to the [`seek_read`](FileExt::seek_read) method, except that it is passed
@@ -59,7 +127,8 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(core_io_borrowed_buf)]
     /// #![feature(read_buf_at)]
     ///
@@ -87,6 +156,61 @@ pub trait FileExt {
         io::default_read_buf(|b| self.seek_read(b, offset), buf)
     }
 
+    /// Seeks to a given position and reads the exact number of bytes required to fill `buf`.
+    ///
+    /// This is equivalent to the [`seek_read_exact`](FileExt::seek_read_exact) method, except
+    /// that it is passed a [`BorrowedCursor`] rather than `&mut [u8]` to allow use with
+    /// uninitialized buffers. The new data will be appended to any existing contents of `buf`.
+    ///
+    /// Reading beyond the end of the file will always succeed without reading any bytes.
+    ///
+    /// # Examples
+    ///
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
+    /// #![feature(core_io_borrowed_buf)]
+    /// #![feature(seek_read_exact_seek_write_all)]
+    ///
+    /// use std::io;
+    /// use std::io::BorrowedBuf;
+    /// use std::fs::File;
+    /// use std::mem::MaybeUninit;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut file = File::open("pi.txt")?;
+    ///
+    ///     // Read some bytes starting from offset 2
+    ///     let mut buf: [MaybeUninit<u8>; 10] = [MaybeUninit::uninit(); 10];
+    ///     let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+    ///     file.seek_read_buf_exact(buf.unfilled(), 2)?;
+    ///
+    ///     assert!(buf.filled().starts_with(b"1"));
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "seek_read_exact_seek_write_all", issue = "162868")]
+    fn seek_read_buf_exact(
+        &self,
+        mut buf: BorrowedCursor<'_, u8>,
+        mut offset: u64,
+    ) -> io::Result<()> {
+        while buf.capacity() > 0 {
+            let prev_written = buf.written();
+            match self.seek_read_buf(buf.reborrow(), offset) {
+                Ok(()) => {}
+                Err(e) => return Err(e),
+            }
+            let n = buf.written() - prev_written;
+            offset += n as u64;
+            if n == 0 {
+                return Err(io::Error::READ_EXACT_EOF);
+            }
+        }
+        Ok(())
+    }
+
     /// Seeks to a given position and writes a number of bytes.
     ///
     /// Returns the number of bytes written.
@@ -104,7 +228,8 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
     ///
@@ -119,6 +244,60 @@ pub trait FileExt {
     /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize>;
+
+    /// Seeks to a given position and attempts to write an entire buffer.
+    ///
+    /// The offset is relative to the start of the file and thus independent
+    /// from the current cursor. The current cursor **is** affected by this
+    /// function, it is set to the end of the write.
+    ///
+    /// This method will continuously call [`seek_write`] until there is no more data
+    /// to be written or an error of non-[`io::ErrorKind::Interrupted`] kind is
+    /// returned. This method will not return until the entire buffer has been
+    /// successfully written or such an error occurs. The first error that is
+    /// not of [`io::ErrorKind::Interrupted`] kind generated from this method will be
+    /// returned.
+    ///
+    /// # Errors
+    ///
+    /// This function will return the first error that [`seek_write`] returns.
+    ///
+    /// [`seek_write`]: FileExt::seek_write
+    ///
+    /// # Examples
+    ///
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
+    /// #![feature(seek_read_exact_seek_write_all)]
+    ///
+    /// use std::fs::File;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut buffer = File::create("foo.txt")?;
+    ///
+    ///     // Write a byte string starting 72 bytes from
+    ///     // the start of the file.
+    ///     buffer.seek_write_all(b"some bytes", 72)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "seek_read_exact_seek_write_all", issue = "162868")]
+    fn seek_write_all(&self, mut buf: &[u8], mut offset: u64) -> io::Result<()> {
+        while !buf.is_empty() {
+            match self.seek_write(buf, offset) {
+                Ok(0) => {
+                    return Err(io::Error::WRITE_ALL_EOF);
+                }
+                Ok(n) => {
+                    buf = &buf[n..];
+                    offset += n as u64
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
+    }
 }
 
 #[stable(feature = "file_offset", since = "1.15.0")]
@@ -151,7 +330,8 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::fs::OpenOptions;
     /// use std::os::windows::prelude::*;
     ///
@@ -176,7 +356,8 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::fs::OpenOptions;
     /// use std::os::windows::prelude::*;
     ///
@@ -202,7 +383,8 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// # #![allow(unexpected_cfgs)]
     /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
@@ -240,7 +422,8 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// # #![allow(unexpected_cfgs)]
     /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
@@ -279,10 +462,11 @@ pub trait OpenOptionsExt {
     /// For information about possible values, see [Impersonation Levels] on the
     /// Windows Dev Center site. The `SECURITY_SQOS_PRESENT` flag is set
     /// automatically when using this method.
-
+    ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// # #![allow(unexpected_cfgs)]
     /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
@@ -310,26 +494,31 @@ pub trait OpenOptionsExt {
 
 #[stable(feature = "open_options_ext", since = "1.10.0")]
 impl OpenOptionsExt for OpenOptions {
+    #[rustdoc_skip_body]
     fn access_mode(&mut self, access: u32) -> &mut OpenOptions {
         self.as_inner_mut().access_mode(access);
         self
     }
 
+    #[rustdoc_skip_body]
     fn share_mode(&mut self, share: u32) -> &mut OpenOptions {
         self.as_inner_mut().share_mode(share);
         self
     }
 
+    #[rustdoc_skip_body]
     fn custom_flags(&mut self, flags: u32) -> &mut OpenOptions {
         self.as_inner_mut().custom_flags(flags);
         self
     }
 
+    #[rustdoc_skip_body]
     fn attributes(&mut self, attributes: u32) -> &mut OpenOptions {
         self.as_inner_mut().attributes(attributes);
         self
     }
 
+    #[rustdoc_skip_body]
     fn security_qos_flags(&mut self, flags: u32) -> &mut OpenOptions {
         self.as_inner_mut().security_qos_flags(flags);
         self
@@ -353,11 +542,13 @@ pub impl(self) trait OpenOptionsExt2 {
 
 #[unstable(feature = "windows_freeze_file_times", issue = "149715")]
 impl OpenOptionsExt2 for OpenOptions {
+    #[rustdoc_skip_body]
     fn freeze_last_access_time(&mut self, freeze: bool) -> &mut Self {
         self.as_inner_mut().freeze_last_access_time(freeze);
         self
     }
 
+    #[rustdoc_skip_body]
     fn freeze_last_write_time(&mut self, freeze: bool) -> &mut Self {
         self.as_inner_mut().freeze_last_write_time(freeze);
         self
@@ -377,7 +568,8 @@ impl OpenOptionsExt2 for OpenOptions {
 ///
 /// # Example
 ///
-/// ```no_run
+#[cfg_attr(windows, doc = "```no_run")]
+#[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
 /// #![feature(windows_permissions_ext)]
 /// use std::fs::Permissions;
 /// use std::os::windows::fs::PermissionsExt;
@@ -410,6 +602,7 @@ pub impl(self) trait PermissionsExt {
 
 #[unstable(feature = "windows_permissions_ext", issue = "152956")]
 impl PermissionsExt for fs::Permissions {
+    #[rustdoc_skip_body]
     fn file_attributes(&self) -> u32 {
         self.as_inner().file_attributes()
     }
@@ -440,7 +633,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::io;
     /// use std::fs;
     /// use std::os::windows::prelude::*;
@@ -470,7 +664,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::io;
     /// use std::fs;
     /// use std::os::windows::prelude::*;
@@ -505,7 +700,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::io;
     /// use std::fs;
     /// use std::os::windows::prelude::*;
@@ -538,7 +734,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::io;
     /// use std::fs;
     /// use std::os::windows::prelude::*;
@@ -561,7 +758,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::io;
     /// use std::fs;
     /// use std::os::windows::prelude::*;
@@ -616,30 +814,39 @@ pub trait MetadataExt {
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for Metadata {
+    #[rustdoc_skip_body]
     fn file_attributes(&self) -> u32 {
         self.as_inner().attrs()
     }
+    #[rustdoc_skip_body]
     fn creation_time(&self) -> u64 {
         self.as_inner().created_u64()
     }
+    #[rustdoc_skip_body]
     fn last_access_time(&self) -> u64 {
         self.as_inner().accessed_u64()
     }
+    #[rustdoc_skip_body]
     fn last_write_time(&self) -> u64 {
         self.as_inner().modified_u64()
     }
+    #[rustdoc_skip_body]
     fn file_size(&self) -> u64 {
         self.as_inner().size()
     }
+    #[rustdoc_skip_body]
     fn volume_serial_number(&self) -> Option<u32> {
         self.as_inner().volume_serial_number()
     }
+    #[rustdoc_skip_body]
     fn number_of_links(&self) -> Option<u32> {
         self.as_inner().number_of_links()
     }
+    #[rustdoc_skip_body]
     fn file_index(&self) -> Option<u64> {
         self.as_inner().file_index()
     }
+    #[rustdoc_skip_body]
     fn change_time(&self) -> Option<u64> {
         self.as_inner().changed_u64()
     }
@@ -660,9 +867,11 @@ pub impl(self) trait FileTypeExt {
 
 #[stable(feature = "windows_file_type_ext", since = "1.64.0")]
 impl FileTypeExt for fs::FileType {
+    #[rustdoc_skip_body]
     fn is_symlink_dir(&self) -> bool {
         self.as_inner().is_symlink_dir()
     }
+    #[rustdoc_skip_body]
     fn is_symlink_file(&self) -> bool {
         self.as_inner().is_symlink_file()
     }
@@ -678,6 +887,7 @@ pub impl(self) trait FileTimesExt {
 
 #[stable(feature = "file_set_times", since = "1.75.0")]
 impl FileTimesExt for fs::FileTimes {
+    #[rustdoc_skip_body]
     fn set_created(mut self, t: SystemTime) -> Self {
         self.as_inner_mut().set_created(t.into_inner());
         self
@@ -700,7 +910,8 @@ impl FileTimesExt for fs::FileTimes {
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(windows, doc = "```no_run")]
+#[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
 /// use std::os::windows::fs;
 ///
 /// fn main() -> std::io::Result<()> {
@@ -718,7 +929,10 @@ impl FileTimesExt for fs::FileTimes {
 /// the process as an administrator.
 ///
 /// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
+#[doc(alias = "CreateSymbolicLink", alias = "CreateSymbolicLinkW")]
 #[stable(feature = "symlink", since = "1.1.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_symlink_file")]
+#[rustdoc_skip_body]
 pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     sys::fs::symlink_inner(original.as_ref(), link.as_ref(), false)
 }
@@ -739,7 +953,8 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io:
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(windows, doc = "```no_run")]
+#[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
 /// use std::os::windows::fs;
 ///
 /// fn main() -> std::io::Result<()> {
@@ -757,7 +972,10 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io:
 /// the process as an administrator.
 ///
 /// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
+#[doc(alias = "CreateSymbolicLink", alias = "CreateSymbolicLinkW")]
 #[stable(feature = "symlink", since = "1.1.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_symlink_dir")]
+#[rustdoc_skip_body]
 pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     sys::fs::symlink_inner(original.as_ref(), link.as_ref(), true)
 }
@@ -770,6 +988,7 @@ pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::
 ///
 /// If either path is not a local file path then this will fail.
 #[unstable(feature = "junction_point", issue = "121709")]
+#[rustdoc_skip_body]
 pub fn junction_point<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     sys::fs::junction_point(original.as_ref(), link.as_ref())
 }

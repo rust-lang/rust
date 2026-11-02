@@ -41,7 +41,6 @@
 use core::result::Result;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
-use std::fmt;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
@@ -51,7 +50,7 @@ use rustc_abi::{
     Align, CVariadicStatus, CanonAbi, Endian, ExternAbi, Integer, Size, TargetDataLayout,
     TargetDataLayoutError,
 };
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg, into_diag_arg_using_display};
 use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
 use rustc_span::{Symbol, kw, sym};
@@ -65,6 +64,7 @@ pub mod crt_objects;
 
 mod abi_map;
 mod base;
+mod consistency;
 mod json;
 mod tuple;
 
@@ -72,6 +72,7 @@ pub use abi_map::{AbiMap, AbiMapping};
 pub use base::apple;
 pub use base::avr::ef_avr_arch;
 pub use json::json_schema;
+pub use rustc_structures::SanitizerSet;
 pub use tuple::TargetTuple;
 
 /// Linker is called through a C/C++ compiler.
@@ -926,8 +927,15 @@ impl ToJson for SmallDataThresholdSupport {
 
 crate::target_spec_enum! {
     pub enum MergeFunctions {
+        /// Disable function merging entirely.
         Disabled = "disabled",
+        /// Allow function merging via trampolines (i.e., functions can be implemented
+        /// in terms of a jump to an unrelated function with identical behavior), but
+        /// not via object-format-level global aliases.
         Trampolines = "trampolines",
+        /// (Default) allow function merging via either trampolines or (object format
+        /// level) global aliases. LLVM will normally use global aliases for merging, but
+        /// trampolines are also permissible.
         Aliases = "aliases",
     }
 
@@ -987,12 +995,14 @@ crate::target_spec_enum! {
 crate::target_spec_enum! {
     /// The Rustc-specific variant of the ABI used for this target.
     pub enum RustcAbi {
+        /// On x86-32/64, aarch64, and S390x: do not use any FPU or SIMD registers for the ABI.
+        Softfloat = "softfloat",
         /// On x86-32 only: make use of SSE and SSE2 for ABI purposes.
         X86Sse2 = "x86-sse2",
         /// On PowerPC only: build for SPE.
         PowerPcSpe = "powerpc-spe",
-        /// On x86-32/64, aarch64, and S390x: do not use any FPU or SIMD registers for the ABI.
-        Softfloat = "softfloat",
+        /// On SPARC-32: use the V8+ ABI.
+        SparcV8Plus = "sparc-v8plus",
     }
 
     parse_error_type = "rustc abi";
@@ -1143,149 +1153,6 @@ impl ToJson for StackProbeType {
             ]
             .into_iter()
             .collect(),
-        })
-    }
-}
-
-#[derive(Default, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
-pub struct SanitizerSet(u16);
-bitflags::bitflags! {
-    impl SanitizerSet: u16 {
-        const ADDRESS = 1 << 0;
-        const LEAK    = 1 << 1;
-        const MEMORY  = 1 << 2;
-        const THREAD  = 1 << 3;
-        const HWADDRESS = 1 << 4;
-        const CFI     = 1 << 5;
-        const MEMTAG  = 1 << 6;
-        const SHADOWCALLSTACK = 1 << 7;
-        const KCFI    = 1 << 8;
-        const KERNELADDRESS = 1 << 9;
-        const KERNELHWADDRESS = 1 << 10;
-        const SAFESTACK = 1 << 11;
-        const DATAFLOW = 1 << 12;
-        const REALTIME = 1 << 13;
-    }
-}
-rustc_data_structures::external_bitflags_debug! { SanitizerSet }
-
-impl SanitizerSet {
-    // Taken from LLVM's sanitizer compatibility logic:
-    // https://github.com/llvm/llvm-project/blob/release/18.x/clang/lib/Driver/SanitizerArgs.cpp#L512
-    const MUTUALLY_EXCLUSIVE: &'static [(SanitizerSet, SanitizerSet)] = &[
-        (SanitizerSet::ADDRESS, SanitizerSet::MEMORY),
-        (SanitizerSet::ADDRESS, SanitizerSet::THREAD),
-        (SanitizerSet::ADDRESS, SanitizerSet::HWADDRESS),
-        (SanitizerSet::ADDRESS, SanitizerSet::MEMTAG),
-        (SanitizerSet::ADDRESS, SanitizerSet::KERNELADDRESS),
-        (SanitizerSet::ADDRESS, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::ADDRESS, SanitizerSet::SAFESTACK),
-        (SanitizerSet::LEAK, SanitizerSet::MEMORY),
-        (SanitizerSet::LEAK, SanitizerSet::THREAD),
-        (SanitizerSet::LEAK, SanitizerSet::KERNELADDRESS),
-        (SanitizerSet::LEAK, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::LEAK, SanitizerSet::SAFESTACK),
-        (SanitizerSet::MEMORY, SanitizerSet::THREAD),
-        (SanitizerSet::MEMORY, SanitizerSet::HWADDRESS),
-        (SanitizerSet::MEMORY, SanitizerSet::KERNELADDRESS),
-        (SanitizerSet::MEMORY, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::MEMORY, SanitizerSet::SAFESTACK),
-        (SanitizerSet::THREAD, SanitizerSet::HWADDRESS),
-        (SanitizerSet::THREAD, SanitizerSet::KERNELADDRESS),
-        (SanitizerSet::THREAD, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::THREAD, SanitizerSet::SAFESTACK),
-        (SanitizerSet::HWADDRESS, SanitizerSet::MEMTAG),
-        (SanitizerSet::HWADDRESS, SanitizerSet::KERNELADDRESS),
-        (SanitizerSet::HWADDRESS, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::HWADDRESS, SanitizerSet::SAFESTACK),
-        (SanitizerSet::CFI, SanitizerSet::KCFI),
-        (SanitizerSet::MEMTAG, SanitizerSet::KERNELADDRESS),
-        (SanitizerSet::MEMTAG, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::KERNELADDRESS, SanitizerSet::KERNELHWADDRESS),
-        (SanitizerSet::KERNELADDRESS, SanitizerSet::SAFESTACK),
-        (SanitizerSet::KERNELHWADDRESS, SanitizerSet::SAFESTACK),
-    ];
-
-    /// Return sanitizer's name
-    ///
-    /// Returns none if the flags is a set of sanitizers numbering not exactly one.
-    pub fn as_str(self) -> Option<&'static str> {
-        Some(match self {
-            SanitizerSet::ADDRESS => "address",
-            SanitizerSet::CFI => "cfi",
-            SanitizerSet::DATAFLOW => "dataflow",
-            SanitizerSet::KCFI => "kcfi",
-            SanitizerSet::KERNELADDRESS => "kernel-address",
-            SanitizerSet::KERNELHWADDRESS => "kernel-hwaddress",
-            SanitizerSet::LEAK => "leak",
-            SanitizerSet::MEMORY => "memory",
-            SanitizerSet::MEMTAG => "memtag",
-            SanitizerSet::SAFESTACK => "safestack",
-            SanitizerSet::SHADOWCALLSTACK => "shadow-call-stack",
-            SanitizerSet::THREAD => "thread",
-            SanitizerSet::HWADDRESS => "hwaddress",
-            SanitizerSet::REALTIME => "realtime",
-            _ => return None,
-        })
-    }
-
-    pub fn mutually_exclusive(self) -> Option<(SanitizerSet, SanitizerSet)> {
-        Self::MUTUALLY_EXCLUSIVE
-            .into_iter()
-            .find(|&(a, b)| self.contains(*a) && self.contains(*b))
-            .copied()
-    }
-}
-
-/// Formats a sanitizer set as a comma separated list of sanitizers' names.
-impl fmt::Display for SanitizerSet {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut first = true;
-        for s in *self {
-            let name = s.as_str().unwrap_or_else(|| panic!("unrecognized sanitizer {s:?}"));
-            if !first {
-                f.write_str(", ")?;
-            }
-            f.write_str(name)?;
-            first = false;
-        }
-        Ok(())
-    }
-}
-
-impl FromStr for SanitizerSet {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "address" => SanitizerSet::ADDRESS,
-            "cfi" => SanitizerSet::CFI,
-            "dataflow" => SanitizerSet::DATAFLOW,
-            "kcfi" => SanitizerSet::KCFI,
-            "kernel-address" => SanitizerSet::KERNELADDRESS,
-            "kernel-hwaddress" => SanitizerSet::KERNELHWADDRESS,
-            "leak" => SanitizerSet::LEAK,
-            "memory" => SanitizerSet::MEMORY,
-            "memtag" => SanitizerSet::MEMTAG,
-            "safestack" => SanitizerSet::SAFESTACK,
-            "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
-            "thread" => SanitizerSet::THREAD,
-            "hwaddress" => SanitizerSet::HWADDRESS,
-            "realtime" => SanitizerSet::REALTIME,
-            s => return Err(format!("unknown sanitizer {s}")),
-        })
-    }
-}
-
-crate::json::serde_deserialize_from_str!(SanitizerSet);
-impl schemars::JsonSchema for SanitizerSet {
-    fn schema_name() -> std::borrow::Cow<'static, str> {
-        "SanitizerSet".into()
-    }
-    fn json_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
-        let all = Self::all().iter().map(|sanitizer| sanitizer.as_str()).collect::<Vec<_>>();
-        schemars::json_schema! ({
-            "type": "string",
-            "enum": all,
         })
     }
 }
@@ -1569,6 +1436,7 @@ supported_targets! {
 
     ("avr-none", avr_none),
 
+    ("aarch64-unknown-l4re-uclibc", aarch64_unknown_l4re_uclibc),
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
     ("aarch64-unknown-redox", aarch64_unknown_redox),
@@ -1643,6 +1511,7 @@ supported_targets! {
     ("thumbv7a-pc-windows-msvc", thumbv7a_pc_windows_msvc),
     ("thumbv7a-uwp-windows-msvc", thumbv7a_uwp_windows_msvc),
 
+    ("wasm32-none-component", wasm32_none_component),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32v1-none", wasm32v1_none),
@@ -1667,7 +1536,7 @@ supported_targets! {
     ("thumbv7a-none-eabihf", thumbv7a_none_eabihf),
     ("armv7a-nuttx-eabi", armv7a_nuttx_eabi),
     ("armv7a-nuttx-eabihf", armv7a_nuttx_eabihf),
-    ("armv7a-vex-v5", armv7a_vex_v5),
+    ("thumbv7a-vex-v5", thumbv7a_vex_v5),
 
     ("msp430-none-elf", msp430_none_elf),
 
@@ -1754,6 +1623,7 @@ supported_targets! {
     ("armv7a-kmc-solid_asp3-eabi", armv7a_kmc_solid_asp3_eabi),
     ("armv7a-kmc-solid_asp3-eabihf", armv7a_kmc_solid_asp3_eabihf),
 
+    ("powerpc64-sony-ps3", powerpc64_sony_ps3),
     ("mipsel-sony-psp", mipsel_sony_psp),
     ("mipsel-sony-psx", mipsel_sony_psx),
     ("mipsel-unknown-none", mipsel_unknown_none),
@@ -1787,6 +1657,8 @@ supported_targets! {
     ("x86_64-unknown-none", x86_64_unknown_none),
 
     ("aarch64-unknown-teeos", aarch64_unknown_teeos),
+
+    ("aarch64-unknown-qtee", aarch64_unknown_qtee),
 
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 
@@ -1833,6 +1705,9 @@ supported_targets! {
     ("i686-oe-linux-gnu", i686_oe_linux_gnu),
     ("riscv64-oe-linux-gnu", riscv64_oe_linux_gnu),
     ("x86_64-oe-linux-gnu", x86_64_oe_linux_gnu),
+
+    ("aarch64-unknown-hyperlight", aarch64_unknown_hyperlight),
+    ("x86_64-unknown-hyperlight", x86_64_unknown_hyperlight),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1988,6 +1863,7 @@ crate::target_spec_enum! {
         Hermit = "hermit",
         Horizon = "horizon",
         Hurd = "hurd",
+        Hyperlight = "hyperlight",
         Illumos = "illumos",
         IOs = "ios",
         L4Re = "l4re",
@@ -2001,9 +1877,11 @@ crate::target_spec_enum! {
         Nto = "nto",
         NuttX = "nuttx",
         OpenBsd = "openbsd",
+        Ps3 = "ps3",
         Psp = "psp",
         Psx = "psx",
         Qnx = "qnx",
+        Qtee = "qtee",
         Qurt = "qurt",
         Redox = "redox",
         Rtems = "rtems",
@@ -2087,8 +1965,8 @@ crate::target_spec_enum! {
         Spe = "spe",
         Uwp = "uwp",
         VecDefault = "vec-default",
-        VecExtAbi = "vec-extabi",
         X32 = "x32",
+        V8Plus = "v8plus",
         Unspecified = "",
     }
     other_variant = Other;
@@ -2122,7 +2000,7 @@ crate::target_spec_enum! {
         // PowerPC
         ElfV1 = "elfv1",
         ElfV2 = "elfv2",
-        // Pointer authentication: Pauthtest
+        // AArch64
         Pauthtest = "pauthtest",
 
         Unspecified = "",
@@ -2398,11 +2276,12 @@ pub struct TargetOptions {
     /// Extra arguments to pass to the external assembler (when used)
     pub asm_args: StaticCow<[StaticCow<str>]>,
 
-    /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
-    /// to "generic".
+    /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Must be a name the backend
+    /// accepts. Defaults to "generic" (which some backends won't accept).
     pub cpu: StaticCow<str>,
-    /// Whether a cpu needs to be explicitly set.
-    /// Set to true if there is no default cpu. Defaults to false.
+    /// Whether a cpu needs to be explicitly set via `-Ctarget-cpu` for codegen to run. (Even if
+    /// true, `cpu` is still consulted on non-codegen paths such as cfg/feature computation.)
+    /// Defaults to false.
     pub need_explicit_cpu: bool,
     /// Whether `-Ctarget-cpu` is treated as a target modifier. If this is set
     /// all crates that are linked together must have been compiled with the
@@ -2649,8 +2528,8 @@ pub struct TargetOptions {
     /// Use LLVM intrinsic for mcount function name
     pub llvm_mcount_intrinsic: Option<StaticCow<str>>,
 
-    /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
-    /// and the `-target-abi` flag in llc. In the LLVM API this is `MCOptions.ABIName`.
+    /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers and
+    /// the `-target-abi` flag in llc. In the LLVM API this is `MCTargetOptions::ABIName`.
     pub llvm_abiname: LlvmAbi,
 
     /// Control the float ABI to use, for architectures that support it. The only architecture we
@@ -2666,7 +2545,7 @@ pub struct TargetOptions {
     /// rustc and not forwarded to LLVM.
     pub rustc_abi: Option<RustcAbi>,
 
-    /// Whether or not RelaxElfRelocation flag will be passed to the linker
+    /// Whether or not X86RelaxRelocations flag will be passed to LLVM (x86 only).
     pub relax_elf_relocations: bool,
 
     /// Additional arguments to pass to LLVM, similar to the `-C llvm-args` codegen option.
@@ -3014,692 +2893,6 @@ impl Target {
         self.max_atomic_width.unwrap_or_else(|| self.pointer_width.into())
     }
 
-    /// Check some basic consistency of the current target. For JSON targets we are less strict;
-    /// some of these checks are more guidelines than strict rules.
-    fn check_consistency(&self, kind: TargetKind) -> Result<(), String> {
-        macro_rules! check {
-            ($b:expr, $($msg:tt)*) => {
-                if !$b {
-                    return Err(format!($($msg)*));
-                }
-            }
-        }
-        macro_rules! check_eq {
-            ($left:expr, $right:expr, $($msg:tt)*) => {
-                if ($left) != ($right) {
-                    return Err(format!($($msg)*));
-                }
-            }
-        }
-        macro_rules! check_ne {
-            ($left:expr, $right:expr, $($msg:tt)*) => {
-                if ($left) == ($right) {
-                    return Err(format!($($msg)*));
-                }
-            }
-        }
-        macro_rules! check_matches {
-            ($left:expr, $right:pat, $($msg:tt)*) => {
-                if !matches!($left, $right) {
-                    return Err(format!($($msg)*));
-                }
-            }
-        }
-
-        check_eq!(
-            self.is_like_darwin,
-            self.vendor == "apple",
-            "`is_like_darwin` must be set if and only if `vendor` is `apple`"
-        );
-        check_eq!(
-            self.is_like_solaris,
-            matches!(self.os, Os::Solaris | Os::Illumos),
-            "`is_like_solaris` must be set if and only if `os` is `solaris` or `illumos`"
-        );
-        check_eq!(
-            self.is_like_gpu,
-            self.arch == Arch::Nvptx64 || self.arch == Arch::AmdGpu,
-            "`is_like_gpu` must be set if and only if `target` is `nvptx64` or `amdgcn`"
-        );
-        check_eq!(
-            self.is_like_windows,
-            matches!(self.os, Os::Windows | Os::Uefi | Os::Cygwin),
-            "`is_like_windows` must be set if and only if `os` is `windows`, `uefi` or `cygwin`"
-        );
-        check_eq!(
-            self.is_like_wasm,
-            matches!(self.arch, Arch::Wasm32 | Arch::Wasm64),
-            "`is_like_wasm` must be set if and only if `arch` is `wasm32` or `wasm64`"
-        );
-        if self.is_like_msvc {
-            check!(self.is_like_windows, "if `is_like_msvc` is set, `is_like_windows` must be set");
-        }
-        if self.os == Os::Emscripten {
-            check!(self.is_like_wasm, "the `emcscripten` os only makes sense on wasm-like targets");
-        }
-
-        // Check that default linker flavor is compatible with some other key properties.
-        check_eq!(
-            self.is_like_darwin,
-            matches!(self.linker_flavor, LinkerFlavor::Darwin(..)),
-            "`linker_flavor` must be `darwin` if and only if `is_like_darwin` is set"
-        );
-        check_eq!(
-            self.is_like_msvc,
-            matches!(self.linker_flavor, LinkerFlavor::Msvc(..)),
-            "`linker_flavor` must be `msvc` if and only if `is_like_msvc` is set"
-        );
-        check_eq!(
-            self.is_like_wasm && self.os != Os::Emscripten,
-            matches!(self.linker_flavor, LinkerFlavor::WasmLld(..)),
-            "`linker_flavor` must be `wasm-lld` if and only if `is_like_wasm` is set and the `os` is not `emscripten`",
-        );
-        check_eq!(
-            self.os == Os::Emscripten,
-            matches!(self.linker_flavor, LinkerFlavor::EmCc),
-            "`linker_flavor` must be `em-cc` if and only if `os` is `emscripten`"
-        );
-        check_eq!(
-            self.arch == Arch::Bpf,
-            matches!(self.linker_flavor, LinkerFlavor::Bpf),
-            "`linker_flavor` must be `bpf` if and only if `arch` is `bpf`"
-        );
-
-        for args in [
-            &self.pre_link_args,
-            &self.late_link_args,
-            &self.late_link_args_dynamic,
-            &self.late_link_args_static,
-            &self.post_link_args,
-        ] {
-            for (&flavor, flavor_args) in args {
-                check!(
-                    !flavor_args.is_empty() || self.arch == Arch::Avr,
-                    "linker flavor args must not be empty"
-                );
-                // Check that flavors mentioned in link args are compatible with the default flavor.
-                match self.linker_flavor {
-                    LinkerFlavor::Gnu(..) => {
-                        check_matches!(
-                            flavor,
-                            LinkerFlavor::Gnu(..),
-                            "mixing GNU and non-GNU linker flavors"
-                        );
-                    }
-                    LinkerFlavor::Darwin(..) => {
-                        check_matches!(
-                            flavor,
-                            LinkerFlavor::Darwin(..),
-                            "mixing Darwin and non-Darwin linker flavors"
-                        )
-                    }
-                    LinkerFlavor::WasmLld(..) => {
-                        check_matches!(
-                            flavor,
-                            LinkerFlavor::WasmLld(..),
-                            "mixing wasm and non-wasm linker flavors"
-                        )
-                    }
-                    LinkerFlavor::Unix(..) => {
-                        check_matches!(
-                            flavor,
-                            LinkerFlavor::Unix(..),
-                            "mixing unix and non-unix linker flavors"
-                        );
-                    }
-                    LinkerFlavor::Msvc(..) => {
-                        check_matches!(
-                            flavor,
-                            LinkerFlavor::Msvc(..),
-                            "mixing MSVC and non-MSVC linker flavors"
-                        );
-                    }
-                    LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Llbc => {
-                        check_eq!(flavor, self.linker_flavor, "mixing different linker flavors")
-                    }
-                }
-
-                // Check that link args for cc and non-cc versions of flavors are consistent.
-                let check_noncc = |noncc_flavor| -> Result<(), String> {
-                    if let Some(noncc_args) = args.get(&noncc_flavor) {
-                        for arg in flavor_args {
-                            if let Some(suffix) = arg.strip_prefix("-Wl,") {
-                                check!(
-                                    noncc_args.iter().any(|a| a == suffix),
-                                    " link args for cc and non-cc versions of flavors are not consistent"
-                                );
-                            }
-                        }
-                    }
-                    Ok(())
-                };
-
-                match self.linker_flavor {
-                    LinkerFlavor::Gnu(Cc::Yes, lld) => check_noncc(LinkerFlavor::Gnu(Cc::No, lld))?,
-                    LinkerFlavor::WasmLld(Cc::Yes) => check_noncc(LinkerFlavor::WasmLld(Cc::No))?,
-                    LinkerFlavor::Unix(Cc::Yes) => check_noncc(LinkerFlavor::Unix(Cc::No))?,
-                    _ => {}
-                }
-            }
-
-            // Check that link args for lld and non-lld versions of flavors are consistent.
-            for cc in [Cc::No, Cc::Yes] {
-                check_eq!(
-                    args.get(&LinkerFlavor::Gnu(cc, Lld::No)),
-                    args.get(&LinkerFlavor::Gnu(cc, Lld::Yes)),
-                    "link args for lld and non-lld versions of flavors are not consistent",
-                );
-                check_eq!(
-                    args.get(&LinkerFlavor::Darwin(cc, Lld::No)),
-                    args.get(&LinkerFlavor::Darwin(cc, Lld::Yes)),
-                    "link args for lld and non-lld versions of flavors are not consistent",
-                );
-            }
-            check_eq!(
-                args.get(&LinkerFlavor::Msvc(Lld::No)),
-                args.get(&LinkerFlavor::Msvc(Lld::Yes)),
-                "link args for lld and non-lld versions of flavors are not consistent",
-            );
-        }
-
-        if self.link_self_contained.is_disabled() {
-            check!(
-                self.pre_link_objects_self_contained.is_empty()
-                    && self.post_link_objects_self_contained.is_empty(),
-                "if `link_self_contained` is disabled, then `pre_link_objects_self_contained` and `post_link_objects_self_contained` must be empty",
-            );
-        }
-
-        // If your target really needs to deviate from the rules below,
-        // except it and document the reasons.
-        // Keep the default "unknown" vendor instead.
-        check_ne!(self.vendor, "", "`vendor` cannot be empty");
-        if let Os::Other(s) = &self.os {
-            check!(!s.is_empty(), "`os` cannot be empty");
-        }
-        if !self.can_use_os_unknown() {
-            // Keep the default "none" for bare metal targets instead.
-            check_ne!(
-                self.os,
-                Os::Unknown,
-                "`unknown` os can only be used on particular targets; use `none` for bare-metal targets"
-            );
-        }
-
-        // Check dynamic linking stuff.
-        // We skip this for JSON targets since otherwise, our default values would fail this test.
-        // These checks are not critical for correctness, but more like default guidelines.
-        // FIXME (https://github.com/rust-lang/rust/issues/133459): do we want to change the JSON
-        // target defaults so that they pass these checks?
-        if kind == TargetKind::Builtin {
-            // BPF: when targeting user space vms (like rbpf), those can load dynamic libraries.
-            // hexagon: when targeting QuRT, that OS can load dynamic libraries.
-            // wasm{32,64}: dynamic linking is inherent in the definition of the VM.
-            if self.os == Os::None
-                && !matches!(self.arch, Arch::Bpf | Arch::Hexagon | Arch::Wasm32 | Arch::Wasm64)
-            {
-                check!(
-                    !self.dynamic_linking,
-                    "dynamic linking is not supported on this OS/architecture"
-                );
-            }
-            if self.only_cdylib
-                || self.crt_static_allows_dylibs
-                || !self.late_link_args_dynamic.is_empty()
-            {
-                check!(
-                    self.dynamic_linking,
-                    "dynamic linking must be allowed when `only_cdylib` or `crt_static_allows_dylibs` or `late_link_args_dynamic` are set"
-                );
-            }
-            // Apparently PIC was slow on wasm at some point, see comments in wasm_base.rs
-            if self.dynamic_linking && !self.is_like_wasm {
-                check_eq!(
-                    self.relocation_model,
-                    RelocModel::Pic,
-                    "targets that support dynamic linking must use the `pic` relocation model"
-                );
-            }
-            if self.position_independent_executables {
-                check_eq!(
-                    self.relocation_model,
-                    RelocModel::Pic,
-                    "targets that support position-independent executables must use the `pic` relocation model"
-                );
-            }
-            // The UEFI targets do not support dynamic linking but still require PIC (#101377).
-            if self.relocation_model == RelocModel::Pic && self.os != Os::Uefi {
-                check!(
-                    self.dynamic_linking || self.position_independent_executables,
-                    "when the relocation model is `pic`, the target must support dynamic linking or use position-independent executables. \
-                Set the relocation model to `static` to avoid this requirement"
-                );
-            }
-            if self.static_position_independent_executables {
-                check!(
-                    self.position_independent_executables,
-                    "if `static_position_independent_executables` is set, then `position_independent_executables` must be set"
-                );
-            }
-            if self.position_independent_executables {
-                check!(
-                    self.executables,
-                    "if `position_independent_executables` is set then `executables` must be set"
-                );
-            }
-        }
-
-        // Check crt static stuff
-        if self.crt_static_default || self.crt_static_allows_dylibs {
-            check!(
-                self.crt_static_respected,
-                "static CRT can be enabled but `crt_static_respected` is not set"
-            );
-        }
-
-        // Ensure built-in targets don't use the `Other` variants.
-        if kind == TargetKind::Builtin {
-            check!(
-                !matches!(self.arch, Arch::Other(_)),
-                "`Arch::Other` is only meant for JSON targets"
-            );
-            check!(!matches!(self.os, Os::Other(_)), "`Os::Other` is only meant for JSON targets");
-            check!(
-                !matches!(self.env, Env::Other(_)),
-                "`Env::Other` is only meant for JSON targets"
-            );
-            check!(
-                !matches!(self.cfg_abi, CfgAbi::Other(_)),
-                "`CfgAbi::Other` is only meant for JSON targets"
-            );
-            check!(
-                !matches!(self.llvm_abiname, LlvmAbi::Other(_)),
-                "`LlvmAbi::Other` is only meant for JSON targets"
-            );
-        }
-
-        // Check ABI flag consistency, for the architectures where we have proper ABI treatment.
-        // To ensure targets are trated consistently, please consult with the team before allowing
-        // new cases.
-        match self.arch {
-            Arch::X86 => {
-                check!(
-                    self.llvm_abiname == LlvmAbi::Unspecified,
-                    "`llvm_abiname` is unused on x86-32"
-                );
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on x86-32");
-                check_matches!(
-                    (&self.rustc_abi, &self.cfg_abi),
-                    // FIXME: we do not currently set a target_abi for softfloat targets here,
-                    // but we probably should, so we already allow it.
-                    (
-                        Some(RustcAbi::Softfloat),
-                        CfgAbi::SoftFloat | CfgAbi::Unspecified | CfgAbi::Other(_)
-                    ) | (
-                        Some(RustcAbi::X86Sse2) | None,
-                        CfgAbi::Uwp
-                            | CfgAbi::Llvm
-                            | CfgAbi::Sim
-                            | CfgAbi::Unspecified
-                            | CfgAbi::Other(_)
-                    ),
-                    "invalid x86-32 Rust-specific ABI and `cfg(target_abi)` combination:\n\
-                    Rust-specific ABI: {:?}\n\
-                    cfg(target_abi): {}",
-                    self.rustc_abi,
-                    self.cfg_abi,
-                );
-            }
-            Arch::X86_64 => {
-                check!(
-                    self.llvm_abiname == LlvmAbi::Unspecified,
-                    "`llvm_abiname` is unused on x86-64"
-                );
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on x86-64");
-                // FIXME: we do not currently set a target_abi for softfloat targets here, but we
-                // probably should, so we already allow it.
-                // FIXME: Ensure that target_abi = "x32" correlates with actually using that ABI.
-                // Do any of the others need a similar check?
-                check_matches!(
-                    (&self.rustc_abi, &self.cfg_abi),
-                    (
-                        Some(RustcAbi::Softfloat),
-                        CfgAbi::SoftFloat | CfgAbi::Unspecified | CfgAbi::Other(_)
-                    ) | (
-                        None,
-                        CfgAbi::X32
-                            | CfgAbi::Llvm
-                            | CfgAbi::Fortanix
-                            | CfgAbi::Uwp
-                            | CfgAbi::MacAbi
-                            | CfgAbi::Sim
-                            | CfgAbi::Unspecified
-                            | CfgAbi::Other(_)
-                    ),
-                    "invalid x86-64 Rust-specific ABI and `cfg(target_abi)` combination:\n\
-                    Rust-specific ABI: {:?}\n\
-                    cfg(target_abi): {}",
-                    self.rustc_abi,
-                    self.cfg_abi,
-                );
-            }
-            Arch::RiscV32 => {
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on RISC-V");
-                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on RISC-V");
-                check_matches!(
-                    (&self.llvm_abiname, &self.cfg_abi),
-                    (LlvmAbi::Ilp32, CfgAbi::Unspecified | CfgAbi::Other(_))
-                        | (LlvmAbi::Ilp32f, CfgAbi::Unspecified | CfgAbi::Other(_))
-                        | (LlvmAbi::Ilp32d, CfgAbi::Unspecified | CfgAbi::Other(_))
-                        | (LlvmAbi::Ilp32e, CfgAbi::Ilp32e),
-                    "invalid RISC-V ABI name and `cfg(target_abi)` combination:\n\
-                     ABI name: {}\n\
-                     cfg(target_abi): {}",
-                    self.llvm_abiname,
-                    self.cfg_abi,
-                );
-            }
-            Arch::RiscV64 => {
-                // Note that the `lp64e` is still unstable as it's not (yet) part of the ELF psABI.
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on RISC-V");
-                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on RISC-V");
-                check_matches!(
-                    (&self.llvm_abiname, &self.cfg_abi),
-                    (LlvmAbi::Lp64, CfgAbi::Unspecified | CfgAbi::Other(_))
-                        | (LlvmAbi::Lp64f, CfgAbi::Unspecified | CfgAbi::Other(_))
-                        | (LlvmAbi::Lp64d, CfgAbi::Unspecified | CfgAbi::Other(_))
-                        | (LlvmAbi::Lp64e, CfgAbi::Unspecified | CfgAbi::Other(_)),
-                    "invalid RISC-V ABI name and `cfg(target_abi)` combination:\n\
-                     ABI name: {}\n\
-                     cfg(target_abi): {}",
-                    self.llvm_abiname,
-                    self.cfg_abi,
-                );
-            }
-            Arch::Arm => {
-                check!(
-                    self.llvm_abiname == LlvmAbi::Unspecified,
-                    "`llvm_abiname` is unused on ARM"
-                );
-                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on ARM");
-                check_matches!(
-                    (&self.llvm_floatabi, &self.cfg_abi),
-                    (
-                        Some(FloatAbi::Hard),
-                        CfgAbi::EabiHf | CfgAbi::Uwp | CfgAbi::Unspecified | CfgAbi::Other(_)
-                    ) | (Some(FloatAbi::Soft), CfgAbi::Eabi),
-                    "Invalid combination of float ABI and `cfg(target_abi)` for ARM target\n\
-                     float ABI: {:?}\n\
-                     cfg(target_abi): {}",
-                    self.llvm_floatabi,
-                    self.cfg_abi,
-                )
-            }
-            Arch::AArch64 => {
-                check_matches!(
-                    self.llvm_abiname,
-                    LlvmAbi::Unspecified | LlvmAbi::Pauthtest,
-                    "invalid llvm ABI for aarch64"
-                );
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on aarch64");
-                // FIXME: Ensure that target_abi = "ilp32" correlates with actually using that ABI.
-                // Do any of the others need a similar check?
-                check_matches!(
-                    (&self.rustc_abi, &self.cfg_abi),
-                    (Some(RustcAbi::Softfloat), CfgAbi::SoftFloat)
-                        | (
-                            None,
-                            CfgAbi::Ilp32
-                                | CfgAbi::Llvm
-                                | CfgAbi::MacAbi
-                                | CfgAbi::Pauthtest
-                                | CfgAbi::Sim
-                                | CfgAbi::Uwp
-                                | CfgAbi::Unspecified
-                                | CfgAbi::Other(_)
-                        ),
-                    "invalid aarch64 Rust-specific ABI and `cfg(target_abi)` combination:\n\
-                    Rust-specific ABI: {:?}\n\
-                    cfg(target_abi): {}",
-                    self.rustc_abi,
-                    self.cfg_abi,
-                );
-            }
-            Arch::PowerPC => {
-                check!(
-                    self.llvm_abiname == LlvmAbi::Unspecified,
-                    "`llvm_abiname` is unused on PowerPC"
-                );
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on PowerPC");
-                check_matches!(
-                    (&self.rustc_abi, &self.cfg_abi),
-                    (Some(RustcAbi::PowerPcSpe), CfgAbi::Spe)
-                        | (None, CfgAbi::Unspecified | CfgAbi::Other(_)),
-                    "invalid PowerPC Rust-specific ABI and `cfg(target_abi)` combination:\n\
-                    Rust-specific ABI: {:?}\n\
-                    cfg(target_abi): {}",
-                    self.rustc_abi,
-                    self.cfg_abi,
-                );
-            }
-            Arch::PowerPC64 => {
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on PowerPC64");
-                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on PowerPC64");
-                // PowerPC64 targets that are not AIX must set their ABI to either ELFv1 or ELFv2
-                if self.os == Os::Aix {
-                    // FIXME: Check that `target_abi` matches the actually configured ABI
-                    // (vec-default vs vec-ext).
-                    check_matches!(
-                        (&self.llvm_abiname, &self.cfg_abi),
-                        (LlvmAbi::Unspecified, CfgAbi::VecDefault | CfgAbi::VecExtAbi),
-                        "invalid PowerPC64 AIX ABI name and `cfg(target_abi)` combination:\n\
-                        ABI name: {}\n\
-                        cfg(target_abi): {}",
-                        self.llvm_abiname,
-                        self.cfg_abi,
-                    );
-                } else if self.endian == Endian::Big {
-                    check_matches!(
-                        (&self.llvm_abiname, &self.cfg_abi),
-                        (LlvmAbi::ElfV1, CfgAbi::ElfV1) | (LlvmAbi::ElfV2, CfgAbi::ElfV2),
-                        "invalid PowerPC64 big-endian ABI name and `cfg(target_abi)` combination:\n\
-                        ABI name: {}\n\
-                        cfg(target_abi): {}",
-                        self.llvm_abiname,
-                        self.cfg_abi,
-                    );
-                } else {
-                    check_matches!(
-                        (&self.llvm_abiname, &self.cfg_abi),
-                        (LlvmAbi::ElfV2, CfgAbi::ElfV2),
-                        "invalid PowerPC64 little-endian ABI name and `cfg(target_abi)` combination:\n\
-                        ABI name: {}\n\
-                        cfg(target_abi): {}",
-                        self.llvm_abiname,
-                        self.cfg_abi,
-                    );
-                }
-            }
-            Arch::S390x => {
-                check!(
-                    self.llvm_abiname == LlvmAbi::Unspecified,
-                    "`llvm_abiname` is unused on s390x"
-                );
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on s390x");
-                check_matches!(
-                    (&self.rustc_abi, &self.cfg_abi),
-                    (Some(RustcAbi::Softfloat), CfgAbi::SoftFloat)
-                        | (None, CfgAbi::Unspecified | CfgAbi::Other(_)),
-                    "invalid s390x Rust-specific ABI and `cfg(target_abi)` combination:\n\
-                    Rust-specific ABI: {:?}\n\
-                    cfg(target_abi): {}",
-                    self.rustc_abi,
-                    self.cfg_abi,
-                );
-            }
-            Arch::LoongArch32 => {
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on LoongArch");
-                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on LoongArch");
-                check_matches!(
-                    (&self.llvm_abiname, &self.cfg_abi),
-                    (LlvmAbi::Ilp32s, CfgAbi::SoftFloat)
-                        | (LlvmAbi::Ilp32f, CfgAbi::Unspecified | CfgAbi::Other(_))
-                        | (LlvmAbi::Ilp32d, CfgAbi::Unspecified | CfgAbi::Other(_)),
-                    "invalid LoongArch ABI name and `cfg(target_abi)` combination:\n\
-                     ABI name: {}\n\
-                     cfg(target_abi): {}",
-                    self.llvm_abiname,
-                    self.cfg_abi,
-                );
-            }
-            Arch::LoongArch64 => {
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on LoongArch");
-                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on LoongArch");
-                check_matches!(
-                    (&self.llvm_abiname, &self.cfg_abi),
-                    (LlvmAbi::Lp64s, CfgAbi::SoftFloat)
-                        | (LlvmAbi::Lp64f, CfgAbi::Unspecified | CfgAbi::Other(_))
-                        | (LlvmAbi::Lp64d, CfgAbi::Unspecified | CfgAbi::Other(_)),
-                    "invalid LoongArch ABI name and `cfg(target_abi)` combination:\n\
-                     ABI name: {}\n\
-                     cfg(target_abi): {}",
-                    self.llvm_abiname,
-                    self.cfg_abi,
-                );
-            }
-            Arch::Mips | Arch::Mips32r6 => {
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on MIPS");
-                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on MIPS");
-                check_matches!(
-                    (&self.llvm_abiname, &self.cfg_abi),
-                    (LlvmAbi::O32, CfgAbi::Unspecified | CfgAbi::Other(_)),
-                    "invalid MIPS ABI name and `cfg(target_abi)` combination:\n\
-                     ABI name: {}\n\
-                     cfg(target_abi): {}",
-                    self.llvm_abiname,
-                    self.cfg_abi,
-                );
-            }
-            Arch::Mips64 | Arch::Mips64r6 => {
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on MIPS");
-                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on MIPS");
-                check_matches!(
-                    (&self.llvm_abiname, &self.cfg_abi),
-                    // No in-tree targets use "n32" but at least for now we let out-of-tree targets
-                    // experiment with that.
-                    (LlvmAbi::N64, CfgAbi::Abi64)
-                        | (LlvmAbi::N32, CfgAbi::Unspecified | CfgAbi::Other(_)),
-                    "invalid MIPS ABI name and `cfg(target_abi)` combination:\n\
-                     ABI name: {}\n\
-                     cfg(target_abi): {}",
-                    self.llvm_abiname,
-                    self.cfg_abi,
-                );
-            }
-            Arch::CSky => {
-                check!(
-                    self.llvm_abiname == LlvmAbi::Unspecified,
-                    "`llvm_abiname` is unused on CSky"
-                );
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on CSky");
-                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on CSky");
-                // FIXME: Check that `target_abi` matches the actually configured ABI (v2 vs v2hf).
-                check_matches!(
-                    self.cfg_abi,
-                    CfgAbi::AbiV2 | CfgAbi::AbiV2Hf,
-                    "invalid `target_abi` for CSky"
-                );
-            }
-            Arch::Wasm32 | Arch::Wasm64 => {
-                check!(
-                    self.llvm_abiname == LlvmAbi::Unspecified,
-                    "`llvm_abiname` is unused on wasm"
-                );
-                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on wasm");
-                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on wasm");
-                check_matches!(
-                    self.cfg_abi,
-                    CfgAbi::Unspecified | CfgAbi::Other(_),
-                    "invalid `target_abi` for wasm"
-                );
-            }
-            ref arch => {
-                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on {arch}");
-                // Ensure consistency among built-in targets, but give JSON targets the opportunity
-                // to experiment with these.
-                if kind == TargetKind::Builtin {
-                    check!(
-                        self.llvm_abiname == LlvmAbi::Unspecified,
-                        "`llvm_abiname` is unused on {arch}"
-                    );
-                    check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on {arch}");
-                    check_matches!(
-                        self.cfg_abi,
-                        CfgAbi::Unspecified | CfgAbi::Other(_),
-                        "`target_abi` is unused on {arch}"
-                    );
-                }
-            }
-        }
-
-        // Check that the target cpu constraints make sense.
-        if self.need_explicit_cpu {
-            check!(
-                self.requires_consistent_cpu,
-                "if `need_explicit_cpu` is set, then `requires_consistent_cpu` must be set"
-            );
-        }
-
-        // Check that the given target-features string makes some basic sense.
-        if !self.features.is_empty() {
-            let mut features_enabled = FxHashSet::default();
-            let mut features_disabled = FxHashSet::default();
-            for feat in self.features.split(',') {
-                if let Some(feat) = feat.strip_prefix("+") {
-                    features_enabled.insert(feat);
-                    if features_disabled.contains(feat) {
-                        return Err(format!(
-                            "target feature `{feat}` is both enabled and disabled"
-                        ));
-                    }
-                } else if let Some(feat) = feat.strip_prefix("-") {
-                    features_disabled.insert(feat);
-                    if features_enabled.contains(feat) {
-                        return Err(format!(
-                            "target feature `{feat}` is both enabled and disabled"
-                        ));
-                    }
-                } else {
-                    return Err(format!(
-                        "target feature `{feat}` is invalid, must start with `+` or `-`"
-                    ));
-                }
-            }
-            // Check that we don't mis-set any of the ABI-relevant features.
-            let abi_feature_constraints = self.abi_required_features();
-            for feat in abi_feature_constraints.required {
-                // The feature might be enabled by default so we can't *require* it to show up.
-                // But it must not be *disabled*.
-                if features_disabled.contains(feat) {
-                    return Err(format!(
-                        "target feature `{feat}` is required by the ABI but gets disabled in target spec"
-                    ));
-                }
-            }
-            for feat in abi_feature_constraints.incompatible {
-                // The feature might be disabled by default so we can't *require* it to show up.
-                // But it must not be *enabled*.
-                if features_enabled.contains(feat) {
-                    return Err(format!(
-                        "target feature `{feat}` is incompatible with the ABI but gets enabled in target spec"
-                    ));
-                }
-            }
-        }
-
-        Ok(())
-    }
-
     /// Test target self-consistency and JSON encoding/decoding roundtrip.
     #[cfg(test)]
     fn test_target(mut self) {
@@ -3835,7 +3028,7 @@ impl Target {
 
     pub fn object_architecture(
         &self,
-        unstable_target_features: &FxIndexSet<Symbol>,
+        internal_target_features: &FxIndexSet<Symbol>,
     ) -> Option<(object::Architecture, Option<object::SubArchitecture>)> {
         use object::Architecture;
         Some(match self.arch {
@@ -3878,7 +3071,7 @@ impl Target {
             Arch::RiscV32 => (Architecture::Riscv32, None),
             Arch::RiscV64 => (Architecture::Riscv64, None),
             Arch::Sparc => {
-                if unstable_target_features.contains(&sym::v8plus) {
+                if internal_target_features.contains(&sym::v8plus) {
                     // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
                     (Architecture::Sparc32Plus, None)
                 } else {

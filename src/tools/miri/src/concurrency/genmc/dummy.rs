@@ -3,17 +3,11 @@ use rustc_const_eval::interpret::{AllocId, InterpCx, InterpResult};
 
 pub use self::intercept::EvalContextExt as GenmcEvalContextExt;
 pub use self::run::run_genmc_mode;
-use crate::intrinsics::AtomicRmwOp;
+use crate::eval::ExitType;
 use crate::{
-    AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, MemoryKind, MiriMachine, OpTy,
-    Scalar, ThreadId, ThreadManager, VisitProvenance, VisitWith,
+    AtomicFenceOrd, AtomicReadOrd, AtomicRmwOp, AtomicRwOrd, AtomicWriteOrd, MemoryKind,
+    MiriMachine, OpTy, Scalar, ThreadId, ThreadManager, VisitProvenance, VisitWith,
 };
-
-#[derive(Clone, Copy, Debug)]
-pub enum ExitType {
-    MainThreadFinish,
-    ExitCalled,
-}
 
 #[derive(Debug)]
 pub struct GenmcCtx {}
@@ -106,7 +100,7 @@ impl GenmcCtx {
         unreachable!()
     }
 
-    pub(crate) fn atomic_rmw_op<'tcx>(
+    pub(crate) fn atomic_rmw<'tcx>(
         &self,
         _ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
         _address: Size,
@@ -115,18 +109,6 @@ impl GenmcCtx {
         _is_signed: bool,
         _ordering: AtomicRwOrd,
         _rhs_scalar: Scalar,
-        _old_value: Scalar,
-    ) -> InterpResult<'tcx, (Scalar, Option<Scalar>)> {
-        unreachable!()
-    }
-
-    pub(crate) fn atomic_exchange<'tcx>(
-        &self,
-        _ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
-        _address: Size,
-        _size: Size,
-        _rhs_scalar: Scalar,
-        _ordering: AtomicRwOrd,
         _old_value: Scalar,
     ) -> InterpResult<'tcx, (Scalar, Option<Scalar>)> {
         unreachable!()

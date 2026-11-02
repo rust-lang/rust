@@ -1,11 +1,11 @@
 error: lifetime may not live long enough
-  --> $DIR/flow-sensitive-invariance.rs:20:17
+  --> $DIR/flow-sensitive-invariance.rs:22:17
    |
 LL | fn use_it<'a, 'b>(choice: bool) -> Result<Invariant<'a>, Invariant<'b>> {
    |           --  -- lifetime `'b` defined here
    |           |
    |           lifetime `'a` defined here
-LL |     let returned_value = create_invariant();
+...
 LL |     if choice { Ok(returned_value) } else { Err(returned_value) }
    |                 ^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
@@ -15,13 +15,13 @@ LL |     if choice { Ok(returned_value) } else { Err(returned_value) }
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/flow-sensitive-invariance.rs:20:45
+  --> $DIR/flow-sensitive-invariance.rs:22:45
    |
 LL | fn use_it<'a, 'b>(choice: bool) -> Result<Invariant<'a>, Invariant<'b>> {
    |           --  -- lifetime `'b` defined here
    |           |
    |           lifetime `'a` defined here
-LL |     let returned_value = create_invariant();
+...
 LL |     if choice { Ok(returned_value) } else { Err(returned_value) }
    |                                             ^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
@@ -30,7 +30,13 @@ LL |     if choice { Ok(returned_value) } else { Err(returned_value) }
    = note: the struct `Invariant<'l>` is invariant over the parameter `'l`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-help: `'a` and `'b` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/flow-sensitive-invariance.rs:18:4
+   |
+LL | fn use_it<'a, 'b>(choice: bool) -> Result<Invariant<'a>, Invariant<'b>> {
+   |    ^^^^^^
+   |
+   = help: `'a` and `'b` must be the same: replace one with the other
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 

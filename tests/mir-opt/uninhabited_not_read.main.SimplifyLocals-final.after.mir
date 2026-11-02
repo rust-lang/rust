@@ -43,6 +43,7 @@ fn main() -> () {
         _5 = copy _6 as *const ! (PtrToPtr);
         StorageDead(_6);
         StorageDead(_5);
+        _0 = const ();
         StorageDead(_4);
         return;
     }

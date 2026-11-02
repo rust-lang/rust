@@ -30,7 +30,7 @@ jobs:
     outputs:
       typescript: ${{ steps.filter.outputs.typescript }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: filter
         with:
@@ -41,16 +41,20 @@ jobs:
   proc-macro-srv:
     if: github.repository == 'rust-lang/rust-analyzer'
     name: proc-macro-srv
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install rustup-toolchain-install-master
-        run: cargo install rustup-toolchain-install-master@1.11.0
+        run: cargo install --locked rustup-toolchain-install-master@1.11.0
 
       # Install a pinned rustc commit to avoid surprises
       - name: Install Rust toolchain
@@ -88,7 +92,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
@@ -113,7 +117,9 @@ jobs:
       #       ./crates/proc-macro-srv/proc-macro-test/imp -> target
 
       - name: Install nextest
-        uses: taiki-e/install-action@nextest
+        uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: nextest
 
       - name: Codegen checks (rust-analyzer)
         if: matrix.os == 'ubuntu-latest'
@@ -123,7 +129,9 @@ jobs:
         run: cargo nextest run --no-fail-fast --hide-progress-bar
 
       - name: Install cargo-machete
-        uses: taiki-e/install-action@cargo-machete
+        uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: cargo-machete
 
       - name: Run cargo-machete
         run: cargo machete
@@ -136,7 +144,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Install Rust toolchain
         run: |
@@ -164,7 +172,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Install Rust toolchain
         run: |
@@ -180,7 +188,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       # Note that clippy output is currently dependent on whether rust-src is installed,
       # https://github.com/rust-lang/rust-clippy/issues/14625
@@ -202,15 +210,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Install Rust toolchain
         run: |
-          # FIXME: Pin nightly due to a regression in miri on nightly-2026-02-12.
-          # See https://github.com/rust-lang/miri/issues/4855.
-          # Revert to plain `nightly` once this is fixed upstream.
-          rustup toolchain install nightly-2026-02-10
-          rustup default nightly-2026-02-10
+          rustup toolchain install nightly
+          rustup default nightly
           rustup component add miri
 
       # - name: Cache Dependencies
@@ -235,7 +240,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Install Rust toolchain
         run: |
@@ -263,10 +268,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Install Nodejs
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22
 
@@ -316,13 +321,13 @@ jobs:
     timeout-minutes: 10
     env:
       FORCE_COLOR: 1
-      TYPOS_VERSION: v1.38.1
+      TYPOS_VERSION: v1.50.0
     steps:
       - name: download typos
         run: curl -LsSf https://github.com/crate-ci/typos/releases/download/$TYPOS_VERSION/typos-$TYPOS_VERSION-x86_64-unknown-linux-musl.tar.gz | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 

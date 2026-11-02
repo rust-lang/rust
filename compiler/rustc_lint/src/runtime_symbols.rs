@@ -1,13 +1,13 @@
-use rustc_hir::attrs::CanonicalSymbol;
+use rustc_attr_ir::CanonicalSymbol;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, FnSig, ForeignItemKind};
 use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty::{self, Instance, PolyFnSig, Ty};
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::TyCtxtInferExt;
 
-use crate::lints::RedefiningRuntimeSymbolsDiag;
+use crate::diagnostics::RedefiningRuntimeSymbolsDiag;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
@@ -117,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for RuntimeSymbols {
                     let did = item.owner_id.def_id;
                     let instance = Instance::new_raw(
                         did.to_def_id(),
-                        ty::List::identity_for_item(cx.tcx, did),
+                        ty::GenericArgs::identity_for_item(cx.tcx, did),
                     );
                     let symbol_name = cx.tcx.symbol_name(instance);
 

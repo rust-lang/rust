@@ -14,7 +14,7 @@
 //
 //@ cdb-command:dx t,d
 //@ cdb-check:t,d              : [...] [Type: std::thread::thread::Thread *]
-//@ cdb-check:[...] inner [...][Type: core::pin::Pin<alloc::sync::Arc<std::thread::thread::Inner,std::alloc::System> >]
+//@ cdb-check:[...] inner [...][Type: core::pin::Pin<alloc::rcs::arc::Arc<std::thread::thread::Inner,std::alloc::System> >]
 
 use std::thread;
 

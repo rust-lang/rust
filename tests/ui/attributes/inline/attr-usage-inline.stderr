@@ -3,6 +3,7 @@ error: the `inline` attribute cannot be used on structs
    |
 LL | #[inline]
    |   ^^^^^^
+LL | struct S;
    |
    = help: the `inline` attribute can only be applied to functions
 
@@ -17,6 +18,8 @@ warning: the `inline` attribute cannot be used on struct fields
    |
 LL |     #[inline]
    |       ^^^^^^
+...
+LL |     i: u8,
    |
    = help: the `inline` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -27,6 +30,8 @@ warning: the `inline` attribute cannot be used on macro defs
    |
 LL | #[inline]
    |   ^^^^^^
+...
+LL | macro_rules! m_e {
    |
    = help: the `inline` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -36,6 +41,8 @@ warning: the `inline` attribute cannot be used on macro defs
    |
 LL | #[inline]
    |   ^^^^^^
+...
+LL | macro_rules! m {
    |
    = help: the `inline` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

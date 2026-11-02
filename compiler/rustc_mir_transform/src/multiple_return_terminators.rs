@@ -10,8 +10,8 @@ use crate::{PassPolicy, simplify};
 pub(super) struct MultipleReturnTerminators;
 
 impl<'tcx> crate::MirPass<'tcx> for MultipleReturnTerminators {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() >= 4)
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 4)
     }
 
     fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -25,7 +25,7 @@ impl<'tcx> crate::MirPass<'tcx> for MultipleReturnTerminators {
         }
 
         for bb in bbs {
-            if let TerminatorKind::Goto { target } = bb.terminator().kind
+            if let TerminatorKind::Goto { target, .. } = bb.terminator().kind
                 && bbs_simple_returns.contains(target)
             {
                 bb.terminator_mut().kind = TerminatorKind::Return;

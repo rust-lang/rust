@@ -1,27 +1,26 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Closure, Expr, ExprKind, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty;
-use rustc_middle::ty::{ClauseKind, GenericClauses, ProjectionPredicate, TraitPredicate};
-use rustc_session::declare_lint_pass;
+use rustc_middle::ty::{ClauseKind, GenericClauses, ProjectionClause, TraitClause};
 use rustc_span::{BytePos, Span, Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for functions that expect closures of type
-    /// Fn(...) -> Ord where the implemented closure returns the unit type.
+    /// `Fn(...) -> Ord` where the implemented closure returns the unit type.
     /// The lint also suggests to remove the semi-colon at the end of the statement if present.
     ///
     /// ### Why is this bad?
     /// Likely, returning the unit type is unintentional, and
-    /// could simply be caused by an extra semi-colon. Since () implements Ord
+    /// could simply be caused by an extra semi-colon. Since `()` implements `Ord`
     /// it doesn't cause a compilation error.
-    /// This is the same reasoning behind the unit_cmp lint.
+    /// This is the same reasoning behind the `unit_cmp` lint.
     ///
     /// ### Known problems
     /// If returning unit is intentional, then there is no
-    /// way of specifying this without triggering needless_return lint
+    /// way of specifying this without triggering `needless_return` lint
     ///
     /// ### Example
     /// ```no_run
@@ -40,7 +39,7 @@ fn get_trait_predicates_for_trait_ids<'tcx>(
     cx: &LateContext<'tcx>,
     generics: GenericClauses<'tcx>,
     trait_ids: &[Option<DefId>], // At least 2 ids
-) -> [Vec<TraitPredicate<'tcx>>; 3] {
+) -> [Vec<TraitClause<'tcx>>; 3] {
     debug_assert!(trait_ids.len() >= 2);
     let mut preds = [Vec::new(), Vec::new(), Vec::new()];
     for (clause, _) in generics.clauses {
@@ -63,13 +62,11 @@ fn get_trait_predicates_for_trait_ids<'tcx>(
 fn get_projection_pred<'tcx>(
     cx: &LateContext<'tcx>,
     generics: GenericClauses<'tcx>,
-    trait_pred: TraitPredicate<'tcx>,
-) -> Option<ProjectionPredicate<'tcx>> {
+    trait_pred: TraitClause<'tcx>,
+) -> Option<ProjectionClause<'tcx>> {
     generics.clauses.iter().find_map(|(clause, _)| {
         if let ClauseKind::Projection(pred) = clause.kind().skip_binder() {
-            let projection_pred = cx
-                .tcx
-                .instantiate_bound_regions_with_erased(clause.kind().rebind(pred));
+            let projection_pred = cx.tcx.instantiate_bound_regions_with_erased(clause.kind().rebind(pred));
             if projection_pred.projection_term.args == trait_pred.trait_ref.args {
                 return Some(projection_pred);
             }

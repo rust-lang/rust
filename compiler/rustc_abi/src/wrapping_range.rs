@@ -1,5 +1,5 @@
-use std::fmt;
 use std::ops::RangeFull;
+use std::{fmt, iter};
 
 use crate::Size;
 #[cfg(feature = "nightly")]
@@ -149,51 +149,65 @@ impl WrappingRange {
     ///
     /// # Examples
     ///
-    ///
     /// ```
     /// use rustc_abi::{Size, WrappingRange};
     ///
-    /// let range = WrappingRange::smallest_range_containing([2, 6, 12, 4], Size::from_bytes(2));
-    /// assert_eq!(range.unwrap(), WrappingRange { start: 2, end: 12 });
+    /// let chain = std::iter::chain(10..20, 30..40);
+    /// let range = WrappingRange::smallest_range_containing(chain, Size::from_bytes(2));
+    /// assert_eq!(range.unwrap(), WrappingRange { start: 10, end: 39 });
     ///
-    /// let range = WrappingRange::smallest_range_containing(0..=127, Size::from_bytes(1));
-    /// assert_eq!(range.unwrap(), WrappingRange { start: 0, end: 127 });
-    /// let range = WrappingRange::smallest_range_containing([129, 128, 127], Size::from_bytes(1));
-    /// assert_eq!(range.unwrap(), WrappingRange { start: 127, end: 129 });
+    /// // Values don't need to be sorted nor unique
+    /// let range = WrappingRange::smallest_range_containing([3, 5, 3, 1, 3], Size::from_bytes(2));
+    /// assert_eq!(range.unwrap(), WrappingRange { start: 1, end: 5 });
     ///
     /// // The size matters because it changes where the wrapping can happen:
     /// let range = WrappingRange::smallest_range_containing([1, 254], Size::from_bytes(1));
     /// assert_eq!(range.unwrap(), WrappingRange { start: 254, end: 1 });
     /// let range = WrappingRange::smallest_range_containing([1, 254], Size::from_bytes(4));
     /// assert_eq!(range.unwrap(), WrappingRange { start: 1, end: 254 });
-    ///
-    /// // Both `100..=228` and `..=228 | 100..` are the same size, but we pick the one without zero.
-    /// let range = WrappingRange::smallest_range_containing([100, 228], Size::from_bytes(1));
-    /// assert_eq!(range.unwrap(), WrappingRange { start: 100, end: 228 });
-    /// // These 4 values are evenly spaced so all 4 candidate ranges have length 193:
-    /// // `(..=32) | (96..)`, `(..=96) | (160..)`, `(..=160) | (224..)`, and `32..=224`.
-    /// // We pick the last one as the only one that doesn't contain zero.
-    /// let range = WrappingRange::smallest_range_containing([0xA0, 0xE0, 0x20, 0x60], Size::from_bytes(1));
-    /// assert_eq!(range.unwrap(), WrappingRange { start: 0x20, end: 0xE0 });
     /// ```
     pub fn smallest_range_containing(
         values: impl IntoIterator<Item = u128>,
         size: Size,
     ) -> Option<Self> {
         let mut values: Vec<_> = values.into_iter().collect();
-        let umax = size.unsigned_int_max();
-        for value in &values {
-            debug_assert!(*value <= umax, "Value {value:?} is too big for {size:?}");
-        }
-        values.sort_unstable();
 
-        // Having sorted all the values, every element is a possible start point for the
-        // range of values, up to the previous element (wrapping around the end of the vec).
-        // Look at all those candidates and pick the one that's as narrow as possible.
-        let pairs = std::iter::zip(values.iter().copied(), values.iter().copied().cycle().skip(1));
-        let ranges = pairs.map(|(end, start)| WrappingRange { start, end });
-        let smallest_range = ranges.min_by_key(|r| (r.width(size), r.start));
-        smallest_range
+        let (min, max) = values
+            .iter()
+            .copied()
+            .map(|x| (x, x))
+            .reduce(|a, b| (u128::min(a.0, b.0), u128::max(a.1, b.1)))?;
+
+        // Just checking the max is enough to ensure that everything is in-range.
+        assert!(max <= size.unsigned_int_max(), "Value {max:?} is too big for {size:?}");
+
+        // The simple answer is the non-wraparound range `min..=max`.
+        let obvious_range = WrappingRange { start: min, end: max };
+
+        // It's very common that the input was only small non-negative integers and the
+        // obvious range turns out to be the best we can do.
+        // Every possible wraparound range must include at least `(...=min) | (max..)`,
+        // so if what we found already is at least that good, just use it.
+        //     WR(min, max).width() ≤ WR(max, min).width()
+        //         (max - min) % 2ⁿ ≤ (min - max) % 2ⁿ
+        //                max - min ≤ min - max + 2ⁿ
+        //            2×(max - min) ≤ 2ⁿ
+        //                max - min ≤ 2ⁿ⁻¹
+        let half_range = 1 << (size.bits() - 1);
+        if max - min <= half_range {
+            return Some(obvious_range);
+        }
+
+        // But every `[.., end, start, ..]` is also a potential candidate for a wraparound
+        // range `(..=end) | (start..)`, so long as `start` and `end` aren't duplicates.
+        values.sort_unstable();
+        let wraparound_ranges = values
+            .array_windows::<2>()
+            .filter_map(|&[end, start]| (start != end).then_some(WrappingRange { start, end }));
+
+        // Pick whichever range is smallest. By putting the non-wraparound range first,
+        // it'll be preferred over a wraparound range with the same width.
+        iter::chain(iter::once(obvious_range), wraparound_ranges).min_by_key(|r| r.width(size))
     }
 }
 

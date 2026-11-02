@@ -1,13 +1,13 @@
 use std::ops::ControlFlow;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::graph::iterate::{
     NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
-use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
+use rustc_lint_defs::builtin::UNCONDITIONAL_RECURSION;
 use rustc_middle::mir::{self, BasicBlock, BasicBlocks, Body, Terminator, TerminatorKind};
 use rustc_middle::ty::{self, GenericArg, GenericArgs, Instance, Ty, TyCtxt, Unnormalized};
-use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
 
 use crate::diagnostics::UnconditionalRecursion;
@@ -21,15 +21,15 @@ impl<'tcx> MirLint<'tcx> for CheckCallRecursion {
 
         if let DefKind::Fn | DefKind::AssocFn = tcx.def_kind(def_id) {
             // If this is trait/impl method, extract the trait's args.
-            let trait_args = match tcx.trait_of_assoc(def_id.to_def_id()) {
+            match tcx.trait_of_assoc(def_id.to_def_id()) {
                 Some(trait_def_id) => {
                     let trait_args_count = tcx.generics_of(trait_def_id).count();
-                    &GenericArgs::identity_for_item(tcx, def_id)[..trait_args_count]
+                    let args = GenericArgs::identity_for_item(tcx, def_id);
+                    let trait_args = &args.as_slice()[..trait_args_count];
+                    check_recursion(tcx, body, CallRecursion { trait_args })
                 }
-                _ => &[],
+                _ => check_recursion(tcx, body, CallRecursion { trait_args: &[] }),
             };
-
-            check_recursion(tcx, body, CallRecursion { trait_args })
         }
     }
 }
@@ -79,7 +79,7 @@ fn check_recursion<'tcx>(
             return;
         }
 
-        vis.reachable_recursive_calls.sort();
+        vis.reachable_recursive_calls.sort_by_key(|span| span.lo_hi());
 
         let sp = tcx.def_span(def_id);
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
@@ -111,8 +111,8 @@ struct Search<'mir, 'tcx, C: TerminatorClassifier<'tcx>> {
     reachable_recursive_calls: Vec<Span>,
 }
 
-struct CallRecursion<'tcx> {
-    trait_args: &'tcx [GenericArg<'tcx>],
+struct CallRecursion<'tcx, 'a> {
+    trait_args: &'a [GenericArg<'tcx>],
 }
 
 struct RecursiveDrop<'tcx> {
@@ -120,7 +120,7 @@ struct RecursiveDrop<'tcx> {
     drop_for: Ty<'tcx>,
 }
 
-impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx> {
+impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx, '_> {
     /// Returns `true` if `func` refers to the function we are searching in.
     fn is_recursive_terminator(
         &self,
@@ -163,7 +163,8 @@ impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx> {
             // calling into an entirely different method (for example, a call from the default
             // method in the trait to `<A as Trait<B>>::method`, where `A` and/or `B` are
             // specific types).
-            return callee == caller && &call_args[..self.trait_args.len()] == self.trait_args;
+            return callee == caller
+                && &call_args.as_slice()[..self.trait_args.len()] == self.trait_args;
         }
 
         false

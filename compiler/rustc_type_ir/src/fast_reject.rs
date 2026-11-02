@@ -9,7 +9,7 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 
 use crate::inherent::*;
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, Interner};
+use crate::{self as ty, Const, Interner};
 
 /// See `simplify_type`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -234,13 +234,18 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         // recursively reachable via `types_may_unify_inner` which already
         // increments the depth for us.
         let may_unify = |(obl, imp): (I::GenericArg, I::GenericArg)| {
-            match (obl.kind(), imp.kind()) {
+            match obl.kind() {
                 // We don't fast reject based on regions.
-                (ty::GenericArgKind::Lifetime(_), ty::GenericArgKind::Lifetime(_)) => true,
-                (ty::GenericArgKind::Type(obl), ty::GenericArgKind::Type(imp)) => {
+                ty::GenericArgKind::Lifetime(_) => {
+                    debug_assert!(matches!(imp.kind(), ty::GenericArgKind::Lifetime(_)));
+                    true
+                }
+                ty::GenericArgKind::Type(obl) if let ty::GenericArgKind::Type(imp) = imp.kind() => {
                     self.types_may_unify_inner(obl, imp, depth)
                 }
-                (ty::GenericArgKind::Const(obl), ty::GenericArgKind::Const(imp)) => {
+                ty::GenericArgKind::Const(obl)
+                    if let ty::GenericArgKind::Const(imp) = imp.kind() =>
+                {
                     self.consts_may_unify_inner(obl, imp)
                 }
                 _ => panic!("kind mismatch: {obl:?} {imp:?}"),
@@ -470,7 +475,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
             ty::UnsafeBinder(lhs_ty) => match rhs.kind() {
                 ty::UnsafeBinder(rhs_ty) => {
-                    self.types_may_unify(lhs_ty.skip_binder(), rhs_ty.skip_binder())
+                    self.types_may_unify_inner(lhs_ty.skip_binder(), rhs_ty.skip_binder(), depth)
                 }
                 _ => false,
             },
@@ -481,7 +486,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
     // Unlike `types_may_unify_inner`, this does not take a depth as
     // we never recurse from this function.
-    fn consts_may_unify_inner(self, lhs: I::Const, rhs: I::Const) -> bool {
+    fn consts_may_unify_inner(self, lhs: Const<I>, rhs: Const<I>) -> bool {
         match rhs.kind() {
             ty::ConstKind::Param(_) => {
                 if INSTANTIATE_RHS_WITH_INFER {

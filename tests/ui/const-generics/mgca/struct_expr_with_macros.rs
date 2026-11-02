@@ -3,7 +3,7 @@
 // Test that the def collector makes `AnonConst`s not `InlineConst`s even
 // when the const block is obscured via macros.
 
-#![feature(min_generic_const_args, adt_const_params)]
+#![feature(gca_min_const_items, adt_const_params)]
 #![expect(incomplete_features)]
 
 macro_rules! const_block {

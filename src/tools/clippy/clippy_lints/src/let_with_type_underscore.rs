@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
-use clippy_utils::source::{IntoSpan, SpanExt};
+use clippy_utils::source::{IntoSpan as _, SpanExt as _};
 use rustc_ast::{Local, TyKind};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -31,7 +30,7 @@ impl EarlyLintPass for UnderscoreTyped {
     fn check_local(&mut self, cx: &EarlyContext<'_>, local: &Local) {
         if let Some(ty) = &local.ty // Ensure that it has a type defined
             && let TyKind::Infer = ty.kind // that type is '_'
-            && local.span.eq_ctxt(ty.span)
+            && local.span.ctxt() == ty.span.ctxt()
             && let sm = cx.sess().source_map()
             && !local.span.in_external_macro(sm)
             && !is_from_proc_macro(cx, &**ty)

@@ -1,0 +1,13 @@
+error[E0309]: the associated type `<Q as AsyncQueryFunction<'_>>::SendDb` may not live long enough
+  --> $DIR/gluon_salsa.rs:46:26
+   |
+LL |     pub fn get_async<'a>(&'a mut self) {
+   |                      --  ^^^^^^^^^^^^ ...so that the type `QueryTable<'me, Q, <Q as AsyncQueryFunction<'_>>::SendDb>` will meet its required lifetime bounds
+   |                      |
+   |                      the associated type `<Q as AsyncQueryFunction<'_>>::SendDb` must be valid for the lifetime `'a` as defined here...
+   |
+   = help: consider adding an explicit lifetime bound `<Q as AsyncQueryFunction<'_>>::SendDb: 'a`...
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0309`.

@@ -4,7 +4,7 @@ use std::ops::Range;
 
 use rustc_errors::Diag;
 use rustc_hir::HirId;
-use rustc_lint_defs::Applicability;
+use rustc_lint::Applicability;
 use rustc_resolve::rustdoc::pulldown_cmark::{BrokenLink, Event, Parser};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 
@@ -413,7 +413,7 @@ fn suggest_insertion(
     cx: &DocContext<'_>,
     item: &Item,
     dox: &str,
-    lint: &mut Diag<'_, ()>,
+    lint: &mut Diag<'_>,
     insert_index: usize,
     suggestion: char,
     message: &'static str,

@@ -2,6 +2,7 @@
 //! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
+mod atomic;
 mod simd;
 
 use std::assert_matches;
@@ -12,17 +13,16 @@ use rustc_ast::{IntTy, UintTy};
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{FloatTy, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, span_bug, ty};
-use rustc_span::{Symbol, sym};
+use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::{Symbol, bug, span_bug, sym};
 use tracing::trace;
 
 use super::memory::MemoryKind;
 use super::util::ensure_monomorphic_enough;
 use super::{
-    AllocId, CheckInAllocMsg, ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Pointer,
-    PointerArithmetic, Projectable, Provenance, Scalar, err_ub_format, err_unsup_format, interp_ok,
-    throw_inval, throw_ub, throw_ub_format,
+    AllocId, AtomicRmwOp, CheckInAllocMsg, ImmTy, Immediate, InterpCx, InterpResult, Machine, OpTy,
+    PlaceTy, Pointer, PointerArithmetic, Projectable, Provenance, Scalar, err_ub_format,
+    err_unsup_format, interp_ok, throw_inval, throw_ub, throw_ub_format,
 };
 use crate::interpret::{MPlaceTy, Writeable};
 
@@ -59,7 +59,7 @@ pub(crate) enum MinMax {
 
 /// Whether two types `T` and `U` are compatible when a value of type `T` is passed as a c-variadic
 /// argument and read as a value of type `U`.
-enum VarArgCompatible {
+pub enum VarArgCompatible {
     /// `T` and `U` are compatible, e.g.
     ///
     /// - They're the same type.
@@ -70,6 +70,7 @@ enum VarArgCompatible {
     /// `T` and `U` are definitely not compatible.
     Incompatible,
     /// `T` and `U` are corresponding signed and unsigned integer types.
+    /// This is compatible only if the value can be represented in both types.
     CastIntTo { source_is_signed: bool },
 }
 
@@ -177,6 +178,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let instance_args = instance.args;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
 
+        if intrinsic_name.as_str().starts_with("atomic_") {
+            return self.eval_atomic_intrinsic(intrinsic_name, instance_args, args, dest, ret);
+        }
         if intrinsic_name.as_str().starts_with("simd_") {
             return self.eval_simd_intrinsic(intrinsic_name, instance_args, args, dest, ret);
         }
@@ -288,7 +292,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             sym::caller_location => {
-                let span = self.find_closest_untracked_caller_location();
+                let span = self.caller_location();
                 let val = self.tcx.span_as_caller_location(span);
                 let val =
                     self.const_val_to_op(val, self.tcx.caller_location_ty(), Some(dest.layout))?;
@@ -371,6 +375,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let r = self.read_immediate(&args[1])?;
                 self.exact_div(&l, &r, dest)?;
             }
+            sym::unchecked_funnel_shl | sym::unchecked_funnel_shr => {
+                let shift_left = intrinsic_name == sym::unchecked_funnel_shl;
+
+                let l = self.read_immediate(&args[0])?;
+                let r = self.read_immediate(&args[1])?;
+                let shift = self.read_immediate(&args[2])?;
+
+                let result = self.funnel_shift(&l, &r, &shift, shift_left)?;
+                self.write_scalar(result, dest)?;
+            }
+
             sym::copy => {
                 self.copy_intrinsic(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
             }
@@ -472,7 +487,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Check that the memory between them is dereferenceable at all, starting from the
                 // origin pointer: `dist` is `a - b`, so it is based on `b`.
-                self.check_ptr_access_signed(b, dist, CheckInAllocMsg::Dereferenceable)
+                self.check_ptr_access_signed(b, dist, CheckInAllocMsg::Dereferenceable("pointer"))
                     .map_err_kind(|_| {
                         // This could mean they point to different allocations, or they point to the same allocation
                         // but not the entire range between the pointers is in-bounds.
@@ -494,7 +509,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.check_ptr_access_signed(
                     a,
                     dist.checked_neg().unwrap(), // i64::MIN is impossible as no allocation can be that large
-                    CheckInAllocMsg::Dereferenceable,
+                    CheckInAllocMsg::Dereferenceable("pointer"),
                 )
                 .map_err_kind(|_| {
                     // Make the error more specific.
@@ -613,7 +628,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::copysignf64 => self.float_copysign_intrinsic::<Double>(args, dest)?,
             sym::copysignf128 => self.float_copysign_intrinsic::<Quad>(args, dest)?,
 
-            sym::fabs => {
+            sym::fabs | sym::floor | sym::ceil | sym::trunc | sym::round | sym::round_ties_even => {
                 let arg = self.read_immediate(&args[0])?;
                 let ty::Float(float_ty) = arg.layout.ty.kind() else {
                     span_bug!(
@@ -631,117 +646,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_scalar(out_val, dest)?;
             }
 
-            sym::floorf16 => self.float_round_intrinsic::<Half>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardNegative,
-            )?,
-            sym::floorf32 => self.float_round_intrinsic::<Single>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardNegative,
-            )?,
-            sym::floorf64 => self.float_round_intrinsic::<Double>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardNegative,
-            )?,
-            sym::floorf128 => self.float_round_intrinsic::<Quad>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardNegative,
-            )?,
-
-            sym::ceilf16 => self.float_round_intrinsic::<Half>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardPositive,
-            )?,
-            sym::ceilf32 => self.float_round_intrinsic::<Single>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardPositive,
-            )?,
-            sym::ceilf64 => self.float_round_intrinsic::<Double>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardPositive,
-            )?,
-            sym::ceilf128 => self.float_round_intrinsic::<Quad>(
-                args,
-                dest,
-                rustc_apfloat::Round::TowardPositive,
-            )?,
-
-            sym::truncf16 => {
-                self.float_round_intrinsic::<Half>(args, dest, rustc_apfloat::Round::TowardZero)?
-            }
-            sym::truncf32 => {
-                self.float_round_intrinsic::<Single>(args, dest, rustc_apfloat::Round::TowardZero)?
-            }
-            sym::truncf64 => {
-                self.float_round_intrinsic::<Double>(args, dest, rustc_apfloat::Round::TowardZero)?
-            }
-            sym::truncf128 => {
-                self.float_round_intrinsic::<Quad>(args, dest, rustc_apfloat::Round::TowardZero)?
-            }
-
-            sym::roundf16 => self.float_round_intrinsic::<Half>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToAway,
-            )?,
-            sym::roundf32 => self.float_round_intrinsic::<Single>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToAway,
-            )?,
-            sym::roundf64 => self.float_round_intrinsic::<Double>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToAway,
-            )?,
-            sym::roundf128 => self.float_round_intrinsic::<Quad>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToAway,
-            )?,
-
-            sym::round_ties_even_f16 => self.float_round_intrinsic::<Half>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToEven,
-            )?,
-            sym::round_ties_even_f32 => self.float_round_intrinsic::<Single>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToEven,
-            )?,
-            sym::round_ties_even_f64 => self.float_round_intrinsic::<Double>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToEven,
-            )?,
-            sym::round_ties_even_f128 => self.float_round_intrinsic::<Quad>(
-                args,
-                dest,
-                rustc_apfloat::Round::NearestTiesToEven,
-            )?,
-            sym::fmaf16 => self.float_muladd_intrinsic::<Half>(args, dest, MulAddType::Fused)?,
-            sym::fmaf32 => self.float_muladd_intrinsic::<Single>(args, dest, MulAddType::Fused)?,
-            sym::fmaf64 => self.float_muladd_intrinsic::<Double>(args, dest, MulAddType::Fused)?,
-            sym::fmaf128 => self.float_muladd_intrinsic::<Quad>(args, dest, MulAddType::Fused)?,
-            sym::fmuladdf16 => {
-                self.float_muladd_intrinsic::<Half>(args, dest, MulAddType::Nondeterministic)?
-            }
-            sym::fmuladdf32 => {
-                self.float_muladd_intrinsic::<Single>(args, dest, MulAddType::Nondeterministic)?
-            }
-            sym::fmuladdf64 => {
-                self.float_muladd_intrinsic::<Double>(args, dest, MulAddType::Nondeterministic)?
-            }
-            sym::fmuladdf128 => {
-                self.float_muladd_intrinsic::<Quad>(args, dest, MulAddType::Nondeterministic)?
+            sym::fma | sym::fmuladd => {
+                let fma_type = if intrinsic_name == sym::fma {
+                    MulAddType::Fused
+                } else {
+                    MulAddType::Nondeterministic
+                };
+                let ty = args[0].layout.ty;
+                let ty::Float(float_ty) = ty.kind() else {
+                    span_bug!(self.cur_span(), "non-float type for float intrinsic: {ty}");
+                };
+                match float_ty {
+                    FloatTy::F16 => self.float_muladd_intrinsic::<Half>(args, dest, fma_type)?,
+                    FloatTy::F32 => self.float_muladd_intrinsic::<Single>(args, dest, fma_type)?,
+                    FloatTy::F64 => self.float_muladd_intrinsic::<Double>(args, dest, fma_type)?,
+                    FloatTy::F128 => self.float_muladd_intrinsic::<Quad>(args, dest, fma_type)?,
+                }
             }
 
             sym::va_copy => {
@@ -813,26 +733,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// integers of the same size but different signedness, the passed value must be representable
     /// in both types.
     fn validate_c_variadic_argument(
-        &mut self,
+        &self,
         arg_mplace: &MPlaceTy<'tcx, M::Provenance>,
         callee_type: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx> {
         let callee_ty = callee_type.ty;
         let caller_ty = arg_mplace.layout.ty;
-
-        // Identical types are clearly compatible.
-        if caller_ty == callee_ty {
-            return interp_ok(());
-        }
-
-        // Types of different sizes can never be compatible.
-        if arg_mplace.layout.size != callee_type.size {
-            throw_ub_format!(
-                "va_arg type mismatch: requested `{}` is incompatible with next argument of type `{}`",
-                callee_ty,
-                caller_ty,
-            )
-        }
 
         match self.validate_c_variadic_compatible_ty(arg_mplace.layout.ty, callee_type.ty)? {
             VarArgCompatible::Compatible => interp_ok(()),
@@ -871,12 +777,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// - `T` and `U` are both pointers, and their target types are compatible.
     /// - `T` is a pointer to [`std::ffi::c_void`] and `U` is a pointer to [`i8`] or [`u8`],
     /// or vice versa.
-    fn validate_c_variadic_compatible_ty(
-        &mut self,
+    ///
+    /// This is designed to match the C rules for variadics, it is incomparable to what we allow in
+    /// terms of ABI mismatches for regular (fixed) function arguments.
+    pub fn validate_c_variadic_compatible_ty(
+        &self,
         caller_type: Ty<'tcx>,
         callee_type: Ty<'tcx>,
     ) -> InterpResult<'tcx, VarArgCompatible> {
-        if caller_type == callee_type {
+        // FIXME: Accepting two copies of the same repr(C) type as compatible is currently not
+        // guaranteed by our `VaList::next_arg` docs, but it is needed for Miri itself when it
+        // checks whether shims were called with the right arguments. We should eventually put this
+        // into the docs as well.
+        if self.identical_c_types(caller_type, callee_type) {
             return interp_ok(VarArgCompatible::Compatible);
         }
 
@@ -889,7 +802,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let is_c_char = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(UintTy::U8) | ty::Int(IntTy::I8));
 
         match (caller_type.kind(), callee_type.kind()) {
-            (ty::RawPtr(caller_target_ty, _), ty::RawPtr(callee_target_ty, _)) => {
+            // Some types look different but are actually the same for ABI purposes.
+            (ty::Int(_), ty::Int(_)) | (ty::Uint(_), ty::Uint(_)) => {
+                // E.g. cast between `usize` and `u64` on a 64-bit platform.
+                interp_ok(VarArgCompatible::Compatible)
+            }
+            // C allows different types if...
+            // - "both types are pointers to qualified or unqualified versions of compatible types"
+            // - "one type is pointer to qualified or unqualified void and the other is a pointer to a qualified or
+            //   unqualified character type"
+            //
+            // As usual for the ABI, we treat references and raw pointers alike.
+            (
+                ty::RawPtr(caller_target_ty, _) | ty::Ref(_, caller_target_ty, _),
+                ty::RawPtr(callee_target_ty, _) | ty::Ref(_, callee_target_ty, _),
+            ) => {
                 // In C, types can be qualified by a combination of `const`, `volatile` and
                 // `restrict`. These properties are irrelevant for the ABI, and don't have an
                 // equivalent in rust.
@@ -915,16 +842,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     }
                 }
             }
+            // - "one type is a signed integer type, the other type is the corresponding unsigned integer type,
+            //   and the value is representable in both types"
             (ty::Int(_), ty::Uint(_)) => {
                 interp_ok(VarArgCompatible::CastIntTo { source_is_signed: true })
             }
             (ty::Uint(_), ty::Int(_)) => {
                 interp_ok(VarArgCompatible::CastIntTo { source_is_signed: false })
             }
-            (ty::Int(_), ty::Int(_)) | (ty::Uint(_), ty::Uint(_)) => {
-                // E.g. cast between `usize` and `u64` on a 64-bit platform.
-                interp_ok(VarArgCompatible::Compatible)
-            }
+            // - "or, the type of the next argument is nullptr_t and type is a pointer type that has the same
+            //   representation and alignment requirements as a pointer to a character type"
+            //   This one does not have an equivalent form in Rust.
             _ => interp_ok(VarArgCompatible::Incompatible),
         }
     }
@@ -1051,6 +979,50 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         })
     }
 
+    pub fn funnel_shift(
+        &self,
+        left: &ImmTy<'tcx, M::Provenance>,
+        right: &ImmTy<'tcx, M::Provenance>,
+        shift_bits: &ImmTy<'tcx, M::Provenance>,
+        shift_left: bool,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
+        let size = left.layout.size;
+        let left = left.to_scalar().to_bits(size)?;
+        let right = right.to_scalar().to_bits(size)?;
+        let shift_bits = shift_bits.to_scalar().to_bits(shift_bits.layout.size)?; // can have different size
+
+        if shift_bits >= size.bits().into() {
+            throw_ub_format!(
+                "overflowing shift by {shift_bits} in {} funnel shift",
+                if shift_left { "left" } else { "right" }
+            );
+        }
+        let inv_shift_bits = u32::try_from(u128::from(size.bits()) - shift_bits).unwrap();
+
+        // A funnel shift left by S can be implemented as `(x << S) | y.unbounded_shr(SIZE - S)`.
+        // The `unbounded_shr` is needed because otherwise if `S = 0`, it would be `x | y`
+        // when it should be `x`.
+        //
+        // This selects the least-significant `SIZE - S` bits of `x`, followed by the `S` most
+        // significant bits of `y`. As `left` and `right` both occupy the lower `SIZE` bits,
+        // we can treat the lower `SIZE` bits as an integer of the right width and use
+        // the same implementation, but on a zero-extended `x` and `y`. This works because
+        // `x << S` just pushes the `SIZE-S` MSBs out, and `y >> (SIZE - S)` shifts in
+        // zeros, as it is zero-extended. To the lower `SIZE` bits, this looks just like a
+        // funnel shift left.
+        //
+        // Note that the `unbounded_sh{l,r}`s are needed only in case we are using this on
+        // `u128xN` and `inv_shift_bits == 128`.
+        let result_bits = if shift_left {
+            (left << shift_bits) | right.unbounded_shr(inv_shift_bits)
+        } else {
+            left.unbounded_shl(inv_shift_bits) | (right >> shift_bits)
+        };
+
+        let (result, _overflow) = ScalarInt::truncate_from_uint(result_bits, size);
+        interp_ok(result.into())
+    }
+
     /// Offsets a pointer by some multiple of its type, returning an error if the pointer leaves its
     /// allocation.
     pub fn ptr_offset_inbounds(
@@ -1071,8 +1043,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Copy `count*size_of::<T>()` many bytes from `*src` to `*dst`.
     pub(crate) fn copy_intrinsic(
         &mut self,
-        src: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
-        dst: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        src: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>, // pointer to source memory
+        dst: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>, // pointer to destination memory
         count: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
@@ -1132,7 +1104,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     pub fn write_bytes_intrinsic(
         &mut self,
-        dst: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        dst: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>, // pointer to destination memory
         byte: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         count: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         name: &'static str,
@@ -1148,6 +1120,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let len = self
             .compute_size_in_bytes(layout.size, count)
             .ok_or_else(|| err_ub_format!("overflow computing total size of `{name}`"))?;
+
+        // Check alignment as well. We set the attribute in LLVM.
+        self.check_ptr_align(dst, layout.align.abi)?;
 
         let bytes = std::iter::repeat_n(byte, len.bytes_usize());
         self.write_bytes_ptr(dst, bytes)
@@ -1197,7 +1172,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     fn unop_float_intrinsic<F>(
-        &self,
+        &mut self,
         name: Symbol,
         arg: ImmTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>>
@@ -1208,6 +1183,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         match name {
             // bitwise, no NaN adjustments
             sym::fabs => interp_ok(x.abs().into()),
+
+            sym::floor => self.float_round(x, rustc_apfloat::Round::TowardNegative),
+            sym::ceil => self.float_round(x, rustc_apfloat::Round::TowardPositive),
+            sym::trunc => self.float_round(x, rustc_apfloat::Round::TowardZero),
+            sym::round => self.float_round(x, rustc_apfloat::Round::NearestTiesToAway),
+            sym::round_ties_even => self.float_round(x, rustc_apfloat::Round::NearestTiesToEven),
+
             _ => bug!("not a unary float intrinsic: {}", name),
         }
     }
@@ -1272,30 +1254,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     fn float_round<F>(
         &mut self,
-        x: Scalar<M::Provenance>,
+        x: F,
         mode: rustc_apfloat::Round,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>>
     where
         F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
     {
-        let x: F = x.to_float()?;
         let res = x.round_to_integral(mode).value;
         let res = self.adjust_nan(res, &[x]);
         interp_ok(res.into())
-    }
-
-    fn float_round_intrinsic<F>(
-        &mut self,
-        args: &[OpTy<'tcx, M::Provenance>],
-        dest: &PlaceTy<'tcx, M::Provenance>,
-        mode: rustc_apfloat::Round,
-    ) -> InterpResult<'tcx, ()>
-    where
-        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
-    {
-        let res = self.float_round::<F>(self.read_scalar(&args[0])?, mode)?;
-        self.write_scalar(res, dest)?;
-        interp_ok(())
     }
 
     fn float_muladd<F>(
@@ -1413,7 +1380,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
 
         for (i, field) in adt.non_enum_variant().fields.iter().enumerate() {
-            if field.ty(*self.tcx, substs).skip_norm_wip().is_raw_ptr() {
+            if field.ty(*self.tcx, *substs).skip_norm_wip().is_raw_ptr() {
                 return self.project_field(&va_list_inner, FieldIdx::from_usize(i));
             }
         }

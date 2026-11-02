@@ -94,7 +94,6 @@
 //! constructors of a type. For example, all the following is ok:
 //!
 //! ```rust,ignore(example)
-//! # #![feature(never_type)]
 //! # #![feature(exhaustive_patterns)]
 //! fn foo(x: Option<!>) {
 //!   match x {
@@ -114,7 +113,6 @@
 //! Moreover, take the following:
 //!
 //! ```rust
-//! # #![feature(never_type)]
 //! # #![feature(exhaustive_patterns)]
 //! # let x = None::<!>;
 //! match x {
@@ -881,7 +879,7 @@ impl<Cx: PatCx> Constructor<Cx> {
             (Opaque(..), _) | (_, Opaque(..)) => false,
 
             _ => {
-                return Err(cx.bug(format_args!(
+                return Err(cx.delayed_bug(format_args!(
                     "trying to compare incompatible constructors {self:?} and {other:?}"
                 )));
             }

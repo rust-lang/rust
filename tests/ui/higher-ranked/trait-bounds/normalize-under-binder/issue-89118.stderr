@@ -20,7 +20,6 @@ note: required by a bound in `StackContext`
   --> $DIR/issue-89118.rs:9:14
    |
 LL | trait StackContext
-   |       ------------ required by a bound in this trait
 LL | where
 LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>,
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StackContext`
@@ -47,7 +46,6 @@ note: required by a bound in `EthernetWorker`
   --> $DIR/issue-89118.rs:28:14
    |
 LL | struct EthernetWorker<C>(C)
-   |        -------------- required by a bound in this struct
 LL | where
 LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `EthernetWorker`
@@ -74,7 +72,6 @@ note: required by a bound in `StackContext`
   --> $DIR/issue-89118.rs:9:14
    |
 LL | trait StackContext
-   |       ------------ required by a bound in this trait
 LL | where
 LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>,
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StackContext`

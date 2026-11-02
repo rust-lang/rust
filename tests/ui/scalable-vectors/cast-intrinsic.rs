@@ -2,7 +2,7 @@
 //@ only-aarch64
 #![crate_type = "lib"]
 #![allow(incomplete_features, internal_features, improper_ctypes)]
-#![feature(abi_unadjusted, core_intrinsics, link_llvm_intrinsics, rustc_attrs)]
+#![feature(core_intrinsics, link_llvm_intrinsics, rustc_attrs)]
 
 use std::intrinsics::simd::simd_cast;
 
@@ -33,7 +33,7 @@ pub trait SveInto<T>: Sized {
 impl SveInto<svbool2_t> for svbool_t {
     #[target_feature(enable = "sve")]
     unsafe fn sve_into(self) -> svbool2_t {
-        unsafe extern "C" {
+        unsafe extern "llvm-intrinsic" {
             #[cfg_attr(
                 target_arch = "aarch64",
                 link_name = concat!("llvm.aarch64.sve.convert.from.svbool.nxv2i1")
@@ -50,11 +50,8 @@ pub unsafe fn svld1sh_gather_s64offset_s64(
     base: *const i16,
     offsets: svint64_t,
 ) -> svint64_t {
-    unsafe extern "unadjusted" {
-        #[cfg_attr(
-            target_arch = "aarch64",
-            link_name = "llvm.aarch64.sve.ld1.gather.nxv2i16"
-        )]
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.nxv2i16")]
         fn _svld1sh_gather_s64offset_s64(
             pg: svbool2_t,
             base: *const i16,

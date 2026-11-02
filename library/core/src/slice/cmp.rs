@@ -5,7 +5,7 @@ use crate::ascii;
 use crate::cmp::{self, BytewiseEq, Ordering};
 use crate::intrinsics::compare_bytes;
 use crate::marker::Destruct;
-use crate::mem::SizedTypeProperties;
+use crate::mem::{SizedTypeProperties, transmute_copy};
 use crate::num::NonZero;
 use crate::ops::ControlFlow;
 
@@ -70,35 +70,27 @@ const impl<T: [const] PartialOrd> PartialOrd for [T] {
         // see <https://github.com/llvm/llvm-project/issues/132678>, or we generate
         // niche discriminant checks in a way that doesn't trigger it.
 
-        as_underlying(self.__chaining_lt(other)) == 1
+        as_underlying(self.__chaining_less(other)) == 1
     }
     #[inline]
     fn le(&self, other: &Self) -> bool {
-        as_underlying(self.__chaining_le(other)) != 0
+        as_underlying(self.__chaining_less(other)) != 0
     }
     #[inline]
     fn gt(&self, other: &Self) -> bool {
-        as_underlying(self.__chaining_gt(other)) == 1
+        as_underlying(self.__chaining_greater(other)) == 1
     }
     #[inline]
     fn ge(&self, other: &Self) -> bool {
-        as_underlying(self.__chaining_ge(other)) != 0
+        as_underlying(self.__chaining_greater(other)) != 0
     }
     #[inline]
-    fn __chaining_lt(&self, other: &Self) -> ControlFlow<bool> {
-        SliceChain::chaining_lt(self, other)
+    fn __chaining_less(&self, other: &Self) -> ControlFlow<bool> {
+        SliceChain::chaining_less(self, other)
     }
     #[inline]
-    fn __chaining_le(&self, other: &Self) -> ControlFlow<bool> {
-        SliceChain::chaining_le(self, other)
-    }
-    #[inline]
-    fn __chaining_gt(&self, other: &Self) -> ControlFlow<bool> {
-        SliceChain::chaining_gt(self, other)
-    }
-    #[inline]
-    fn __chaining_ge(&self, other: &Self) -> ControlFlow<bool> {
-        SliceChain::chaining_ge(self, other)
+    fn __chaining_greater(&self, other: &Self) -> ControlFlow<bool> {
+        SliceChain::chaining_greater(self, other)
     }
 }
 
@@ -126,14 +118,11 @@ where
         // Implemented as explicit indexing rather
         // than zipped iterators for performance reasons.
         // See PR https://github.com/rust-lang/rust/pull/116846
-        // FIXME(const_hack): make this a `for idx in 0..len` loop.
-        let mut idx = 0;
-        while idx < len {
+        for idx in 0..len {
             // SAFETY: idx < len, so both are in-bounds and readable
             if unsafe { *lhs.add(idx) != *rhs.add(idx) } {
                 return false;
             }
-            idx += 1;
         }
 
         true
@@ -170,13 +159,11 @@ const trait SlicePartialOrd: Sized {
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 // intermediate trait for specialization of slice's PartialOrd chaining methods
 const trait SliceChain: Sized {
-    fn chaining_lt(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
-    fn chaining_le(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
-    fn chaining_gt(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
-    fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
+    fn chaining_less(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
+    fn chaining_greater(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
 }
 
-type AlwaysBreak<B> = ControlFlow<B, crate::convert::Infallible>;
+type AlwaysBreak<B> = ControlFlow<B, !>;
 
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<A: [const] PartialOrd> SlicePartialOrd for A {
@@ -195,17 +182,11 @@ const impl<A: [const] PartialOrd> SlicePartialOrd for A {
 
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<A: [const] PartialOrd> SliceChain for A {
-    default fn chaining_lt(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
-        chaining_impl(left, right, PartialOrd::__chaining_lt, usize::__chaining_lt)
+    default fn chaining_less(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+        chaining_impl(left, right, PartialOrd::__chaining_less, usize::__chaining_less)
     }
-    default fn chaining_le(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
-        chaining_impl(left, right, PartialOrd::__chaining_le, usize::__chaining_le)
-    }
-    default fn chaining_gt(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
-        chaining_impl(left, right, PartialOrd::__chaining_gt, usize::__chaining_gt)
-    }
-    default fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
-        chaining_impl(left, right, PartialOrd::__chaining_ge, usize::__chaining_ge)
+    default fn chaining_greater(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+        chaining_impl(left, right, PartialOrd::__chaining_greater, usize::__chaining_greater)
     }
 }
 
@@ -224,11 +205,8 @@ const fn chaining_impl<'l, 'r, A: PartialOrd, B, C>(
     let lhs = &left[..l];
     let rhs = &right[..l];
 
-    // FIXME(const-hack): revert this to `for i in 0..l` once `impl const Iterator for Range<T>`
-    let mut i: usize = 0;
-    while i < l {
+    for i in 0..l {
         elem_chain(&lhs[i], &rhs[i])?;
-        i += 1;
     }
 
     len_chain(&left.len(), &right.len())
@@ -349,31 +327,17 @@ const impl<A: [const] Ord + [const] UnsignedBytewiseOrd> SliceOrd for A {
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<A: [const] PartialOrd + [const] UnsignedBytewiseOrd> SliceChain for A {
     #[inline]
-    fn chaining_lt(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+    fn chaining_less(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
         match SliceOrd::compare(left, right) {
             Ordering::Equal => ControlFlow::Continue(()),
             ne => ControlFlow::Break(ne.is_lt()),
         }
     }
     #[inline]
-    fn chaining_le(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
-        match SliceOrd::compare(left, right) {
-            Ordering::Equal => ControlFlow::Continue(()),
-            ne => ControlFlow::Break(ne.is_le()),
-        }
-    }
-    #[inline]
-    fn chaining_gt(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+    fn chaining_greater(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
         match SliceOrd::compare(left, right) {
             Ordering::Equal => ControlFlow::Continue(()),
             ne => ControlFlow::Break(ne.is_gt()),
-        }
-    }
-    #[inline]
-    fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
-        match SliceOrd::compare(left, right) {
-            Ordering::Equal => ControlFlow::Continue(()),
-            ne => ControlFlow::Break(ne.is_ge()),
         }
     }
 }
@@ -386,28 +350,27 @@ impl<T> SliceContains for T
 where
     T: PartialEq,
 {
+    #[expect(clippy::manual_contains, reason = "implements slice_contains")]
     default fn slice_contains(&self, x: &[Self]) -> bool {
         x.iter().any(|y| *y == *self)
     }
 }
 
-impl SliceContains for u8 {
+impl<T: BytewiseEq> SliceContains for T {
     #[inline]
-    fn slice_contains(&self, x: &[Self]) -> bool {
-        memchr::memchr(*self, x).is_some()
-    }
-}
-
-impl SliceContains for i8 {
-    #[inline]
-    fn slice_contains(&self, x: &[Self]) -> bool {
-        let byte = *self as u8;
-        // SAFETY: `i8` and `u8` have the same memory layout, thus casting `x.as_ptr()`
-        // as `*const u8` is safe. The `x.as_ptr()` comes from a reference and is thus guaranteed
-        // to be valid for reads for the length of the slice `x.len()`, which cannot be larger
-        // than `isize::MAX`. The returned slice is never mutated.
-        let bytes: &[u8] = unsafe { from_raw_parts(x.as_ptr() as *const u8, x.len()) };
-        memchr::memchr(byte, bytes).is_some()
+    #[expect(clippy::manual_contains, reason = "implements slice_contains")]
+    default fn slice_contains(&self, x: &[Self]) -> bool {
+        if size_of::<T>() == 1 {
+            // SAFETY: `BytewiseEq` guarantees that values have no padding or provenance and
+            // compare like their underlying bytes. Since `T` is one byte, both the value and
+            // slice can be read as `u8`s.
+            let (byte, bytes) = unsafe {
+                (transmute_copy::<T, u8>(self), from_raw_parts(x.as_ptr().cast::<u8>(), x.len()))
+            };
+            memchr::memchr(byte, bytes).is_some()
+        } else {
+            x.iter().any(|y| *y == *self)
+        }
     }
 }
 

@@ -14,7 +14,7 @@ use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
 use ide_db::{
     MiniCore,
-    base_db::{Crate, ProcMacroPaths, SourceDatabase, all_crates, salsa::Revision},
+    base_db::{Crate, ProcMacroPaths, SourceDatabase, TargetKind, all_crates, salsa::Revision},
 };
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
@@ -24,9 +24,7 @@ use parking_lot::{
     RwLockWriteGuard,
 };
 use proc_macro_api::ProcMacroClient;
-use project_model::{
-    ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, TargetKind, WorkspaceBuildScripts,
-};
+use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::thread;
 use tracing::{Level, span, trace};
@@ -105,8 +103,13 @@ pub(crate) struct GlobalState {
     pub(crate) shutdown_requested: bool,
     pub(crate) last_reported_status: lsp_ext::ServerStatusParams,
 
-    // proc macros
+    /// Clients of the proc-macro server.
+    ///
+    /// One client per workspace, in the same order as `self.workspaces`. We don't store
+    /// the client in `self.workspaces` so that we can reload workspaces without
+    /// restarting the proc-macro server.
     pub(crate) proc_macro_clients: Arc<[Option<anyhow::Result<ProcMacroClient>>]>,
+
     pub(crate) build_deps_changed: bool,
 
     // Flycheck

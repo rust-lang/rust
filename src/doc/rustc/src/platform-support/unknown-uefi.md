@@ -15,7 +15,7 @@ Available targets:
 
 - [@dvdhrm](https://github.com/dvdhrm)
 - [@nicholasbishop](https://github.com/nicholasbishop)
-- (for `aarch64-unknown-uefi` only) [@rust-lang/arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
+- (for `aarch64-unknown-uefi` only) [arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
     - Use `@rustbot ping arm-maintainers` to ping us
 
 [arm_maintainers]: https://github.com/rust-lang/team/blob/master/teams/arm-maintainers.toml
@@ -111,7 +111,7 @@ executing UEFI applications as well. See its documentation for details.
 
 The [uefi-run] rust tool is a simple
 wrapper around `qemu` that can spawn UEFI applications in qemu. You can install
-it via `cargo install uefi-run` and execute qemu applications as
+it via `cargo install --locked uefi-run` and execute qemu applications as
 `uefi-run ./application.efi`.
 
 ## Cross-compilation toolchains and C code

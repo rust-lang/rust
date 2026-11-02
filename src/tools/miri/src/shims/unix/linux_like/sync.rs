@@ -1,5 +1,5 @@
 use crate::concurrency::sync::{FutexRef, SyncObj};
-use crate::shims::sig::check_min_vararg_count;
+use crate::shims::sig::Varargs;
 use crate::*;
 
 struct LinuxFutex {
@@ -12,18 +12,19 @@ impl SyncObj for LinuxFutex {}
 /// `args` is the arguments *including* the syscall number.
 pub fn futex<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    varargs: &[OpTy<'tcx>],
+    varargs: Varargs<'tcx, '_>,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
-    let [addr, op, val] = check_min_vararg_count("`syscall(SYS_futex, ...)`", varargs)?;
+    let ([addr, op, val], varargs) =
+        ecx.check_varargs(shim_varargs![*u32, i32, u32], varargs, "syscall(SYS_futex, ...)")?;
 
     // See <https://man7.org/linux/man-pages/man2/futex.2.html> for docs.
     // The first three arguments (after the syscall number itself) are the same to all futex operations:
     //     (uint32_t *addr, int op, uint32_t val).
     // We checked above that these definitely exist.
-    let addr = ecx.read_pointer(addr)?;
-    let op = ecx.read_scalar(op)?.to_i32()?;
-    let val = ecx.read_scalar(val)?.to_u32()?;
+    let addr = ecx.read_pointer(&addr)?;
+    let op = ecx.read_scalar(&op)?.to_i32()?;
+    let val = ecx.read_scalar(&val)?.to_u32()?;
 
     // This is a vararg function so we have to bring our own type for this pointer.
     let addr = ecx.ptr_to_mplace(addr, ecx.machine.layouts.i32);
@@ -50,16 +51,22 @@ pub fn futex<'tcx>(
             let wait_bitset = op & !futex_realtime == futex_wait_bitset;
 
             let (timeout, bitset) = if wait_bitset {
-                let [_, _, _, timeout, uaddr2, bitset] = check_min_vararg_count(
-                    "`syscall(SYS_futex, FUTEX_WAIT_BITSET, ...)`",
+                let ([timeout, uaddr2, bitset], _) = ecx.check_varargs(
+                    shim_varargs![*libc::timespec, *u32, u32],
                     varargs,
+                    "syscall(SYS_futex, ...)",
                 )?;
-                let _timeout = ecx.read_pointer(timeout)?;
-                let _uaddr2 = ecx.read_pointer(uaddr2)?;
-                (timeout, ecx.read_scalar(bitset)?.to_u32()?)
+                let uaddr2 = ecx.read_pointer(&uaddr2)?;
+                if !ecx.ptr_is_null(uaddr2)? {
+                    throw_ub_format!("`uaddr2` pointer must be null for `FUTEX_WAIT_BITSET`");
+                }
+                (timeout, ecx.read_scalar(&bitset)?.to_u32()?)
             } else {
-                let [_, _, _, timeout] =
-                    check_min_vararg_count("`syscall(SYS_futex, FUTEX_WAIT, ...)`", varargs)?;
+                let ([timeout], _) = ecx.check_varargs(
+                    shim_varargs![*libc::timespec],
+                    varargs,
+                    "syscall(SYS_futex, ...)",
+                )?;
                 (timeout, u32::MAX)
             };
 
@@ -67,7 +74,7 @@ pub fn futex<'tcx>(
                 return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
             }
 
-            let timeout = ecx.deref_pointer_as(timeout, ecx.libc_ty_layout("timespec"))?;
+            let timeout = ecx.deref_pointer_as(&timeout, ecx.libc_ty_layout("timespec"))?;
             let deadline = if ecx.ptr_is_null(timeout.ptr())? {
                 None
             } else {
@@ -194,13 +201,20 @@ pub fn futex<'tcx>(
             let futex_ref = futex_ref.futex.clone();
 
             let bitset = if op == futex_wake_bitset {
-                let [_, _, _, timeout, uaddr2, bitset] = check_min_vararg_count(
-                    "`syscall(SYS_futex, FUTEX_WAKE_BITSET, ...)`",
+                let ([timeout, uaddr2, bitset], _) = ecx.check_varargs(
+                    shim_varargs![*libc::timespec, *u32, u32],
                     varargs,
+                    "syscall(SYS_futex, ...)",
                 )?;
-                let _timeout = ecx.read_pointer(timeout)?;
-                let _uaddr2 = ecx.read_pointer(uaddr2)?;
-                ecx.read_scalar(bitset)?.to_u32()?
+                let timeout = ecx.read_pointer(&timeout)?;
+                if !ecx.ptr_is_null(timeout)? {
+                    throw_ub_format!("`timeout` pointer must be null for `FUTEX_WAKE_BITSET`");
+                }
+                let uaddr2 = ecx.read_pointer(&uaddr2)?;
+                if !ecx.ptr_is_null(uaddr2)? {
+                    throw_ub_format!("`uaddr2` pointer must be null for `FUTEX_WAKE_BITSET`");
+                }
+                ecx.read_scalar(&bitset)?.to_u32()?
             } else {
                 u32::MAX
             };

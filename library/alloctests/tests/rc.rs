@@ -967,3 +967,11 @@ fn issue_158875_make_mut_dont_leak_allocator() {
 
     assert_eq!(Rc::strong_count(&alloc), 1); // if this is >1, we have a memory leak!
 }
+
+#[test]
+#[should_panic = "capacity overflow"]
+fn new_uninit_slice_capacity_overflow() {
+    // header + payload layout exceeds isize::MAX -> "capacity overflow", not
+    // an unwrapped LayoutError. Regression test for #136797.
+    let _ = Rc::<[u8]>::new_uninit_slice(isize::MAX as usize);
+}

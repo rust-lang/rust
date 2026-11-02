@@ -49,23 +49,51 @@ fn matches_leading_pipe() {
 #[test]
 fn cfg_select_basic() {
     cfg_select! {
-        target_pointer_width = "64" => { fn f0_() -> bool { true }}
+        target_pointer_width = "64" => {
+            fn f0_() -> bool {
+                true
+            }
+        }
         _ => {}
     }
 
     cfg_select! {
-        unix => { fn f1_() -> bool { true } }
-        _ => { fn f1_() -> bool { false }}
+        unix => {
+            fn f1_() -> bool {
+                true
+            }
+        }
+        _ => {
+            fn f1_() -> bool {
+                false
+            }
+        }
     }
 
     cfg_select! {
-        target_pointer_width = "32" => { fn f2_() -> bool { false } }
-        target_pointer_width = "64" => { fn f2_() -> bool { true } }
+        target_pointer_width = "32" => {
+            fn f2_() -> bool {
+                false
+            }
+        }
+        target_pointer_width = "64" => {
+            fn f2_() -> bool {
+                true
+            }
+        }
     }
 
     cfg_select! {
-        target_pointer_width = "16" => { fn f3_() -> i32 { 1 } }
-        _ => { fn f3_() -> i32 { 2 }}
+        target_pointer_width = "16" => {
+            fn f3_() -> i32 {
+                1
+            }
+        }
+        _ => {
+            fn f3_() -> i32 {
+                2
+            }
+        }
     }
 
     #[cfg(target_pointer_width = "64")]
@@ -90,11 +118,11 @@ fn cfg_select_debug_assertions() {
     cfg_select! {
         debug_assertions => {
             assert!(cfg!(debug_assertions));
-            assert_eq!(4, 2+2);
+            assert_eq!(4, 2 + 2);
         }
         _ => {
             assert!(cfg!(not(debug_assertions)));
-            assert_eq!(10, 5+5);
+            assert_eq!(10, 5 + 5);
         }
     }
 }
@@ -121,32 +149,68 @@ fn cfg_select_options() {
     cfg_select! {
         test => {
             use core::option::Option as Option2;
-            fn works1() -> Option2<u32> { Some(1) }
+            fn works1() -> Option2<u32> {
+                Some(1)
+            }
         }
-        _ => { fn works1() -> Option<u32> { None } }
+        _ => {
+            fn works1() -> Option<u32> {
+                None
+            }
+        }
     }
 
     cfg_select! {
-        feature = "foo" => { fn works2() -> bool { false } }
-        test => { fn works2() -> bool { true } }
-        _ => { fn works2() -> bool { false } }
+        feature = "foo" => {
+            fn works2() -> bool {
+                false
+            }
+        }
+        test => {
+            fn works2() -> bool {
+                true
+            }
+        }
+        _ => {
+            fn works2() -> bool {
+                false
+            }
+        }
     }
 
     cfg_select! {
-        feature = "foo" => { fn works3() -> bool { false } }
-        _ => { fn works3() -> bool { true } }
+        feature = "foo" => {
+            fn works3() -> bool {
+                false
+            }
+        }
+        _ => {
+            fn works3() -> bool {
+                true
+            }
+        }
     }
 
     cfg_select! {
         test => {
             use core::option::Option as Option3;
-            fn works4() -> Option3<u32> { Some(1) }
+            fn works4() -> Option3<u32> {
+                Some(1)
+            }
         }
     }
 
     cfg_select! {
-        feature = "foo" => { fn works5() -> bool { false } }
-        test => { fn works5() -> bool { true } }
+        feature = "foo" => {
+            fn works5() -> bool {
+                false
+            }
+        }
+        test => {
+            fn works5() -> bool {
+                true
+            }
+        }
     }
 
     assert!(works1().is_some());
@@ -183,14 +247,14 @@ fn cfg_select_two_functions() {
 
 fn _accepts_expressions() -> i32 {
     cfg_select! {
-        unix => { 1 }
-        _ => { 2 }
+        unix => 1,
+        _ => 2,
     }
 }
 
 fn _accepts_only_wildcard() -> i32 {
     cfg_select! {
-        _ => { 1 }
+        _ => 1,
     }
 }
 
@@ -200,19 +264,19 @@ fn _allows_stmt_expr_attributes() {
     let one = 1;
     let two = 2;
     cfg_select! {
-        unix => { one * two; }
-        _ => { one + two; }
+        unix => {
+            one * two;
+        }
+        _ => {
+            one + two;
+        }
     }
 }
 
 fn _expression() {
     let _ = cfg_select!(
-        windows => {
-            " XP"
-        }
-        _ => {
-            ""
-        }
+        windows => " XP",
+        _ => "",
     );
 }
 

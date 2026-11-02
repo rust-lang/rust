@@ -1,0 +1,812 @@
+{
+ "bless_metadata": {
+  "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "debugger_version": "lldb version 22.1.8 (https://github.com/llvm/llvm-project revision ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)\n  clang revision ca7933e47d3a3451d81e72ac174dcb5aa28b59d1\n  llvm revision ca7933e47d3a3451d81e72ac174dcb5aa28b59d1",
+  "feature_flags": "LLDBFeature.StaticFields|TypeRecognizers|Float128"
+ },
+ "breakpoints": [
+  {
+   "vec_primitive": {
+    "type": "alloc::vec::Vec<i32,alloc::alloc::Global>",
+    "pretty_print": "size=5",
+    "synthetic": "lldb_lookup.StdVecSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "children": {
+     "type": "long",
+     "vals": [
+      -2147483648,
+      -1,
+      0,
+      1,
+      2147483647
+     ]
+    }
+   },
+   "vec_ref": {
+    "type": "alloc::vec::Vec<ref$<u32>,alloc::alloc::Global>",
+    "pretty_print": "size=4",
+    "synthetic": "lldb_lookup.StdVecSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "children": {
+     "type": "unsigned long *",
+     "vals": [
+      {
+       "children": [
+        {
+         "name": "*[0]",
+         "type": "unsigned long",
+         "value": 0
+        }
+       ]
+      },
+      {
+       "children": [
+        {
+         "name": "*[1]",
+         "type": "unsigned long",
+         "value": 1
+        }
+       ]
+      },
+      {
+       "children": [
+        {
+         "name": "*[2]",
+         "type": "unsigned long",
+         "value": 2
+        }
+       ]
+      },
+      {
+       "children": [
+        {
+         "name": "*[3]",
+         "type": "unsigned long",
+         "value": 4294967295
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "vec_endpad": {
+    "type": "alloc::vec::Vec<main::EndPad,alloc::alloc::Global>",
+    "pretty_print": "size=3",
+    "synthetic": "lldb_lookup.StdVecSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "children": {
+     "type": "main::EndPad",
+     "vals": [
+      {
+       "children": [
+        {
+         "name": "a",
+         "type": "unsigned int",
+         "value": 10
+        },
+        {
+         "name": "b",
+         "type": "unsigned char",
+         "value": 20
+        }
+       ]
+      },
+      {
+       "children": [
+        {
+         "name": "a",
+         "type": "unsigned int",
+         "value": 30
+        },
+        {
+         "name": "b",
+         "type": "unsigned char",
+         "value": 40
+        }
+       ]
+      },
+      {
+       "children": [
+        {
+         "name": "a",
+         "type": "unsigned int",
+         "value": 50
+        },
+        {
+         "name": "b",
+         "type": "unsigned char",
+         "value": 60
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "vec_midpad": {
+    "type": "alloc::vec::Vec<main::MidPad,alloc::alloc::Global>",
+    "pretty_print": "size=3",
+    "synthetic": "lldb_lookup.StdVecSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "children": {
+     "type": "main::MidPad",
+     "vals": [
+      {
+       "children": [
+        {
+         "name": "a",
+         "type": "unsigned char",
+         "value": 10
+        },
+        {
+         "name": "b",
+         "type": "unsigned int",
+         "value": 20
+        }
+       ]
+      },
+      {
+       "children": [
+        {
+         "name": "a",
+         "type": "unsigned char",
+         "value": 30
+        },
+        {
+         "name": "b",
+         "type": "unsigned int",
+         "value": 40
+        }
+       ]
+      },
+      {
+       "children": [
+        {
+         "name": "a",
+         "type": "unsigned char",
+         "value": 50
+        },
+        {
+         "name": "b",
+         "type": "unsigned int",
+         "value": 60
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "vec_generic_i32": {
+    "type": "alloc::vec::Vec<main::Point<f64>,alloc::alloc::Global>",
+    "pretty_print": "size=2",
+    "synthetic": "lldb_lookup.StdVecSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "children": {
+     "type": "main::Point<f64>",
+     "vals": [
+      {
+       "children": [
+        {
+         "name": "x",
+         "type": "double",
+         "value": 0.0
+        },
+        {
+         "name": "y",
+         "type": "double",
+         "value": 1.1
+        }
+       ]
+      },
+      {
+       "children": [
+        {
+         "name": "x",
+         "type": "double",
+         "value": 2.2
+        },
+        {
+         "name": "y",
+         "type": "double",
+         "value": 3.3
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "vec_generic_udt": {
+    "type": "alloc::vec::Vec<main::Point<alloc::vec::Vec<i32,alloc::alloc::Global> >,alloc::alloc::Global>",
+    "pretty_print": "size=2",
+    "synthetic": "lldb_lookup.StdVecSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "children": {
+     "type": "main::Point<alloc::vec::Vec<i32,alloc::alloc::Global> >",
+     "vals": [
+      {
+       "children": [
+        {
+         "name": "x",
+         "type": "alloc::vec::Vec<i32,alloc::alloc::Global>",
+         "children": {
+          "type": "long",
+          "vals": [
+           0,
+           0
+          ]
+         }
+        },
+        {
+         "name": "y",
+         "type": "alloc::vec::Vec<i32,alloc::alloc::Global>",
+         "children": {
+          "type": "long",
+          "vals": [
+           1,
+           1
+          ]
+         }
+        }
+       ]
+      },
+      {
+       "children": [
+        {
+         "name": "x",
+         "type": "alloc::vec::Vec<i32,alloc::alloc::Global>",
+         "children": {
+          "type": "long",
+          "vals": [
+           2,
+           2
+          ]
+         }
+        },
+        {
+         "name": "y",
+         "type": "alloc::vec::Vec<i32,alloc::alloc::Global>",
+         "children": {
+          "type": "long",
+          "vals": [
+           3,
+           3
+          ]
+         }
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "ref_vec": {
+    "type": "alloc::vec::Vec<i32,alloc::alloc::Global> *",
+    "synthetic": "lldb_lookup.StdVecSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "children": {
+     "type": "long",
+     "vals": [
+      -2147483648,
+      -1,
+      0,
+      1,
+      2147483647
+     ]
+    }
+   },
+   "ptr_vec": {
+    "type": "alloc::vec::Vec<i32,alloc::alloc::Global> *",
+    "synthetic": "lldb_lookup.StdVecSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "children": {
+     "type": "long",
+     "vals": [
+      -2147483648,
+      -1,
+      0,
+      1,
+      2147483647
+     ]
+    }
+   },
+   "ref_mut_vec": {
+    "type": "alloc::vec::Vec<i32,alloc::alloc::Global> *",
+    "synthetic": "lldb_lookup.StdVecSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "children": {
+     "type": "long",
+     "vals": [
+      -2147483648,
+      -1,
+      0,
+      1,
+      2147483647
+     ]
+    }
+   },
+   "ptr_mut_vec": {
+    "type": "alloc::vec::Vec<i32,alloc::alloc::Global> *",
+    "synthetic": "lldb_lookup.StdVecSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "children": {
+     "type": "long",
+     "vals": [
+      -2147483648,
+      -1,
+      0,
+      1,
+      2147483647
+     ]
+    }
+   },
+   "some_vec": {
+    "type": "enum2$<core::option::Option<alloc::vec::Vec<i32,alloc::alloc::Global> > >",
+    "pretty_type_name": "core::option::Option<alloc::vec::Vec<i32,alloc::alloc::Global> >",
+    "pretty_print": "Some(size=5)",
+    "synthetic": "lldb_lookup.MSVCEnumSyntheticProvider",
+    "summary": "lldb_lookup.MSVCEnumSummaryProvider",
+    "children": [
+     {
+      "name": "0",
+      "type": "alloc::vec::Vec<i32,alloc::alloc::Global>",
+      "children": {
+       "type": "long",
+       "vals": [
+        -2147483648,
+        -1,
+        0,
+        1,
+        2147483647
+       ]
+      }
+     }
+    ]
+   },
+   "some_empty_vec": {
+    "type": "enum2$<core::option::Option<alloc::vec::Vec<i32,alloc::alloc::Global> > >",
+    "pretty_type_name": "core::option::Option<alloc::vec::Vec<i32,alloc::alloc::Global> >",
+    "pretty_print": "Some(size=0)",
+    "synthetic": "lldb_lookup.MSVCEnumSyntheticProvider",
+    "summary": "lldb_lookup.MSVCEnumSummaryProvider",
+    "children": [
+     {
+      "name": "0",
+      "type": "alloc::vec::Vec<i32,alloc::alloc::Global>"
+     }
+    ]
+   }
+  }
+ ],
+ "types": {
+  "alloc::alloc::Global": {
+   "size": 0,
+   "type_class": 16384
+  },
+  "alloc::raw_vec::RawVec<i32,alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "alloc::raw_vec::RawVecInner<alloc::alloc::Global>",
+     "offset": 0
+    }
+   ],
+   "generic_params": [
+    "long",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::raw_vec::RawVec<main::EndPad,alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "alloc::raw_vec::RawVecInner<alloc::alloc::Global>",
+     "offset": 0
+    }
+   ],
+   "generic_params": [
+    "main::EndPad",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::raw_vec::RawVec<main::MidPad,alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "alloc::raw_vec::RawVecInner<alloc::alloc::Global>",
+     "offset": 0
+    }
+   ],
+   "generic_params": [
+    "main::MidPad",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::raw_vec::RawVec<main::Point<alloc::vec::Vec<i32,alloc::alloc::Global> >,alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "alloc::raw_vec::RawVecInner<alloc::alloc::Global>",
+     "offset": 0
+    }
+   ],
+   "generic_params": [
+    "main::Point<alloc::vec::Vec<i32,alloc::alloc::Global> >",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::raw_vec::RawVec<main::Point<f64>,alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "alloc::raw_vec::RawVecInner<alloc::alloc::Global>",
+     "offset": 0
+    }
+   ],
+   "generic_params": [
+    "main::Point<f64>",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::raw_vec::RawVec<ref$<u32>,alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "inner",
+     "type": "alloc::raw_vec::RawVecInner<alloc::alloc::Global>",
+     "offset": 0
+    }
+   ],
+   "generic_params": [
+    "unsigned long *",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::raw_vec::RawVecInner<alloc::alloc::Global>": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "cap",
+     "type": "core::num::niche_types::UsizeNoHighBit",
+     "offset": 0
+    },
+    {
+     "name": "ptr",
+     "type": "core::ptr::non_null::NonNull<u8>",
+     "offset": 8
+    }
+   ],
+   "generic_params": [
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::vec::Vec<i32,alloc::alloc::Global>": {
+   "size": 24,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "buf",
+     "type": "alloc::raw_vec::RawVec<i32,alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "len",
+     "type": "unsigned long long",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "long",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::vec::Vec<i32,alloc::alloc::Global> *": {
+   "size": 8,
+   "type_class": 4096,
+   "generic_params": [
+    "long",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::vec::Vec<main::EndPad,alloc::alloc::Global>": {
+   "size": 24,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "buf",
+     "type": "alloc::raw_vec::RawVec<main::EndPad,alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "len",
+     "type": "unsigned long long",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "main::EndPad",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::vec::Vec<main::MidPad,alloc::alloc::Global>": {
+   "size": 24,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "buf",
+     "type": "alloc::raw_vec::RawVec<main::MidPad,alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "len",
+     "type": "unsigned long long",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "main::MidPad",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::vec::Vec<main::Point<alloc::vec::Vec<i32,alloc::alloc::Global> >,alloc::alloc::Global>": {
+   "size": 24,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "buf",
+     "type": "alloc::raw_vec::RawVec<main::Point<alloc::vec::Vec<i32,alloc::alloc::Global> >,alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "len",
+     "type": "unsigned long long",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "main::Point<alloc::vec::Vec<i32,alloc::alloc::Global> >",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::vec::Vec<main::Point<f64>,alloc::alloc::Global>": {
+   "size": 24,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "buf",
+     "type": "alloc::raw_vec::RawVec<main::Point<f64>,alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "len",
+     "type": "unsigned long long",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "main::Point<f64>",
+    "alloc::alloc::Global"
+   ]
+  },
+  "alloc::vec::Vec<ref$<u32>,alloc::alloc::Global>": {
+   "size": 24,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "buf",
+     "type": "alloc::raw_vec::RawVec<ref$<u32>,alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "len",
+     "type": "unsigned long long",
+     "offset": 16
+    }
+   ],
+   "generic_params": [
+    "unsigned long *",
+    "alloc::alloc::Global"
+   ]
+  },
+  "core::num::niche_types::UsizeNoHighBit": {
+   "size": 8,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "__0",
+     "type": "unsigned long long",
+     "offset": 0
+    }
+   ]
+  },
+  "core::ptr::non_null::NonNull<u8>": {
+   "size": 8,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "pointer",
+     "type": "unsigned char *",
+     "offset": 0
+    }
+   ],
+   "generic_params": [
+    "unsigned char"
+   ]
+  },
+  "double": {
+   "size": 8,
+   "type_class": 4,
+   "basic_type": 24
+  },
+  "enum2$<core::option::Option<alloc::vec::Vec<i32,alloc::alloc::Global> > >": {
+   "size": 24,
+   "type_class": 65536,
+   "fields": [
+    {
+     "name": "variant0",
+     "type": "enum2$<core::option::Option<alloc::vec::Vec<i32,alloc::alloc::Global> > >::Variant0",
+     "offset": 0
+    },
+    {
+     "name": "variant1",
+     "type": "enum2$<core::option::Option<alloc::vec::Vec<i32,alloc::alloc::Global> > >::Variant1",
+     "offset": 0
+    },
+    {
+     "name": "tag",
+     "type": "unsigned long long",
+     "offset": 0
+    }
+   ]
+  },
+  "enum2$<core::option::Option<alloc::vec::Vec<i32,alloc::alloc::Global> > >::None": {
+   "size": 24,
+   "type_class": 16384
+  },
+  "enum2$<core::option::Option<alloc::vec::Vec<i32,alloc::alloc::Global> > >::Some": {
+   "size": 24,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "__0",
+     "type": "alloc::vec::Vec<i32,alloc::alloc::Global>",
+     "offset": 0
+    }
+   ]
+  },
+  "enum2$<core::option::Option<alloc::vec::Vec<i32,alloc::alloc::Global> > >::Variant0": {
+   "size": 24,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "value",
+     "type": "enum2$<core::option::Option<alloc::vec::Vec<i32,alloc::alloc::Global> > >::None",
+     "offset": 0
+    }
+   ]
+  },
+  "enum2$<core::option::Option<alloc::vec::Vec<i32,alloc::alloc::Global> > >::Variant1": {
+   "size": 24,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "value",
+     "type": "enum2$<core::option::Option<alloc::vec::Vec<i32,alloc::alloc::Global> > >::Some",
+     "offset": 0
+    }
+   ]
+  },
+  "long": {
+   "size": 4,
+   "type_class": 4,
+   "basic_type": 15
+  },
+  "main::EndPad": {
+   "size": 8,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "a",
+     "type": "unsigned int",
+     "offset": 0
+    },
+    {
+     "name": "b",
+     "type": "unsigned char",
+     "offset": 4
+    }
+   ]
+  },
+  "main::MidPad": {
+   "size": 8,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "a",
+     "type": "unsigned char",
+     "offset": 0
+    },
+    {
+     "name": "b",
+     "type": "unsigned int",
+     "offset": 4
+    }
+   ]
+  },
+  "main::Point<alloc::vec::Vec<i32,alloc::alloc::Global> >": {
+   "size": 48,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "x",
+     "type": "alloc::vec::Vec<i32,alloc::alloc::Global>",
+     "offset": 0
+    },
+    {
+     "name": "y",
+     "type": "alloc::vec::Vec<i32,alloc::alloc::Global>",
+     "offset": 24
+    }
+   ],
+   "generic_params": [
+    "alloc::vec::Vec<i32,alloc::alloc::Global>"
+   ]
+  },
+  "main::Point<f64>": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "x",
+     "type": "double",
+     "offset": 0
+    },
+    {
+     "name": "y",
+     "type": "double",
+     "offset": 8
+    }
+   ],
+   "generic_params": [
+    "double"
+   ]
+  },
+  "unsigned char": {
+   "size": 1,
+   "type_class": 4,
+   "basic_type": 4
+  },
+  "unsigned char *": {
+   "size": 8,
+   "type_class": 4096
+  },
+  "unsigned int": {
+   "size": 4,
+   "type_class": 4,
+   "basic_type": 14
+  },
+  "unsigned long": {
+   "size": 4,
+   "type_class": 4,
+   "basic_type": 16
+  },
+  "unsigned long *": {
+   "size": 8,
+   "type_class": 4096
+  },
+  "unsigned long long": {
+   "size": 8,
+   "type_class": 4,
+   "basic_type": 18
+  }
+ }
+}

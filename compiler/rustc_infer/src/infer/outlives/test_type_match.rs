@@ -77,12 +77,12 @@ pub fn extract_verify_if_eq<'tcx>(
 #[instrument(level = "debug", skip(tcx))]
 pub(super) fn can_match_erased_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
-    outlives_predicate: ty::Binder<'tcx, ty::TypeOutlivesPredicate<'tcx>>,
+    outlives_clause: ty::Binder<'tcx, ty::TypeOutlivesClause<'tcx>>,
     erased_ty: Ty<'tcx>,
 ) -> bool {
-    assert!(!outlives_predicate.has_escaping_bound_vars());
-    let erased_outlives_predicate = tcx.erase_and_anonymize_regions(outlives_predicate);
-    let outlives_ty = erased_outlives_predicate.skip_binder().0;
+    assert!(!outlives_clause.has_escaping_bound_vars());
+    let erased_outlives_clause = tcx.erase_and_anonymize_regions(outlives_clause);
+    let outlives_ty = erased_outlives_clause.skip_binder().0;
     if outlives_ty == erased_ty {
         // pointless micro-optimization
         true
@@ -147,9 +147,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstHigherRankedOutlives<'tcx>
         a_ty: Ty<'tcx>,
         _: Ty<'tcx>,
         def_id: DefId,
-        a_args: ty::GenericArgsRef<'tcx>,
-        b_args: ty::GenericArgsRef<'tcx>,
-        _: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+        a_args: ty::GenericArgs<'tcx>,
+        b_args: ty::GenericArgs<'tcx>,
+        _: impl FnOnce(ty::GenericArgs<'tcx>) -> Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         let variances = self.cx().variances_of(def_id);
         relate_args_with_variances(self, variances, a_args, b_args)?;

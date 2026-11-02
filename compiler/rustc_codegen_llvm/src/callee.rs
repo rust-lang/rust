@@ -4,6 +4,7 @@
 //! and methods are represented as just a fn ptr and not a full
 //! closure.
 
+use rustc_attr_ir::InlineAttr;
 use rustc_codegen_ssa::common;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
@@ -39,18 +40,14 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         let llfn = if tcx.sess.target.arch == Arch::X86
             && let Some(dllimport) = crate::common::get_dllimport(tcx, instance_def_id, sym)
         {
-            // When calling functions in generated import libraries, MSVC needs
-            // the fully decorated name (as would have been in the declaring
-            // object file), but MinGW wants the name as exported (as would be
-            // in the def file) which may be missing decorations.
-            let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(&tcx.sess.target);
+            // When calling functions in generated import libraries,
+            // LLVM/ar_archive_writer needs the fully decorated name
+            // (as would have been in the declaring object file), but dlltool
+            // wants the name as exported (as would be in the def file)
+            // which may be missing decorations.
+            let using_dlltool = common::is_using_dlltool(&tcx.sess.target);
             let llfn = cx.declare_fn(
-                &common::i686_decorated_name(
-                    dllimport,
-                    mingw_gnu_toolchain,
-                    true,
-                    !mingw_gnu_toolchain,
-                ),
+                &common::i686_decorated_name(dllimport, using_dlltool, true, !using_dlltool),
                 fn_abi,
                 Some(instance),
             );
@@ -102,8 +99,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         let is_hidden = if is_generic {
             // This is a monomorphization of a generic function.
             if !(cx.tcx.sess.opts.share_generics()
-                || tcx.codegen_instance_attrs(instance.def).inline
-                    == rustc_hir::attrs::InlineAttr::Never)
+                || tcx.codegen_instance_attrs(instance.def).inline == InlineAttr::Never)
             {
                 // When not sharing generics, all instances are in the same
                 // crate and have hidden visibility.

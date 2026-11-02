@@ -1,13 +1,15 @@
 use rustc_ast::LitKind;
+use rustc_attr_ir::{DeprecatedSince, Deprecation, RustcVersion, VERSION_PLACEHOLDER};
 use rustc_feature::AttributeStability;
-use rustc_hir::VERSION_PLACEHOLDER;
-use rustc_hir::attrs::{DeprecatedSince, Deprecation, RustcVersion};
+use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
 
 use super::prelude::*;
 use super::util::parse_version;
-use crate::session_diagnostics::{
-    DeprecatedItemSuggestion, InvalidSince, MissingNote, MissingSince,
+use crate::diagnostics::{
+    DeprecatedAnnotationHasNoEffect, DeprecatedItemSuggestion, InvalidSince, MissingNote,
+    MissingSince,
 };
+use crate::target_checking::Policy::AllowSilent;
 
 fn get(
     cx: &mut AcceptContext<'_, '_>,
@@ -51,8 +53,12 @@ impl SingleAttributeParser for DeprecatedParser {
         Allow(Target::ForeignTy),
         Allow(Target::Field),
         Allow(Target::Trait),
-        Allow(Target::AssocTy),
-        Allow(Target::AssocConst),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        AllowSilent(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
+        AllowSilent(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::Variant),
         Allow(Target::Impl { of_trait: false }),
         Allow(Target::Crate),
@@ -185,9 +191,26 @@ impl SingleAttributeParser for DeprecatedParser {
             return None;
         }
 
+        // `#[deprecated]` on trait-impl associated items has no effect (deprecation comes from the
+        // trait definition). Methods also get `useless_deprecated` from target checking.
+        if matches!(
+            cx.target,
+            Target::Method(MethodKind::TraitImpl)
+                | Target::AssocConst(AssocCtxt::Impl { of_trait: true })
+                | Target::AssocTy(AssocCtxt::Impl { of_trait: true })
+        ) {
+            let attr_span = cx.attr_span;
+            cx.emit_lint(
+                UNUSED_ATTRIBUTES,
+                DeprecatedAnnotationHasNoEffect { span: attr_span },
+                attr_span,
+            );
+        }
+
         Some(AttributeKind::Deprecated {
             deprecation: Deprecation { since, note, suggestion },
             span: cx.attr_span,
+            is_inner: matches!(cx.attr_style, rustc_ast::AttrStyle::Inner),
         })
     }
 }

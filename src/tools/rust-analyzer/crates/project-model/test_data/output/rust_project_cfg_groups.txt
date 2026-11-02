@@ -13,7 +13,9 @@
                 ),
             },
             crate_attrs: [],
-            is_proc_macro: false,
+            target_kind: Lib {
+                is_proc_macro: false,
+            },
             proc_macro_cwd: AbsPathBuf(
                 "$ROOT$",
             ),
@@ -64,7 +66,9 @@
                 ),
             },
             crate_attrs: [],
-            is_proc_macro: false,
+            target_kind: Lib {
+                is_proc_macro: false,
+            },
             proc_macro_cwd: AbsPathBuf(
                 "$ROOT$",
             ),

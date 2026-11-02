@@ -215,9 +215,14 @@ pub(crate) struct TestProps {
     pub(crate) disable_gdb_pretty_printers: bool,
     /// Compare the output by lines, rather than as a single string.
     pub(crate) compare_output_by_lines: bool,
+    /// Use CCI (`--read-doc-meta` and `--write-doc-meta`) merge mode.
+    pub(crate) use_rustdoc_cci_doc_meta_merge: bool,
+    /// Where the `//@ should-fail` instruction is present.
+    pub(crate) should_fail: bool,
 }
 
 mod directives {
+    pub(crate) const ACT_AS_STABLE: &str = "act-as-stable";
     pub(crate) const ERROR_PATTERN: &str = "error-pattern";
     pub(crate) const REGEX_ERROR_PATTERN: &str = "regex-error-pattern";
     pub(crate) const COMPILE_FLAGS: &str = "compile-flags";
@@ -262,6 +267,7 @@ mod directives {
     pub(crate) const MINICORE_COMPILE_FLAGS: &str = "minicore-compile-flags";
     pub(crate) const DISABLE_GDB_PRETTY_PRINTERS: &str = "disable-gdb-pretty-printers";
     pub(crate) const COMPARE_OUTPUT_BY_LINES: &str = "compare-output-by-lines";
+    pub(crate) const USE_RUSTDOC_CCI_DOC_META_MERGE: &str = "use-rustdoc-cci-doc-meta-merge";
 }
 
 impl TestProps {
@@ -319,6 +325,8 @@ impl TestProps {
             dont_require_annotations: Default::default(),
             disable_gdb_pretty_printers: false,
             compare_output_by_lines: false,
+            use_rustdoc_cci_doc_meta_merge: false,
+            should_fail: false,
         }
     }
 
@@ -398,11 +406,10 @@ impl TestProps {
             }
         }
 
-        if let Some(edition) = self.edition.or(config.edition) {
-            // The edition is added at the start, since flags from //@compile-flags must be passed
-            // to rustc last.
-            self.compile_flags.insert(0, format!("--edition={edition}"));
-        }
+        let edition = self.edition.or(config.edition).unwrap_or(Edition::Year(2015));
+        // The edition is added at the start, since flags from //@compile-flags must be passed
+        // to rustc last.
+        self.compile_flags.insert(0, format!("--edition={edition}"));
     }
 
     fn update_pass_fail_mode(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
@@ -958,6 +965,7 @@ pub(crate) fn make_test_description(
                 decision!(ignore_llvm(config, ln));
                 decision!(ignore_backends(config, ln));
                 decision!(needs_backends(config, ln));
+                decision!(ignore_unsupported_backend_target(config, ln));
                 decision!(ignore_cdb(config, variant, ln));
                 decision!(ignore_gdb(config, variant, ln));
                 decision!(ignore_lldb(config, variant, ln));
@@ -1210,6 +1218,36 @@ fn needs_backends(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
         }
     }
     IgnoreDecision::Continue
+}
+
+/// When using the GCC backend, ignore tests for which we did not find a libgccjit.so.
+fn ignore_unsupported_backend_target(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    if config.default_codegen_backend != crate::CodegenBackend::Gcc {
+        return IgnoreDecision::Continue;
+    }
+
+    let Some(compile_flags) = config.parse_name_value_directive(line, "compile-flags") else {
+        return IgnoreDecision::Continue;
+    };
+
+    // See if this line sets a `--target=...`
+    let Some((_, rest)) = compile_flags.split_once("--target") else {
+        return IgnoreDecision::Continue;
+    };
+    let Some(target) = rest.trim_start_matches([' ', '=']).split_whitespace().next() else {
+        return IgnoreDecision::Continue;
+    };
+
+    if target != "x86_64-unknown-linux-gnu" {
+        IgnoreDecision::Ignore {
+            reason: format!(
+                "backend `{}` cannot build for target `{target}`",
+                config.default_codegen_backend.as_str()
+            ),
+        }
+    } else {
+        IgnoreDecision::Continue
+    }
 }
 
 fn ignore_llvm(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {

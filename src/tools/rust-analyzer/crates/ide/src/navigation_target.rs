@@ -190,7 +190,7 @@ impl NavigationTarget {
         kind: SymbolKind,
     ) -> UpmappingResult<NavigationTarget> {
         let name =
-            value.name().map(|it| Symbol::intern(&it.text())).unwrap_or_else(|| sym::underscore);
+            value.name().map(|it| Symbol::intern(it.text())).unwrap_or_else(|| sym::underscore);
 
         orig_range_with_focus(db, file_id, value.syntax(), value.name()).map(
             |(FileRange { file_id, range: full_range }, focus_range)| {

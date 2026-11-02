@@ -31,3 +31,7 @@ check-cfg = [
     'cfg(no_rc)',
     'cfg(no_sync)',
 ]
+
+[lints.cargo]
+# compiler-builtins is claimed unused?
+unused_dependencies = "allow"

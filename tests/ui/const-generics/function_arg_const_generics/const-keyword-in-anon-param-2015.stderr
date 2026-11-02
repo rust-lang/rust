@@ -1,0 +1,63 @@
+error: expected one of `(`, `+`, `::`, or `<`, found `Trait`
+  --> $DIR/const-keyword-in-anon-param-2015.rs:6:20
+   |
+LL |     fn f(const dyn Trait);
+   |                    ^^^^^ expected one of `(`, `+`, `::`, or `<`
+
+error: expected a trait, found type
+  --> $DIR/const-keyword-in-anon-param-2015.rs:11:16
+   |
+LL |     fn f(const impl Trait);
+   |                ^^^^^^^^^^
+   |
+help: use the trait bounds directly
+   |
+LL -     fn f(const impl Trait);
+LL +     fn f(const Trait);
+   |
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/const-keyword-in-anon-param-2015.rs:16:10
+   |
+LL |     fn f(const fn());
+   |          ^^^^^ `const` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `const` qualifier
+   |
+LL -     fn f(const fn());
+LL +     fn f(fn());
+   |
+
+error: const trait bounds are not allowed in trait object types
+  --> $DIR/const-keyword-in-anon-param-2015.rs:20:10
+   |
+LL |     fn f(const Fn());
+   |          ^^^^^^^^^^
+
+warning: anonymous parameters are deprecated and will be removed in the next edition
+  --> $DIR/const-keyword-in-anon-param-2015.rs:20:10
+   |
+LL |     fn f(const Fn());
+   |          ^^^^^^^^^^ help: try naming the parameter or explicitly ignoring it: `_: const Fn()`
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2018/trait-fn-parameters.html>
+   = note: `#[warn(anonymous_parameters)]` (part of `#[warn(rust_2018_compatibility)]`) on by default
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/const-keyword-in-anon-param-2015.rs:20:10
+   |
+LL |     fn f(const Fn());
+   |          ^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/warnings-promoted-to-error.html>
+   = note: `#[warn(bare_trait_objects)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL |     fn f(dyn const Fn());
+   |          +++
+
+error: aborting due to 4 previous errors; 2 warnings emitted
+

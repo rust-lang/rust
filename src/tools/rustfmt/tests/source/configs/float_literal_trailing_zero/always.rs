@@ -1,4 +1,4 @@
-// rustfmt-float_literal_trailing_zero: Always
+//@ rustfmt-float_literal_trailing_zero: Always
 // spaces_around_ranges: false is implied since it's the default
 
 fn float_literals() {

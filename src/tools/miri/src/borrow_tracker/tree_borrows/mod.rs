@@ -1,5 +1,5 @@
 use rustc_abi::Size;
-use rustc_hir::find_attr;
+use rustc_attr_ir::find_attr;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty};
@@ -244,7 +244,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<Provenance>> {
         let this = self.eval_context_mut();
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        this.check_ptr_access(place.ptr(), ptr_size, CheckInAllocMsg::Dereferenceable)?;
+        this.check_ptr_access(place.ptr(), ptr_size, CheckInAllocMsg::Dereferenceable("pointer"))?;
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
         let log_creation = |this: &MiriInterpCx<'tcx>,
@@ -479,23 +479,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
         let this = self.eval_context_mut();
         let new_perm = match *ty.kind() {
+            _ if ty.is_box_global(*this.tcx) => {
+                // The `None` marks this as a Box.
+                NewPermission::new(ty.builtin_deref(true).unwrap(), None, mode, this)
+            }
             ty::Ref(_, pointee, mutability) =>
                 NewPermission::new(pointee, Some(mutability), mode, this),
-            _ if ty.is_box() => {
-                let box_custom_allocator_unique =
-                    this.get_tree_borrows_params().box_custom_allocator_unique;
-                if box_custom_allocator_unique || ty.is_box_global(*this.tcx) {
-                    // The `None` marks this as a Box.
-                    NewPermission::new(ty.builtin_deref(true).unwrap(), None, mode, this)
-                } else {
-                    // No retagging for boxes with custom allocators.
-                    None
-                }
-            }
 
             ty::RawPtr(..) => {
                 assert!(mode == RetagMode::Raw);
                 // We don't give new tags to raw pointers.
+                None
+            }
+            _ if ty.is_box() => {
+                // No retagging for boxes with custom allocators.
                 None
             }
             _ => panic!("tb_retag_ptr_value: invalid type {ty}"),
@@ -563,8 +560,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Display the tree.
-    fn print_tree(&mut self, alloc_id: AllocId, show_unnamed: bool) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+    fn print_tree(&self, alloc_id: AllocId, show_unnamed: bool) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
         let alloc_extra = this.get_alloc_extra(alloc_id)?;
         let tree_borrows = alloc_extra.borrow_tracker_tb().borrow();
         let borrow_tracker = &this.machine.borrow_tracker.as_ref().unwrap().borrow();
@@ -575,12 +572,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// The name given is `name` and the pointer that receives it is the `nth_parent`
     /// of `ptr` (with 0 representing `ptr` itself)
     fn tb_give_pointer_debug_name(
-        &mut self,
+        &self,
         ptr: Pointer,
         nth_parent: u8,
         name: &str,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let this = self.eval_context_ref();
         let (tag, alloc_id) = match ptr.provenance {
             Some(Provenance::Concrete { tag, alloc_id }) => (tag, alloc_id),
             Some(Provenance::Wildcard) => {

@@ -1,5 +1,5 @@
 error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
-  --> $DIR/type-const-suggestion.rs:8:17
+  --> $DIR/type-const-suggestion.rs:9:17
    |
 LL | fn take(_: impl Trait<0>) {}
    |                 ^^^^^ expected 0 generic arguments

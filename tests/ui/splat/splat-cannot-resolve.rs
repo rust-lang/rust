@@ -22,14 +22,14 @@ trait Trait {
 
 fn ambig(#[rustc_splat] t: Trait::MaybeTup) {}
 //~^ ERROR ambiguous associated type
-//~| ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a
-//~| ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a
-//~| ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a
+//~| ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a
+//~| ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a
+//~| ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a
 fn ambig_tup(#[rustc_splat] t: Trait::Tup) {}
 //~^ ERROR ambiguous associated type
-//~| ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a
-//~| ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a
-//~| ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a
+//~| ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a
+//~| ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a
+//~| ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a
 
 fn main() {
     tuple();

@@ -1,5 +1,5 @@
-// rustfmt-match_block_trailing_comma: true
-// rustfmt-trailing_comma: Always
+//@ rustfmt-match_block_trailing_comma: true
+//@ rustfmt-trailing_comma: Always
 
 fn main() {
     match foo {

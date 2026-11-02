@@ -2,15 +2,14 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::mir::{PossibleBorrowerMap, enclosing_mir};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{is_in_test, last_path_segment, local_is_initialized, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Instance, Mutability};
-use rustc_session::impl_lint_pass;
 use rustc_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
@@ -61,7 +60,7 @@ pub struct AssigningClones {
 
 impl AssigningClones {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -189,7 +188,7 @@ fn clone_source_borrows_from_dest(cx: &LateContext<'_>, lhs: &Expr<'_>, call_spa
             .find(|stmt| {
                 !matches!(stmt.kind, mir::StatementKind::StorageDead(_) | mir::StatementKind::StorageLive(_))
             })
-        && let mir::StatementKind::Assign(box (borrowed, _)) = &assignment.kind
+        && let mir::StatementKind::Assign((borrowed, _)) = &assignment.kind
         && let Some(borrowers) = borrow_map.get(&borrowed.local)
     {
         borrowers.contains(source.local)

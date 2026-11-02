@@ -1,13 +1,14 @@
 use hir::{Expr, Pat};
-use rustc_hir::{self as hir, LangItem};
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty;
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, sym};
 use rustc_trait_selection::traits::ObligationCtxt;
 
-use crate::lints::{
+use crate::diagnostics::{
     ForLoopsOverFalliblesDiag, ForLoopsOverFalliblesLoopSub, ForLoopsOverFalliblesQuestionMark,
     ForLoopsOverFalliblesSuggestion,
 };
@@ -149,7 +150,7 @@ fn extract_iterator_next_call<'tcx>(
 fn suggest_question_mark<'tcx>(
     cx: &LateContext<'tcx>,
     adt: ty::AdtDef<'tcx>,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
     span: Span,
 ) -> bool {
     let Some(body_id) = cx.enclosing_body else { return false };
@@ -187,5 +188,5 @@ fn suggest_question_mark<'tcx>(
         into_iterator_did,
     );
 
-    ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+    ocx.evaluate_obligations_error_on_ambiguity().no_errors()
 }

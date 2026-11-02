@@ -97,7 +97,9 @@ impl AbiMap {
             // infallible lowerings
             (ExternAbi::C { .. }, _) => CanonAbi::C,
             (ExternAbi::Rust | ExternAbi::RustCall, _) => CanonAbi::Rust,
-            (ExternAbi::Unadjusted, _) => CanonAbi::C,
+
+            // Dummy mapping to prevent reporting an error in the frontend
+            (ExternAbi::LlvmIntrinsic, _) => CanonAbi::C,
 
             (ExternAbi::RustCold, _) if self.os == OsKind::Windows => CanonAbi::Rust,
             (ExternAbi::RustCold, _) => CanonAbi::RustCold,

@@ -1,46 +1,66 @@
-use rustc_abi::{HasDataLayout, Size, TyAbiInterface};
+use rustc_abi::{
+    BackendRepr, Float, HasDataLayout, Integer, Numeric, Primitive, RegKind, TyAbiInterface,
+};
 
-use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
+use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Reg};
 
-fn classify_ret<Ty, C>(cx: &C, ret: &mut ArgAbi<'_, Ty>, offset: &mut Size)
-where
-    C: HasDataLayout,
-{
-    if !ret.layout.is_aggregate() {
-        ret.extend_integer_width_to(32);
+fn classify_shared<'a, Ty>(val: &mut ArgAbi<'a, Ty>) {
+    if val.layout.is_aggregate() {
+        val.make_indirect();
+    } else if let BackendRepr::Scalar(scalar) = val.layout.backend_repr
+        && scalar.primitive() == Primitive::Float(Float::F128)
+    {
+        // f128 is passed and returned indirectly.
+        val.make_indirect();
     } else {
-        ret.make_indirect();
-        *offset += cx.data_layout().pointer_size();
+        val.extend_integer_width_to(32);
     }
 }
 
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, offset: &mut Size)
+fn classify_complex_ret<'a, Ty>(ret: &mut ArgAbi<'a, Ty>, component: Numeric) {
+    let reg = Reg { kind: component.reg_kind(), size: component.size() };
+    let mut cast = CastTarget::pair(reg, reg);
+
+    match component {
+        Numeric::Float(Float::F128) => {
+            // Mark `_Complex long double` as inreg to get the right behavior,
+            // consistent with clang `SparcV8ABIInfo::classifyReturnType`.
+            cast.attrs.set(ArgAttribute::InReg);
+        }
+        Numeric::Int(Integer::I8 | Integer::I16 | Integer::I32, _) => {
+            let size = ret.layout.size;
+            cast = CastTarget::from(Reg { kind: RegKind::Integer, size });
+        }
+        _ => { /* default behavior */ }
+    }
+
+    ret.cast_to(cast);
+}
+
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
     if !arg.layout.is_sized() {
-        // FIXME: Update offset?
         // Not touching this...
         return;
     }
-    let dl = cx.data_layout();
     if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();
-        *offset += dl.pointer_size();
         return;
     }
-    let size = arg.layout.size;
-    let align = arg.layout.align.abi.max(dl.i32_align).min(dl.i64_align);
 
-    if arg.layout.is_aggregate() {
-        let pad_i32 = !offset.is_aligned(align);
-        arg.cast_to_and_pad_i32(Uniform::new(Reg::i32(), size), pad_i32);
-    } else {
-        arg.extend_integer_width_to(32);
+    if let Some(component) = arg.layout.complex_number(cx) {
+        if let Numeric::Int(Integer::I8 | Integer::I16 | Integer::I32, _) = component {
+            arg.cast_to(Reg { kind: RegKind::Integer, size: 2 * component.size() });
+        } else {
+            arg.make_indirect();
+        }
+        return;
     }
 
-    *offset = offset.align_to(align) + size.align_to(align);
+    classify_shared(arg)
 }
 
 pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
@@ -48,15 +68,21 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    let mut offset = Size::ZERO;
     if !fn_abi.ret.is_ignore() {
-        classify_ret(cx, &mut fn_abi.ret, &mut offset);
+        if let Some(component) = fn_abi.ret.layout.complex_number(cx) {
+            classify_complex_ret(&mut fn_abi.ret, component);
+        } else {
+            classify_shared(&mut fn_abi.ret);
+        };
     }
 
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
+            if arg.layout.is_zst() {
+                arg.make_indirect_from_ignore();
+            }
             continue;
         }
-        classify_arg(cx, arg, &mut offset);
+        classify_arg(cx, arg);
     }
 }

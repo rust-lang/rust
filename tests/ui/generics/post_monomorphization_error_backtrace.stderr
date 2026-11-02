@@ -1,6 +1,7 @@
 error[E0080]: evaluation panicked: assertion failed: std::mem::size_of::<T>() == 0
   --> $DIR/post_monomorphization_error_backtrace.rs:6:23
    |
+LL |     impl<T> F<T> {
 LL |         const V: () = assert!(std::mem::size_of::<T>() == 0);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `assert_zst::F::<u32>::V` failed here
 
@@ -19,6 +20,7 @@ LL |     assert_zst::<U>()
 error[E0080]: evaluation panicked: assertion failed: std::mem::size_of::<T>() == 0
   --> $DIR/post_monomorphization_error_backtrace.rs:6:23
    |
+LL |     impl<T> F<T> {
 LL |         const V: () = assert!(std::mem::size_of::<T>() == 0);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `assert_zst::F::<i32>::V` failed here
 

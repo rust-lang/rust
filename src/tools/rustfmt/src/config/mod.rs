@@ -242,7 +242,10 @@ impl PartialConfig {
 }
 
 fn check_semver_version(range_requirement: &str, actual: &str) -> bool {
-    let mut version_req = match semver::VersionReq::parse(range_requirement) {
+    // A bare version (no comparator prefix) is left as `semver`'s own default,
+    // which is a caret requirement, matching how Cargo treats dependency version
+    // requirements.
+    let version_req = match semver::VersionReq::parse(range_requirement) {
         Ok(r) => r,
         Err(e) => {
             eprintln!("Error: failed to parse required version {range_requirement:?}: {e}");
@@ -256,24 +259,6 @@ fn check_semver_version(range_requirement: &str, actual: &str) -> bool {
             return false;
         }
     };
-
-    range_requirement
-        .split(',')
-        .enumerate()
-        .for_each(|(i, label)| {
-            // the label refers to the current comparator
-            let Some(comparator) = version_req.comparators.get_mut(i) else {
-                return;
-            };
-
-            // semver crate handles "1.0.0" as "^1.0.0", and we want to treat it as "=1.0.0"
-            // because of this, we need to iterate over the comparators, and change each one
-            // that has "default caret operator" to an exact operator
-            // this condition overrides the "default caret operator" of semver create.
-            if !label.starts_with('^') && comparator.op == semver::Op::Caret {
-                comparator.op = semver::Op::Exact;
-            }
-        });
 
     version_req.matches(&actual_version)
 }
@@ -354,50 +339,12 @@ impl Config {
         style_edition: Option<StyleEdition>,
         version: Option<Version>,
     ) -> Result<(Config, Option<PathBuf>), Error> {
-        /// Try to find a project file in the given directory and its parents.
-        /// Returns the path of the nearest project file if one exists,
-        /// or `None` if no project file was found.
-        fn resolve_project_file(dir: &Path) -> Result<Option<PathBuf>, Error> {
-            let mut current = if dir.is_relative() {
-                env::current_dir()?.join(dir)
-            } else {
-                dir.to_path_buf()
-            };
+        let path = match resolve_project_file(dir)? {
+            Some(path) => Some(path),
+            None => config_from_user_dirs()?,
+        };
 
-            current = fs::canonicalize(current)?;
-
-            loop {
-                match get_toml_path(&current) {
-                    Ok(Some(path)) => return Ok(Some(path)),
-                    Err(e) => return Err(e),
-                    _ => (),
-                }
-
-                // If the current directory has no parent, we're done searching.
-                if !current.pop() {
-                    break;
-                }
-            }
-
-            // If nothing was found, check in the home directory.
-            if let Some(home_dir) = dirs::home_dir() {
-                if let Some(path) = get_toml_path(&home_dir)? {
-                    return Ok(Some(path));
-                }
-            }
-
-            // If none was found there either, check in the user's configuration directory.
-            if let Some(mut config_dir) = dirs::config_dir() {
-                config_dir.push("rustfmt");
-                if let Some(path) = get_toml_path(&config_dir)? {
-                    return Ok(Some(path));
-                }
-            }
-
-            Ok(None)
-        }
-
-        match resolve_project_file(dir)? {
+        match path {
             None => Ok((
                 Config::default_for_possible_style_edition(style_edition, edition, version),
                 None,
@@ -453,6 +400,53 @@ impl Config {
             }
         }
     }
+}
+
+/// Looks for a configuration file in the given directory and its parents.
+///
+/// Returns the path of the configuration file nearest to that directory if one exists, or `None` if
+/// none was found.
+fn resolve_project_file(dir: &Path) -> Result<Option<PathBuf>, Error> {
+    let mut current = if dir.is_relative() {
+        env::current_dir()?.join(dir)
+    } else {
+        dir.to_path_buf()
+    };
+
+    current = fs::canonicalize(current)?;
+
+    loop {
+        match get_toml_path(&current) {
+            Ok(Some(path)) => return Ok(Some(path)),
+            Err(e) => return Err(e),
+            _ => (),
+        }
+
+        // If the current directory has no parent, we're done searching.
+        if !current.pop() {
+            break Ok(None);
+        }
+    }
+}
+
+/// Looks for a configuration file in the user's home directory and configuration directory.
+///
+/// Returns the path of the first configuration file found in that order, or `None` if none was
+/// found.
+fn config_from_user_dirs() -> Result<Option<PathBuf>, Error> {
+    for dir in [
+        dirs::home_dir(),
+        dirs::config_dir().map(|d| d.join("rustfmt")),
+    ]
+    .iter()
+    .flatten()
+    {
+        if let Some(path) = get_toml_path(&dir)? {
+            return Ok(Some(path));
+        }
+    }
+
+    Ok(None)
 }
 
 /// Loads a config by checking the client-supplied options and if appropriate, the
@@ -534,14 +528,7 @@ fn config_path(options: &dyn CliOptions) -> Result<Option<PathBuf>, Error> {
     // If a config file cannot be found from the given path, return error.
     match options.config_path() {
         Some(path) if !path.exists() => config_path_not_found(path.to_str().unwrap()),
-        Some(path) if path.is_dir() => {
-            let config_file_path = get_toml_path(path)?;
-            if config_file_path.is_some() {
-                Ok(config_file_path)
-            } else {
-                config_path_not_found(path.to_str().unwrap())
-            }
-        }
+        Some(path) if path.is_dir() => resolve_project_file(path),
         Some(path) => Ok(Some(
             // Canonicalize only after checking above that the `path.exists()`.
             path.canonicalize()?,
@@ -553,6 +540,7 @@ fn config_path(options: &dyn CliOptions) -> Result<Option<PathBuf>, Error> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use indoc::formatdoc;
     use std::str;
 
     use crate::config::macro_names::{MacroName, MacroSelectors};
@@ -702,6 +690,23 @@ mod test {
     }
 
     #[test]
+    fn test_adjust_max_width() {
+        // Regression tests for #7147, where we didn't handle overflows / integral cast outside of
+        // range properly.
+
+        // Reduce with huge amount saturates to zero instead of wraparound.
+        let mut config = Config::default();
+        config.reduce_max_width(usize::MAX);
+        assert_eq!(config.max_width(), 0);
+
+        // Increase with huge amount saturates instead of wraparound.
+        let mut config = Config::default();
+        config.set().max_width(usize::MAX - 1);
+        config.increase_max_width(2);
+        assert_eq!(config.max_width(), usize::MAX);
+    }
+
+    #[test]
     fn test_config_used_to_toml() {
         let config = Config::default();
 
@@ -712,7 +717,10 @@ mod test {
         let toml = used_options.to_toml().unwrap();
         assert_eq!(
             toml,
-            format!("merge_derives = {merge_derives}\nskip_children = {skip_children}\n",)
+            formatdoc! {"
+                merge_derives = {merge_derives}
+                skip_children = {skip_children}
+            "}
         );
     }
 
@@ -1552,13 +1560,25 @@ make_backup = false
         use super::*;
 
         #[test]
-        fn test_exact_version_match() {
+        fn test_default_caret_match() {
+            // A bare version (no operator) defaults to a caret requirement,
+            // matching how Cargo treats dependency version requirements.
             assert!(check_semver_version("1.0.0", "1.0.0"));
-            assert!(!check_semver_version("1.0.0", "1.1.0"));
-            assert!(!check_semver_version("1.0.0", "1.0.1"));
+            assert!(check_semver_version("1.0.0", "1.1.0"));
+            assert!(check_semver_version("1.0.0", "1.0.1"));
             assert!(!check_semver_version("1.0.0", "2.1.0"));
             assert!(!check_semver_version("1.0.0", "0.1.0"));
             assert!(!check_semver_version("1.0.0", "0.0.1"));
+        }
+
+        #[test]
+        fn test_explicit_exact_match() {
+            assert!(check_semver_version("=1.0.0", "1.0.0"));
+            assert!(!check_semver_version("=1.0.0", "1.1.0"));
+            assert!(!check_semver_version("=1.0.0", "1.0.1"));
+            assert!(!check_semver_version("=1.0.0", "2.1.0"));
+            assert!(!check_semver_version("=1.0.0", "0.1.0"));
+            assert!(!check_semver_version("=1.0.0", "0.0.1"));
         }
 
         #[test]

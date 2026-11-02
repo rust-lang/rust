@@ -5,6 +5,9 @@
 This guide is meant to help document how rustc – the Rust compiler – works,
 as well as to help new contributors get involved in rustc development.
 
+Note that this guide is intended as a reference; it's recommended that you search
+for the docs you're looking for instead of reading them top to bottom.
+
 There are several parts to this guide:
 
 1. [Building and debugging `rustc`][p1]:
@@ -31,8 +34,8 @@ There are several parts to this guide:
 1. [Appendices][p9] at the end with useful reference information.
    There are a few of these with different information, including a glossary.
 
-[p1]: ./building/how-to-build-and-run.html
-[p2]: ./contributing.md
+[p1]: ./building/how-to-build-and-run.md
+[p2]: ./getting-started.md
 [p3]: ./building/bootstrapping/intro.md
 [p4]: ./part-2-intro.md
 [p5]: ./part-3-intro.md
@@ -58,7 +61,7 @@ Even better, open a PR with a correction!
 If you do contribute to the guide,
 please see the corresponding [subsection on writing documentation in this guide].
 
-[subsection on writing documentation in this guide]: contributing.md#contributing-to-rustc-dev-guide
+[subsection on writing documentation in this guide]: contributing-to-guide.md
 
 > “‘All conditioned things are impermanent’ —
 > when one sees this with wisdom, one turns away from suffering.”
@@ -74,6 +77,7 @@ You might also find the following sites useful:
 
 - [rustc API docs] -- rustdoc documentation for the compiler, devtools, and internal tools
 - [Forge] -- contains documentation about Rust infrastructure, team procedures, and more
+- [`rust-lang/rust`]'s [LLM policy]
 - [compiler-team] -- the home-base for the Rust compiler team, with description
   of the team procedures, active working groups, and the team calendar.
 - [std-dev-guide] -- a similar guide for developing the standard library.
@@ -95,7 +99,7 @@ You might also find the following sites useful:
   For example, searching for `* -> vec` should find all functions that return a `Vec<T>`.
   _Hint:_ Find more tips and keyboard shortcuts by typing `?` on any Rustdoc page!
 
-
+[LLM policy]: https://forge.rust-lang.org/policies/llm-usage.html
 [rustc dev guide]: about-this-guide.md
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [stddocs]: https://doc.rust-lang.org/std
@@ -115,3 +119,4 @@ You might also find the following sites useful:
 [std-dev-guide]: https://std-dev-guide.rust-lang.org/
 [rust-analyzer book]: https://rust-analyzer.github.io/book/
 [z]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
+[`rust-lang/rust`]: https://github.com/rust-lang/rust/

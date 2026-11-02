@@ -23,20 +23,19 @@
 //! considering here as at that point, everything is monomorphic.
 
 use hir::def_id::LocalDefIdSet;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::middle::privacy::{self, Level};
 use rustc_middle::mir::interpret::{ConstAllocation, ErrorHandled, GlobalAlloc};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ExistentialTraitRef, TyCtxt};
 use rustc_privacy::DefIdVisitor;
-use rustc_session::config::CrateType;
+use rustc_span::bug;
+use rustc_structures::CrateType;
 use tracing::debug;
 
 /// Determines whether this item is recursive for reachability. See `is_recursively_reachable_local`
@@ -210,7 +209,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         }
                     }
                     // For `type const` we want to evaluate the RHS.
-                    hir::ItemKind::Const(_, _, _, init @ hir::ConstItemRhs::TypeConst(_)) => {
+                    hir::ItemKind::Const(_, _, _, init @ hir::ConstItemRhs::Direct(_)) => {
                         self.visit_const_item_rhs(init);
                     }
                     hir::ItemKind::Const(_, _, _, init) => {
@@ -261,7 +260,8 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::ItemKind::Struct(..)
                     | hir::ItemKind::Enum(..)
                     | hir::ItemKind::Union(..)
-                    | hir::ItemKind::GlobalAsm { .. } => {}
+                    | hir::ItemKind::GlobalAsm { .. }
+                    | rustc_hir::ItemKind::TestBinderConstraints { .. } => {}
                 }
             }
             Node::TraitItem(trait_method) => {
@@ -301,6 +301,7 @@ impl<'tcx> ReachableContext<'tcx> {
             | Node::Field(_)
             | Node::Ty(_)
             | Node::Crate(_)
+            | Node::NestedUseTree(_)
             | Node::Synthetic
             | Node::OpaqueTy(..) => {}
             _ => {
@@ -362,13 +363,13 @@ impl<'tcx> ReachableContext<'tcx> {
                         // become recursive, are also not infinitely recursing, because of the
                         // `reachable_symbols` check above.
                         // We still need to protect against stack overflow due to deeply nested statics.
-                        ensure_sufficient_stack(|| self.propagate_from_alloc(alloc));
+                        self.propagate_from_alloc(alloc);
                     }
                 }
             }
             // Reachable constants and reachable statics can have their contents inlined
             // into other crates. Mark them as reachable and recurse into their body.
-            DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::Static { .. } => {
+            DefKind::Const | DefKind::AssocConst | DefKind::Static { .. } => {
                 self.worklist.push(def_id);
             }
             _ => {

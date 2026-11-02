@@ -131,7 +131,7 @@ pub(crate) struct ThreadInit {
 impl ThreadInit {
     /// Initialize the 'current thread' mechanism on this thread, returning the
     /// Rust entry point.
-    pub fn init(self: Box<Self>) -> Box<dyn FnOnce() + Send> {
+    pub(crate) fn init(self: Box<Self>) -> Box<dyn FnOnce() + Send> {
         // Set the current thread before any (de)allocations on the global allocator occur,
         // so that it may call std::thread::current() in its implementation. This is also
         // why we take Box<Self>, to ensure the Box is not destroyed until after this point.
@@ -140,6 +140,10 @@ impl ThreadInit {
             // The current thread should not have set yet. Use an abort to save binary size (see #123356).
             rtabort!("current thread handle already set during thread spawn");
         }
+
+        // The handle was created by the spawning thread, so only now that we are
+        // running can the OS id be filled in.
+        self.handle.set_os_id_to_current();
 
         if let Some(name) = self.handle.cname() {
             imp::set_name(name);

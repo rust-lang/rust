@@ -12,3 +12,6 @@ fn main() {
     let u = U { a: 10 };
     assert_eq!(u.method(), 10);
 }
+
+//@ reference: items.impl.inherent.allowed-items
+//@ reference: items.union.ref.use

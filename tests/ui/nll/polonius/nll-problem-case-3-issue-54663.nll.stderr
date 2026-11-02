@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*x` as mutable more than once at a time
-  --> $DIR/nll-problem-case-3-issue-54663.rs:20:9
+  --> $DIR/nll-problem-case-3-issue-54663.rs:21:9
    |
 LL | fn foo(x: &mut u8) -> Option<&u8> {
    |           - let's call the lifetime of this reference `'1`

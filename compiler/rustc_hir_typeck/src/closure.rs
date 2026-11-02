@@ -4,20 +4,19 @@ use std::iter;
 use std::ops::ControlFlow;
 
 use rustc_abi::ExternAbi;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_macros::{TypeFoldable, TypeVisitable};
-use rustc_middle::span_bug;
 use rustc_middle::ty::{
     self, ClosureKind, FnSigKind, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, Unnormalized,
 };
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, span_bug};
 use rustc_trait_selection::error_reporting::traits::ArgKind;
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument, trace};
@@ -60,9 +59,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // closure sooner rather than later, so first examine the expected
         // type, and see if can glean a closure kind from there.
         let (expected_sig, expected_kind) = match expected.to_option(self) {
-            Some(ty) => {
-                self.deduce_closure_signature(self.resolve_vars_with_obligations(ty), closure.kind)
-            }
+            Some(ty) => self.deduce_closure_signature(
+                self.deeply_resolve_ignoring_regions_with_obligations(ty),
+                closure.kind,
+            ),
             None => (None, None),
         };
 
@@ -101,7 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let closure_args = ty::ClosureArgs::new(
                     tcx,
                     ty::ClosureArgsParts {
-                        parent_args,
+                        parent_args: parent_args.as_slice(),
                         closure_kind_ty,
                         closure_sig_as_fn_ptr_ty: Ty::new_fn_ptr(tcx, sig),
                         tupled_upvars_ty,
@@ -136,12 +136,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         Ty::new_adt(
                             tcx,
-                            tcx.adt_def(tcx.require_lang_item(hir::LangItem::Poll, expr_span)),
+                            tcx.adt_def(tcx.require_lang_item(LangItem::Poll, expr_span)),
                             tcx.mk_args(&[Ty::new_adt(
                                 tcx,
-                                tcx.adt_def(
-                                    tcx.require_lang_item(hir::LangItem::Option, expr_span),
-                                ),
+                                tcx.adt_def(tcx.require_lang_item(LangItem::Option, expr_span)),
                                 tcx.mk_args(&[yield_ty.into()]),
                             )
                             .into()]),
@@ -169,7 +167,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let coroutine_args = ty::CoroutineArgs::new(
                     tcx,
                     ty::CoroutineArgsParts {
-                        parent_args,
+                        parent_args: parent_args.as_slice(),
                         kind_ty,
                         resume_ty,
                         yield_ty,
@@ -214,7 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let closure_args = ty::CoroutineClosureArgs::new(
                     tcx,
                     ty::CoroutineClosureArgsParts {
-                        parent_args,
+                        parent_args: parent_args.as_slice(),
                         closure_kind_ty,
                         signature_parts_ty: Ty::new_fn_ptr(
                             tcx,
@@ -255,7 +253,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     closure_args.coroutine_closure_sig().map_bound(|sig| {
                         sig.to_coroutine(
                             tcx,
-                            parent_args,
+                            parent_args.as_slice(),
                             coroutine_kind_ty,
                             tcx.coroutine_for_closure(expr_def_id),
                             coroutine_upvars_ty,
@@ -387,44 +385,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                // Don't infer a closure signature from a goal that names the closure type as this will
-                // (almost always) lead to occurs check errors later in type checking.
-                if self.next_trait_solver()
-                    && let Some(inferred_sig) = inferred_sig
-                {
-                    // In the new solver it is difficult to explicitly normalize the inferred signature as we
-                    // would have to manually handle universes and rewriting bound vars and placeholders back
-                    // and forth.
-                    //
-                    // Instead we take advantage of the fact that we relating an inference variable with an alias
-                    // will only instantiate the variable if the alias is rigid(*not quite). Concretely we:
-                    // - Create some new variable `?sig`
-                    // - Equate `?sig` with the unnormalized signature, e.g. `fn(<Foo<?x> as Trait>::Assoc)`
-                    // - Depending on whether `<Foo<?x> as Trait>::Assoc` is rigid, ambiguous or normalizeable,
-                    //   we will either wind up with `?sig=<Foo<?x> as Trait>::Assoc/?y/ConcreteTy` respectively.
-                    //
-                    // *: In cases where there are ambiguous aliases in the signature that make use of bound vars
-                    //    they will wind up present in `?sig` even though they are non-rigid.
-                    //
-                    //    This is a bit weird and means we may wind up discarding the goal due to it naming `expected_ty`
-                    //    even though the normalized form may not name `expected_ty`. However, this matches the existing
-                    //    behaviour of the old solver and would be technically a breaking change to fix.
-                    let generalized_fnptr_sig = self.next_ty_var(span);
-                    let inferred_fnptr_sig = Ty::new_fn_ptr(self.tcx, inferred_sig.sig);
-                    self.demand_eqtype(span, inferred_fnptr_sig, generalized_fnptr_sig);
-
-                    let resolved_sig = self.resolve_vars_if_possible(generalized_fnptr_sig);
-
-                    if resolved_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
-                        expected_sig = Some(ExpectedSig {
-                            cause_span: inferred_sig.cause_span,
-                            sig: resolved_sig.fn_sig(self.tcx),
-                        });
-                    }
-                } else {
-                    if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
-                        expected_sig = inferred_sig;
-                    }
+                if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
+                    expected_sig = inferred_sig;
                 }
             }
 
@@ -485,7 +447,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         cause_span: Option<Span>,
         closure_kind: hir::ClosureKind,
-        projection: ty::PolyProjectionPredicate<'tcx>,
+        projection: ty::PolyProjectionClause<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
         let def_id = projection.item_def_id();
 
@@ -517,10 +479,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn extract_sig_from_projection(
         &self,
         cause_span: Option<Span>,
-        projection: ty::PolyProjectionPredicate<'tcx>,
+        projection: ty::PolyProjectionClause<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
-        let projection = self.resolve_vars_if_possible(projection);
-
+        // FIXME(non_lifetime_binders): provide better diagnostics. Should non-lifetime binders
+        // in opaques with fn traits bound be rejected?
+        if projection.has_non_region_bound_vars() {
+            return None;
+        }
+        let projection = self.deeply_resolve_ignoring_regions(projection);
         let arg_param_ty = projection.skip_binder().projection_term.args.type_at(1);
         debug!(?arg_param_ty);
 
@@ -562,9 +528,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn extract_sig_from_projection_and_future_bound(
         &self,
         cause_span: Option<Span>,
-        projection: ty::PolyProjectionPredicate<'tcx>,
+        projection: ty::PolyProjectionClause<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
-        let projection = self.resolve_vars_if_possible(projection);
+        // FIXME(non_lifetime_binders): provide better diagnostics. Should non-lifetime binders
+        // in opaques with fn traits bound be rejected?
+        if projection.has_non_region_bound_vars() {
+            return None;
+        }
+        let projection = self.deeply_resolve_ignoring_regions(projection);
 
         let arg_param_ty = projection.skip_binder().projection_term.args.type_at(1);
         debug!(?arg_param_ty);
@@ -703,7 +674,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Watch out for some surprises and just ignore the
         // expectation if things don't see to match up with what we
         // expect.
-        if expected_sig.sig.c_variadic() != decl.c_variadic() {
+
+        // FIXME(non_lifetime_binders): provide better diagnostics. Should non-lifetime binders
+        // in opaques with fn traits bound be rejected?
+        if expected_sig.sig.c_variadic() != decl.c_variadic()
+            || expected_sig.sig.has_non_region_bound_vars()
+        {
             return self.sig_of_closure_no_expectation(expr_def_id, decl, closure_kind);
         } else if expected_sig.sig.skip_binder().inputs_and_output.len() != decl.inputs.len() + 1 {
             return self.sig_of_closure_with_mismatched_number_of_arguments(
@@ -780,7 +756,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true,
                 closure_arg_span,
             )
-            .emit();
+            .emit_err();
 
         let error_sig = self.error_sig_of_closure(decl, guar);
 
@@ -853,8 +829,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )?;
             all_obligations.extend(obligations);
 
-            let inputs =
-                supplied_sig.inputs().into_iter().map(|&ty| self.resolve_vars_if_possible(ty));
+            let inputs = supplied_sig
+                .inputs()
+                .into_iter()
+                .map(|&ty| self.deeply_resolve_ignoring_regions(ty));
 
             let fn_sig_kind = FnSigKind::default()
                 .set_abi(ExternAbi::RustCall)
@@ -961,7 +939,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let closure_span = self.tcx.def_span(body_def_id);
         let ret_ty = ret_coercion.borrow().expected_ty();
-        let ret_ty = self.resolve_vars_with_obligations(ret_ty);
+        let ret_ty = self.deeply_resolve_ignoring_regions_with_obligations(ret_ty);
 
         let get_future_output = |clause: ty::Clause<'tcx>, span| {
             // Search for a pending obligation like
@@ -1033,7 +1011,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_future_output_from_projection(
         &self,
         cause_span: Span,
-        predicate: ty::PolyProjectionPredicate<'tcx>,
+        predicate: ty::PolyProjectionClause<'tcx>,
     ) -> Option<Ty<'tcx>> {
         debug!("deduce_future_output_from_projection(predicate={:?})", predicate);
 
@@ -1066,7 +1044,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Extract the type from the projection. Note that there can
         // be no bound variables in this type because the "self type"
         // does not have any regions in it.
-        let output_ty = self.resolve_vars_if_possible(predicate.term);
+        let output_ty = self.deeply_resolve_ignoring_regions(predicate.term);
         debug!("deduce_future_output_from_projection: output_ty={:?}", output_ty);
         // This is a projection on a Fn trait so will always be a type.
         Some(output_ty.expect_type())

@@ -1,0 +1,18 @@
+error[E0391]: cycle detected when checking if trait `Foo` is dyn-compatible
+  --> $DIR/inference_var_self_argument.rs:13:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+   |
+   = note: ...which requires determining dyn-compatibility of trait `Foo`...
+   = note: ...which again requires checking if trait `Foo` is dyn-compatible, completing the cycle
+note: cycle used when checking that `Foo::foo` is well-formed
+  --> $DIR/inference_var_self_argument.rs:15:5
+   |
+LL |     async fn foo(self: &dyn Foo) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

@@ -1,6 +1,8 @@
 error[E0080]: attempt to compute `0_usize - 1_usize`, which would overflow
   --> $DIR/unsatisfied-evaluatable-bounds.rs:8:10
    |
+LL | const POSITIVE<const N: usize>: usize = N
+LL | where
 LL |     [(); N - 1]:;
    |          ^^^^^ evaluation of `POSITIVE::<0>::{constant#0}` failed here
 

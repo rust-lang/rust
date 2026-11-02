@@ -11,8 +11,8 @@ use rustc_log::tracing::debug;
 use rustc_session::config::OutputType;
 use rustc_target::spec::SplitDebuginfo;
 
-use crate::base::add_pic_option;
 use crate::diagnostics::CopyBitcode;
+use crate::gcc_util::add_pic_option;
 use crate::{GccContext, LtoMode};
 
 pub(crate) fn codegen(
@@ -60,9 +60,6 @@ pub(crate) fn codegen(
                 let _timer = prof
                     .generic_activity_with_arg("GCC_module_codegen_embed_bitcode", &*module.name);
                 if lto_supported {
-                    // FIXME(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
-                    //embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
-
                     context.add_command_line_option("-flto=auto");
                     context.add_command_line_option("-flto-partition=one");
                     context.add_command_line_option("-ffat-lto-objects");
@@ -134,7 +131,6 @@ pub(crate) fn codegen(
 
                     if fat_lto {
                         let lto_path = format!("{}.lto", path);
-                        // cSpell:disable
                         // FIXME(antoyo): The LTO frontend generates the following warning:
                         // ../build_sysroot/sysroot_src/library/core/src/num/dec2flt/lemire.rs:150:15: warning: type of ‘_ZN4core3num7dec2flt5table17POWER_OF_FIVE_12817ha449a68fb31379e4E’ does not match original declaration [-Wlto-type-mismatch]
                         // 150 |     let (lo5, hi5) = POWER_OF_FIVE_128[index];
@@ -142,7 +138,6 @@ pub(crate) fn codegen(
                         // lto1: note: ‘_ZN4core3num7dec2flt5table17POWER_OF_FIVE_12817ha449a68fb31379e4E’ was previously declared here
                         //
                         // This option is to mute it to make the UI tests pass with LTO enabled.
-                        // cSpell:enable
                         context.add_driver_option("-Wno-lto-type-mismatch");
                         // NOTE: this doesn't actually generate an executable. With the above
                         // flags, it combines the .o files together in another .o.

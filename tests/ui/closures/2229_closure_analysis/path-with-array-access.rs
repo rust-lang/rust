@@ -1,6 +1,6 @@
 //@ edition:2021
 
-#![feature(rustc_attrs)]
+#![feature(rustc_attrs, stmt_expr_attributes)]
 
 struct Point {
     x: f32,
@@ -21,9 +21,6 @@ fn main() {
     let pent = Pentagon { points: [p1, p2, p3, p4, p5] };
 
     let c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:

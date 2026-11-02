@@ -1,9 +1,9 @@
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::bug;
 
 use crate::PassPolicy;
 use crate::strip_debuginfo::drop_invalid_debuginfos;
@@ -25,8 +25,8 @@ use crate::strip_debuginfo::drop_invalid_debuginfos;
 pub(super) struct SingleUseConsts;
 
 impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() > 0)
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 1)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

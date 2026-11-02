@@ -1,7 +1,7 @@
 error[E0658]: `#[track_caller]` on closures is currently unstable
-  --> $DIR/async-block.rs:8:13
+  --> $DIR/async-block.rs:11:13
    |
-LL |     let _ = #[track_caller] async {
+LL |     let _ = #[track_caller]
    |             ^^^^^^^^^^^^^^^
    |
    = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
@@ -9,9 +9,9 @@ LL |     let _ = #[track_caller] async {
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `#[track_caller]` on closures is currently unstable
-  --> $DIR/async-block.rs:15:13
+  --> $DIR/async-block.rs:19:13
    |
-LL |     let _ = #[track_caller] async {
+LL |     let _ = #[track_caller]
    |             ^^^^^^^^^^^^^^^
    |
    = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
@@ -19,9 +19,9 @@ LL |     let _ = #[track_caller] async {
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `#[track_caller]` on closures is currently unstable
-  --> $DIR/async-block.rs:23:17
+  --> $DIR/async-block.rs:28:17
    |
-LL |         let _ = #[track_caller] async {
+LL |         let _ = #[track_caller]
    |                 ^^^^^^^^^^^^^^^
    |
    = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information

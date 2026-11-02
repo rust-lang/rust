@@ -1,10 +1,9 @@
+use rustc_attr_ir::{EiiDecl, EiiImpl, EiiImplResolution, find_attr};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir::attrs::{EiiDecl, EiiImpl, EiiImplResolution};
 use rustc_hir::def_id::DefId;
-use rustc_hir::find_attr;
-use rustc_middle::bug;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::bug;
 
 // basically the map below but flattened out
 pub(crate) type EiiMapEncodedKeyValue = (DefId, (EiiDecl, Vec<(DefId, EiiImpl)>));
@@ -35,7 +34,12 @@ pub(crate) fn collect<'tcx>(tcx: TyCtxt<'tcx>, LocalCrate: LocalCrate) -> EiiMap
 
     // iterate over all items in the current crate
     for id in tcx.hir_crate_items(()).eiis() {
-        for i in find_attr!(tcx, id, EiiImpls(e) => e).into_flat_iter() {
+        // if we find a new declaration, add it to the list without a known implementation
+        if let Some(decl) = find_attr!(tcx, id, EiiDeclaration(d) => *d) {
+            eiis.entry(decl.foreign_item).or_insert((decl, Default::default()));
+        }
+
+        if let Some(i) = find_attr!(tcx, id, EiiImpl(i) => i) {
             let (foreign_item, decl) = match i.resolution {
                 EiiImplResolution::Macro(macro_defid) => {
                     // find the decl for this one if it wasn't in yet (maybe it's from the local crate? not very useful but not illegal)
@@ -63,12 +67,7 @@ pub(crate) fn collect<'tcx>(tcx: TyCtxt<'tcx>, LocalCrate: LocalCrate) -> EiiMap
             eiis.entry(foreign_item)
                 .or_insert_with(|| (decl, Default::default()))
                 .1
-                .insert(id.into(), *i);
-        }
-
-        // if we find a new declaration, add it to the list without a known implementation
-        if let Some(decl) = find_attr!(tcx, id, EiiDeclaration(d) => *d) {
-            eiis.entry(decl.foreign_item).or_insert((decl, Default::default()));
+                .insert(id.into(), **i);
         }
     }
 

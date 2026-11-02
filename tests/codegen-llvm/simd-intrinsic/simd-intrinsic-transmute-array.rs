@@ -4,6 +4,24 @@
 //@ ignore-i686-pc-windows-msvc
 //@ ignore-i686-pc-windows-gnu
 
+// LLVM IR isn't very portable and the one tested here depends on the ABI which is different between
+// architectures that pass vectors via registers and others that don't.
+// The architecture-specific revisions are identical and only exist as compiletest does not support
+// taking the union of multiple `only` annotations.
+
+//@ revisions: x86-64 x86-32-sse2 aarch64 by-ref
+
+//@[x86-64] only-x86_64
+//@[x86-64] filecheck-flags: --check-prefix=by-val
+//@[x86-32-sse2] only-rustc_abi-x86-sse2
+//@[x86-32-sse2] filecheck-flags: --check-prefix=by-val
+//@[aarch64] only-aarch64
+//@[aarch64] filecheck-flags: --check-prefix=by-val
+
+//@[by-ref] ignore-rustc_abi-x86-sse2
+//@[by-ref] ignore-x86_64
+//@[by-ref] ignore-aarch64
+
 #![crate_type = "lib"]
 #![allow(non_camel_case_types)]
 #![feature(repr_simd, core_intrinsics)]
@@ -13,7 +31,6 @@ mod minisimd;
 use minisimd::*;
 
 pub type S<const N: usize> = Simd<f32, N>;
-pub type T = Simd<f32, 4>;
 
 // CHECK-LABEL: @array_align(
 #[no_mangle]
@@ -26,33 +43,23 @@ pub fn array_align() -> usize {
 #[no_mangle]
 pub fn vector_align() -> usize {
     // CHECK: ret [[USIZE]] [[VECTOR_ALIGN:[0-9]+]]
-    const { std::mem::align_of::<T>() }
+    const { std::mem::align_of::<S<4>>() }
 }
 
-// CHECK-LABEL: @build_array_s
+// CHECK-LABEL: @build_array
 #[no_mangle]
-pub fn build_array_s(x: [f32; 4]) -> S<4> {
-    // CHECK: call void @llvm.memcpy.{{.+}}({{.*}} align [[VECTOR_ALIGN]] {{.*}} align [[ARRAY_ALIGN]] {{.*}}, [[USIZE]] 16, i1 false)
+pub fn build_array(x: [f32; 4]) -> S<4> {
+    // by-val: %[[VAL:.+]] = load <4 x float>, ptr %x, align [[ARRAY_ALIGN]]
+    // by-val: ret <4 x float> %[[VAL:.+]]
+    // by-ref: call void @llvm.memcpy.{{.+}}({{.*}} align [[VECTOR_ALIGN]] {{.*}} align [[ARRAY_ALIGN]] {{.*}}, [[USIZE]] 16, i1 false)
     Simd(x)
 }
 
-// CHECK-LABEL: @build_array_transmute_s
+// CHECK-LABEL: @build_array_transmute
 #[no_mangle]
-pub fn build_array_transmute_s(x: [f32; 4]) -> S<4> {
-    // CHECK: call void @llvm.memcpy.{{.+}}({{.*}} align [[VECTOR_ALIGN]] {{.*}} align [[ARRAY_ALIGN]] {{.*}}, [[USIZE]] 16, i1 false)
-    unsafe { std::mem::transmute(x) }
-}
-
-// CHECK-LABEL: @build_array_t
-#[no_mangle]
-pub fn build_array_t(x: [f32; 4]) -> T {
-    // CHECK: call void @llvm.memcpy.{{.+}}({{.*}} align [[VECTOR_ALIGN]] {{.*}} align [[ARRAY_ALIGN]] {{.*}}, [[USIZE]] 16, i1 false)
-    Simd(x)
-}
-
-// CHECK-LABEL: @build_array_transmute_t
-#[no_mangle]
-pub fn build_array_transmute_t(x: [f32; 4]) -> T {
-    // CHECK: call void @llvm.memcpy.{{.+}}({{.*}} align [[VECTOR_ALIGN]] {{.*}} align [[ARRAY_ALIGN]] {{.*}}, [[USIZE]] 16, i1 false)
+pub fn build_array_transmute(x: [f32; 4]) -> S<4> {
+    // by-val: %[[VAL:.+]] = load <4 x float>, ptr %x, align [[ARRAY_ALIGN]]
+    // by-val: ret <4 x float> %[[VAL:.+]]
+    // by-ref: call void @llvm.memcpy.{{.+}}({{.*}} align [[VECTOR_ALIGN]] {{.*}} align [[ARRAY_ALIGN]] {{.*}}, [[USIZE]] 16, i1 false)
     unsafe { std::mem::transmute(x) }
 }

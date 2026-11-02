@@ -226,12 +226,9 @@ pub enum BorrowTrackerMethod {
 /// Parameters that Tree Borrows can take.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TreeBorrowsParams {
-    /// Controls whether we track `UnsafeCell` with byte precision.
     pub precise_interior_mut: bool,
     /// Controls whether `&mut` function arguments are immediately activated with an implicit write.
     pub implicit_writes: bool,
-    /// Controls whether `Box` with custom allocator is considered unique.
-    pub box_custom_allocator_unique: bool,
 }
 
 impl BorrowTrackerMethod {

@@ -9,28 +9,28 @@ use clippy_utils::macros::{
     root_macro_call_first_node,
 };
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{SpanExt, snippet, snippet_opt};
+use clippy_utils::res::MaybeDef as _;
+use clippy_utils::source::{SpanExt as _, snippet, snippet_opt};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_from_proc_macro, is_in_test, peel_hir_expr_while, sym, trait_ref_of_method};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_ast::FormatTrait::{Binary, Debug, Display, LowerExp, LowerHex, Octal, Pointer, UpperExp, UpperHex};
 use rustc_ast::{
     BorrowKind, FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount,
     FormatOptions, FormatPlaceholder, Mutability,
 };
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{RustcVersion, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
-use rustc_hir::attrs::RustcVersion;
-use rustc_hir::{Expr, ExprKind, LangItem, find_attr};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_hir::{Expr, ExprKind};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
-use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Unnormalized, Upcast};
-use rustc_session::impl_lint_pass;
+use rustc_middle::ty::{self, GenericArg, TraitRef, Ty, TyCtxt, Unnormalized, Upcast as _};
 use rustc_span::edition::Edition::Edition2021;
-use rustc_span::{BytePos, Pos, Span, Symbol};
-use rustc_trait_selection::infer::TyCtxtInferExt;
+use rustc_span::{BytePos, Pos as _, Span, Symbol};
+use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, Selection, SelectionContext};
 
 declare_clippy_lint! {
@@ -328,7 +328,7 @@ impl<'tcx> FormatArgs<'tcx> {
         let ty_msrv_map = make_ty_msrv_map(tcx);
         Self {
             format_args,
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             ignore_mixed: conf.allow_mixed_uninlined_format_args,
             ty_msrv_map,
             has_derived_debug: FxHashMap::default(),
@@ -341,7 +341,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let Some(macro_call) = root_macro_call_first_node(cx, expr)
             && is_format_macro(cx, macro_call.def_id)
-            && let Some(format_args) = self.format_args.get(cx, expr, macro_call.expn)
+            && let Some(mut format_args) = self.format_args.get(cx, expr, macro_call.expn)
         {
             let mut linter = FormatArgsExpr {
                 cx,
@@ -358,8 +358,34 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs<'tcx> {
             linter.check_trailing_comma();
             linter.check_templates();
 
-            if self.msrv.meets(cx, msrvs::FORMAT_ARGS_CAPTURE) {
-                linter.check_uninlined_args();
+            if !self.msrv.meets(cx, msrvs::FORMAT_ARGS_CAPTURE) {
+                return;
+            }
+
+            let mut uninlined_queue = vec![];
+            loop {
+                if linter.check_uninlined_args() {
+                    break;
+                }
+
+                uninlined_queue.extend(self.format_args.get_nested(format_args));
+                if let Some(inner_format_args) = uninlined_queue.pop() {
+                    format_args = inner_format_args;
+
+                    linter = FormatArgsExpr {
+                        cx,
+                        expr,
+                        macro_call: &macro_call,
+                        format_args,
+                        ignore_mixed: self.ignore_mixed,
+                        msrv: &self.msrv,
+                        ty_msrv_map: &self.ty_msrv_map,
+                        has_derived_debug: &mut self.has_derived_debug,
+                        has_pointer_format: &mut self.has_pointer_format,
+                    };
+                } else {
+                    break;
+                }
             }
         }
     }
@@ -575,16 +601,16 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         }
     }
 
-    fn check_uninlined_args(&self) {
+    fn check_uninlined_args(&self) -> bool {
         if self.format_args.span.from_expansion() {
-            return;
+            return false;
         }
         if self.macro_call.span.edition() < Edition2021
             && (is_panic(self.cx, self.macro_call.def_id) || is_assert_macro(self.cx, self.macro_call.def_id))
         {
             // panic!, assert!, and debug_assert! before 2021 edition considers a single string argument as
             // non-format
-            return;
+            return false;
         }
 
         let mut fixes = Vec::new();
@@ -595,12 +621,12 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         // Example of an un-inlinable format:  print!("{}{1}", foo, 2)
         for (pos, usage) in self.format_arg_positions() {
             if !self.check_one_arg(pos, usage, &mut fixes) {
-                return;
+                return !fixes.is_empty();
             }
         }
 
         if fixes.is_empty() {
-            return;
+            return false;
         }
 
         // multiline span display suggestion is sometimes broken: https://github.com/rust-lang/rust/pull/102729#discussion_r988704308
@@ -610,8 +636,8 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
             .any(|(span, _)| self.cx.sess().source_map().is_multiline(*span));
 
         // Suggest removing each argument only once, for example in `format!("{0} {0}", arg)`.
-        fixes.sort_unstable_by_key(|(span, _)| *span);
-        fixes.dedup_by_key(|(span, _)| *span);
+        fixes.sort_unstable_by_key(|(span, _)| span.lo_hi());
+        fixes.dedup_by_key(|(span, _)| span.lo_hi());
 
         span_lint_and_then(
             self.cx,
@@ -627,6 +653,8 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 );
             },
         );
+
+        true
     }
 
     fn check_one_arg(&self, pos: &FormatArgPosition, usage: FormatParamUsage, fixes: &mut Vec<(Span, String)>) -> bool {
@@ -857,7 +885,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 };
                 let pointer_debug = derived_debug
                     && adt.all_fields().any(|f| {
-                        self.has_pointer_debug(tcx.normalize_erasing_regions(typing_env, f.ty(tcx, args)), depth)
+                        self.has_pointer_debug(tcx.normalize_erasing_regions(typing_env, f.ty(tcx, *args)), depth)
                     });
                 self.has_pointer_format.insert(ty, pointer_debug);
                 pointer_debug
@@ -872,7 +900,7 @@ fn make_ty_msrv_map(tcx: TyCtxt<'_>) -> FxHashMap<Ty<'_>, Option<RustcVersion>> 
         .into_iter()
         .filter_map(|(name, feature)| {
             tcx.get_diagnostic_item(name).map(|def_id| {
-                let ty = Ty::new_adt(tcx, tcx.adt_def(def_id), List::empty());
+                let ty = Ty::new_adt(tcx, tcx.adt_def(def_id), ty::GenericArgs::empty());
                 (ty, feature)
             })
         })

@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![warn(clippy::must_use_candidate)]
 use std::rc::Rc;
 use std::sync::Arc;
@@ -98,12 +97,50 @@ pub fn main() -> std::process::ExitCode {
     std::process::ExitCode::SUCCESS
 }
 
+pub enum Uninhabited {}
+
 //~v must_use_candidate
-pub fn result_uninhabited() -> Result<i32, std::convert::Infallible> {
+pub fn result_uninhabited_1() -> Result<i32, Uninhabited> {
     todo!()
 }
 
 //~v must_use_candidate
-pub fn controlflow_uninhabited() -> std::ops::ControlFlow<std::convert::Infallible, i32> {
+pub fn result_never_1() -> Result<i32, !> {
     todo!()
+}
+
+#[must_use]
+pub struct T;
+
+// Do not lint, `T` is `#[must_use]`, so the `Result<T, uninhabited>` also is.
+pub fn result_uninhabited_2() -> Result<T, Uninhabited> {
+    todo!()
+}
+
+// Do not lint, `T` is `#[must_use]`, so the `Result<T, uninhabited>` also is.
+pub fn result_never_2() -> Result<T, !> {
+    todo!()
+}
+
+// Do not lint: even though `Box` itself is not `#[must_use]`, if the content is (which is
+// the case of `T`), the compiler will treat the box as a `#[must_use]` type already.
+pub fn with_box() -> Box<T> {
+    todo!()
+}
+
+pub mod with_reason_lint {
+    // With `must_use_without_reason` enabled the suggestion carries a reason placeholder,
+    // so applying it does not immediately trip that lint.
+    #![warn(clippy::must_use_without_reason)]
+
+    //~v must_use_candidate
+    pub fn pure(i: u8) -> u8 {
+        i
+    }
+
+    #[allow(clippy::must_use_without_reason)]
+    //~v must_use_candidate
+    pub fn reason_lint_allowed(i: u8) -> u8 {
+        i
+    }
 }

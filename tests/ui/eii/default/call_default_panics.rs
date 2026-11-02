@@ -1,9 +1,10 @@
+//@ revisions: rlib dylib
+//@[dylib] needs-crate-type: dylib
 //@ aux-build: decl_with_default_panics.rs
 //@ edition: 2021
 //@ run-pass
 //@ needs-unwind
 //@ exec-env:RUST_BACKTRACE=1
-//@ ignore-backends: gcc
 // FIXME(#125418): linking on Windows GNU targets is not yet supported.
 //@ ignore-windows-gnu
 // A small test to make sure that unwinding works properly.

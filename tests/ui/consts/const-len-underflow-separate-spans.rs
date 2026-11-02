@@ -3,6 +3,7 @@
 // overall context for what caused the evaluation.
 
 //@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 const ONE: usize = 1;

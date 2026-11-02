@@ -31,6 +31,10 @@ pub struct Job {
     pub doc_url: Option<String>,
     /// Whether the job is executed on AWS CodeBuild.
     pub codebuild: Option<bool>,
+    /// Which Python version (if any) is required. On Windows, this is typically required to run
+    /// LLDB.
+    #[serde(default)]
+    pub required_python_version: Option<String>,
 }
 
 impl Job {
@@ -44,7 +48,7 @@ impl Job {
     }
 
     fn is_linux(&self) -> bool {
-        self.os.contains("ubuntu")
+        self.os.contains("ubuntu") || self.os.contains("linux")
     }
 }
 
@@ -108,7 +112,6 @@ pub fn load_job_db(db: &str) -> anyhow::Result<JobDatabase> {
     let mut db: JobDatabase = serde_yaml::from_value(db).context("failed to parse job database")?;
 
     register_pr_jobs_as_auto_jobs(&mut db)?;
-
     validate_job_database(&db)?;
 
     Ok(db)
@@ -127,7 +130,7 @@ pub fn load_job_db(db: &str) -> anyhow::Result<JobDatabase> {
 /// CI runs to be red until the cause is fixed.
 fn register_pr_jobs_as_auto_jobs(db: &mut JobDatabase) -> anyhow::Result<()> {
     for pr_job in &db.pr_jobs {
-        // It's acceptable to "override" a PR job in Auto job, for instance, `x86_64-gnu-tools` will
+        // It's acceptable to "override" a PR job in Auto job, for instance, `test-x86_64-gnu-tools` will
         // receive an additional `DEPLOY_TOOLSTATES_JSON: toolstates-linux.json` env when under Auto
         // environment versus PR environment.
         if db.find_auto_job_by_name(&pr_job.name).is_some() {
@@ -168,6 +171,7 @@ fn validate_job_database(db: &JobDatabase) -> anyhow::Result<()> {
             free_disk,
             doc_url,
             codebuild,
+            required_python_version,
 
             // Carve-out configs allowed to be different.
             env: _,
@@ -180,6 +184,7 @@ fn validate_job_database(db: &JobDatabase) -> anyhow::Result<()> {
             && *free_disk == auto_job.free_disk
             && *doc_url == auto_job.doc_url
             && *codebuild == auto_job.codebuild
+            && *required_python_version == auto_job.required_python_version
         {
             Ok(())
         } else {
@@ -212,6 +217,18 @@ fn validate_job_database(db: &JobDatabase) -> anyhow::Result<()> {
         }
     }
 
+    // All jobs should follow a naming convention - either they are test or dist jobs.
+    for job in &db.auto_jobs {
+        let name = job.name.strip_prefix("optional-").unwrap_or(&job.name);
+        if name.starts_with("dist-") || name.starts_with("test-") {
+            continue;
+        }
+        return Err(anyhow!(
+            "Auto job `{job}` name must start with test- or dist-`.",
+            job = job.name
+        ));
+    }
+
     Ok(())
 }
 
@@ -233,6 +250,8 @@ struct GithubActionsJob {
     doc_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     codebuild: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    required_python_version: Option<String>,
 }
 
 /// Replace GitHub context variables with environment variables in job configs.
@@ -271,7 +290,11 @@ pub enum RunType {
     /// Workflows that run after a push to a PR branch
     PullRequest,
     /// Try run started with @bors try
-    TryJob { job_patterns: Option<Vec<String>> },
+    TryJob {
+        job_patterns: Option<Vec<String>>,
+        /// Should the limit on the number of try jobs be ignored?
+        nolimit: bool,
+    },
     /// Merge attempt workflow
     AutoJob,
     /// Fake job only used for sharing Github Actions cache.
@@ -289,7 +312,7 @@ fn calculate_jobs(
 ) -> anyhow::Result<Vec<GithubActionsJob>> {
     let (jobs, prefix, base_env) = match run_type {
         RunType::PullRequest => (db.pr_jobs.clone(), "PR", &db.envs.pr_env),
-        RunType::TryJob { job_patterns } => {
+        RunType::TryJob { job_patterns, nolimit } => {
             let jobs = if let Some(patterns) = job_patterns {
                 let mut jobs: Vec<Job> = vec![];
                 let mut unknown_patterns = vec![];
@@ -311,9 +334,9 @@ fn calculate_jobs(
                         unknown_patterns.join(", ")
                     ));
                 }
-                if jobs.len() > MAX_TRY_JOBS_COUNT {
+                if jobs.len() > MAX_TRY_JOBS_COUNT && !nolimit {
                     return Err(anyhow::anyhow!(
-                        "It is only possible to schedule up to {MAX_TRY_JOBS_COUNT} custom jobs, received {} custom jobs expanded from {} pattern(s)",
+                        "It is only possible to schedule up to {MAX_TRY_JOBS_COUNT} custom jobs, received {} custom jobs expanded from {} pattern(s). Use `@bors try jobs=... nolimit` to allow running an arbitrary number of try jobs.",
                         jobs.len(),
                         patterns.len()
                     ));
@@ -342,7 +365,7 @@ fn calculate_jobs(
             // built toolchain using `rustup-toolchain-install-master`),
             // we inject the `DIST_TRY_BUILD` environment variable to the jobs
             // to tell `opt-dist` to make the build faster by skipping certain steps.
-            if let RunType::TryJob { job_patterns } = run_type {
+            if let RunType::TryJob { job_patterns, nolimit: _ } = run_type {
                 if job_patterns.is_none() {
                     env.insert(
                         "DIST_TRY_BUILD".to_string(),
@@ -360,6 +383,7 @@ fn calculate_jobs(
                 free_disk: job.free_disk,
                 doc_url: job.doc_url,
                 codebuild: job.codebuild,
+                required_python_version: job.required_python_version,
             }
         })
         .collect();
@@ -377,10 +401,11 @@ pub fn calculate_job_matrix(
     })?;
     eprintln!("Run type: {run_type:?}");
 
-    let jobs = calculate_jobs(&run_type, &db, channel)?;
+    let mut jobs = calculate_jobs(&run_type, &db, channel)?;
     if jobs.is_empty() && !matches!(run_type, RunType::MainJob) {
         return Err(anyhow::anyhow!("Computed job list is empty"));
     }
+    jobs.sort_by_key(|j| j.name.clone());
 
     let run_type = match run_type {
         RunType::PullRequest => "pr",
@@ -410,7 +435,10 @@ pub fn find_linux_job<'a>(jobs: &'a [Job], name: &str) -> anyhow::Result<&'a Job
         ));
     };
     if !job.is_linux() {
-        return Err(anyhow::anyhow!("Only Linux jobs can be executed locally"));
+        return Err(anyhow::anyhow!(
+            "Only Linux jobs can be executed locally, os `{}` is not linux",
+            job.os
+        ));
     }
 
     Ok(job)

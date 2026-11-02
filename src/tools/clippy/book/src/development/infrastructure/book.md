@@ -16,7 +16,7 @@ locally to view changes before you commit them to the repository. You likely
 already have `cargo` installed, so the easiest option is to:
 
 ```shell
-cargo install mdbook
+cargo install --locked mdbook
 ```
 
 See the mdBook [installation](https://github.com/rust-lang/mdBook#installation)
@@ -25,7 +25,7 @@ instructions for other options.
 ## Make changes
 
 The book's
-[src](https://github.com/rust-lang/rust-clippy/tree/master/book/src)
+[src](https://github.com/rust-lang/rust-clippy/tree/HEAD/book/src)
 directory contains all the markdown files used to generate the book. If you
 want to see your changes in real time, you can use the mdBook `serve` command to
 run a web server locally that will automatically update changes as they are

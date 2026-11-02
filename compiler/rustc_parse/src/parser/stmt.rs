@@ -3,16 +3,16 @@ use std::mem;
 use std::ops::Bound;
 
 use ast::Label;
-use rustc_ast as ast;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
+use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
-    AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind, HasAttrs, Local,
-    LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
+    self as ast, AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind,
+    HasAttrs, Local, LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
 };
 use rustc_errors::{Applicability, Diag, PResult};
-use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, kw, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::attr::InnerAttrForbiddenReason;
@@ -159,7 +159,12 @@ impl<'a> Parser<'a> {
             attrs.clone(), // FIXME: unwanted clone of attrs
             false,
             true,
-            FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true },
+            FnParseMode {
+                req_name: |_, _| true,
+                context: FnContext::Free,
+                req_body: true,
+                allow_const_params: true,
+            },
             force_collect,
             AllowConstBlockItems::No,
         )? {
@@ -182,7 +187,7 @@ impl<'a> Parser<'a> {
                 AttrWrapper::empty(),
                 force_collect,
                 |this, _empty_attrs| {
-                    let (expr, _) = this.parse_expr_res(restrictions, attrs)?;
+                    let (expr, _) = this.parse_expr_res_after_attrs(restrictions, attrs)?;
                     Ok((expr, Trailing::No, UsePreAttrPos::Yes))
                 },
             )?;
@@ -235,7 +240,7 @@ impl<'a> Parser<'a> {
             // Perform this outside of the `collect_tokens` closure, since our
             // outer attributes do not apply to this part of the expression.
             let (expr, _) = self.with_res(Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_assoc_rest_with(Bound::Unbounded, true, expr)
+                this.parse_expr_assoc_rest(Bound::Unbounded, true, expr)
             })?;
             Ok(self.mk_stmt(lo.to(self.prev_token.span), StmtKind::Expr(expr)))
         } else {
@@ -270,7 +275,7 @@ impl<'a> Parser<'a> {
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac));
             let e = self.maybe_recover_from_bad_qpath(e)?;
             let e = self.parse_expr_dot_or_call_with(attrs, e, lo)?;
-            let (e, _) = self.parse_expr_assoc_rest_with(Bound::Unbounded, false, e)?;
+            let (e, _) = self.parse_expr_assoc_rest(Bound::Unbounded, false, e)?;
             StmtKind::Expr(e)
         };
         Ok(self.mk_stmt(lo.to(hi), kind))
@@ -363,6 +368,14 @@ impl<'a> Parser<'a> {
         } else {
             (None, None, None)
         };
+
+        let init_wrapped = self
+            .tree_look_ahead(2, |tree| match tree {
+                TokenTree::Token(tok, _) => tok.is_keyword(kw::Else),
+                TokenTree::Delimited(..) => false,
+            })
+            .unwrap_or(false);
+
         let init = match (self.parse_initializer(err.is_some()), err) {
             (Ok(init), None) => {
                 // init parsed, ty parsed
@@ -400,6 +413,7 @@ impl<'a> Parser<'a> {
                 return Err(err);
             }
         };
+        let trailing_token = self.prev_token;
         let kind = match init {
             None => LocalKind::Decl,
             Some(init) => {
@@ -411,8 +425,14 @@ impl<'a> Parser<'a> {
                         return Err(self.error_block_no_opening_brace_msg(Cow::from(msg)));
                     }
                     let els = self.parse_block()?;
-                    self.check_let_else_init_bool_expr(&init);
-                    self.check_let_else_init_trailing_brace(&init);
+                    // These checks should also respect invisible delimiter
+                    if !init_wrapped {
+                        self.check_let_else_init_bool_expr(&init);
+                    }
+                    if matches!(trailing_token.kind, TokenKind::CloseBrace) {
+                        self.check_let_else_init_trailing_brace(&init);
+                    }
+
                     LocalKind::InitElse(init, els)
                 } else {
                     LocalKind::Init(init)
@@ -467,7 +487,7 @@ impl<'a> Parser<'a> {
                 ),
             };
             self.dcx().emit_err(diagnostics::InvalidCurlyInLetElse {
-                span: span.with_lo(span.hi() - BytePos(1)),
+                span: self.psess.source_map().end_point(span),
                 sugg,
             });
         }
@@ -501,7 +521,7 @@ impl<'a> Parser<'a> {
             _ => self.eat(exp!(Eq)),
         };
 
-        Ok(if eq_consumed || eq_optional { Some(self.parse_expr()?) } else { None })
+        Ok(if eq_consumed || eq_optional { Some(self.parse_expr_in_let()?) } else { None })
     }
 
     /// Parses a block. No inner attributes are allowed.
@@ -745,7 +765,7 @@ impl<'a> Parser<'a> {
                 snapshot = Some(self.create_snapshot_for_diagnostic());
             }
             let stmt = match self.parse_full_stmt(recover) {
-                Err(mut err) if recover.yes() => {
+                Err(mut err) if recover.yes(self) => {
                     if let Some(ref mut snapshot) = snapshot {
                         snapshot.recover_vcs_conflict_marker();
                     }
@@ -780,7 +800,7 @@ impl<'a> Parser<'a> {
                         }
                     }
 
-                    let guar = err.emit();
+                    let guar = err.emit_err();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     self.mk_stmt_err(self.token.span, guar)
                 }
@@ -1014,58 +1034,50 @@ impl<'a> Parser<'a> {
                                 break 'break_recover None;
                             }
 
-                            match &expr.kind {
-                                ExprKind::Path(None, ast::Path { segments, .. })
-                                    if let [segment] = segments.as_slice() =>
-                                {
-                                    if self.token == token::Colon
-                                        && self.look_ahead(1, |token| {
-                                            token.is_metavar_block()
-                                                || matches!(
-                                                    token.kind,
-                                                    token::Ident(
-                                                        kw::For | kw::Loop | kw::While,
-                                                        token::IdentIsRaw::No
-                                                    ) | token::OpenBrace
-                                                )
+                            if self.token == token::Colon
+                                && let ExprKind::Path(None, ast::Path { segments, .. }) = &expr.kind
+                                && let [segment] = segments.as_slice()
+                                && self.look_ahead(1, |t| {
+                                    t.is_metavar_block()
+                                        || t.kind == token::OpenBrace
+                                        || t.non_raw_ident().is_some_and(|ident| {
+                                            matches!(ident.name, kw::For | kw::Loop | kw::While)
                                         })
-                                    {
-                                        let snapshot = self.create_snapshot_for_diagnostic();
-                                        let label = Label {
-                                            ident: Ident::from_str_and_span(
-                                                &format!("'{}", segment.ident),
-                                                segment.ident.span,
-                                            ),
-                                        };
-                                        match self.parse_expr_labeled(label, false) {
-                                            Ok(labeled_expr) => {
-                                                e.cancel();
-                                                self.dcx().emit_err(MalformedLoopLabel {
-                                                    span: label.ident.span,
-                                                    suggestion: label.ident.span.shrink_to_lo(),
-                                                });
-                                                *expr = labeled_expr;
-                                                break 'break_recover None;
-                                            }
-                                            Err(err) => {
-                                                err.cancel();
-                                                self.restore_snapshot(snapshot);
-                                            }
-                                        }
+                                })
+                            {
+                                let snapshot = self.create_snapshot_for_diagnostic();
+                                let label = Label {
+                                    ident: Ident::from_str_and_span(
+                                        &format!("'{}", segment.ident),
+                                        segment.ident.span,
+                                    ),
+                                };
+                                match self.parse_expr_labeled(label, false) {
+                                    Ok(labeled_expr) => {
+                                        e.cancel();
+                                        self.dcx().emit_err(MalformedLoopLabel {
+                                            span: label.ident.span,
+                                            suggestion: label.ident.span.shrink_to_lo(),
+                                        });
+                                        *expr = labeled_expr;
+                                        break 'break_recover None;
+                                    }
+                                    Err(err) => {
+                                        err.cancel();
+                                        self.restore_snapshot(snapshot);
                                     }
                                 }
-                                _ => {}
                             }
 
                             let res =
                                 self.check_mistyped_turbofish_with_multiple_type_params(e, expr);
 
-                            Some(if recover.no() {
+                            Some(if recover.no(self) {
                                 res?
                             } else {
                                 res.unwrap_or_else(|mut e| {
                                     self.recover_missing_dot(&mut e);
-                                    let guar = e.emit();
+                                    let guar = e.emit_err();
                                     self.recover_stmt();
                                     guar
                                 })
@@ -1127,7 +1139,7 @@ impl<'a> Parser<'a> {
                                 {
                                     true
                                 } else if let Some(op) = self.check_assoc_op()
-                                    && op.node.can_continue_expr_unambiguously()
+                                    && super::expr::diagnostics::op_can_continue_stmt_expr_unambiguously(op.node)
                                 {
                                     true
                                 } else {

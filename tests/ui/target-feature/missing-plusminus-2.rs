@@ -5,4 +5,4 @@
 #![feature(no_core)]
 #![no_core]
 
-//~? WARN unknown feature specified for `-Ctarget-feature`: `rdrand`
+//~? WARN ignoring feature with missing prefix in `-Ctarget-feature`: `rdrand`

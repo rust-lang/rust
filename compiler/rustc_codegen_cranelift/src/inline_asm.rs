@@ -5,8 +5,9 @@ use std::fmt::Write;
 use cranelift_codegen::isa::CallConv;
 use rustc_abi::CanonAbi;
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_hir::LangItem;
-use rustc_middle::ty::layout::FnAbiOf;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar as ConstScalar};
+use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv as _};
 use rustc_span::sym;
 use rustc_target::asm::*;
 use rustc_target::spec::Arch;
@@ -104,13 +105,64 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                     )
                 };
 
-                let value = rustc_codegen_ssa::common::asm_const_to_str(
-                    fx.tcx,
-                    span,
-                    scalar.assert_scalar_int(),
-                    fx.layout_of(ty),
-                );
-                CInlineAsmOperand::Const { value }
+                match scalar {
+                    ConstScalar::Int(int) => {
+                        let value = rustc_codegen_ssa::common::asm_const_to_str(
+                            fx.tcx,
+                            span,
+                            int,
+                            fx.layout_of(ty),
+                        );
+                        CInlineAsmOperand::Const { value }
+                    }
+                    ConstScalar::Ptr(ptr, _) => {
+                        if cfg!(not(feature = "inline_asm_sym")) {
+                            fx.tcx.dcx().span_err(
+                                span,
+                                "asm! and global_asm! sym operands are not yet supported",
+                            );
+                        }
+
+                        let (prov, offset) = ptr.prov_and_relative_offset();
+
+                        let alloc_id = prov.alloc_id();
+
+                        let mut symbol = match fx.tcx.global_alloc(alloc_id) {
+                            GlobalAlloc::Function { instance, .. } => {
+                                fx.tcx.symbol_name(instance).name.to_owned()
+                            }
+                            GlobalAlloc::Static(def_id) => {
+                                fx.tcx.symbol_name(Instance::mono(fx.tcx, def_id)).name.to_owned()
+                            }
+                            GlobalAlloc::Memory(alloc) => {
+                                let data_id = crate::constant::data_id_for_alloc_id(
+                                    &mut fx.constants_cx,
+                                    fx.module,
+                                    alloc_id,
+                                    alloc.inner().mutability,
+                                );
+                                fx.module
+                                    .declarations()
+                                    .get_data_decl(data_id)
+                                    .linkage_name(data_id)
+                                    .into_owned()
+                            }
+                            GlobalAlloc::VTable(..) | GlobalAlloc::TypeId { .. } => {
+                                span_bug!(
+                                    span,
+                                    "unsupported allocation for inline asm const pointer"
+                                )
+                            }
+                        };
+
+                        if offset != Size::ZERO {
+                            let offset = fx.tcx.sign_extend_to_target_isize(offset.bytes());
+                            write!(symbol, "{offset:+}").unwrap();
+                        }
+
+                        CInlineAsmOperand::Symbol { symbol }
+                    }
+                }
             }
             InlineAsmOperand::SymFn { ref value } => {
                 if cfg!(not(feature = "inline_asm_sym")) {
@@ -123,7 +175,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                 if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                     let instance = ty::Instance::resolve_for_fn_ptr(
                         fx.tcx,
-                        ty::TypingEnv::fully_monomorphized(),
+                        fx.typing_env(),
                         def_id,
                         args.no_bound_vars().unwrap(),
                     )
@@ -391,11 +443,12 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 .supported_types(self.arch, true)
                 .iter()
                 .map(|(ty, _)| ty.size())
+                .filter_map(InlineAsmSize::fixed_size_bytes)
                 .max()
-                .unwrap();
-            let align = rustc_abi::Align::from_bytes(reg_size.bytes()).unwrap();
+                .expect("expected fixed-size type");
+            let align = rustc_abi::Align::from_bytes(reg_size).unwrap();
             let offset = slot_size.align_to(align);
-            *slot_size = offset + reg_size;
+            *slot_size = offset + rustc_abi::Size::from_bytes(reg_size);
             offset
         };
         let mut new_slot = |x| new_slot_fn(&mut slot_size, x);
@@ -404,7 +457,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         let abi_clobber = InlineAsmClobberAbi::parse(
             self.arch,
             &self.tcx.sess.target,
-            &self.tcx.sess.unstable_target_features,
+            &self.tcx.sess.internal_target_features,
             sym::C,
         )
         .unwrap()
@@ -475,7 +528,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
     }
 
     fn generate_asm_wrapper(&self, asm_name: &str) -> String {
-        let binary_format = crate::target_triple(self.tcx.sess).binary_format;
+        let binary_format = crate::target_tuple(self.tcx.sess).binary_format;
 
         let mut generated_asm = String::new();
         match binary_format {

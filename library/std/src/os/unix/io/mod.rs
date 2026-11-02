@@ -93,6 +93,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::io::{self, Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, Write};
+use crate::macros::rustdoc_skip_body;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use crate::os::fd::*;
 #[allow(unused_imports)] // not used on all targets
@@ -119,7 +120,8 @@ pub impl(self) trait StdioExt {
     ///
     /// [currently]: crate::io#platform-specific-behavior
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(stdio_swap)]
     /// use std::io::{self, Read, Write};
     /// use std::os::unix::io::StdioExt;
@@ -208,19 +210,19 @@ fn null_fd() -> io::Result<OwnedFd> {
 
 /// Replaces the underlying file descriptor with the one from `other`.
 /// Does not set CLOEXEC.
+#[rustdoc_skip_body]
 fn replace_stdio_fd(this: BorrowedFd<'_>, other: OwnedFd) -> io::Result<()> {
     cfg_select! {
         all(target_os = "wasi", target_env = "p1") => {
-            cvt(unsafe { libc::__wasilibc_fd_renumber(other.as_raw_fd(), this.as_raw_fd()) }).map(|_| ())
+            cvt(unsafe { libc::__wasilibc_fd_renumber(other.as_raw_fd(), this.as_raw_fd()) })
+                .map(|_| ())
         }
         not(any(
-            all(target_arch = "wasm32", not(target_os = "emscripten")),
+            all(target_family = "wasm", not(target_os = "emscripten")),
             target_os = "hermit",
             target_os = "trusty",
             target_os = "motor"
-        )) => {
-            cvt(unsafe {libc::dup2(other.as_raw_fd(), this.as_raw_fd())}).map(|_| ())
-        }
+        )) => cvt(unsafe { libc::dup2(other.as_raw_fd(), this.as_raw_fd()) }).map(|_| ()),
         _ => {
             let _ = (this, other);
             Err(io::Error::UNSUPPORTED_PLATFORM)

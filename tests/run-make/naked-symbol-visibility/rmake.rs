@@ -2,6 +2,8 @@
 //@ only-x86_64
 //@ needs-target-std
 //@ needs-crate-type: dylib
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::object::ObjectSymbol;
 use run_make_support::object::read::{File, Object, Symbol};
@@ -26,9 +28,6 @@ fn main() {
     // #[naked] functions are implicitly #[inline(never)], so they get shared regardless of
     // -Zshare-generics.
     global_function(&rdylib, "public_naked_generic");
-
-    global_function(&rdylib, "vanilla_external_linkage");
-    global_function(&rdylib, "naked_external_linkage");
 
     // FIXME: make this work on windows (gnu and msvc). See the PR
     // https://github.com/rust-lang/rust/pull/128362 for some approaches

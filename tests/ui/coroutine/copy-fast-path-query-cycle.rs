@@ -1,5 +1,6 @@
 //@ edition: 2024
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
 

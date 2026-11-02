@@ -82,7 +82,6 @@ fn compile_case(dump_dir: &str, extra_flags: &[&str]) -> (bool, usize, usize, Co
         .arg("--emit=mir")
         .arg("-Zmir-opt-level=2")
         .arg("-Copt-level=2")
-        .arg("-Zthreads=1")
         .arg("-Zdump-mir=Inline")
         .arg(format!("-Zdump-mir-dir={dump_dir}"));
 

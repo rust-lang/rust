@@ -1,13 +1,15 @@
-#![allow(clippy::lint_without_lint_pass)]
-
 use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
-use clippy_utils::{is_entrypoint_fn, is_trait_impl_item};
+use clippy_utils::macros::root_macro_call;
+use clippy_utils::{is_entrypoint_fn, is_trait_impl_item, sym};
+use rustc_ast::attr::AttributeExt as _;
+use rustc_ast::token::DocFragmentKind;
+use rustc_attr_ir::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{Attribute, FieldDef, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use rustc_hir::{FieldDef, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_resolve::rustdoc::pulldown_cmark::Event::{
     Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
     TaskListMarker, Text,
@@ -20,7 +22,6 @@ use rustc_resolve::rustdoc::{
     DocFragment, add_doc_fragment, attrs_to_doc_fragments, main_body_opts, pulldown_cmark,
     source_span_for_markdown_range, span_of_fragments,
 };
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use std::ops::Range;
 use url::Url;
@@ -249,7 +250,7 @@ declare_clippy_lint! {
     ///
     /// In addition, when writing documentation comments, including `[]` brackets
     /// inside a link text would trip the parser. Therefore, documenting link with
-    /// `[`SmallVec<[T; INLINE_CAPACITY]>`]` and then [`SmallVec<[T; INLINE_CAPACITY]>`]: SmallVec
+    /// ``[`SmallVec<[T; INLINE_CAPACITY]>`]`` and then ``[`SmallVec<[T; INLINE_CAPACITY]>`]: SmallVec``
     /// would fail.
     ///
     /// ### Examples
@@ -265,7 +266,7 @@ declare_clippy_lint! {
     /// /// Consume the array and return the inner
     /// /// [`SmallVec<[T; INLINE_CAPACITY]>`][SmallVec].
     /// /// [SmallVec]: SmallVec
-    /// fn main() {}
+    /// fn foo() {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub DOC_MARKDOWN,
@@ -346,12 +347,14 @@ declare_clippy_lint! {
     /// /// Returns a random number
     /// ///
     /// /// It was chosen by a fair dice roll
+    /// # fn foo() {}
     /// ```
     /// Use instead:
     /// ```no_run
     /// /// Returns a random number.
     /// ///
     /// /// It was chosen by a fair dice roll.
+    /// # fn foo() {}
     /// ```
     ///
     /// ### Terminal punctuation marks
@@ -728,14 +731,14 @@ impl_lint_pass!(Documentation => [
 ]);
 
 pub struct Documentation {
-    valid_idents: FxHashSet<String>,
+    valid_idents: &'static FxHashSet<String>,
     check_private_items: bool,
 }
 
 impl Documentation {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            valid_idents: conf.doc_valid_idents.iter().cloned().collect(),
+            valid_idents: &conf.doc_valid_idents,
             check_private_items: conf.check_private_items,
         }
     }
@@ -749,7 +752,7 @@ impl EarlyLintPass for Documentation {
 
 impl<'tcx> LateLintPass<'tcx> for Documentation {
     fn check_attributes(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
-        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
+        let Some(headers) = check_attrs(cx, self.valid_idents, attrs) else {
             return;
         };
 
@@ -776,7 +779,8 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                     cx,
                     item,
                     attrs,
-                    headers.first_paragraph_len,
+                    headers.first_paragraph_text_len,
+                    headers.first_paragraph_md_len,
                     self.check_private_items,
                 );
                 match item.kind {
@@ -851,7 +855,8 @@ struct DocHeaders {
     safety: bool,
     errors: bool,
     panics: bool,
-    first_paragraph_len: usize,
+    first_paragraph_md_len: usize,
+    first_paragraph_text_len: usize,
 }
 
 /// Does some pre-processing on raw, desugared `#[doc]` attributes such as parsing them and
@@ -874,16 +879,32 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         return None;
     }
 
-    let (fragments, _) = attrs_to_doc_fragments(
-        attrs.iter().filter_map(|attr| {
-            if attr.doc_str_and_fragment_kind().is_none() || attr.span().in_external_macro(cx.sess().source_map()) {
-                None
-            } else {
-                Some((attr, None))
-            }
-        }),
-        true,
-    );
+    for attr in attrs {
+        let Some((_, kind, attr_span)) = attr.doc_str_and_fragment_kind() else {
+            continue;
+        };
+
+        let (is_raw, doc_str_span) = match kind {
+            DocFragmentKind::Sugared(_) => (false, attr_span),
+            DocFragmentKind::Raw(span) => (true, span),
+        };
+
+        let from_include_str_macro = is_raw
+            && !attr_span.in_external_macro(cx.sess().source_map())
+            && originated_from_include_str_macro(cx, doc_str_span);
+
+        // we can handle docs that aren't produced by macros except `include_str!` which could track
+        // errors from other files
+        if !doc_str_span.in_external_macro(cx.sess().source_map()) || from_include_str_macro {
+            continue;
+        }
+
+        // an unknown external macro generated a doc attr to avoid false positive results
+        // or inaccurate spans, silence all of the doc lints
+        return None;
+    }
+
+    let (fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
 
     let mut doc = String::with_capacity(fragments.iter().map(|frag| frag.doc.as_str().len() + 1).sum());
 
@@ -959,6 +980,10 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         },
         attrs,
     ))
+}
+
+fn originated_from_include_str_macro(cx: &LateContext<'_>, span: Span) -> bool {
+    root_macro_call(span).is_some_and(|macro_call| cx.tcx.is_diagnostic_item(sym::include_str_macro, macro_call.def_id))
 }
 
 enum Container {
@@ -1230,11 +1255,13 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 ticks_unbalanced = false;
                 paragraph_range = range;
                 if is_first_paragraph {
-                    headers.first_paragraph_len = doc[paragraph_range.clone()].chars().count();
-                    is_first_paragraph = false;
+                    headers.first_paragraph_md_len = doc[paragraph_range.clone()].chars().count();
                 }
             },
             End(TagEnd::Heading(_) | TagEnd::Paragraph | TagEnd::Item) => {
+                if is_first_paragraph {
+                    is_first_paragraph = false;
+                }
                 if let End(TagEnd::Heading(_)) = event {
                     in_heading = false;
                 }
@@ -1255,7 +1282,9 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         text_to_check.clear();
                     } else {
                         for (text, range, assoc_code_level) in text_to_check.drain(..) {
-                            markdown::check(cx, valid_idents, &text, &fragments, range, assoc_code_level, blockquote_level);
+                            markdown::check(
+                                cx, valid_idents, &text, &fragments, range, assoc_code_level, blockquote_level
+                            );
                         }
                     }
                 }
@@ -1263,8 +1292,11 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             Start(FootnoteDefinition(..)) => in_footnote_definition = true,
             End(TagEnd::FootnoteDefinition) => in_footnote_definition = false,
             Start(_) | End(_)  // We don't care about other tags
-            | TaskListMarker(_) | Code(_) | Rule | InlineMath(..) | DisplayMath(..) => (),
+            | TaskListMarker(_) | Rule => (),
             SoftBreak | HardBreak => {
+                if is_first_paragraph {
+                    headers.first_paragraph_text_len += 1;
+                }
                 if !containers.is_empty()
                     && !in_footnote_definition
                     // Tabs aren't handled correctly vvvv
@@ -1290,7 +1322,15 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     collected_breaks.push(span);
                 }
             },
+            Code(code) | InlineMath(code) | DisplayMath(code) => {
+                if is_first_paragraph {
+                    headers.first_paragraph_text_len += code.chars().count();
+                }
+            }
             Text(text) => {
+                if is_first_paragraph {
+                    headers.first_paragraph_text_len += text.chars().count();
+                }
                 paragraph_range.end = range.end;
                 let range_ = range.clone();
                 ticks_unbalanced |= text.contains('`')

@@ -7,7 +7,7 @@ fn main() {
     unsafe {
         let mut b = Box::<[u8; 123]>::new_uninit();
         let ptr = b.as_mut_ptr() as *mut u8;
-        utils::miri_track_alloc(ptr);
+        utils::miri_track_alloc(ptr as *mut ());
         *ptr = 42; // Crucially, only a write is printed here, no read!
         assert_eq!(*ptr, 42);
     }

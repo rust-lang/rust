@@ -1,7 +1,7 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+aes,+vaes,+avx512f
-//@run-native
+//@run-native: ignore-output
 
 use core::mem::transmute;
 #[cfg(target_arch = "x86")]
@@ -11,10 +11,20 @@ use std::arch::x86_64::*;
 
 fn main() {
     assert!(is_x86_feature_detected!("aes"));
-    assert!(is_x86_feature_detected!("vaes"));
 
     unsafe {
         test_aes();
+    }
+
+    // The tests below require vaes, which is recent enough that contributors may be using CPUs that
+    // do not support it. But we still want to run this natively if the machine happens to have vaes.
+    // So we bail out dynamically.
+    if !is_x86_feature_detected!("vaes") {
+        println!("warning: skipping vaes tests");
+        return;
+    }
+
+    unsafe {
         test_vaes();
     }
 }
@@ -80,6 +90,16 @@ unsafe fn test_aes() {
         assert_eq_m128i(r, e);
     }
     test_mm_aesimc_si128();
+
+    #[target_feature(enable = "aes")]
+    unsafe fn test_mm_aeskeygenassist_si128() {
+        // Constants taken from https://msdn.microsoft.com/en-us/library/cc714195.aspx.
+        let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
+        let e = _mm_set_epi64x(0x857c266b7c266e85, 0xeac4eea9c4eeacea);
+        let r = _mm_aeskeygenassist_si128(a, 5);
+        assert_eq_m128i(r, e);
+    }
+    test_mm_aeskeygenassist_si128();
 }
 
 // The constants in the tests below are just bit patterns. They should not

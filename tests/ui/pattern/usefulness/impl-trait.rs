@@ -1,4 +1,6 @@
-#![feature(never_type)]
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 #![feature(type_alias_impl_trait)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
 #![feature(exhaustive_patterns)]
@@ -113,6 +115,9 @@ fn infer_in_match(x: Option<V>) {
     }
 }
 
+// FIXME(trait-system-refactor-initiative#293): This currently causes an ICE.
+// It should not.
+/*
 type W = impl Copy;
 #[derive(Copy, Clone)]
 struct Rec<'a> {
@@ -125,12 +130,13 @@ fn recursive_opaque() -> W {
         match recursive_opaque() {
             // Check for the ol' ICE when the type is recursively opaque.
             _ => {}
-            Rec { n: 0, w: Some(Rec { n: 0, w: _ }) } => {} //~ ERROR unreachable
+            Rec { n: 0, w: Some(Rec { n: 0, w: _ }) } => {}
         }
     }
     let w: Option<&'static W> = None;
     Rec { n: 0, w }
 }
+*/
 
 type X = impl Copy;
 struct SecretelyVoid(X);

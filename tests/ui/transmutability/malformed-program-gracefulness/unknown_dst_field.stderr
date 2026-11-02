@@ -20,7 +20,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/unknown_dst_field.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this function
 LL |     where
 LL |         Dst: TransmuteFrom<Src>
    |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
@@ -35,7 +34,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/unknown_dst_field.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this function
 LL |     where
 LL |         Dst: TransmuteFrom<Src>
    |              ^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`

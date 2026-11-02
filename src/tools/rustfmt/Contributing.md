@@ -9,6 +9,35 @@ or file new issues specifically to get help.
 All contributors are expected to follow our [Code of
 Conduct](CODE_OF_CONDUCT.md).
 
+
+## LLM policy
+
+rustfmt follows the same [LLM usage policy] as `rust-lang/rust`. Please read it before using LLM
+assistance when participating in `rust-lang/rustfmt`.
+
+[LLM usage policy]: https://forge.rust-lang.org/policies/llm-usage.html
+
+## Linting
+
+This project supports linting via
+[`clippy`](https://doc.rust-lang.org/stable/clippy/index.html). You can either
+run it directly, or use an integration through your editor.
+
+```
+# lint rustfmt-nightly (the package at the root of this repo)
+cargo clippy
+```
+
+To Lint a package outside of the root one you will need to do one of:
+
+```
+# pass the manifest path
+cargo clippy --manifest-path ./config_proc_macro/Config.toml
+# or run the command from within the package
+cd ./config_proc_macro
+cargo clippy
+```
+
 ## Test and file issues
 
 It would be really useful to have people use rustfmt on their projects and file
@@ -20,7 +49,7 @@ issues where it does something you don't expect.
 Having a strong test suite for a tool like this is essential. It is very easy
 to create regressions. Any tests you can add are very much appreciated.
 
-The tests can be run with `cargo test`. This does a number of things:
+The tests can be run with `cargo test --locked`. This does a number of things:
 * runs the unit tests for a number of internal functions;
 * makes sure that rustfmt run on every file in `./tests/source/` is equal to its
   associated file in `./tests/target/`; this catches
@@ -48,13 +77,13 @@ Without explicit settings, the tests will be run using rustfmt's default
 configuration. It is possible to run a test using non-default settings in several
 ways. Firstly, you can include configuration parameters in comments at the top
 of the file. For example: to use 3 spaces per tab, start your test with
-`// rustfmt-tab_spaces: 3`. Just remember that the comment is part of the input,
+`//@ rustfmt-tab_spaces: 3`. Just remember that the comment is part of the input,
 so include in both the source and target files! It is also possible to
 explicitly specify the name of the expected output file in the target directory.
-Use `// rustfmt-target: filename.rs` for this. You can also specify a custom
+Use `//@ rustfmt-target: filename.rs` for this. You can also specify a custom
 configuration by using the `rustfmt-config` directive. Rustfmt will then use
 that toml file located in `./tests/config/` for its configuration. Including
-`// rustfmt-config: small_tabs.toml` will run your test with the configuration
+`//@ rustfmt-config: small_tabs.toml` will run your test with the configuration
 file found at `./tests/config/small_tabs.toml`. The final option is used when the
 test source file contains no configuration parameter comments. In this case, the
 test harness looks for a configuration file with the same filename as the test
@@ -62,6 +91,11 @@ file in the `./tests/config/` directory, so a test source file named `test-inden
 would need a configuration file named `test-indent.toml` in that directory. As an
 example, the `issue-1111.rs` test file is configured by the file
 `./tests/config/issue-1111.toml`.
+
+### Updating snapshots
+
+Some tests that test rustfmt-specific output (e.g. `--help` output and formatting-specific errors) use [insta](https://insta.rs/) to snapshot their output.
+To update these tests, install [`cargo-insta`](https://insta.rs/docs/cli/) and run `cargo insta test --review`.
 
 ## Debugging
 

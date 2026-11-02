@@ -4,7 +4,7 @@ error[E0658]: linking modifier `as-needed` is unstable
 LL | #[link(name = "foo", kind = "dylib", modifiers = "+as-needed")]
    |                                                  ^^^^^^^^^^^^
    |
-   = note: see issue #81490 <https://github.com/rust-lang/rust/issues/81490> for more information
+   = note: see issue #99424 <https://github.com/rust-lang/rust/issues/99424> for more information
    = help: add `#![feature(native_link_modifiers_as_needed)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 

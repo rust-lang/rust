@@ -98,17 +98,16 @@ use crate::fmt;
 ///    run on the thread that causes the process to exit. This is because the
 ///    other threads may be forcibly terminated.
 ///
-///    If a thread is [converted into a fiber], destructors will not be run unless
-///    the fiber is [converted back into a thread] before the underlying thread exits.
+///    TLS destructors may be leaked if a thread exits while [converted into a fiber],
+///    or if Rust TLS destructor support is first needed while running in a fiber.
 ///
 ///    If a process loads a Rust `cdylib`, it must not cause the Rust TLS destructor support
-//     to be initialized for the first time during process shutdown.
+///    to be initialized for the first time during process shutdown.
 ///
 ///    When dynamically unloading a Rust `cdylib`, pending TLS destructors may run
-//     during the unload or may be leaked.
+///    during the unload or may be leaked.
 ///
 /// [converted into a fiber]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-convertthreadtofiber
-/// [converted back into a thread]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-convertfibertothread
 /// [loader lock]: https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
 /// [`with`]: LocalKey::with
 #[cfg_attr(not(test), rustc_diagnostic_item = "LocalKey")]
@@ -128,7 +127,14 @@ pub struct LocalKey<T: 'static> {
     // trivially devirtualizable by LLVM because the value of `inner` never
     // changes and the constant should be readonly within a crate. This mainly
     // only runs into problems when TLS statics are exported across crates.
-    inner: fn(Option<&mut Option<T>>) -> *const T,
+    //
+    // The argument of the function, `init`, can be used to initialize the key for the current
+    // thread: if it is not yet initialized, and if the argument is `Some(&mut Some(val))`, the
+    // inner `val` should be `take`en out and used as the initial value instead of the default.
+    // Also, in that case `inner` *must not* panic. However, it is okay (but potentially
+    // inefficient) for `inner` to ignore `init` and use a default value as long as that is
+    // guaranteed not to panic.
+    inner: fn(/* init */ Option<&mut Option<T>>) -> *const T,
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -641,7 +647,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// X.update(|x| x + 1);
     /// assert_eq!(X.get(), 6);
     /// ```
-    #[stable(feature = "local_key_cell_update", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "local_key_cell_update", since = "1.99.0")]
     pub fn update(&'static self, f: impl FnOnce(T) -> T)
     where
         T: Copy,

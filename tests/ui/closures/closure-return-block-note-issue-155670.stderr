@@ -1,18 +1,24 @@
 error[E0308]: mismatched types
   --> $DIR/closure-return-block-note-issue-155670.rs:9:9
    |
+LL |     let _: String = {
+   |            ------ expected due to this
 LL |         SmolStr
    |         ^^^^^^^ expected `String`, found `SmolStr`
 
 error[E0308]: mismatched types
   --> $DIR/closure-return-block-note-issue-155670.rs:20:9
    |
+LL |     let _: String = {
+   |            ------ expected due to this
 LL |         SmolStr
    |         ^^^^^^^ expected `String`, found `SmolStr`
 
 error[E0308]: mismatched types
   --> $DIR/closure-return-block-note-issue-155670.rs:32:9
    |
+LL |     let _: String = {
+   |            ------ expected due to this
 LL |         SmolStr
    |         ^^^^^^^ expected `String`, found `SmolStr`
 

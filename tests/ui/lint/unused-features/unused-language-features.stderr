@@ -1,5 +1,5 @@
 error: feature `coroutines` is declared but not used
-  --> $DIR/unused-language-features.rs:5:12
+  --> $DIR/unused-language-features.rs:4:12
    |
 LL | #![feature(coroutines)]
    |            ^^^^^^^^^^
@@ -11,25 +11,25 @@ LL | #![deny(unused_features)]
    |         ^^^^^^^^^^^^^^^
 
 error: feature `coroutine_clone` is declared but not used
-  --> $DIR/unused-language-features.rs:7:12
+  --> $DIR/unused-language-features.rs:6:12
    |
 LL | #![feature(coroutine_clone)]
    |            ^^^^^^^^^^^^^^^
 
 error: feature `stmt_expr_attributes` is declared but not used
-  --> $DIR/unused-language-features.rs:9:12
+  --> $DIR/unused-language-features.rs:8:12
    |
 LL | #![feature(stmt_expr_attributes)]
    |            ^^^^^^^^^^^^^^^^^^^^
 
 error: feature `asm_unwind` is declared but not used
-  --> $DIR/unused-language-features.rs:11:12
+  --> $DIR/unused-language-features.rs:10:12
    |
 LL | #![feature(asm_unwind)]
    |            ^^^^^^^^^^
 
 error: feature `negative_impls` is declared but not used
-  --> $DIR/unused-language-features.rs:15:28
+  --> $DIR/unused-language-features.rs:14:28
    |
 LL | #![cfg_attr(all(), feature(negative_impls))]
    |                            ^^^^^^^^^^^^^^

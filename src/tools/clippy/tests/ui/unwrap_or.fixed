@@ -1,5 +1,5 @@
 #![warn(clippy::or_fun_call)]
-#![allow(clippy::unnecessary_literal_unwrap)]
+#![expect(clippy::unnecessary_literal_unwrap)]
 
 fn main() {
     let s = Some(String::from("test string")).unwrap_or_else(|| "Fail".to_string()).len();

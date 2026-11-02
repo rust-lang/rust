@@ -14,8 +14,8 @@ trait Bar {
 impl Bar for &dyn FnMut(&u8) {
     #[rustc_dump_symbol_name]
     //[v0]~^ ERROR symbol-name
-    //[v0]~| ERROR demangling
-    //[v0]~| ERROR demangling-alt
+    //[v0]~| NOTE demangling
+    //[v0]~| NOTE demangling-alt
     fn method(&self) {}
 }
 
@@ -26,8 +26,8 @@ trait Foo {
 impl Foo for &(dyn FnMut(&u8) + for<'b> Send) {
     #[rustc_dump_symbol_name]
     //[v0]~^ ERROR symbol-name
-    //[v0]~| ERROR demangling
-    //[v0]~| ERROR demangling-alt
+    //[v0]~| NOTE demangling
+    //[v0]~| NOTE demangling-alt
     fn method(&self) {}
 }
 
@@ -38,8 +38,8 @@ trait Baz {
 impl Baz for &(dyn for<'b> Send + FnMut(&u8)) {
     #[rustc_dump_symbol_name]
     //[v0]~^ ERROR symbol-name
-    //[v0]~| ERROR demangling
-    //[v0]~| ERROR demangling-alt
+    //[v0]~| NOTE demangling
+    //[v0]~| NOTE demangling-alt
     fn method(&self) {}
 }
 

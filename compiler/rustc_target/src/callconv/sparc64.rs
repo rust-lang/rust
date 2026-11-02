@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, TyAbiInterface,
-    TyAndLayout, Variants,
+    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Integer, Numeric, Primitive, Reg,
+    RegKind, Size, TyAbiInterface, TyAndLayout, Variants,
 };
 
 use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Uniform};
@@ -39,7 +39,7 @@ fn classify<'a, Ty, C>(
     match arg_layout.backend_repr {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
             Primitive::Float(float) => {
-                if offset.is_aligned(Ord::min(*float.align(cx), Align::EIGHT)) {
+                if offset.is_aligned(Ord::min(float.align(cx), Align::EIGHT)) {
                     let index = offset.bytes_usize() / 8;
                     match float {
                         Float::F128 => {
@@ -58,6 +58,8 @@ fn classify<'a, Ty, C>(
                         Float::F16 => {
                             // Match LLVM by passing `f16` in integer registers.
                         }
+                        Float::F16B => unreachable!("`f16b` unsupported on sparc64"),
+                        Float::PpcF128 => unreachable!("`ppcf128` unsupported on sparc64"),
                     }
                 } else {
                     /* pass unaligned floats in integer registers */
@@ -143,6 +145,12 @@ fn classify_arg<'a, Ty, C>(
 
     *total_double_word_count = start_double_word_count + double_word_count;
 
+    // Compatible with GCC and Clang 24.
+    if let Some(Numeric::Int(Integer::I8 | Integer::I16, _)) = arg.layout.complex_number(cx) {
+        arg.cast_to(Reg { kind: RegKind::Integer, size: total });
+        return;
+    }
+
     const ARGUMENT_REGISTERS: usize = 8;
 
     let mut double_words = [DoubleWord::Words([Word::Integer; 2]); ARGUMENT_REGISTERS / 2];
@@ -190,7 +198,7 @@ fn classify_arg<'a, Ty, C>(
         _ => CastTarget::prefixed(regs, Uniform::new(Reg::i8(), Size::ZERO)),
     };
 
-    arg.cast_to_and_pad_i32(cast_target.with_attrs(attrs.into()), pad);
+    arg.cast_to_and_pad_i32(cast_target.with_attrs(attrs.into()), u8::from(pad));
 }
 
 pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
@@ -212,7 +220,7 @@ where
             continue;
         }
         if arg.is_ignore() {
-            if passes_zsts && arg.layout.is_zst() {
+            if passes_zsts && arg.layout.is_repr_c() {
                 arg.make_indirect_from_ignore();
                 double_word_count += 1;
             }

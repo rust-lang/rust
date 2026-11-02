@@ -10,8 +10,7 @@ mod zero_prefixed_literal;
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{Expr, ExprKind, Generics, LitFloatType, LitIntType, LitKind, Pat};
 use rustc_ast::token;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, declare_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -278,21 +277,15 @@ declare_clippy_lint! {
     ///
     /// In Rust:
     /// ```no_run
-    /// fn main() {
-    ///     let a = 0123;
-    ///     println!("{}", a);
-    /// }
+    /// let a = 0123;
+    /// println!("{}", a);
     /// ```
     ///
     /// prints `123`, while in C:
     ///
     /// ```c
-    /// #include <stdio.h>
-    ///
-    /// int main() {
-    ///     int a = 0123;
-    ///     printf("%d\n", a);
-    /// }
+    /// int a = 0123;
+    /// printf("%d\n", a);
     /// ```
     ///
     /// prints `83` (as `83 == 0o123` while `123 == 0o173`).
@@ -322,10 +315,6 @@ impl EarlyLintPass for MiscEarlyLints {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat) {
-        if pat.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
-
         unneeded_field_pattern::check(cx, pat);
         redundant_pattern::check(cx, pat);
         redundant_at_rest_pattern::check(cx, pat);

@@ -1,7 +1,8 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 //@ check-pass
 // Regression test for https://github.com/rust-lang/rust/issues/143349
-
-#![feature(never_type)]
 
 trait Trait {
     fn method(&self);
@@ -35,7 +36,9 @@ impl Adhoc {
     }
 }
 
-fn temp<T>() -> Result<T, ()> { todo!() }
+fn temp<T>() -> Result<T, ()> {
+    todo!()
+}
 
 fn main() -> Result<(), ()> {
     let x = loop {};

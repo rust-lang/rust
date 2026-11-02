@@ -25,7 +25,127 @@ LL +     let _ = maybe_some.is_none() && (boolean || boolean2); // guard needs p
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:27:12
+  --> tests/ui/redundant_pattern_matching_option.rs:27:14
+   |
+LL |     let _ = !matches!(opt, None if a);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `is_none()`
+   |
+LL -     let _ = !matches!(opt, None if a);
+LL +     let _ = !(opt.is_none() && a);
+   |
+
+error: redundant pattern matching
+  --> tests/ui/redundant_pattern_matching_option.rs:29:14
+   |
+LL |     let _ = &matches!(opt, None if a);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `is_none()`
+   |
+LL -     let _ = &matches!(opt, None if a);
+LL +     let _ = &(opt.is_none() && a);
+   |
+
+error: redundant pattern matching
+  --> tests/ui/redundant_pattern_matching_option.rs:31:13
+   |
+LL |     let _ = matches!(opt, None if a) as u8;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `is_none()`
+   |
+LL -     let _ = matches!(opt, None if a) as u8;
+LL +     let _ = (opt.is_none() && a) as u8;
+   |
+
+error: redundant pattern matching
+  --> tests/ui/redundant_pattern_matching_option.rs:33:13
+   |
+LL |     let _ = matches!(opt, None if a) == b;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `is_none()`
+   |
+LL -     let _ = matches!(opt, None if a) == b;
+LL +     let _ = (opt.is_none() && a) == b;
+   |
+
+error: redundant pattern matching
+  --> tests/ui/redundant_pattern_matching_option.rs:35:13
+   |
+LL |     let _ = matches!(opt, None if a).then_some(1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `is_none()`
+   |
+LL -     let _ = matches!(opt, None if a).then_some(1);
+LL +     let _ = (opt.is_none() && a).then_some(1);
+   |
+
+error: redundant pattern matching
+  --> tests/ui/redundant_pattern_matching_option.rs:37:13
+   |
+LL |     let _ = matches!(opt, None if a);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `is_none()`
+   |
+LL -     let _ = matches!(opt, None if a);
+LL +     let _ = opt.is_none() && a;
+   |
+
+error: redundant pattern matching
+  --> tests/ui/redundant_pattern_matching_option.rs:39:8
+   |
+LL |     if matches!(opt, None if a) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `is_none()`
+   |
+LL -     if matches!(opt, None if a) {}
+LL +     if opt.is_none() && a {}
+   |
+
+error: redundant pattern matching
+  --> tests/ui/redundant_pattern_matching_option.rs:41:13
+   |
+LL |     let _ = matches!(opt, None if a) && b;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `is_none()`
+   |
+LL -     let _ = matches!(opt, None if a) && b;
+LL +     let _ = opt.is_none() && a && b;
+   |
+
+error: redundant pattern matching
+  --> tests/ui/redundant_pattern_matching_option.rs:43:13
+   |
+LL |     let _ = matches!(opt, None if a) || b;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `is_none()`
+   |
+LL -     let _ = matches!(opt, None if a) || b;
+LL +     let _ = opt.is_none() && a || b;
+   |
+
+error: redundant pattern matching
+  --> tests/ui/redundant_pattern_matching_option.rs:45:25
+   |
+LL |     let _ = b.then_some(matches!(opt, None if a));
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `is_none()`
+   |
+LL -     let _ = b.then_some(matches!(opt, None if a));
+LL +     let _ = b.then_some(opt.is_none() && a);
+   |
+
+error: redundant pattern matching
+  --> tests/ui/redundant_pattern_matching_option.rs:50:12
    |
 LL |     if let None = None::<()> {}
    |            ^^^^
@@ -37,7 +157,7 @@ LL +     if None::<()>.is_none() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:30:12
+  --> tests/ui/redundant_pattern_matching_option.rs:53:12
    |
 LL |     if let Some(_) = Some(42) {}
    |            ^^^^^^^
@@ -49,7 +169,7 @@ LL +     if Some(42).is_some() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:33:12
+  --> tests/ui/redundant_pattern_matching_option.rs:56:12
    |
 LL |     if let Some(_) = Some(42) {
    |            ^^^^^^^
@@ -61,7 +181,7 @@ LL +     if Some(42).is_some() {
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:40:15
+  --> tests/ui/redundant_pattern_matching_option.rs:63:15
    |
 LL |     while let Some(_) = Some(42) {}
    |               ^^^^^^^
@@ -73,7 +193,7 @@ LL +     while Some(42).is_some() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:43:15
+  --> tests/ui/redundant_pattern_matching_option.rs:66:15
    |
 LL |     while let None = Some(42) {}
    |               ^^^^
@@ -85,7 +205,7 @@ LL +     while Some(42).is_none() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:46:15
+  --> tests/ui/redundant_pattern_matching_option.rs:69:15
    |
 LL |     while let None = None::<()> {}
    |               ^^^^
@@ -97,7 +217,7 @@ LL +     while None::<()>.is_none() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:50:15
+  --> tests/ui/redundant_pattern_matching_option.rs:73:15
    |
 LL |     while let Some(_) = v.pop() {
    |               ^^^^^^^
@@ -109,7 +229,7 @@ LL +     while v.pop().is_some() {
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:59:5
+  --> tests/ui/redundant_pattern_matching_option.rs:82:5
    |
 LL | /     match Some(42) {
 LL | |
@@ -129,7 +249,7 @@ LL +     Some(42).is_some();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:65:5
+  --> tests/ui/redundant_pattern_matching_option.rs:88:5
    |
 LL | /     match None::<()> {
 LL | |
@@ -149,7 +269,7 @@ LL +     None::<()>.is_none();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:71:13
+  --> tests/ui/redundant_pattern_matching_option.rs:94:13
    |
 LL |       let _ = match None::<()> {
    |  _____________^
@@ -170,7 +290,7 @@ LL +     let _ = None::<()>.is_none();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:78:20
+  --> tests/ui/redundant_pattern_matching_option.rs:101:20
    |
 LL |     let _ = if let Some(_) = opt { true } else { false };
    |                    ^^^^^^^
@@ -182,7 +302,7 @@ LL +     let _ = if opt.is_some() { true } else { false };
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:85:20
+  --> tests/ui/redundant_pattern_matching_option.rs:108:20
    |
 LL |     let _ = if let Some(_) = gen_opt() {
    |                    ^^^^^^^
@@ -194,7 +314,7 @@ LL +     let _ = if gen_opt().is_some() {
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:88:19
+  --> tests/ui/redundant_pattern_matching_option.rs:111:19
    |
 LL |     } else if let None = gen_opt() {
    |                   ^^^^
@@ -206,7 +326,7 @@ LL +     } else if gen_opt().is_none() {
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:95:12
+  --> tests/ui/redundant_pattern_matching_option.rs:118:12
    |
 LL |     if let Some(..) = gen_opt() {}
    |            ^^^^^^^^
@@ -218,7 +338,7 @@ LL +     if gen_opt().is_some() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:111:12
+  --> tests/ui/redundant_pattern_matching_option.rs:134:12
    |
 LL |     if let Some(_) = Some(42) {}
    |            ^^^^^^^
@@ -230,7 +350,7 @@ LL +     if Some(42).is_some() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:114:12
+  --> tests/ui/redundant_pattern_matching_option.rs:137:12
    |
 LL |     if let None = None::<()> {}
    |            ^^^^
@@ -242,7 +362,7 @@ LL +     if None::<()>.is_none() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:117:15
+  --> tests/ui/redundant_pattern_matching_option.rs:140:15
    |
 LL |     while let Some(_) = Some(42) {}
    |               ^^^^^^^
@@ -254,7 +374,7 @@ LL +     while Some(42).is_some() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:120:15
+  --> tests/ui/redundant_pattern_matching_option.rs:143:15
    |
 LL |     while let None = None::<()> {}
    |               ^^^^
@@ -266,7 +386,7 @@ LL +     while None::<()>.is_none() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:123:5
+  --> tests/ui/redundant_pattern_matching_option.rs:146:5
    |
 LL | /     match Some(42) {
 LL | |
@@ -286,7 +406,7 @@ LL +     Some(42).is_some();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:129:5
+  --> tests/ui/redundant_pattern_matching_option.rs:152:5
    |
 LL | /     match None::<()> {
 LL | |
@@ -306,7 +426,7 @@ LL +     None::<()>.is_none();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:138:12
+  --> tests/ui/redundant_pattern_matching_option.rs:161:12
    |
 LL |     if let None = *(&None::<()>) {}
    |            ^^^^
@@ -318,7 +438,7 @@ LL +     if (&None::<()>).is_none() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:140:12
+  --> tests/ui/redundant_pattern_matching_option.rs:163:12
    |
 LL |     if let None = *&None::<()> {}
    |            ^^^^
@@ -330,7 +450,7 @@ LL +     if (&None::<()>).is_none() {}
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:147:5
+  --> tests/ui/redundant_pattern_matching_option.rs:170:5
    |
 LL | /     match x {
 LL | |
@@ -350,7 +470,7 @@ LL +     x.is_some();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:153:5
+  --> tests/ui/redundant_pattern_matching_option.rs:176:5
    |
 LL | /     match x {
 LL | |
@@ -370,7 +490,7 @@ LL +     x.is_none();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:159:5
+  --> tests/ui/redundant_pattern_matching_option.rs:182:5
    |
 LL | /     match x {
 LL | |
@@ -390,7 +510,7 @@ LL +     x.is_none();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:165:5
+  --> tests/ui/redundant_pattern_matching_option.rs:188:5
    |
 LL | /     match x {
 LL | |
@@ -410,7 +530,7 @@ LL +     x.is_some();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:181:13
+  --> tests/ui/redundant_pattern_matching_option.rs:204:13
    |
 LL |     let _ = matches!(x, Some(_));
    |             ^^^^^^^^^^^^^^^^^^^^
@@ -422,7 +542,7 @@ LL +     let _ = x.is_some();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:184:13
+  --> tests/ui/redundant_pattern_matching_option.rs:207:13
    |
 LL |     let _ = matches!(x, None);
    |             ^^^^^^^^^^^^^^^^^
@@ -434,7 +554,7 @@ LL +     let _ = x.is_none();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:195:17
+  --> tests/ui/redundant_pattern_matching_option.rs:218:17
    |
 LL |         let _ = matches!(*p, None);
    |                 ^^^^^^^^^^^^^^^^^^
@@ -446,7 +566,7 @@ LL +         let _ = (*p).is_none();
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:203:16
+  --> tests/ui/redundant_pattern_matching_option.rs:226:16
    |
 LL |         if let Some(_) = x? {
    |                ^^^^^^^
@@ -458,7 +578,7 @@ LL +         if x?.is_some() {
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:223:16
+  --> tests/ui/redundant_pattern_matching_option.rs:246:16
    |
 LL |         if let Some(_) = x.await {
    |                ^^^^^^^
@@ -470,7 +590,7 @@ LL +         if x.await.is_some() {
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:236:12
+  --> tests/ui/redundant_pattern_matching_option.rs:259:12
    |
 LL |     if let Some(_) = (x! {}) {};
    |            ^^^^^^^
@@ -482,7 +602,7 @@ LL +     if x! {}.is_some() {};
    |
 
 error: redundant pattern matching
-  --> tests/ui/redundant_pattern_matching_option.rs:238:15
+  --> tests/ui/redundant_pattern_matching_option.rs:261:15
    |
 LL |     while let Some(_) = (x! {}) {}
    |               ^^^^^^^
@@ -493,5 +613,5 @@ LL -     while let Some(_) = (x! {}) {}
 LL +     while x! {}.is_some() {}
    |
 
-error: aborting due to 35 previous errors
+error: aborting due to 45 previous errors
 

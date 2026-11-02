@@ -9,6 +9,8 @@ LL |         ns_window.setFrame_display_(0);
 note: method defined here
   --> $DIR/dont-record-adjustments-when-pointing-at-arg.rs:5:8
    |
+LL | pub trait NSWindow: Sized {
+...
 LL |     fn setFrame_display_(self, display: ()) {}
    |        ^^^^^^^^^^^^^^^^^       -----------
 

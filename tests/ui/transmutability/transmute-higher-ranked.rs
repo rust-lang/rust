@@ -1,6 +1,9 @@
 // Ensure we don't ICE when transmuting higher-ranked types via a
 // higher-ranked transmute goal.
 
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 //@ check-pass
 
 #![feature(transmutability)]

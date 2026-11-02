@@ -6,7 +6,7 @@ use clippy_utils::{std_or_core, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt as _};
 
 use super::PTR_CAST_CONSTNESS;
 
@@ -52,8 +52,8 @@ pub(super) fn check<'tcx>(
         if msrv.meets(cx, msrvs::POINTER_CAST_CONSTNESS) {
             let mut app = Applicability::MachineApplicable;
             let sugg = if let ExprKind::Cast(nested_from, nested_hir_ty) = cast_from_expr.kind
-                && let hir::TyKind::Ptr(ptr_ty) = nested_hir_ty.kind
-                && let hir::TyKind::Infer(()) = ptr_ty.ty.kind
+                && let hir::TyKind::Ptr(inner_ty, _) = nested_hir_ty.kind
+                && let hir::TyKind::Infer(()) = inner_ty.kind
             {
                 // `(foo as *const _).cast_mut()` fails method name resolution
                 // avoid this by `as`-ing the full type
@@ -90,6 +90,7 @@ pub(super) fn check_null_ptr_cast_method(cx: &LateContext<'_>, expr: &Expr<'_>) 
         && let mut app = Applicability::MachineApplicable
         && let sugg = snippet_with_applicability(cx, cast_from_expr.span, "_", &mut app)
         && let Some((_, after_lt)) = sugg.split_once("::<")
+        && !expr.span.in_external_macro(cx.tcx.sess.source_map())
     {
         span_lint_and_sugg(
             cx,

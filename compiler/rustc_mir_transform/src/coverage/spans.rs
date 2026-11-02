@@ -50,13 +50,13 @@ pub(super) fn extract_refined_covspans<'tcx>(
             // Discard any spans not contained within the function body span.
             // Also discard any spans that fill the entire body, because they tend
             // to represent compiler-inserted code, e.g. implicitly returning `()`.
-            if !body_span.contains(covspan_span) || body_span.source_equal(covspan_span) {
+            if !body_span.contains(covspan_span) || body_span.lo_hi() == covspan_span.lo_hi() {
                 return false;
             }
 
             // Each pushed covspan should have the same context as the body span.
             // If it somehow doesn't, discard the covspan.
-            if !body_span.eq_ctxt(covspan_span) {
+            if body_span.ctxt() != covspan_span.ctxt() {
                 // There is currently no known way for this to happen, but if it
                 // does happen then dropping the offending span is better than
                 // having tricky macro expansions trigger an ICE.
@@ -91,7 +91,7 @@ pub(super) fn extract_refined_covspans<'tcx>(
     // preferring the one with the most-dominated BCB.
     // (Ideally we should try to preserve _all_ non-dominating BCBs, but that
     // requires a lot more complexity in the span refiner, for little benefit.)
-    covspans.dedup_by(|b, a| a.span.source_equal(b.span));
+    covspans.dedup_by_key(|a| a.span.lo_hi());
 
     // Sort the holes, and merge overlapping/adjacent holes.
     let mut holes = node.hole_spans.iter().copied().map(|span| Hole { span }).collect::<Vec<_>>();
