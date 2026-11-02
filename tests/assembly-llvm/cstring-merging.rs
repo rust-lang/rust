@@ -14,7 +14,7 @@ use std::ffi::CStr;
 #[unsafe(no_mangle)]
 static CSTR: &[u8; 4] = b"foo\0";
 
-// CHECK-NOT: .section
+// CHECK: .section .rodata.str1.{{[12]}},"aMS"
 // CHECK: {{(\.L|\$)}}anon.{{.+}}:
 // CHECK-NEXT: .{{asciz|string}} "bar"
 #[unsafe(no_mangle)]
