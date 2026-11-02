@@ -478,6 +478,10 @@ impl GenericParam {
             GenericParamKind::Const { span, .. } => *span,
         }
     }
+
+    pub fn span_with_attributes(&self) -> Span {
+        if let Some(first) = self.attrs.first() { first.span.to(self.span()) } else { self.span() }
+    }
 }
 
 /// Represents lifetime, type and const parameters attached to a declaration of

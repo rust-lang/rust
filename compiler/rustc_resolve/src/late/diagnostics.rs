@@ -4023,8 +4023,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     // if removing within `<>` brackets, we also want to
                     // delete a leading or trailing comma as appropriate
                     match (
-                        param.span().find_ancestor_inside(generics_span),
-                        params[param_index + 1].span().find_ancestor_inside(generics_span),
+                        param.span_with_attributes().find_ancestor_inside(generics_span),
+                        params[param_index + 1]
+                            .span_with_attributes()
+                            .find_ancestor_inside(generics_span),
                     ) {
                         (Some(param_span), Some(next_param_span)) => {
                             Some(param_span.to(next_param_span.shrink_to_lo()))
@@ -4035,8 +4037,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     // if removing within `<>` brackets, we also want to
                     // delete a leading or trailing comma as appropriate
                     match (
-                        param.span().find_ancestor_inside(generics_span),
-                        params[param_index - 1].span().find_ancestor_inside(generics_span),
+                        param.span_with_attributes().find_ancestor_inside(generics_span),
+                        params[param_index - 1]
+                            .span_with_attributes()
+                            .find_ancestor_inside(generics_span),
                     ) {
                         (Some(param_span), Some(prev_param_span)) => {
                             Some(prev_param_span.shrink_to_hi().to(param_span))
