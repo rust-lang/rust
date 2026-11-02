@@ -74,10 +74,8 @@ fn process_builtin_attrs(
             AttributeKind::Inline(inline, span) => {
                 // On an `async fn` (or similar), inlining hints are meant for the code the user
                 // wrote, which lives in the body coroutine. The constructor is trivial and left to
-                // the usual heuristics. `#[rustc_force_inline]` is rejected on such items anyway.
-                if matches!(inline, InlineAttr::Force { .. })
-                    || !constructs_desugared_body_coroutine(tcx, did)
-                {
+                // the usual heuristics.
+                if !constructs_desugared_body_coroutine(tcx, did) {
                     codegen_fn_attrs.inline = *inline;
                     interesting_spans.inline = Some(*span);
                 }
@@ -309,6 +307,8 @@ fn process_builtin_attrs(
     // `#[inline(never)] async fn` affect `Future::poll`. See #129347.
     if is_desugared_body_coroutine(tcx, did) {
         let parent = tcx.local_parent(did);
+        // `#[rustc_force_inline]` is already rejected on the parent. Propagating it would only
+        // cause `CheckForceInline` to report the same attribute again for the coroutine.
         if let Some((inline, span)) = find_attr!(
             tcx,
             parent,
