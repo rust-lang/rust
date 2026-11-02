@@ -13,7 +13,7 @@ note: ...and refers to the module `foo` which is defined here
   --> $DIR/shadowed-use-visibility.rs:1:1
    |
 LL | mod foo {
-   | ^^^^^^^
+   | ^^^^^^^ you could import this directly
 help: consider importing one of these functions instead
    |
 LL -     use crate::foo::bar::f as g;
@@ -38,7 +38,7 @@ note: ...and refers to the module `foo` which is defined here
   --> $DIR/shadowed-use-visibility.rs:1:1
    |
 LL | mod foo {
-   | ^^^^^^^
+   | ^^^^^^^ you could import this directly
 help: consider importing one of these functions instead
    |
 LL - use bar::f::f;
