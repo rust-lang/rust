@@ -13,6 +13,8 @@ pub struct RwLock {
     // The 'condition variable' to notify writers through.
     // Incremented on every signal.
     writer_notify: Futex,
+    // The writers going to sleep on `writer_notify`, if this platform needs them counted.
+    blocked_writers: BlockedWriters,
 }
 
 const READ_LOCKED: Primitive = 1;
@@ -80,7 +82,11 @@ fn has_reached_max_readers(state: Primitive) -> bool {
 impl RwLock {
     #[inline]
     pub const fn new() -> Self {
-        Self { state: Futex::new(0), writer_notify: Futex::new(0) }
+        Self {
+            state: Futex::new(0),
+            writer_notify: Futex::new(0),
+            blocked_writers: BlockedWriters::new(),
+        }
     }
 
     #[inline]
@@ -186,6 +192,12 @@ impl RwLock {
 
         if has_writers_waiting(state) || has_readers_waiting(state) {
             self.wake_writer_or_readers(state);
+
+            // Wake any readers it left waiting too, so that they don't have to wait
+            // for a whole queue of writers.
+            if BlockedWriters::ENABLED {
+                self.wake_writer_or_readers(READERS_WAITING);
+            }
         }
     }
 
@@ -254,7 +266,7 @@ impl RwLock {
             }
 
             // Wait for the state to change.
-            futex_wait(&self.writer_notify, seq, None);
+            self.blocked_writers.wait(&self.writer_notify, seq);
 
             // Spin again after waking up.
             state = self.spin_write();
@@ -295,7 +307,9 @@ impl RwLock {
         // If both writers and readers are waiting, leave the readers waiting
         // and only wake up one writer.
         if state == READERS_WAITING + WRITERS_WAITING {
-            if self.state.compare_exchange(state, READERS_WAITING, Relaxed, Relaxed).is_err() {
+            // Acquire, so that `wake_writer` can't see a `blocked_writers` count from
+            // before the unlock of a writer that has already left.
+            if self.state.compare_exchange(state, READERS_WAITING, Acquire, Relaxed).is_err() {
                 // The lock got locked. Not our problem anymore.
                 return;
             }
@@ -316,13 +330,13 @@ impl RwLock {
     }
 
     /// This wakes one writer and returns true if we woke up a writer that was
-    /// blocked on futex_wait.
+    /// blocked on futex_wait, or if `BlockedWriters` says such a writer may exist.
     ///
     /// If this returns false, it might still be the case that we notified a
     /// writer that was about to go to sleep.
     fn wake_writer(&self) -> bool {
         self.writer_notify.fetch_add(1, Release);
-        futex_wake(&self.writer_notify)
+        self.blocked_writers.wake(&self.writer_notify)
         // Note that FreeBSD and DragonFlyBSD don't tell us whether they woke
         // up any threads or not, and always return `false` here. That still
         // results in correct behavior: it just means readers get woken up as
@@ -355,5 +369,63 @@ impl RwLock {
         self.spin_until(|state| {
             !is_write_locked(state) || has_readers_waiting(state) || has_writers_waiting(state)
         })
+    }
+}
+
+cfg_select! {
+    // `wake_writer` needs to know if it reached a writer, and `futex_wake` doesn't report that
+    // here, so we count the writers going to sleep instead. A counted writer hasn't retried the
+    // lock yet. It either takes the lock or finds it held, and only writers can lock while
+    // `READERS_WAITING` is set, so whoever holds the lock sees that bit when it unlocks.
+    target_os = "windows" => {
+        use crate::sync::atomic::{Atomic, AtomicU32};
+
+        // Thread IDs are 32-bit on Windows, so this can't overflow.
+        struct BlockedWriters(Atomic<u32>);
+
+        impl BlockedWriters {
+            const ENABLED: bool = true;
+
+            #[inline]
+            const fn new() -> Self {
+                Self(AtomicU32::new(0))
+            }
+
+            #[inline]
+            fn wait(&self, futex: &Futex, expected: Primitive) {
+                self.0.fetch_add(1, Relaxed);
+                futex_wait(futex, expected, None);
+                self.0.fetch_sub(1, Relaxed);
+            }
+
+            #[inline]
+            fn wake(&self, futex: &Futex) -> bool {
+                // Read this first: the writer we wake takes itself off the count.
+                let blocked = self.0.load(Relaxed) != 0;
+                futex_wake(futex) || blocked
+            }
+        }
+    }
+    _ => {
+        struct BlockedWriters;
+
+        impl BlockedWriters {
+            const ENABLED: bool = false;
+
+            #[inline]
+            const fn new() -> Self {
+                Self
+            }
+
+            #[inline]
+            fn wait(&self, futex: &Futex, expected: Primitive) {
+                futex_wait(futex, expected, None);
+            }
+
+            #[inline]
+            fn wake(&self, futex: &Futex) -> bool {
+                futex_wake(futex)
+            }
+        }
     }
 }
