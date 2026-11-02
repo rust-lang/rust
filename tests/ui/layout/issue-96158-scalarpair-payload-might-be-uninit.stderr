@@ -1,8 +1,6 @@
 error: layout_of(MissingPayloadField) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: ScalarPair {
                a: u8 is 0..=1,
                b: union u8,
@@ -62,16 +60,14 @@ error: layout_of(MissingPayloadField) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:17:1
+  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:16:1
    |
 LL | pub enum MissingPayloadField {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(CommonPayloadField) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: ScalarPair {
                a: u8 is 0..=1,
                b: u8 is ..,
@@ -137,16 +133,14 @@ error: layout_of(CommonPayloadField) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:26:1
+  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:25:1
    |
 LL | pub enum CommonPayloadField {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: ScalarPair {
                a: u8 is 0..=1,
                b: union u8,
@@ -212,16 +206,14 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:34:1
+  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:33:1
    |
 LL | pub enum CommonPayloadFieldIsMaybeUninit {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(NicheFirst) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: ScalarPair {
                a: u8 is 0..=4,
                b: union u8,
@@ -303,16 +295,14 @@ error: layout_of(NicheFirst) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:42:1
+  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:41:1
    |
 LL | pub enum NicheFirst {
    | ^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(NicheSecond) = Layout {
            size: Size(2 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: ScalarPair {
                a: u8 is 0..=4,
                b: union u8,
@@ -394,7 +384,7 @@ error: layout_of(NicheSecond) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:51:1
+  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:50:1
    |
 LL | pub enum NicheSecond {
    | ^^^^^^^^^^^^^^^^^^^^

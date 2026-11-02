@@ -1225,10 +1225,16 @@ impl Align {
 ///
 /// An example of a rare thing actually affected by preferred alignment is aligning of statics.
 /// It is of effectively no consequence for layout in structs and on the stack.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct AbiAlign {
     pub abi: Align,
+}
+
+impl fmt::Debug for AbiAlign {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.abi, f)
+    }
 }
 
 impl AbiAlign {
