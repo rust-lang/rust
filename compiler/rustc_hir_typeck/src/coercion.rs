@@ -1777,17 +1777,18 @@ impl<'tcx> CoerceMany<'tcx> {
             //
             // Another example is `break` with no argument expression.
             assert!(expression_ty.is_unit(), "if let hack without unit type");
-            fcx.at(cause, fcx.param_env)
-                .eq(
-                    // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
-                    DefineOpaqueTypes::Yes,
-                    expected,
-                    found,
-                )
-                .map(|infer_ok| {
-                    fcx.register_infer_ok_obligations(infer_ok);
-                    expression_ty
-                })
+            fcx.eq_raw(
+                cause,
+                fcx.param_env,
+                // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
+                DefineOpaqueTypes::Yes,
+                expected,
+                found,
+            )
+            .map(|infer_ok| {
+                fcx.register_infer_ok_obligations(infer_ok);
+                expression_ty
+            })
         };
 
         debug!(?result);
