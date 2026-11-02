@@ -137,7 +137,7 @@ struct ScannedItem {
     live_kind: LiveKind,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct LiveSymbols {
     live: LocalDefIdSet,
     sites_by_defid: LocalDefIdMap<FxHashSet<TrivialUsageSiteId>>,
@@ -159,6 +159,20 @@ impl LiveSymbols {
                 self.sites_by_defid.remove(&def_id);
             }
         }
+    }
+
+    fn make_snapshot(self) -> DeadCodeLivenessSnapshot {
+        let sites_by_defid = self
+            .sites_by_defid
+            .items()
+            .map(|(def_id, site_ids)| {
+                #[allow(rustc::potential_query_instability)]
+                let mut site_ids = site_ids.iter().copied().collect::<Vec<_>>();
+                site_ids.sort();
+                (*def_id, site_ids)
+            })
+            .collect();
+        DeadCodeLivenessSnapshot { live: self.live, sites_by_defid, sites: self.sites }
     }
 }
 
@@ -751,25 +765,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     fn mark_live_symbol(&mut self, def_id: LocalDefId) {
         self.live_symbols.insert(def_id, self.inside_trivial_usage_site);
     }
-
-    fn get_live_symbols(&self) -> DeadCodeLivenessSnapshot {
-        let sites_by_defid = self
-            .live_symbols
-            .sites_by_defid
-            .items()
-            .map(|(def_id, site_ids)| {
-                #[allow(rustc::potential_query_instability)]
-                let mut site_ids = site_ids.iter().copied().collect::<Vec<_>>();
-                site_ids.sort();
-                (*def_id, site_ids)
-            })
-            .collect();
-        DeadCodeLivenessSnapshot {
-            live: self.live_symbols.live.clone(),
-            sites_by_defid,
-            sites: self.live_symbols.sites.clone(),
-        }
-    }
 }
 
 impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
@@ -1175,7 +1170,7 @@ fn live_symbols_and_trivial_usage_sites(
         unsolved_items,
     };
     symbol_visitor.mark_live_symbols_and_trivial_usage_sites(true)?;
-    let pre_deferred_seeding = symbol_visitor.get_live_symbols();
+    let pre_deferred_seeding = symbol_visitor.live_symbols.clone().make_snapshot();
 
     if !deferred_seeds.pub_reachables.is_empty() {
         symbol_visitor.worklist.extend(deferred_seeds.pub_reachables);
@@ -1189,7 +1184,7 @@ fn live_symbols_and_trivial_usage_sites(
 
     Ok(DeadCodeLivenessSummary {
         pre_deferred_seeding,
-        final_result: symbol_visitor.get_live_symbols(),
+        final_result: symbol_visitor.live_symbols.make_snapshot(),
     })
 }
 
