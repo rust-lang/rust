@@ -405,7 +405,23 @@ pub(crate) struct ExpectedNameValue;
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
 )]
+#[help("only one color should be specified")]
+pub(crate) struct DuplicateNotableTraitColor;
+
+#[derive(Diagnostic)]
+#[diag("expected either `doc(notable_trait)` or `doc(notable_trait(color=\"...\"))`")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
 pub(crate) struct InvalidNotableTraitAttr;
+
+#[derive(Diagnostic)]
+#[diag("unknown color in `doc(notable_trait(color=\"...\"))`")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+#[help("expected grey, gray, red, green, yellow, blue, magenta, cyan, or transparent")]
+pub(crate) struct InvalidNotableTraitColor;
 
 #[derive(Diagnostic)]
 #[diag("malformed `{$attribute}` attribute")]
