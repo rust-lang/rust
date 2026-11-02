@@ -153,8 +153,11 @@ fn wait_absolute_timeout() {
 fn wait_wake() {
     static mut FUTEX: i32 = 0;
 
+    // Make sure we start this before the thread starts sleeping.
+    let start = Instant::now();
+
     let t = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(50));
         unsafe {
             assert_eq!(
                 libc::syscall(
@@ -167,8 +170,6 @@ fn wait_wake() {
             );
         }
     });
-
-    let start = Instant::now();
 
     unsafe {
         assert_eq!(
@@ -183,13 +184,14 @@ fn wait_wake() {
         );
     }
 
-    assert!((100..1000).contains(&start.elapsed().as_millis()));
+    assert!((50..1000).contains(&start.elapsed().as_millis()));
     t.join().unwrap();
 }
 
 fn wait_wake_bitset() {
     static mut FUTEX: i32 = 0;
 
+    // Make sure we start this before the thread starts sleeping.
     let start = Instant::now();
 
     let t = thread::spawn(move || {
