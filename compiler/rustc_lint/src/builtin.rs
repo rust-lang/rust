@@ -744,7 +744,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// #![deny(duplicate_parameter_names)]
     /// pub trait Foo {
     ///     fn foo(x: usize, x: usize);
