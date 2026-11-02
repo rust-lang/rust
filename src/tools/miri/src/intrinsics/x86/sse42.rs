@@ -8,13 +8,13 @@ use crate::intrinsics::math::compute_crc32;
 use crate::*;
 
 /// A bitmask constant for scrutinizing the immediate byte provided
-/// to the string comparison intrinsics. It distinuishes between
+/// to the string comparison intrinsics. It distinguishes between
 /// 16-bit integers and 8-bit integers. See [`compare_strings`]
 /// for more details about the immediate byte.
 const USE_WORDS: u8 = 1;
 
 /// A bitmask constant for scrutinizing the immediate byte provided
-/// to the string comparison intrinsics. It distinuishes between
+/// to the string comparison intrinsics. It distinguishes between
 /// signed integers and unsigned integers. See [`compare_strings`]
 /// for more details about the immediate byte.
 const USE_SIGNED: u8 = 2;
@@ -55,8 +55,8 @@ const USE_SIGNED: u8 = 2;
 ///     ||
 ///     ||- Output selection. This bit has two meanings depending on the instruction.
 ///     |   If the instruction is generating a mask, it distinguishes between a bit mask
-///     |   and a byte mask. Otherwise it distinguishes between the most significand bit
-///     |   and the least significand bit when generating an index.
+///     |   and a byte mask. Otherwise it distinguishes between the most significant bit
+///     |   and the least significant bit when generating an index.
 ///     |
 ///     |- This bit is ignored. It is expected that this bit is set to zero, but it is
 ///        not a requirement.
@@ -68,7 +68,12 @@ const USE_SIGNED: u8 = 2;
 /// fulfills the test as defined inside the immediate byte.
 /// The mask may be negated if negation flags inside the immediate byte are set.
 ///
-/// For more information, see the Intel Software Developer's Manual, Vol. 2b, Chapter 4.1.
+/// For more information, see the Intel Software Developer's Manual, Vol. 2b, Chapter 4.1,
+/// as well as the online SDM reference for [PCMPxSTRx_Decode_Immediate], [PCMPxSTRx_Compare], and [PCMPxSTRx_Update_Flags].
+///
+/// [PCMPxSTRx_Decode_Immediate]: https://intel.github.io/SDM/definition/PCMPxSTRx_Decode_Immediate.html
+/// [PCMPxSTRx_Compare]: https://intel.github.io/SDM/definition/PCMPxSTRx_Compare.html
+/// [PCMPxSTRx_Update_Flags]: https://intel.github.io/SDM/definition/PCMPxSTRx_Update_Flags.html
 #[expect(clippy::arithmetic_side_effects)]
 fn compare_strings<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
@@ -148,16 +153,20 @@ fn compare_strings<'tcx>(
                 result = (1 << default_len) - 1;
             } else if len1 <= len2 {
                 for i in 0..len2 {
-                    if len1 > len2 - i {
-                        break;
-                    }
-
+                    // By default, assume that there is a match.
                     result |= 1 << i;
 
                     for j in 0..len1 {
                         let k = i + j;
 
                         if k >= default_len {
+                            // The string ends before the match is completed, but the end
+                            // is defined by the register size, not the string. The match is kept.
+                            break;
+                        } else if k >= len2 {
+                            // The string ends before the match is completed.
+                            // Remove the match.
+                            result &= !(1 << i);
                             break;
                         } else {
                             let ch1 = ecx.read_immediate(&ecx.project_index(str1, j)?)?;
@@ -165,6 +174,7 @@ fn compare_strings<'tcx>(
                             let ne = ecx.binary_op(mir::BinOp::Ne, &ch1, &ch2)?;
 
                             if ne.to_scalar().to_bool()? {
+                                // Two characters are not equal, so there can't be a match.
                                 result &= !(1 << i);
                                 break;
                             }
@@ -178,7 +188,7 @@ fn compare_strings<'tcx>(
 
     // Polarity: Possibly perform a bitwise complement on the result.
     match (imm >> 4) & 3 {
-        3 => result ^= (1 << len1) - 1,
+        3 => result ^= (1 << len2) - 1,
         1 => result ^= (1 << default_len) - 1,
         _ => (),
     }
@@ -226,8 +236,10 @@ fn deconstruct_args<'tcx>(
         let imm = ecx.read_scalar(imm)?.to_u8()?;
 
         let default_len = default_len::<u32>(imm);
-        let len1 = u64::from(ecx.read_scalar(len1)?.to_u32()?.min(default_len));
-        let len2 = u64::from(ecx.read_scalar(len2)?.to_u32()?.min(default_len));
+        // According to https://intel.github.io/SDM/instruction/PCMPESTRM.html, the length argument
+        // is initially signed and turned into an unsigned integer by taking its absolute value.
+        let len1 = u64::from(ecx.read_scalar(len1)?.to_i32()?.unsigned_abs().min(default_len));
+        let len2 = u64::from(ecx.read_scalar(len2)?.to_i32()?.unsigned_abs().min(default_len));
 
         let array_layout = array_layout_fn(ecx, imm)?;
         let str1 = str1.transmute(array_layout, ecx)?;
@@ -328,7 +340,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 } else if let Some((_, len)) = len {
                     len >= default_len::<u64>(imm)
                 } else {
-                    implicit_len(this, &str1, imm)?.is_some()
+                    // Test if the second string has no null-terminator.
+                    implicit_len(this, &str2, imm)?.is_none()
                 };
 
                 this.write_scalar(Scalar::from_i32(i32::from(result)), dest)?;
@@ -407,10 +420,12 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [_, len1, _, len2, imm] =
                     this.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 let len = if unprefixed_name == "pcmpestris128" { len1 } else { len2 };
-                let len = this.read_scalar(len)?.to_i32()?;
+                // According to https://intel.github.io/SDM/instruction/PCMPESTRM.html, the length argument
+                // is initially signed and turned into an unsigned integer by taking its absolute value.
+                let len = this.read_scalar(len)?.to_i32()?.unsigned_abs();
                 let imm = this.read_scalar(imm)?.to_u8()?;
                 this.write_scalar(
-                    Scalar::from_i32(i32::from(len < default_len::<i32>(imm))),
+                    Scalar::from_i32(i32::from(len < default_len::<u32>(imm))),
                     dest,
                 )?;
             }
