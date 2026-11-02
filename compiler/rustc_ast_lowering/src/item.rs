@@ -2,7 +2,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_attr_ir::target::{AstTarget, Target};
-use rustc_attr_ir::{AttributeKind, EiiImplResolution, find_attr};
+use rustc_attr_ir::{AttributeKind, EiiImplResolution, LangItem, find_attr};
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{self as hir, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin};
@@ -268,12 +268,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let body_id = this.lower_maybe_coroutine_body(
                         *fn_sig_span,
                         span,
+                        id,
                         hir_id,
                         decl,
                         coroutine_marker,
                         body.as_deref(),
                         attrs,
                         contract.as_deref(),
+                        false,
                     );
 
                     let itctx = ImplTraitContext::Universal;
@@ -891,12 +893,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let body_id = self.lower_maybe_coroutine_body(
                     sig.span,
                     i.span,
+                    i.id,
                     hir_id,
                     &sig.decl,
                     sig.header.coroutine_marker,
                     Some(body),
                     attrs,
                     contract.as_deref(),
+                    false,
                 );
                 let (generics, sig) = self.lower_method_sig(
                     generics,
@@ -1104,12 +1108,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let body_id = self.lower_maybe_coroutine_body(
                     sig.span,
                     i.span,
+                    i.id,
                     hir_id,
                     &sig.decl,
                     sig.header.coroutine_marker,
                     body.as_deref(),
                     attrs,
                     contract.as_deref(),
+                    is_in_trait_impl,
                 );
                 let (generics, sig) = self.lower_method_sig(
                     generics,
@@ -1304,12 +1310,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         fn_decl_span: Span,
         span: Span,
+        node_id: NodeId,
         fn_id: hir::HirId,
         decl: &FnDecl,
         coroutine_marker: Option<CoroutineMarker>,
         body: Option<&Block>,
         attrs: &'hir [rustc_attr_ir::Attribute],
         contract: Option<&FnContract>,
+        is_in_trait_impl: bool,
     ) -> hir::BodyId {
         let Some(body) = body else {
             // Functions without a body are an error, except if this is an intrinsic. For those we
@@ -1344,20 +1352,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         // FIXME(contracts): Support contracts on async fn.
         self.lower_body(|this| {
-            let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
+            this.lower_coroutine_body_with_moved_arguments(
                 decl,
                 |this| this.lower_block_expr(body),
                 fn_decl_span,
                 body.span,
                 coroutine_marker,
                 hir::CoroutineSource::Fn,
-            );
-
-            // FIXME(async_fn_track_caller): Can this be moved above?
-            let hir_id = expr.hir_id;
-            this.maybe_forward_track_caller(fn_id, hir_id);
-
-            (parameters, expr)
+                this.should_track_caller_in_coroutine(fn_id, node_id, span, is_in_trait_impl),
+            )
         })
     }
 
@@ -1373,6 +1376,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body_span: Span,
         coroutine_marker: CoroutineMarker,
         coroutine_source: hir::CoroutineSource,
+        track_caller: bool,
     ) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>) {
         let mut parameters: Vec<hir::Param<'_>> = Vec::new();
         let mut statements: Vec<hir::Stmt<'_>> = Vec::new();
@@ -1507,6 +1511,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
             parameters.push(new_parameter);
         }
 
+        let (caller_location_init_stmt, caller_location_hir_id) = track_caller
+            .then(|| {
+                let ident = Ident::with_dummy_span(sym::__captured_caller_location);
+                let span = self.mark_span_with_reason(
+                    DesugaringKind::CoroutineFnTrackCaller,
+                    DUMMY_SP,
+                    Some([sym::core_intrinsics].into()),
+                );
+
+                // Get the caller location inside the function/closure body, but outside the coroutine.
+                // This variable will be captured by the closure by value as a special case.
+                let (pat, pat_hir_id) = self.pat_ident(span, ident);
+                let outer_expr = self.expr_call_lang_item_fn(span, LangItem::CallerLocation, &[]);
+                let let_stmt =
+                    self.stmt_let_pat(None, span, Some(outer_expr), pat, hir::LocalSource::AsyncFn);
+
+                (let_stmt, pat_hir_id)
+            })
+            .unzip();
+
         let mkbody = |this: &mut LoweringContext<'_, 'hir>| {
             // Create a block from the user's function body:
             let user_body = lower_body(this);
@@ -1540,7 +1564,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let closure_id = coroutine_marker.closure_id;
 
-        let coroutine_expr = self.make_desugared_coroutine_expr(
+        let coroutine_expr_kind = self.make_desugared_coroutine_expr(
             // The default capture mode here is by-ref. Later on during upvar analysis,
             // we will force the captured arguments to by-move, but for async closures,
             // we want to make sure that we avoid unnecessarily moving captures, or else
@@ -1553,15 +1577,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
             desugaring_kind,
             coroutine_source,
             mkbody,
+            caller_location_hir_id,
         );
-
-        let expr = hir::Expr {
+        let coroutine_expr = hir::Expr {
             hir_id: self.lower_node_id(closure_id),
-            kind: coroutine_expr,
+            kind: coroutine_expr_kind,
             span: self.lower_span(body_span),
         };
 
-        (self.arena.alloc_from_iter(parameters), expr)
+        let body_expr = match caller_location_init_stmt {
+            Some(init_stmt) => {
+                let body_block = self.block_all(
+                    DUMMY_SP,
+                    self.arena.alloc_from_iter([init_stmt]),
+                    Some(self.arena.alloc(coroutine_expr)),
+                );
+                let body_expr_kind = hir::ExprKind::Block(body_block, None);
+                hir::Expr { hir_id: self.next_id(), kind: body_expr_kind, span: DUMMY_SP }
+            }
+            None => coroutine_expr,
+        };
+
+        (self.arena.alloc_from_iter(parameters), body_expr)
     }
 
     fn lower_method_sig(

@@ -1,5 +1,5 @@
 error[E0658]: `#[track_caller]` on closures is currently unstable
-  --> $DIR/async-closure-gate.rs:11:13
+  --> $DIR/async-closure-gate.rs:12:13
    |
 LL |     let _ = #[track_caller]
    |             ^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     let _ = #[track_caller]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `#[track_caller]` on closures is currently unstable
-  --> $DIR/async-closure-gate.rs:19:13
+  --> $DIR/async-closure-gate.rs:20:13
    |
 LL |     let _ = #[track_caller]
    |             ^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     let _ = #[track_caller]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `#[track_caller]` on closures is currently unstable
-  --> $DIR/async-closure-gate.rs:25:13
+  --> $DIR/async-closure-gate.rs:26:13
    |
 LL |     let _ = #[track_caller]
    |             ^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL |     let _ = #[track_caller]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `#[track_caller]` on closures is currently unstable
-  --> $DIR/async-closure-gate.rs:32:17
+  --> $DIR/async-closure-gate.rs:33:17
    |
 LL |         let _ = #[track_caller]
    |                 ^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL |         let _ = #[track_caller]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `#[track_caller]` on closures is currently unstable
-  --> $DIR/async-closure-gate.rs:40:9
+  --> $DIR/async-closure-gate.rs:41:9
    |
 LL |         #[track_caller]
    |         ^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL |         #[track_caller]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `#[track_caller]` on closures is currently unstable
-  --> $DIR/async-closure-gate.rs:49:13
+  --> $DIR/async-closure-gate.rs:50:13
    |
 LL |             #[track_caller]
    |             ^^^^^^^^^^^^^^^
@@ -58,6 +58,26 @@ LL |             #[track_caller]
    = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 6 previous errors
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:62:13
+   |
+LL |     let _ = #[track_caller]
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:70:13
+   |
+LL |     let _ = #[track_caller]
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

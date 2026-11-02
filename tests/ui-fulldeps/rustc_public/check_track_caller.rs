@@ -105,6 +105,8 @@ fn test_caller_location_propagation(items: &[rustc_public::CrateItem]) {
 }
 
 /// Find the first call to a `#[track_caller]` function in the body and resolve its location.
+///
+/// FIXME(async_fn_track_caller): What if the Location is stored inside a coroutine upvar?
 fn resolve_tracked_call_location(body: &Body, inherited: Option<MirConst>) -> MirConst {
     for bb in &body.blocks {
         if let TerminatorKind::Call { func, .. } = &bb.terminator.kind {
