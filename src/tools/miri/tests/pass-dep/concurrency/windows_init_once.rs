@@ -1,6 +1,7 @@
 //@only-target: windows # Uses win32 api functions
 // We are making scheduler assumptions here.
-//@compile-flags: -Zmiri-deterministic-concurrency
+//@compile-flags: -Zmiri-fixed-schedule
+//@run-native
 
 use std::ptr::null_mut;
 use std::thread;
@@ -17,6 +18,16 @@ const INIT_ONCE_STATIC_INIT: INIT_ONCE = INIT_ONCE { Ptr: null_mut() };
 struct SendPtr<T>(*mut T);
 
 unsafe impl<T> Send for SendPtr<T> {}
+
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(std::time::Duration::from_millis(20));
+    }
+}
 
 fn single_thread() {
     let mut init_once = INIT_ONCE_STATIC_INIT;
@@ -70,7 +81,7 @@ fn block_until_complete() {
     let waiter2 = thread::spawn(waiter);
 
     // this yield ensures `waiter1` & `waiter2` are blocked on the main thread
-    thread::yield_now();
+    yield_now();
 
     println!("completing initialization");
 
@@ -112,7 +123,7 @@ fn retry_on_fail() {
     let waiter2 = thread::spawn(waiter);
 
     // this yield ensures `waiter1` & `waiter2` are blocked on the main thread
-    thread::yield_now();
+    yield_now();
 
     println!("failing initialization");
 

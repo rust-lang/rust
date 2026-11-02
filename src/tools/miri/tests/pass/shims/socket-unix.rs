@@ -1,4 +1,5 @@
 //@ignore-target: windows
+//@run-native
 
 use std::io::{ErrorKind, Read, Write};
 use std::os::unix::net::UnixStream;

@@ -28,7 +28,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let thread = if ecx.ptr_is_null(ecx.read_pointer(thread_op)?)? {
             None
         } else {
-            let thread_info_place = ecx.deref_pointer_as(thread_op, ecx.machine.layouts.u32)?;
+            let thread_info_place = ecx.deref_pointer(thread_op)?;
             Some(thread_info_place)
         };
 

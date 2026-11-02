@@ -1,5 +1,6 @@
 use std::collections::hash_map::Entry;
 use std::io::Write;
+use std::mem;
 use std::path::Path;
 
 use rustc_abi::{Align, ExternAbi, Size};
@@ -611,10 +612,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Aborting the process.
             "exit" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [exit_code] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(i32) -> ()), (link_name, abi, args))?;
                 let exit_code = ecx.read_scalar(exit_code)?.to_i32()?;
+                // Ensure `exit` gets called at most once.
+                let old_exit = mem::replace(&mut ecx.machine.exit_called, true);
+                if old_exit {
+                    throw_ub_format!("`exit` called more than once");
+                }
                 // Initialize the at-exit state machine.
                 ecx.replace_active_thread_stack({
                     let mut state_machine =

@@ -35,14 +35,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let ptr_ty = this.machine.layouts.unit_ptr_mut.ty;
-        let ptr_layout = this.layout_of(ptr_ty)?;
 
         let [flags, buf] = &this
-            .check_shim_sig(shim_sig!(extern "Rust" fn(u64, *()) -> ()), (link_name, abi, args))?;
+            .check_shim_sig(shim_sig!(extern "Rust" fn(u64, **()) -> ()), (link_name, abi, args))?;
 
         let flags = this.read_scalar(flags)?.to_u64()?;
-        let buf_place = this.deref_pointer_as(buf, ptr_layout)?;
+        let buf_place = this.deref_pointer(buf)?;
 
         let mut data = Vec::new();
         for frame in this.active_thread_stack().iter().rev() {
@@ -71,10 +69,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             1 =>
                 for (i, ptr) in ptrs.into_iter().enumerate() {
-                    let offset = ptr_layout.size.checked_mul(i.to_u64(), this).unwrap();
-
-                    let op_place = buf_place.offset(offset, ptr_layout, this)?;
-
+                    let op_place = this.project_c_array_field(&buf_place, i.to_u64())?;
                     this.write_pointer(ptr, &op_place)?;
                 },
             _ => throw_unsup_format!("unknown `miri_get_backtrace` flags {}", flags),
