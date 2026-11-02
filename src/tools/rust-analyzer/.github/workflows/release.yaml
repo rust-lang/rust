@@ -114,7 +114,9 @@ jobs:
           rustup update --no-self-update stable
           # llvm-tools contain the llvm-profdata tool which is needed for PGO
           rustup component add rust-src ${{ matrix.pgo && 'llvm-tools' || '' }}
-          rustup target add ${{ matrix.target }}
+          rustup target add ${TARGET}
+        env:
+          TARGET: ${{ matrix.target }}
 
       - name: Dist
         run: cargo xtask dist --client-patch-version ${GITHUB_RUN_NUMBER} ${ALLOCATOR_FLAG} ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
@@ -145,13 +147,16 @@ jobs:
 
       - name: Run analysis-stats on rust-analyzer
         if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats . -q
+        run: target/${TARGET}/release/rust-analyzer analysis-stats . -q
+        env:
+          TARGET: ${{ matrix.target }}
 
       - name: Run analysis-stats on rust std library
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         env:
+          TARGET: ${{ matrix.target }}
           RUSTC_BOOTSTRAP: 1
-        run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/std -q
+        run: target/${TARGET}/release/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/std -q
 
       - name: Upload artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -259,15 +259,21 @@ jobs:
       - name: Install Rust toolchain
         run: |
           rustup update --no-self-update stable
-          rustup target add ${{ matrix.target }}
+          rustup target add ${TARGET}
+        env:
+          TARGET: ${{ matrix.target }}
 
       # - name: Cache Dependencies
       #   uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
 
-      - run: cargo check --target=${{ matrix.target }} --all-targets -p ide
+      - run: cargo check --target=${TARGET} --all-targets -p ide
         if: ${{ matrix.ide-only }}
-      - run: cargo check --target=${{ matrix.target }} --all-targets
+        env:
+          TARGET: ${{ matrix.target }}
+      - run: cargo check --target=${TARGET} --all-targets
         if: ${{ !matrix.ide-only }}
+        env:
+          TARGET: ${{ matrix.target }}
 
   typescript:
     needs: changes
