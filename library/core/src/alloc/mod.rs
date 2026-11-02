@@ -55,6 +55,43 @@ impl fmt::Display for AllocError {
 /// allocator does not support this (like jemalloc) or responds by returning a null pointer
 /// (such as `libc::malloc`), this must be caught by the implementation.
 ///
+/// # Examples
+///
+/// Sample that keeps track of the number of existing allocations:
+///
+/// ```
+/// use std::alloc::{AllocError, Allocator, Layout, System};
+/// use std::ptr::NonNull;
+/// use std::sync::atomic::{AtomicUsize, Ordering};
+///
+/// static LIVE_ALLOCATIONS: AtomicUsize = AtomicUsize::new(0);
+///
+/// struct CountingAllocator;
+///
+/// unsafe impl Allocator for CountingAllocator {
+///     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+///         let ptr = System.allocate(layout)?;
+///         LIVE_ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
+///         Ok(ptr)
+///     }
+///
+///     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+///         // SAFETY: the caller guarantees `ptr` was allocated by this allocator with `layout`,
+///         // and every block from this allocator was allocated by `System` with the same layout.
+///         unsafe { System.deallocate(ptr, layout) };
+///         LIVE_ALLOCATIONS.fetch_sub(1, Ordering::Relaxed);
+///     }
+/// }
+///
+/// // The Box allocates through our allocator.
+/// let new_box = Box::new_in(10, CountingAllocator);
+/// assert_eq!(LIVE_ALLOCATIONS.load(Ordering::Relaxed), 1);
+/// drop(new_box);
+/// assert_eq!(LIVE_ALLOCATIONS.load(Ordering::Relaxed), 0);
+/// ```
+///
+/// ## Implementation Requirements
+///
 /// In order to be usable in a flexible manner while still being sound, implementors of the trait
 /// must uphold very detailed semantics as explained below; the following terms are thus provided
 /// as vocabulary for allocator safety and implementation requirements:
