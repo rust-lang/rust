@@ -3,9 +3,7 @@ use std::hash::{Hash, Hasher};
 use rustc_hashes::Hash64;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use crate::stable_hash::{
-    FromStableHash, StableHash, StableHashCtxt, StableHasher, StableHasherHash,
-};
+use crate::stable_hash::{FromStableHash, StableHasherHash, impl_stable_traits_for_trivial_type};
 
 #[cfg(test)]
 mod tests;
@@ -167,13 +165,7 @@ impl FromStableHash for Fingerprint {
     }
 }
 
-impl StableHash for Fingerprint {
-    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        let &Fingerprint(a, b) = self;
-        a.stable_hash(hcx, hasher);
-        b.stable_hash(hcx, hasher);
-    }
-}
+impl_stable_traits_for_trivial_type!(Fingerprint);
 
 impl<E: Encoder> Encodable<E> for Fingerprint {
     #[inline]
