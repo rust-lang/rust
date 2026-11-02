@@ -1167,24 +1167,18 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             err.span_note(span, "a field by that name exists in `Self`");
                         }
                     }
-                    AssocSuggestion::MethodWithSelf { .. }
-                    | AssocSuggestion::AssocFn { .. }
-                    | AssocSuggestion::AssocType { .. }
+                    AssocSuggestion::MethodWithSelf { from_trait, .. }
+                    | AssocSuggestion::AssocFn { from_trait, .. }
+                    | AssocSuggestion::AssocType { from_trait, .. }
                         if matches!(
                             source,
                             PathSource::Expr(Some(Expr { kind: ExprKind::FormatArgs(_), .. }))
                         ) =>
                     {
-                        let (from_trait, kind) = match candidate {
-                            AssocSuggestion::MethodWithSelf { from_trait, .. } => {
-                                (from_trait, "a method")
-                            }
-                            AssocSuggestion::AssocFn { from_trait, .. } => {
-                                (from_trait, "an associated function")
-                            }
-                            AssocSuggestion::AssocType { from_trait } => {
-                                (from_trait, "an associated type")
-                            }
+                        let kind = match candidate {
+                            AssocSuggestion::MethodWithSelf { .. } => "a method",
+                            AssocSuggestion::AssocFn { .. } => "an associated function",
+                            AssocSuggestion::AssocType { .. } => "an associated type",
                             _ => unreachable!(),
                         };
                         let msg = format!("{kind} by that name is available on `Self`");
