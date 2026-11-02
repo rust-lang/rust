@@ -1,16 +1,16 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_in_test;
-use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::source::{SpanExt as _, snippet_with_applicability};
+use clippy_utils::{in_automatically_derived, is_from_proc_macro, is_in_test};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Item, ItemKind, PathSegment, UseKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::{HirId, Item, ItemKind, PathSegment, UseKind, UseTree};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
-use rustc_span::BytePos;
 use rustc_span::symbol::kw;
+use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -104,33 +104,60 @@ impl_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
 
 pub struct WildcardImports {
     warn_on_all: bool,
-    allowed_segments: FxHashSet<String>,
+    allowed_segments: &'static FxHashSet<String>,
 }
 
 impl WildcardImports {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             warn_on_all: conf.warn_on_all_wildcard_imports,
-            allowed_segments: conf.allowed_wildcard_imports.iter().cloned().collect(),
+            allowed_segments: &conf.allowed_wildcard_imports,
         }
     }
 }
 
 impl LateLintPass<'_> for WildcardImports {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if cx.sess().is_test_crate() || item.span.in_external_macro(cx.sess().source_map()) {
+        if cx.sess().is_test_crate()
+            || item.span.in_external_macro(cx.sess().source_map())
+            || in_automatically_derived(cx.tcx, item.hir_id())
+            || is_from_proc_macro(cx, item)
+        {
             return;
         }
 
         let module = cx.tcx.parent_module_from_def_id(item.owner_id.def_id);
-        if cx.tcx.local_visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module)
-            && !self.warn_on_all
-        {
+        if cx.tcx.local_visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module) && !self.warn_on_all {
             return;
         }
-        if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind
-            && (self.warn_on_all || !self.check_exceptions(cx, item, use_path.segments))
-            && let Some(used_imports) = cx.tcx.resolutions(()).glob_map.get(&item.owner_id.def_id)
+        if let ItemKind::Use(tree) = &item.kind {
+            self.check_use_tree(cx, tree, item.hir_id(), item.owner_id.def_id, item.span);
+        }
+    }
+}
+
+impl WildcardImports {
+    fn check_use_tree(
+        &mut self,
+        cx: &LateContext<'_>,
+        tree: &UseTree<'_>,
+        hir_id: HirId,
+        def_id: LocalDefId,
+        item_span: Span,
+    ) {
+        match tree.kind {
+            UseKind::Single(_) => return,
+            UseKind::Glob => {},
+            UseKind::Nested { items } => {
+                for (tree, id, def_id) in items {
+                    self.check_use_tree(cx, tree, *id, *def_id, item_span);
+                }
+                return;
+            },
+        }
+        let use_path = tree.prefix;
+        if (self.warn_on_all || !self.check_exceptions(cx, use_path.span, hir_id, use_path.segments))
+            && let Some(used_imports) = cx.tcx.resolutions(()).glob_map.get(&def_id)
             && !used_imports.is_empty() // Already handled by `unused_imports`
             && !used_imports.contains(&kw::Underscore)
         {
@@ -147,11 +174,27 @@ impl LateLintPass<'_> for WildcardImports {
                 // formatting like `use _ ::  *;`, we extend it up to, but not including the
                 // `;`. In nested imports, like `use _::{inner::*, _}` there is no `;` and we
                 // can just use the end of the item span
-                let mut span = use_path.span.with_hi(item.span.hi());
-                if snippet(cx, span, "").ends_with(';') {
-                    span = use_path.span.with_hi(item.span.hi() - BytePos(1));
+                let mut span = use_path.span;
+
+                if span.check_text(cx, |s| s.ends_with(';')) {
+                    span = span.with_hi(span.hi() - BytePos(1));
                 }
-                (span, false)
+
+                let Ok(span_until_glob) = cx.sess().source_map().span_extend_while(span, |c| c != '*') else {
+                    return;
+                };
+                let span_with_glob = span_until_glob.with_hi(span_until_glob.hi() + BytePos(1));
+                if !span_with_glob.check_text(cx, |s| s.ends_with('*')) {
+                    return;
+                }
+
+                // For macros, the `*` might belong to unrelated code since `span_extend_while` doesn't know where the
+                // `use` item end, (e.g: a later `a * b`)
+                if !item_span.contains(span_with_glob) {
+                    return;
+                }
+
+                (span_with_glob, false)
             };
 
             let mut imports: Vec<_> = used_imports.iter().map(ToString::to_string).collect();
@@ -182,11 +225,11 @@ impl LateLintPass<'_> for WildcardImports {
 }
 
 impl WildcardImports {
-    fn check_exceptions(&self, cx: &LateContext<'_>, item: &Item<'_>, segments: &[PathSegment<'_>]) -> bool {
-        item.span.from_expansion()
+    fn check_exceptions(&self, cx: &LateContext<'_>, span: Span, hir_id: HirId, segments: &[PathSegment<'_>]) -> bool {
+        span.from_expansion()
             || is_prelude_import(segments)
-            || is_allowed_via_config(segments, &self.allowed_segments)
-            || (is_super_only_import(segments) && is_in_test(cx.tcx, item.hir_id()))
+            || is_allowed_via_config(segments, self.allowed_segments)
+            || (is_super_only_import(segments) && is_in_test(cx.tcx, hir_id))
     }
 }
 

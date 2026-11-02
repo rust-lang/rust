@@ -59,7 +59,7 @@ mod transmutability;
 pub use transmutability::{Assume, TransmuteFrom};
 
 mod drop_guard;
-#[unstable(feature = "drop_guard", issue = "144426")]
+#[stable(feature = "drop_guard", since = "1.100.0")]
 pub use drop_guard::DropGuard;
 
 // This one has to be a re-export (rather than wrapping the underlying intrinsic) so that we can do
@@ -425,9 +425,8 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// Otherwise, the following conditions must hold:
 ///
 /// - If `T` is `Sized`, this function is always safe to call.
-/// - If the unsized tail of `T` is:
-///     - a [slice], then the length of the slice tail must be an initialized
-///       integer, and the size of the *entire value*
+/// - If the *unsized tail* of `T` is:
+///     - a [slice] `[U]`, `str`, or a [trait object] `dyn Trait`, then the size of the *entire value*
 ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
 ///       For the special case where the dynamic tail length is 0, this function
 ///       is safe to call.
@@ -435,15 +434,15 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 //        then we would stop compilation as even the "statically known" part of the type would
 //        already be too big (or the call may be in dead code and optimized away, but then it
 //        doesn't matter).
-///     - a [trait object], then the vtable part of the pointer must point
-///       to a valid vtable acquired by an unsizing coercion, and the size
-///       of the *entire value* (dynamic tail length + statically sized prefix)
-///       must fit in `isize`.
-///     - an (unstable) [extern type], then this function is always safe to
-///       call, but may panic or otherwise return the wrong value, as the
-///       extern type's layout is not known. This is the same behavior as
-///       [`size_of_val`] on a reference to a type with an extern type tail.
-///     - otherwise, it is conservatively not allowed to call this function.
+///     - No other kind of unsized tail currently exists that satisfies the trait bounds for this
+///       function. If more kinds of unsized tails get introduced in the future, the documentation
+///       of this function will have to be extended before it can be used for such types.
+///
+/// Here, *unsized tail* refers to the type obtained by recursively descending through the last
+/// field of a tuple or struct until we arrived at a built-in unsized type.
+///
+/// As a consequence of these rules, it is the case that whenever it is allowed to convert `val`
+/// into a shared reference, then it is also allowed to invoke this function.
 ///
 /// [`size_of::<T>()`]: size_of
 /// [trait object]: ../../book/ch17-02-trait-objects.html
@@ -452,7 +451,6 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// # Examples
 ///
 /// ```
-/// #![feature(layout_for_ptr)]
 /// use std::mem;
 ///
 /// assert_eq!(4, size_of_val(&5i32));
@@ -463,7 +461,8 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[must_use]
-#[unstable(feature = "layout_for_ptr", issue = "69835")]
+#[stable(feature = "layout_for_ptr", since = "1.99.0")]
+#[rustc_const_stable(feature = "layout_for_ptr", since = "1.99.0")]
 pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::size_of_val(val) }
@@ -601,20 +600,23 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// - If `T` is `Sized`, this function is always safe to call.
 /// - If the unsized tail of `T` is:
-///     - a [slice], then the length of the slice tail must be an initialized
-///       integer, and the size of the *entire value*
+///     - a [slice] `[U]`, `str`, or a [trait object] `dyn Trait`, then the size of the *entire value*
 ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
 ///       For the special case where the dynamic tail length is 0, this function
 ///       is safe to call.
-///     - a [trait object], then the vtable part of the pointer must point
-///       to a valid vtable acquired by an unsizing coercion, and the size
-///       of the *entire value* (dynamic tail length + statically sized prefix)
-///       must fit in `isize`.
-///     - an (unstable) [extern type], then this function is always safe to
-///       call, but may panic or otherwise return the wrong value, as the
-///       extern type's layout is not known. This is the same behavior as
-///       [`align_of_val`] on a reference to a type with an extern type tail.
-///     - otherwise, it is conservatively not allowed to call this function.
+//        NOTE: the reason this is safe is that if an overflow were to occur already with size 0,
+//        then we would stop compilation as even the "statically known" part of the type would
+//        already be too big (or the call may be in dead code and optimized away, but then it
+//        doesn't matter).
+///     - No other kind of unsized tail currently exists that satisfies the trait bounds for this
+///       function. If more kinds of unsized tails get introduced in the future, the documentation
+///       of this function will have to be extended before it can be used for such types.
+///
+/// Here, *unsized tail* refers to the type obtained by recursively descending through the last
+/// field of a tuple or struct until we arrived at a built-in unsized type.
+///
+/// As a consequence of these rules, it is the case that whenever it is allowed to convert `val`
+/// into a shared reference, then it is also allowed to invoke this function.
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
@@ -622,7 +624,6 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// # Examples
 ///
 /// ```
-/// #![feature(layout_for_ptr)]
 /// use std::mem;
 ///
 /// assert_eq!(4, unsafe { mem::align_of_val_raw(&5i32) });
@@ -634,7 +635,8 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// [type-layout]: ../../reference/type-layout.html#r-layout.primitive
 #[inline]
 #[must_use]
-#[unstable(feature = "layout_for_ptr", issue = "69835")]
+#[stable(feature = "layout_for_ptr", since = "1.99.0")]
+#[rustc_const_stable(feature = "layout_for_ptr", since = "1.99.0")]
 pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     // SAFETY: the caller must provide a valid raw pointer
     unsafe { intrinsics::align_of_val(val) }
@@ -710,15 +712,17 @@ pub const fn needs_drop<T: ?Sized>() -> bool {
 /// This means that, for example, the padding byte in `(u8, u16)` is not
 /// necessarily zeroed.
 ///
-/// There is no guarantee that an all-zero byte-pattern represents a valid value
-/// of some type `T`. For example, the all-zero byte-pattern is not a valid value
-/// for reference types (`&T`, `&mut T`) and function pointers. Using `zeroed`
-/// on such types causes immediate [undefined behavior][ub] because [the Rust
-/// compiler assumes][inv] that there always is a valid value in a variable it
-/// considers initialized.
-///
 /// This has the same effect as [`MaybeUninit::zeroed().assume_init()`][zeroed].
 /// It is useful for FFI sometimes, but should generally be avoided.
+///
+///
+/// # Safety
+///
+/// The all-zero byte-pattern must represent a valid value of type `T`.
+/// For example, it is not valid for reference types (`&T`, `&mut T`) or function
+/// pointers. Using `zeroed` on such types causes immediate [undefined behavior][ub]
+/// because [the Rust compiler assumes][inv] that there always is a valid value in a
+/// variable it considers initialized.
 ///
 /// [zeroed]: MaybeUninit::zeroed
 /// [ub]: ../../reference/behavior-considered-undefined.html
@@ -833,7 +837,7 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
 
 /// Replaces `dest` with the default value of `T`, returning the previous `dest` value.
 ///
-/// * If you want to replace the values of two variables, see [`swap`].
+/// * If you want to switch the values of two variables, see [`swap`].
 /// * If you want to replace with a passed value instead of the default value, see [`replace`].
 ///
 /// # Examples
@@ -1241,6 +1245,13 @@ pub const unsafe fn transmute_prefix<Src, Dst>(src: Src) -> Dst {
 ///
 /// It will not be stabilized under this name.
 ///
+/// # Safety
+///
+/// Refer to [`transmute`] for safety requirements.
+/// This function is semantically identical to `transmute`.
+///
+/// [`transmute`]: crate::mem::transmute
+///
 /// # Examples
 ///
 /// ```
@@ -1425,7 +1436,6 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// # Examples
 ///
 /// ```
-/// # #![feature(never_type)]
 /// # #![feature(variant_count)]
 ///
 /// use std::mem;
@@ -1691,7 +1701,6 @@ pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
 /// # Examples
 ///
 /// ```
-/// #![feature(mem_conjure_zst)]
 /// use std::mem::conjure_zst;
 ///
 /// assert_eq!(unsafe { conjure_zst::<()>() }, ());
@@ -1699,8 +1708,9 @@ pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
 /// ```
 ///
 /// [inhabited]: https://doc.rust-lang.org/reference/glossary.html#inhabited
-#[unstable(feature = "mem_conjure_zst", issue = "95383")]
-#[rustc_const_unstable(feature = "mem_conjure_zst", issue = "95383")]
+#[stable(feature = "mem_conjure_zst", since = "1.100.0")]
+#[rustc_const_stable(feature = "mem_conjure_zst", since = "1.100.0")]
+#[rustc_allow_const_fn_unstable(const_type_name)] // type_name() called only at run time
 pub const unsafe fn conjure_zst<T>() -> T {
     const_assert!(
         T::IS_ZST,

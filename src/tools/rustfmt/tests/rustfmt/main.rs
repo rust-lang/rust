@@ -1,17 +1,21 @@
 //! Integration tests for rustfmt.
 
+use indoc::panicdoc;
 use std::env;
 use std::fs::{File, remove_file};
+use std::io::Write;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
-use rustfmt_config_proc_macro::{nightly_only_test, rustfmt_only_ci_test};
+use rustfmt_config_proc_macro::{nightly_only_test, rustfmt_only_ci_test, stable_only_test};
 
 /// Run the rustfmt executable with environment vars set and return its output.
+/// If `input` is given, it is piped to the executable's stdin.
 fn rustfmt_with_extra(
     args: &[&str],
     working_dir: Option<&str>,
     envs: &[(&str, &str)],
+    input: Option<&str>,
 ) -> (String, String) {
     let rustfmt_exe = env!("CARGO_BIN_EXE_rustfmt");
     let bin_dir = Path::new(rustfmt_exe).parent().unwrap();
@@ -28,7 +32,19 @@ fn rustfmt_with_extra(
     if let Some(working_dir) = working_dir {
         cmd.current_dir(working_dir);
     }
-    match cmd.output() {
+    cmd.stdin(if input.is_some() {
+        Stdio::piped()
+    } else {
+        Stdio::null()
+    });
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
+    match cmd.spawn().and_then(|mut child| {
+        if let Some(input) = input {
+            child.stdin.take().unwrap().write_all(input.as_bytes())?;
+        }
+        child.wait_with_output()
+    }) {
         Ok(output) => (
             String::from_utf8(output.stdout).expect("utf-8"),
             String::from_utf8(output.stderr).expect("utf-8"),
@@ -38,23 +54,23 @@ fn rustfmt_with_extra(
 }
 
 fn rustfmt(args: &[&str]) -> (String, String) {
-    rustfmt_with_extra(args, None, &[])
+    rustfmt_with_extra(args, None, &[], None)
 }
 
 macro_rules! assert_that {
     ($args:expr, $($check:ident $check_args:tt)&&+) => {
         let (stdout, stderr) = rustfmt($args);
         if $(!stdout.$check$check_args && !stderr.$check$check_args)||* {
-            panic!(
-                "Output not expected for rustfmt {:?}\n\
-                 expected: {}\n\
-                 actual stdout:\n{}\n\
-                 actual stderr:\n{}",
-                $args,
-                stringify!($( $check$check_args )&&*),
-                stdout,
-                stderr
-            );
+            let args = $args;
+            let expected = stringify!($( $check$check_args )&&*);
+            panicdoc! {"
+                Output not expected for rustfmt {args:?}
+                expected: {expected}
+                actual stdout:
+                {stdout}
+                actual stderr:
+                {stderr}",
+            };
         }
     };
 }
@@ -117,11 +133,112 @@ fn inline_config() {
     );
 }
 
+#[stable_only_test]
 #[test]
 fn rustfmt_usage_text() {
     let args = ["--help"];
     let (stdout, _) = rustfmt(&args);
-    assert!(stdout.contains("Format Rust code\n\nusage: rustfmt [options] <file>..."));
+    insta::assert_snapshot!(stdout, @"
+    Format Rust code
+
+    usage: rustfmt [options] <file>...
+
+    Options:
+            --check         Run in 'check' mode. Exits with 0 if input is
+                            formatted correctly. Exits with 1 and prints a diff if
+                            formatting is required.
+            --emit [files|stdout]
+                            What data to emit and how
+            --backup        Backup any modified files.
+            --config-path [Path for the configuration file]
+                            Recursively searches the given path for the
+                            rustfmt.toml config file. If not found reverts to the
+                            input file path
+            --edition [2015|2018|2021|2024]
+                            Rust edition to use
+            --color [always|never|auto]
+                            Use colored output (if supported)
+            --print-config [default|minimal|current] PATH
+                            Dumps a default or minimal config to PATH. A minimal
+                            config is the subset of the current config file used
+                            for formatting the current program. `current` writes
+                            to stdout current config as if formatting the file at
+                            PATH.
+        -l, --files-with-diff 
+                            Prints the names of mismatched files that were
+                            formatted. Prints the names of files that would be
+                            formatted when used with `--check` mode.
+            --config [key1=val1,key2=val2...]
+                            Set options from command line. These settings take
+                            priority over .rustfmt.toml
+            --style-edition [2015|2018|2021|2024]
+                            The edition of the Style Guide.
+        -v, --verbose       Print verbose output
+        -q, --quiet         Print less output
+        -V, --version       Show version information
+        -h, --help [=TOPIC] Show this message or help about a specific topic:
+                            `config`
+    ");
+}
+
+#[nightly_only_test]
+#[test]
+fn rustfmt_nightly_usage_text() {
+    let args = ["--help"];
+    let (stdout, _) = rustfmt(&args);
+    insta::assert_snapshot!(stdout, @"
+    Format Rust code
+
+    usage: rustfmt [options] <file>...
+
+    Options:
+            --check         Run in 'check' mode. Exits with 0 if input is
+                            formatted correctly. Exits with 1 and prints a diff if
+                            formatting is required.
+            --emit [files|stdout|coverage|checkstyle|json]
+                            What data to emit and how
+            --backup        Backup any modified files.
+            --config-path [Path for the configuration file]
+                            Recursively searches the given path for the
+                            rustfmt.toml config file. If not found reverts to the
+                            input file path
+            --edition [2015|2018|2021|2024]
+                            Rust edition to use
+            --color [always|never|auto]
+                            Use colored output (if supported)
+            --print-config [default|minimal|current] PATH
+                            Dumps a default or minimal config to PATH. A minimal
+                            config is the subset of the current config file used
+                            for formatting the current program. `current` writes
+                            to stdout current config as if formatting the file at
+                            PATH.
+        -l, --files-with-diff 
+                            Prints the names of mismatched files that were
+                            formatted. Prints the names of files that would be
+                            formatted when used with `--check` mode.
+            --config [key1=val1,key2=val2...]
+                            Set options from command line. These settings take
+                            priority over .rustfmt.toml
+            --style-edition [2015|2018|2021|2024]
+                            The edition of the Style Guide.
+            --unstable-features 
+                            Enables unstable features. Only available on nightly
+                            channel.
+            --file-lines JSON
+                            Format specified line ranges. Run with
+                            `--help=file-lines` for more detail (unstable).
+            --error-on-unformatted 
+                            Error if unable to get comments or string literals
+                            within max_width, or they are left with trailing
+                            whitespaces (unstable).
+            --skip-children 
+                            Don't reformat child modules (unstable).
+        -v, --verbose       Print verbose output
+        -q, --quiet         Print less output
+        -V, --version       Show version information
+        -h, --help [=TOPIC] Show this message or help about a specific topic:
+                            `config` or `file-lines`
+    ");
 }
 
 #[test]
@@ -245,6 +362,37 @@ fn rustfmt_error_improvement_regarding_invalid_toml() {
 }
 
 #[test]
+fn config_path_walks_parent_directories_with_dir_name() {
+    let src_dir = "tests/config/issue_4660/inner_lib/src";
+    let src_file = src_dir.to_owned() + "/lib.rs";
+    let args = ["--config-path", src_dir, "--check", &src_file];
+    let (stdout, stderr) = rustfmt(&args);
+
+    assert_eq!(stderr, "");
+    // Due to `disable_all_formatting = true` in `tests/config/issue_4660/inner_lib/rustfmt.toml`,
+    // the source file should not be modified.
+    assert_eq!(stdout, "");
+}
+
+#[test]
+fn config_path_does_not_walk_parent_directories_with_toml_name() {
+    let src_dir = "tests/config/issue_4660/inner_bin/src";
+    let toml_file = src_dir.to_owned() + "/.rustfmt.unstable.toml";
+    let src_file = src_dir.to_owned() + "/main.rs";
+    let args = ["--config-path", &toml_file, "--check", &src_file];
+    let (stdout, stderr) = rustfmt(&args);
+
+    assert_eq!(
+        stderr,
+        format!(
+            "Error: unable to find a config file for the given path: `{}`\n",
+            Path::new(&toml_file).display(),
+        )
+    );
+    assert_eq!(stdout, "");
+}
+
+#[test]
 fn rustfmt_allow_not_a_dir_errors() {
     // See also https://github.com/rust-lang/rustfmt/pull/6624
 
@@ -268,9 +416,22 @@ fn rustfmt_allow_not_a_dir_errors() {
 
     let args = [empty_rs.to_str().unwrap()];
     let envs = &[("HOME", fake_home_str)];
-    let (stdout, stderr) = rustfmt_with_extra(&args, Some(fake_home_str), envs);
+    let (stdout, stderr) = rustfmt_with_extra(&args, Some(fake_home_str), envs, None);
 
     // Should pass without any errors
     assert_eq!(stdout, "");
     assert_eq!(stderr, "");
+}
+
+// FIXME(cfg_select): ungate when `cfg_select!` formatting can be enabled on stable.
+#[nightly_only_test]
+#[test]
+fn cfg_select_parser_recovery_ice_7087() {
+    // See also https://github.com/rust-lang/rustfmt/issues/7087
+    let source = "cfg_select! { true => { fn foo {} } }\n";
+    let panic_re = regex::Regex::new("thread.*panicked").unwrap();
+    let (stdout, stderr) = rustfmt_with_extra(&[], None, &[], Some(source));
+    assert!(!panic_re.is_match(&stderr));
+    // Invalid arm should cause `cfg_select!` to be re-emitted unmodified.
+    assert_eq!(source, stdout);
 }

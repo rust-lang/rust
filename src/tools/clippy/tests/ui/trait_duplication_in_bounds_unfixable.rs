@@ -1,5 +1,5 @@
-#![deny(clippy::trait_duplication_in_bounds)]
-#![allow(clippy::multiple_bound_locations)]
+#![warn(clippy::trait_duplication_in_bounds)]
+#![expect(clippy::multiple_bound_locations)]
 
 use std::collections::BTreeMap;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};

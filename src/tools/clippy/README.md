@@ -4,7 +4,7 @@
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
-[There are over 800 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
+[There are over 800 lints included in this crate!](https://clippy.rust-lang.org/main/index.html)
 
 Lints are divided into categories, each with a default [lint level](https://doc.rust-lang.org/rustc/lints/levels.html).
 You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the lint level by category.
@@ -35,9 +35,9 @@ on a case-by-case basis before enabling.
     - Preventing panicking in certain functions (e.g. [`clippy::unwrap_used`]).
     - Running a lint only on a subset of code (e.g. `#[forbid(clippy::float_arithmetic)]` on a module).
 
-[`clippy::else_if_without_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#else_if_without_else
-[`clippy::todo`]: https://rust-lang.github.io/rust-clippy/master/index.html#todo
-[`clippy::unwrap_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+[`clippy::else_if_without_else`]: https://clippy.rust-lang.org/main/index.html#else_if_without_else
+[`clippy::todo`]: https://clippy.rust-lang.org/main/index.html#todo
+[`clippy::unwrap_used`]: https://clippy.rust-lang.org/main/index.html#unwrap_used
 
 ---
 
@@ -140,17 +140,26 @@ before_script:
 script:
   - cargo clippy
   # if you want the build job to fail when encountering warnings, use
-  - cargo clippy -- -D warnings
+  - CARGO_BUILD_WARNINGS=deny cargo clippy
   # in order to also check tests and non-default crate features, use
-  - cargo clippy --all-targets --all-features -- -D warnings
+  - CARGO_BUILD_WARNINGS=deny cargo clippy --all-targets --all-features
   - cargo test
   # etc.
 ```
 
-Note that adding `-D warnings` will cause your build to fail if **any** warnings are found in your code.
+Note that setting `CARGO_BUILD_WARNINGS=deny` will cause your build to fail if **any** warnings are found in your code.
 That includes warnings found by rustc (e.g. `dead_code`, etc.). If you want to avoid this and only cause
 an error for Clippy warnings, use `#![deny(clippy::all)]` in your code or `-D clippy::all` on the command
 line. (You can swap `clippy::all` with the specific lint category you are targeting.)
+
+Also note that before Cargo 1.97, the usual way to deny all warnings was by using `-D warnings`:
+
+```shell
+cargo clippy -- -D warnings
+```
+
+However, [`CARGO_BUILD_WARNINGS`] has the benefit of not invalidating build caches,
+and is thus to be preferred going forward.
 
 ## Configuration
 
@@ -215,11 +224,11 @@ disallowed-names = ["toto", "tata", "titi"]
 
 The [table of configurations](https://doc.rust-lang.org/nightly/clippy/lint_configuration.html)
 contains all config values, their default, and a list of lints they affect.
-Each [configurable lint](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration)
+Each [configurable lint](https://clippy.rust-lang.org/main/index.html#Configuration)
 , also contains information about these values.
 
 For configurations that are a list type with default values such as
-[disallowed-names](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names),
+[disallowed-names](https://clippy.rust-lang.org/main/index.html#disallowed_names),
 you can use the unique value `".."` to extend the default values instead of replacing them.
 
 ```toml
@@ -267,11 +276,11 @@ is equivalent to `msrv = 1.30.0`.
 
 Note: `custom_inner_attributes` is an unstable feature, so it has to be enabled explicitly.
 
-Lints that recognize this configuration option can be found [here](https://rust-lang.github.io/rust-clippy/master/index.html#msrv)
+Lints that recognize this configuration option can be found [here](https://clippy.rust-lang.org/main/index.html#msrv)
 
 ## Contributing
 
-If you want to contribute to Clippy, you can find more information in [CONTRIBUTING.md](https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md).
+If you want to contribute to Clippy, you can find more information in [CONTRIBUTING.md](https://github.com/rust-lang/rust-clippy/blob/HEAD/CONTRIBUTING.md).
 
 ## License
 
@@ -286,3 +295,5 @@ option. Files in the project may not be
 copied, modified, or distributed except according to those terms.
 
 <!-- REUSE-IgnoreEnd -->
+
+[`CARGO_BUILD_WARNINGS`]: https://doc.rust-lang.org/cargo/reference/config.html#buildwarnings

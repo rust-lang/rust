@@ -1,10 +1,12 @@
 //@ run-pass
 
+//! Test that assignment to DerefMut of a Reborrow type does not ICE.
+
 #![feature(reborrow)]
 use std::marker::{Reborrow, PhantomData};
 
+#[derive(Reborrow)]
 struct CustomMarker<'a>(PhantomData<&'a ()>);
-impl<'a> Reborrow for CustomMarker<'a> {}
 
 impl<'a> std::ops::Deref for CustomMarker<'a> {
     type Target = CustomMarker<'a>;

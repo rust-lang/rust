@@ -1,12 +1,14 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use hir::LangItem;
 use rustc_ast::Mutability;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir as hir;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
-use rustc_middle::bug;
+use rustc_infer::traits::TraitErrors;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
-use rustc_span::{Span, sym};
+use rustc_span::{Span, bug, sym};
+use thin_vec::ThinVec;
 
 use crate::regions::InferCtxtRegionExt;
 use crate::traits::{self, FulfillmentError, Obligation, ObligationCause};
@@ -27,7 +29,7 @@ pub enum ConstParamTyImplementationError<'tcx> {
 }
 
 pub enum InfringingFieldsReason<'tcx> {
-    Fulfill(Vec<FulfillmentError<'tcx>>),
+    Fulfill(ThinVec<FulfillmentError<'tcx>>),
     Regions(Vec<RegionResolutionError<'tcx>>),
 }
 
@@ -67,16 +69,8 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         _ => return Err(CopyImplementationError::NotAnAdt),
     };
 
-    all_fields_implement_trait(
-        tcx,
-        param_env,
-        self_type,
-        adt,
-        args,
-        parent_cause,
-        hir::LangItem::Copy,
-    )
-    .map_err(CopyImplementationError::InfringingFields)?;
+    all_fields_implement_trait(tcx, param_env, self_type, adt, args, parent_cause, LangItem::Copy)
+        .map_err(CopyImplementationError::InfringingFields)?;
 
     if let Some(did) = adt.destructor(tcx).map(|dtor| dtor.did) {
         return Err(CopyImplementationError::HasDestructor(did));
@@ -129,7 +123,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
             if !tcx.features().adt_const_params() {
                 for variant in adt.variants() {
                     if variant.is_field_list_non_exhaustive() {
-                        let attr_span = match hir::find_attr!(tcx, variant.def_id, hir::attrs::AttributeKind::NonExhaustive(span) => *span)
+                        let attr_span = match find_attr!(tcx, variant.def_id, NonExhaustive(span) => *span)
                         {
                             Some(sp) => sp,
                             None => bug!("non_exhaustive variant missing NonExhaustive attribute"),
@@ -171,7 +165,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
                 ty::ClauseKind::UnstableFeature(sym::unsized_const_params),
             ));
 
-            if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+            if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                 return Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired);
             }
         }
@@ -184,7 +178,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
         );
 
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if !errors.is_empty() {
+        if let TraitErrors::HasErrors(errors) = errors {
             infringing_inner_tys.push((inner_ty, InfringingFieldsReason::Fulfill(errors)));
             continue;
         }
@@ -212,7 +206,7 @@ pub fn all_fields_implement_trait<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
     adt: AdtDef<'tcx>,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
     parent_cause: ObligationCause<'tcx>,
     lang_item: LangItem,
 ) -> Result<(), Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>> {
@@ -256,7 +250,7 @@ pub fn all_fields_implement_trait<'tcx>(
             // such as when we project to a missing type or we have a mismatch
             // between expected and found const-generic types. Don't report an
             // additional copy error here, since it's not typically useful.
-            if !normalization_errors.is_empty() || ty.references_error() {
+            if !normalization_errors.no_errors() || ty.references_error() {
                 tcx.dcx().span_delayed_bug(
                     field_span,
                     format!(
@@ -274,7 +268,7 @@ pub fn all_fields_implement_trait<'tcx>(
                 trait_def_id,
             );
             let errors = ocx.evaluate_obligations_error_on_ambiguity();
-            if !errors.is_empty() {
+            if let TraitErrors::HasErrors(errors) = errors {
                 infringing.push((field, ty, InfringingFieldsReason::Fulfill(errors)));
             }
 

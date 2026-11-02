@@ -1,0 +1,25 @@
+name: Remove rustc-dev
+description: >
+  Removes the rustc-dev component, whose copies of the compiler dependencies (like libc) sit next
+  to the standard library in the rustup sysroot and make `extern crate libc` ambiguous (E0464).
+  Use it once nothing needs to compile rustc_codegen_gcc anymore.
+
+inputs:
+  directory:
+    description: The cg_gcc directory whose rust-toolchain.toml selects the toolchain.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: ${{ inputs.directory }}
+      run: |
+        # Otherwise, rustup reinstalls it on the next `cargo` or `rustc` call.
+        sed -i -E 's/"rustc-dev",? *//' rust-toolchain.toml
+        if grep -q rustc-dev rust-toolchain.toml; then
+          echo "::error::failed to remove rustc-dev from rust-toolchain.toml"
+          exit 1
+        fi
+        rustup component remove rustc-dev
+        ls "$(rustc --print sysroot)"/lib/rustlib/x86_64-unknown-linux-gnu/lib/liblibc-*

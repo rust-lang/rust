@@ -1,6 +1,5 @@
 //@ only-64bit
 #![feature(rustc_attrs)]
-#![feature(never_type)]
 #![crate_type = "lib"]
 
 // When picking a representation for things that don't force a particular discriminant type,

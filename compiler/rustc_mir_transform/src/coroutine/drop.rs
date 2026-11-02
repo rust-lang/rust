@@ -27,6 +27,23 @@ impl<'tcx> MutVisitor<'tcx> for FixReturnPendingVisitor<'tcx> {
             && let AggregateKind::Adt(_, _, ref mut args, _, _) = **kind
         {
             *args = self.tcx.mk_args(&[self.tcx.types.unit.into()]);
+        } else if let Rvalue::Use(Operand::Constant(constant), _) = rvalue {
+            if let Some(async_gen_pending_def_id) = self.tcx.lang_items().async_gen_pending()
+                && let Const::Unevaluated(unevaluated, _) = constant.const_
+                && unevaluated.def == async_gen_pending_def_id
+            {
+                let poll_def_id = self.tcx.lang_items().poll().unwrap();
+                *rvalue = Rvalue::Aggregate(
+                    Box::new(AggregateKind::Adt(
+                        poll_def_id,
+                        VariantIdx::from_u32(1),
+                        self.tcx.mk_args(&[self.tcx.types.unit.into()]),
+                        None,
+                        None,
+                    )),
+                    IndexVec::new(),
+                );
+            }
         }
     }
 }
@@ -191,8 +208,18 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
         }
     }
 
-    // Replace the return variable
+    // Replace the return variable and initialize it once for all return paths.
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(tcx.types.unit, source_info);
+    body.basic_blocks_mut()[START_BLOCK].statements.push(Statement::new(
+        source_info,
+        StatementKind::Assign(Box::new((
+            Place::return_place(),
+            Rvalue::Use(
+                Operand::zero_sized_constant(tcx.types.unit, source_info.span),
+                WithRetag::Yes,
+            ),
+        ))),
+    ));
 
     make_coroutine_state_argument_indirect(tcx, &mut body);
 
@@ -260,7 +287,11 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
             1,
             (
                 CoroutineArgs::POISONED,
-                insert_panic_block(tcx, &mut body, ResumedAfterPanic(transform.coroutine_kind)),
+                if tcx.sess.opts.unstable_opts.async_panic {
+                    insert_panic_block(tcx, &mut body, ResumedAfterPanic(transform.coroutine_kind))
+                } else {
+                    insert_poll_pending_block(tcx, &mut body, transform.old_ret_ty)
+                },
             ),
         );
     }
@@ -358,8 +389,9 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
         replace: false,
         drop: None,
     };
-    body.basic_blocks_mut()[call_bb].terminator =
-        Some(Terminator { source_info, kind, attributes: ThinVec::new() });
+    body.basic_blocks_mut()[call_bb].terminator = Some(Terminator { source_info, kind });
+
+    make_coroutine_state_argument_pinned(tcx, &mut body);
 
     // Run derefer to fix Derefs that are not in the first place
     deref_finder(tcx, &mut body, false);

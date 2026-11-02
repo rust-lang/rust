@@ -7,7 +7,6 @@
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
-#![cfg_attr(bootstrap, feature(string_from_utf8_lossy_owned))]
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).
 //! The backend-agnostic functions of this crate use functions defined in various traits that
@@ -19,12 +18,13 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rustc_abi::Size;
+use rustc_attr_ir::{CfgEntry, WindowsSubsystemKind};
+use rustc_crate_store::{self as cstore, CrateSource};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::CRATE_HIR_ID;
-use rustc_hir::attrs::{CfgEntry, NativeLibKind, WindowsSubsystemKind};
 use rustc_hir::def_id::CrateNum;
-use rustc_lint_defs::builtin::LINKER_INFO;
+use rustc_lint_defs::builtin::{LINKER_INFO, LINKER_MESSAGES};
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::WorkProduct;
@@ -37,10 +37,9 @@ use rustc_middle::util::Providers;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
-use rustc_session::config::{CrateType, OutputFilenames, OutputType};
-use rustc_session::cstore::{self, CrateSource};
-use rustc_session::lint::builtin::LINKER_MESSAGES;
+use rustc_session::config::{OutputFilenames, OutputType};
 use rustc_span::{Span, Symbol};
+use rustc_structures::{CrateType, NativeLibKind};
 
 pub mod assert_module_sources;
 pub mod back;
@@ -66,27 +65,15 @@ pub struct ModuleCodegen<M> {
     pub name: String,
     pub module_llvm: M,
     pub kind: ModuleKind,
-    /// Saving the ThinLTO buffer for embedding in the object file.
-    pub thin_lto_buffer: Option<Vec<u8>>,
 }
 
 impl<M> ModuleCodegen<M> {
     pub fn new_regular(name: impl Into<String>, module: M) -> Self {
-        Self {
-            name: name.into(),
-            module_llvm: module,
-            kind: ModuleKind::Regular,
-            thin_lto_buffer: None,
-        }
+        Self { name: name.into(), module_llvm: module, kind: ModuleKind::Regular }
     }
 
     pub fn new_allocator(name: impl Into<String>, module: M) -> Self {
-        Self {
-            name: name.into(),
-            module_llvm: module,
-            kind: ModuleKind::Allocator,
-            thin_lto_buffer: None,
-        }
+        Self { name: name.into(), module_llvm: module, kind: ModuleKind::Allocator }
     }
 
     pub fn into_compiled_module(
@@ -115,7 +102,6 @@ impl<M> ModuleCodegen<M> {
             bytecode,
             assembly,
             llvm_ir,
-            links_from_incr_cache: Vec::new(),
         }
     }
 }
@@ -130,7 +116,6 @@ pub struct CompiledModule {
     pub bytecode: Option<PathBuf>,
     pub assembly: Option<PathBuf>, // --emit=asm
     pub llvm_ir: Option<PathBuf>,  // --emit=llvm-ir, llvm-bc is in bytecode
-    pub links_from_incr_cache: Vec<PathBuf>,
 }
 
 impl CompiledModule {
@@ -207,7 +192,7 @@ bitflags::bitflags! {
     }
 }
 
-// This is the same as `rustc_session::cstore::NativeLib`, except:
+// This is the same as `rustc_crate_store::NativeLib`, except:
 // - (important) the `foreign_module` field is missing, because it contains a `DefId`, which can't
 //   be encoded with `FileEncoder`.
 // - (less important) the `verbatim` field is a `bool` rather than an `Option<bool>`, because here
@@ -306,18 +291,19 @@ pub struct CrateInfo {
     pub exported_symbols_for_lto: Vec<String>,
 }
 
-/// Target-specific options that get set in `cfg(...)`.
+/// Target-specific options that get set in `sess`/`cfg(...)`.
 ///
 /// RUSTC_SPECIFIC_FEATURES should be skipped here, those are handled outside codegen.
 pub struct TargetConfig {
-    /// Options to be set in `cfg(target_features)`.
-    pub target_features: Vec<Symbol>,
-    /// Options to be set in `cfg(target_features)`, but including unstable features.
-    pub unstable_target_features: Vec<Symbol>,
+    /// Options to be set in `sess.internal_target_features`.
+    pub internal_target_features: UnordSet<Symbol>,
     /// Option for `cfg(target_has_reliable_f16)`, true if `f16` basic arithmetic works.
     pub has_reliable_f16: bool,
     /// Option for `cfg(target_has_reliable_f16_math)`, true if `f16` math calls work.
     pub has_reliable_f16_math: bool,
+    /// Option for `cfg(target_has_reliable_f16b)`, presently true if both the ABI
+    /// and LLVM version supports `f16b`.
+    pub has_reliable_f16b: bool,
     /// Option for `cfg(target_has_reliable_f128)`, true if `f128` basic arithmetic works.
     pub has_reliable_f128: bool,
     /// Option for `cfg(target_has_reliable_f128_math)`, true if `f128` math calls work.
@@ -343,7 +329,6 @@ pub fn provide(providers: &mut Providers) {
     crate::base::provide(&mut providers.queries);
     crate::target_features::provide(&mut providers.queries);
     crate::codegen_attrs::provide(&mut providers.queries);
-    providers.queries.global_backend_features = |_tcx: TyCtxt<'_>, ()| vec![];
 }
 
 const RLINK_VERSION: u32 = 1;

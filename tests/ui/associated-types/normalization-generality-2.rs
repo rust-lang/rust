@@ -5,7 +5,7 @@
 
 // Ensures that we don't regress on "implementation is not general enough" when
 // normalizating under binders. Unlike `normalization-generality.rs`, this also produces
-// type outlives predicates that we must ignore.
+// type outlives clauses that we must ignore.
 
 pub unsafe trait Yokeable<'a> {
     type Output: 'a;

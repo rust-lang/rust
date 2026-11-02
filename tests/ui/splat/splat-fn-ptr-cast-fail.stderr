@@ -20,13 +20,13 @@ LL |     let _fn_ptr: fn((u32, i8), f64) = splat_non_terminal_arg;
    = note: expected fn pointer `fn((_, _), _)`
                  found fn item `fn(#[rustc_splat] (_, _), _) {splat_non_terminal_arg}`
 
-error[E0605]: non-primitive cast: `fn(, #[rustc_splat](u32, i8)) {tuple_args}` as `fn((u32, i8))`
+error[E0605]: non-primitive cast: `fn(#[rustc_splat] (u32, i8)) {tuple_args}` as `fn((u32, i8))`
   --> $DIR/splat-fn-ptr-cast-fail.rs:19:34
    |
 LL |     let _fn_ptr: fn((u32, i8)) = tuple_args as fn((u32, i8));
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
 
-error[E0605]: non-primitive cast: `fn(, #[rustc_splat](u32, i8), f64) {splat_non_terminal_arg}` as `fn((u32, i8), f64)`
+error[E0605]: non-primitive cast: `fn(#[rustc_splat] (u32, i8), f64) {splat_non_terminal_arg}` as `fn((u32, i8), f64)`
   --> $DIR/splat-fn-ptr-cast-fail.rs:20:39
    |
 LL |     let _fn_ptr: fn((u32, i8), f64) = splat_non_terminal_arg as fn((u32, i8), f64);

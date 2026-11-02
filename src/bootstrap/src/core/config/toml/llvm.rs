@@ -1,11 +1,11 @@
 //! This module defines the `Llvm` struct, which represents the `[llvm]` table
 //! in the `bootstrap.toml` configuration file.
 
-use serde::{Deserialize, Deserializer};
+use std::collections::HashMap;
 
 use crate::core::config::StringOrBool;
-use crate::core::config::toml::{Merge, ReplaceOpt, TomlConfig};
-use crate::{HashMap, HashSet, PathBuf, define_config, exit};
+use crate::core::config::macros::define_config;
+use crate::core::config::toml::TomlConfig;
 
 define_config! {
     /// TOML representation of how the LLVM build is configured.
@@ -40,6 +40,7 @@ define_config! {
         enable_warnings: Option<bool> = "enable-warnings",
         download_ci_llvm: Option<StringOrBool> = "download-ci-llvm",
         build_config: Option<HashMap<String, String>> = "build-config",
+        tpde: Option<bool> = "tpde",
     }
 }
 
@@ -119,6 +120,7 @@ pub fn check_incompatible_options_for_ci_llvm(
         download_ci_llvm: _,
         build_config,
         enzyme,
+        tpde: _,
     } = ci_llvm_config;
 
     err!(current_llvm_config.optimize, optimize);

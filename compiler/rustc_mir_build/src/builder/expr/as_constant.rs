@@ -2,7 +2,9 @@
 
 use rustc_abi::Size;
 use rustc_ast as ast;
-use rustc_hir::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_hir::def::DefKind;
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -10,7 +12,7 @@ use rustc_middle::ty::{
     self, CanonicalUserType, CanonicalUserTypeAnnotation, LitToConstInput, Ty, TyCtxt,
     TypeVisitableExt as _, UserTypeAnnotationIndex,
 };
-use rustc_middle::{bug, mir, span_bug};
+use rustc_span::{bug, span_bug};
 use tracing::{instrument, trace};
 
 use crate::builder::{Builder, parse_float_into_constval};
@@ -71,21 +73,50 @@ pub(crate) fn as_constant_inner<'tcx>(
         }
         ExprKind::NamedConst { def_id, args, ref user_ty } => {
             let user_ty = user_ty.as_ref().and_then(push_cuta);
-            if tcx.is_type_const(def_id) {
-                let uneval = ty::AliasConst::new(
-                    tcx,
-                    ty::AliasConstKind::new_from_def_id(tcx, def_id),
-                    args,
-                );
-                let ct = ty::Const::new_alias(tcx, ty::IsRigid::No, uneval);
 
+            let get_kind = |def_id, def_kind| match def_kind {
+                DefKind::AssocConst => {
+                    if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(def_id)) {
+                        ty::AliasConstKind::InherentImpl { def_id }
+                    } else {
+                        ty::AliasConstKind::Projection { def_id }
+                    }
+                }
+                DefKind::Const => ty::AliasConstKind::Free { def_id },
+                kind => bug!("unexpected DefKind in THIR ExprKind::NamedConst: {kind:?}"),
+            };
+
+            let could_be_direct_const = |def_id| {
+                let def_kind = tcx.def_kind(def_id);
+                let (DefKind::Const | DefKind::AssocConst) = def_kind else {
+                    return None;
+                };
+                if tcx.is_direct_const(def_id) {
+                    return Some(get_kind(def_id, def_kind));
+                }
+                // Under gca_const_items, `def_id` might be a regular const declared in a trait,
+                // but is `impl`d as a directly represented const. We do not know whether it is
+                // here, so we must use type system normalization for all const projections.
+                // FIXME(gca_const_items): there's a lot to consider here! `Const::Ty` uses
+                // valtrees and `Const::Unevaluated` does not, we should revisit this before
+                // stabilization.
+                if tcx.features().gca_const_items()
+                    && let kind @ ty::AliasConstKind::Projection { .. } = get_kind(def_id, def_kind)
+                {
+                    return Some(kind);
+                }
+                None
+            };
+
+            if let Some(kind) = could_be_direct_const(def_id) {
+                let alias = ty::AliasConst::new(tcx, kind, args);
+                let ct = ty::Const::new_alias(tcx, ty::IsRigid::No, alias);
                 let const_ = Const::Ty(ty, ct);
                 return ConstOperand { span, user_ty, const_ };
             }
 
             let uneval = mir::UnevaluatedConst::new(def_id, args);
             let const_ = Const::Unevaluated(uneval, ty);
-
             ConstOperand { user_ty, span, const_ }
         }
         ExprKind::ConstParam { param, def_id: _ } => {

@@ -1,5 +1,8 @@
 //! Proc macros for rust-analyzer.
 
+mod extension;
+
+use proc_macro::TokenStream;
 use quote::{ToTokens, quote};
 use syn::parse_quote;
 use synstructure::decl_derive;
@@ -234,4 +237,23 @@ fn upmap_from_ra_fixture(mut s: synstructure::Structure<'_>) -> proc_macro2::Tok
             }
         },
     )
+}
+
+/// Derive an extension trait for a given impl block. The trait name
+/// goes into the parenthesized args of the macro, for greppability.
+/// For example:
+/// ```
+/// use macros::extension;
+/// #[extension(pub trait Foo)]
+/// impl i32 { fn hello() {} }
+/// ```
+///
+/// expands to:
+/// ```
+/// pub trait Foo { fn hello(); }
+/// impl Foo for i32 { fn hello() {} }
+/// ```
+#[proc_macro_attribute]
+pub fn extension(attr: TokenStream, input: TokenStream) -> TokenStream {
+    extension::extension(attr, input)
 }

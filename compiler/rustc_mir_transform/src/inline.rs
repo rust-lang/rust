@@ -4,13 +4,12 @@ use std::ops::{Range, RangeFrom};
 use std::{debug_assert_matches, iter};
 
 use rustc_abi::{ExternAbi, FieldIdx};
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::attrs::{InlineAttr, OptimizeAttr};
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{InlineAttr, OptimizeAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
@@ -18,7 +17,7 @@ use rustc_middle::ty::{
     self, Instance, InstanceKind, ShimKind, Ty, TyCtxt, TypeFlags, TypeVisitableExt, Unnormalized,
 };
 use rustc_session::config::{DebugInfo, OptLevel};
-use rustc_span::Spanned;
+use rustc_span::{Spanned, bug};
 use tracing::{debug, instrument, trace, trace_span};
 
 use crate::cost_checker::{CostChecker, is_call_like};
@@ -44,18 +43,22 @@ struct CallSite<'tcx> {
 pub struct Inline;
 
 impl<'tcx> crate::MirPass<'tcx> for Inline {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        let enabled_by_default =
-            sess.opts.unstable_opts.inline_mir.unwrap_or_else(|| match sess.mir_opt_level() {
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        match ctx.opts.unstable_opts.inline_mir {
+            Some(enabled) => PassPolicy::optional(enabled),
+            None => PassPolicy::optional(match ctx.mir_opt_level() {
                 0 | 1 => false,
+                // Only inline for `-Copt-level >= 2`, and don't inline
+                // in incremental mode to increase incremental effectiveness.
+                // FIXME: This should be cleaned up to not rely on inspecting the global opt level.
                 2 => {
-                    (sess.opts.optimize == OptLevel::More
-                        || sess.opts.optimize == OptLevel::Aggressive)
-                        && sess.opts.incremental == None
+                    (ctx.opts.optimize == OptLevel::More
+                        || ctx.opts.optimize == OptLevel::Aggressive)
+                        && ctx.opts.incremental.is_none()
                 }
                 _ => true,
-            });
-        PassPolicy::optimization(enabled_by_default)
+            }),
+        }
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -77,7 +80,7 @@ impl ForceInline {
 }
 
 impl<'tcx> crate::MirPass<'tcx> for ForceInline {
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Forced inlining is part of MIR semantics.
         PassPolicy::Required
     }
@@ -342,11 +345,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
         // Avoid inlining into coroutines, since their `optimized_mir` is used for layout computation,
         // which can create a cycle, even when no attempt is made to inline the function in the other
         // direction.
-        if body.coroutine.is_some() {
-            return false;
-        }
-
-        true
+        body.coroutine.is_none()
     }
 
     #[instrument(level = "debug", skip(self, callee_body))]
@@ -764,7 +763,8 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         | InstanceKind::Shim(ShimKind::DropGlue(..))
         | InstanceKind::Shim(ShimKind::Clone(..))
         | InstanceKind::Shim(ShimKind::ThreadLocal(..))
-        | InstanceKind::Shim(ShimKind::FnPtrAddr(..)) => return Ok(()),
+        | InstanceKind::Shim(ShimKind::FnPtrAsPtr(..))
+        | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..)) => return Ok(()),
     }
 
     if inliner.tcx().is_constructor(callee_def_id) {
@@ -774,9 +774,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
     }
 
     if let Some(callee_def_id) = callee_def_id.as_local()
-        && !inliner
-            .tcx()
-            .is_lang_item(inliner.tcx().parent(caller_def_id), rustc_hir::LangItem::FnOnce)
+        && !inliner.tcx().is_lang_item(inliner.tcx().parent(caller_def_id), LangItem::FnOnce)
     {
         // If we know for sure that the function we're calling will itself try to
         // call us, then we avoid inlining that function.
@@ -872,8 +870,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
         let data = BasicBlockData::new(
             Some(Terminator {
                 source_info: terminator.source_info,
-                kind: TerminatorKind::Goto { target: block },
-                attributes: ThinVec::new(),
+                kind: TerminatorKind::goto(block),
             }),
             caller_body[block].is_cleanup,
         );
@@ -887,24 +884,13 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     // Place could result in two different locations if `f`
     // writes to `i`. To prevent this we need to create a temporary
     // borrow of the place and pass the destination as `*temp` instead.
-    fn dest_needs_borrow(place: Place<'_>) -> bool {
-        for elem in place.projection.iter() {
-            match elem {
-                ProjectionElem::Deref | ProjectionElem::Index(_) => return true,
-                _ => {}
-            }
-        }
-
-        false
-    }
-
-    let dest = if dest_needs_borrow(destination) {
+    //
+    // This must be a raw pointer: a mutable reference could be invalidated by
+    // reading the arguments later, and would be invalid if the destination type
+    // is uninhabited.
+    let dest = if !destination.is_stable_offset() {
         trace!("creating temp for return destination");
-        let dest = Rvalue::Ref(
-            tcx.lifetimes.re_erased,
-            BorrowKind::Mut { kind: MutBorrowKind::Default },
-            destination,
-        );
+        let dest = Rvalue::RawPtr(RawPtrKind::Mut, destination);
         let dest_ty = dest.ty(caller_body, tcx);
         let temp = Place::from(new_call_temp(caller_body, callsite, dest_ty, return_block));
         caller_body[callsite.block].statements.push(Statement::new(
@@ -1011,8 +997,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
 
     caller_body[callsite.block].terminator = Some(Terminator {
         source_info: callsite.source_info,
-        kind: TerminatorKind::Goto { target: integrator.map_block(START_BLOCK) },
-        attributes: ThinVec::new(),
+        kind: TerminatorKind::goto(integrator.map_block(START_BLOCK)),
     });
 
     // Copy required constants from the callee_body into the caller_body. Although we are only
@@ -1173,7 +1158,7 @@ fn new_call_temp<'tcx>(
  * Integrates blocks from the callee function into the calling function.
  * Updates block indices, references to locals and other control flow
  * stuff.
-*/
+ */
 struct Integrator<'a, 'tcx> {
     args: &'a [Local],
     new_locals: RangeFrom<Local>,
@@ -1297,7 +1282,7 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
 
         match terminator.kind {
             TerminatorKind::CoroutineDrop | TerminatorKind::Yield { .. } => bug!(),
-            TerminatorKind::Goto { ref mut target } => {
+            TerminatorKind::Goto { ref mut target, .. } => {
                 *target = self.map_block(*target);
             }
             TerminatorKind::SwitchInt { ref mut targets, .. } => {
@@ -1325,14 +1310,14 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             }
             TerminatorKind::Return => {
                 terminator.kind = if let Some(tgt) = self.return_block {
-                    TerminatorKind::Goto { target: tgt }
+                    TerminatorKind::goto(tgt)
                 } else {
                     TerminatorKind::Unreachable
                 }
             }
             TerminatorKind::UnwindResume => {
                 terminator.kind = match self.cleanup_block {
-                    UnwindAction::Cleanup(tgt) => TerminatorKind::Goto { target: tgt },
+                    UnwindAction::Cleanup(tgt) => TerminatorKind::goto(tgt),
                     UnwindAction::Continue => TerminatorKind::UnwindResume,
                     UnwindAction::Unreachable => TerminatorKind::Unreachable,
                     UnwindAction::Terminate(reason) => TerminatorKind::UnwindTerminate(reason),
@@ -1370,7 +1355,7 @@ fn try_instance_mir<'tcx>(
     {
         let fields = def.all_fields();
         for field in fields {
-            let field_ty = field.ty(tcx, args);
+            let field_ty = field.ty(tcx, *args);
             if field_ty.has_param() && field_ty.has_aliases() {
                 return Err("cannot build drop shim for polymorphic type");
             }

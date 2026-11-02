@@ -7,6 +7,7 @@ LL |         self.b(|| 0)
 help: there is a method `a` with a similar name, but with different arguments
   --> $DIR/issue-117794.rs:4:5
    |
+LL | trait T {
 LL |     fn a(&self) -> impl Foo {
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -4,28 +4,23 @@
 use std::num::NonZero;
 
 use rustc_ast::NodeId;
-use rustc_errors::{Applicability, Diag, Diagnostic, EmissionGuarantee, LintBuffer, msg};
+use rustc_attr_ir::{
+    ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability, StabilityLevel,
+};
+use rustc_errors::{Diag, Diagnostic, LintBuffer, msg};
 use rustc_feature::GateIssue;
-use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, ConstStability, DefaultBodyStability, HirId, Stability};
+use rustc_hir::{self as hir, HirId};
+use rustc_lint_defs::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE};
+use rustc_lint_defs::{DeprecatedSinceKind, Lint};
 use rustc_macros::{Decodable, Encodable, StableHash, Subdiagnostic};
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err_issue;
-use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE};
-use rustc_session::lint::{DeprecatedSinceKind, Lint};
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 
-pub use self::StabilityLevel::*;
 use crate::ty::TyCtxt;
 use crate::ty::print::with_no_trimmed_paths;
-
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum StabilityLevel {
-    Unstable,
-    Stable,
-}
 
 #[derive(Copy, Clone)]
 pub enum UnstableKind {
@@ -67,7 +62,6 @@ pub fn report_unstable(
     feature: Symbol,
     reason: Option<Symbol>,
     issue: Option<NonZero<u32>>,
-    suggestion: Option<(Span, String, String, Applicability)>,
     span: Span,
     kind: UnstableKind,
 ) {
@@ -82,9 +76,6 @@ pub fn report_unstable(
     };
 
     let mut err = feature_err_issue(sess, feature, span, GateIssue::Library(issue), msg);
-    if let Some((inner_types, msg, sugg, applicability)) = suggestion {
-        err.span_suggestion(inner_types, msg, sugg, applicability);
-    }
     if let UnstableKind::Const(kw) = kind {
         err.span_label(kw, "trait is not stable as const yet");
     }
@@ -102,7 +93,7 @@ fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
     style = "verbose",
     applicability = "machine-applicable"
 )]
-pub struct DeprecationSuggestion {
+pub(crate) struct DeprecationSuggestion {
     #[primary_span]
     pub span: Span,
 
@@ -110,7 +101,7 @@ pub struct DeprecationSuggestion {
     pub suggestion: Symbol,
 }
 
-pub struct Deprecated {
+pub(crate) struct Deprecated {
     pub sub: Option<DeprecationSuggestion>,
 
     pub kind: String,
@@ -119,12 +110,12 @@ pub struct Deprecated {
     pub since_kind: DeprecatedSinceKind,
 }
 
-impl<'a, G: EmissionGuarantee> rustc_errors::Diagnostic<'a, G> for Deprecated {
+impl<'a> rustc_errors::Diagnostic<'a> for Deprecated {
     fn into_diag(
         self,
         dcx: rustc_errors::DiagCtxtHandle<'a>,
         level: rustc_errors::Level,
-    ) -> Diag<'a, G> {
+    ) -> Diag<'a> {
         let Self { sub, kind, path, note, since_kind } = self;
         let mut diag = Diag::new(dcx, level, match &since_kind {
             DeprecatedSinceKind::InEffect => msg!(
@@ -265,40 +256,9 @@ pub enum EvalResult {
     Allow,
     /// We cannot use the item because it is unstable and we did not provide the
     /// corresponding feature gate.
-    Deny {
-        feature: Symbol,
-        reason: Option<Symbol>,
-        issue: Option<NonZero<u32>>,
-        suggestion: Option<(Span, String, String, Applicability)>,
-    },
+    Deny { feature: Symbol, reason: Option<Symbol>, issue: Option<NonZero<u32>> },
     /// The item does not have the `#[stable]` or `#[unstable]` marker assigned.
     Unmarked,
-}
-
-// See issue #83250.
-fn suggestion_for_allocator_api(
-    tcx: TyCtxt<'_>,
-    def_id: DefId,
-    span: Span,
-    feature: Symbol,
-) -> Option<(Span, String, String, Applicability)> {
-    if feature == sym::allocator_api {
-        if let Some(trait_) = tcx.opt_parent(def_id) {
-            if tcx.is_diagnostic_item(sym::Vec, trait_) {
-                let sm = tcx.sess.psess.source_map();
-                let inner_types = sm.span_extend_to_prev_char(span, '<', true);
-                if let Ok(snippet) = sm.span_to_snippet(inner_types) {
-                    return Some((
-                        inner_types,
-                        "consider wrapping the inner types in tuple".to_string(),
-                        format!("({snippet})"),
-                        Applicability::MaybeIncorrect,
-                    ));
-                }
-            }
-        }
-    }
-    None
 }
 
 /// An override option for eval_stability.
@@ -389,7 +349,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(Stability {
-                level: hir::StabilityLevel::Unstable { reason, issue, implied_by, .. },
+                level: StabilityLevel::Unstable { reason, issue, implied_by, .. },
                 feature,
                 ..
             }) => {
@@ -430,8 +390,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     return EvalResult::Allow;
                 }
 
-                let suggestion = suggestion_for_allocator_api(self, def_id, span, feature);
-                EvalResult::Deny { feature, reason: reason.to_opt_reason(), issue, suggestion }
+                EvalResult::Deny { feature, reason: reason.to_opt_reason(), issue }
             }
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are
@@ -466,7 +425,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(DefaultBodyStability {
-                level: hir::StabilityLevel::Unstable { reason, issue, .. },
+                level: StabilityLevel::Unstable { reason, issue, .. },
                 feature,
             }) => {
                 if span.allows_unstable(feature) {
@@ -477,12 +436,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     return EvalResult::Allow;
                 }
 
-                EvalResult::Deny {
-                    feature,
-                    reason: reason.to_opt_reason(),
-                    issue,
-                    suggestion: None,
-                }
+                EvalResult::Deny { feature, reason: reason.to_opt_reason(), issue }
             }
             Some(_) => {
                 // Stable APIs are always ok to call
@@ -564,15 +518,9 @@ impl<'tcx> TyCtxt<'tcx> {
         let is_allowed = matches!(eval_result, EvalResult::Allow);
         match eval_result {
             EvalResult::Allow => {}
-            EvalResult::Deny { feature, reason, issue, suggestion } => report_unstable(
-                self.sess,
-                feature,
-                reason,
-                issue,
-                suggestion,
-                span,
-                UnstableKind::Regular,
-            ),
+            EvalResult::Deny { feature, reason, issue } => {
+                report_unstable(self.sess, feature, reason, issue, span, UnstableKind::Regular)
+            }
             EvalResult::Unmarked => unmarked(span, def_id),
         }
 
@@ -607,7 +555,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(ConstStability {
-                level: hir::StabilityLevel::Unstable { reason, issue, implied_by, .. },
+                level: StabilityLevel::Unstable { reason, issue, implied_by, .. },
                 feature,
                 ..
             }) => {
@@ -633,7 +581,6 @@ impl<'tcx> TyCtxt<'tcx> {
                     feature,
                     reason.to_opt_reason(),
                     issue,
-                    None,
                     span,
                     UnstableKind::Const(const_kw_span),
                 );

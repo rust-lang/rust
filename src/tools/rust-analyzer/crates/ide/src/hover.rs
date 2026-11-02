@@ -156,7 +156,6 @@ pub(crate) fn hover(
     Some(res)
 }
 
-#[allow(clippy::field_reassign_with_default)]
 fn hover_offset(
     sema: &Semantics<'_, RootDatabase>,
     FilePosition { file_id, offset }: FilePosition,
@@ -182,8 +181,12 @@ fn hover_offset(
         _ => 1,
     })?;
 
-    if let Some(doc_comment) = token_as_doc_comment(&original_token) {
+    if ast::Comment::can_cast(original_token.kind()) {
         cov_mark::hit!(no_highlight_on_comment_hover);
+        return None;
+    }
+
+    if let Some(doc_comment) = token_as_doc_comment(&original_token) {
         return doc_comment.get_definition_with_descend_at(sema, offset, |def, node, range| {
             let res = hover_for_definition(
                 sema,
@@ -368,6 +371,11 @@ fn hover_offset(
             let c = token.parent().and_then(|x| x.parent()).and_then(ast::ClosureExpr::cast)?;
             render::closure_expr(sema, config, c, edition, display_target)
         };
+        let cfg_predicate = || {
+            let predicate = token.parent().and_then(ast::CfgPredicate::cast)?;
+            render::cfg_predicate(sema, predicate)
+                .map(|markup| HoverResult { markup, actions: vec![] })
+        };
         let literal = || {
             render::literal(sema, original_token.clone(), display_target)
                 .map(|markup| HoverResult { markup, actions: vec![] })
@@ -377,6 +385,7 @@ fn hover_offset(
             .or_else(rest_pat)
             .or_else(call)
             .or_else(closure)
+            .or_else(cfg_predicate)
             .or_else(literal)
         {
             res.push(result)

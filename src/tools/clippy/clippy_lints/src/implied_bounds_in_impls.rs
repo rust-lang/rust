@@ -1,3 +1,5 @@
+use std::cmp::max_by_key;
+
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_errors::{Applicability, SuggestionStyle};
@@ -7,9 +9,8 @@ use rustc_hir::{
     TyKind, WherePredicateKind,
 };
 use rustc_hir_analysis::lower_ty;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::{self, AssocItem, ClauseKind, Generics, Ty, TyCtxt};
-use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -97,7 +98,9 @@ fn emit_lint(
                 // `<>` needs to be added if there aren't yet any generic arguments or constraints
                 let needs_angle_brackets = bound.args.is_empty() && bound.constraints.is_empty();
                 let insert_span = match (bound.args, bound.constraints) {
-                    ([.., arg], [.., constraint]) => arg.span().max(constraint.span).shrink_to_hi(),
+                    ([.., arg], [.., constraint]) => {
+                        max_by_key(arg.span(), constraint.span, |span| span.lo_hi()).shrink_to_hi()
+                    },
                     ([.., arg], []) => arg.span().shrink_to_hi(),
                     ([], [.., constraint]) => constraint.span.shrink_to_hi(),
                     ([], []) => bound.span.shrink_to_hi(),
@@ -178,7 +181,7 @@ fn try_resolve_type<'tcx>(
 /// Here i32 != i64, so this will return false.
 fn is_same_generics<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_predicate_args: &'tcx [ty::GenericArg<'tcx>],
+    trait_predicate_args: ty::GenericArgs<'tcx>,
     implied_by_args: &'tcx [GenericArg<'tcx>],
     implied_args: &'tcx [GenericArg<'tcx>],
     implied_by_def_id: DefId,

@@ -4,8 +4,7 @@ use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::ty::adjust_derefs_manually_drop;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId, Node, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -47,7 +46,7 @@ impl LateLintPass<'_> for DerefAddrOf {
             // NOTE(tesuji): `*&` forces rustc to const-promote the array to `.rodata` section.
             // See #12854 for details.
             && !matches!(addrof_target.kind, ExprKind::Array(_))
-            && deref_target.span.eq_ctxt(e.span)
+            && deref_target.span.ctxt() == e.span.ctxt()
             && !addrof_target.span.from_expansion()
         {
             let mut applicability = Applicability::MachineApplicable;

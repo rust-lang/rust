@@ -1,9 +1,7 @@
 //@ run-pass
 //@ edition: 2024
 
-#![feature(never_type)]
 #![feature(exhaustive_patterns)]
-
 #![allow(unreachable_patterns)]
 #![allow(unreachable_code)]
 #![allow(unused_variables)]
@@ -25,13 +23,13 @@ fn foo(z: !) {
 
 fn bar(nevers: &[!]) {
     match nevers {
-        &[]  => (),
+        &[] => (),
     };
 
     match nevers {
-        &[]  => (),
-        &[_]  => (),
-        &[_, _, _, ..]  => (),
+        &[] => (),
+        &[_] => (),
+        &[_, _, _, ..] => (),
     };
 }
 

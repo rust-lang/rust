@@ -1,4 +1,4 @@
-// rustfmt-imports_granularity: Item
+//@ rustfmt-imports_granularity: Item
 
 use std::{
     fs,

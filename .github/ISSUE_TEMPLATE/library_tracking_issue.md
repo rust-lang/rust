@@ -2,7 +2,7 @@
 name: Library Tracking Issue
 about: A tracking issue for an unstable library feature.
 title: Tracking Issue for XXX
-labels: C-tracking-issue, T-libs-api, S-tracking-unimplemented
+labels: C-tracking-issue, T-libs, S-tracking-unimplemented
 ---
 <!--
 Thank you for creating a tracking issue!
@@ -53,8 +53,7 @@ If the feature is changed later, please add those PRs here as well.
 
 - [ ] ACP: rust-lang/libs-team#...
 - [ ] Implementation: #...
-- [ ] Final comment period (FCP)[^1]
-- [ ] Stabilization PR
+- [ ] Stabilization PR[^1]
 
 <!--
 Once the feature has gone through a few release cycles and there are no

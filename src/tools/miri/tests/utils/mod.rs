@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+use std::ffi::{CString, OsString};
+
 #[macro_use]
 mod macros;
 
@@ -11,6 +13,11 @@ mod miri_extern;
 pub use self::fs::*;
 pub use self::io::*;
 pub use self::miri_extern::*;
+
+/// Return a `CString` version of the given string.
+pub fn into_c_string(str: impl Into<OsString>) -> CString {
+    CString::new(str.into().into_string().unwrap()).unwrap()
+}
 
 pub fn run_provenance_gc() {
     // SAFETY: No preconditions. The GC is fine to run at any time.

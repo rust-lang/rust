@@ -10,7 +10,7 @@
 #[no_mangle]
 //~^ HELP remove this attribute
 pub fn defiant<T>(_t: T) {}
-//~^ WARN functions generic over types or consts must be mangled
+//~^ ERROR functions generic over types or consts must be mangled
 
 #[no_mangle]
 fn rio_grande() {}
@@ -24,7 +24,7 @@ mod badlands {
     //~| HELP try a static value
     #[allow(dead_code)] // for rustfix
     #[no_mangle] pub fn val_jean<T>() {}
-    //~^ WARN functions generic over types or consts must be mangled
+    //~^ ERROR functions generic over types or consts must be mangled
     //~| HELP remove this attribute
 
     // ... but we can suggest just-`pub` instead of restricted
@@ -33,7 +33,7 @@ mod badlands {
     //~| HELP try a static value
     #[allow(dead_code)] // for rustfix
     #[no_mangle] pub(crate) fn crossfield<T>() {}
-    //~^ WARN functions generic over types or consts must be mangled
+    //~^ ERROR functions generic over types or consts must be mangled
     //~| HELP remove this attribute
 }
 

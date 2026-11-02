@@ -315,6 +315,8 @@ fn convert_path(
     for segment in segments {
         let name = match segment.kind()? {
             ast::PathSegmentKind::Name(name) => name.as_name(),
+            ast::PathSegmentKind::SelfKw => continue,
+            ast::PathSegmentKind::SelfTypeKw => Name::new_symbol_root(sym::Self_),
             _ => return None,
         };
         mod_path.segments.push(name);

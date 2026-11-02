@@ -5,8 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{self as hir, Body, ExprKind, FnDecl};
 use rustc_lexer::is_ident;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Symbol, edition};
 use std::borrow::Cow;
@@ -132,7 +131,7 @@ fn name_conflicts<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, fn_name: S
     let id = body.id().hir_id;
 
     // Iterate over items in the same module/scope
-    let (module, _module_span, _module_hir) = tcx.hir_get_module(tcx.parent_module(id));
+    let (module, _module_span) = tcx.hir_get_module(tcx.parent_module(id));
     if module
         .item_ids
         .iter()

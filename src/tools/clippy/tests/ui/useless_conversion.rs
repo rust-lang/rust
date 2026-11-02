@@ -1,8 +1,7 @@
-#![deny(clippy::useless_conversion)]
-#![allow(clippy::into_iter_on_ref)]
-#![allow(clippy::needless_ifs, clippy::unnecessary_wraps, unused)]
+#![warn(clippy::useless_conversion)]
 // FIXME(static_mut_refs): use raw pointers instead of references
-#![allow(static_mut_refs)]
+#![expect(static_mut_refs)]
+#![allow(clippy::into_iter_on_ref)]
 
 use std::ops::ControlFlow;
 
@@ -173,7 +172,6 @@ fn main() {
     issue11300::bar();
 }
 
-#[allow(dead_code)]
 fn issue11065_fp() {
     use std::option::IntoIter;
     fn takes_into_iter(_: impl IntoIterator<Item = i32>) {}
@@ -187,7 +185,6 @@ fn issue11065_fp() {
     x!(Some(5).into_iter());
 }
 
-#[allow(dead_code)]
 fn explicit_into_iter_fn_arg() {
     fn a<T>(_: T) {}
     fn b<T: IntoIterator<Item = i32>>(_: T) {}
@@ -503,4 +500,44 @@ fn after_question_mark() -> Result<(), ()> {
     takes_into_iter_usize_result(b.clone().into_iter())?;
     //~^ useless_conversion
     Ok(())
+}
+
+mod issue17083 {
+    trait FromU32: From<u32> {}
+
+    trait HasType {
+        type Type: FromU32;
+    }
+
+    trait HasNestedType {
+        type Type: HasType;
+    }
+
+    trait CanWrite
+    where
+        Self: HasNestedType,
+    {
+        fn write(output: &mut <<Self as HasNestedType>::Type as HasType>::Type);
+    }
+
+    enum Test<T> {
+        Add(T),
+    }
+
+    impl<T> HasNestedType for Test<T>
+    where
+        T: HasType,
+    {
+        type Type = T;
+    }
+
+    #[automatically_derived]
+    impl<T> CanWrite for Test<T>
+    where
+        T: HasType<Type = u32>,
+    {
+        fn write(output: &mut T::Type) {
+            *output = !T::Type::from(1u32);
+        }
+    }
 }

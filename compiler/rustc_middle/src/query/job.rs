@@ -4,9 +4,11 @@ use std::num::NonZero;
 use std::sync::Arc;
 
 use parking_lot::{Condvar, Mutex};
+use rustc_data_structures::hash_table::HashTable;
+use rustc_data_structures::sharded::Sharded;
 use rustc_span::Span;
 
-use crate::query::Cycle;
+use crate::queries::TaggedQueryKey;
 
 /// A value uniquely identifying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -33,21 +35,61 @@ impl<'tcx> QueryJob<'tcx> {
     pub fn new(id: QueryJobId, span: Span, parent: Option<QueryJobId>) -> Self {
         QueryJob { id, span, parent, latch: None }
     }
+}
 
-    pub fn latch(&mut self) -> QueryLatch<'tcx> {
-        self.latch.get_or_insert_with(QueryLatch::new).clone()
-    }
-
-    /// Signals to waiters that the query is complete.
+/// For a particular query and key, tracks the status of a query evaluation
+/// that has started, but has not yet finished successfully.
+///
+/// (Successful query evaluation for a key is represented by an entry in the
+/// query's in-memory cache.)
+pub enum ActiveKeyStatus<'tcx> {
+    /// Some thread is already evaluating the query for this key.
     ///
-    /// This does nothing for single threaded rustc,
-    /// as there are no concurrent jobs which could be waiting on us
-    #[inline]
-    pub fn signal_complete(self) {
-        if let Some(latch) = self.latch {
-            latch.set();
-        }
+    /// The enclosed [`QueryJob`] can be used to wait for it to finish.
+    Started(QueryJob<'tcx>),
+
+    /// The query panicked. Queries trying to wait on this will raise a fatal error which will
+    /// silently panic.
+    Poisoned,
+}
+
+/// For a particular query, keeps track of "active" keys, i.e. keys whose
+/// evaluation has started but has not yet finished successfully.
+///
+/// (Successful query evaluation for a key is represented by an entry in the
+/// query's in-memory cache.)
+pub struct QueryState<'tcx, K> {
+    pub active: Sharded<HashTable<(K, ActiveKeyStatus<'tcx>)>>,
+}
+
+impl<'tcx, K> Default for QueryState<'tcx, K> {
+    fn default() -> QueryState<'tcx, K> {
+        QueryState { active: Default::default() }
     }
+}
+
+/// Description of a frame in the query stack.
+///
+/// This is mostly used in case of cycles for error reporting.
+#[derive(Debug)]
+pub struct QueryStackFrame<'tcx> {
+    pub span: Span,
+
+    /// The query and key of the query method call that this stack frame
+    /// corresponds to.
+    ///
+    /// Code that doesn't care about the specific key can still use this to
+    /// check which query it's for, or obtain the query's name.
+    pub tagged_key: TaggedQueryKey<'tcx>,
+}
+
+#[derive(Debug)]
+pub struct QueryCycle<'tcx> {
+    /// The query and related span that uses the cycle.
+    pub usage: Option<QueryStackFrame<'tcx>>,
+
+    /// The span here corresponds to the reason for which this query was required.
+    pub frames: Vec<QueryStackFrame<'tcx>>,
 }
 
 #[derive(Debug)]
@@ -55,7 +97,7 @@ pub struct QueryWaiter<'tcx> {
     pub parent: Option<QueryJobId>,
     pub condvar: Condvar,
     pub span: Span,
-    pub cycle: Mutex<Option<Cycle<'tcx>>>,
+    pub cycle: Mutex<Option<QueryCycle<'tcx>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -65,67 +107,7 @@ pub struct QueryLatch<'tcx> {
 }
 
 impl<'tcx> QueryLatch<'tcx> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         QueryLatch { waiters: Arc::new(Mutex::new(Some(Vec::new()))) }
-    }
-
-    /// Awaits for the query job to complete.
-    pub fn wait_on(&self, query: Option<QueryJobId>, span: Span) -> Result<(), Cycle<'tcx>> {
-        let mut waiters_guard = self.waiters.lock();
-        let Some(waiters) = &mut *waiters_guard else {
-            return Ok(()); // already complete
-        };
-
-        let waiter = Arc::new(QueryWaiter {
-            parent: query,
-            span,
-            cycle: Mutex::new(None),
-            condvar: Condvar::new(),
-        });
-
-        // We push the waiter on to the `waiters` list. It can be accessed inside
-        // the `wait` call below, by 1) the `set` method or 2) by deadlock detection.
-        // Both of these will remove it from the `waiters` list before resuming
-        // this thread.
-        waiters.push(Arc::clone(&waiter));
-
-        // Awaits the caller on this latch by blocking the current thread.
-        // If this detects a deadlock and the deadlock handler wants to resume this thread
-        // we have to be in the `wait` call. This is ensured by the deadlock handler
-        // getting the self.info lock.
-        rustc_thread_pool::mark_blocked_and_wait(|| {
-            waiter.condvar.wait(&mut waiters_guard);
-            // Release the lock before we potentially block when acquiring jobserver token.
-            drop(waiters_guard);
-        });
-
-        // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
-        // although another thread may still have a Arc reference so we cannot
-        // use Arc::get_mut
-        let mut cycle = waiter.cycle.lock();
-        match cycle.take() {
-            None => Ok(()),
-            Some(cycle) => Err(cycle),
-        }
-    }
-
-    /// Sets the latch and resumes all waiters on it
-    fn set(&self) {
-        let mut waiters_guard = self.waiters.lock();
-        let waiters = waiters_guard.take().unwrap(); // mark the latch as complete
-        let registry = rustc_thread_pool::Registry::current();
-        for waiter in waiters {
-            rustc_thread_pool::mark_unblocked(&registry);
-            waiter.condvar.notify_one();
-        }
-    }
-
-    /// Removes a single waiter from the list of waiters.
-    /// This is used to break query cycles.
-    pub fn extract_waiter(&self, waiter: usize) -> Arc<QueryWaiter<'tcx>> {
-        let mut waiters_guard = self.waiters.lock();
-        let waiters = waiters_guard.as_mut().expect("non-empty waiters vec");
-        // Remove the waiter from the list of waiters
-        waiters.remove(waiter)
     }
 }

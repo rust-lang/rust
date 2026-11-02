@@ -4,16 +4,19 @@ use std::{fmt, mem};
 
 use rustc_abi::{Align, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::Mutability;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem, find_attr};
+use rustc_hir::{CRATE_HIR_ID, HirId};
+use rustc_lint_defs::builtin::LONG_RUNNING_CONST_EVAL;
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout, ValidityRequirement};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty, TyCtxt};
-use rustc_middle::{bug, mir, span_bug};
-use rustc_span::{Span, Symbol, sym};
+use rustc_middle::{mir, throw_machine_stop};
+use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::FnAbi;
 use tracing::debug;
 
@@ -21,9 +24,9 @@ use super::error::*;
 use crate::diagnostics::{LongRunning, LongRunningWarn};
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, RetagMode,
-    Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok, throw_exhaust,
-    throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
+    GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet,
+    RetagMode, Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok,
+    throw_exhaust, throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
     type_implements_dyn_trait,
 };
 
@@ -249,7 +252,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
             }
 
             let msg = Symbol::intern(self.read_str(&msg_place)?);
-            let span = self.find_closest_untracked_caller_location();
+            let span = self.caller_location();
             let (file, line, col) = self.location_triple_for_span(span);
             return Err(ConstEvalErrKind::Panic { msg, file, line, col }).into();
         } else if self.tcx.is_lang_item(def_id, LangItem::PanicFmt) {
@@ -391,7 +394,7 @@ impl<'tcx> CompileTimeMachine<'tcx> {
     #[inline(always)]
     /// Find the first stack frame that is within the current crate, if any.
     /// Otherwise, return the crate's HirId
-    pub fn best_lint_scope(&self, tcx: TyCtxt<'tcx>) -> hir::HirId {
+    pub fn best_lint_scope(&self, tcx: TyCtxt<'tcx>) -> HirId {
         self.stack.iter().find_map(|frame| frame.lint_root(tcx)).unwrap_or(CRATE_HIR_ID)
     }
 }
@@ -445,9 +448,16 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             // all. That said, we have to allow calling functions inside a `const trait`. These
             // *are* const-checked!
             if !ecx.tcx.is_const_fn(def) || find_attr!(ecx.tcx, def, RustcDoNotConstCheck) {
-                // We certainly do *not* want to actually call the fn
-                // though, so be sure we return here.
-                throw_unsup_format!("calling non-const function `{}`", instance)
+                // We certainly do *not* want to actually call this fn. const-checking should have
+                // prevented this, but this can be reached with unleashed-miri, so make testing
+                // simpler by avoiding ICEs there. (Technically this can still ICE if miri-unleash
+                // was set in a dependency rather than the current crate. That's okay, it's an
+                // internal unstable feature.)
+                if ecx.tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
+                    throw_unsup_format!("calling non-const function `{}`", instance)
+                } else {
+                    span_bug!(ecx.cur_span(), "calling non-const function `{}`", instance)
+                }
             }
         }
 
@@ -459,7 +469,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
     fn panic_nounwind(ecx: &mut InterpCx<'tcx, Self>, msg: &str) -> InterpResult<'tcx> {
         let msg = Symbol::intern(msg);
-        let span = ecx.find_closest_untracked_caller_location();
+        let span = ecx.caller_location();
         let (file, line, col) = ecx.location_triple_for_span(span);
         Err(ConstEvalErrKind::Panic { msg, file, line, col }).into()
     }
@@ -480,6 +490,10 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
         // CTFE-specific intrinsics.
         match intrinsic_name {
+            sym::abort_immediate => {
+                // Note that `abort_immediate` is also hooked separately in Miri.
+                throw_machine_stop!(ConstEvalErrKind::Abort);
+            }
             sym::ptr_guaranteed_cmp => {
                 let a = ecx.read_scalar(&args[0])?;
                 let b = ecx.read_scalar(&args[1])?;
@@ -600,12 +614,26 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 }
             }
 
-            sym::type_of => {
+            sym::type_id_type_of => {
                 let ty = ecx.read_type_id(&args[0])?;
                 ecx.write_type_info(ty, dest)?;
             }
 
-            sym::size_of_type_id => {
+            sym::type_id_is_signed => {
+                let ty = ecx.read_type_id(&args[0])?;
+                ecx.write_scalar(Scalar::from_bool(ty.is_signed()), dest)?;
+            }
+
+            sym::type_id_points_mutably => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let is_mutable = matches!(
+                    ty.kind(),
+                    ty::RawPtr(_, Mutability::Mut) | &ty::Ref(_, _, Mutability::Mut)
+                );
+                ecx.write_scalar(Scalar::from_bool(is_mutable), dest)?;
+            }
+
+            sym::type_id_size_of => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let layout = ecx.layout_of(ty)?;
                 let variant_index = if layout.is_sized() {
@@ -620,6 +648,30 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     ecx.project_downcast_named(dest, sym::None)?.0
                 };
                 ecx.write_discriminant(variant_index, dest)?;
+            }
+
+            sym::type_id_element_ty => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let variant_index = if let ty::Array(ty, _) | ty::Slice(ty) = ty.kind() {
+                    let (variant_idx, variant_place) =
+                        ecx.project_downcast_named(dest, sym::Some)?;
+                    let type_id_field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
+                    ecx.write_type_id(*ty, &type_id_field_place)?;
+                    variant_idx
+                } else {
+                    ecx.project_downcast_named(dest, sym::None)?.0
+                };
+                ecx.write_discriminant(variant_index, dest)?;
+            }
+
+            sym::type_id_array_len => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let len = if let ty::Array(_, len) = ty.kind() {
+                    len.to_leaf().to_target_usize(ecx.tcx.tcx())
+                } else {
+                    0
+                };
+                ecx.write_scalar(Scalar::from_target_usize(len, ecx), dest)?;
             }
 
             sym::type_id_fields => {
@@ -684,11 +736,83 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 );
                 ecx.write_type_id(frt, dest)?;
             }
+            sym::type_id_function_ptr => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let variant_index = if let ty::FnPtr(sig, fn_header) = ty.kind() {
+                    let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
+                    let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
+                    let sig = sig.skip_binder(); // FIXME: handle lifetime bounds
+                    ecx.write_fn_ptr_type_info(field_place, &sig, fn_header)?;
+                    variant
+                } else {
+                    ecx.project_downcast_named(dest, sym::None)?.0
+                };
+                ecx.write_discriminant(variant_index, dest)?;
+            }
+            sym::type_id_points_to => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let variant_index = if let ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) =
+                    ty.kind()
+                {
+                    let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
+                    let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
+                    ecx.write_type_id(*pointee_ty, &field_place)?;
+                    variant
+                } else {
+                    ecx.project_downcast_named(dest, sym::None)?.0
+                };
+                ecx.write_discriminant(variant_index, dest)?;
+            }
 
             sym::type_id_variants => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variants_num = ty.ty_adt_def().map(|def| def.variants().len()).unwrap_or(1);
                 ecx.write_scalar(Scalar::from_target_usize(variants_num as u64, ecx), dest)?;
+            }
+
+            sym::type_id_variant_name => {
+                let base = ecx.read_type_id(&args[0])?;
+
+                let field_name = if let ty::Adt(def, _) = base.kind() {
+                    let variant_idx = ecx.read_target_usize(&args[1])? as usize;
+                    if variant_idx >= def.variants().len() {
+                        throw_ub!(BoundsCheckFailed {
+                            len: def.variants().len() as u64,
+                            index: variant_idx as u64
+                        });
+                    }
+                    let variant_idx = VariantIdx::from_usize(variant_idx);
+                    def.variant(variant_idx).name
+                } else {
+                    span_bug!(ecx.cur_span(), "expected enum type, got {base}")
+                };
+                let ptr = ecx.allocate_bytes_dedup(field_name.as_str().as_bytes())?;
+                ecx.write_immediate(
+                    Immediate::ScalarPair(
+                        Scalar::from_pointer(ptr, ecx),
+                        Scalar::from_target_usize(field_name.as_str().len() as u64, ecx),
+                    ),
+                    dest,
+                )?;
+            }
+
+            sym::type_id_variant_non_exhaustive => {
+                let base = ecx.read_type_id(&args[0])?;
+
+                let non_exhaustive = if let ty::Adt(def, _) = base.kind() {
+                    let variant_idx = ecx.read_target_usize(&args[1])? as usize;
+                    if variant_idx >= def.variants().len() {
+                        throw_ub!(BoundsCheckFailed {
+                            len: def.variants().len() as u64,
+                            index: variant_idx as u64
+                        });
+                    }
+                    let variant_idx = VariantIdx::from_usize(variant_idx);
+                    def.variant(variant_idx).is_field_list_non_exhaustive()
+                } else {
+                    span_bug!(ecx.cur_span(), "expected enum type, got {base}")
+                };
+                ecx.write_scalar(Scalar::from_bool(non_exhaustive), dest)?;
             }
 
             sym::field_offset => {
@@ -697,7 +821,48 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                        def.field_representing_type_info(ecx.tcx.tcx, *args)
+                {
+                    (base, variant_idx, field_idx)
+                } else {
+                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
+                };
+                let layout = ecx.layout_of(ty)?;
+                let cx = ty::layout::LayoutCx::new(ecx.tcx.tcx, ecx.typing_env());
+
+                let layout = layout.for_variant(&cx, variant);
+                let offset = layout.fields.offset(field.index()).bytes();
+
+                ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
+            }
+
+            sym::field_representing_type_name => {
+                let frt_ty = ecx.read_type_id(&args[0])?;
+
+                let field_name = if let ty::Adt(def, args) = frt_ty.kind()
+                    && let Some(FieldInfo { name, .. }) =
+                        def.field_representing_type_info(ecx.tcx.tcx, *args)
+                {
+                    name
+                } else {
+                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
+                };
+                let ptr = ecx.allocate_bytes_dedup(field_name.as_str().as_bytes())?;
+                ecx.write_immediate(
+                    Immediate::ScalarPair(
+                        Scalar::from_pointer(ptr, ecx),
+                        Scalar::from_target_usize(field_name.as_str().len() as u64, ecx),
+                    ),
+                    dest,
+                )?;
+            }
+
+            sym::field_representing_type_offset => {
+                let frt_ty = ecx.read_type_id(&args[0])?;
+
+                let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
+                    && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
+                        def.field_representing_type_info(ecx.tcx.tcx, *args)
                 {
                     (base, variant_idx, field_idx)
                 } else {
@@ -717,13 +882,35 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 let field_ty = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { ty, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                        def.field_representing_type_info(ecx.tcx.tcx, *args)
                 {
                     ecx.tcx.erase_and_anonymize_regions(ty)
                 } else {
                     span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
                 };
                 ecx.write_type_id(field_ty, dest)?;
+            }
+
+            sym::type_id_generics => {
+                let ty = ecx.read_type_id(&args[0])?;
+                ecx.write_type_id_generics(dest, ty)?;
+            }
+
+            sym::type_id_non_exhaustive => {
+                let ty = ecx.read_type_id(&args[0])?;
+
+                // FIXME(reflection): need a way to obtain non-exhaustiveness of a variant's fields.
+                let non_exhaustive = if let ty::Adt(def, _) = ty.kind() {
+                    if def.is_enum() {
+                        def.is_variant_list_non_exhaustive()
+                    } else {
+                        def.non_enum_variant().is_field_list_non_exhaustive()
+                    }
+                } else {
+                    false
+                };
+
+                ecx.write_scalar(Scalar::from_bool(non_exhaustive), dest)?;
             }
 
             _ => {
@@ -831,15 +1018,12 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let hir_id = ecx.machine.best_lint_scope(*ecx.tcx);
                 let is_error = ecx
                     .tcx
-                    .lint_level_spec_at_node(
-                        rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
-                        hir_id,
-                    )
+                    .lint_level_spec_at_node(LONG_RUNNING_CONST_EVAL, hir_id)
                     .level()
                     .is_error();
                 let span = ecx.cur_span();
                 ecx.tcx.emit_node_span_lint(
-                    rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
+                    LONG_RUNNING_CONST_EVAL,
                     hir_id,
                     span,
                     LongRunning { item_span: ecx.tcx.span },
@@ -947,15 +1131,13 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             return interp_ok(None);
         }
         // If it's a frozen shared reference that's not already immutable, potentially make it immutable.
-        // (Do nothing on `None` provenance, that cannot store immutability anyway.)
+        // (Do nothing on `None` provenance, that cannot be used to perform mutation anyway.)
+        // Note that const-checking relies on the UB detection we are implementing here! Specifically,
+        // the analysis for which destructors may be invoked relies on `&impl Freeze` references not
+        // being able to change what gets dropped.
         if let ty::Ref(_, ty, mutbl) = val.layout.ty.kind()
             && *mutbl == Mutability::Not
-            && val
-                .to_scalar_and_meta()
-                .0
-                .to_pointer(ecx)?
-                .provenance
-                .is_some_and(|p| !p.immutable())
+            && val.to_scalar_and_meta().0.to_pointer(ecx).provenance.is_some_and(|p| !p.immutable())
         {
             // That next check is expensive, that's why we have all the guards above.
             let is_immutable = ty.is_freeze(*ecx.tcx, ecx.typing_env());

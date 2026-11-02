@@ -3,7 +3,8 @@
     clippy::let_unit_value,
     clippy::match_single_binding,
     clippy::needless_return,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    clippy::unnecessary_as_slice
 )]
 
 use std::collections::HashMap;

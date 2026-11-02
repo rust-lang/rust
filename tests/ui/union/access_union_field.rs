@@ -1,3 +1,5 @@
+//@ reference: items.union.fields.read-safety
+//@ reference: type.union.safety
 #![allow(unused_variables)]
 
 union Foo {

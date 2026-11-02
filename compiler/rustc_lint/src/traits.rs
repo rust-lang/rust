@@ -1,8 +1,9 @@
-use rustc_hir::{self as hir, AmbigArg, LangItem};
-use rustc_session::{declare_lint, declare_lint_pass};
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_hir::{self as hir, AmbigArg};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
-use crate::lints::{DropGlue, DropTraitConstraintsDiag};
+use crate::diagnostics::{DropGlue, DropTraitConstraintsDiag};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {

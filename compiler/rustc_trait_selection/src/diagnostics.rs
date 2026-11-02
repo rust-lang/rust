@@ -2,12 +2,12 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
-    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
+    Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic, IntoDiagArg,
+    Level, MultiSpan, Subdiagnostic, msg,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
+use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{self as hir, AmbigArg, FnRetTy, GenericParamKind, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
@@ -36,9 +36,9 @@ pub(crate) struct NegativePositiveConflict<'tcx> {
     pub positive_impl_span: Result<Span, Symbol>,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for NegativePositiveConflict<'_> {
+impl Diagnostic<'_> for NegativePositiveConflict<'_> {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(
             dcx,
             level,
@@ -89,7 +89,7 @@ pub(crate) enum AdjustSignatureBorrow {
 }
 
 impl Subdiagnostic for AdjustSignatureBorrow {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         match self {
             AdjustSignatureBorrow::Borrow { to_borrow } => {
                 diag.arg("borrow_len", to_borrow.len());
@@ -437,8 +437,8 @@ pub(crate) enum RegionOriginNote<'a> {
 }
 
 impl Subdiagnostic for RegionOriginNote<'_> {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        let label_or_note = |diag: &mut Diag<'_, G>, span, msg: DiagMessage| {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
+        let label_or_note = |diag: &mut Diag<'_>, span, msg: DiagMessage| {
             let sub_count = diag.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = diag.children.iter().filter(|d| !d.span.is_dummy()).count();
             let span_is_primary = diag.span.primary_spans().iter().all(|&sp| sp == span);
@@ -532,7 +532,7 @@ pub(crate) enum LifetimeMismatchLabels {
 }
 
 impl Subdiagnostic for LifetimeMismatchLabels {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         match self {
             LifetimeMismatchLabels::InRet { param_span, ret_span, span, label_var1 } => {
                 diag.span_label(param_span, msg!("this parameter and the return type are declared with different lifetimes..."));
@@ -605,7 +605,7 @@ pub(crate) struct AddLifetimeParamsSuggestion<'a> {
 }
 
 impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let mut mk_suggestion = || {
             let Some(anon_reg) = self.tcx.is_suitable_region(self.generic_param_scope, self.sub)
             else {
@@ -739,13 +739,12 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 return false;
             }
             if introduce_new {
-                let new_param_suggestion = if let Some(first) =
-                    generics.params.iter().find(|p| !p.name.ident().span.is_empty())
-                {
-                    (first.span.shrink_to_lo(), format!("{suggestion_param_name}, "))
-                } else {
-                    (generics.span, format!("<{suggestion_param_name}>"))
-                };
+                let new_param_suggestion =
+                    if let Some(span) = generics.span_for_lifetime_suggestion() {
+                        (span, format!("{suggestion_param_name}, "))
+                    } else {
+                        (generics.span, format!("<{suggestion_param_name}>"))
+                    };
 
                 visitor.suggestions.push(new_param_suggestion);
             }
@@ -790,7 +789,7 @@ pub(crate) struct IntroducesStaticBecauseUnmetLifetimeReq {
 }
 
 impl Subdiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
-    fn add_to_diag<G: EmissionGuarantee>(mut self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(mut self, diag: &mut Diag<'_>) {
         self.unmet_requirements.push_span_label(
             self.binding_span,
             msg!("introduces a `'static` lifetime requirement"),
@@ -913,133 +912,123 @@ impl IntoDiagArg for TyOrSig<'_> {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum ActualImplExplNotes<'tcx> {
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...")]
+    #[note(
+        "closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any two \
+         lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`..."
+    )]
     ExpectedSignatureTwo {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime `'{$lifetime_1}`...")]
+    #[note(
+        "closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime \
+         `'{$lifetime_1}`..."
+    )]
     ExpectedSignatureAny {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{$lifetime_1}`...")]
+    #[note(
+        "closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for some specific \
+         lifetime `'{$lifetime_1}`..."
+    )]
     ExpectedSignatureSome {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
-    #[note(
-        "{$leading_ellipsis ->
-            [true] ...
-            *[false] {\"\"}
-        }closure with signature `{$ty_or_sig}` must implement `{$trait_path}`"
-    )]
+    #[note("closure with signature `{$ty_or_sig}` must implement `{$trait_path}`")]
     ExpectedSignatureNothing {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
     },
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...")]
+    #[note(
+        "`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any two \
+         lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`..."
+    )]
     ExpectedPassiveTwo {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any lifetime `'{$lifetime_1}`...")]
+    #[note(
+        "`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any \
+         lifetime `'{$lifetime_1}`..."
+    )]
     ExpectedPassiveAny {
-        leading_ellipsis: bool,
-        ty_or_sig: TyOrSig<'tcx>,
-        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
-        lifetime_1: usize,
-    },
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for some specific lifetime `'{$lifetime_1}`...")]
-    ExpectedPassiveSome {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
     #[note(
-        "{$leading_ellipsis ->
-            [true] ...
-            *[false] {\"\"}
-        }`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`"
+        "`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for some \
+         specific lifetime `'{$lifetime_1}`..."
     )]
+    ExpectedPassiveSome {
+        #[primary_span]
+        span: MultiSpan,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
+        lifetime_1: usize,
+    },
+    #[note("`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`")]
     ExpectedPassiveNothing {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
     },
-    #[note("{$leading_ellipsis ->
-        [true] ...
-        *[false] {\"\"}
-    }`{$ty_or_sig}` must implement `{$trait_path}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...")]
+    #[note(
+        "`{$ty_or_sig}` must implement `{$trait_path}`, for any two lifetimes `'{$lifetime_1}` and \
+         `'{$lifetime_2}`..."
+    )]
     ExpectedOtherTwo {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note(
-        "{$leading_ellipsis ->
-            [true] ...
-            *[false] {\"\"}
-        }`{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime `'{$lifetime_1}`..."
-    )]
+    #[note("`{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime `'{$lifetime_1}`...")]
     ExpectedOtherAny {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
     #[note(
-        "{$leading_ellipsis ->
-            [true] ...
-            *[false] {\"\"}
-        }`{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{$lifetime_1}`..."
+        "`{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime \
+         `'{$lifetime_1}`..."
     )]
     ExpectedOtherSome {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
-    #[note(
-        "{$leading_ellipsis ->
-            [true] ...
-            *[false] {\"\"}
-        }`{$ty_or_sig}` must implement `{$trait_path}`"
-    )]
+    #[note("`{$ty_or_sig}` must implement `{$trait_path}`")]
     ExpectedOtherNothing {
-        leading_ellipsis: bool,
+        #[primary_span]
+        span: MultiSpan,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
     },
@@ -1053,6 +1042,8 @@ pub(crate) enum ActualImplExplNotes<'tcx> {
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         has_lifetime: bool,
         lifetime: usize,
+        #[primary_span]
+        span: Option<Span>,
     },
     #[note(
         "...but `{$trait_path}` is actually implemented for the type `{$ty}`{$has_lifetime ->
@@ -1097,66 +1088,75 @@ impl<'tcx> ActualImplExplNotes<'tcx> {
     pub(crate) fn new_expected(
         kind: ActualImplExpectedKind,
         lt_kind: ActualImplExpectedLifetimeKind,
-        leading_ellipsis: bool,
         ty_or_sig: TyOrSig<'tcx>,
         trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
         lifetime_2: usize,
+        satisfy_span: Option<Span>,
+        item_span: Option<Span>,
+        outer_span: Option<Span>,
+        item_name: String,
     ) -> Self {
+        let label = format!("required by this bound in `{item_name}`");
+        let mut span = match (satisfy_span, item_span) {
+            (Some(satisfy_span), Some(item_span)) => {
+                let mut span = MultiSpan::from(satisfy_span);
+                span.push_span_label(satisfy_span, label);
+                span.push_span_context(item_span);
+                span
+            }
+            (None, Some(item_span)) => {
+                let mut span = MultiSpan::from(item_span);
+                let item_label = format!("required due to a bound in `{item_name}`");
+                span.push_span_label(item_span, item_label);
+                span
+            }
+            (Some(satisfy_span), None) => {
+                let mut span = MultiSpan::from(satisfy_span);
+                span.push_span_label(satisfy_span, label);
+                span
+            }
+            _ => MultiSpan::from(vec![]),
+        };
+        if let Some(outer) = outer_span {
+            span.push_span_context(outer);
+        }
         match (kind, lt_kind) {
             (ActualImplExpectedKind::Signature, ActualImplExpectedLifetimeKind::Two) => {
-                Self::ExpectedSignatureTwo {
-                    leading_ellipsis,
-                    ty_or_sig,
-                    trait_path,
-                    lifetime_1,
-                    lifetime_2,
-                }
+                Self::ExpectedSignatureTwo { span, ty_or_sig, trait_path, lifetime_1, lifetime_2 }
             }
             (ActualImplExpectedKind::Signature, ActualImplExpectedLifetimeKind::Any) => {
-                Self::ExpectedSignatureAny { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+                Self::ExpectedSignatureAny { span, ty_or_sig, trait_path, lifetime_1 }
             }
             (ActualImplExpectedKind::Signature, ActualImplExpectedLifetimeKind::Some) => {
-                Self::ExpectedSignatureSome { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+                Self::ExpectedSignatureSome { span, ty_or_sig, trait_path, lifetime_1 }
             }
             (ActualImplExpectedKind::Signature, ActualImplExpectedLifetimeKind::Nothing) => {
-                Self::ExpectedSignatureNothing { leading_ellipsis, ty_or_sig, trait_path }
+                Self::ExpectedSignatureNothing { span, ty_or_sig, trait_path }
             }
             (ActualImplExpectedKind::Passive, ActualImplExpectedLifetimeKind::Two) => {
-                Self::ExpectedPassiveTwo {
-                    leading_ellipsis,
-                    ty_or_sig,
-                    trait_path,
-                    lifetime_1,
-                    lifetime_2,
-                }
+                Self::ExpectedPassiveTwo { span, ty_or_sig, trait_path, lifetime_1, lifetime_2 }
             }
             (ActualImplExpectedKind::Passive, ActualImplExpectedLifetimeKind::Any) => {
-                Self::ExpectedPassiveAny { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+                Self::ExpectedPassiveAny { span, ty_or_sig, trait_path, lifetime_1 }
             }
             (ActualImplExpectedKind::Passive, ActualImplExpectedLifetimeKind::Some) => {
-                Self::ExpectedPassiveSome { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+                Self::ExpectedPassiveSome { span, ty_or_sig, trait_path, lifetime_1 }
             }
             (ActualImplExpectedKind::Passive, ActualImplExpectedLifetimeKind::Nothing) => {
-                Self::ExpectedPassiveNothing { leading_ellipsis, ty_or_sig, trait_path }
+                Self::ExpectedPassiveNothing { span, ty_or_sig, trait_path }
             }
             (ActualImplExpectedKind::Other, ActualImplExpectedLifetimeKind::Two) => {
-                Self::ExpectedOtherTwo {
-                    leading_ellipsis,
-                    ty_or_sig,
-                    trait_path,
-                    lifetime_1,
-                    lifetime_2,
-                }
+                Self::ExpectedOtherTwo { span, ty_or_sig, trait_path, lifetime_1, lifetime_2 }
             }
             (ActualImplExpectedKind::Other, ActualImplExpectedLifetimeKind::Any) => {
-                Self::ExpectedOtherAny { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+                Self::ExpectedOtherAny { span, ty_or_sig, trait_path, lifetime_1 }
             }
             (ActualImplExpectedKind::Other, ActualImplExpectedLifetimeKind::Some) => {
-                Self::ExpectedOtherSome { leading_ellipsis, ty_or_sig, trait_path, lifetime_1 }
+                Self::ExpectedOtherSome { span, ty_or_sig, trait_path, lifetime_1 }
             }
             (ActualImplExpectedKind::Other, ActualImplExpectedLifetimeKind::Nothing) => {
-                Self::ExpectedOtherNothing { leading_ellipsis, ty_or_sig, trait_path }
+                Self::ExpectedOtherNothing { span, ty_or_sig, trait_path }
             }
         }
     }
@@ -1167,13 +1167,8 @@ impl<'tcx> ActualImplExplNotes<'tcx> {
 pub(crate) struct TraitPlaceholderMismatch<'tcx> {
     #[primary_span]
     pub span: Span,
-    #[label("doesn't satisfy where-clause")]
-    pub satisfy_span: Option<Span>,
-    #[label("due to a where-clause on `{$def_id}`...")]
-    pub where_span: Option<Span>,
     #[label("implementation of `{$trait_def_id}` is not general enough")]
     pub dup_span: Option<Span>,
-    pub def_id: String,
     pub trait_def_id: String,
 
     #[subdiagnostic]
@@ -1185,7 +1180,7 @@ pub(crate) struct ConsiderBorrowingParamHelp {
 }
 
 impl Subdiagnostic for ConsiderBorrowingParamHelp {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let mut type_param_span: MultiSpan = self.spans.clone().into();
         for &span in &self.spans {
             // Seems like we can't call f() here as Into<DiagMessage> is required
@@ -1222,6 +1217,10 @@ pub(crate) struct TraitImplDiff {
     pub found_short: String,
     pub expected: String,
     pub found: String,
+    #[context]
+    pub trait_span: Span,
+    #[context]
+    pub impl_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1425,6 +1424,18 @@ pub(crate) enum ConsiderAddingAwait {
     FutureSuggMultiple {
         #[suggestion_part(code = ".await")]
         spans: Vec<Span>,
+    },
+    #[multipart_suggestion(
+        "consider making the function `async` and `await`ing on the `Future`",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    MakeFunctionAsync {
+        #[suggestion_part(code = "{async_prefix}")]
+        async_span: Span,
+        async_prefix: String,
+        #[suggestion_part(code = ".await")]
+        await_span: Span,
     },
 }
 
@@ -1650,7 +1661,7 @@ pub(crate) struct SuggestTuplePatternMany {
 }
 
 impl Subdiagnostic for SuggestTuplePatternMany {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.arg("path", self.path);
         let message = msg!("try wrapping the pattern in a variant of `{$path}`");
         diag.multipart_suggestions(
@@ -1896,7 +1907,7 @@ pub(crate) struct AddPreciseCapturingAndParams {
 }
 
 impl Subdiagnostic for AddPreciseCapturingAndParams {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.arg("new_lifetime", self.new_lifetime);
         diag.multipart_suggestion(
             msg!("add a `use<...>` bound to explicitly capture `{$new_lifetime}` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate"),
@@ -1906,6 +1917,20 @@ impl Subdiagnostic for AddPreciseCapturingAndParams {
         diag.span_note(
             self.apit_spans,
             msg!("you could use a `use<...>` bound to explicitly capture `{$new_lifetime}`, but argument-position `impl Trait`s are not nameable"),
+        );
+    }
+}
+
+pub(crate) struct AddPreciseCapturingAndNameLifetimes {
+    pub suggs: Vec<(Span, String)>,
+}
+
+impl Subdiagnostic for AddPreciseCapturingAndNameLifetimes {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
+        diag.multipart_suggestion(
+            msg!("add `use<...>` bound and name the elided lifetimes to explicitly capture them"),
+            self.suggs,
+            Applicability::MachineApplicable,
         );
     }
 }
@@ -1920,6 +1945,17 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
     fn_def_id: LocalDefId,
     captured_args: FxIndexSet<DefId>,
 ) -> Option<AddPreciseCapturingForOvercapture> {
+    let rpit_span = tcx.def_span(opaque_def_id);
+
+    // Every suggestion below is anchored on the opaque's span, so bail if that span is not one
+    // the user can edit. AST lowering marks it with the `impl Trait` desugaring, hence the
+    // question is about the span it desugared from: for an opaque created inside a macro
+    // expansion that span is the expansion site, which for an attribute macro is the attribute
+    // itself, where `+ use<..>` does not even parse.
+    if rpit_span.parent_callsite().is_some_and(|span| !span.can_be_used_for_suggestions()) {
+        return None;
+    }
+
     let generics = tcx.generics_of(fn_def_id);
 
     let mut captured_lifetimes = FxIndexSet::default();
@@ -2012,7 +2048,7 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
             ("(", ")")
         }
         Node::Ty(ty) => match ty.kind {
-            rustc_hir::TyKind::Ptr(_) | rustc_hir::TyKind::Ref(..) => ("(", ")"),
+            rustc_hir::TyKind::Ptr(..) | rustc_hir::TyKind::Ref(..) => ("(", ")"),
             // FIXME: RPITs are not allowed to be nested in `impl Fn() -> ...`,
             // but we eventually could support that, and that would necessitate
             // making this more sophisticated.
@@ -2021,7 +2057,6 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
         _ => ("", ""),
     };
 
-    let rpit_span = tcx.def_span(opaque_def_id);
     if !lparen.is_empty() {
         suggs.push((rpit_span.shrink_to_lo(), lparen.to_string()));
     }
@@ -2036,7 +2071,7 @@ pub struct AddPreciseCapturingForOvercapture {
 }
 
 impl Subdiagnostic for AddPreciseCapturingForOvercapture {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let applicability = if self.apit_spans.is_empty() {
             Applicability::MachineApplicable
         } else {
@@ -2071,4 +2106,16 @@ pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
         *[other] this generic parameter must be used with a generic {$kind} parameter
     }")]
     pub param_span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "there is an associated type with the same name",
+    style = "verbose",
+    code = "Self::",
+    applicability = "maybe-incorrect"
+)]
+pub struct AssocTypeWithSameName {
+    #[primary_span]
+    pub span: Span,
 }

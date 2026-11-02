@@ -35,6 +35,9 @@ fn foo9() {}
 #[target_feature(enable = "tail-call")]
 fn foo10() {}
 
+#[target_feature(enable = "wide-arithmetic")]
+fn foo11() {}
+
 fn main() {
     foo1();
     foo2();
@@ -46,4 +49,5 @@ fn main() {
     foo8();
     foo9();
     foo10();
+    foo11();
 }

@@ -4,17 +4,16 @@
 //! borrow checking, etc.). These lints have full type information available.
 
 use std::any::Any;
-use std::cell::Cell;
 
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::par_join;
 use rustc_hir::def_id::{LocalDefId, LocalModId};
 use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
+use rustc_lint_defs::LintPass;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
-use rustc_session::lint::LintPass;
 use rustc_span::Span;
+use rustc_span::def_id::CRATE_MOD_ID;
 use tracing::debug;
 
 use crate::passes::LateLintPassObject;
@@ -37,6 +36,12 @@ macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
 struct LateContextAndPass<'tcx, T: LateLintPass<'tcx>> {
     context: LateContext<'tcx>,
     pass: T,
+
+    /// Rustdoc parses functions which are behind failing `#[cfg]` checks and may not pass
+    /// type checking. See: <https://github.com/rust-lang/rust/pull/73566>
+    /// Inlined from the session variables to avoid the indirection and cache pressure in the
+    /// lint visitor.
+    actually_rustdoc: bool,
 }
 
 impl<'tcx, T: LateLintPass<'tcx>> LateContextAndPass<'tcx, T> {
@@ -71,9 +76,9 @@ impl<'tcx, T: LateLintPass<'tcx>> LateContextAndPass<'tcx, T> {
         self.context.param_env = old_param_env;
     }
 
-    fn process_mod(&mut self, m: &'tcx hir::Mod<'tcx>, n: HirId) {
-        lint_callback!(self, check_mod, m, n);
-        hir_visit::walk_mod(self, m);
+    fn process_mod(&mut self, module: &'tcx hir::Mod<'tcx>, id: LocalModId) {
+        lint_callback!(self, check_mod, module, id);
+        hir_visit::walk_mod(self, module);
     }
 }
 
@@ -89,23 +94,26 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
 
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let old_enclosing_body = self.context.enclosing_body.replace(body_id);
-        let old_cached_typeck_results = self.context.cached_typeck_results.get();
+        let old_typeck_results = self.context.typeck_results;
 
-        // HACK(eddyb) avoid trashing `cached_typeck_results` when we're
-        // nested in `visit_fn`, which may have already resulted in them
-        // being queried.
-        if old_enclosing_body != Some(body_id) {
-            self.context.cached_typeck_results.set(None);
+        // The body and typeck results are also set in `visit_fn`.
+        // Only fetch the results if this is for a new body.
+        if old_enclosing_body != Some(body_id) && !self.actually_rustdoc {
+            let typeck_results = self.context.tcx.typeck_body(body_id);
+
+            // To avoid ICE, skip visiting the body if the typeck_results is tainted.
+            if typeck_results.tainted_by_errors.is_some() {
+                self.context.enclosing_body = old_enclosing_body;
+                self.context.typeck_results = old_typeck_results;
+                return;
+            }
+            self.context.typeck_results = Some(typeck_results);
         }
 
         let body = self.context.tcx.hir_body(body_id);
         self.visit_body(body);
         self.context.enclosing_body = old_enclosing_body;
-
-        // See HACK comment above.
-        if old_enclosing_body != Some(body_id) {
-            self.context.cached_typeck_results.set(old_cached_typeck_results);
-        }
+        self.context.typeck_results = old_typeck_results;
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
@@ -123,7 +131,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
         let generics = self.context.generics.take();
         self.context.generics = it.kind.generics();
-        let old_cached_typeck_results = self.context.cached_typeck_results.take();
+        let old_typeck_results = self.context.typeck_results.take();
         let old_enclosing_body = self.context.enclosing_body.take();
         self.with_lint_attrs(it.hir_id(), |cx| {
             cx.with_param_env(it.owner_id, |cx| {
@@ -133,7 +141,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
             });
         });
         self.context.enclosing_body = old_enclosing_body;
-        self.context.cached_typeck_results.set(old_cached_typeck_results);
+        self.context.typeck_results = old_typeck_results;
         self.context.generics = generics;
     }
 
@@ -160,12 +168,10 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
-        ensure_sufficient_stack(|| {
-            self.with_lint_attrs(e.hir_id, |cx| {
-                lint_callback!(cx, check_expr, e);
-                hir_visit::walk_expr(cx, e);
-                lint_callback!(cx, check_expr_post, e);
-            })
+        self.with_lint_attrs(e.hir_id, |cx| {
+            lint_callback!(cx, check_expr, e);
+            hir_visit::walk_expr(cx, e);
+            lint_callback!(cx, check_expr_post, e);
         })
     }
 
@@ -189,12 +195,24 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         // Wrap in typeck results here, not just in visit_nested_body,
         // in order for `check_fn` to be able to use them.
         let old_enclosing_body = self.context.enclosing_body.replace(body_id);
-        let old_cached_typeck_results = self.context.cached_typeck_results.take();
+        let old_typeck_results = self.context.typeck_results;
+        if !self.actually_rustdoc {
+            let typeck_results = self.context.tcx.typeck_body(body_id);
+
+            // To avoid ICE, skip visiting the body if the typeck_results is tainted.
+            if typeck_results.tainted_by_errors.is_some() {
+                self.context.enclosing_body = old_enclosing_body;
+                self.context.typeck_results = old_typeck_results;
+                return;
+            }
+
+            self.context.typeck_results = Some(typeck_results);
+        }
         let body = self.context.tcx.hir_body(body_id);
         lint_callback!(self, check_fn, fk, decl, body, span, id);
         hir_visit::walk_fn(self, fk, decl, body_id, id);
         self.context.enclosing_body = old_enclosing_body;
-        self.context.cached_typeck_results.set(old_cached_typeck_results);
+        self.context.typeck_results = old_typeck_results;
     }
 
     fn visit_variant_data(&mut self, s: &'tcx hir::VariantData<'tcx>) {
@@ -220,9 +238,9 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         hir_visit::walk_ty(self, t);
     }
 
-    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _: Span, n: HirId) {
+    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _: Span, id: LocalModId) {
         if !self.context.only_module {
-            self.process_mod(m, n);
+            self.process_mod(m, id);
         }
     }
 
@@ -340,7 +358,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     let context = LateContext {
         tcx,
         enclosing_body: None,
-        cached_typeck_results: Cell::new(None),
+        typeck_results: None,
         param_env: ty::ParamEnv::empty(),
         effective_visibilities: tcx.effective_visibilities(()),
         last_node_with_lint_attrs: tcx.local_def_id_to_hir_id(mod_id),
@@ -379,19 +397,23 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
     context: LateContext<'tcx>,
     pass: T,
 ) {
-    let mut cx = LateContextAndPass { context, pass };
+    let mut cx = LateContextAndPass::<'tcx, T> {
+        context,
+        pass,
+        actually_rustdoc: tcx.sess.opts.actually_rustdoc,
+    };
 
-    let (module, _span, hir_id) = tcx.hir_get_module(mod_id);
+    let (module, _span) = tcx.hir_get_module(mod_id);
 
-    cx.with_lint_attrs(hir_id, |cx| {
+    cx.with_lint_attrs(mod_id.into(), |cx| {
         // There is no module lint that will have the crate itself as an item, so check it here.
-        if hir_id == hir::CRATE_HIR_ID {
+        if mod_id == CRATE_MOD_ID {
             lint_callback!(cx, check_crate,);
         }
 
-        cx.process_mod(module, hir_id);
+        cx.process_mod(module, mod_id);
 
-        if hir_id == hir::CRATE_HIR_ID {
+        if mod_id == CRATE_MOD_ID {
             lint_callback!(cx, check_crate_post,);
         }
     });
@@ -414,7 +436,7 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     let context = LateContext {
         tcx,
         enclosing_body: None,
-        cached_typeck_results: Cell::new(None),
+        typeck_results: None,
         param_env: ty::ParamEnv::empty(),
         effective_visibilities: tcx.effective_visibilities(()),
         last_node_with_lint_attrs: hir::CRATE_HIR_ID,
@@ -423,7 +445,8 @@ fn late_lint_crate<'tcx>(tcx: TyCtxt<'tcx>) {
     };
 
     let pass = RuntimeCombinedLateLintPass { passes };
-    let mut cx = LateContextAndPass { context, pass };
+    let mut cx =
+        LateContextAndPass { context, pass, actually_rustdoc: tcx.sess.opts.actually_rustdoc };
 
     // Visit the whole crate.
     cx.with_lint_attrs(hir::CRATE_HIR_ID, |cx| {

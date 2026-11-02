@@ -1,11 +1,11 @@
 #![deny(clippy::lint_without_lint_pass)]
 #![allow(clippy::missing_clippy_version_attribute)]
 #![feature(rustc_private)]
+#![feature(default_field_values)]
 
 #[macro_use]
 extern crate rustc_middle;
 #[macro_use]
-extern crate rustc_session;
 extern crate rustc_lint;
 use rustc_lint::{LintPass, LintVec};
 

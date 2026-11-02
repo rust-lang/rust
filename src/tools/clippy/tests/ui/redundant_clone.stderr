@@ -180,5 +180,113 @@ note: this value is dropped without further use
 LL |     foo(&x.clone(), move || {
    |          ^
 
-error: aborting due to 15 previous errors
+error: redundant clone
+  --> tests/ui/redundant_clone.rs:299:34
+   |
+LL |             let _: String = value.clone();
+   |                                  ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> tests/ui/redundant_clone.rs:299:29
+   |
+LL |             let _: String = value.clone();
+   |                             ^^^^^
+
+error: redundant clone
+  --> tests/ui/redundant_clone.rs:312:32
+   |
+LL |         let _ = identity!(value.clone());
+   |                                ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> tests/ui/redundant_clone.rs:312:27
+   |
+LL |         let _ = identity!(value.clone());
+   |                           ^^^^^
+
+error: redundant clone
+  --> tests/ui/redundant_clone.rs:322:23
+   |
+LL |             out.push(s.clone());
+   |                       ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> tests/ui/redundant_clone.rs:322:22
+   |
+LL |             out.push(s.clone());
+   |                      ^
+
+error: redundant clone
+  --> tests/ui/redundant_clone.rs:331:22
+   |
+LL |             let t = s.clone();
+   |                      ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> tests/ui/redundant_clone.rs:331:21
+   |
+LL |             let t = s.clone();
+   |                     ^
+
+error: redundant clone
+  --> tests/ui/redundant_clone.rs:343:22
+   |
+LL |             let t = s.clone();
+   |                      ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> tests/ui/redundant_clone.rs:343:21
+   |
+LL |             let t = s.clone();
+   |                     ^
+
+error: redundant clone
+  --> tests/ui/redundant_clone.rs:356:27
+   |
+LL |                 out.push(s.clone());
+   |                           ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> tests/ui/redundant_clone.rs:356:26
+   |
+LL |                 out.push(s.clone());
+   |                          ^
+
+error: redundant clone
+  --> tests/ui/redundant_clone.rs:361:27
+   |
+LL |                 out.push(s.clone());
+   |                           ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> tests/ui/redundant_clone.rs:361:26
+   |
+LL |                 out.push(s.clone());
+   |                          ^
+
+error: redundant clone
+  --> tests/ui/redundant_clone.rs:374:18
+   |
+LL |             t = s.clone();
+   |                  ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> tests/ui/redundant_clone.rs:374:17
+   |
+LL |             t = s.clone();
+   |                 ^
+
+error: redundant clone
+  --> tests/ui/redundant_clone.rs:384:18
+   |
+LL |         let t = s.clone();
+   |                  ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> tests/ui/redundant_clone.rs:384:17
+   |
+LL |         let t = s.clone();
+   |                 ^
+
+error: aborting due to 24 previous errors
 

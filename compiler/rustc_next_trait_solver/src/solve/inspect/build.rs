@@ -46,14 +46,14 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
 
     pub(crate) fn new_evaluation_step(
         &mut self,
-        var_values: ty::CanonicalVarValues<I>,
+        var_values: I::GenericArgs,
     ) -> EvaluationStepBuilder<D> {
         if self.is_noop() {
             EvaluationStepBuilder { state: None, _infcx: PhantomData }
         } else {
             EvaluationStepBuilder {
                 state: Some(Box::new(WipEvaluationStep {
-                    var_values: var_values.var_values.to_vec(),
+                    var_values: var_values.to_vec(),
                     evaluation: WipProbe {
                         initial_num_var_values: var_values.len(),
                         steps: vec![],

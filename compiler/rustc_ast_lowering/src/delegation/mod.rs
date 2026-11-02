@@ -45,12 +45,13 @@ use hir::def::Res;
 use rustc_abi::ExternAbi;
 use rustc_ast as ast;
 use rustc_ast::*;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, FnDeclFlags};
+use rustc_hir::{self as hir, FnDeclFlags, QPath};
 use rustc_middle::ty::Asyncness;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::kw;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::delegation::generics::{GenericsGenerationResults, GenericsPosition};
 use crate::delegation::resolution::resolver::DelegationResolver;
@@ -61,7 +62,7 @@ use crate::{
 
 mod attributes;
 mod generics;
-mod resolution;
+pub(crate) mod resolution;
 
 pub(crate) struct DelegationResults<'hir> {
     pub body_id: hir::BodyId,
@@ -139,9 +140,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let id = match source {
                             DelegationSource::Single => None,
                             DelegationSource::List(expn_id) => Some(expn_id),
-                            DelegationSource::Glob => {
-                                Some(self.tcx.expn_that_defined(self.owner.def_id).expect_local())
-                            }
+                            DelegationSource::Glob => Some(
+                                self.tcx
+                                    .expn_that_defined(self.curr_owner.owner.def_id)
+                                    .expect_local(),
+                            ),
                         };
 
                         id.map(|id| (id, unused_target_expr))
@@ -334,15 +337,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let overwrites = self_resolver.overwrites;
 
         // Target expr needs to lower `self` path.
-        self.ident_and_label_to_local_id.insert(pat_node_id, param_local_id);
+        self.curr_owner.ident_and_label_to_local_id.insert(pat_node_id, param_local_id);
 
         let block = cfg_select! {
             debug_assertions => {
                 crate::re_lowering::ReloweringChecker::allow_relowering(self, |this| {
                     this.lower_block_noalloc(HirId::INVALID, block, false)
                 })
-            },
-            _ => self.lower_block_noalloc(HirId::INVALID, block, false)
+            }
+            _ => self.lower_block_noalloc(HirId::INVALID, block, false),
         };
 
         // Remove node ids for which we overwrote resolution to generated param
@@ -413,7 +416,37 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 hir::QPath::Resolved(ty, self.arena.alloc(new_path))
             }
-            hir::QPath::TypeRelative(..) => unreachable!("until inherent methods are supported"),
+            hir::QPath::TypeRelative(mut ty, segment) => {
+                let mut segment = self.process_segment(span, segment, &mut generics.child);
+                segment.res = Res::Def(self.tcx.def_kind(res.call_path_res), res.call_path_res);
+
+                let ty_hir_id = ty.hir_id;
+
+                // Propagating child generics if needed.
+                ty = if let hir::TyKind::Path(QPath::Resolved(ty, path)) = ty.kind {
+                    let mut new_path = path.clone();
+
+                    new_path.segments = self.arena.alloc_from_iter(
+                        new_path.segments.iter().enumerate().map(|(idx, segment)| {
+                            if idx + 1 == new_path.segments.len() {
+                                self.process_segment(span, segment, &mut generics.parent)
+                            } else {
+                                segment.clone()
+                            }
+                        }),
+                    );
+
+                    self.arena.alloc(hir::Ty {
+                        hir_id: ty_hir_id,
+                        span,
+                        kind: hir::TyKind::Path(QPath::Resolved(ty, self.arena.alloc(new_path))),
+                    })
+                } else {
+                    ty
+                };
+
+                hir::QPath::TypeRelative(ty, self.arena.alloc(segment))
+            }
         };
 
         if let Some(hir::DelegationSelfTyPropagationKind::SelfTy(id)) =
@@ -439,7 +472,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             };
 
             let ident = Ident::new(kw::SelfUpper, span);
-            let path = self.create_resolved_path(res, ident, span);
+            let path = self.create_resolved_qpath(res, ident, span);
 
             // FIXME(fn_delegation): add default `..` for all other fields.
             let initializer = hir::ExprKind::Struct(
@@ -447,14 +480,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.arena.alloc_slice(&[hir::ExprField {
                     hir_id: self.next_id(),
                     is_shorthand: false,
-                    ident: Ident::new(sym::integer(0), span),
+                    ident: Ident::new(kw::Underscore, span),
                     expr: self.arena.alloc(call),
                     span,
                 }]),
                 hir::StructTailExpr::None,
             );
 
-            self.arena.alloc(self.mk_expr(initializer, span))
+            let expr = self.mk_expr(initializer, span);
+
+            let path = self.make_lang_item_qpath(LangItem::FromFn, span, None);
+            let path = self.arena.alloc(self.mk_expr(hir::ExprKind::Path(path), span));
+
+            let call = hir::ExprKind::Call(path, self.arena.alloc_slice(&[expr]));
+
+            self.arena.alloc(self.mk_expr(call, span))
         } else {
             self.arena.alloc(call)
         };
@@ -481,6 +521,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         result.generics.into_hir_generics(self, span);
 
         let mut segment = segment.clone();
+
         let mut args_iter = result.generics.create_args_iterator();
 
         let new_args = segment

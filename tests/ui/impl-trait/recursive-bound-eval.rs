@@ -2,6 +2,7 @@
 //! an RPIT.
 
 //@ revisions: next current
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
 

@@ -351,22 +351,6 @@ impl_vvv!("lsx", lsx_vmul_b, simd_mul, m128i, i8x16);
 impl_vvv!("lsx", lsx_vmul_h, simd_mul, m128i, i16x8);
 impl_vvv!("lsx", lsx_vmul_w, simd_mul, m128i, i32x4);
 impl_vvv!("lsx", lsx_vmul_d, simd_mul, m128i, i64x2);
-impl_vvv!("lsx", lsx_vdiv_b, simd_div, m128i, i8x16);
-impl_vvv!("lsx", lsx_vdiv_h, simd_div, m128i, i16x8);
-impl_vvv!("lsx", lsx_vdiv_w, simd_div, m128i, i32x4);
-impl_vvv!("lsx", lsx_vdiv_d, simd_div, m128i, i64x2);
-impl_vvv!("lsx", lsx_vdiv_bu, simd_div, m128i, u8x16);
-impl_vvv!("lsx", lsx_vdiv_hu, simd_div, m128i, u16x8);
-impl_vvv!("lsx", lsx_vdiv_wu, simd_div, m128i, u32x4);
-impl_vvv!("lsx", lsx_vdiv_du, simd_div, m128i, u64x2);
-impl_vvv!("lsx", lsx_vmod_b, simd_rem, m128i, i8x16);
-impl_vvv!("lsx", lsx_vmod_h, simd_rem, m128i, i16x8);
-impl_vvv!("lsx", lsx_vmod_w, simd_rem, m128i, i32x4);
-impl_vvv!("lsx", lsx_vmod_d, simd_rem, m128i, i64x2);
-impl_vvv!("lsx", lsx_vmod_bu, simd_rem, m128i, u8x16);
-impl_vvv!("lsx", lsx_vmod_hu, simd_rem, m128i, u16x8);
-impl_vvv!("lsx", lsx_vmod_wu, simd_rem, m128i, u32x4);
-impl_vvv!("lsx", lsx_vmod_du, simd_rem, m128i, u64x2);
 impl_vvv!("lsx", lsx_vand_v, simd_and, m128i, u8x16);
 impl_vvv!("lsx", lsx_vandn_v, simd_ext_andn, m128i, u8x16);
 impl_vvv!("lsx", lsx_vor_v, simd_or, m128i, u8x16);
@@ -573,6 +557,24 @@ impl_vugv!("lsx", lsx_vinsgr2vr_b, simd_insert, m128i, i8x16, i32, 4);
 impl_vugv!("lsx", lsx_vinsgr2vr_h, simd_insert, m128i, i16x8, i32, 3);
 impl_vugv!("lsx", lsx_vinsgr2vr_w, simd_insert, m128i, i32x4, i32, 2);
 impl_vugv!("lsx", lsx_vinsgr2vr_d, simd_insert, m128i, i64x2, i64, 1);
+
+impl_vavg!("lsx", lsx_vavg_b, m128i, i8x16, i16x16);
+impl_vavg!("lsx", lsx_vavg_h, m128i, i16x8, i32x8);
+impl_vavg!("lsx", lsx_vavg_w, m128i, i32x4, i64x4);
+impl_vavg!("lsx", lsx_vavg_d, m128i, i64x2, i128x2);
+impl_vavg!("lsx", lsx_vavg_bu, m128i, u8x16, u16x16);
+impl_vavg!("lsx", lsx_vavg_hu, m128i, u16x8, u32x8);
+impl_vavg!("lsx", lsx_vavg_wu, m128i, u32x4, u64x4);
+impl_vavg!("lsx", lsx_vavg_du, m128i, u64x2, u128x2);
+
+impl_vavgr!("lsx", lsx_vavgr_b, m128i, i8x16, i16x16);
+impl_vavgr!("lsx", lsx_vavgr_h, m128i, i16x8, i32x8);
+impl_vavgr!("lsx", lsx_vavgr_w, m128i, i32x4, i64x4);
+impl_vavgr!("lsx", lsx_vavgr_d, m128i, i64x2, i128x2);
+impl_vavgr!("lsx", lsx_vavgr_bu, m128i, u8x16, u16x16);
+impl_vavgr!("lsx", lsx_vavgr_hu, m128i, u16x8, u32x8);
+impl_vavgr!("lsx", lsx_vavgr_wu, m128i, u32x4, u64x4);
+impl_vavgr!("lsx", lsx_vavgr_du, m128i, u64x2, u128x2);
 
 #[cfg(test)]
 mod tests {

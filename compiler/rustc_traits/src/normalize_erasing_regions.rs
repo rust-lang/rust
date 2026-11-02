@@ -36,7 +36,7 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Par
                 None,
             );
 
-            let resolved_value = infcx.resolve_vars_if_possible(normalized_value);
+            let resolved_value = infcx.deeply_resolve_ignoring_regions(normalized_value);
             // It's unclear when `resolve_vars` would have an effect in a
             // fresh `InferCtxt`. If this assert does trigger, it will give
             // us a test case.

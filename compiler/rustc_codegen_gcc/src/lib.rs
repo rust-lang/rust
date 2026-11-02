@@ -1,12 +1,10 @@
 /*
  * FIXME(antoyo): implement equality in libgccjit based on https://zpz.github.io/blog/overloading-equality-operator-in-cpp-class-hierarchy/ (for type equality?)
  * For Thin LTO, this might be helpful:
-// cspell:disable-next-line
  * In gcc 4.6 -fwhopr was removed and became default with -flto. The non-whopr path can still be executed via -flto-partition=none.
  * Or the new incremental LTO (https://www.phoronix.com/news/GCC-Incremental-LTO-Patches)?
  *
  * Maybe some missing optimizations enabled by rustc's LTO is in there: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
-// cspell:disable-next-line
  * Like -fipa-icf (should be already enabled) and maybe -fdevirtualize-at-ltrans.
  * FIXME: disable debug info always being emitted. Perhaps this slows down things?
  *
@@ -25,6 +23,7 @@
 extern crate rustc_abi;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
+extern crate rustc_attr_ir;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
@@ -48,6 +47,7 @@ extern crate rustc_driver;
 mod abi;
 mod allocator;
 mod asm;
+mod atomics;
 mod attributes;
 mod back;
 mod base;
@@ -69,23 +69,21 @@ mod type_of;
 
 use std::any::Any;
 use std::ffi::CString;
-use std::fmt::Debug;
-use std::fs;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::{env, fs};
 
-use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
-use gccjit::{TargetInfo, Version};
+use gccjit::TargetInfo;
+use gccjit::{CType, Context, OptimizationLevel};
 use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::ThinModule;
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryFn, ThinLtoInput,
 };
 use rustc_codegen_ssa::base::codegen_crate;
-use rustc_codegen_ssa::target_features::cfg_target_feature;
+use rustc_codegen_ssa::target_features::internal_target_features;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
 use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -93,15 +91,16 @@ use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::util::Providers;
-use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames};
+use rustc_session::{
+    BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
+};
 use rustc_span::{Symbol, sym};
-use rustc_target::spec::{Arch, RelocModel};
+use rustc_target::spec::{RelocModel, TargetTuple};
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
-use crate::gcc_util::{target_cpu, to_gcc_features};
+use crate::gcc_util::{target_cpu, to_gcc_features, to_gcc_target_info_feature};
 
 pub struct PrintOnPanic<F: Fn() -> String>(pub F);
 
@@ -116,7 +115,7 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 #[cfg(not(feature = "master"))]
 #[derive(Debug)]
 pub struct TargetInfo {
-    supports_128bit_integers: AtomicBool,
+    supports_128bit_integers: bool,
 }
 
 #[cfg(not(feature = "master"))]
@@ -128,7 +127,7 @@ impl TargetInfo {
     fn supports_target_dependent_type(&self, typ: CType) -> bool {
         match typ {
             CType::UInt128t | CType::Int128t => {
-                if self.supports_128bit_integers.load(Ordering::SeqCst) {
+                if self.supports_128bit_integers {
                     return true;
                 }
             }
@@ -138,41 +137,32 @@ impl TargetInfo {
     }
 }
 
+type SharedTargetInfo = Arc<IntoDynSyncSend<TargetInfo>>;
+
 #[derive(Clone)]
-pub struct LockedTargetInfo {
-    info: Arc<Mutex<IntoDynSyncSend<Option<TargetInfo>>>>,
-}
-
-impl Debug for LockedTargetInfo {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.info.lock().expect("lock").fmt(formatter)
-    }
-}
-
-impl LockedTargetInfo {
-    fn cpu_supports(&self, feature: &str) -> bool {
-        self.info
-            .lock()
-            .expect("lock")
-            .as_ref()
-            .expect("target info not initialized")
-            .cpu_supports(feature)
-    }
-
-    fn supports_target_dependent_type(&self, typ: CType) -> bool {
-        self.info
-            .lock()
-            .expect("lock")
-            .as_ref()
-            .expect("target info not initialized")
-            .supports_target_dependent_type(typ)
-    }
+pub struct BackendConfig {
+    target_info: SharedTargetInfo,
+    lto_supported: bool,
 }
 
 #[derive(Clone)]
 pub struct GccCodegenBackend {
-    target_info: LockedTargetInfo,
-    lto_supported: Arc<AtomicBool>,
+    // `None` before `init`, `Some` after.
+    pub config: Option<BackendConfig>,
+}
+
+impl GccCodegenBackend {
+    fn config(&self) -> &BackendConfig {
+        self.config.as_ref().expect("target info not initialized")
+    }
+
+    #[cfg(feature = "master")]
+    fn set_personality_function(&self, tcx: TyCtxt<'_>) {
+        let personality_symbol = rustc_symbol_mangling::eh_personality_symbol(tcx);
+        gccjit::set_global_personality_function_name(
+            &CString::new(personality_symbol).expect("symbol name shouldn't contain NUL"),
+        );
+    }
 }
 
 fn load_libgccjit_if_needed(libgccjit_target_lib_file: &Path) {
@@ -195,38 +185,62 @@ impl CodegenBackend for GccCodegenBackend {
         "gcc"
     }
 
-    fn init(&self, sess: &Session) {
-        fn file_path(sysroot_path: &Path, sess: &Session) -> PathBuf {
-            let rustlib_path =
-                rustc_target::relative_target_rustlib_path(sysroot_path, &sess.host.llvm_target);
-            sysroot_path
-                .join(rustlib_path)
-                .join("codegen-backends")
-                .join("lib")
-                .join(sess.target.llvm_target.as_ref())
-                .join("libgccjit.so")
-        }
-
-        // We use all_paths() instead of only path() in case the path specified by --sysroot is
-        // invalid.
-        // This is the case for instance in Rust for Linux where they specify --sysroot=/dev/null.
-        for path in sess.opts.sysroot.all_paths() {
-            let libgccjit_target_lib_file = file_path(path, sess);
-            if let Ok(true) = fs::exists(&libgccjit_target_lib_file) {
-                load_libgccjit_if_needed(&libgccjit_target_lib_file);
-                break;
-            }
-        }
-
-        if !gccjit::is_loaded() {
-            let mut paths = vec![];
-            for path in sess.opts.sysroot.all_paths() {
-                let libgccjit_target_lib_file = file_path(path, sess);
-                paths.push(libgccjit_target_lib_file);
+    fn init(&mut self, sess: &EarlySession) -> CodegenBackendInit {
+        fn file_paths(sysroot_path: &Path, sess: &EarlySession) -> Vec<PathBuf> {
+            let rustlib_path = rustc_target::relative_target_rustlib_path(
+                sysroot_path,
+                rustc_session::config::host_tuple(),
+            );
+            let lib_path = sysroot_path.join(rustlib_path).join("codegen-backends").join("lib");
+            let rust_target_path =
+                lib_path.join(sess.opts.target_triple.tuple()).join("libgccjit.so");
+            let mut paths = vec![rust_target_path];
+            if matches!(sess.opts.target_triple, TargetTuple::TargetJson { .. }) {
+                let llvm_target_path =
+                    lib_path.join(sess.target.llvm_target.as_ref()).join("libgccjit.so");
+                paths.push(llvm_target_path);
             }
 
-            panic!("Could not load libgccjit.so. Attempted paths: {:#?}", paths);
+            paths
         }
+
+        // If the user sets the CG_GCCJIT_LIBRARY_PATH environment variable, then we'll load the
+        // library from there or panic if we can't find or load it.
+        if let Ok(custom_path) = env::var("CG_GCCJIT_LIBRARY_PATH").as_deref() {
+            if let Ok(true) = fs::exists(custom_path) {
+                load_libgccjit_if_needed(&PathBuf::from(custom_path));
+            }
+
+            if !gccjit::is_loaded() {
+                panic!("Could not load gccjit from CG_GCCJIT_LIBRARY_PATH: {}", custom_path);
+            }
+        } else {
+            // We use all_paths() instead of only path() in case the path specified by --sysroot is
+            // invalid.
+            // This is the case for instance in Rust for Linux where they specify --sysroot=/dev/null.
+            'sysroot: for path in sess.opts.sysroot.all_paths() {
+                for libgccjit_target_lib_file in file_paths(path, sess) {
+                    if let Ok(true) = fs::exists(&libgccjit_target_lib_file) {
+                        load_libgccjit_if_needed(&libgccjit_target_lib_file);
+                        break 'sysroot;
+                    }
+                }
+            }
+
+            if !gccjit::is_loaded() {
+                let mut paths = vec![];
+
+                for path in sess.opts.sysroot.all_paths() {
+                    for libgccjit_target_lib_file in file_paths(path, sess) {
+                        paths.push(libgccjit_target_lib_file);
+                    }
+                }
+
+                paths.dedup();
+                panic!("Could not load libgccjit.so. Attempted paths: {:#?}", paths);
+            }
+        }
+        let global_backend_features = gcc_util::global_gcc_features(sess);
 
         #[cfg(feature = "master")]
         {
@@ -239,17 +253,13 @@ impl CodegenBackend for GccCodegenBackend {
             if target_cpu != "generic" {
                 context.add_command_line_option(format!("-march={}", target_cpu));
             }
+            // libgccjit always passes -fPIC, which some targets reject (e.g. MIPS without -mabicalls).
+            gcc_util::add_pic_option(&context, sess.relocation_model());
 
-            *self.target_info.info.lock().expect("lock") =
-                IntoDynSyncSend(Some(context.get_target_info()));
-        }
-
-        #[cfg(feature = "master")]
-        {
-            let lto_supported = gccjit::is_lto_supported();
-            self.lto_supported.store(lto_supported, Ordering::SeqCst);
-
-            gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
+            self.config = Some(BackendConfig {
+                target_info: Arc::new(IntoDynSyncSend(context.get_target_info())),
+                lto_supported: gccjit::is_lto_supported(),
+            });
         }
 
         #[cfg(not(feature = "master"))]
@@ -258,38 +268,36 @@ impl CodegenBackend for GccCodegenBackend {
             let temp_file = temp_dir.keep().join("result.asm");
             let check_context = Context::default();
             check_context.set_print_errors_to_stderr(false);
+            gcc_util::add_pic_option(&check_context, sess.relocation_model());
             let _int128_ty = check_context.new_c_type(CType::UInt128t);
             // NOTE: we cannot just call compile() as this would require other files than libgccjit.so.
             check_context.compile_to_file(
                 gccjit::OutputKind::Assembler,
                 temp_file.to_str().expect("path to str"),
             );
-            self.target_info
-                .info
-                .lock()
-                .expect("lock")
-                .0
-                .as_ref()
-                .expect("target info not initialized")
-                .supports_128bit_integers
-                .store(check_context.get_last_error() == Ok(None), Ordering::SeqCst);
+            let target_info =
+                TargetInfo { supports_128bit_integers: check_context.get_last_error() == Ok(None) };
+            self.config = Some(BackendConfig {
+                target_info: Arc::new(IntoDynSyncSend(target_info)),
+                lto_supported: false,
+            });
+        }
+
+        CodegenBackendInit {
+            global_backend_features,
+            replaced_intrinsics: vec![],
+            fallback_intrinsics: vec![sym::type_id_eq],
+            thin_lto_supported: false,
         }
     }
 
-    fn thin_lto_supported(&self) -> bool {
-        false
-    }
-
-    fn provide(&self, providers: &mut Providers) {
-        providers.queries.global_backend_features =
-            |tcx, ()| gcc_util::global_gcc_features(tcx.sess)
-    }
-
     fn target_cpu(&self, sess: &Session) -> String {
-        target_cpu(sess).to_owned()
+        target_cpu(sess).into_owned()
     }
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
+        #[cfg(feature = "master")]
+        self.set_personality_function(tcx);
         Box::new(codegen_crate(self.clone(), tcx))
     }
 
@@ -297,43 +305,19 @@ impl CodegenBackend for GccCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
+        incr_comp_session: Option<&IncrCompSession>,
         _outputs: &OutputFilenames,
         crate_info: &CrateInfo,
     ) -> (CompiledModules, WorkProductMap) {
         ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
-            .join(sess, crate_info)
+            .join(sess, incr_comp_session, crate_info)
     }
 
-    fn target_config(&self, sess: &Session) -> TargetConfig {
-        target_config(sess, &self.target_info)
+    fn target_config(&self, sess: &EarlySession) -> TargetConfig {
+        target_config(sess, &self.config().target_info)
     }
-
-    fn fallback_intrinsics(&self) -> Vec<Symbol> {
-        vec![sym::type_id_eq]
-    }
-}
-
-fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
-    let context = Context::default();
-    if matches!(tcx.sess.target.arch, Arch::X86 | Arch::X86_64) {
-        context.add_command_line_option("-masm=intel");
-    }
-    #[cfg(feature = "master")]
-    {
-        context.set_special_chars_allowed_in_func_names("$.*");
-        let version = Version::get();
-        let version = format!("{}.{}.{}", version.major, version.minor, version.patch);
-        context.set_output_ident(&format!(
-            "rustc version {} with libgccjit {}",
-            rustc_interface::util::rustc_version_str().unwrap_or("unknown version"),
-            version,
-        ));
-    }
-    // FIXME(antoyo): check if this should only be added when using -Cforce-unwind-tables=n.
-    context.add_command_line_option("-fno-asynchronous-unwind-tables");
-    context
 }
 
 impl ExtraBackendMethods for GccCodegenBackend {
@@ -345,12 +329,11 @@ impl ExtraBackendMethods for GccCodegenBackend {
         module_name: &str,
         methods: &[AllocatorMethod],
     ) -> Self::Module {
-        let lto_supported = self.lto_supported.load(Ordering::SeqCst);
         let mut mods = GccContext {
-            context: Arc::new(SyncContext::new(new_context(tcx))),
+            context: Arc::new(SyncContext::new(gcc_util::new_context(tcx.sess))),
             relocation_model: tcx.sess.relocation_model(),
             lto_mode: LtoMode::None,
-            lto_supported,
+            lto_supported: self.config().lto_supported,
             temp_dir: None,
         };
 
@@ -364,13 +347,10 @@ impl ExtraBackendMethods for GccCodegenBackend {
         &self,
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
+        _bitcode_needed: bool,
     ) -> (ModuleCodegen<Self::Module>, u64) {
-        base::compile_codegen_unit(
-            tcx,
-            cgu_name,
-            self.target_info.clone(),
-            self.lto_supported.load(Ordering::SeqCst),
-        )
+        let config = self.config();
+        base::compile_codegen_unit(tcx, cgu_name, config.target_info.clone(), config.lto_supported)
     }
 }
 
@@ -428,7 +408,6 @@ impl WriteBackendMethods for GccCodegenBackend {
         &self,
         _sess: &Session,
         _opt_level: OptLevel,
-        _features: &[String],
     ) -> TargetMachineFactoryFn<Self> {
         // FIXME(antoyo): set opt level.
         Arc::new(|_, _| ())
@@ -444,12 +423,13 @@ impl WriteBackendMethods for GccCodegenBackend {
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
     ) -> CompiledModule {
-        back::lto::run_fat(cgcx, &sess.prof, shared_emitter, each_linked_rlib_for_lto, modules)
+        back::lto::run_fat(sess, cgcx, shared_emitter, each_linked_rlib_for_lto, modules)
     }
 
     fn run_thin_lto(
         _cgcx: &CodegenContext,
         _prof: &SelfProfilerRef,
+        _incr_comp_session: Option<&BorrowedIncrCompSession>,
         _dcx: DiagCtxtHandle<'_>,
         // FIXME(bjorn3): Limit LTO exports to these symbols
         _exported_symbols_for_lto: &[String],
@@ -499,21 +479,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 /// This is the entrypoint for a hot plugged rustc_codegen_gccjit
 #[unsafe(no_mangle)]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    #[cfg(feature = "master")]
-    let info = {
-        // Check whether the target supports 128-bit integers, and sized floating point types (like
-        // Float16).
-        Arc::new(Mutex::new(IntoDynSyncSend(None)))
-    };
-    #[cfg(not(feature = "master"))]
-    let info = Arc::new(Mutex::new(IntoDynSyncSend(Some(TargetInfo {
-        supports_128bit_integers: AtomicBool::new(false),
-    }))));
-
-    Box::new(GccCodegenBackend {
-        lto_supported: Arc::new(AtomicBool::new(false)),
-        target_info: LockedTargetInfo { info },
-    })
+    Box::new(GccCodegenBackend { config: None })
 }
 
 fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
@@ -530,36 +496,32 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
 }
 
 /// Returns the features that should be set in `cfg(target_feature)`.
-fn target_config(sess: &Session, target_info: &LockedTargetInfo) -> TargetConfig {
-    let (unstable_target_features, target_features) = cfg_target_feature(
+fn target_config(sess: &EarlySession, target_info: &SharedTargetInfo) -> TargetConfig {
+    let internal_target_features = internal_target_features(
         sess,
-        |feature| to_gcc_features(sess, feature),
+        |feature| to_gcc_features(&sess.target, feature),
         |feature| {
-            // FIXME: we disable Neon for now since we don't support the LLVM intrinsics for it.
-            if feature == "neon" {
-                return false;
-            }
-            target_info.cpu_supports(feature)
-            // cSpell:disable
+            let gccjit_feature_name = to_gcc_target_info_feature(sess, feature);
+            target_info.cpu_supports(gccjit_feature_name)
             /*
               adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
               avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
               bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
               sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
             */
-            // cSpell:enable
         },
     );
 
     let has_reliable_f16 = target_info.supports_target_dependent_type(CType::Float16);
+    let has_reliable_f16b = target_info.supports_target_dependent_type(CType::BFloat16);
     let has_reliable_f128 = target_info.supports_target_dependent_type(CType::Float128);
 
     TargetConfig {
-        target_features,
-        unstable_target_features,
+        internal_target_features,
         // There are no known bugs with GCC support for f16 or f128
         has_reliable_f16,
         has_reliable_f16_math: has_reliable_f16,
+        has_reliable_f16b,
         has_reliable_f128,
         has_reliable_f128_math: has_reliable_f128,
     }

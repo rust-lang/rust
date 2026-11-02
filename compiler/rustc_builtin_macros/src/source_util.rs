@@ -9,13 +9,13 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{join_path_idents, token};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{
-    DummyResult, ExpandResult, ExtCtxt, MacEager, MacResult, MacroExpanderResult, resolve_path,
+    DummyResult, ExpandResult, ExtCtxt, MacEager, MacResult, MacroExpanderResult,
 };
 use rustc_expand::module::DirOwnership;
+use rustc_lint_defs::builtin::INCOMPLETE_INCLUDE;
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
 use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, utf8_error};
-use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{ByteSymbol, Pos, Span, Symbol};
@@ -66,12 +66,12 @@ pub(crate) fn expand_file(
     check_zero_tts(cx, sp, tts, "file!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
-    let loc = cx.source_map().lookup_char_pos(topmost.lo());
+    let file = cx.source_map().lookup_source_file(topmost.lo());
 
     use rustc_span::RemapPathScopeComponents;
     ExpandResult::Ready(MacEager::expr(cx.expr_str(
         topmost,
-        Symbol::intern(&loc.file.name.display(RemapPathScopeComponents::MACRO).to_string_lossy()),
+        Symbol::intern(&file.name.display(RemapPathScopeComponents::MACRO).to_string_lossy()),
     )))
 }
 
@@ -117,10 +117,10 @@ pub(crate) fn expand_include<'cx>(
         Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
     };
     // The file will be added to the code map by the parser
-    let path = match resolve_path(&cx.sess, path.as_str(), sp) {
+    let path = match cx.sess.resolve_path(path.as_str(), sp) {
         Ok(path) => path,
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             return ExpandResult::Ready(DummyResult::any(sp, guar));
         }
     };
@@ -225,7 +225,7 @@ pub(crate) fn expand_include_str(
             Err(utf8err) => {
                 let mut err = cx.dcx().struct_span_err(sp, format!("`{path}` wasn't a utf-8 file"));
                 utf8_error(cx.source_map(), path.as_str(), None, &mut err, utf8err, &bytes[..]);
-                DummyResult::any(sp, err.emit())
+                DummyResult::any(sp, err.emit_err())
             }
         },
         Err(dummy) => dummy,
@@ -267,10 +267,10 @@ fn load_binary_file(
     macro_span: Span,
     path_span: Span,
 ) -> Result<(Arc<[u8]>, Span), Box<dyn MacResult>> {
-    let resolved_path = match resolve_path(&cx.sess, original_path, macro_span) {
+    let resolved_path = match cx.sess.resolve_path(original_path, macro_span) {
         Ok(path) => path,
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             return Err(DummyResult::any(macro_span, guar));
         }
     };
@@ -306,7 +306,7 @@ fn load_binary_file(
                     );
                 }
             }
-            let guar = err.emit();
+            let guar = err.emit_err();
             Err(DummyResult::any(macro_span, guar))
         }
     }
@@ -326,7 +326,7 @@ fn find_path_suggestion(
             break;
         }
         // base_dir may be absolute
-        while let Some(base_next) = base_c.next() {
+        for base_next in base_c.by_ref() {
             if base_next == wanted_next {
                 without_base = Some(wanted_c.as_path());
                 break;
@@ -371,5 +371,5 @@ fn find_path_suggestion(
     root_absolute
         .chain(add)
         .chain(remove)
-        .find(|new_path| source_map.file_exists(&base_dir.join(&new_path)))
+        .find(|new_path| source_map.file_exists(&base_dir.join(new_path)))
 }

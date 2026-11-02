@@ -10,9 +10,8 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::relate::combine::{combine_ty_args, super_combine_consts, super_combine_tys};
 use rustc_middle::ty::relate::relate_args_invariantly;
-use rustc_middle::ty::{self, FnMutDelegate, RegionUtilitiesExt, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, span_bug};
-use rustc_span::{Span, Symbol, sym};
+use rustc_middle::ty::{self, FnMutDelegate, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use tracing::{debug, instrument};
 
 use crate::constraints::OutlivesConstraint;
@@ -46,8 +45,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Add sufficient constraints to ensure `a == b`. See also [Self::relate_types].
     pub(super) fn eq_args(
         &mut self,
-        a: ty::GenericArgsRef<'tcx>,
-        b: ty::GenericArgsRef<'tcx>,
+        a: ty::GenericArgs<'tcx>,
+        b: ty::GenericArgs<'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) -> Result<(), NoSolution> {
@@ -144,7 +143,31 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
                 variance,
                 ty,
             )?;
-            Ok(infcx.resolve_vars_if_possible(Ty::new_infer(infcx.tcx, ty::TyVar(ty_vid))))
+            let new_var =
+                infcx.deeply_resolve_ignoring_regions(Ty::new_infer(infcx.tcx, ty::TyVar(ty_vid)));
+
+            // Any regions in this new type must be live everywhere, so we mark them as such.
+            // (It may be that it only needs to be live where the opaque type itself is - which
+            // includes defining use sites, but we'll be conservative and mark all points as live).
+            // This is needed for Polonius, which doesn't propagate constraints
+            // through dead regions. See issue #160669.
+            //
+            // We only do this in the root universe. Inside a binder these regions live in a higher
+            // universe and their values contain placeholders; marking them live at every point
+            // leaks those placeholders, turning the higher-ranked check into an error which then
+            // suppresses the deferred opaque type diagnostics.
+            if infcx.universe() == ty::UniverseIndex::ROOT {
+                let tcx = infcx.tcx;
+                let liveness = &mut self.type_checker.constraints.liveness_constraints;
+                ty::fold_regions(tcx, new_var, |r, _| {
+                    if let ty::ReVar(vid) = r.kind() {
+                        liveness.add_all_points(vid);
+                    }
+                    r
+                });
+            }
+
+            Ok(new_var)
         };
 
         let (a, b) = match (a.kind(), b.kind()) {
@@ -315,9 +338,9 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
         a_ty: Ty<'tcx>,
         b_ty: Ty<'tcx>,
         def_id: DefId,
-        a_args: ty::GenericArgsRef<'tcx>,
-        b_args: ty::GenericArgsRef<'tcx>,
-        _: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+        a_args: ty::GenericArgs<'tcx>,
+        b_args: ty::GenericArgs<'tcx>,
+        _: impl FnOnce(ty::GenericArgs<'tcx>) -> Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         if self.ambient_variance == ty::Invariant {
             // Avoid fetching the variance if we are in an invariant context,
@@ -376,6 +399,19 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                 span_bug!(
                     self.span(),
                     "should not be relating type variables on the right in MIR typeck"
+                );
+            }
+
+            (&ty::Alias(ty::IsRigid::No, _), _) | (_, &ty::Alias(ty::IsRigid::No, _))
+                if infcx.next_trait_solver() =>
+            {
+                // NOTE(khyperia): If this turns out to be possible, either the caller should
+                // normalize the alias, or we should normalize the alias here. See the PR that
+                // introduced this comment for how to do so, which normalizes aliases in other
+                // relations.
+                span_bug!(
+                    self.span(),
+                    "it should not be possible to encounter unnormalized aliases in borrowck"
                 );
             }
 
@@ -589,9 +625,5 @@ impl<'b, 'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for NllTypeRelating<'_
                 region_constraints: None,
             },
         );
-    }
-
-    fn ambient_variance(&self) -> ty::Variance {
-        self.ambient_variance
     }
 }

@@ -168,6 +168,17 @@ map_find_rand_bench! {find_rand_10_000, 10_000, BTreeMap}
 map_find_seq_bench! {find_seq_100,    100,    BTreeMap}
 map_find_seq_bench! {find_seq_10_000, 10_000, BTreeMap}
 
+macro_rules! iteration_benches {
+    ($($name:ident: $bench:ident($size:expr)),+ $(,)?) => {
+        $(
+            #[bench]
+            pub fn $name(b: &mut Bencher) {
+                $bench(b, $size);
+            }
+        )+
+    };
+}
+
 fn bench_iteration(b: &mut Bencher, size: i32) {
     let mut map = BTreeMap::<i32, i32>::new();
     let mut rng = crate::bench_rng();
@@ -183,19 +194,19 @@ fn bench_iteration(b: &mut Bencher, size: i32) {
     });
 }
 
-#[bench]
-pub fn iteration_20(b: &mut Bencher) {
-    bench_iteration(b, 20);
-}
+fn bench_iteration_rev(b: &mut Bencher, size: i32) {
+    let mut map = BTreeMap::<i32, i32>::new();
+    let mut rng = crate::bench_rng();
 
-#[bench]
-pub fn iteration_1000(b: &mut Bencher) {
-    bench_iteration(b, 1000);
-}
+    for _ in 0..size {
+        map.insert(rng.random(), rng.random());
+    }
 
-#[bench]
-pub fn iteration_100000(b: &mut Bencher) {
-    bench_iteration(b, 100000);
+    b.iter(|| {
+        for entry in map.iter().rev() {
+            black_box(entry);
+        }
+    });
 }
 
 fn bench_iteration_mut(b: &mut Bencher, size: i32) {
@@ -213,19 +224,34 @@ fn bench_iteration_mut(b: &mut Bencher, size: i32) {
     });
 }
 
-#[bench]
-pub fn iteration_mut_20(b: &mut Bencher) {
-    bench_iteration_mut(b, 20);
+fn bench_iteration_mut_rev(b: &mut Bencher, size: i32) {
+    let mut map = BTreeMap::<i32, i32>::new();
+    let mut rng = crate::bench_rng();
+
+    for _ in 0..size {
+        map.insert(rng.random(), rng.random());
+    }
+
+    b.iter(|| {
+        for kv in map.iter_mut().rev() {
+            black_box(kv);
+        }
+    });
 }
 
-#[bench]
-pub fn iteration_mut_1000(b: &mut Bencher) {
-    bench_iteration_mut(b, 1000);
-}
-
-#[bench]
-pub fn iteration_mut_100000(b: &mut Bencher) {
-    bench_iteration_mut(b, 100000);
+iteration_benches! {
+    iteration_20: bench_iteration(20),
+    iteration_1000: bench_iteration(1000),
+    iteration_100000: bench_iteration(100000),
+    iteration_rev_20: bench_iteration_rev(20),
+    iteration_rev_1000: bench_iteration_rev(1000),
+    iteration_rev_100000: bench_iteration_rev(100000),
+    iteration_mut_20: bench_iteration_mut(20),
+    iteration_mut_1000: bench_iteration_mut(1000),
+    iteration_mut_100000: bench_iteration_mut(100000),
+    iteration_mut_rev_20: bench_iteration_mut_rev(20),
+    iteration_mut_rev_1000: bench_iteration_mut_rev(1000),
+    iteration_mut_rev_100000: bench_iteration_mut_rev(100000),
 }
 
 fn bench_first_and_last_nightly(b: &mut Bencher, size: i32) {
@@ -332,6 +358,57 @@ fn bench_iter(b: &mut Bencher, repeats: i32, size: i32) {
 #[bench]
 pub fn range_unbounded_vs_iter(b: &mut Bencher) {
     bench_iter(b, BENCH_RANGE_COUNT, BENCH_RANGE_SIZE);
+}
+
+fn bench_range_iteration(b: &mut Bencher, size: i32) {
+    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
+    b.iter(|| {
+        for entry in map.range(..) {
+            black_box(entry);
+        }
+    });
+}
+
+fn bench_range_iteration_rev(b: &mut Bencher, size: i32) {
+    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
+    b.iter(|| {
+        for entry in map.range(..).rev() {
+            black_box(entry);
+        }
+    });
+}
+
+fn bench_range_iteration_mut(b: &mut Bencher, size: i32) {
+    let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
+    b.iter(|| {
+        for entry in map.range_mut(..) {
+            black_box(entry);
+        }
+    });
+}
+
+fn bench_range_iteration_mut_rev(b: &mut Bencher, size: i32) {
+    let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
+    b.iter(|| {
+        for entry in map.range_mut(..).rev() {
+            black_box(entry);
+        }
+    });
+}
+
+iteration_benches! {
+    range_iteration_20: bench_range_iteration(20),
+    range_iteration_1000: bench_range_iteration(1000),
+    range_iteration_100000: bench_range_iteration(100000),
+    range_iteration_rev_20: bench_range_iteration_rev(20),
+    range_iteration_rev_1000: bench_range_iteration_rev(1000),
+    range_iteration_rev_100000: bench_range_iteration_rev(100000),
+    range_iteration_mut_20: bench_range_iteration_mut(20),
+    range_iteration_mut_1000: bench_range_iteration_mut(1000),
+    range_iteration_mut_100000: bench_range_iteration_mut(100000),
+    range_iteration_mut_rev_20: bench_range_iteration_mut_rev(20),
+    range_iteration_mut_rev_1000: bench_range_iteration_mut_rev(1000),
+    range_iteration_mut_rev_100000: bench_range_iteration_mut_rev(100000),
 }
 
 #[bench]

@@ -7,12 +7,12 @@ LL | struct Empty1 {}
 LL |     let e1 = Empty1;
    |              ^^^^^^
    |
-  ::: $DIR/auxiliary/empty-struct.rs:2:1
+   = note: a struct named `Empty1` exists in another namespace
+note: similarly named unit struct `XEmpty2` defined here
+  --> $DIR/auxiliary/empty-struct.rs:2:1
    |
 LL | pub struct XEmpty2;
-   | ------------------ similarly named unit struct `XEmpty2` defined here
-   |
-   = note: a struct named `Empty1` exists in another namespace
+   | ^^^^^^^^^^^^^^^^^^
 help: use struct literal syntax instead
    |
 LL |     let e1 = Empty1 {};
@@ -33,10 +33,13 @@ LL |     let xe1 = XEmpty1;
    |
 LL | pub struct XEmpty1 {}
    | ------------------ `XEmpty1` defined here
-LL | pub struct XEmpty2;
-   | ------------------ similarly named unit struct `XEmpty2` defined here
    |
    = note: a struct named `XEmpty1` exists in another namespace
+note: similarly named unit struct `XEmpty2` defined here
+  --> $DIR/auxiliary/empty-struct.rs:2:1
+   |
+LL | pub struct XEmpty2;
+   | ^^^^^^^^^^^^^^^^^^
 help: use struct literal syntax instead
    |
 LL |     let xe1 = XEmpty1 {};
@@ -56,12 +59,12 @@ LL | struct Empty1 {}
 LL |     let e1 = Empty1();
    |              ^^^^^^^^
    |
-  ::: $DIR/auxiliary/empty-struct.rs:2:1
+   = note: a struct named `Empty1` exists in another namespace
+note: similarly named unit struct `XEmpty2` defined here
+  --> $DIR/auxiliary/empty-struct.rs:2:1
    |
 LL | pub struct XEmpty2;
-   | ------------------ similarly named unit struct `XEmpty2` defined here
-   |
-   = note: a struct named `Empty1` exists in another namespace
+   | ^^^^^^^^^^^^^^^^^^
 help: use struct literal syntax instead
    |
 LL -     let e1 = Empty1();
@@ -106,10 +109,13 @@ LL |     let xe1 = XEmpty1();
    |
 LL | pub struct XEmpty1 {}
    | ------------------ `XEmpty1` defined here
-LL | pub struct XEmpty2;
-   | ------------------ similarly named unit struct `XEmpty2` defined here
    |
    = note: a struct named `XEmpty1` exists in another namespace
+note: similarly named unit struct `XEmpty2` defined here
+  --> $DIR/auxiliary/empty-struct.rs:2:1
+   |
+LL | pub struct XEmpty2;
+   | ^^^^^^^^^^^^^^^^^^
 help: use struct literal syntax instead
    |
 LL -     let xe1 = XEmpty1();

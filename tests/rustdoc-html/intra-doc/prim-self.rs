@@ -27,7 +27,7 @@ impl usize {
 
 #[rustc_doc_primitive = "usize"]
 /// This has some docs.
-mod usize {}
+const _: () = ();
 
 /// [S::f]
 /// [Self::f]

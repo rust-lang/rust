@@ -1,11 +1,11 @@
 // Regression test for https://github.com/rust-lang/rust/issues/141738
 //
 // Using a struct constructor as an array repeat count with
-// `min_generic_const_args` used to ICE with "unexpected `DefKind`
+// `gca_min_const_items` used to ICE with "unexpected `DefKind`
 // for const alias to resolve to: Ctor(Struct, Const)".
 // It should now produce a proper type error.
 
-#![feature(min_generic_const_args, macroless_generic_const_args)]
+#![feature(gca_min_const_items, gca_macroless_args)]
 
 struct S;
 

@@ -1,5 +1,6 @@
-use crate::bstr::ByteStr;
+use crate::byte_str::ByteStr;
 use crate::ffi::OsStr;
+use crate::macros::rustdoc_skip_body;
 #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]
 use crate::os::net::linux_ext;
 use crate::os::unix::ffi::OsStrExt;
@@ -22,6 +23,7 @@ mod libc {
 
 const SUN_PATH_OFFSET: usize = mem::offset_of!(libc::sockaddr_un, sun_path);
 
+#[rustdoc_skip_body]
 pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> {
     // SAFETY: All zeros is a valid representation for `sockaddr_un`.
     let mut addr: libc::sockaddr_un = unsafe { mem::zeroed() };
@@ -76,7 +78,8 @@ enum AddressKind<'a> {
 ///
 /// # Examples
 ///
-/// ```
+#[cfg_attr(target_family = "unix", doc = "```")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 /// use std::os::unix::net::UnixListener;
 ///
 /// let socket = match UnixListener::bind("/tmp/sock") {
@@ -86,7 +89,7 @@ enum AddressKind<'a> {
 ///         return
 ///     }
 /// };
-/// let addr = socket.local_addr().expect("Couldn't get local address");
+/// let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
 /// ```
 #[derive(Clone)]
 #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -108,6 +111,7 @@ impl SocketAddr {
         }
     }
 
+    #[rustdoc_skip_body]
     pub(super) fn from_parts(
         addr: libc::sockaddr_un,
         mut len: libc::socklen_t,
@@ -121,6 +125,8 @@ impl SocketAddr {
             len = core::slice::memchr::memchr(0, sun_path)
                 .map_or(len, |new_len| (new_len + SUN_PATH_OFFSET) as libc::socklen_t);
         }
+
+        len = len.min(size_of::<libc::sockaddr_un>() as libc::socklen_t);
 
         if len == 0 {
             // When there is a datagram from unnamed unix socket
@@ -145,7 +151,8 @@ impl SocketAddr {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::SocketAddr;
     /// use std::path::Path;
     ///
@@ -158,7 +165,8 @@ impl SocketAddr {
     ///
     /// Creating a `SocketAddr` with a NULL byte results in an error.
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::SocketAddr;
     ///
     /// assert!(SocketAddr::from_pathname("/path/with/\0/bytes").is_err());
@@ -177,12 +185,13 @@ impl SocketAddr {
     ///
     /// A named address:
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::UnixListener;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixListener::bind("/tmp/sock")?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.is_unnamed(), false);
     ///     Ok(())
     /// }
@@ -190,12 +199,13 @@ impl SocketAddr {
     ///
     /// An unnamed address:
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::UnixDatagram;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixDatagram::unbound()?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.is_unnamed(), true);
     ///     Ok(())
     /// }
@@ -212,13 +222,14 @@ impl SocketAddr {
     ///
     /// With a pathname:
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::UnixListener;
     /// use std::path::Path;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixListener::bind("/tmp/sock")?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.as_pathname(), Some(Path::new("/tmp/sock")));
     ///     Ok(())
     /// }
@@ -226,12 +237,13 @@ impl SocketAddr {
     ///
     /// Without a pathname:
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::UnixDatagram;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixDatagram::unbound()?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.as_pathname(), None);
     ///     Ok(())
     /// }
@@ -242,6 +254,7 @@ impl SocketAddr {
         if let AddressKind::Pathname(path) = self.address() { Some(path) } else { None }
     }
 
+    #[rustdoc_skip_body]
     fn address(&self) -> AddressKind<'_> {
         let len = self.len as usize - SUN_PATH_OFFSET;
         let path = unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.addr.sun_path) };
@@ -255,12 +268,10 @@ impl SocketAddr {
         } else if self.addr.sun_path[0] == 0 {
             AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
         } else {
-            // the value returned by getsockname(2) and similar on QNX7.1 and
-            // QNX8 does not count the NUL byte terminator of the path string,
-            // which matches the behavior of the SUN_LEN macro in libc, but
-            // other OSes do count the NUL byte so adjust accordingly
-            let end =
-                if cfg!(any(target_os = "qnx", target_env = "nto71")) { len } else { len - 1 };
+            // linux adds a trailing NUL and counts it in the length, freebsd, netbsd
+            // and qnx do not, and a caller may bind(2) without one either. unix(7)
+            // gives the portable rule: strnlen(sun_path, len - offsetof(sun_path))
+            let end = core::slice::memchr::memchr(0, &path[..len]).unwrap_or(len);
             AddressKind::Pathname(OsStr::from_bytes(&path[..end]).as_ref())
         }
     }
@@ -274,6 +285,7 @@ impl linux_ext::addr::SocketAddrExt for SocketAddr {
         if let AddressKind::Abstract(name) = self.address() { Some(name.as_bytes()) } else { None }
     }
 
+    #[rustdoc_skip_body]
     fn from_abstract_name<N>(name: N) -> io::Result<Self>
     where
         N: AsRef<[u8]>,

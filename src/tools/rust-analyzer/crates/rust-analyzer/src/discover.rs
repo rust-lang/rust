@@ -68,7 +68,7 @@ impl DiscoverCommand {
 
         Ok(DiscoverHandle {
             handle: CommandHandle::spawn(cmd, DiscoverProjectParser, self.sender.clone(), None)?,
-            span: info_span!("discover_command").entered(),
+            _span: info_span!("discover_command").entered(),
         })
     }
 }
@@ -77,8 +77,8 @@ impl DiscoverCommand {
 #[derive(Debug)]
 pub(crate) struct DiscoverHandle {
     pub(crate) handle: CommandHandle<DiscoverProjectMessage>,
-    #[allow(dead_code)] // not accessed, but used to log on drop.
-    span: EnteredSpan,
+    // not accessed, but used to log on drop.
+    _span: EnteredSpan,
 }
 
 /// An enum containing either progress messages, an error,
@@ -134,6 +134,11 @@ impl JsonLinesParser<DiscoverProjectMessage> for DiscoverProjectParser {
     }
 
     fn from_eof(&self) -> Option<DiscoverProjectMessage> {
+        None
+    }
+
+    fn from_stderr_line(&self, line: &str, _error: &mut String) -> Option<DiscoverProjectMessage> {
+        tracing::info!(%line, "discover command stderr");
         None
     }
 }

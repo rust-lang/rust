@@ -12,6 +12,38 @@ See also [the Rust Language Design Team's procedures][lang-propose] for proposin
 [a different process]: ./stability.md
 [lang-propose]: https://lang-team.rust-lang.org/how_to/propose.html
 
+## New features
+
+Rust has strong backwards-compatibility guarantees.
+Thus, new features can't just be implemented directly in stable Rust.
+Instead, we have 3 release channels: stable, beta, and nightly.
+See [The Rust Book] for more details on Rust’s train release model.
+
+- **Stable**: this is the latest stable release for general usage.
+- **Beta**: this is the next release (will be stable within 6 weeks).
+- **Nightly**: follows the `main` branch of the repo.
+  This is the only channel where unstable features are intended to be used,
+  which happens via opt-in feature gates.
+
+[The Rust Book]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
+
+### Breaking changes
+
+Breaking changes have a [dedicated section][Breaking Changes] in the dev-guide.
+
+### Major changes
+
+See ["What proposal approval do I need?"](https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#what-proposalapproval-do-i-need)
+For a definition of the terms there, see
+["Proposals"](https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#proposals).
+
+**When in doubt, ask [on Zulip].
+It would be a shame to put a lot of work into a PR that ends up not getting merged!**
+
+[on Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
+
+[Breaking Changes]: bug-fix-procedure.md
+
 ## The @rfcbot FCP process
 
 When the change is small, uncontroversial, non-breaking,
@@ -226,7 +258,6 @@ The below steps needs to be followed in order to implement a new unstable featur
 [stability in code]: #stability-in-code
 [here]: ./stabilization-guide.md
 [tracking issue]: #tracking-issues
-[add-feature-gate]: ./feature-gates.md#adding-a-feature-gate
 [guidance for compiler flags]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html?highlight=unstable%20flag#compiler-flags
 [`UnstableOptions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/options/struct.UnstableOptions.html
 

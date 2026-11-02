@@ -9,7 +9,6 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
 
 use crate::PassPolicy;
 
@@ -20,8 +19,8 @@ use crate::PassPolicy;
 pub(super) struct ReorderBasicBlocks;
 
 impl<'tcx> crate::MirPass<'tcx> for ReorderBasicBlocks {
-    fn policy(&self, _session: &Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(false)
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(false)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -48,8 +47,8 @@ impl<'tcx> crate::MirPass<'tcx> for ReorderBasicBlocks {
 pub(super) struct ReorderLocals;
 
 impl<'tcx> crate::MirPass<'tcx> for ReorderLocals {
-    fn policy(&self, _session: &Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(false)
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(false)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

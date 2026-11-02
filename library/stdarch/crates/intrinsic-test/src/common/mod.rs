@@ -8,7 +8,7 @@ use crate::common::{
     argument::Argument,
     gen_c::write_wrapper_c,
     gen_rust::{
-        run_rustfmt, write_bin_cargo_toml, write_build_rs, write_lib_cargo_toml, write_lib_rs,
+        run_rustfmt, write_build_rs, write_lib_cargo_toml, write_lib_rs, write_workspace_cargo_toml,
     },
     intrinsic::Intrinsic,
     intrinsic_helpers::TypeDefinition,
@@ -49,6 +49,10 @@ pub trait SupportedArchitecture: Sized {
     const C_PRELUDE: &str;
     const RUST_PRELUDE: &str;
 
+    /// Per-architecture prefix used to convert a Rust intrinsic name to the
+    /// corresponding C intrinsic name by prepending it to the Rust name.
+    const C_NAME_PREFIX: &str;
+
     fn c_compiler_flags(&self, cli_options: &ProcessedCli) -> Vec<&str>;
 
     fn generate_c_file(&self) {
@@ -75,11 +79,20 @@ pub trait SupportedArchitecture: Sized {
         let (max_chunk_size, chunk_count) = manual_chunk(self.intrinsics().len());
 
         let mut cargo = File::create("rust_programs/Cargo.toml").unwrap();
-        write_bin_cargo_toml(&mut cargo, chunk_count).unwrap();
+        let mut lockfile = File::create("rust_programs/Cargo.lock").unwrap();
+        write_workspace_cargo_toml(&mut cargo, &mut lockfile, chunk_count).unwrap();
 
-        self.intrinsics()
+        let mut crates_ = self
+            .intrinsics()
             .chunks(max_chunk_size)
             .enumerate()
+            .collect::<Vec<_>>();
+
+        // Sort by stringified index to match cargo's lockfile order
+        crates_.sort_by_key(|&(i, _)| format!("{i}"));
+
+        crates_
+            .into_iter()
             .map(|(i, chunk)| {
                 std::fs::create_dir_all(format!("rust_programs/mod_{i}/src"))?;
 
@@ -94,7 +107,7 @@ pub trait SupportedArchitecture: Sized {
                 trace!("generating `{toml_filename}`");
                 let mut file = File::create(toml_filename).unwrap();
 
-                write_lib_cargo_toml(&mut file, &format!("mod_{i}"))?;
+                write_lib_cargo_toml(&mut file, &mut lockfile, &format!("mod_{i}"))?;
 
                 let build_rs_filename = format!("rust_programs/mod_{i}/build.rs");
                 trace!("generating `{build_rs_filename}`");
@@ -128,4 +141,9 @@ pub fn manual_chunk(intrinsic_count: usize) -> (usize, usize) {
     let max_intrinsics_per_chunk = intrinsic_count.div_ceil(ncores);
     let number_of_chunks = intrinsic_count.div_ceil(max_intrinsics_per_chunk);
     (max_intrinsics_per_chunk, number_of_chunks)
+}
+
+pub fn imm_value_to_ident(value: impl std::fmt::Display) -> String {
+    let value = value.to_string();
+    value.replace('-', "neg")
 }

@@ -3,18 +3,19 @@
 use std::fmt::Write;
 use std::ops::ControlFlow;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{Applicability, Diag, DiagArgValue, IntoDiagArg, listify, pluralize};
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, AmbigArg, LangItem, PredicateOrigin, WherePredicateKind};
+use rustc_hir::{self as hir, AmbigArg, PredicateOrigin, WherePredicateKind};
 use rustc_span::{BytePos, Span};
 use rustc_type_ir::TyKind::*;
 
 use crate::ty::{
     self, AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Instance, Opaque,
-    PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    PolyTraitClause, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitor,
 };
 
 impl IntoDiagArg for Ty<'_> {
@@ -132,7 +133,7 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
     tcx: TyCtxt<'tcx>,
     generics: &hir::Generics<'_>,
     err: &mut Diag<'_>,
-    trait_pred: PolyTraitPredicate<'tcx>,
+    trait_pred: PolyTraitClause<'tcx>,
     associated_ty: Option<(&'static str, Ty<'tcx>)>,
 ) -> bool {
     if !trait_pred.is_suggestable(tcx, false) {
@@ -577,7 +578,7 @@ pub fn suggest_constraining_type_params<'a>(
 }
 
 /// Collect al types that have an implicit `'static` obligation that we could suggest `'_` for.
-pub(crate) struct TraitObjectVisitor<'tcx>(pub(crate) Vec<&'tcx hir::Ty<'tcx>>);
+pub struct TraitObjectVisitor<'tcx>(pub Vec<&'tcx hir::Ty<'tcx>>);
 
 impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
     fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {

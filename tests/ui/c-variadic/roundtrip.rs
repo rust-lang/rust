@@ -1,6 +1,13 @@
 //@ run-pass
 //@ ignore-backends: gcc
-#![feature(const_c_variadic, c_variadic_int128, const_destruct, const_raw_ptr_comparison)]
+#![feature(
+    const_c_variadic,
+    c_variadic_va_arg_safe,
+    c_variadic_int128,
+    const_destruct,
+    const_raw_ptr_comparison,
+    f128
+)]
 #![allow(unused_features)] // c_variadic_int128 is only used on 64-bit targets.
 
 use std::ffi::*;
@@ -8,6 +15,8 @@ use std::ffi::*;
 // In rustc we implement `va_arg` for the callee reading from a VaList, but still rely on LLVM
 // for exactly how to pass c-variadic arguments and for constructing the VaList. Here we test
 // that the rustc implementation works with what LLVM gives us.
+//
+// FIXME: add a roundtrip test for c_longdouble and the types it aliases (x87 f80 and ibm f128).
 
 #[allow(improper_ctypes_definitions)]
 const unsafe extern "C" fn variadic<T: VaArgSafe>(mut ap: ...) -> (T, T) {
@@ -107,7 +116,38 @@ fn main() {
                 roundtrip!(i128, -1, -2);
                 roundtrip!(u128, 1, 2);
             }
-            _ => {}
+            _ => { /* unsupported */ }
+        }
+
+        cfg_select! {
+            any(
+                all(
+                    any(target_arch = "x86_64", target_arch = "x86"),
+                    not(target_vendor = "apple"),
+                    not(target_env = "msvc")
+                ),
+                all(target_arch = "powerpc64", target_feature = "vsx"),
+                all(
+                    not(windows),
+                    not(target_vendor = "apple"),
+                    any(
+                        target_arch = "aarch64",
+                        target_arch = "loongarch32",
+                        target_arch = "loongarch64",
+                        target_arch = "mips64",
+                        target_arch = "mips64r6",
+                        target_arch = "riscv64",
+                        target_arch = "s390x",
+                        target_arch = "sparc",
+                        target_arch = "sparc64",
+                        target_arch = "wasm32",
+                        target_arch = "wasm64",
+                    ),
+                ),
+            ) => {
+                roundtrip!(f128, -1.0, f128::MAX);
+            }
+            _ => { /* unsupported */ }
         }
     }
 }

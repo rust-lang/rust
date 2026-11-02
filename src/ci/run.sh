@@ -143,7 +143,11 @@ else
   # Enable GDB/LLDB automatic discovery on CI
   # Ideally, we should later change this to provide the paths explicitly
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.gdb=discover"
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.lldb=discover"
+  if [ -n "$LLDB_PATH" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.lldb=$LLDB_PATH"
+  else
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.lldb=discover"
+  fi
 
   # We almost always want debug assertions enabled, but sometimes this takes too
   # long for too little benefit, so we just turn them off.
@@ -237,6 +241,10 @@ datecheck() {
 }
 datecheck
 trap datecheck EXIT
+
+# Bump this value if you need to invalidate sccache's cache, if some wrong
+# builds go into it
+export SCCACHE_C_CUSTOM_CACHE_BUSTER=1
 
 # We've had problems in the past of shell scripts leaking fds into the sccache
 # server (#48192) which causes Cargo to erroneously think that a build script

@@ -18,7 +18,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
    |
 LL | pub fn in_fn<F: Fn() -> Result<(), ()>>(f: F) -> Result<(), ()> {
    |                 ^^^^^^^^^^^^^^^^^^^^^^
-note: `into_iter` takes ownership of the receiver `self`, which moves `foos`
+note: the `for` loop is desugared into a call to `std::iter::IntoIterator::into_iter`, which takes ownership of the receiver `self`, which moves `foos`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 
 error[E0507]: cannot move out of `foos`, a captured variable in an `FnMut` closure
@@ -41,7 +41,7 @@ help: `Fn` and `FnMut` closures require captured values to be able to be consume
    |
 LL | pub fn in_fn_mut<F: FnMut() -> Result<(), ()>>(mut f: F) -> Result<(), ()> {
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: `into_iter` takes ownership of the receiver `self`, which moves `foos`
+note: the `for` loop is desugared into a call to `std::iter::IntoIterator::into_iter`, which takes ownership of the receiver `self`, which moves `foos`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: consider creating a fresh reborrow of `foos` here
    |

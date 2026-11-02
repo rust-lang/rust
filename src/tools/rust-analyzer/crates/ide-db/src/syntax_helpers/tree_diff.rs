@@ -115,7 +115,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                 }
                 (Some(ref lhs_ele), Some(ref rhs_ele)) if syntax_element_eq(lhs_ele, rhs_ele) => {}
                 (Some(lhs_ele), Some(rhs_ele)) => {
-                    // nodes differ, look for lhs_ele in rhs, if its found we can mark everything up
+                    // nodes differ, look for lhs_ele in rhs, if it's found we can mark everything up
                     // until that element as insertions. This is important to keep the diff minimal
                     // in regards to insertions that have been actually done, this is important for
                     // use insertions as we do not want to replace the entire module node.

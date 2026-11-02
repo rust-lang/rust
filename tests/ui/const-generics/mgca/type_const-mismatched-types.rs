@@ -1,19 +1,22 @@
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
-type const FREE: u32 = 5_usize;
+use std::gca;
+
+const FREE: u32 = gca!(5_usize);
 //~^ ERROR the constant `5` is not of type `u32`
 
-type const FREE2: isize = FREE;
+const FREE2: isize = gca!(FREE);
 //~^ ERROR the constant `5` is not of type `u32`
 //~| ERROR the constant `5` is not of type `isize`
 
 trait Tr {
-    type const N: usize;
+    #[rustc_always_gca]
+    const N: usize;
 }
 
 impl Tr for () {
-    type const N: usize = false;
+    const N: usize = gca!(false);
     //~^ ERROR the constant `false` is not of type `usize`
 }
 

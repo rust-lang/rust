@@ -178,6 +178,11 @@
             "type": "directory"
           },
           {
+            "directories": [],
+            "files": [
+              "compiler/rustc_llvm/llvm-wrapper/SymbolWrapper.cpp",
+              "compiler/rustc_middle/src/ptrauth/llvm_siphash/tests.rs"
+            ],
             "license": {
               "copyright": [
                 "2003-2019 University of Illinois at Urbana-Champaign",
@@ -185,8 +190,7 @@
               ],
               "spdx": "Apache-2.0 WITH LLVM-exception AND (Apache-2.0 OR MIT)"
             },
-            "name": "compiler/rustc_llvm/llvm-wrapper/SymbolWrapper.cpp",
-            "type": "file"
+            "type": "group"
           },
           {
             "children": [],

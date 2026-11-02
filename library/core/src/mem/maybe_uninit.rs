@@ -1,6 +1,6 @@
 use crate::any::type_name;
 use crate::clone::TrivialClone;
-use crate::marker::Destruct;
+use crate::marker::{Destruct, Freeze};
 use crate::mem::{ManuallyDrop, transmute_neo};
 use crate::{fmt, intrinsics, ptr, slice};
 
@@ -1062,6 +1062,9 @@ impl<T> MaybeUninit<T> {
     /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
     /// contain padding bytes which are left uninitialized.
     ///
+    /// This method requires `T: Freeze`. It's not available for types with interior mutability,
+    /// such as `Cell<T>`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1075,7 +1078,10 @@ impl<T> MaybeUninit<T> {
     /// assert_eq!(bytes, val.to_ne_bytes());
     /// ```
     #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
-    pub const fn as_bytes(&self) -> &[MaybeUninit<u8>] {
+    pub const fn as_bytes(&self) -> &[MaybeUninit<u8>]
+    where
+        T: Freeze,
+    {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
         unsafe {
             slice::from_raw_parts(self.as_ptr().cast::<MaybeUninit<u8>>(), super::size_of::<T>())
@@ -1114,6 +1120,35 @@ impl<T> MaybeUninit<T> {
                 super::size_of::<T>(),
             )
         }
+    }
+
+    /// Converts `&T` to `&MaybeUninit<T>`.
+    ///
+    /// The value stays initialized. This function changes only the type of the reference.
+    ///
+    /// There is no corresponding `from_mut` method, because it could allow writing uninitialized memory
+    /// into the original value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_from_ref, maybe_uninit_as_bytes)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let val = 0x12345678_u32;
+    /// let uninit = MaybeUninit::from_ref(&val);
+    /// let bytes = uninit.as_bytes();
+    ///
+    /// // All bytes of a u32 are initialized, so assume_init is sound here:
+    /// let byte_val = unsafe { bytes[0].assume_init() };
+    /// assert_eq!(byte_val, val.to_ne_bytes()[0]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_from_ref", issue = "165213")]
+    #[inline]
+    #[must_use]
+    pub const fn from_ref(r: &T) -> &MaybeUninit<T> {
+        // SAFETY: `MaybeUninit<T>` is repr(transparent) and every initialized T is a valid MaybeUninit<T>
+        unsafe { &*ptr::from_ref(r).cast() }
     }
 }
 
@@ -1286,8 +1321,8 @@ impl<T> [MaybeUninit<T>] {
     /// Fills a slice with elements returned by calling a closure for each index.
     ///
     /// This method uses a closure to create new values. If you'd rather `Clone` a given value, use
-    /// [slice::write_filled]. If you want to use the `Default` trait to generate values, you can
-    /// pass [`|_| Default::default()`][Default::default] as the argument.
+    /// [`slice::write_filled`]. If you want to use the `Default` trait to generate values, use
+    /// [`slice::write_default`].
     ///
     /// # Panics
     ///
@@ -1322,6 +1357,73 @@ impl<T> [MaybeUninit<T>] {
 
         // SAFETY: Valid elements have just been written into `this` so it is initialized
         unsafe { self.assume_init_mut() }
+    }
+
+    /// Fills a slice with elements returned by calling [`Default::default`] for each index.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if any call to [`Default::default`] panics.
+    ///
+    /// If such a panic occurs, any elements previously initialized during this operation will be
+    /// dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut buf = [const { MaybeUninit::<usize>::uninit() }; 5];
+    /// let initialized = buf.write_default();
+    /// assert_eq!(initialized, &mut [0, 0, 0, 0, 0]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
+    pub fn write_default(&mut self) -> &mut [T]
+    where
+        T: Default,
+    {
+        trait DefaultSpec: Default {
+            fn write_default(buf: &mut [MaybeUninit<Self>]) -> &mut [Self];
+        }
+
+        impl<T: Default> DefaultSpec for T {
+            default fn write_default(buf: &mut [MaybeUninit<Self>]) -> &mut [Self] {
+                buf.write_with(|_| T::default())
+            }
+        }
+
+        macro_rules! spec_default_zero {
+            ($ty:ty) => {
+                impl DefaultSpec for $ty {
+                    fn write_default(buf: &mut [MaybeUninit<Self>]) -> &mut [Self] {
+                        // SAFETY:
+                        // `Default::default` is equivalent to zero-initialization
+                        // for all these types, and this initializes the entire
+                        // slice.
+                        unsafe {
+                            buf.as_mut_ptr().write_bytes(0, buf.len());
+                            buf.assume_init_mut()
+                        }
+                    }
+                }
+            };
+        }
+
+        spec_default_zero!(i8);
+        spec_default_zero!(u8);
+        spec_default_zero!(i16);
+        spec_default_zero!(u16);
+        spec_default_zero!(i32);
+        spec_default_zero!(u32);
+        spec_default_zero!(i64);
+        spec_default_zero!(u64);
+        spec_default_zero!(i128);
+        spec_default_zero!(u128);
+        spec_default_zero!(isize);
+        spec_default_zero!(usize);
+
+        T::write_default(self)
     }
 
     /// Fills a slice with elements yielded by an iterator until either all elements have been
@@ -1411,6 +1513,9 @@ impl<T> [MaybeUninit<T>] {
     /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
     /// contain padding bytes which are left uninitialized.
     ///
+    /// This method requires `T: Freeze`. It's not available for types with interior mutability,
+    /// such as `Cell<T>`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1425,7 +1530,10 @@ impl<T> [MaybeUninit<T>] {
     /// assert_eq!(&[val1, val2], &[0x1234u16, 0x5678u16]);
     /// ```
     #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
-    pub const fn as_bytes(&self) -> &[MaybeUninit<u8>] {
+    pub const fn as_bytes(&self) -> &[MaybeUninit<u8>]
+    where
+        T: Freeze,
+    {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
         unsafe {
             slice::from_raw_parts(self.as_ptr().cast::<MaybeUninit<u8>>(), super::size_of_val(self))
@@ -1572,7 +1680,7 @@ impl<T, const N: usize> AsRef<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
 impl<T, const N: usize> AsRef<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
     #[inline]
     fn as_ref(&self) -> &[MaybeUninit<T>] {
-        &*AsRef::<[MaybeUninit<T>; N]>::as_ref(self)
+        AsRef::<[MaybeUninit<T>; N]>::as_ref(self)
     }
 }
 

@@ -1,4 +1,4 @@
-// rustfmt-format_macro_matchers: false
+//@ rustfmt-format_macro_matchers: false
 
 macro_rules! foo {
     ($a:ident : $b:ty) => {};

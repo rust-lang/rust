@@ -1,5 +1,4 @@
 //! A simplified version of quote-crate like quasi quote macro
-#![allow(clippy::crate_in_macro_def)]
 
 use intern::{Symbol, sym};
 use span::Span;
@@ -185,7 +184,7 @@ macro_rules! impl_to_to_tokentrees {
         $(
             impl ToTokenTree for $ty {
                 fn to_tokens($this, $span: Span, builder: &mut TopSubtreeBuilder) {
-                    let leaf: crate::tt::Leaf = $im.into();
+                    let leaf: $crate::tt::Leaf = $im.into();
                     builder.push(leaf);
                 }
             }

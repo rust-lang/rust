@@ -2,24 +2,23 @@ use std::ops::ControlFlow;
 
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::solve::inspect::ProbeKind;
-use rustc_infer::traits::solve::{CandidateSource, Certainty, Goal};
+use rustc_infer::traits::solve::{CandidateSource, Certainty, Goal, ParamEnvSource};
 use rustc_infer::traits::{
     BuiltinImplSource, ImplSource, ImplSourceUserDefinedData, Obligation, ObligationCause,
-    Selection, SelectionError, SelectionResult, TraitObligation,
+    PolyTraitObligation, Selection, SelectionError, SelectionResult,
 };
 use rustc_macros::extension;
-use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
+use rustc_span::{Span, bug, span_bug};
 use thin_vec::thin_vec;
 
 use crate::solve::inspect::{self, InferCtxtProofTreeExt};
 
 #[extension(pub trait InferCtxtSelectExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
-    /// Do not use this directly. This is called from [`crate::traits::SelectionContext::select`].
+    /// Do not use this directly. This is called from [`crate::traits::SelectionContext::poly_select`].
     fn select_in_new_trait_solver(
         &self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         assert!(self.next_trait_solver());
 
@@ -93,8 +92,8 @@ fn candidate_should_be_dropped_in_favor_of<'tcx>(
     victim: &inspect::InspectCandidate<'_, 'tcx>,
     other: &inspect::InspectCandidate<'_, 'tcx>,
 ) -> bool {
-    // Don't winnow until `Certainty::Yes` -- we don't need to winnow until
-    // codegen, and only on the good path.
+    // Don't winnow until `Certainty::Yes` -- we don't need to winnow until constant evaluation or
+    // codegen.
     if matches!(other.result().unwrap(), Certainty::Maybe(_)) {
         return false;
     }
@@ -136,6 +135,15 @@ fn candidate_should_be_dropped_in_favor_of<'tcx>(
         (CandidateSource::Impl(victim_def_id), CandidateSource::Impl(other_def_id)) => {
             victim.goal().infcx().tcx.specializes((other_def_id, victim_def_id))
         }
+
+        // Prefer impl candidates over global where clause candidates. Unless `generic_const_args`
+        // is enabled, we currently don't use an empty environment when resolving and evaluating
+        // constants to lower them to patterns. If we don't drop where clause candidates here, we
+        // can fail to select impl candidates (#162331).
+        (
+            CandidateSource::ParamEnv(ParamEnvSource::Global),
+            CandidateSource::Impl(_) | CandidateSource::BuiltinImpl(_),
+        ) => true,
 
         _ => false,
     }

@@ -3,3 +3,4 @@
 struct Apple((Apple, Option(Banana ? Citron)));
 //~^ ERROR invalid `?` in type
 //~| ERROR unexpected token: `Citron`
+//~| ERROR expected a pattern, found an expression

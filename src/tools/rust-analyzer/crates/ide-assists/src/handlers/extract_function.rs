@@ -76,7 +76,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
         return None;
     }
 
-    if node.kind() == COMMENT {
+    if ast::AnyComment::can_cast(node.kind()) {
         cov_mark::hit!(extract_function_in_comment_is_not_applicable);
         return None;
     }
@@ -934,7 +934,7 @@ impl FunctionBody {
         };
 
         // FIXME: make trait arguments
-        let trait_name = trait_name.map(|name| make.ty_path(make.ident_path(&name.text())).into());
+        let trait_name = trait_name.map(|name| make.ty_path(make.ident_path(name.text())).into());
 
         let parent = self.parent()?;
         let parents = generic_parents(&parent);
@@ -1561,7 +1561,7 @@ fn format_function<'db>(
     old_indent: IndentLevel,
     make: &SyntaxFactory,
 ) -> ast::Fn {
-    let fun_name = make.name(&fun.name.text());
+    let fun_name = make.name(fun.name.text());
     let params = fun.make_param_list(make, ctx, module, fun.mods.edition);
     let ret_ty = fun.make_ret_ty(make, ctx, module);
     let body = make_body(make, ctx, old_indent, fun);

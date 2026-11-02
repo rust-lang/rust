@@ -26,14 +26,13 @@ mod wild_in_or_pats;
 
 use clippy_config::Conf;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::SpanExt;
+use clippy_utils::source::SpanExt as _;
 use clippy_utils::{
     higher, is_direct_expn_of, is_in_const_context, is_lint_allowed, is_span_match, sym, tokenize_with_text,
 };
 use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind};
 use rustc_lexer::{TokenKind, is_whitespace};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -1045,7 +1044,7 @@ pub struct Matches {
 impl Matches {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             infallible_destructuring_match_linted: false,
         }
     }
@@ -1054,9 +1053,6 @@ impl Matches {
 impl<'tcx> LateLintPass<'tcx> for Matches {
     #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if is_direct_expn_of(expr.span, sym::matches).is_none() && expr.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
         let from_expansion = expr.span.from_expansion();
 
         if let ExprKind::Match(ex, arms, source) = expr.kind {
@@ -1065,6 +1061,9 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             {
                 redundant_pattern_match::check_match(cx, expr, ex, arms);
                 redundant_pattern_match::check_matches_true(cx, expr, arm, ex);
+            }
+            if expr.span.in_external_macro(cx.tcx.sess.source_map()) {
+                return;
             }
 
             if source == MatchSource::Normal && !is_span_match(cx, expr.span) {
@@ -1147,9 +1146,13 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 match_ref_pats::check(cx, ex, arms.iter().map(|el| el.pat), expr);
             }
         } else if let Some(if_let) = higher::IfLet::hir(cx, expr) {
+            if expr.span.in_external_macro(cx.tcx.sess.source_map()) {
+                return;
+            }
             collapsible_match::check_if_let(
                 cx,
                 if_let.let_span.ctxt(),
+                expr,
                 if_let.let_pat,
                 if_let.if_then,
                 if_let.if_else,
@@ -1207,12 +1210,18 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 );
                 needless_match::check_if_let(cx, expr, &if_let);
             }
-        } else {
-            if let Some(while_let) = higher::WhileLet::hir(expr) {
-                significant_drop_in_scrutinee::check_while_let(cx, expr, while_let.let_expr, while_let.if_then);
-            }
+        } else if let Some(while_let) = higher::WhileLet::hir(expr)
+            && !expr.span.in_external_macro(cx.tcx.sess.source_map())
+        {
+            significant_drop_in_scrutinee::check_while_let(cx, expr, while_let.let_expr, while_let.if_then);
             if !from_expansion {
-                redundant_pattern_match::check(cx, expr);
+                redundant_pattern_match::check_while_let(
+                    cx,
+                    expr,
+                    while_let.let_pat,
+                    while_let.let_expr,
+                    while_let.let_span,
+                );
             }
         }
     }
@@ -1243,8 +1252,8 @@ fn walk_intra_arm_text(
     mut f: impl FnMut(&str),
 ) -> bool {
     if let Some(src) = match_sp.get_source_range(cx)
-        && let scrutinee_sp = scrutinee_sp.source_callsite().data()
-        && let block_start = (scrutinee_sp.hi.0 - src.sf.start_pos.0) as usize
+        && let scrutinee_sp_hi = scrutinee_sp.source_callsite().hi()
+        && let block_start = (scrutinee_sp_hi.0 - src.sf.start_pos.0) as usize
         && let Some(src_text) = src.sf.src.as_ref().map(|x| &***x)
         && let Some(block_text) = src_text.get(block_start..src.range.end)
         && let Some(stripped_text) = block_text.trim_start_matches(is_whitespace).strip_prefix('{')
@@ -1254,8 +1263,8 @@ fn walk_intra_arm_text(
             .strip_suffix('}')
             .map(|s| src.range.end - (stripped_text.len() - s.len()))
         && let Some(range) = arms.iter().try_fold(arms_start..arms_end, |range, arm| {
-            let arm_sp: rustc_span::SpanData = arm.span.source_callsite().data();
-            let arm_range = (arm_sp.lo.0 - src.sf.start_pos.0) as usize..(arm_sp.hi.0 - src.sf.start_pos.0) as usize;
+            let (arm_sp_lo, arm_sp_hi) = arm.span.source_callsite().lo_hi();
+            let arm_range = (arm_sp_lo.0 - src.sf.start_pos.0) as usize..(arm_sp_hi.0 - src.sf.start_pos.0) as usize;
             if range.start <= arm_range.start
                 && arm_range.end <= range.end
                 && let Some(src) = src_text.get(range.start..arm_range.start)

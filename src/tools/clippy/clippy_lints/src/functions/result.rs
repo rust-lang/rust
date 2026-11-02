@@ -1,8 +1,8 @@
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use rustc_errors::Diag;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::{Span, sym};
@@ -134,7 +134,7 @@ fn check_result_large_err<'tcx>(
         && let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(local_def_id)
         && let hir::ItemKind::Enum(_, _, ref def) = item.kind
     {
-        let variants_size = AdtVariantInfo::new(cx, *adt, subst);
+        let variants_size = AdtVariantInfo::new(cx, *adt, *subst);
         if let Some((first_variant, variants)) = variants_size.split_first()
             && first_variant.size >= large_err_threshold
         {
@@ -174,7 +174,7 @@ fn check_result_large_err<'tcx>(
                 RESULT_LARGE_ERR,
                 hir_ty_span,
                 format!("the `Err`-variant returned from this {subject} is very large"),
-                |diag: &mut Diag<'_, ()>| {
+                |diag: &mut Diag<'_>| {
                     diag.span_label(hir_ty_span, format!("the `Err`-variant is at least {ty_size} bytes"));
                     diag.help(format!("try reducing the size of `{err_ty}`, for example by boxing large elements or replacing it with `Box<{err_ty}>`"));
                 },

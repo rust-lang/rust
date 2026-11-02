@@ -1,5 +1,5 @@
 #[cfg(feature = "nightly")]
-use crate::{BackendRepr, FieldsShape, Primitive, Size, TyAbiInterface, TyAndLayout, Variants};
+use crate::{BackendRepr, FieldsShape, Size, TyAbiInterface, TyAndLayout, Variants};
 
 mod reg;
 
@@ -58,6 +58,10 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     ///
     /// Note: We generally ignore 1-ZST fields when computing this value (see #56877).
     ///
+    /// Note: The fields of a union are merged as if it were a struct, so the result does not
+    /// distinguish the two. `powerpc64::is_or_contains_union` in `rustc_target` walks the layout
+    /// again to do that, mirroring the array handling here.
+    ///
     /// This is public so that it can be used in unit tests, but
     /// should generally only be relevant to the ABI details of
     /// specific targets.
@@ -69,10 +73,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         match self.backend_repr {
             // The primitive for this algorithm.
             BackendRepr::Scalar(scalar) => {
-                let kind = match scalar.primitive() {
-                    Primitive::Int(..) | Primitive::Pointer(_) => RegKind::Integer,
-                    Primitive::Float(_) => RegKind::Float,
-                };
+                let kind = RegKind::from_primitive(scalar.primitive());
                 Ok(HomogeneousAggregate::Homogeneous(Reg { kind, size: self.size }))
             }
 

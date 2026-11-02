@@ -1,15 +1,18 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher::{If, IfLetOrMatch};
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
-use clippy_utils::source::{IntoSpan, SpanExt, snippet};
+use clippy_utils::res::MaybeResPath as _;
+use clippy_utils::source::{IntoSpan as _, SpanExt as _, snippet};
 use clippy_utils::usage::mutated_variables;
-use clippy_utils::visitors::is_local_used;
-use clippy_utils::{SpanlessEq, get_ref_operators, is_unit_expr, peel_blocks_with_stmt, peel_ref_operators};
+use clippy_utils::visitors::{for_each_expr_without_closures, is_local_used};
+use clippy_utils::{
+    SpanlessEq, get_ref_operators, is_none_pattern, is_unit_expr, peel_blocks_with_stmt, peel_ref_operators,
+    span_contains_non_whitespace,
+};
+use core::ops::ControlFlow;
 use rustc_ast::BorrowKind;
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdSet, Pat, PatExpr, PatExprKind, PatKind};
+use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdSet, Pat, PatKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::LateContext;
 use rustc_middle::mir::FakeReadCause;
@@ -33,6 +36,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, ar
                 arm.body,
                 arm.guard,
                 Some(els_arm.body),
+                arm.hir_id,
                 msrv,
                 only_wildcards_after,
             );
@@ -40,16 +44,30 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, ar
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 pub(super) fn check_if_let<'tcx>(
     cx: &LateContext<'tcx>,
     ctxt: SyntaxContext,
+    expr: &'tcx Expr<'_>,
     pat: &'tcx Pat<'_>,
     body: &'tcx Expr<'_>,
     else_expr: Option<&'tcx Expr<'_>>,
     let_expr: &'tcx Expr<'_>,
     msrv: Msrv,
 ) {
-    check_arm(cx, ctxt, false, pat, let_expr, body, None, else_expr, msrv, false);
+    check_arm(
+        cx,
+        ctxt,
+        false,
+        pat,
+        let_expr,
+        body,
+        None,
+        else_expr,
+        expr.hir_id,
+        msrv,
+        false,
+    );
 }
 
 #[expect(clippy::too_many_arguments, clippy::too_many_lines)]
@@ -62,6 +80,7 @@ fn check_arm<'tcx>(
     outer_then_body: &'tcx Expr<'tcx>,
     outer_guard: Option<&'tcx Expr<'tcx>>,
     outer_else_body: Option<&'tcx Expr<'tcx>>,
+    outer_hir_id: HirId,
     msrv: Msrv,
     only_wildcards_after: bool,
 ) {
@@ -82,7 +101,7 @@ fn check_arm<'tcx>(
                 }
             },
         }
-        && outer_pat.span.eq_ctxt(inner_scrutinee.span)
+        && outer_pat.span.ctxt() == inner_scrutinee.span.ctxt()
         // match expression must be a local binding
         // match <local> { .. }
         && let Some(binding_id) = peel_ref_operators(cx, inner_scrutinee).res_local_id()
@@ -142,18 +161,29 @@ fn check_arm<'tcx>(
     } else if outer_is_match // Leave if-let to the `collapsible_if` lint
         && only_wildcards_after // adding a guard allows fall-through; unsafe if other arms follow
         && let Some(inner) = If::hir(inner_expr)
-        && outer_pat.span.eq_ctxt(inner.cond.span)
+        && outer_pat.span.ctxt() == inner.cond.span.ctxt()
         && match (outer_else_body, inner.r#else) {
             (None, None) => true,
             (None, Some(e)) | (Some(e), None) => is_unit_expr(e),
             (Some(a), Some(b)) => SpanlessEq::new(cx).eq_expr(ctxt, a, b),
         }
-        && !pat_bindings_moved_or_mutated(cx, outer_pat, inner.cond)
+        && !pat_bindings_and_inner_cond_moved_or_mutated(cx, outer_pat, inner.cond)
     {
+        let outer_then_open_bracket = outer_then_body
+            .span
+            .split_at(1)
+            .0
+            .with_leading_whitespace(cx)
+            .into_span();
+        let contains_block = matches!(outer_then_body.kind, ExprKind::Block(..));
+        if contains_block && span_contains_non_whitespace(cx, outer_then_open_bracket.between(inner_expr.span), false) {
+            return;
+        }
+
         span_lint_hir_and_then(
             cx,
             COLLAPSIBLE_MATCH,
-            inner_expr.hir_id,
+            outer_hir_id,
             inner_expr.span,
             "this `if` can be collapsed into the outer `match`",
             |diag| {
@@ -165,13 +195,7 @@ fn check_arm<'tcx>(
                 let (paren_start, inner_if_span, paren_end) = peel_parens(cx, inner_expr.span);
                 let inner_if = inner_if_span.split_at(2).0;
                 let mut sugg = vec![(inner.then.span.shrink_to_lo(), "=> ".to_string())];
-                if matches!(outer_then_body.kind, ExprKind::Block(..)) {
-                    let outer_then_open_bracket = outer_then_body
-                        .span
-                        .split_at(1)
-                        .0
-                        .with_leading_whitespace(cx)
-                        .into_span();
+                if contains_block {
                     let outer_then_closing_bracket = {
                         let end = outer_then_body.span.shrink_to_hi();
                         end.with_lo(end.lo() - BytePos(1))
@@ -216,18 +240,7 @@ fn arm_is_wild_like(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     if arm.guard.is_some() {
         return false;
     }
-    match arm.pat.kind {
-        PatKind::Binding(..) | PatKind::Wild => true,
-        PatKind::Expr(PatExpr {
-            kind: PatExprKind::Path(qpath),
-            hir_id,
-            ..
-        }) => cx
-            .qpath_res(qpath, *hir_id)
-            .ctor_parent(cx)
-            .is_lang_item(cx, OptionNone),
-        _ => false,
-    }
+    matches!(arm.pat.kind, PatKind::Binding(..) | PatKind::Wild) || is_none_pattern(cx, arm.pat)
 }
 
 fn find_pat_binding_and_is_innermost_parent_pat_struct(pat: &Pat<'_>, hir_id: HirId) -> (Option<(Ident, Span)>, bool) {
@@ -278,9 +291,19 @@ fn build_ref_method_chain(expr: Vec<&Expr<'_>>) -> Option<String> {
     Some(req_method_calls)
 }
 
-/// Checks if any of the bindings in the `pat` are moved or mutated in the `expr`. It is invalid to
-/// move or mutate bindings in `if` guards.
-fn pat_bindings_moved_or_mutated<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+fn is_defined_in(cx: &LateContext<'_>, binding_id: HirId, container_id: HirId) -> bool {
+    cx.tcx
+        .hir_parent_id_iter(binding_id)
+        .any(|parent_id| parent_id == container_id)
+}
+
+/// Checks if any of the bindings in the `pat` and variable in the inner condition are moved or
+/// mutated in the `expr`. It is invalid to move or mutate bindings in `if` condition.
+fn pat_bindings_and_inner_cond_moved_or_mutated<'tcx>(
+    cx: &LateContext<'tcx>,
+    pat: &Pat<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+) -> bool {
     let mut delegate = MovedVarDelegate {
         moved: HirIdSet::default(),
     };
@@ -296,6 +319,7 @@ fn pat_bindings_moved_or_mutated<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>, 
         candidates.extend(mutated);
     }
 
+    // Check the pat
     !pat.walk_short(|pat| {
         if let PatKind::Binding(_, hir_id, ..) = pat.kind
             && candidates.contains(&hir_id)
@@ -304,6 +328,20 @@ fn pat_bindings_moved_or_mutated<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>, 
         }
         true
     })
+    // Check the inner condition
+    || for_each_expr_without_closures(expr, |e| {
+        if let Some(local_id) = e.res_local_id()
+            // defined outside of the `if` condition
+            && !is_defined_in(cx, local_id, expr.hir_id)
+            // moved/mutated
+            && candidates.contains(&local_id)
+        {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .is_some()
 }
 
 struct MovedVarDelegate {

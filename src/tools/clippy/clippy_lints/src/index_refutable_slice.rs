@@ -4,16 +4,15 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLet;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::ty::is_copy;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::hir::nested_filter;
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::Ident;
 
@@ -64,7 +63,7 @@ impl IndexRefutableSlice {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             max_suggested_slice: conf.max_suggested_slice_pattern_length,
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
         }
     }
 }

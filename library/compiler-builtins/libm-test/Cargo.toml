@@ -11,14 +11,12 @@ api-list-common.workspace = true
 compiler_builtins = { workspace = true, default-features = false, features = ["unstable-public-internals"] }
 # This is not directly used but is required so we can enable `gmp-mpfr-sys/force-cross`.
 gmp-mpfr-sys = { workspace = true, optional = true }
-indicatif.workspace = true
 libm = { workspace = true, default-features = false, features = ["unstable-public-internals"] }
 libm-macros.workspace = true
 musl-math-sys = { workspace = true, optional = true }
 paste.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
-rayon.workspace = true
 rug = { workspace = true, optional = true }
 
 # Really dev dependencies, but those can't be optional
@@ -33,7 +31,9 @@ indicatif = { workspace = true, features = ["wasmbind"] }
 rand = { workspace = true, optional = true }
 
 [dev-dependencies]
+indicatif.workspace = true
 libtest-mimic.workspace = true
+rayon.workspace = true
 
 [features]
 # Defaults should match the defaults in compiler-builtins since we have that

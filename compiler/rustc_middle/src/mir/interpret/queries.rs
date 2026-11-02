@@ -1,7 +1,7 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_session::lint;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_lint_defs::builtin::CONST_EVALUATABLE_UNCHECKED;
+use rustc_span::{DUMMY_SP, Span, bug};
 use tracing::{debug, instrument};
 
 use super::{
@@ -9,7 +9,7 @@ use super::{
 };
 use crate::mir::interpret::ValTreeCreationError;
 use crate::ty::{self, ConstToValTreeResult, GenericArgs, TyCtxt, TypeVisitableExt};
-use crate::{error, mir};
+use crate::{diagnostics, mir};
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
@@ -104,13 +104,23 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         let def_id = match ct.kind {
+            ty::AliasConstKind::InherentSelf { .. } => {
+                bug!("got AliasConstKind::InherentSelf in const_eval_resolve_for_typeck")
+            }
             ty::AliasConstKind::Projection { def_id }
-            | ty::AliasConstKind::Inherent { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id }
             | ty::AliasConstKind::Free { def_id }
             | ty::AliasConstKind::Anon { def_id } => def_id,
         };
 
-        let cid = match ty::Instance::try_resolve(self, typing_env, def_id, ct.args) {
+        // We need to use post analysis mode for instance resolving to succeed.
+        // Otherwise we often bail due to impl candidate not being final.
+        // Revealing opaques here should be fine as we proved the trait ref
+        // with rigid opaques in typeck.
+        let ty::PseudoCanonicalInput { typing_env, value: args } =
+            typing_env.with_post_analysis_normalized_invalidating_rigid_aliases(self, ct.args);
+
+        let cid = match ty::Instance::try_resolve(self, typing_env, def_id, args) {
             Ok(Some(instance)) => GlobalId { instance, promoted: None },
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
@@ -133,7 +143,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // here does feel somewhat sensible.
             let def_id = cid.instance.def_id();
             if !self.features().generic_const_exprs()
-                && ct.args.has_non_region_param()
+                && args.has_non_region_param()
                 // We only FCW for anon consts as repeat expr counts with anon consts are the only place
                 // that we have a back compat hack for. We don't need to check this is a const argument
                 // as only anon consts as const args should get evaluated "for the type system".
@@ -147,7 +157,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let mir_body = self.mir_for_ctfe(def_id);
                 if mir_body.is_polymorphic {
                     self.emit_node_span_lint(
-                        lint::builtin::CONST_EVALUATABLE_UNCHECKED,
+                        CONST_EVALUATABLE_UNCHECKED,
                         self.local_def_id_to_hir_id(local_def_id),
                         self.def_span(def_id),
                         rustc_errors::DiagDecorator(|lint| {
@@ -181,7 +191,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_and_anonymize_regions(
-            typing_env.with_post_analysis_normalized(self).as_query_input(cid),
+            typing_env.with_post_analysis_normalized_invalidating_rigid_aliases(self, cid),
         );
         if !span.is_dummy() {
             // The query doesn't know where it is being invoked, so we need to fix the span.
@@ -202,7 +212,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_and_anonymize_regions(
-            typing_env.with_post_analysis_normalized(self).as_query_input(cid),
+            typing_env.with_post_analysis_normalized_invalidating_rigid_aliases(self, cid),
         );
         debug!(?inputs);
         let res = if !span.is_dummy() {
@@ -219,21 +229,21 @@ impl<'tcx> TyCtxt<'tcx> {
                     ValTreeCreationError::NonSupportedType(ty) => Ok(Err(ty)),
                     // Report the others.
                     ValTreeCreationError::NodesOverflow => {
-                        let handled = self.dcx().emit_err(error::MaxNumNodesInValtree {
+                        let handled = self.dcx().emit_err(diagnostics::MaxNumNodesInValtree {
                             span,
                             global_const_id: cid.display(self),
                         });
                         Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
                     }
                     ValTreeCreationError::InvalidConst => {
-                        let handled = self.dcx().emit_err(error::InvalidConstInValtree {
+                        let handled = self.dcx().emit_err(diagnostics::InvalidConstInValtree {
                             span,
                             global_const_id: cid.display(self),
                         });
                         Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
                     }
                     ValTreeCreationError::CyclicConst => {
-                        let handled = self.dcx().emit_err(error::CyclicConstInValtree {
+                        let handled = self.dcx().emit_err(diagnostics::CyclicConstInValtree {
                             span,
                             global_const_id: cid.display(self),
                         });

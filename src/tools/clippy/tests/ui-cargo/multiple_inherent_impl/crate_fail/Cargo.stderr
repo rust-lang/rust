@@ -54,4 +54,4 @@ note: first implementation here
  6 | | }
    | |_^
 
-error: could not compile `crate_fail` (bin "crate_fail") due to 3 previous errors
+error: could not compile `crate-fail` (bin "crate-fail") due to 3 previous errors

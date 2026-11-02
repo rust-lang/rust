@@ -1,5 +1,6 @@
 //@ check-pass
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 // When type checking a closure expr we look at the list of unsolved goals

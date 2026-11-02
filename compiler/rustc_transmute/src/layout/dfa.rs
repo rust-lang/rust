@@ -5,6 +5,9 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use super::{Byte, Reference, Region, Tree, Type, Uninhabited};
 use crate::{Map, Set};
 
+#[cfg(test)]
+mod tests;
+
 #[derive(PartialEq)]
 #[cfg_attr(test, derive(Clone))]
 pub(crate) struct Dfa<R, T>
@@ -37,7 +40,9 @@ where
     }
 }
 
-/// The states in a [`Dfa`] represent byte offsets.
+/// An identifier for a node in a [`Dfa`].
+///
+/// The numeric identifier does not encode a byte offset.
 #[derive(Hash, Eq, PartialEq, PartialOrd, Ord, Copy, Clone)]
 pub(crate) struct State(pub(crate) u32);
 
@@ -308,7 +313,8 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "digraph {{")?;
-        writeln!(f, "    {:?} [shape = doublecircle]", self.start)?;
+        writeln!(f, "    start [shape = point, style = invis]")?;
+        writeln!(f, "    start -> {:?}", self.start)?;
         writeln!(f, "    {:?} [shape = doublecircle]", self.accept)?;
 
         for (src, transitions) in self.transitions.iter() {
@@ -380,15 +386,7 @@ mod edge_set {
         }
 
         pub(crate) fn map_states<SS>(self, mut f: impl FnMut(S) -> SS) -> EdgeSet<SS> {
-            EdgeSet {
-                // NOTE: It appears as through `<Vec<_> as
-                // IntoIterator>::IntoIter` and `std::iter::Map` both implement
-                // `TrustedLen`, which in turn means that this `.collect()`
-                // allocates the correct number of elements once up-front [1].
-                //
-                // [1] https://doc.rust-lang.org/1.85.0/src/alloc/vec/spec_from_iter_nested.rs.html#47
-                runs: self.runs.into_iter().map(|(b, s)| (b, f(s))).collect(),
-            }
+            EdgeSet { runs: self.runs.into_iter().map(|(b, s)| (b, f(s))).collect() }
         }
 
         /// Unions two edge sets together.
@@ -428,7 +426,13 @@ mod edge_set {
     }
 }
 
-/// Merges two sorted sequences into one sorted sequence.
+/// Partitions two sequences of byte edges into sorted, non-overlapping ranges.
+///
+/// Within each input, ranges must be non-empty, non-overlapping, and sorted by
+/// ascending start. Each output item contains a range and the destination of the
+/// edge from each input that covers it. An input with no edge covering the range
+/// contributes `None`. Ranges covered by neither input are omitted. Adjacent
+/// output ranges are not coalesced.
 pub(crate) fn union<S: Copy, X: Iterator<Item = (Byte, S)>, Y: Iterator<Item = (Byte, S)>>(
     xs: X,
     ys: Y,

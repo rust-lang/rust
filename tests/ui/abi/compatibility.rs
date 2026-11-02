@@ -4,12 +4,24 @@
 //@ revisions: i686
 //@[i686] compile-flags: --target i686-unknown-linux-gnu
 //@[i686] needs-llvm-components: x86
+//@ revisions: i686-reg-struct-return
+//@[i686-reg-struct-return] compile-flags: --target i686-unknown-linux-gnu -Zreg-struct-return=true
+//@[i686-reg-struct-return] needs-llvm-components: x86
+//@ revisions: i686-win
+//@[i686-win] compile-flags: --target i686-pc-windows-msvc
+//@[i686-win] needs-llvm-components: x86
+//@ revisions: i686-win-gnu
+//@[i686-win-gnu] compile-flags: --target i686-pc-windows-gnu
+//@[i686-win-gnu] needs-llvm-components: x86
 //@ revisions: x86-64
 //@[x86-64] compile-flags: --target x86_64-unknown-linux-gnu
 //@[x86-64] needs-llvm-components: x86
 //@ revisions: x86-64-win
 //@[x86-64-win] compile-flags: --target x86_64-pc-windows-msvc
 //@[x86-64-win] needs-llvm-components: x86
+//@ revisions: x86-64-win-gnu
+//@[x86-64-win-gnu] compile-flags: --target x86_64-pc-windows-gnu
+//@[x86-64-win-gnu] needs-llvm-components: x86
 //@ revisions: arm
 //@[arm] compile-flags: --target arm-unknown-linux-gnueabi
 //@[arm] needs-llvm-components: arm
@@ -19,6 +31,9 @@
 //@ revisions: aarch64
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
 //@[aarch64] needs-llvm-components: aarch64
+//@ revisions: aarch64-win
+//@[aarch64-win] compile-flags: --target aarch64-pc-windows-msvc
+//@[aarch64-win] needs-llvm-components: aarch64
 //@ revisions: s390x
 //@[s390x] compile-flags: --target s390x-unknown-linux-gnu
 //@[s390x] needs-llvm-components: systemz
@@ -74,7 +89,7 @@
 #![feature(no_core, rustc_attrs, lang_items)]
 #![feature(unsized_fn_params, transparent_unions)]
 #![no_core]
-#![allow(unused, improper_ctypes_definitions, internal_features)]
+#![expect(unused, improper_ctypes_definitions, internal_features)]
 
 // FIXME: some targets are broken in various ways.
 // Hence there are `cfg` throughout this test to disable parts of it on those targets.
@@ -152,6 +167,18 @@ macro_rules! test_abi_compatible {
             type TestC = (extern "C" fn($t1) -> $t1, extern "C" fn($t2) -> $t2);
         }
     };
+    ($name:ident, $t1:ty, $t2:ty, unsized) => {
+        mod $name {
+            use super::*;
+            // Declaring a `type` doesn't even check well-formedness, so we also declare a function.
+            fn check_wf(_x: $t1, _y: $t2) {}
+            // Test argument only in case of unsized types, `Rust` and `C` ABIs.
+            #[rustc_abi(assert_eq)]
+            type TestRust = (fn($t1), fn($t2));
+            #[rustc_abi(assert_eq)]
+            type TestC = (extern "C" fn($t1), extern "C" fn($t2));
+        }
+    };
 }
 
 struct Zst;
@@ -170,6 +197,11 @@ enum Either2<T, U> {
     Left(T),
     Right(U, ()),
 }
+
+#[repr(C)]
+struct ReprC<T>(T);
+#[repr(C)]
+struct ReprC2<T, U>(T, U);
 
 #[repr(C)]
 enum ReprCEnum<T> {
@@ -240,16 +272,20 @@ macro_rules! test_transparent {
 }
 
 test_transparent!(simple, i32);
+test_transparent!(float, f32);
 test_transparent!(reference, &'static i32);
 test_transparent!(zst, Zst);
 test_transparent!(unit, ());
 test_transparent!(enum_, Option<i32>);
 test_transparent!(enum_niched, Option<&'static i32>);
 #[cfg(not(any(target_arch = "mips64")))]
-mod tuples {
+mod structs_and_tuples {
     use super::*;
+    test_transparent!(float_struct, ReprC<f32>);
     // mixing in some floats since they often get special treatment
     test_transparent!(pair, (i32, f32));
+    // a homogeneous repr(C) struct
+    test_transparent!(c_pair, ReprC2<f32, f32>);
     // chosen to fit into 64bit
     test_transparent!(triple, (i8, i16, f32));
     // Pure-float types that are not ScalarPair seem to be tricky.
@@ -272,8 +308,8 @@ macro_rules! test_transparent_unsized {
     ($name:ident, $t:ty) => {
         mod $name {
             use super::*;
-            test_abi_compatible!(wrap1, $t, TransparentWrapper1<$t>);
-            test_abi_compatible!(wrap2, $t, TransparentWrapper2<$t>);
+            test_abi_compatible!(wrap1, $t, TransparentWrapper1<$t>, unsized);
+            test_abi_compatible!(wrap2, $t, TransparentWrapper2<$t>, unsized);
         }
     };
 }

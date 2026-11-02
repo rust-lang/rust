@@ -1,6 +1,8 @@
 error: `mut` must be followed by a named binding
   --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:6:13
    |
+LL | macro_rules! mac1 {
+LL |     ($eval:expr) => {
 LL |         let mut $eval = ();
    |             ^^^^
 ...
@@ -8,7 +10,6 @@ LL |     mac1! { does_not_exist!() }
    |     --------------------------- in this macro invocation
    |
    = note: `mut` may be followed by `variable` and `variable @ pattern`
-   = note: this error originates in the macro `mac1` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: remove the `mut` prefix
    |
 LL -         let mut $eval = ();
@@ -18,17 +19,19 @@ LL +         let $eval = ();
 error: expected identifier, found metavariable
   --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:13:17
    |
+LL | macro_rules! mac2 {
+LL |     ($eval:pat) => {
 LL |         let mut $eval = ();
    |                 ^^^^^ expected identifier, found metavariable
 ...
 LL |     mac2! { does_not_exist!() }
    |     --------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `mut` must be followed by a named binding
   --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:13:13
    |
+LL | macro_rules! mac2 {
+LL |     ($eval:pat) => {
 LL |         let mut $eval = ();
    |             ^^^^
 ...
@@ -36,7 +39,6 @@ LL |     mac2! { does_not_exist!() }
    |     --------------------------- in this macro invocation
    |
    = note: `mut` may be followed by `variable` and `variable @ pattern`
-   = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: remove the `mut` prefix
    |
 LL -         let mut $eval = ();

@@ -127,8 +127,8 @@ LL |     println!("{:p}", &multiple_generic::<u32, f32>);
 warning: taking a reference to a function item does not give a function pointer
   --> $DIR/function-item-references.rs:123:22
    |
-LL |     println!("{:p}", &multiple_generic_arrays::<u32, f32, 4, 8>);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `multiple_generic_arrays` to obtain a function pointer: `multiple_generic_arrays::<u32, f32, 4, 8> as fn(_, _)`
+LL |     println!("{:p}", &multiple_generic_arrays::<u32, 4, f32, 8>);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `multiple_generic_arrays` to obtain a function pointer: `multiple_generic_arrays::<u32, 4, f32, 8> as fn(_, _)`
 
 warning: taking a reference to a function item does not give a function pointer
   --> $DIR/function-item-references.rs:125:22

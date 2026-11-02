@@ -13,7 +13,7 @@ use crate::walk::walk;
 const TAGS: &[(&str, &str)] = &[("{#", "#}"), ("{%", "%}"), ("{{", "}}")];
 
 pub fn check(librustdoc_path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("rustdoc_templates").path(librustdoc_path));
+    let check = tidy_ctx.start_check(CheckId::new("rustdoc_templates").path(librustdoc_path));
 
     walk(
         &librustdoc_path.join("html/templates"),

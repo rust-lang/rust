@@ -3,6 +3,8 @@ warning: the `diagnostic::on_unimplemented` attribute cannot be used on trait al
    |
 LL | #[diagnostic::on_unimplemented(message = "blah", label = "blah", note = "blah")]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | trait Alias = Test;
    |
    = help: the `diagnostic::on_unimplemented` attribute can only be applied to traits
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default

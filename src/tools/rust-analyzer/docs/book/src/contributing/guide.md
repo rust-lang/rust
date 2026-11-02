@@ -67,12 +67,12 @@ Next, let's talk about what the inputs to the `Analysis` are, precisely.
 
 rust-analyzer never does any I/O itself, all inputs get passed explicitly via
 the `AnalysisHost::apply_change` method, which accepts a single argument, a
-`Change`. [`Change`] is a wrapper for `FileChange` that adds proc-macro knowledge.
-[`FileChange`] is a builder for a single change "transaction", so it suffices
-to study its methods to understand all the input data.
+[`ChangeWithProcMacros`]. [`ChangeWithProcMacros`] is a wrapper for `FileChange`
+that adds proc-macro knowledge. [`FileChange`] is a builder for a single change
+"transaction", so it suffices to study its methods to understand all the input data.
 
-[`Change`]: https://github.com/rust-lang/rust-analyzer/blob/2024-01-01/crates/hir-expand/src/change.rs#L10-L42
-[`FileChange`]: https://github.com/rust-lang/rust-analyzer/blob/2024-01-01/crates/base-db/src/change.rs#L14-L78
+[`ChangeWithProcMacros`]: https://github.com/rust-lang/rust-analyzer/blob/2026-08-03/crates/hir-expand/src/change.rs#L9-L42
+[`FileChange`]: https://github.com/rust-lang/rust-analyzer/blob/2026-08-03/crates/base-db/src/change.rs#L18-L99
 
 The `change_file` method controls the set of the input files, where each file
 has an integer id (`FileId`, picked by the client) and text (`Option<Arc<str>>`).

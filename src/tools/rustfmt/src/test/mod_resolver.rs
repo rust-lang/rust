@@ -7,7 +7,7 @@ use crate::{FileName, Input, Session};
 
 fn verify_mod_resolution(input_file_name: &str, exp_misformatted_files: &[&str]) {
     let input_file = PathBuf::from(input_file_name);
-    let config = read_config(&input_file);
+    let config = read_config(&input_file).expect("config should be valid");
     let mut session = Session::<io::Stdout>::new(config, None);
     let report = session
         .format(Input::File(input_file_name.into()))

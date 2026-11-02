@@ -1,4 +1,4 @@
-#![allow(clippy::disallowed_types, clippy::print_stderr)]
+#![allow(clippy::print_stderr)]
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},

@@ -499,6 +499,9 @@ code, pre, .code-header, .type-signature {
 	border-radius: 3px;
 	padding: 0 0.125em;
 }
+.docblock code {
+	padding: 2px 0.125em;
+}
 .docblock pre code, .item-table dd pre code {
 	padding: 0;
 }
@@ -1098,7 +1101,7 @@ rustdoc-topbar {
 	position: relative;
 }
 
-.docblock > :not(.more-examples-toggle):not(.example-wrap) {
+.docblock pre, .docblock div.table {
 	max-width: 100%;
 	overflow-x: auto;
 }
@@ -1145,12 +1148,16 @@ pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 	border: 1px solid var(--border-color);
 }
 
-.docblock table tbody tr:nth-child(2n) {
+.docblock table tbody tr:nth-child(odd) {
 	background: var(--table-alt-row-background-color);
 }
 
-.docblock .stab, .item-table dd .stab, .docblock p code {
+.docblock .stab, .item-table dd .stab {
 	display: inline-block;
+}
+
+.docblock p code {
+	display: inline;
 }
 
 .docblock li {
@@ -1478,6 +1485,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	padding: 4px;
 	transform: rotate(-45deg);
 	top: -5px;
+	/* So the arrow doesn't go above the content in the popover. */
+	z-index: -1;
+}
+#settings.popover::before {
+	/* Because of the tabs, it renders weird if we pick a different color than the tab's
+	   background. */
+	background-color: var(--search-tab-button-not-selected-background);
 }
 
 .setting-line {
@@ -1548,9 +1562,22 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	border-color: var(--settings-input-color) !important;
 }
 
+.settings-menu #settings {
+	/* This is to prevent the popover width to change when we switch tabs. I picked the biggest
+	   width based on the setting with the longest text. The `- 2px` is to includes the borders
+	   width when the window's width is very thin. */
+	width: min(456px, calc(100vw - 2px));
+}
 #settings.popover {
 	--popover-arrow-offset: 196px;
 	top: calc(100% - 16px);
+	right: 1px;
+}
+
+#settings .settings {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
 }
 
 /* use larger max-width for help popover, but not for help.html */
@@ -1648,13 +1675,24 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 .notable-trait-badge-container {
-	padding: 0.5rem 0;
+	padding-top: 8px;
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0.5rem;
+	gap: 8px;
+	margin-left: var(--docblock-indent);
+	position: relative;
 }
 
-.notable-trait-badge-container > a {
+.notable-trait-badge-container > a.tooltip {
+	position: absolute;
+	width: 16px;
+	line-height: 1.5rem;
+	vertical-align: center;
+	left: calc(-1 * var(--docblock-indent));
+	text-decoration: none;
+}
+
+.notable-trait-badge-container > a:not(.tooltip) {
 	display: flex;
 	align-items: center;
 	width: fit-content;
@@ -1666,16 +1704,47 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	color: var(--main-color);
 }
 
-.notable-trait-badge-container > a:hover {
-	text-decoration: none;
+/* this list of colors is lifted from the ANSI escape codes list:
+	https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
+	This way, CLI-based tooling can adapt them without having to do
+	complex platform support dances. */
+.notable-trait-badge-container > .notable-trait-badge-grey {
+	background: var(--notable-badge-grey);
+	border: solid 1px var(--notable-badge-grey);
+}
+.notable-trait-badge-container > .notable-trait-badge-red {
+	background: var(--notable-badge-red);
+	border: solid 1px var(--notable-badge-red);
+}
+.notable-trait-badge-container > .notable-trait-badge-green {
+	background: var(--notable-badge-green);
+	border: solid 1px var(--notable-badge-green);
+}
+.notable-trait-badge-container > .notable-trait-badge-yellow {
+	background: var(--notable-badge-yellow);
+	border: solid 1px var(--notable-badge-yellow);
+}
+.notable-trait-badge-container > .notable-trait-badge-blue {
+	background: var(--notable-badge-blue);
+	border: solid 1px var(--notable-badge-blue);
+}
+.notable-trait-badge-container > .notable-trait-badge-magenta {
+	background: var(--notable-badge-magenta);
+	border: solid 1px var(--notable-badge-magenta);
+}
+.notable-trait-badge-container > .notable-trait-badge-cyan {
+	background: var(--notable-badge-cyan);
+	border: solid 1px var(--notable-badge-cyan);
+}
+.notable-trait-badge-container > .notable-trait-badge-transparent {
+	background: var(--notable-badge-transparent);
+	border: solid 1px var(--border-color);
 }
 
-.notable-trait-badge-container > .badge-0 { background: var(--notable-badge-pink); }
-.notable-trait-badge-container > .badge-1 { background: var(--notable-badge-red); }
-.notable-trait-badge-container > .badge-2 { background: var(--notable-badge-orange); }
-.notable-trait-badge-container > .badge-3 { background: var(--notable-badge-green); }
-.notable-trait-badge-container > .badge-4 { background: var(--notable-badge-blue); }
-.notable-trait-badge-container > .badge-5 { background: var(--notable-badge-violet); }
+.notable-trait-badge-container > a:hover:not(.tooltip) {
+	text-decoration: none;
+	border: solid 1px var(--settings-button-border-focus);
+}
 
 .rightside {
 	padding-left: 12px;
@@ -2032,13 +2101,15 @@ a.tooltip:hover::after {
 
 #search-tabs {
 	margin-top: 0.25rem;
-	display: flex;
-	flex-direction: row;
-	gap: 1px;
 	margin-bottom: 4px;
 }
 
-#search-tabs button {
+#search-tabs, #settings .tabs {
+	display: flex;
+	flex-direction: row;
+	gap: 1px;
+}
+#search-tabs button, #settings .tabs button.tab {
 	text-align: center;
 	font-size: 1.125rem;
 	border: 0;
@@ -2047,13 +2118,21 @@ a.tooltip:hover::after {
 	line-height: 1.5;
 	color: inherit;
 }
-#search-tabs button:not(.selected) {
+#search-tabs button:not(.selected), #settings .tabs button.tab:not(.selected) {
 	background-color: var(--search-tab-button-not-selected-background);
 	border-top-color: var(--search-tab-button-not-selected-border-top-color);
 }
-#search-tabs button:hover, #search-tabs button.selected {
+#search-tabs button:hover, #search-tabs button.selected,
+#settings .tabs button.tab:hover, #settings .tabs button.tab.selected {
 	background-color: var(--search-tab-button-selected-background);
 	border-top-color: var(--search-tab-button-selected-border-top-color);
+}
+
+#settings .settings .setting {
+	display: none;
+}
+#settings .settings .setting.selected {
+	display: block;
 }
 
 #search-tabs .count {
@@ -2067,8 +2146,7 @@ a.tooltip:hover::after {
 	color: transparent;
 }
 
-.search-form.loading::after
-{
+.search-form.loading::after {
 	width: 18px;
 	height: 18px;
 	border-radius: 18px;
@@ -2777,8 +2855,11 @@ in src-script.js and main.js
 	}
 	/* The `overflow-y` property is used on an internal content instead of the top one otherwise the
 	   little arrow at the top can't be displayed. */
-	#settings.popover .settings, #help.popover .content {
+	#settings.popover .settings .setting, #help.popover .content {
 		overflow-y: scroll;
+	}
+
+	#help.popover .content {
 		height: 100%;
 	}
 
@@ -2907,6 +2988,10 @@ in src-script.js and main.js
 	#main-content > details.toggle > summary::before,
 	#main-content > div > details.toggle > summary::before {
 		left: -11px;
+	}
+
+	.notable-trait-badge-container > a.tooltip {
+		left: calc(-1 * var(--docblock-indent) - 11px);
 	}
 
 	/* sidebar button becomes topbar button */
@@ -3217,7 +3302,7 @@ by default.
 	--sidebar-background-color: #f5f5f5;
 	--sidebar-background-color-hover: #e0e0e0;
 	--sidebar-border-color: #ddd;
-	--code-block-background-color: #f5f5f5;
+	--code-block-background-color: #eaeaea;
 	--scrollbar-track-background-color: #dcdcdc;
 	--scrollbar-thumb-background-color: rgba(36, 37, 39, 0.6);
 	--scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
@@ -3310,12 +3395,14 @@ by default.
 	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
 	--sidebar-resizer-hover: hsl(207, 90%, 66%);
 	--sidebar-resizer-active: hsl(207, 90%, 54%);
-	--notable-badge-pink: oklch(0.88 0.21 0);
-	--notable-badge-red: oklch(0.88 0.21 40);
-	--notable-badge-orange: oklch(0.88 0.21 70);
+	--notable-badge-grey: oklch(0.88 0 0);
+	--notable-badge-red: oklch(0.88 0.21 20);
 	--notable-badge-green: oklch(0.88 0.21 150);
+	--notable-badge-yellow: oklch(0.88 0.21 70);
 	--notable-badge-blue: oklch(0.88 0.21 240);
-	--notable-badge-violet: oklch(0.88 0.21 300);
+	--notable-badge-magenta: oklch(0.88 0.21 320);
+	--notable-badge-cyan: oklch(0.88 0.21 180);
+	--notable-badge-transparent: transparent;
 }
 /* End theme: light */
 
@@ -3412,7 +3499,7 @@ by default.
 	--crate-search-hover-border: #2196f3;
 	--src-sidebar-background-selected: #333;
 	--src-sidebar-background-hover: #444;
-	--table-alt-row-background-color: #2a2a2a;
+	--table-alt-row-background-color: #1d1d1d;
 	--codeblock-link-background: #333;
 	--scrape-example-toggle-line-background: #999;
 	--scrape-example-toggle-line-hover-background: #c5c5c5;
@@ -3426,12 +3513,14 @@ by default.
 	--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
 	--sidebar-resizer-hover: hsl(207, 30%, 54%);
 	--sidebar-resizer-active: hsl(207, 90%, 54%);
-	--notable-badge-pink: oklch(0.55 0.21 0);
-	--notable-badge-red: oklch(0.55 0.21 40);
-	--notable-badge-orange: oklch(0.55 0.21 70);
+	--notable-badge-grey: oklch(0.55 0 0);
+	--notable-badge-red: oklch(0.55 0.21 20);
 	--notable-badge-green: oklch(0.55 0.21 150);
+	--notable-badge-yellow: oklch(0.55 0.21 100);
 	--notable-badge-blue: oklch(0.55 0.21 240);
-	--notable-badge-violet: oklch(0.55 0.21 300);
+	--notable-badge-magenta: oklch(0.55 0.21 320);
+	--notable-badge-cyan: oklch(0.55 0.21 180);
+	--notable-badge-transparent: transparent;
 }
 /* End theme: dark */
 
@@ -3491,10 +3580,10 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--search-results-alias-color: #c5c5c5;
 	--search-results-grey-color: #999;
 	--search-tab-title-count-color: #888;
-	--search-tab-button-not-selected-border-top-color: none;
-	--search-tab-button-not-selected-background: transparent !important;
-	--search-tab-button-selected-border-top-color: none;
-	--search-tab-button-selected-background: #141920 !important;
+	--search-tab-button-not-selected-border-top-color: #1d1f20;
+	--search-tab-button-not-selected-background: #1d1f20;
+	--search-tab-button-selected-border-top-color: #ffb44c;
+	--search-tab-button-selected-background: #141920;
 	--settings-menu-filter: invert(70%);
 	--settings-menu-hover-filter: invert(100%);
 	--stab-background-color: #314559;
@@ -3532,7 +3621,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--crate-search-hover-border: #e0e0e0;
 	--src-sidebar-background-selected: #14191f;
 	--src-sidebar-background-hover: #14191f;
-	--table-alt-row-background-color: #191f26;
+	--table-alt-row-background-color: #000;
 	--codeblock-link-background: #333;
 	--scrape-example-toggle-line-background: #999;
 	--scrape-example-toggle-line-hover-background: #c5c5c5;
@@ -3546,12 +3635,14 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--scrape-example-code-wrapper-background-end: rgba(15, 20, 25, 0);
 	--sidebar-resizer-hover: hsl(34, 50%, 33%);
 	--sidebar-resizer-active: hsl(34, 100%, 66%);
-	--notable-badge-pink: oklch(0.49 0.21 0);
-	--notable-badge-red: oklch(0.49 0.21 40);
-	--notable-badge-orange: oklch(0.49 0.21 70);
+	--notable-badge-grey: oklch(0.49 0 0);
+	--notable-badge-red: oklch(0.49 0.21 20);
 	--notable-badge-green: oklch(0.49 0.21 150);
+	--notable-badge-yellow: oklch(0.49 0.21 100);
 	--notable-badge-blue: oklch(0.49 0.21 240);
-	--notable-badge-violet: oklch(0.49 0.21 300);
+	--notable-badge-magenta: oklch(0.49 0.21 320);
+	--notable-badge-cyan: oklch(0.49 0.21 180);
+	--notable-badge-transparent: transparent;
 }
 
 :root[data-theme="ayu"] h1,
@@ -3619,18 +3710,6 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 :root[data-theme="ayu"] .result-name .primitive > i,
 :root[data-theme="ayu"] .result-name .keyword > i {
 	color: #788797;
-}
-
-:root[data-theme="ayu"] #search-tabs > button.selected {
-	border-bottom: 1px solid #ffb44c !important;
-	border-top: none;
-}
-:root[data-theme="ayu"] #search-tabs > button:not(.selected) {
-	border: none;
-	background-color: transparent !important;
-}
-:root[data-theme="ayu"] #search-tabs > button:hover {
-	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
 }
 
 :root[data-theme="ayu"] .settings-menu > a img,

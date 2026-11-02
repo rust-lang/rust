@@ -1,0 +1,73 @@
+warning: field `multiline_field` has a default value that is only checked when a value of `Z` is constructed
+  --> $DIR/field-references-param-accurate-span.rs:9:15
+   |
+LL |   struct Z<const X: usize> {
+LL |       // Ensure that proper context is shown in lint.
+LL |       multiline_field:
+LL |           ()
+LL |               = {
+   |  _______________^
+LL | |                 f::<X>();
+LL | |                 panic!();
+LL | |
+LL | |
+LL | |             },
+   | |_____________^ this can't be const-evaluated until use
+   |
+   = help: structs and enums with type and const parameters only evaluate their default field values during construction, not eagerly when declared
+   = note: `#[warn(unevaluated_default_field_value)]` on by default
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[expect(unevaluated_default_field_value)]
+LL | struct Z<const X: usize> {
+   |
+
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/field-references-param-accurate-span.rs:11:17
+   |
+LL |                 panic!();
+   |                 ^^^^^^^^ evaluation of `Z::<1>::multiline_field::{constant#0}` failed here
+
+note: erroneous constant encountered
+  --> $DIR/field-references-param-accurate-span.rs:33:19
+   |
+LL |     let x: Z<1> = Z { .. };
+   |                   ^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/field-references-param-accurate-span.rs:33:19
+   |
+LL |     let x: Z<1> = Z { .. };
+   |                   ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/field-references-param-accurate-span.rs:11:17
+   |
+LL |                 panic!();
+   |                 ^^^^^^^^ evaluation of `Z::<4>::multiline_field::{constant#0}` failed here
+
+note: erroneous constant encountered
+  --> $DIR/field-references-param-accurate-span.rs:25:19
+   |
+LL |     let x: Z<X> = Z { .. };
+   |                   ^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/field-references-param-accurate-span.rs:36:5
+   |
+LL |     const { const_use_generically::<4>() };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/field-references-param-accurate-span.rs:36:5
+   |
+LL |     const { const_use_generically::<4>() };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

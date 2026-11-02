@@ -1,16 +1,16 @@
-error: higher-ranked subtype error
+error: higher-ranked lifetime error
   --> $DIR/candidate-from-env-universe-err-project.rs:38:5
    |
 LL |     projection_bound::<T>();
    |     ^^^^^^^^^^^^^^^^^^^^^
 
-error: higher-ranked subtype error
+error: higher-ranked lifetime error
   --> $DIR/candidate-from-env-universe-err-project.rs:52:30
    |
 LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: higher-ranked subtype error
+error: higher-ranked lifetime error
   --> $DIR/candidate-from-env-universe-err-project.rs:52:30
    |
 LL |     let _higher_ranked_norm: for<'a> fn(<T as Trait<'a>>::Assoc) = |_| ();

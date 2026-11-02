@@ -21,7 +21,7 @@ struct SpawnHooks {
 impl Drop for SpawnHooks {
     fn drop(&mut self) {
         let mut next = self.first.take();
-        while let Some(SpawnHook { hook, next: n }) = next.and_then(|n| Arc::into_inner(n)) {
+        while let Some(SpawnHook { hook, next: n }) = next.and_then(Arc::into_inner) {
             drop(hook);
             next = n;
         }

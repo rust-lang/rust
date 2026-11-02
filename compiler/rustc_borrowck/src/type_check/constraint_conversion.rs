@@ -6,8 +6,7 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_middle::ty::{
-    self, GenericArgKind, RegionExt, RegionUtilitiesExt, TyCtxt, TypeFoldable, TypeVisitableExt,
-    elaborate, fold_regions,
+    self, GenericArgKind, TyCtxt, TypeFoldable, TypeVisitableExt, elaborate, fold_regions,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument};
@@ -34,7 +33,7 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     /// logic expecting to see (e.g.) `ReStatic`, and if we supplied
     /// our special inference variable there, we would mess that up.
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-    known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesPredicate<'tcx>],
+    known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesClause<'tcx>],
     locations: Locations,
     span: Span,
     category: ConstraintCategory<'tcx>,
@@ -47,7 +46,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         infcx: &'a BorrowckInferCtxt<'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-        known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesPredicate<'tcx>],
+        known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesClause<'tcx>],
         locations: Locations,
         span: Span,
         category: ConstraintCategory<'tcx>,
@@ -87,7 +86,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         &mut self,
         closure_requirements: &ClosureRegionRequirements<'tcx>,
         closure_def_id: LocalDefId,
-        closure_args: ty::GenericArgsRef<'tcx>,
+        closure_args: ty::GenericArgs<'tcx>,
     ) {
         // Extract the values of the free regions in `closure_args`
         // into a vector. These are the regions that we will be
@@ -115,7 +114,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             self.category = outlives_requirement.category;
             self.span = outlives_requirement.blame_span;
             self.convert(
-                ty::OutlivesPredicate(subject, outlived_region),
+                ty::OutlivesClause(subject, outlived_region),
                 self.category,
                 &Default::default(),
             );
@@ -125,9 +124,9 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     fn convert(
         &mut self,
-        predicate: ty::ArgOutlivesPredicate<'tcx>,
+        clause: ty::ArgOutlivesClause<'tcx>,
         constraint_category: ConstraintCategory<'tcx>,
-        higher_ranked_assumptions: &FxHashSet<ty::ArgOutlivesPredicate<'tcx>>,
+        higher_ranked_assumptions: &FxHashSet<ty::ArgOutlivesClause<'tcx>>,
     ) {
         let tcx = self.infcx.tcx;
         debug!("generate: constraints at: {:#?}", self.locations);
@@ -141,25 +140,24 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             ..
         } = *self;
 
-        let pred = predicate;
         // Constraint is implied by a coroutine's well-formedness.
         if self.infcx.tcx.sess.opts.unstable_opts.higher_ranked_assumptions
-            && higher_ranked_assumptions.contains(&pred)
+            && higher_ranked_assumptions.contains(&clause)
         {
             return;
         }
 
-        let ty::OutlivesPredicate(k1, r2) = pred;
+        let ty::OutlivesClause(k1, r2) = clause;
         match k1.kind() {
             GenericArgKind::Lifetime(r1) => {
                 let r1_vid = self.to_region_vid(r1);
                 let r2_vid = self.to_region_vid(r2);
-                self.add_outlives(r1_vid, r2_vid, constraint_category);
+                self.add_outlives(r1_vid, r2_vid, constraint_category, self.span);
             }
 
             GenericArgKind::Type(mut t1) => {
                 // Scraped constraints may have had inference vars.
-                t1 = self.infcx.resolve_vars_if_possible(t1);
+                t1 = self.infcx.deeply_resolve_ignoring_regions(t1);
 
                 let implicit_region_bound =
                     ty::Region::new_var(tcx, universal_regions.implicit_region_bound());
@@ -222,6 +220,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         sup: ty::RegionVid,
         sub: ty::RegionVid,
         category: ConstraintCategory<'tcx>,
+        span: Span,
     ) {
         let category = match self.category {
             ConstraintCategory::Boring | ConstraintCategory::BoringNoLocation => category,
@@ -230,7 +229,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         self.constraints.outlives_constraints.push(OutlivesConstraint {
             locations: self.locations,
             category,
-            span: self.span,
+            span,
             sub,
             sup,
             variance_info: ty::VarianceDiagInfo::default(),
@@ -247,14 +246,14 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'b, 'tcx> {
     fn push_sub_region_constraint(
         &mut self,
-        _origin: SubregionOrigin<'tcx>,
+        origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
         constraint_category: ConstraintCategory<'tcx>,
     ) {
         let b = self.to_region_vid(b);
         let a = self.to_region_vid(a);
-        self.add_outlives(b, a, constraint_category);
+        self.add_outlives(b, a, constraint_category, origin.span());
     }
 
     fn push_verify(

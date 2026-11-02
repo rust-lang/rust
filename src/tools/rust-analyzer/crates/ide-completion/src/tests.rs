@@ -69,6 +69,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig<'_> = CompletionConfig {
     enable_self_on_the_fly: true,
     enable_private_editable: false,
     enable_term_search: true,
+    enable_turbofish: true,
     term_search_fuel: 200,
     full_function_signatures: false,
     callable: Some(CallableSnippets::FillArguments),
@@ -278,7 +279,21 @@ pub(crate) fn check_with_base_items(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expect: Expect,
 ) {
-    check(&format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"), expect)
+    fn concat_fixture(prefix: &str, #[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
+        let mut buf = String::with_capacity(prefix.len() + ra_fixture.len());
+        for line in ra_fixture.split_inclusive('\n') {
+            if line.trim().is_empty() || line.starts_with("//-") {
+                buf.push_str(line);
+                continue;
+            }
+            let rest = &ra_fixture[buf.len()..];
+            buf.push_str(prefix);
+            buf.push_str(rest);
+            break;
+        }
+        buf
+    }
+    check(&concat_fixture(BASE_ITEMS_FIXTURE, ra_fixture), expect)
 }
 
 pub(crate) fn check_no_kw(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {

@@ -19,6 +19,10 @@
                         "--message-format=json"
                     ]
                 },
+                "diagnostics": {
+                    // RA reports false errors due to <https://github.com/rust-lang/rust-analyzer/issues/19755>
+                    "enable": false
+                },
                 "cargo": {
                     "extraEnv": {
                         "MIRI_AUTO_OPS": "no",

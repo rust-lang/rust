@@ -1,13 +1,11 @@
 //! Bidirectional protocol messages
-#![expect(clippy::disallowed_types)]
-
 use std::{
-    collections::{HashMap, HashSet},
     io::{self, BufRead, Write},
     ops::Range,
 };
 
 use paths::Utf8PathBuf;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -122,7 +120,6 @@ pub struct SpanJoin {
     pub ctx: u32,
 }
 
-#[expect(clippy::large_enum_variant)]
 #[derive(Debug, Serialize, Deserialize)]
 pub enum BidirectionalMessage {
     Request(Request),
@@ -139,7 +136,6 @@ pub enum Request {
     SetConfig(ServerConfig),
 }
 
-#[expect(clippy::large_enum_variant)]
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Response {
     ListMacros(Result<Vec<(String, ProcMacroKind)>, String>),
@@ -168,8 +164,8 @@ pub struct ExpandMacro {
 pub struct ExpandMacroResponse {
     pub tree: FlatTree,
     pub span_data_table: Vec<u32>,
-    pub tracked_env_vars: HashMap<Box<str>, Option<Box<str>>>,
-    pub tracked_paths: HashSet<Box<str>>,
+    pub tracked_env_vars: FxHashMap<Box<str>, Option<Box<str>>>,
+    pub tracked_paths: FxHashSet<Box<str>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

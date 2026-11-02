@@ -1,3 +1,7 @@
+//! Test that Reborrow and CoerceShared can be derived in macros.
+//! This should eventually pass.
+
+
 #![feature(reborrow, decl_macro)]
 #![allow(incomplete_features)]
 

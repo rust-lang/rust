@@ -11,38 +11,30 @@
 // For details, see the zulip discussion below:
 // https://rust-lang.zulipchat.com/#narrow/channel/185405-t-compiler.2Frust-analyzer/topic/relying.20on.20in-tree.20.60rustc_type_ir.60.2F.60rustc_next_trait_solver.60/with/541055689
 
-extern crate ra_ap_rustc_index as rustc_index;
-
 extern crate ra_ap_rustc_abi as rustc_abi;
-
-extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
-
 extern crate ra_ap_rustc_ast_ir as rustc_ast_ir;
-
-extern crate ra_ap_rustc_type_ir as rustc_type_ir;
-
+extern crate ra_ap_rustc_index as rustc_index;
 extern crate ra_ap_rustc_next_trait_solver as rustc_next_trait_solver;
+extern crate ra_ap_rustc_type_ir as rustc_type_ir;
 
 extern crate self as hir_ty;
 
 pub mod builtin_derive;
-mod generics;
+pub mod generics;
 mod infer;
-mod inhabitedness;
+pub mod inhabitedness;
 mod lower;
 pub mod next_solver;
 mod opaques;
 mod representability;
 mod specialization;
 mod target_feature;
-mod utils;
+pub mod utils;
 mod variance;
 
 pub mod autoderef;
 pub mod consteval;
 pub mod db;
-pub mod diagnostics;
-pub mod display;
 pub mod drop;
 pub mod dyn_compatibility;
 pub mod lang_items;
@@ -52,12 +44,6 @@ pub mod mir;
 pub mod primitive;
 pub mod solver_errors;
 pub mod traits;
-pub mod upvars;
-
-#[cfg(test)]
-mod test_db;
-#[cfg(test)]
-mod tests;
 
 use std::{hash::Hash, ops::ControlFlow};
 
@@ -81,14 +67,12 @@ use rustc_type_ir::{
     BoundVarIndexKind, TypeSuperVisitable, TypeVisitableExt,
     inherent::{IntoKind, Ty as _},
 };
-use salsa::Update;
+use salsa::SalsaValue;
 use stdx::impl_from;
-use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
 
 use crate::{
     db::{AnonConstId, HirDatabase},
-    display::HirDisplay,
     lower::SupertraitsInfo,
     next_solver::{
         AliasTy, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, Canonical,
@@ -106,14 +90,13 @@ use crate::{
 pub use autoderef::autoderef;
 pub use infer::{
     Adjust, Adjustment, AutoBorrow, BindingMode, ByRef, ExplicitDropMethodUseKind,
-    InferenceDiagnostic, InferenceResult, InferenceTyDiagnosticSource, OverloadedDeref,
-    PointerCast, ReturnKind, cast::CastError, could_coerce, could_unify, could_unify_deeply,
-    infer_query_with_inspect,
+    InferenceDiagnostic, InferenceResult, OverloadedDeref, PointerCast, ReturnKind,
+    cast::CastError, could_coerce, could_unify, could_unify_deeply, infer_query_with_inspect,
 };
 pub use lower::{
-    FieldType, GenericDefaults, GenericDefaultsRef, GenericPredicates, ImplTraits,
-    LifetimeElisionKind, LifetimeLoweringMode, LoweringMode, TyDefId, TyLoweringContext,
-    TyLoweringInferVarsCtx, TyLoweringResult, ValueTyDefId, diagnostics::*,
+    FieldType, GenericDefaults, GenericDefaultsRef, GenericPredicates, LifetimeElisionKind,
+    LifetimeLoweringMode, LoweringMode, TyDefId, TyLoweringContext, TyLoweringInferVarsCtx,
+    TyLoweringResult, ValueTyDefId, diagnostics::*,
 };
 pub use next_solver::interner::{attach_db, attach_db_allow_change, with_attached_db};
 pub use target_feature::TargetFeatures;
@@ -202,7 +185,7 @@ impl<'db> MemoryMap<'db> {
         }
     }
 
-    fn get(&self, addr: usize, size: usize) -> Option<&[u8]> {
+    pub fn get(&self, addr: usize, size: usize) -> Option<&[u8]> {
         if size == 0 {
             Some(&[])
         } else {
@@ -216,7 +199,7 @@ impl<'db> MemoryMap<'db> {
     }
 }
 
-/// Return an index of a parameter in the generic type parameter list by it's id.
+/// Returns the index of a parameter in the generic type parameter list by its id.
 pub fn type_or_const_param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> u32 {
     generics::generics(db, id.parent).type_or_const_param_idx(id)
 }
@@ -506,16 +489,6 @@ where
     Vec::from_iter(collector.params)
 }
 
-pub fn known_const_to_ast<'db>(
-    konst: Const<'db>,
-    db: &'db dyn HirDatabase,
-    target_module: ModuleId,
-) -> Option<ConstArg> {
-    Some(make::expr_const_value(
-        &konst.display_source_code(db, target_module, true).unwrap_or_else(|_| "_".to_owned()),
-    ))
-}
-
 /// A `Span` represents some location in lowered code - a type, expression or pattern.
 ///
 /// It has no meaning outside its body therefore it should not exit the pass it was created in
@@ -554,7 +527,9 @@ impl Span {
 }
 
 /// A [`DefWithBodyId`], or an anon const.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, salsa::Supertype, Update)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, salsa::Supertype, SalsaValue,
+)]
 pub enum InferBodyId<'db> {
     DefWithBodyId(DefWithBodyId),
     AnonConstId(AnonConstId<'db>),

@@ -19,10 +19,6 @@ trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
 //~| ERROR the size for values of type `Self` cannot be known
 where
     <Self as Mirror>::Assoc: Super,
-    //~^ ERROR type mismatch resolving
-    //~| ERROR the size for values of type `Self` cannot be known
-    //~| ERROR type mismatch resolving
-    //~| ERROR the size for values of type `Self` cannot be known
 {
     fn transmute(&self, t: T) -> <Self as B>::Assoc;
     //~^ ERROR cannot find trait `B` in this scope
@@ -30,6 +26,8 @@ where
     //~| ERROR the size for values of type `Self` cannot be known
     //~| ERROR type mismatch resolving
     //~| ERROR the size for values of type `Self` cannot be known
+    //~| ERROR type mismatch resolving
+    //~| ERROR the size for values of type `RustaceansAreAwesome` cannot be known
 }
 
 trait Mirror {

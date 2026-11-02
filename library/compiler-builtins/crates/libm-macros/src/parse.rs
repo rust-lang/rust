@@ -181,7 +181,6 @@ fn extract_fn_extra_field(expr: Expr) -> syn::Result<BTreeMap<Ident, Expr>> {
         let Arm {
             attrs,
             pat,
-            guard,
             fat_arrow_token: _,
             body,
             comma: _,
@@ -190,14 +189,14 @@ fn extract_fn_extra_field(expr: Expr) -> syn::Result<BTreeMap<Ident, Expr>> {
         expect_empty_attrs(&attrs)?;
 
         let keys = match pat {
+            syn::Pat::Ident(id) => Parser::parse2(parse_ident_pat, id.into_token_stream())?,
+            syn::Pat::Or(or) => Parser::parse2(parse_ident_pat, or.into_token_stream())?,
             syn::Pat::Wild(w) => vec![Ident::new("_", w.span())],
-            _ => Parser::parse2(parse_ident_pat, pat.into_token_stream())?,
+            _ => {
+                let e = syn::Error::new(pat.span(), "unsupported pattern type");
+                return Err(e);
+            }
         };
-
-        if let Some(guard) = guard {
-            let e = syn::Error::new(guard.0.span(), "no guards allowed in this position");
-            return Err(e);
-        }
 
         for key in keys {
             let inserted = res.insert(key.clone(), *body.clone());

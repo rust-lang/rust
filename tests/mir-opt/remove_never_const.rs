@@ -3,8 +3,6 @@
 // consts in codegen. We also have tests for this that catches the error, see
 // tests/ui/consts/const-eval/index-out-of-bounds-never-type.rs.
 
-#![feature(never_type)]
-
 struct PrintName<T>(T);
 
 impl<T> PrintName<T> {

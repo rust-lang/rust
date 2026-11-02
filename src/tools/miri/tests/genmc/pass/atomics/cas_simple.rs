@@ -30,7 +30,6 @@ fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
     }
 
     // Check that we emit warnings for cases that are not fully supported.
-    let _ = VALUE.compare_exchange(99, 99, SeqCst, Relaxed);
     let _ = VALUE.compare_exchange_weak(99, 99, Relaxed, SeqCst);
 
     0

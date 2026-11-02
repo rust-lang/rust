@@ -1,6 +1,12 @@
 // tidy-alphabetical-start
-#![allow(rustc::default_hash_types)]
-#![feature(never_type)]
+#![allow(
+    rustc::default_hash_types,
+    reason = "we like performance but can't use `rustc_data_structures`"
+)]
+#![deny(
+    rustc::potential_query_instability,
+    reason = "macros shall produce deterministic output/errors"
+)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_tracked_env)]
 // tidy-alphabetical-end
@@ -173,7 +179,7 @@ decl_derive!(
 decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(
     [Diagnostic, attributes(
-        // struct attributes
+        // struct and field attributes
         diag,
         help,
         help_once,
@@ -183,11 +189,11 @@ decl_derive!(
         // field attributes
         primary_span,
         label,
+        context,
         subdiagnostic,
-        suggestion,
-        suggestion_short,
-        suggestion_hidden,
-        suggestion_verbose)] => diagnostics::diagnostic_derive
+        suggestion)] =>
+        #[doc = "See <https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html#derivediagnostic>"]
+        diagnostics::diagnostic_derive
 );
 decl_derive!(
     [Subdiagnostic, attributes(
@@ -200,12 +206,7 @@ decl_derive!(
         warning,
         subdiagnostic,
         suggestion,
-        suggestion_short,
-        suggestion_hidden,
-        suggestion_verbose,
         multipart_suggestion,
-        multipart_suggestion_short,
-        multipart_suggestion_hidden,
         // field attributes
         primary_span,
         suggestion_part,
@@ -224,7 +225,7 @@ pub fn msg(input: TokenStream) -> TokenStream {
 decl_derive! {
     [PrintAttribute] =>
     /// Derives `PrintAttribute` for `AttributeKind`.
-    /// This macro is pretty specific to `rustc_hir::attrs` and likely not that useful in
+    /// This macro is pretty specific to `rustc_attr_ir` and likely not that useful in
     /// other places. It's deriving something close to `Debug` without printing some extraneous
     /// things like spans.
     print_attribute::print_attribute

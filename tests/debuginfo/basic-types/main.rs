@@ -1,52 +1,33 @@
-// Caveats - gdb prints any 8-bit value (meaning rust i8 and u8 values)
-// as its numerical value along with its associated ASCII char, there
-// doesn't seem to be any way around this. Also, gdb doesn't know
-// about UTF-32 character encoding and will print a rust char as only
-// its numerical value.
-
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
-//@ min-llvm-lldb-version: 22.1.0
+//@ min-llvm-lldb-version: 21.1.0
 
 // This version corresponds to swift 6.2.3/lldb 19.1.5
 //@ min-apple-lldb-version: 1703.0.236.21
 
+//@ min-gdb-version: 16.1
+
 // === GDB TESTS ===================================================================================
 
 //@ gdb-command:run
-//@ gdb-command:print b
-//@ gdb-check:$1 = false
-//@ gdb-command:print i
-//@ gdb-check:$2 = -1
-//@ gdb-command:print c
-//@ gdb-check:$3 = 97 'a'
-//@ gdb-command:print/d i8
-//@ gdb-check:$4 = 68
-//@ gdb-command:print i16
-//@ gdb-check:$5 = -16
-//@ gdb-command:print i32
-//@ gdb-check:$6 = -32
-//@ gdb-command:print i64
-//@ gdb-check:$7 = -64
-//@ gdb-command:print u
-//@ gdb-check:$8 = 1
-//@ gdb-command:print/d u8
-//@ gdb-check:$9 = 100
-//@ gdb-command:print u16
-//@ gdb-check:$10 = 16
-//@ gdb-command:print u32
-//@ gdb-check:$11 = 32
-//@ gdb-command:print u64
-//@ gdb-check:$12 = 64
-//@ gdb-command:print f16
-//@ gdb-check:$13 = 1.5
-//@ gdb-command:print f32
-//@ gdb-check:$14 = 2.5
-//@ gdb-command:print f64
-//@ gdb-check:$15 = 3.5
-//@ gdb-command:print s
-//@ gdb-check:$16 = "Hello, World!"
+//@ gdb-repr:b
+//@ gdb-repr:i
+//@ gdb-repr:c
+//@ gdb-repr:i8
+//@ gdb-repr:i16
+//@ gdb-repr:i32
+//@ gdb-repr:i64
+//@ gdb-repr:u
+//@ gdb-repr:u8
+//@ gdb-repr:u16
+//@ gdb-repr:u32
+//@ gdb-repr:u64
+//@ gdb-repr:f16
+//@ gdb-repr:f32
+//@ gdb-repr:f64
+// FIXME(f128): gdb doesn't support Rust `f128` yet.
+//@ gdb-repr:s
 
 // === LLDB TESTS ==================================================================================
 
@@ -99,13 +80,16 @@
 //@ cdb-check:f32              : 2.500000 [Type: float]
 //@ cdb-command:dx f64
 //@ cdb-check:f64              : 3.500000 [Type: double]
+//@ cdb-command:dx f128
+//@ cdb-check:f128             : 0x1.2p+2 [Type: f128]
+//@ cdb-check:bits             : 0x40012000000000000000000000000000
 //@ cdb-command:.enable_unicode 1
 // FIXME(#88840): The latest version of the Windows SDK broke the visualizer for str.
 //@ cdb-command:dx  s
 //@ cdb-check:s                : [...] [Type: ref$<str$>]
 
 #![allow(unused_variables)]
-#![feature(f16)]
+#![feature(f16, f128)]
 
 fn main() {
     let b: bool = false;
@@ -123,6 +107,7 @@ fn main() {
     let f16: f16 = 1.5;
     let f32: f32 = 2.5;
     let f64: f64 = 3.5;
+    let f128: f128 = 4.5;
     let s: &str = "Hello, World!";
     _zzz(); // #break
 }

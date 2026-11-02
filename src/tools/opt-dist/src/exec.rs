@@ -7,7 +7,10 @@ use camino::{Utf8Path, Utf8PathBuf};
 use crate::environment::Environment;
 use crate::metrics::{load_metrics, record_metrics};
 use crate::timer::TimerSection;
-use crate::training::{BoltProfile, LlvmPGOProfile, RustcPGOProfile, RustdocPGOProfile};
+use crate::training::{
+    BoltProfile, ClippyPGOProfile, CraneliftPGOProfile, LlvmPGOProfile, RustcPGOProfile,
+    RustdocPGOProfile,
+};
 use crate::utils::io::normalize_path;
 
 #[derive(Default)]
@@ -129,6 +132,16 @@ impl Bootstrap {
         self
     }
 
+    pub fn with_clippy(mut self) -> Self {
+        self.cmd = self.cmd.arg("clippy");
+        self
+    }
+
+    pub fn with_cranelift(mut self) -> Self {
+        self.cmd = self.cmd.arg("rustc_codegen_cranelift");
+        self
+    }
+
     pub fn dist(env: &Environment, dist_args: &[String]) -> Self {
         let metrics_path = env.build_root().join("metrics.json");
         let args = dist_args.iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
@@ -215,6 +228,38 @@ impl Bootstrap {
             .cmd
             .arg("--set")
             .arg(format!(r#"pgo.cargo.use="{}""#, normalize_path(&profile.0).as_str()));
+        self
+    }
+
+    pub fn clippy_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
+        self.cmd = self
+            .cmd
+            .arg("--set")
+            .arg(format!(r#"pgo.clippy.generate="{}""#, normalize_path(profile_dir).as_str()));
+        self
+    }
+
+    pub fn clippy_pgo_optimize(mut self, profile: &ClippyPGOProfile) -> Self {
+        self.cmd = self
+            .cmd
+            .arg("--set")
+            .arg(format!(r#"pgo.clippy.use="{}""#, normalize_path(&profile.0).as_str()));
+        self
+    }
+
+    pub fn cranelift_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
+        self.cmd = self
+            .cmd
+            .arg("--set")
+            .arg(format!(r#"pgo.cranelift.generate="{}""#, normalize_path(profile_dir).as_str()));
+        self
+    }
+
+    pub fn cranelift_pgo_optimize(mut self, profile: &CraneliftPGOProfile) -> Self {
+        self.cmd = self
+            .cmd
+            .arg("--set")
+            .arg(format!(r#"pgo.cranelift.use="{}""#, normalize_path(&profile.0).as_str()));
         self
     }
 

@@ -1,0 +1,14 @@
+{
+  "plugins": [
+    "remark-preset-lint-recommended",
+    "remark-gfm",
+    ["remark-lint-list-item-indent", false],
+    ["remark-lint-no-literal-urls", false],
+    ["remark-lint-no-shortcut-reference-link", false],
+    ["remark-lint-no-undefined-references", {"allow": ["!NOTE", "!TIP", "!IMPORTANT", "!WARNING", "!CAUTION"]}],
+    ["remark-lint-maximum-line-length", 120]
+  ],
+  "settings": {
+    "commonmark": true
+  }
+}

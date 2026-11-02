@@ -1,21 +1,23 @@
-use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
-use clippy_utils::source::{SpanExt, snippet};
+use clippy_utils::diagnostics::span_lint_hir_and_then;
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
+use clippy_utils::source::{SpanExt as _, snippet};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env_from_iter, is_copy};
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use clippy_utils::{is_self, peel_hir_ty_options, strip_pat_refs, sym};
 use rustc_abi::ExternAbi;
+
+use clippy_utils::requires_exact_signature;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Attribute, BindingMode, Body, ExprKind, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability,
-    Node, PatKind, QPath, TyKind,
+    BindingMode, Body, ExprKind, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, Mutability, Node, PatKind, QPath,
+    TyKind,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
-use rustc_session::declare_lint_pass;
+use rustc_middle::ty::{self, Ty, TypeVisitableExt as _};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
 use rustc_span::{Span, Symbol};
@@ -120,7 +122,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
         let meta_sized_trait = need!(cx.tcx.lang_items().meta_sized_trait());
 
-        let preds = traits::elaborate(cx.tcx, cx.param_env.caller_bounds().iter())
+        let preds = traits::elaborate(cx.tcx, cx.param_env.caller_bounds())
             .filter(|c| !c.is_global())
             .filter_map(|clause| {
                 // Note that we do not want to deal with qualified clauses here.
@@ -203,7 +205,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 && !moved_vars.contains(&canonical_id)
             {
                 // Dereference suggestion
-                let sugg = |diag: &mut Diag<'_, ()>| {
+                let sugg = |diag: &mut Diag<'_>| {
                     if let ty::Adt(def, ..) = ty.kind()
                         && let Some(span) = cx.tcx.hir_span_if_local(def.did())
                         && type_allowed_to_implement_copy(
@@ -295,9 +297,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     );
                 };
 
-                span_lint_and_then(
+                span_lint_hir_and_then(
                     cx,
                     NEEDLESS_PASS_BY_VALUE,
+                    arg.hir_id,
                     input.span,
                     "this argument is passed by value, but not consumed in the function body",
                     sugg,
@@ -305,11 +308,6 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             }
         }
     }
-}
-
-/// Functions marked with these attributes must have the exact signature.
-pub(crate) fn requires_exact_signature(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(Attribute::is_proc_macro_attr)
 }
 
 #[derive(Default)]

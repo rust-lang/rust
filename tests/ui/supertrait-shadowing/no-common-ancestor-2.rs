@@ -1,6 +1,7 @@
 #![feature(supertrait_item_shadowing)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
+use std::gca;
 use std::mem::size_of;
 
 trait A {
@@ -32,11 +33,12 @@ trait C: A + B {
         "C"
     }
     type Assoc;
-    type const CONST: i32;
+    #[rustc_always_gca]
+    const CONST: i32;
 }
 impl<T> C for T {
     type Assoc = i32;
-    type const CONST: i32 = 3;
+    const CONST: i32 = gca!(3);
 }
 
 // Since `D` is not a subtrait of `C`,
@@ -47,11 +49,12 @@ trait D: B {
         "D"
     }
     type Assoc;
-    type const CONST: i32;
+    #[rustc_always_gca]
+    const CONST: i32;
 }
 impl<T> D for T {
     type Assoc = i64;
-    type const CONST: i32 = 4;
+    const CONST: i32 = gca!(4);
 }
 
 fn main() {

@@ -12,7 +12,7 @@ annotated declaration is involved in a name resolution error.
 Format parameters with the given named parameter will be replaced with the following text:
 
 -  `{Unresolved}` — The `SimplePathSegment` of the import path that could not be resolved.
--  `{This}` — The name of the annotated item. On `use` statements this is identical to `{Unresolved}`.
+-  `{this}` — The name of the annotated item. On `use` statements this is identical to `{unresolved}`.
 
 The original error message will not be suppressed but is emitted as a note instead.
 
@@ -46,7 +46,7 @@ For more information about this error, try `rustc --explain E0432`.
 #![feature(diagnostic_on_unknown)]
 
 #[diagnostic::on_unknown(
-    message = "module `{This}` is empty, there is no `{Unresolved}` here",
+    message = "module `{this}` is empty, there is no `{unresolved}` here",
     label = "can't import something from an empty module"
 )]
 mod empty {}

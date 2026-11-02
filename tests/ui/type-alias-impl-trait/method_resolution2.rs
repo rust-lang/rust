@@ -2,6 +2,7 @@
 //! `foo` method call can be resolved unambiguously by doing so.
 
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
 

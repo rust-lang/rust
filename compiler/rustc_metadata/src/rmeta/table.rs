@@ -2,7 +2,11 @@ use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
 
 use crate::rmeta::decoder::MetaBlob;
+use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::*;
+
+const SPARSE_BLOCK_LEN: usize = 64;
+const SPARSE_INDEX_BYTES: usize = 12;
 
 pub(super) trait IsDefault: Default {
     fn is_default(&self) -> bool;
@@ -140,16 +144,8 @@ macro_rules! defaulted_enum {
     }
 }
 
-// Workaround; need const traits to construct bitflags in a const
-macro_rules! const_macro_kinds {
-    ($($name:ident),+$(,)?) => (MacroKinds::from_bits_truncate($(MacroKinds::$name.bits())|+))
-}
-const MACRO_KINDS_ATTR_BANG: MacroKinds = const_macro_kinds!(ATTR, BANG);
-const MACRO_KINDS_DERIVE_BANG: MacroKinds = const_macro_kinds!(DERIVE, BANG);
-const MACRO_KINDS_DERIVE_ATTR: MacroKinds = const_macro_kinds!(DERIVE, ATTR);
-const MACRO_KINDS_DERIVE_ATTR_BANG: MacroKinds = const_macro_kinds!(DERIVE, ATTR, BANG);
 // Ensure that we get a compilation error if MacroKinds gets extended without updating metadata.
-const _: () = assert!(MACRO_KINDS_DERIVE_ATTR_BANG.is_all());
+const _: () = assert!(MacroKinds::DERIVE_ATTR_BANG.is_all());
 
 fixed_size_enum! {
     DefKind {
@@ -165,12 +161,10 @@ fixed_size_enum! {
         ( AssocTy                                  )
         ( TyParam                                  )
         ( Fn                                       )
-        ( Const { is_type_const: true}             )
-        ( Const { is_type_const: false}            )
+        ( Const                                    )
         ( ConstParam                               )
         ( AssocFn                                  )
-        ( AssocConst { is_type_const:true }        )
-        ( AssocConst { is_type_const:false }       )
+        ( AssocConst                               )
         ( ExternCrate                              )
         ( Use                                      )
         ( ForeignMod                               )
@@ -197,11 +191,12 @@ fixed_size_enum! {
         ( Macro(MacroKinds::BANG)                  )
         ( Macro(MacroKinds::ATTR)                  )
         ( Macro(MacroKinds::DERIVE)                )
-        ( Macro(MACRO_KINDS_ATTR_BANG)             )
-        ( Macro(MACRO_KINDS_DERIVE_ATTR)           )
-        ( Macro(MACRO_KINDS_DERIVE_BANG)           )
-        ( Macro(MACRO_KINDS_DERIVE_ATTR_BANG)      )
+        ( Macro(MacroKinds::ATTR_BANG)             )
+        ( Macro(MacroKinds::DERIVE_ATTR)           )
+        ( Macro(MacroKinds::DERIVE_BANG)           )
+        ( Macro(MacroKinds::DERIVE_ATTR_BANG)      )
         ( SyntheticCoroutineBody                   )
+        ( TestBinderConstraints                    )
     } unreachable {
         ( Macro(_)                                 )
     }
@@ -262,7 +257,7 @@ fixed_size_enum! {
 }
 
 // We directly encode RawDefId because using a `LazyValue` would incur a 50% overhead in the worst case.
-impl FixedSizeEncoding for Option<RawDefId> {
+impl FixedSizeEncoding for Option<RemappedRawDefId> {
     type ByteArray = [u8; 8];
 
     #[inline]
@@ -274,14 +269,15 @@ impl FixedSizeEncoding for Option<RawDefId> {
         }
         let index = u32::from_le_bytes(index);
 
-        Some(RawDefId { krate: krate - 1, index })
+        Some(RemappedRawDefId::new_unchecked(krate - 1, index))
     }
 
     #[inline]
     fn write_to_bytes(self, dest: &mut [u8; 8]) {
         match self {
             None => unreachable!(),
-            Some(RawDefId { krate, index }) => {
+            Some(id) => {
+                let (krate, index) = id.decompose();
                 debug_assert!(krate < u32::MAX);
                 // CrateNum is less than `CrateNum::MAX_AS_U32`.
                 let krate = (krate + 1).to_le_bytes();
@@ -436,34 +432,36 @@ impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
 }
 
 /// Helper for constructing a table's serialization (also see `Table`).
-pub(super) struct TableBuilder<I: Idx, T: FixedSizeEncoding> {
+pub(super) struct TableBuilder<IdxEncode: Idx, IdxDecode: Idx, T: FixedSizeEncoding> {
     width: usize,
-    blocks: IndexVec<I, T::ByteArray>,
-    _marker: PhantomData<T>,
+    blocks: IndexVec<IdxEncode, T::ByteArray>,
+    _marker: PhantomData<(IdxDecode, T)>,
 }
 
-impl<I: Idx, T: FixedSizeEncoding> Default for TableBuilder<I, T> {
+impl<Ie: Idx, Id: Idx, T: FixedSizeEncoding> Default for TableBuilder<Ie, Id, T> {
     fn default() -> Self {
         TableBuilder { width: 0, blocks: Default::default(), _marker: PhantomData }
     }
 }
 
-impl<I: Idx, const N: usize, T> TableBuilder<I, Option<T>>
+impl<Ie: Idx, Id: Idx, const N: usize, T> TableBuilder<Ie, Id, Option<T>>
 where
     Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
-    pub(crate) fn set_some(&mut self, i: I, value: T) {
+    pub(crate) fn set_some(&mut self, i: Ie, value: T) {
         self.set(i, Some(value))
     }
 }
 
-impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBuilder<I, T> {
+impl<Ie: Idx, Id: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>>
+    TableBuilder<Ie, Id, T>
+{
     /// Sets the table value if it is not default.
     /// ATTENTION: For optimization default values are simply ignored by this function, because
     /// right now metadata tables never need to reset non-default values to default. If such need
     /// arises in the future then a new method (e.g. `clear` or `reset`) will need to be introduced
     /// for doing that explicitly.
-    pub(crate) fn set(&mut self, i: I, value: T) {
+    pub(crate) fn set(&mut self, i: Ie, value: T) {
         #[cfg(debug_assertions)]
         {
             debug_assert!(
@@ -472,11 +470,6 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
             );
         }
         if !value.is_default() {
-            // FIXME(eddyb) investigate more compact encodings for sparse tables.
-            // On the PR @michaelwoerister mentioned:
-            // > Space requirements could perhaps be optimized by using the HAMT `popcnt`
-            // > trick (i.e. divide things into buckets of 32 or 64 items and then
-            // > store bit-masks of which item in each bucket is actually serialized).
             let block = self.blocks.ensure_contains_elem(i, || [0; N]);
             value.write_to_bytes(block);
             if self.width != N {
@@ -486,21 +479,71 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
         }
     }
 
-    pub(crate) fn encode(&self, buf: &mut FileEncoder<'_>) -> LazyTable<I, T> {
+    pub(crate) fn encode(&self, buf: &mut FileEncoder<'_>) -> LazyTable<Ie, Id, T> {
         let pos = buf.position();
 
         let width = self.width;
-        for block in &self.blocks {
-            buf.write_with(|dest| {
-                *dest = *block;
-                width
-            });
+        let len = self.blocks.len();
+        let index_bytes = len.div_ceil(SPARSE_BLOCK_LEN) * SPARSE_INDEX_BYTES;
+        let non_defaults = if index_bytes < len * width {
+            self.blocks.iter().filter(|block| **block != [0; N]).count()
+        } else {
+            len
+        };
+        // Use dense encoding when at least 75% of the entries are non-default.
+        // This avoids sparse lookup overhead for tables with few default entries.
+        let sparse = len - non_defaults > len / 4
+            && u32::try_from(non_defaults).is_ok()
+            && index_bytes + non_defaults * width < len * width;
+
+        // Sparse tables store one block index per 64 table entries, followed by the
+        // non-default values in table order:
+        //
+        // [ block index 0 ][ block index 1 ] ... [ non-default values, each `width` bytes ]
+        //
+        // Each block index occupies 12 bytes, with both integers stored little-endian:
+        //
+        // [ bitmap: u64 (8 bytes) | base: u32 (4 bytes) ]
+        //
+        // Bitmap bits mark non-default entries, starting with the least significant
+        // bit. `base` counts the non-default entries in all preceding blocks, so
+        // lookups do not need to scan their bitmaps.
+        //
+        // The `LazyTable` header combines `width` and `sparse` in one integer:
+        //
+        // [ width bits ... | sparse ]
+        //
+        // Shifting `width` left by one bit makes room for the `sparse` flag.
+        // The least significant bit is 1 for sparse tables and 0 for dense tables.
+        if sparse {
+            let mut base = 0u32;
+            for chunk in self.blocks.raw.chunks(SPARSE_BLOCK_LEN) {
+                let mut bitmap = 0u64;
+                for (i, block) in chunk.iter().enumerate() {
+                    if *block != [0; N] {
+                        bitmap |= 1 << i;
+                    }
+                }
+                buf.write_array(bitmap.to_le_bytes());
+                buf.write_array(base.to_le_bytes());
+                base += bitmap.count_ones();
+            }
         }
 
+        for block in &self.blocks {
+            if !sparse || *block != [0; N] {
+                buf.write_with(|dest| {
+                    *dest = *block;
+                    width
+                });
+            }
+        }
+
+        debug_assert!(width <= usize::MAX >> 1);
         LazyTable::from_position_and_encoded_size(
             NonZero::new(pos).unwrap(),
-            width,
-            self.blocks.len(),
+            (width << 1) | usize::from(sparse),
+            len,
         )
     }
 }
@@ -509,22 +552,48 @@ fn trailing_zeros(x: &[u8]) -> usize {
     x.iter().rev().take_while(|b| **b == 0).count()
 }
 
-impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]> + ParameterizedOverTcx>
-    LazyTable<I, T>
+impl<
+    Ie: Idx,
+    Id: Idx,
+    const N: usize,
+    T: FixedSizeEncoding<ByteArray = [u8; N]> + ParameterizedOverTcx,
+> LazyTable<Ie, Id, T>
 where
     for<'tcx> T::Value<'tcx>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
     /// Given the metadata, extract out the value at a particular index (if any).
-    pub(super) fn get<'a, 'tcx, M: MetaBlob<'a>>(&self, metadata: M, i: I) -> T::Value<'tcx> {
+    pub(super) fn get<'a, 'tcx, M: MetaBlob<'a>>(&self, metadata: M, i: Id) -> T::Value<'tcx> {
         // Access past the end of the table returns a Default
         if i.index() >= self.len {
             return Default::default();
         }
 
-        let width = self.width;
-        let start = self.position.get() + (width * i.index());
+        let width = self.width_and_sparse >> 1;
+        let mut position = self.position.get();
+        let mut index = i.index();
+        let blob = metadata.blob();
+        // An unset bitmap bit represents a default value. For a set bit, the
+        // index among the packed values is:
+        //
+        //     base + number of set bits before this bit in the current block
+        //
+        // Skip all block indices to reach the start of the packed values.
+        if self.width_and_sparse & 1 != 0 {
+            let block = index / SPARSE_BLOCK_LEN;
+            let bit = 1u64 << (index % SPARSE_BLOCK_LEN);
+            let start = position + block * SPARSE_INDEX_BYTES;
+            let entry = &blob[start..start + SPARSE_INDEX_BYTES];
+            let bitmap = u64::from_le_bytes(entry[..8].try_into().unwrap());
+            if bitmap & bit == 0 {
+                return Default::default();
+            }
+            let base = u32::from_le_bytes(entry[8..].try_into().unwrap());
+            index = base as usize + (bitmap & (bit - 1)).count_ones() as usize;
+            position += self.len.div_ceil(SPARSE_BLOCK_LEN) * SPARSE_INDEX_BYTES;
+        }
+        let start = position + width * index;
         let end = start + width;
-        let bytes = &metadata.blob()[start..end];
+        let bytes = &blob[start..end];
 
         if let Ok(fixed) = bytes.try_into() {
             FixedSizeEncoding::from_bytes(fixed)

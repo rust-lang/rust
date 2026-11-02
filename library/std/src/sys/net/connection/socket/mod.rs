@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[cfg(not(target_os = "l4re"))]
 mod tests;
 
 use crate::ffi::{c_int, c_void};
@@ -35,6 +36,42 @@ cfg_select! {
 
 use netc as c;
 
+// Similarly to reads (see READ_LIMIT), the `send` syscall on most platforms
+// takes a `size_t` length, but returns an `ssize_t` of bytes written. So the
+// actual maximum number of bytes we can send in one call is SSIZE_MAX.
+//
+// On Apple targets however, apparently the 64-bit libc is either buggy or
+// intentionally showing odd behavior by rejecting send calls with a size
+// larger than INT_MAX. So cap the send size to INT_MAX.
+//
+// Meanwhile on QNX, reads/writes/sends larger than INT_MAX return the wrong
+// number of bytes written (eg, writing 2^31 bytes returns (2^64 - 2^31) instead
+// of the correct byte count).
+//
+// On Windows, the relevant syscall takes an `i32` (unlike for read/write!),
+// so we need to clamp to i32::MAX.
+const MAX_SEND_LEN: usize =
+    cfg_select! {
+        any(target_vendor = "apple", target_os = "nto", target_os = "qnx") => c_int::MAX as usize,
+        target_os = "windows" => i32::MAX as usize,
+        _ => libc::ssize_t::MAX as usize,
+    };
+
+/// Some systems support setting the nonblocking mode upon socket creation, which
+/// saves a syscall.
+const SOCK_NONBLOCK: i32 = cfg_select! {
+    any(
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "hermit",
+        target_os = "illumos",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ) => c::SOCK_NONBLOCK,
+    _ => 0,
+};
+
 cfg_select! {
     any(
         target_os = "dragonfly",
@@ -50,24 +87,27 @@ cfg_select! {
         target_os = "nuttx",
         target_vendor = "apple",
     ) => {
-        use c::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
-        use c::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
+        use c::{IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP, IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP};
     }
     _ => {
-        use c::IPV6_ADD_MEMBERSHIP;
-        use c::IPV6_DROP_MEMBERSHIP;
+        use c::{IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP};
     }
 }
 
 cfg_select! {
     any(
-        target_os = "linux", target_os = "android",
+        target_os = "linux",
+        target_os = "android",
         target_os = "hurd",
-        target_os = "dragonfly", target_os = "freebsd",
-        target_os = "openbsd", target_os = "netbsd",
-        target_os = "solaris", target_os = "illumos",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "solaris",
+        target_os = "illumos",
         target_os = "haiku",
-        target_os = "nto", target_os = "qnx",
+        target_os = "nto",
+        target_os = "qnx",
         target_os = "cygwin",
     ) => {
         use libc::MSG_NOSIGNAL;
@@ -79,10 +119,14 @@ cfg_select! {
 
 cfg_select! {
     any(
-        target_os = "dragonfly", target_os = "freebsd",
-        target_os = "openbsd", target_os = "netbsd",
-        target_os = "solaris", target_os = "illumos",
-        target_os = "nto", target_os = "qnx",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "netbsd",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "nto",
+        target_os = "qnx",
     ) => {
         use crate::ffi::c_uchar;
         type IpV4MultiCastType = c_uchar;
@@ -378,8 +422,26 @@ impl TcpStream {
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
         init();
 
-        let sock = Socket::new(addr_family(addr), c::SOCK_STREAM)?;
-        sock.connect_timeout(addr, timeout)?;
+        let sock = Socket::new(addr_family(addr), c::SOCK_STREAM | SOCK_NONBLOCK)?;
+        if SOCK_NONBLOCK == 0 {
+            // The `SOCK_NONBLOCK` option is unsupported...
+            sock.set_nonblocking(true)?;
+        }
+
+        match sock.connect(addr) {
+            Ok(()) => {
+                sock.set_nonblocking(false)?;
+                return Ok(TcpStream { inner: sock });
+            }
+            #[cfg(not(target_os = "windows"))]
+            Err(ref e) if e.raw_os_error() == Some(c::EINPROGRESS) => {}
+            #[cfg(target_os = "windows")]
+            Err(ref e) if e.raw_os_error() == Some(crate::sys::pal::c::WSAEWOULDBLOCK) => {}
+            Err(e) => return Err(e),
+        }
+
+        sock.set_nonblocking(false)?;
+        sock.poll_connected(timeout)?;
         Ok(TcpStream { inner: sock })
     }
 
@@ -430,7 +492,7 @@ impl TcpStream {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        let len = cmp::min(buf.len(), MAX_SEND_LEN) as wrlen_t;
         let ret = cvt(unsafe {
             c::send(self.inner.as_raw(), buf.as_ptr() as *const c_void, len, MSG_NOSIGNAL)
         })?;
@@ -493,6 +555,31 @@ impl TcpStream {
     pub fn ttl(&self) -> io::Result<u32> {
         let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)? };
         Ok(raw as u32)
+    }
+
+    pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
+        cfg_select! {
+            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+                let _ = limit;
+                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+            }
+            _ => unsafe {
+                setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
+            },
+        }
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        cfg_select! {
+            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+            }
+            _ => {
+                let raw: c_int =
+                    unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)? };
+                Ok(raw as u8)
+            }
+        }
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
@@ -623,6 +710,31 @@ impl TcpListener {
         Ok(raw as u32)
     }
 
+    pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
+        cfg_select! {
+            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+                let _ = limit;
+                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+            }
+            _ => unsafe {
+                setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
+            },
+        }
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        cfg_select! {
+            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+            }
+            _ => {
+                let raw: c_int =
+                    unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)? };
+                Ok(raw as u8)
+            }
+        }
+    }
+
     pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
         unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY, only_v6 as c_int) }
     }
@@ -707,13 +819,15 @@ impl UdpSocket {
     }
 
     pub fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        if buf.len() > MAX_SEND_LEN {
+            return Err(io::Error::from_raw_os_error(c::EMSGSIZE));
+        }
         let (dst, dstlen) = socket_addr_to_c(dst);
         let ret = cvt(unsafe {
             c::sendto(
                 self.inner.as_raw(),
                 buf.as_ptr() as *const c_void,
-                len,
+                buf.len() as wrlen_t,
                 MSG_NOSIGNAL,
                 dst.as_ptr(),
                 dstlen,
@@ -769,13 +883,11 @@ impl UdpSocket {
     }
 
     pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
+        let ttl: u8 = multicast_ttl_v4
+            .try_into()
+            .map_err(|_| io::Error::from(io::ErrorKind::InvalidInput))?;
         unsafe {
-            setsockopt(
-                &self.inner,
-                c::IPPROTO_IP,
-                c::IP_MULTICAST_TTL,
-                multicast_ttl_v4 as IpV4MultiCastType,
-            )
+            setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL, ttl as IpV4MultiCastType)
         }
     }
 
@@ -843,6 +955,56 @@ impl UdpSocket {
         Ok(raw as u32)
     }
 
+    pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
+        cfg_select! {
+            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+                let _ = limit;
+                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+            }
+            _ => unsafe {
+                setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
+            },
+        }
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        cfg_select! {
+            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+            }
+            _ => {
+                let raw: c_int =
+                    unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)? };
+                Ok(raw as u8)
+            }
+        }
+    }
+
+    pub fn set_multicast_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
+        cfg_select! {
+            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+                let _ = limit;
+                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+            }
+            _ => unsafe {
+                setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS, limit as c_int)
+            },
+        }
+    }
+
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u8> {
+        cfg_select! {
+            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+            }
+            _ => {
+                let raw: c_int =
+                    unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS)? };
+                Ok(raw as u8)
+            }
+        }
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.inner.take_error()
     }
@@ -860,9 +1022,16 @@ impl UdpSocket {
     }
 
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        if buf.len() > MAX_SEND_LEN {
+            return Err(io::Error::from_raw_os_error(c::EMSGSIZE));
+        }
         let ret = cvt(unsafe {
-            c::send(self.inner.as_raw(), buf.as_ptr() as *const c_void, len, MSG_NOSIGNAL)
+            c::send(
+                self.inner.as_raw(),
+                buf.as_ptr() as *const c_void,
+                buf.len() as wrlen_t,
+                MSG_NOSIGNAL,
+            )
         })?;
         Ok(ret as usize)
     }

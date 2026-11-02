@@ -1,4 +1,5 @@
-#![allow(clippy::zombie_processes)]
+#![warn(clippy::suspicious_command_arg_space)]
+#![expect(clippy::zombie_processes)]
 fn main() {
     // Things it should warn about:
     std::process::Command::new("echo").arg("-n hello").spawn().unwrap();

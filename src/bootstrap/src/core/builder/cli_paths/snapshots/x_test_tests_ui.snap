@@ -4,4 +4,4 @@ expression: test tests/ui
 ---
 [Test] test::Ui
     targets: [aarch64-unknown-linux-gnu]
-    - Suite(test::tests/ui)
+    - Suite(tests/ui)

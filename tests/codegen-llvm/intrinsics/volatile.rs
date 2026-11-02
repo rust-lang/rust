@@ -1,4 +1,5 @@
 //@ compile-flags: -C no-prepopulate-passes
+//@ min-llvm-version: 23
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]

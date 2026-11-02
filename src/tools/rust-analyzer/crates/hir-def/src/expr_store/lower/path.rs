@@ -5,9 +5,12 @@ mod tests;
 
 use std::iter;
 
-use crate::expr_store::{
-    lower::{ExprCollector, generics::ImplTraitLowerFn},
-    path::NormalPath,
+use crate::{
+    expr_store::{
+        lower::{ExprCollector, generics::ImplTraitLowerFn},
+        path::NormalPath,
+    },
+    type_ref::LifetimeRef,
 };
 
 use hir_expand::{
@@ -255,15 +258,20 @@ pub(super) fn lower_path(
 
     let mod_path = Interned::new(ModPath::from_segments(kind, segments));
 
-    let type_alias_constrained_lifetimes = collector.get_constrained_lifetimes_if_type_alias(
-        &mod_path,
-        generic_args.last().and_then(|g| g.as_ref()),
-    );
     if let Some(old_lifetimes_constrained_by_input) = old_lifetimes_constrained_by_input {
+        let type_alias_constrained_lifetimes = collector.get_constrained_lifetimes_if_type_alias(
+            &mod_path,
+            generic_args.last().and_then(|g| g.as_ref()),
+        );
         if let Some(lifetimes) = type_alias_constrained_lifetimes {
             collector.named_lifetime_store.lifetimes_constrained_by_input =
                 old_lifetimes_constrained_by_input;
-            collector.extend_type_alias_lifetime(lifetimes.into_iter());
+            collector.named_lifetime_store.lifetimes_constrained_by_input.extend(
+                lifetimes.filter_map(|lt_ref| match &collector.store.lifetimes[lt_ref] {
+                    LifetimeRef::Named(name) => Some(name.clone()),
+                    _ => None,
+                }),
+            );
         } else {
             collector
                 .named_lifetime_store

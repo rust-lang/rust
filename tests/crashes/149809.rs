@@ -1,12 +1,16 @@
 //@ known-bug: #149809
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![feature(inherent_associated_types)]
+
+use std::gca;
+
 struct Qux<'a> {
     x: &'a (),
 }
+
 impl<'a> Qux<'a> {
-    type const LEN: usize = 4;
-    fn foo(_: [u8; core::direct_const_arg!(Qux::LEN)]) {}
+    const LEN: usize = gca!(4);
+    fn foo(_: [u8; gca!(Qux::LEN)]) {}
 }
 
 fn main() {}

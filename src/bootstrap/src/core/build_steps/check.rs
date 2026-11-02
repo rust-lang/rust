@@ -3,9 +3,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::compile::{
-    ArtifactKeepMode, add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
-    std_crates_for_make_run,
+    ArtifactKeepMode, add_to_sysroot, run_cargo, rustc_cargo, std_cargo, std_crates_for_make_run,
 };
 use crate::core::build_steps::tool;
 use crate::core::build_steps::tool::{
@@ -16,9 +16,28 @@ use crate::core::builder::{
     self, Alias, Builder, Cargo, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
     crate_description,
 };
+use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
+use crate::core::session::Mode;
 use crate::utils::build_stamp::{self, BuildStamp};
-use crate::{CodegenBackendKind, Compiler, Mode, Subcommand, t};
+use crate::utils::helpers::t;
+
+/// Allows individual check-step instances to keep track of whether they
+/// represent `cargo check` or `cargo fix`, independently of [`Builder::kind`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum CheckKind {
+    Check,
+    Fix,
+}
+
+impl CheckKind {
+    fn to_kind(self) -> Kind {
+        match self {
+            CheckKind::Check => Kind::Check,
+            CheckKind::Fix => Kind::Fix,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
@@ -92,7 +111,7 @@ impl CommandLineStep for Std {
         );
 
         std_cargo(builder, target, &mut cargo, &self.crates);
-        if matches!(builder.config.cmd, Subcommand::Fix) {
+        if matches!(builder.kind, Kind::Fix) {
             // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
             cargo.arg("--lib");
         }
@@ -225,16 +244,13 @@ impl Step for PrepareRustcRmetaSysroot {
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         // Check rustc
-        let stamp = builder.ensure(Rustc::from_build_compiler(
-            self.build_compiler.clone(),
-            self.target,
-            vec![],
-        ));
+        let stamp = Rustc::check_rustc_for_preparing_sysroot(builder, &self);
 
         let build_compiler = self.build_compiler.build_compiler();
 
         // Copy the generated rmeta artifacts to a separate directory
         let dir = builder
+            .config
             .out
             .join(build_compiler.host)
             .join(format!("stage{}-rustc-rmeta-artifacts", build_compiler.stage + 1));
@@ -273,6 +289,7 @@ impl Step for PrepareStdRmetaSysroot {
 
         // Copy the generated rmeta artifacts to a separate directory
         let dir = builder
+            .config
             .out
             .join(self.build_compiler.host)
             .join(format!("stage{}-std-rmeta-artifacts", self.build_compiler.stage));
@@ -284,9 +301,12 @@ impl Step for PrepareStdRmetaSysroot {
 /// Checks rustc using `build_compiler`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
+    check_kind: CheckKind,
+
     /// Compiler that will check this rustc.
-    pub build_compiler: CompilerForCheck,
-    pub target: TargetSelection,
+    build_compiler: CompilerForCheck,
+    target: TargetSelection,
+
     /// Whether to build only a subset of crates.
     ///
     /// This shouldn't be used from other steps; see the comment on [`compile::Rustc`].
@@ -296,17 +316,17 @@ pub struct Rustc {
 }
 
 impl Rustc {
-    pub fn new(builder: &Builder<'_>, target: TargetSelection, crates: Vec<String>) -> Self {
-        let build_compiler = prepare_compiler_for_check(builder, target, Mode::Rustc);
-        Self::from_build_compiler(build_compiler, target, crates)
-    }
-
-    fn from_build_compiler(
-        build_compiler: CompilerForCheck,
-        target: TargetSelection,
-        crates: Vec<String>,
-    ) -> Self {
-        Self { build_compiler, target, crates }
+    fn check_rustc_for_preparing_sysroot(
+        builder: &Builder<'_>,
+        prepare: &PrepareRustcRmetaSysroot,
+    ) -> BuildStamp {
+        builder.ensure(Rustc {
+            // We specifically want `cargo check`, not the current bootstrap subcommand.
+            check_kind: CheckKind::Check,
+            build_compiler: prepare.build_compiler.clone(),
+            target: prepare.target,
+            crates: vec![],
+        })
     }
 }
 
@@ -323,8 +343,17 @@ impl CommandLineStep for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        let check_kind = match run.builder.kind {
+            Kind::Check => CheckKind::Check,
+            Kind::Fix => CheckKind::Fix,
+            kind => panic!("unexpected kind for `check::Rustc`: {kind:?}"),
+        };
+
+        let target = run.target;
+        let build_compiler = prepare_compiler_for_check(run.builder, target, Mode::Rustc);
         let crates = run.make_run_crates(Alias::Compiler);
-        run.builder.ensure(Rustc::new(run.builder, run.target, crates));
+
+        run.builder.ensure(Rustc { check_kind, build_compiler, target, crates });
     }
 
     /// Check the compiler.
@@ -344,7 +373,7 @@ impl CommandLineStep for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            Kind::Check,
+            self.check_kind.to_kind(),
         );
 
         rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
@@ -356,9 +385,19 @@ impl CommandLineStep for Rustc {
         for krate in &*self.crates {
             cargo.arg("-p").arg(krate);
         }
+        // When we run `x check compiler --all-targets`, then the `Rustc` step is executed in
+        // two "modes" - one with all in-tree rustc crates, and a second time with empty crates
+        // in `PrepareRustcRmetaSysroot`, to prepare .rmeta files for RustcPrivate tools.
+        // If we use `--all-targets` for both, then we will end up with a duplicated .rmeta file
+        // in the sysroot, which breaks everything.
+        // So we only use `--all-targets` for the default case where crates are empty.
+        // This will also be used when someone does `x check compiler/<rustc-crate>`.
+        if !self.crates.is_empty() && builder.sess.config.cmd.check_all_targets() {
+            cargo.arg("--all-targets");
+        }
 
         let _guard = builder.msg(
-            Kind::Check,
+            self.check_kind.to_kind(),
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
             Mode::Rustc,
             self.build_compiler.build_compiler(),
@@ -381,13 +420,11 @@ impl CommandLineStep for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        let metadata = StepMetadata::check("rustc", self.target)
+        let mut metadata = StepMetadata::new("rustc", self.target, self.check_kind.to_kind())
             .built_by(self.build_compiler.build_compiler());
-        let metadata = if self.crates.is_empty() {
-            metadata
-        } else {
-            metadata.with_metadata(format!("({} crates)", self.crates.len()))
-        };
+        if !self.crates.is_empty() {
+            metadata = metadata.with_metadata(format!("({} crates)", self.crates.len()));
+        }
         Some(metadata)
     }
 }
@@ -556,7 +593,6 @@ impl CommandLineStep for CraneliftCodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join("compiler/rustc_codegen_cranelift/Cargo.toml"));
-        rustc_cargo_env(builder, &mut cargo, target);
         self.build_compiler.configure_cargo(&mut cargo);
 
         let _guard = builder.msg(
@@ -621,7 +657,7 @@ impl CommandLineStep for GccCodegenBackend {
 
     fn run(self, builder: &Builder<'_>) {
         // FIXME: remove once https://github.com/rust-lang/rust/issues/112393 is resolved
-        if builder.build.config.vendor {
+        if builder.sess.config.vendor {
             println!("Skipping checking of `rustc_codegen_gcc` with vendoring enabled.");
             return;
         }
@@ -639,7 +675,6 @@ impl CommandLineStep for GccCodegenBackend {
         );
 
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
-        rustc_cargo_env(builder, &mut cargo, target);
         self.build_compiler.configure_cargo(&mut cargo);
 
         let _guard =
@@ -699,7 +734,7 @@ macro_rules! tool_check_step {
             const IS_HOST: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.selectors(&[$path $(, $alt_path )*])
+                run.multi_path(&[$path $(, $alt_path )*])
             }
 
             fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -821,7 +856,7 @@ tool_check_step!(Clippy { path: "src/tools/clippy", mode: Mode::ToolRustcPrivate
 tool_check_step!(Miri {
     path: "src/tools/miri",
     mode: Mode::ToolRustcPrivate,
-    enable_features: ["check_only"],
+    enable_features: ["check_only", "priroda"],
 });
 tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: Mode::ToolRustcPrivate });
 tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: Mode::ToolRustcPrivate });

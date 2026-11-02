@@ -4,10 +4,10 @@
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_mplace_metadata.rs:8
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: slice, Id: _1, Ty: [u8], Value: [01 02 03]
+Name: slice, Id: _1, Ty: [u8], Value: [[01], [02], [03]]
 Name: <none>, Id: _2, Ty: &[u8], Value: <dead>
 Name: <none>, Id: _3, Ty: &[u8], Value: <dead>
-(priroda) Id: _1, Ty: [u8], Value: [01 02 03]
+(priroda) Id: _1, Ty: [u8], Value: [[01], [02], [03]]
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_mplace_metadata.rs:12
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>

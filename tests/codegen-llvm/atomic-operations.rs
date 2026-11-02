@@ -1,6 +1,7 @@
 // Code generation of atomic operations.
 //@ compile-flags: -Copt-level=3
 #![crate_type = "lib"]
+#![feature(core_intrinsics)]
 
 use std::sync::atomic::AtomicI32;
 use std::sync::atomic::Ordering::*;
@@ -81,4 +82,27 @@ pub fn compare_exchange_weak(w: &AtomicI32) {
     let _ = w.compare_exchange_weak(1, 50, SeqCst, Relaxed);
     let _ = w.compare_exchange_weak(1, 51, SeqCst, Acquire);
     let _ = w.compare_exchange_weak(1, 52, SeqCst, SeqCst);
+}
+
+// CHECK-LABEL: @atomic_volatile
+#[no_mangle]
+fn atomic_volatile(w: &AtomicI32) {
+    use std::intrinsics::*;
+
+    let ptr = w.as_ptr();
+    unsafe {
+        // CHECK: load atomic volatile i32, ptr %{{.*}} monotonic, align 4
+        // CHECK: load atomic volatile i32, ptr %{{.*}} acquire, align 4
+        // CHECK: load atomic volatile i32, ptr %{{.*}} seq_cst, align 4
+        atomic_load::<_, { AtomicOrdering::Relaxed }, /* VOLATILE */ true>(ptr);
+        atomic_load::<_, { AtomicOrdering::Acquire }, /* VOLATILE */ true>(ptr);
+        atomic_load::<_, { AtomicOrdering::SeqCst }, /* VOLATILE */ true>(ptr);
+
+        // CHECK: store atomic volatile i32 0, ptr %{{.*}} monotonic, align 4
+        // CHECK: store atomic volatile i32 0, ptr %{{.*}} release, align 4
+        // CHECK: store atomic volatile i32 0, ptr %{{.*}} seq_cst, align 4
+        atomic_store::<_, { AtomicOrdering::Relaxed }, /* VOLATILE */ true>(ptr, 0);
+        atomic_store::<_, { AtomicOrdering::Release }, /* VOLATILE */ true>(ptr, 0);
+        atomic_store::<_, { AtomicOrdering::SeqCst }, /* VOLATILE */ true>(ptr, 0);
+    }
 }

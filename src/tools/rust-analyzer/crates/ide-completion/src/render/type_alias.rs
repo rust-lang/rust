@@ -49,7 +49,13 @@ fn render(
     item.set_documentation(ctx.docs(type_alias))
         .set_deprecated(ctx.is_deprecated(type_alias, type_alias.as_assoc_item(db)))
         .detail(detail)
-        .set_relevance(ctx.completion_relevance());
+        .set_relevance(crate::CompletionRelevance {
+            type_match: super::compute_type_match(
+                ctx.completion,
+                &ctx.completion.rebase_ty(&type_alias.ty(db)),
+            ),
+            ..ctx.completion_relevance()
+        });
 
     if let Some(actm) = type_alias.as_assoc_item(db)
         && let Some(trt) = actm.container_or_implemented_trait(db)

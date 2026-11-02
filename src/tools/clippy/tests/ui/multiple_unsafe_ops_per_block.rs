@@ -445,4 +445,170 @@ fn issue16116() {
     }
 }
 
+fn issue17453() {
+    static mut GLOBAL_INT: u32 = 5;
+
+    // no lint: taking a raw pointer to a mutable static is safe, only not_very_safe is unsafe
+    fn set_global_int() {
+        unsafe {
+            not_very_safe();
+            let _ = &raw mut GLOBAL_INT;
+        }
+    }
+
+    // no lint: taking a raw pointer to a dereferenced raw pointer is safe, only not_very_safe is unsafe
+    fn reborrow_raw(value: *mut u32) {
+        unsafe {
+            not_very_safe();
+            let _ = &raw mut *value;
+        }
+    }
+
+    // lint: two unsaves are:
+    // 1. taking a raw pointer to a **dereferenced** raw pointer with field access
+    // 2. not_very_safe
+    #[derive(Clone, Copy)]
+    struct S {
+        x: u32,
+    }
+    fn reborrow_raw_field(value: *mut S) {
+        unsafe {
+            //~^ multiple_unsafe_ops_per_block
+            not_very_safe();
+            let _ = &raw mut (*value).x;
+        }
+    }
+
+    struct Nested {
+        s: S,
+    }
+
+    // no lint: nested field access on a safe base under &raw is safe, only not_very_safe is unsafe
+    fn safe_nested(mut value: Nested) {
+        unsafe {
+            not_very_safe();
+            let _ = &raw mut value.s.x;
+        }
+    }
+
+    // lint: nested field access on a mutable static under &raw is unsafe, plus not_very_safe
+    static mut GLOBAL_STRUCT: Nested = Nested { s: S { x: 5 } };
+    fn unsafe_nested_static() {
+        unsafe {
+            //~^ multiple_unsafe_ops_per_block
+            not_very_safe();
+            let _ = &raw mut GLOBAL_STRUCT.s.x;
+        }
+    }
+
+    // lint: nested field access on a raw pointer deref under &raw is unsafe, plus not_very_safe
+    fn unsafe_nested_raw(ptr: *mut Nested) {
+        unsafe {
+            //~^ multiple_unsafe_ops_per_block
+            not_very_safe();
+            let _ = &raw mut (*ptr).s.x;
+        }
+    }
+}
+
+fn issue17454() {
+    #[derive(Clone, Copy)]
+    union Example {
+        f1: u32,
+        f2: bool,
+        f3: S,
+        f4: [u32; 2],
+    }
+    #[derive(Clone, Copy)]
+    struct S {
+        x: u32,
+    }
+    struct HoldsExample {
+        e: Example,
+    }
+
+    // no lint: writing to a union field is safe, raw pointer deref is the only unsafe op
+    fn set_union_value(target: &mut HoldsExample, value: *const u32) {
+        unsafe {
+            target.e.f1 = *value;
+        };
+    }
+
+    // no lint: writing to a nested union field is safe, raw pointer deref is the only unsafe op
+    fn set_union_value_nested(target: &mut HoldsExample, value: *const u32) {
+        unsafe {
+            target.e.f3.x = *value;
+        };
+    }
+
+    // no lint: writing to a union field inside safe indexing is safe, raw pointer deref is the only
+    // unsafe op
+    fn set_union_value_indexed(target: &mut [HoldsExample], i: usize, value: *const u32) {
+        unsafe {
+            target[i].e.f1 = *value;
+        };
+    }
+
+    unsafe fn unsafe_index() -> usize {
+        0
+    }
+
+    // lint: raw pointer dereference and unsafe function call inside the index expression
+    fn set_union_value_unsafe_indexed(target: &mut [HoldsExample], value: *const u32) {
+        unsafe {
+            //~^ multiple_unsafe_ops_per_block
+            target[unsafe_index()].e.f1 = *value;
+        };
+    }
+
+    // lint: `+=` reads the union field as well as writing it
+    fn add_to_union_value(target: &mut HoldsExample, value: *const u32) {
+        unsafe {
+            //~^ multiple_unsafe_ops_per_block
+            target.e.f1 += *value;
+        };
+    }
+
+    // lint: indexing into a union field reads it
+    fn set_union_elem(target: &mut HoldsExample, value: *const u32) {
+        unsafe {
+            //~^ multiple_unsafe_ops_per_block
+            target.e.f4[0] = *value;
+        };
+    }
+
+    struct Inner {
+        x: u32,
+    }
+    union HoldsRef<'a> {
+        r: &'a mut Inner,
+    }
+    struct Outer<'a> {
+        u: HoldsRef<'a>,
+    }
+
+    // lint: reading the `&mut Inner` out of the union is a real union read
+    fn write_through_union_ref(target: &mut Outer<'_>, value: *const u32) {
+        unsafe {
+            //~^ multiple_unsafe_ops_per_block
+            target.u.r.x = *value;
+        };
+    }
+
+    #[derive(Clone, Copy)]
+    union Nested {
+        inner: Example,
+    }
+    struct HoldsNested {
+        n: Nested,
+    }
+
+    // no lint: writing through nested unions is safe, raw pointer deref is the only unsafe op
+    fn set_nested(target: &mut HoldsNested, value: *const u32) {
+        unsafe {
+            target.n.inner.f1 = *value;
+        };
+    }
+}
+
 fn main() {}

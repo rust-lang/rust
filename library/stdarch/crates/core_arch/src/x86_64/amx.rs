@@ -894,7 +894,7 @@ pub unsafe fn __tile_movrow(src: __tile1024i, row: u32) -> __m512i {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.x86.ldtilecfg"]
     fn ldtilecfg(mem_addr: *const u8);
     #[link_name = "llvm.x86.sttilecfg"]

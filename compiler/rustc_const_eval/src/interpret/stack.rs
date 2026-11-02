@@ -7,11 +7,11 @@ use either::{Either, Left, Right};
 use rustc_hir as hir;
 use rustc_hir::definitions::DefPathData;
 use rustc_index::IndexVec;
+use rustc_middle::mir;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::{bug, mir};
 use rustc_mir_dataflow::impls::always_storage_live_locals;
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use rustc_target::callconv::ArgAbi;
 use tracing::field::Empty;
 use tracing::{info_span, instrument, trace};
@@ -66,6 +66,8 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     pub(super) body: &'tcx mir::Body<'tcx>,
 
     /// The def_id and args of the current function.
+    /// Note that if this is the body of a promoted, the `instance` points
+    /// to the surrounding body!
     pub(super) instance: ty::Instance<'tcx>,
 
     /// Extra data for the machine.
@@ -90,11 +92,15 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
     ///
     /// Do *not* access this directly; always go through the machine hook!
-    pub locals: IndexVec<mir::Local, LocalState<'tcx, Prov>>,
+    pub(super) locals: IndexVec<mir::Local, LocalState<'tcx, Prov>>,
 
     /// The complete variable argument list of this frame. Its elements must be dropped when the
     /// frame is popped.
     pub(super) va_list: Vec<MPlaceTy<'tcx, Prov>>,
+
+    /// The implicit caller location argument that is passed by this function's caller, if any.
+    /// This is `Some` if and only if `instance.def.requires_caller_location` returns `true`.
+    pub(super) track_caller_arg: Option<Span>,
 
     /// The span of the `tracing` crate is stored here.
     /// When the guard is dropped, the span is exited. This gives us
@@ -168,8 +174,9 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
 
     /// This is a hack because Miri needs a way to visit all the provenance in a `LocalState`
     /// without having a layout or `TyCtxt` available, and we want to keep the `Operand` type
-    /// private.
-    pub fn as_mplace_or_imm(
+    /// private. Does not count as a read of the local for the AM! It's a "ghost" read, like for
+    /// validation or similar purposes.
+    pub fn as_mplace_or_imm_ghost(
         &self,
     ) -> Option<Either<(Pointer<Option<Prov>>, MemPlaceMeta<Prov>), Immediate<Prov>>> {
         match self.value {
@@ -229,18 +236,21 @@ impl<'tcx> FrameInfo<'tcx> {
             diagnostics::FrameNote {
                 where_: "closure",
                 span,
+                span_context: vec![],
                 instance: String::new(),
                 times: 0,
                 has_label: false,
             }
         } else {
             let instance = format!("{}", self.instance);
+            let span_context = crate::util::context_spans(tcx, span, self.instance.def_id());
             // Note: this triggers a `must_produce_diag` state, which means that if we ever get
             // here we must emit a diagnostic. We should never display a `FrameInfo` unless we
             // actually want to emit a warning or error to the user.
             diagnostics::FrameNote {
                 where_: "instance",
                 span,
+                span_context,
                 instance,
                 times: 0,
                 has_label: false,
@@ -254,13 +264,14 @@ impl<'tcx, Prov: Provenance> Frame<'tcx, Prov> {
         Frame {
             body: self.body,
             instance: self.instance,
+            extra,
             return_cont: self.return_cont,
             return_place: self.return_place,
             locals: self.locals,
             va_list: self.va_list,
-            loc: self.loc,
-            extra,
+            track_caller_arg: self.track_caller_arg,
             tracing_span: self.tracing_span,
+            loc: self.loc,
         }
     }
 }
@@ -291,6 +302,10 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
 
     pub fn return_cont(&self) -> ReturnContinuation {
         self.return_cont
+    }
+
+    pub fn locals(&self) -> &IndexVec<mir::Local, LocalState<'tcx, Prov>> {
+        &self.locals
     }
 
     /// Return the `SourceInfo` of the current instruction.
@@ -392,6 +407,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return_place: return_place.clone(),
             locals,
             va_list: vec![],
+            track_caller_arg: None,
             instance,
             tracing_span: SpanGuard::new(),
             extra: (),
@@ -640,22 +656,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 impl<'a, 'tcx: 'a, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Consume the arguments provided by the iterator and store them as a list
     /// of variadic arguments. Return a list of the places that hold those arguments.
-    pub(crate) fn allocate_varargs<I, J>(
+    pub(crate) fn allocate_varargs<I>(
         &mut self,
         caller_args: I,
-        mut callee_abis: J,
     ) -> InterpResult<'tcx, Vec<MPlaceTy<'tcx, M::Provenance>>>
     where
         I: Iterator<Item = (&'a FnArg<'tcx, M::Provenance>, &'a ArgAbi<'tcx, Ty<'tcx>>)>,
-        J: Iterator<Item = (usize, &'a ArgAbi<'tcx, Ty<'tcx>>)>,
     {
         // Consume the remaining arguments and store them in fresh allocations.
         let mut varargs = Vec::new();
-        for (fn_arg, caller_abi) in caller_args {
-            // The callee ABI is entirely computed based on which arguments the caller has
-            // provided so it should not be possible to get a mismatch here.
-            let (_idx, callee_abi) = callee_abis.next().unwrap();
-            assert!(self.check_argument_compat(caller_abi, callee_abi)?);
+        for (fn_arg, _caller_abi) in caller_args {
             // FIXME: do we have to worry about in-place argument passing?
             let op = fn_arg.copy_fn_arg();
             let mplace = self.allocate(op.layout, MemoryKind::Stack)?;
@@ -663,7 +673,6 @@ impl<'a, 'tcx: 'a, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             varargs.push(mplace);
         }
-        assert!(callee_abis.next().is_none());
 
         interp_ok(varargs)
     }

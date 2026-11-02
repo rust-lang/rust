@@ -26,6 +26,7 @@ allow-unauthenticated = [
     "beta-nominated",
     "CI-spurious-*",
     "const-hack",
+    "llm-assisted",
     "llvm-*",
     "needs-fcp",
     "relnotes",
@@ -94,6 +95,13 @@ issues. Maybe take a look?
 Thanks! <3
 
 [instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/arm.html
+"""
+label = "O-ARM"
+
+[ping.arm-maintainers]
+message = """\
+Dear ARM Maintainers, your feedback has been requested on this issue/PR.
+Thanks! <3
 """
 label = "O-ARM"
 
@@ -217,8 +225,9 @@ new_draft = true
 [autolabel."needs-triage"]
 new_issue = true
 exclude_labels = [
-    "C-tracking-issue",
     "A-diagnostics",
+    "C-tracking-issue",
+    "relnotes-tracking-issue",
 ]
 
 [autolabel."I-prioritize"]
@@ -235,6 +244,7 @@ exclude_labels = [
     "T-infra",
     "T-release",
     "requires-nightly",
+    "requires-internal-features",
     "F-*",
 ]
 
@@ -291,7 +301,7 @@ trigger_files = [
     "compiler/rustc_codegen_ssa/src/codegen_attrs.rs",
     "compiler/rustc_passes/src/check_attr.rs",
     "compiler/rustc_attr_parsing",
-    "compiler/rustc_hir/src/attrs",
+    "compiler/rustc_attr_ir",
 ]
 
 [autolabel."A-compiler-builtins"]
@@ -606,7 +616,6 @@ trigger_files = [
     "src/doc/rustc/src/exploit-mitigations.md",
     "src/doc/unstable-book/src/compiler-flags/branch-protection.md",
     "src/doc/unstable-book/src/compiler-flags/cf-protection.md",
-    "src/doc/unstable-book/src/compiler-flags/control-flow-guard.md",
     "src/doc/unstable-book/src/compiler-flags/sanitizer.md",
     "src/doc/unstable-book/src/language-features/cfg-sanitize.md",
     "src/doc/unstable-book/src/language-features/cfi-encoding.md",
@@ -695,14 +704,28 @@ topic = "#{number}: {title}"
 message_on_add = """\
 @*T-types* issue #{number} "{title}" has been nominated for team discussion.
 """
+github_comment = ":robot: A [dedicated `#t-types/nominated` topic]({zulip_topic_url}) has been opened for humans to discuss this issue :robot:"
 message_on_remove = "Issue #{number}'s nomination has been removed. Thanks all for participating!"
 message_on_close = "Issue #{number} has been closed. Thanks for participating!"
 message_on_reopen = "Issue #{number} has been reopened. Pinging @*T-types*."
+
+[notify-zulip."I-libs-nominated"]
+zulip_stream = 639962 # #t-libs/nominated
+topic = "#{number}: {title}"
+message_on_add = """\
+[#{number} "{title}"](https://github.com/rust-lang/rust/pull/{number}) has been nominated for discussion.
+"""
+message_on_remove = """\
+#{number} is no longer nominated.
+"""
 
 
 # ------------------------------------------------------------------------------
 # Zulip notifications
 # ------------------------------------------------------------------------------
+
+
+# --- rustdoc-------------------------------------------------------------------
 
 [notify-zulip."beta-nominated".rustdoc]
 required_labels = ["T-rustdoc"]
@@ -768,6 +791,8 @@ message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
 
+# --- compiler -----------------------------------------------------------------
+
 [notify-zulip."beta-nominated".compiler]
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
@@ -829,13 +854,16 @@ zulip_stream = 474880 # #t-compiler/backports
 topic = "#{number}: stable-nominated"
 message_on_add = "PR #{number} has been **accepted** for **stable** backport."
 
+
+# --- libs ---------------------------------------------------------------------
+
 [notify-zulip."beta-nominated".libs]
 required_labels = ["T-libs"]
 zulip_stream = 542373 # #t-libs/backports
 topic = "#{number}: beta-nominated"
 message_on_add = [
     """\
-@*T-libs* PR #{number} "{title}" has been nominated for beta backport.
+@*T-libs-ping* PR #{number} "{title}" has been nominated for beta backport.
 """,
     """\
 /poll Should #{number} be beta backported?
@@ -859,7 +887,7 @@ zulip_stream = 542373 # #t-libs/backports
 topic = "#{number}: stable-nominated"
 message_on_add = [
     """\
-@**channel** PR #{number} "{title}" has been nominated for stable backport.
+@*T-libs-ping* PR #{number} "{title}" has been nominated for stable backport.
 """,
     """\
 /poll Approve stable backport of #{number}?
@@ -878,6 +906,8 @@ zulip_stream = 542373 # #t-libs/backports
 topic = "#{number}: stable-nominated"
 message_on_add = "PR #{number} has been **accepted** for **stable** backport."
 
+
+# --- bootstrap ----------------------------------------------------------------
 
 [notify-zulip."beta-nominated".bootstrap]
 required_labels = ["T-bootstrap"]
@@ -927,6 +957,60 @@ zulip_stream = 507486 # #t-infra/bootstrap/backports
 # Put it in the same thread as stable-nominated.
 topic = "#{number}: stable-nominated"
 message_on_add = "PR #{number} has been **accepted** for **stable** backport."
+
+
+# --- rustfmt ------------------------------------------------------------------
+
+[notify-zulip."beta-nominated".rustfmt]
+required_labels = ["T-rustfmt"]
+zulip_stream = 621384 # #t-rustfmt/backports
+topic = "rust#{number}: beta-nominated"
+message_on_add = [
+    """\
+@*T-rustfmt* @*T-rustfmt-contributors* PR rust#{number} "{title}" has been nominated
+for beta backport.
+""",
+    """\
+/poll Approve beta backport of rust#{number}?
+approve
+decline
+don't know
+""",
+]
+message_on_remove = "PR rust#{number}'s beta-nomination has been removed."
+
+[notify-zulip."beta-accepted".rustfmt]
+required_labels = ["T-rustfmt"]
+zulip_stream = 621384 # #t-rustfmt/backports
+# Put it in the same thread as beta-nominated.
+topic = "rust#{number}: beta-nominated"
+message_on_add = "PR rust#{number} has been **accepted** for **beta** backport."
+
+[notify-zulip."stable-nominated".rustfmt]
+required_labels = ["T-rustfmt"]
+zulip_stream = 621384 # #t-rustfmt/backports
+topic = "rust#{number}: stable-nominated"
+message_on_add = [
+    """\
+@*T-rustfmt* @*T-rustfmt-contributors* PR rust#{number} "{title}" has been nominated
+for stable backport.
+""",
+    """\
+/poll Approve stable backport of rust#{number}?
+approve
+approve (but does not justify new dot release on its own)
+decline
+don't know
+""",
+]
+message_on_remove = "PR rust#{number}'s stable-nomination has been removed."
+
+[notify-zulip."stable-accepted".rustfmt]
+required_labels = ["T-rustfmt"]
+zulip_stream = 621384 # #t-rustfmt/backports
+# Put it in the same thread as stable-nominated.
+topic = "rust#{number}: stable-nominated"
+message_on_add = "PR rust#{number} has been **accepted** for **stable** backport."
 
 
 [notify-zulip."A-edition-2021"]
@@ -1020,6 +1104,10 @@ cc = ["@BoxyUwU"]
 message = "Some changes occurred in `rustc_ty_utils::consts.rs`"
 cc = ["@BoxyUwU"]
 
+[mentions."compiler/rustc_ty_utils/src/layout/invariant.rs"]
+message = "Layout invariants are being changed"
+cc = ["@RalfJung"]
+
 [mentions."compiler/rustc_trait_selection/src/solve/"]
 message = "Some changes occurred to the core trait solver"
 cc = ["@rust-lang/initiative-trait-system-refactor"]
@@ -1110,6 +1198,10 @@ gets adapted for the changes, if necessary.
 cc = ["@rust-lang/miri", "@RalfJung", "@oli-obk", "@lcnr"]
 
 [mentions."library/core/src/num/imp/{dec2flt,flt2dec}"]
+message = "Some changes occurred in float parsing"
+cc = ["@tgross35"]
+
+[mentions."src/tools/test-float-parse"]
 message = "Some changes occurred in float parsing"
 cc = ["@tgross35"]
 
@@ -1239,11 +1331,19 @@ cc = ["@TaKO8Ki", "@JonathanBrouwer"]
 message = "This PR changes rustc_public"
 cc = ["@oli-obk", "@celinval", "@ouz-a", "@makai410"]
 
-[mentions."compiler/rustc_target/src/spec"]
+[mentions."compiler/rustc_target/src/spec/targets"]
 message = """
 These commits modify **compiler targets**.
 (See the [Target Tier Policy](https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html).)
 """
+
+[mentions."compiler/rustc_target/src/spec/consistency.rs"]
+message = "Target consistency checks are being changed"
+cc = ["@RalfJung"]
+
+[mentions."compiler/rustc_target/src/target_features.rs"]
+message = "Target features are being changed; ensure all ABI effects are being accounted for"
+cc = ["@RalfJung"]
 
 [mentions."src/doc/style-guide"]
 cc = ["@rust-lang/style"]
@@ -1320,13 +1420,7 @@ cc = ["@nnethercote"]
 
 [mentions."tests/ui/stats/input-stats.stderr"]
 message = "Changes to the size of AST and/or HIR nodes."
-cc = ["@nnethercote"]
-
-[mentions."tests/ui/issues"]
-message = """
-This PR modifies `tests/ui/issues/`. If this PR is adding new tests to `tests/ui/issues/`,
-please refrain from doing so, and instead add it to more descriptive subdirectories.
-"""
+cc = ["@nnethercote", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_sanitizers"]
 cc = ["@rcvalle"]
@@ -1338,9 +1432,6 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."src/doc/unstable-book/src/compiler-flags/cf-protection.md"]
-cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
-
-[mentions."src/doc/unstable-book/src/compiler-flags/control-flow-guard.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."src/doc/unstable-book/src/compiler-flags/sanitizer.md"]
@@ -1360,9 +1451,6 @@ cc = ["@Urgau"]
 
 [mentions."src/doc/rustc/src/check-cfg"]
 cc = ["@Urgau"]
-
-[mentions."src/doc/rustc/src/platform-support"]
-cc = ["@Noratrieb"]
 
 [mentions."tests/codegen-llvm/sanitizer"]
 cc = ["@rcvalle"]
@@ -1420,19 +1508,14 @@ https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md.
 cc = ["@rust-lang/lang-docs"]
 
 [mentions."src/doc/rustc-dev-guide"]
-message = """
-`rustc-dev-guide` is developed in its own repository. If possible, consider \
-making this change to \
-[rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide) \
-instead.
-"""
+message = "The rustc-dev-guide subtree was changed. If your future PRs *only* touch the subtree, consider submitting them directly to [rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide/pulls), which is where the document is primarily maintained (and has faster CI)."
 cc = ["@BoxyUwU", "@tshepang"]
 
 [mentions."compiler/rustc_passes/src/check_attr.rs"]
 cc = ["@jdonszelmann", "@JonathanBrouwer"]
 [mentions."compiler/rustc_attr_parsing"]
 cc = ["@jdonszelmann", "@JonathanBrouwer"]
-[mentions."compiler/rustc_hir/src/attrs"]
+[mentions."compiler/rustc_attr_ir"]
 cc = ["@jdonszelmann", "@JonathanBrouwer"]
 
 [mentions."src/tools/enzyme"]
@@ -1449,6 +1532,19 @@ cc = ["@ZuseZ4"]
 cc = ["@ZuseZ4"]
 [mentions."compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs"]
 cc = ["@ZuseZ4"]
+
+[mentions."compiler/rustc_target/src/asm/amdgpu.rs"]
+cc = ["@Flakebi"]
+[mentions."compiler/rustc_target/src/callconv/amdgpu.rs"]
+cc = ["@Flakebi"]
+[mentions."compiler/rustc_target/src/spec/targets/amdgcn_amd_amdhsa.rs"]
+cc = ["@Flakebi"]
+[mentions."library/stdarch/crates/core_arch/src/amdgpu"]
+cc = ["@Flakebi"]
+[mentions."src/doc/rustc/src/platform-support/amdgcn-amd-amdhsa.md"]
+cc = ["@Flakebi"]
+[mentions."library/core/src/intrinsics/gpu.rs"]
+cc = ["@Flakebi"]
 
 [mentions."library/core/src/fmt/rt.rs"]
 cc = ["@m-ou-se"]
@@ -1467,9 +1563,32 @@ cc = ["@jieyouxu"]
 [mentions."compiler/rustc_attr_parsing/src/attributes/diagnostic"]
 message = "Some changes occurred to diagnostic attributes."
 cc = ["@mejrs"]
-[mentions."compiler/rustc_hir/src/attrs/diagnostic.rs"]
+[mentions."compiler/rustc_attr_ir/src/diagnostic.rs"]
 message = "Some changes occurred to diagnostic attributes."
 cc = ["@mejrs"]
+
+[mentions."compiler/rustc_codegen_llvm/src/debuginfo"]
+cc = ["@Walnut356"]
+[mentions."src/etc/debugger_tester"]
+cc = ["@Walnut356"]
+[mentions."src/etc/natvis"]
+cc = ["@Walnut356"]
+[mentions."src/etc/gdb_lookup.py"]
+cc = ["@Walnut356"]
+[mentions."src/etc/gdb_providers.py"]
+cc = ["@Walnut356"]
+[mentions."src/etc/lldb_lookup.py"]
+cc = ["@Walnut356"]
+[mentions."src/etc/lldb_providers.py"]
+cc = ["@Walnut356"]
+
+[mentions."RELEASES.md"]
+message = """
+`RELEASES.md` was changed. Upon merging, each section will be automatically synced with its \
+corresponding GitHub releases, but **only from the `main` branch**.
+
+If it's not already the case, make sure to also merge the changes in the `main` branch.
+"""
 
 # Content-based mentions
 
@@ -1515,6 +1634,7 @@ cc = ["@rust-lang/wg-const-eval"]
 [assign]
 warn_non_default_branch.enable = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
+llm_policy_url = "https://forge.rust-lang.org/policies/llm-usage.html"
 
 [[assign.warn_non_default_branch.exceptions]]
 title = "[beta"
@@ -1529,26 +1649,12 @@ compiler_leads = [
     "@davidtwco",
     "@boxyuwu",
 ]
-libs = [
-    "@Mark-Simulacrum",
-    "@workingjubilee",
-    "@jhpratt",
-    "@tgross35",
-    "@thomcc",
-    "@joboet",
-    "@nia-e",
-    "@LawnGnome",
-    "@clarfonthey",
-    "@aapoalas",
-    "@Darksonn",
-    "@JohnTitor",
-]
 infra-ci = [
     "@Mark-Simulacrum",
     "@Kobzol",
     "@marcoieni",
-    "@jdno",
     "@jieyouxu",
+    "@ubiratansoares"
 ]
 docs = [
     "@GuillaumeGomez",
@@ -1606,7 +1712,12 @@ ast_lowering = [
     "@spastorino",
 ]
 debuginfo = [
-    "@davidtwco"
+    "@davidtwco",
+    "@Walnut356",
+]
+debugger_visualizer = [
+    "@Mark-Simulacrum",
+    "@Walnut356",
 ]
 fallback = [
     "@Mark-Simulacrum",
@@ -1625,6 +1736,7 @@ dep-bumps = [
 ]
 
 [assign.owners]
+"/.github/renovate.json5" =                              ["infra-ci"]
 "/.github/workflows" =                                   ["infra-ci"]
 "/Cargo.lock" =                                          ["@Mark-Simulacrum"]
 "/Cargo.toml" =                                          ["@Mark-Simulacrum"]
@@ -1685,6 +1797,13 @@ dep-bumps = [
 "/src/doc/style-guide" =                                 ["style-team"]
 "/src/doc/unstable-book" =                               ["compiler"]
 "/src/etc" =                                             ["@Mark-Simulacrum"]
+"/src/etc/gdb_load_rust_pretty_printers.py" =            ["debugger_visualizer"]
+"/src/etc/gdb_lookup.py" =                               ["debugger_visualizer"]
+"/src/etc/gdb_providers.py" =                            ["debugger_visualizer"]
+"/src/etc/lldb_lookup.py" =                              ["debugger_visualizer"]
+"/src/etc/lldb_providers.py" =                           ["debugger_visualizer"]
+"/src/etc/natvis" =                                      ["debugger_visualizer"]
+"/src/etc/rust_types.py" =                               ["debugger_visualizer"]
 "/src/librustdoc" =                                      ["rustdoc"]
 "/src/llvm-project" =                                    ["@cuviper"]
 "/src/rustdoc-json-types" =                              ["rustdoc"]
@@ -1740,7 +1859,7 @@ dep-bumps = [
 # ------------------------------------------------------------------------------
 
 [no-merges]
-exclude_titles = ["Rollup of", "subtree update", "Subtree update"]
+exclude_titles = ["Rollup of", "subtree update", "Subtree update", "subtree sync", "Subtree sync"]
 labels = ["has-merge-commits", "S-waiting-on-author"]
 
 [github-releases]

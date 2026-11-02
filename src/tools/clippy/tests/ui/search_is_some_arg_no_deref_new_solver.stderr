@@ -1,0 +1,11 @@
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> tests/ui/search_is_some_arg_no_deref_new_solver.rs:20:22
+   |
+LL |     let _ = v.iter().find(|x: &&u32| arg_no_deref_impl(x)).is_some();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|x: &u32| arg_no_deref_impl(&x))`
+   |
+   = note: `-D clippy::search-is-some` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::search_is_some)]`
+
+error: aborting due to 1 previous error
+

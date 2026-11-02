@@ -2,15 +2,12 @@
 //
 // Make sure we don't ICE when there's `!` in a range pattern.
 //
-// This shouldn't be allowed anyways, but we only deny it during MIR
-// building, so make sure we handle it semi-gracefully during typeck.
-
-#![feature(never_type)]
+// Report the invalid runtime endpoint during typeck, before MIR building.
 
 fn main() {
     let x: !;
     match 1 {
         0..x => {}
-        //~^ ERROR only `char` and numeric types are allowed in range patterns
+        //~^ ERROR runtime values cannot be referenced in patterns
     }
 }

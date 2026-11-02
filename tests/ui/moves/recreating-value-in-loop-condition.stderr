@@ -130,15 +130,11 @@ note: verify that your loop breaking logic is correct
   --> $DIR/recreating-value-in-loop-condition.rs:52:25
    |
 LL |     loop {
-   |     ----
 LL |         let vec = vec!["one", "two", "three"];
 LL |         loop {
-   |         ----
 LL |
 LL |             loop {
-   |             ----
 LL |                 loop {
-   |                 ----
 ...
 LL |                         break;
    |                         ^^^^^ this `break` exits the loop at line 49

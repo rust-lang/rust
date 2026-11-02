@@ -1,4 +1,4 @@
-// rustfmt-control_brace_style: AlwaysSameLine
+//@ rustfmt-control_brace_style: AlwaysSameLine
 // Control brace style
 
 fn main() {

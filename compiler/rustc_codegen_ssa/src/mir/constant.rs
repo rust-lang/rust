@@ -1,8 +1,9 @@
 use rustc_abi::BackendRepr;
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv};
 use rustc_middle::ty::{self, Ty};
-use rustc_middle::{bug, mir, span_bug};
+use rustc_span::{bug, span_bug};
 
 use super::FunctionCx;
 use crate::diagnostics;

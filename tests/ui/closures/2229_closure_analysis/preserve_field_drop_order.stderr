@@ -1,35 +1,5 @@
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/preserve_field_drop_order.rs:23:13
-   |
-LL |     let c = #[rustc_capture_analysis]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/preserve_field_drop_order.rs:50:13
-   |
-LL |     let c = #[rustc_capture_analysis]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/preserve_field_drop_order.rs:77:13
-   |
-LL |     let c = #[rustc_capture_analysis]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error: First Pass analysis includes:
-  --> $DIR/preserve_field_drop_order.rs:27:5
+  --> $DIR/preserve_field_drop_order.rs:24:5
    |
 LL | /     || {
 LL | |
@@ -40,28 +10,28 @@ LL | |     };
    | |_____^
    |
 note: Capturing a[(0, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:30:26
+  --> $DIR/preserve_field_drop_order.rs:27:26
    |
 LL |         println!("{:?}", a.0);
    |                          ^^^
 note: Capturing a[(1, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:33:26
+  --> $DIR/preserve_field_drop_order.rs:30:26
    |
 LL |         println!("{:?}", a.1);
    |                          ^^^
 note: Capturing b[(0, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:37:26
+  --> $DIR/preserve_field_drop_order.rs:34:26
    |
 LL |         println!("{:?}", b.0);
    |                          ^^^
 note: Capturing b[(1, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:40:26
+  --> $DIR/preserve_field_drop_order.rs:37:26
    |
 LL |         println!("{:?}", b.1);
    |                          ^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/preserve_field_drop_order.rs:27:5
+  --> $DIR/preserve_field_drop_order.rs:24:5
    |
 LL | /     || {
 LL | |
@@ -72,28 +42,28 @@ LL | |     };
    | |_____^
    |
 note: Min Capture a[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:27:26
+   |
+LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Min Capture a[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:30:26
    |
-LL |         println!("{:?}", a.0);
-   |                          ^^^
-note: Min Capture a[(1, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:33:26
-   |
 LL |         println!("{:?}", a.1);
    |                          ^^^
 note: Min Capture b[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:34:26
+   |
+LL |         println!("{:?}", b.0);
+   |                          ^^^
+note: Min Capture b[(1, 0)] -> Immutable
   --> $DIR/preserve_field_drop_order.rs:37:26
    |
-LL |         println!("{:?}", b.0);
-   |                          ^^^
-note: Min Capture b[(1, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:40:26
-   |
 LL |         println!("{:?}", b.1);
    |                          ^^^
 
 error: First Pass analysis includes:
-  --> $DIR/preserve_field_drop_order.rs:54:5
+  --> $DIR/preserve_field_drop_order.rs:48:5
    |
 LL | /     || {
 LL | |
@@ -104,28 +74,28 @@ LL | |     };
    | |_____^
    |
 note: Capturing a[(1, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:57:26
+  --> $DIR/preserve_field_drop_order.rs:51:26
    |
 LL |         println!("{:?}", a.1);
    |                          ^^^
 note: Capturing a[(0, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:60:26
+  --> $DIR/preserve_field_drop_order.rs:54:26
    |
 LL |         println!("{:?}", a.0);
    |                          ^^^
 note: Capturing b[(1, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:64:26
+  --> $DIR/preserve_field_drop_order.rs:58:26
    |
 LL |         println!("{:?}", b.1);
    |                          ^^^
 note: Capturing b[(0, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:67:26
+  --> $DIR/preserve_field_drop_order.rs:61:26
    |
 LL |         println!("{:?}", b.0);
    |                          ^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/preserve_field_drop_order.rs:54:5
+  --> $DIR/preserve_field_drop_order.rs:48:5
    |
 LL | /     || {
 LL | |
@@ -136,28 +106,28 @@ LL | |     };
    | |_____^
    |
 note: Min Capture a[(0, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:60:26
+  --> $DIR/preserve_field_drop_order.rs:54:26
    |
 LL |         println!("{:?}", a.0);
    |                          ^^^
 note: Min Capture a[(1, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:57:26
+  --> $DIR/preserve_field_drop_order.rs:51:26
    |
 LL |         println!("{:?}", a.1);
    |                          ^^^
 note: Min Capture b[(0, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:67:26
+  --> $DIR/preserve_field_drop_order.rs:61:26
    |
 LL |         println!("{:?}", b.0);
    |                          ^^^
 note: Min Capture b[(1, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:64:26
+  --> $DIR/preserve_field_drop_order.rs:58:26
    |
 LL |         println!("{:?}", b.1);
    |                          ^^^
 
 error: First Pass analysis includes:
-  --> $DIR/preserve_field_drop_order.rs:81:5
+  --> $DIR/preserve_field_drop_order.rs:72:5
    |
 LL | /     || {
 LL | |
@@ -168,28 +138,28 @@ LL | |     };
    | |_____^
    |
 note: Capturing b[(1, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:84:26
+  --> $DIR/preserve_field_drop_order.rs:75:26
    |
 LL |         println!("{:?}", b.1);
    |                          ^^^
 note: Capturing a[(1, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:87:26
+  --> $DIR/preserve_field_drop_order.rs:78:26
    |
 LL |         println!("{:?}", a.1);
    |                          ^^^
 note: Capturing a[(0, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:90:26
+  --> $DIR/preserve_field_drop_order.rs:81:26
    |
 LL |         println!("{:?}", a.0);
    |                          ^^^
 note: Capturing b[(0, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:94:26
+  --> $DIR/preserve_field_drop_order.rs:85:26
    |
 LL |         println!("{:?}", b.0);
    |                          ^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/preserve_field_drop_order.rs:81:5
+  --> $DIR/preserve_field_drop_order.rs:72:5
    |
 LL | /     || {
 LL | |
@@ -200,26 +170,25 @@ LL | |     };
    | |_____^
    |
 note: Min Capture b[(0, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:94:26
+  --> $DIR/preserve_field_drop_order.rs:85:26
    |
 LL |         println!("{:?}", b.0);
    |                          ^^^
 note: Min Capture b[(1, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:84:26
+  --> $DIR/preserve_field_drop_order.rs:75:26
    |
 LL |         println!("{:?}", b.1);
    |                          ^^^
 note: Min Capture a[(0, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:90:26
+  --> $DIR/preserve_field_drop_order.rs:81:26
    |
 LL |         println!("{:?}", a.0);
    |                          ^^^
 note: Min Capture a[(1, 0)] -> Immutable
-  --> $DIR/preserve_field_drop_order.rs:87:26
+  --> $DIR/preserve_field_drop_order.rs:78:26
    |
 LL |         println!("{:?}", a.1);
    |                          ^^^
 
-error: aborting due to 9 previous errors
+error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0658`.

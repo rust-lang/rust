@@ -23,21 +23,21 @@ Item            |  Kind    | Short description           | Chapter            | 
 `SourceFile` | struct | Part of the `SourceMap`. Maps AST nodes to their source code for a single source file. Was previously called FileMap | [The parser] | [compiler/rustc_span/src/lib.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.SourceFile.html)
 `SourceMap` | struct | Maps AST nodes to their source code. It is composed of `SourceFile`s. Was previously called CodeMap | [The parser] | [compiler/rustc_span/src/source_map.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/source_map/struct.SourceMap.html)
 `Span` | struct  | A location in the user's source code, used for error reporting primarily | [Emitting Diagnostics] | [compiler/rustc_span/src/span_encoding.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html)
-`rustc_ast::token_stream::TokenStream` | struct | An abstract sequence of tokens, organized into `TokenTree`s | [The parser], [Macro expansion] | [compiler/rustc_ast/src/tokenstream.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/struct.TokenStream.html)
+`TokenStream` | struct | An abstract sequence of tokens, organized into `TokenTree`s | [The parser], [Macro expansion] | [compiler/rustc_ast/src/tokenstream.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/struct.TokenStream.html)
 `TraitDef` | struct | This struct contains a trait's definition with type information | [The `ty` modules] |  [compiler/rustc_middle/src/ty/trait_def.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait_def/struct.TraitDef.html)
 `TraitRef` | struct | The combination of a trait and its input types (e.g. `P0: Trait<P1...Pn>`) | [Trait Solving: Goals and Clauses]  |  [compiler/rustc_middle/src/ty/sty.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.TraitRef.html)
 `Ty<'tcx>` | struct | This is the internal representation of a type used for type checking | [Type checking] | [compiler/rustc_middle/src/ty/mod.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html)
 `TyCtxt<'tcx>` | struct | The "typing context". This is the central data structure in the compiler. It is the context that you use to perform all manner of queries | [The `ty` modules] | [compiler/rustc_middle/src/ty/context.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html)
 
-[The HIR]: ../hir.html
-[Identifiers in the HIR]: ../hir.html#hir-id
-[The parser]: ../the-parser.html
-[The Rustc Driver and Interface]: ../rustc-driver/intro.html
-[Type checking]: ../hir-typeck/summary.html
-[The `ty` modules]: ../ty.html
-[Rustdoc]: ../rustdoc.html
-[Emitting Diagnostics]: ../diagnostics.html
-[Macro expansion]: ../macro-expansion.html
-[Name resolution]: ../name-resolution.html
-[Parameter Environment]: ../typing-parameter-envs.html
-[Trait Solving: Goals and Clauses]: ../traits/goals-and-clauses.html#domain-goals
+[The HIR]: ../hir.md
+[Identifiers in the HIR]: ../hir.md#hir-id
+[The parser]: ../the-parser.md
+[The Rustc Driver and Interface]: ../rustc-driver/intro.md
+[Type checking]: ../hir-typeck/summary.md
+[The `ty` modules]: ../ty.md
+[Rustdoc]: ../rustdoc.md
+[Emitting Diagnostics]: ../diagnostics.md
+[Macro expansion]: ../macro-expansion.md
+[Name resolution]: ../name-resolution.md
+[Parameter Environment]: ../typing-parameter-envs.md
+[Trait Solving: Goals and Clauses]: ../traits/goals-and-clauses.md#domain-goals

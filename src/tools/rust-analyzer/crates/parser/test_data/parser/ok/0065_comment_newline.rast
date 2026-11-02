@@ -1,6 +1,7 @@
 SOURCE_FILE
   FN
-    COMMENT "/// Example"
+    DOC_COMMENT
+      OUTER_DOC_COMMENT "/// Example"
     WHITESPACE "\n\n"
     FN_KW "fn"
     WHITESPACE " "

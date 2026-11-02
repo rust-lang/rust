@@ -5,7 +5,6 @@
 //!
 //! # Example
 //! ```rust
-//! #![feature(never_type)]
 //! mod a {
 //!     pub mod b {
 //!         pub struct SecretlyUninhabited {
@@ -43,15 +42,17 @@
 //! This code should only compile in modules where the uninhabitedness of `Foo`
 //! is visible.
 
-use std::assert_matches;
-
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def::DefKind;
+use rustc_span::bug;
 use rustc_span::def_id::LocalModId;
 use rustc_type_ir::TyKind::*;
 use tracing::instrument;
 
 use crate::query::Providers;
-use crate::ty::{self, DefId, Ty, TyCtxt, TypeVisitableExt, TypingEnv, VariantDef, Visibility};
+use crate::ty::{
+    self, AdtDef, DefId, Ty, TyCtxt, TypeVisitableExt, TypingEnv, VariantDef, Visibility,
+};
 
 pub mod inhabited_predicate;
 
@@ -59,55 +60,71 @@ pub use inhabited_predicate::InhabitedPredicate;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
-        inhabited_predicate_adt,
+        inhabited_predicate_for_def,
         inhabited_predicate_type,
-        is_opsem_inhabited_raw,
+        is_opsem_inhabited_adt_cached,
         ..*providers
     };
 }
 
 /// Returns an `InhabitedPredicate` that is generic over type parameters and
 /// requires calling [`InhabitedPredicate::instantiate`]
-fn inhabited_predicate_adt(tcx: TyCtxt<'_>, def_id: DefId) -> InhabitedPredicate<'_> {
-    if let Some(def_id) = def_id.as_local() {
-        tcx.ensure_ok().check_representability(def_id);
+fn inhabited_predicate_for_def(tcx: TyCtxt<'_>, def_id: DefId) -> InhabitedPredicate<'_> {
+    match tcx.def_kind(def_id) {
+        DefKind::Enum => {
+            if let Some(def_id) = def_id.as_local() {
+                tcx.ensure_ok().check_representability(def_id);
+            }
+            let adt = tcx.adt_def(def_id);
+            InhabitedPredicate::any(tcx, adt.variants().iter().map(|v| v.inhabited_predicate(tcx)))
+        }
+        DefKind::Struct => {
+            if let Some(def_id) = def_id.as_local() {
+                tcx.ensure_ok().check_representability(def_id);
+            }
+            let adt = tcx.adt_def(def_id);
+            variant_inhabited_predicate(tcx, adt, adt.non_enum_variant())
+        }
+        DefKind::Variant => {
+            let adt = tcx.adt_def(tcx.parent(def_id));
+            let variant = adt.variant_with_id(def_id);
+            variant_inhabited_predicate(tcx, adt, variant)
+        }
+        def_kind => bug!("unexpected DefKind: {def_kind:?}"),
     }
-
-    let adt = tcx.adt_def(def_id);
-    InhabitedPredicate::any(
-        tcx,
-        adt.variants().iter().map(|variant| variant.inhabited_predicate(tcx, adt)),
-    )
 }
 
-impl<'tcx> VariantDef {
-    /// Calculates the forest of `DefId`s from which this variant is visibly uninhabited.
-    pub fn inhabited_predicate(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        adt: ty::AdtDef<'_>,
-    ) -> InhabitedPredicate<'tcx> {
-        debug_assert!(!adt.is_union());
-        InhabitedPredicate::all(
-            tcx,
-            self.fields.iter().map(|field| {
-                let pred = tcx
-                    .type_of(field.did)
-                    .instantiate_identity()
-                    .skip_norm_wip()
-                    .inhabited_predicate(tcx);
-                if adt.is_enum() {
-                    return pred;
-                }
-                match field.vis {
-                    Visibility::Public => pred,
-                    Visibility::Restricted(from) => {
-                        InhabitedPredicate::NotInModule(from).or(tcx, pred)
-                    }
-                }
-            }),
-        )
+impl VariantDef {
+    pub fn inhabited_predicate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> InhabitedPredicate<'tcx> {
+        if self.fields.is_empty() {
+            return InhabitedPredicate::True;
+        }
+        tcx.inhabited_predicate_for_def(self.def_id)
     }
+}
+
+fn variant_inhabited_predicate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    adt: AdtDef<'tcx>,
+    variant: &VariantDef,
+) -> InhabitedPredicate<'tcx> {
+    InhabitedPredicate::all(
+        tcx,
+        variant.fields.iter().map(|field| {
+            let pred = tcx
+                .type_of(field.did)
+                .instantiate_identity()
+                .skip_norm_wip()
+                .inhabited_predicate(tcx);
+            if adt.is_enum() {
+                return pred;
+            }
+            match field.vis {
+                Visibility::Public => pred,
+                Visibility::Restricted(from) => InhabitedPredicate::NotInModule(from).or(tcx, pred),
+            }
+        }),
+    )
 }
 
 impl<'tcx> Ty<'tcx> {
@@ -154,7 +171,6 @@ impl<'tcx> Ty<'tcx> {
     ///
     /// # Example
     /// ```
-    /// #![feature(never_type)]
     /// # fn main() {}
     /// enum Void {}
     /// mod a {
@@ -228,7 +244,7 @@ impl<'tcx> Ty<'tcx> {
 /// N.B. this query should only be called through `Ty::inhabited_predicate`
 fn inhabited_predicate_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> InhabitedPredicate<'tcx> {
     match *ty.kind() {
-        Adt(adt, args) => tcx.inhabited_predicate_adt(adt.did()).instantiate(tcx, args),
+        Adt(adt, args) => tcx.inhabited_predicate_for_def(adt.did()).instantiate(tcx, args),
 
         Tuple(tys) => {
             InhabitedPredicate::all(tcx, tys.iter().map(|ty| ty.inhabited_predicate(tcx)))
@@ -252,7 +268,7 @@ struct OpsemInhabitedCtx<'tcx> {
     tcx: TyCtxt<'tcx>,
     typing_env: TypingEnv<'tcx>,
     /// IDs of ADTs that have been encountered in the current stack.
-    /// It's `None` unless we are inside the `is_opsem_inhabited_raw` query,
+    /// It's `None` unless we are inside the `is_opsem_inhabited_adt_cached` query,
     /// which is only invoked for more complex types.
     seen: Option<FxHashSet<DefId>>,
     /// If an ADT is encountered recursively within itself, then `stop_at_ref`
@@ -308,10 +324,10 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
                 args.upvar_tys().iter().all(|ty| self.is_inhabited_ty(ty))
             }
             ty::UnsafeBinder(base) => {
-                let base = tcx.instantiate_bound_regions_with_erased((*base).into());
+                let base = tcx.instantiate_bound_regions_with_erased(*base);
                 self.is_inhabited_ty(base)
             }
-            ty::Adt(..) => self.is_inhabited_adt_ty(ty),
+            ty::Adt(def, args) => self.is_inhabited_adt_ty(def, args),
 
             ty::Error(_error_guaranteed) => {
                 // We have a token proving there was an error, so we can return a dummy value.
@@ -329,10 +345,11 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
         }
     }
 
-    fn is_inhabited_adt_ty(&mut self, ty: Ty<'tcx>) -> bool {
-        let ty::Adt(adt_def, adt_args) = *ty.kind() else {
-            unreachable! {}
-        };
+    fn is_inhabited_adt_ty(
+        &mut self,
+        adt_def: ty::AdtDef<'tcx>,
+        adt_args: ty::GenericArgs<'tcx>,
+    ) -> bool {
         let Self { tcx, typing_env, .. } = *self;
 
         if adt_def.is_union() {
@@ -342,7 +359,8 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
 
         let Some(seen) = self.seen.as_mut() else {
             // stop recursing, invoke the query.
-            return tcx.is_opsem_inhabited_raw(typing_env.as_query_input(ty));
+            return tcx
+                .is_opsem_inhabited_adt_cached(typing_env.as_query_input((adt_def, adt_args)));
         };
 
         let new_adt = seen.insert(adt_def.did());
@@ -357,7 +375,12 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
         let inhabited = adt_def.variants().iter().any(|variant| {
             variant.fields.iter().all(|field| {
                 let ty = field.ty(tcx, adt_args);
-                let ty = tcx.normalize_erasing_regions(typing_env, ty);
+                let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, ty) else {
+                    tcx.dcx().delayed_bug(format!(
+                        "failed to normalize field type in `is_opsem_inhabited`: {field:?}"
+                    ));
+                    return true;
+                };
                 self.is_inhabited_ty(ty)
             })
         });
@@ -372,17 +395,11 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
     }
 }
 
-fn is_opsem_inhabited_raw<'tcx>(
+fn is_opsem_inhabited_adt_cached<'tcx>(
     tcx: TyCtxt<'tcx>,
-    env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
+    env: ty::PseudoCanonicalInput<'tcx, (ty::AdtDef<'tcx>, ty::GenericArgs<'tcx>)>,
 ) -> bool {
-    let (ty, typing_env) = (env.value, env.typing_env);
-    assert_matches!(
-        ty.kind(),
-        ty::Adt(..),
-        "the query should only be invoked by `Ty::is_opsem_inhabited`"
-    );
-
+    let ((def, args), typing_env) = (env.value, env.typing_env);
     OpsemInhabitedCtx { tcx, typing_env, seen: Some(FxHashSet::default()), stop_at_ref: false }
-        .is_inhabited_adt_ty(ty)
+        .is_inhabited_adt_ty(def, args)
 }

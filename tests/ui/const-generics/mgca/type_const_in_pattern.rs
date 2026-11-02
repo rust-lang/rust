@@ -1,24 +1,27 @@
 //@ check-pass
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 #![allow(irrefutable_let_patterns)]
 
-type const CONST: usize = 1_usize;
+use std::gca;
+
+const CONST: usize = gca!(1_usize);
 
 struct Inherent;
 
 impl Inherent {
-    type const BAR: usize = 1_usize;
+    const BAR: usize = gca!(1_usize);
 }
 
 trait Trait {
-    type const BAZ: usize;
+    #[rustc_always_gca]
+    const BAZ: usize;
 }
 
 struct Assoc;
 
 impl Trait for Assoc {
-    type const BAZ: usize = 1_usize;
+    const BAZ: usize = gca!(1_usize);
 }
 
 fn main() {

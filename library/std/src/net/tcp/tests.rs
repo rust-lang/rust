@@ -60,8 +60,9 @@ fn connect_timeout_error() {
     let socket_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port));
 
     // Ensure we error immediately rather than timing out.
-    let result = TcpStream::connect_timeout(&socket_addr, Duration::MAX);
-    assert!(!matches!(result, Err(e) if e.kind() == ErrorKind::TimedOut));
+    let err = TcpStream::connect_timeout(&socket_addr, Duration::MAX)
+        .expect_err("connected to a port with no listener");
+    assert_ne!(err.kind(), ErrorKind::TimedOut, "unexpected error: {err}");
 
     let _listener = TcpListener::bind(&socket_addr).unwrap();
     assert!(TcpStream::connect_timeout(&socket_addr, Duration::MAX).is_ok());
@@ -896,6 +897,23 @@ fn ttl() {
 
 #[test]
 #[cfg_attr(target_env = "sgx", ignore)]
+#[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+fn hop_limit() {
+    let hlim = 100;
+
+    let listener = t!(TcpListener::bind(LOCALHOST_IP6));
+
+    t!(listener.set_hop_limit_v6(hlim));
+    assert_eq!(hlim, t!(listener.hop_limit_v6()));
+
+    let stream = t!(TcpStream::connect(t!(listener.local_addr())));
+
+    t!(stream.set_hop_limit_v6(hlim));
+    assert_eq!(hlim, t!(stream.hop_limit_v6()));
+}
+
+#[test]
+#[cfg_attr(target_env = "sgx", ignore)]
 fn set_nonblocking() {
     let listener = t!(TcpListener::bind(LOCALHOST_IP4));
 
@@ -955,4 +973,38 @@ fn connect_timeout_valid() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
     TcpStream::connect_timeout(&addr, Duration::from_secs(2)).unwrap();
+}
+
+// #115325: writing a buffer larger than `c_int::MAX` bytes used to fail on
+// macOS with `EINVAL`; `write_all` should now transfer it via short sends.
+#[test]
+#[cfg(all(target_pointer_width = "64", unix))]
+fn write_buffer_larger_than_c_int_max() {
+    const LEN: usize = crate::ffi::c_int::MAX as usize + 1;
+
+    // Back the source buffer with a read-only anonymous mapping rather than a
+    // 2 GiB `Vec`, so the test doesn't actually consume ~2 GiB of physical
+    // memory while `write_all` reads through the buffer.
+    let data = crate::net::tests::ZeroedMmap::new(LEN);
+
+    let listener = t!(TcpListener::bind("127.0.0.1:0"));
+    let addr = t!(listener.local_addr());
+    let reader = thread::spawn(move || {
+        let (mut sock, _) = t!(listener.accept());
+        let mut received = 0usize;
+        let mut buf = vec![0u8; 1 << 20];
+        loop {
+            match sock.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => received += n,
+                Err(e) => panic!("read error: {e}"),
+            }
+        }
+        received
+    });
+
+    let mut stream = t!(TcpStream::connect(addr));
+    t!(stream.write_all(&data));
+    drop(stream); // signal EOF so the reader loop terminates
+    assert_eq!(reader.join().unwrap(), LEN);
 }

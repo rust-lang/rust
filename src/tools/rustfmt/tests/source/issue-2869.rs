@@ -1,4 +1,4 @@
-// rustfmt-struct_field_align_threshold: 50
+//@ rustfmt-struct_field_align_threshold: 50
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]

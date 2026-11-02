@@ -2,7 +2,7 @@
 //!
 //! [ACLE documentation](https://arm-software.github.io/acle/main/acle.html#markdown-toc-mte-intrinsics)
 
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.aarch64.irg"]
     fn irg_(ptr: *const (), exclude: i64) -> *const ();
     #[link_name = "llvm.aarch64.gmi"]

@@ -51,7 +51,7 @@ Directives can generally be found by browsing the
 
 ### Auxiliary builds
 
-See [Building auxiliary crates](compiletest.html#building-auxiliary-crates)
+See [Building auxiliary crates](compiletest.md#building-auxiliary-crates)
 
 | Directive             | Explanation                                                                                           | Supported test suites                  | Possible values                                                    |
 |-----------------------|-------------------------------------------------------------------------------------------------------|----------------------------------------|--------------------------------------------------------------------|
@@ -62,7 +62,7 @@ See [Building auxiliary crates](compiletest.html#building-auxiliary-crates)
 | `proc-macro`          | Similar to `aux-build`, but for aux forces host and don't use `-Cprefer-dynamic`[^pm].                | All except `run-make`/`run-make-cargo` | Path to auxiliary proc-macro `.rs` file                            |
 | `build-aux-docs`      | Build docs for auxiliaries as well.  Note that this only works with `aux-build`, not `aux-crate`.     | All except `run-make`/`run-make-cargo` | N/A                                                                |
 
-[^pm]: please see the [Auxiliary proc-macro section](compiletest.html#auxiliary-proc-macro) in the compiletest chapter for specifics.
+[^pm]: please see the [Auxiliary proc-macro section](compiletest.md#auxiliary-proc-macro) in the compiletest chapter for specifics.
 
 ### Controlling outcome expectations
 
@@ -118,8 +118,8 @@ comparison](ui.md#output-comparison) and [Rustfix tests](ui.md#rustfix-tests) fo
 
 ### Controlling when tests are run
 
-These directives are used to ignore the test in some situations, which
-means the test won't be compiled or run.
+These directives are used to ignore the test in some situations,
+which means the test won't be compiled or run.
 
 * `ignore-X` where `X` is a target detail or other criteria on which to ignore the test (see below)
 * `only-X` is like `ignore-X`, but will *only* run the test on that target or stage
@@ -127,8 +127,8 @@ means the test won't be compiled or run.
   main test files but that `compiletest` should not try to build the file itself.
   Please backlink to which main test is actually using the auxiliary file.
 * `ignore-test` always ignores the test.
-  This can be used to temporarily disable
-  a test if it is currently not working, but you want to keep it in-tree to re-enable it later.
+  This can be used to temporarily disable a test if it is currently not working,
+  but you want to keep it in-tree to re-enable it later.
 
 Some examples of `X` in `ignore-X` or `only-X`:
 
@@ -148,11 +148,10 @@ Some examples of `X` in `ignore-X` or `only-X`:
 - When particular debuggers are being tested: `cdb`, `gdb`, `lldb`
 - When particular debugger versions are matched: `ignore-gdb-version`
 - When the [parallel frontend] is enabled: `ignore-parallel-frontend`
-- Specific [compare modes]: `compare-mode-polonius`,
-  `compare-mode-next-solver`, `compare-mode-next-solver-coherence`,
+- Specific [compare modes]: `compare-mode-polonius`, `compare-mode-next-solver`,
   `compare-mode-split-dwarf`, `compare-mode-split-dwarf-single`
 - The two different test modes used by coverage tests:
-  `ignore-coverage-map`, `ignore-coverage-run`
+  `ignore-coverage-map` and `ignore-coverage-run`
 - When testing a dist toolchain: `dist`
   - This needs to be enabled with `COMPILETEST_ENABLE_DIST_TESTS=1`
 - The `rustc_abi` of the target: e.g. `rustc_abi-x86_64-sse2`
@@ -161,9 +160,8 @@ The following directives will check rustc build settings and target settings:
 
 - `needs-asm-support` — ignores if the **host** architecture doesn't have
   stable support for `asm!`.
-  For tests that cross-compile to explicit targets
-  via `--target`, use `needs-llvm-components` instead to ensure the appropriate
-  backend is available.
+  For tests that cross-compile to explicit targets via `--target`,
+  use `needs-llvm-components` instead to ensure the appropriate backend is available.
 - `needs-asm-ret` - ignores if the target does not have a `ret` instruction
   in its assembly syntax.
   Most target architectures have this instruction,
@@ -175,10 +173,10 @@ The following directives will check rustc build settings and target settings:
   for the target (`build.sanitizers = true` in `bootstrap.toml`)
 - `needs-sanitizer-{address,hwaddress,leak,memory,thread}` — ignores if the
   corresponding sanitizer is not enabled for the target (AddressSanitizer,
-  hardware-assisted AddressSanitizer, LeakSanitizer, MemorySanitizer or
-  ThreadSanitizer respectively)
-- `needs-run-enabled` — ignores if it is a test that gets executed, and running
-  has been disabled.
+  hardware-assisted AddressSanitizer, LeakSanitizer,
+  MemorySanitizer or ThreadSanitizer respectively)
+- `needs-run-enabled` — ignores if it is a test that gets executed,
+  and running has been disabled.
   Running tests can be disabled with the `x test --run=never` flag, or running on fuchsia.
 - `needs-unwind` — ignores if the target does not support unwinding
 - `needs-rust-lld` — ignores if the rust lld support is not enabled (`rust.lld =
@@ -231,8 +229,8 @@ The following directives will check LLVM support:
   `COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS` is set) if the component does not exist.
 - `needs-forced-clang-based-tests` — test is ignored unless the environment
   variable `RUSTBUILD_FORCE_CLANG_BASED_TESTS` is set, which enables building clang alongside LLVM
-  - This is only set in two CI jobs ([`x86_64-gnu-debug`] and
-    [`aarch64-gnu-debug`]), which only runs a subset of `run-make` tests.
+  - This is only set in two CI jobs ([`test-x86_64-gnu-debug`] and [`test-aarch64-gnu-debug`]),
+    which only runs a subset of `run-make` tests.
     Other tests with this directive will not run at all, which is usually not what you want.
 
 See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for ignoring debuggers.
@@ -240,8 +238,8 @@ See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for ig
 [remote testing]: running.md#running-tests-on-a-remote-machine
 [parallel frontend]: compiletest.md#parallel-frontend
 [compare modes]: ui.md#compare-modes
-[`x86_64-gnu-debug`]: https://github.com/rust-lang/rust/blob/ab3dba92db355b8d97db915a2dca161a117e959c/src/ci/docker/host-x86_64/x86_64-gnu-debug/Dockerfile#L32
-[`aarch64-gnu-debug`]: https://github.com/rust-lang/rust/blob/20c909ff9cdd88d33768a4ddb8952927a675b0ad/src/ci/docker/host-aarch64/aarch64-gnu-debug/Dockerfile#L32
+[`test-x86_64-gnu-debug`]: https://github.com/rust-lang/rust/blob/32d94cc9be3f6e6c3fa1deaea9e0ab93c4980dba/src/ci/docker/host-x86_64/test-x86_64-gnu-debug/Dockerfile#L32
+[`test-aarch64-gnu-debug`]: https://github.com/rust-lang/rust/blob/32d94cc9be3f6e6c3fa1deaea9e0ab93c4980dba/src/ci/docker/host-aarch64/test-aarch64-gnu-debug/Dockerfile#L32
 
 ### Affecting how tests are built
 
@@ -276,9 +274,11 @@ For example:
 - A test with the `//@ edition: 2015..2021` directive can be run under the 2015 and the 2018 edition,
   so the upper bound is exclusive just like in Rust
   (note that there's no equivalent to Rust's `..=` where the upper bound is inclusive).
-  However, CI will only run the test with the lowest edition in the range (which is 2015 in this example).
+  However,
+  CI will only run the test with the lowest edition in the range (which is 2015 in this example).
 - A test with the `//@ edition: 2018..` directive will run under 2018 edition or greater.
-  However, CI will only run the test with the lowest edition in the range (which is 2018 in this example).
+  However,
+  CI will only run the test with the lowest edition in the range (which is 2018 in this example).
 
 You can also force `./x test` to use a specific edition by passing the `-- --edition=` argument.
 However, tests with the `//@ edition` directive will clamp the value passed to the argument.
@@ -302,14 +302,15 @@ Asked in
 
 #### Test-suite-specific directives
 
-The test suites [`rustdoc-html`][rustdoc-html-tests], [`rustdoc-js`/`rustdoc-js-std`][rustdoc-js-tests]
+The test suites [`rustdoc-html`][rustdoc-html-tests],
+[`rustdoc-js`/`rustdoc-js-std`][rustdoc-js-tests],
 and [`rustdoc-json`][rustdoc-json-tests] each feature an additional set of directives whose basic
-syntax resembles the one of compiletest directives but which are ultimately read and checked by
-separate tools.
+syntax resembles one of the compiletest directives,
+but which are ultimately read and checked by separate tools.
 For more information, please read their respective chapters as linked above.
 
 [rustdoc-html-tests]: ../rustdoc-internals/rustdoc-html-test-suite.md
-[rustdoc-js-tests]: ../rustdoc-internals/search.html#testing-the-search-engine
+[rustdoc-js-tests]: ../rustdoc-internals/search.md#testing-the-search-engine
 [rustdoc-json-tests]: ../rustdoc-internals/rustdoc-json-test-suite.md
 
 ### Pretty printing
@@ -328,15 +329,15 @@ See [Pretty-printer](compiletest.md#pretty-printer-tests).
 
 ### Tool-specific directives
 
-The following directives affect how certain command-line tools are invoked, in
-test suites that use those tools:
+The following directives affect how certain command-line tools are invoked,
+in test suites that use those tools:
 
 - `skip-filecheck` avoids running LLVM's `FileCheck` tool in tests that would normally run it to check output.
   - Used by codegen tests, assembly tests, and mir-opt tests.
 - `filecheck-flags` adds extra flags when running LLVM's `FileCheck` tool.
   - Used by [codegen tests](compiletest.md#codegen-tests),
-  [assembly tests](compiletest.md#assembly-tests), and
-  [MIR-opt tests](compiletest.md#mir-opt-tests).
+  [assembly tests](compiletest.md#assembly-tests),
+  and [MIR-opt tests](compiletest.md#mir-opt-tests).
 - `llvm-cov-flags` adds extra flags when running LLVM's `llvm-cov` tool.
   - Used by [coverage tests](compiletest.md#coverage-tests) in `coverage-run` mode.
 
@@ -354,8 +355,8 @@ The following directives control how the [tidy script](../conventions.md#formatt
 
 Directive values support substituting a few variables which will be replaced
 with their corresponding value.
-For example, if you need to pass a compiler flag
-with a path to a specific file, something like the following could work:
+For example, if you need to pass a compiler flag with a path to a specific file,
+something like the following could work:
 
 ```rust,ignore
 //@ compile-flags: --remap-path-prefix={{src-base}}=/the/src
@@ -409,8 +410,8 @@ When `compiletest` encounters a test file, it parses the file a line at a time
 by calling every parser defined in the `Config` struct's implementation block,
 also in [`src/tools/compiletest/src/directives.rs`] (note that the `Config` struct's
 declaration block is found in [`src/tools/compiletest/src/common.rs`]).
-`TestProps`'s `load_from()` method will try passing the current line of text to
-each parser, which, in turn typically checks to see if the line begins with a
+`TestProps`'s `load_from()` method will try passing the current line of text to each parser,
+which, in turn, typically checks to see if the line begins with a
 particular commented (`//@`) directive such as `//@ must-compile-successfully`
 or `//@ failure-status`.
 Whitespace after the comment marker is optional.
@@ -423,16 +424,15 @@ Parsers defined in `impl Config` are typically named `parse_<directive-name>`
 (note kebab-case `<directive-command>` transformed to snake-case `<directive_command>`).
 `impl Config` also defines several 'low-level' parsers
 which make it simple to parse common patterns like simple presence or not
-(`parse_name_directive()`), `directive:parameter(s)`
-(`parse_name_value_directive()`), optional parsing only if a particular `cfg`
-attribute is defined (`has_cfg_prefix()`) and many more.
+(`parse_name_directive()`), `directive:parameter(s)` (`parse_name_value_directive()`),
+optional parsing only if a particular `cfg` attribute is defined (`has_cfg_prefix()`) and many more.
 The low-level parsers
 are found near the end of the `impl Config` block; be sure to look through them
 and their associated parsers immediately above to see how they are used to avoid
 writing additional parsing code unnecessarily.
 
-As a concrete example, here is the implementation for the
-`parse_failure_status()` parser, in [`src/tools/compiletest/src/directives.rs`]:
+As a concrete example, here is the implementation for the `parse_failure_status()` parser,
+in [`src/tools/compiletest/src/directives.rs`]:
 
 ```diff
 @@ -232,6 +232,7 @@ pub struct TestProps {
@@ -476,19 +476,19 @@ As a concrete example, here is the implementation for the
 
 ### Implementing the behavior change
 
-When a test invokes a particular directive, it is expected that some behavior
-will change as a result.
+When a test invokes a particular directive,
+it is expected that some behavior will change as a result.
 What behavior, obviously, will depend on the purpose of the directive.
 In the case of `failure-status`, the behavior that changes is
-that `compiletest` expects the failure code defined by the directive invoked in
-the test, rather than the default value.
+that `compiletest` expects the failure code defined by the directive invoked in the test,
+rather than the default value.
 
 Although specific to `failure-status` (as every directive will have a different
 implementation in order to invoke behavior change) perhaps it is helpful to see
 the behavior change implementation of one case, simply as an example.
 To implement `failure-status`, the `check_correct_failure_status()` function found
-in the `TestCx` implementation block, located in
-[`src/tools/compiletest/src/runtest.rs`], was modified as per below:
+in the `TestCx` implementation block, located in [`src/tools/compiletest/src/runtest.rs`],
+was modified as per below:
 
 ```diff
 @@ -295,11 +295,14 @@ impl<'test> TestCx<'test> {
@@ -530,10 +530,10 @@ in the `TestCx` implementation block, located in
 Note the use of `self.props.failure_status` to access the directive property.
 In tests which do not specify the failure status directive,
 `self.props.failure_status` will evaluate to the default value of 101 at the time of this writing.
-But for a test which specifies a directive of, for
-example, `//@ failure-status: 1`, `self.props.failure_status` will evaluate to
-1, as `parse_failure_status()` will have overridden the `TestProps` default
-value, for that test specifically.
+But for a test which specifies a directive of, for example,
+`//@ failure-status: 1`, `self.props.failure_status` will evaluate to 1,
+as `parse_failure_status()` will have overridden the `TestProps` default value,
+for that test specifically.
 
 [`src/tools/compiletest/src/directives.rs`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/compiletest/src/directives.rs
 [`src/tools/compiletest/src/common.rs`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/compiletest/src/common.rs

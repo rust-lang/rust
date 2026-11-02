@@ -1,5 +1,6 @@
 //! Routines for manipulating the control-flow graph.
 
+use rustc_attr_ir::UnrollAttr;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -74,11 +75,7 @@ impl<'tcx> CFG<'tcx> {
             source_info,
             place,
             Rvalue::Use(
-                Operand::Constant(Box::new(ConstOperand {
-                    span: source_info.span,
-                    user_ty: None,
-                    const_: Const::zero_sized(tcx.types.unit),
-                })),
+                Operand::zero_sized_constant(tcx.types.unit, source_info.span),
                 WithRetag::Yes,
             ),
         );
@@ -107,17 +104,6 @@ impl<'tcx> CFG<'tcx> {
         self.push(block, stmt);
     }
 
-    /// Adds a dummy statement whose only role is to associate a span with its
-    /// enclosing block for the purposes of coverage instrumentation.
-    ///
-    /// This results in more accurate coverage reports for certain kinds of
-    /// syntax (e.g. `continue` or `if !`) that would otherwise not appear in MIR.
-    pub(crate) fn push_coverage_span_marker(&mut self, block: BasicBlock, source_info: SourceInfo) {
-        let kind = StatementKind::Coverage(coverage::CoverageKind::SpanMarker);
-        let stmt = Statement::new(source_info, kind);
-        self.push(block, stmt);
-    }
-
     pub(crate) fn terminate(
         &mut self,
         block: BasicBlock,
@@ -131,8 +117,7 @@ impl<'tcx> CFG<'tcx> {
             block,
             self.block_data(block)
         );
-        self.block_data_mut(block).terminator =
-            Some(Terminator { source_info, kind, attributes: ThinVec::new() });
+        self.block_data_mut(block).terminator = Some(Terminator { source_info, kind });
         self.block_data_mut(block).terminator.as_mut().unwrap()
     }
 
@@ -143,6 +128,17 @@ impl<'tcx> CFG<'tcx> {
         source_info: SourceInfo,
         target: BasicBlock,
     ) -> &mut Terminator<'tcx> {
-        self.terminate(origin, source_info, TerminatorKind::Goto { target })
+        self.goto_with_hints(origin, source_info, target, ThinVec::new())
+    }
+
+    #[inline(always)]
+    pub(crate) fn goto_with_hints(
+        &mut self,
+        origin: BasicBlock,
+        source_info: SourceInfo,
+        target: BasicBlock,
+        loop_hint_attrs: ThinVec<UnrollAttr>,
+    ) -> &mut Terminator<'tcx> {
+        self.terminate(origin, source_info, TerminatorKind::Goto { target, loop_hint_attrs })
     }
 }

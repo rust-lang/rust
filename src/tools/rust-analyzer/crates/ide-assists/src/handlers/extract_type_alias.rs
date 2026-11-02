@@ -145,7 +145,7 @@ fn collect_used_generics<'gp>(
                             .filter_map(|it| match it {
                                 ast::GenericArg::LifetimeArg(lt) => {
                                     let lt = lt.lifetime()?;
-                                    known_generics.iter().find(find_lifetime(&lt.text()))
+                                    known_generics.iter().find(find_lifetime(lt.text()))
                                 }
                                 _ => None,
                             }),
@@ -157,7 +157,7 @@ fn collect_used_generics<'gp>(
                     generics.extend(
                         it.bounds()
                             .filter_map(|it| it.lifetime())
-                            .filter_map(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
+                            .filter_map(|lt| known_generics.iter().find(find_lifetime(lt.text()))),
                     );
                 }
             }
@@ -166,13 +166,12 @@ fn collect_used_generics<'gp>(
                     generics.extend(
                         it.bounds()
                             .filter_map(|it| it.lifetime())
-                            .filter_map(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
+                            .filter_map(|lt| known_generics.iter().find(find_lifetime(lt.text()))),
                     );
                 }
             }
             ast::Type::RefType(ref_) => generics.extend(
-                ref_.lifetime()
-                    .and_then(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
+                ref_.lifetime().and_then(|lt| known_generics.iter().find(find_lifetime(lt.text()))),
             ),
             ast::Type::ArrayType(ar) => {
                 if let Some(ast::Expr::PathExpr(p)) = ar.const_arg().and_then(|x| x.expr())

@@ -12,6 +12,7 @@ use rustc_session::PointerAuthSchema;
 
 use crate::consts::const_alloc_to_gcc;
 use crate::context::{CodegenCx, new_array_type};
+use crate::type_::struct_attributes;
 use crate::type_of::LayoutGccExt;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -125,78 +126,86 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
+/// The element type and element count of the array used to represent a run of `len` constant bytes.
+///
+/// Larger integers are used where possible: this reduces the number of rvalues, which is a
+/// significant memory saving on constant-heavy crates.
+fn byte_run_shape<'gcc>(cx: &CodegenCx<'gcc, '_>, len: usize) -> (Type<'gcc>, u64) {
+    match len % 8 {
+        0 => (cx.context.new_type::<u64>(), len as u64 / 8),
+        4 => (cx.context.new_type::<u32>(), len as u64 / 4),
+        _ => (cx.context.new_type::<u8>(), len as u64),
+    }
+}
+
+/// The type [`bytes_in_context`] gives a run of `len` constant bytes.
+///
+/// Exposed separately so that the type of a constant allocation can be computed before any of its
+/// rvalues exist; see [`crate::consts::const_alloc_type`].
+///
+/// The result is cached because `gcc_jit_context_new_array_type` mints a fresh type every call.
+/// Two equal-but-distinct array types would key [`CodegenCx::type_struct`] differently and so
+/// produce two distinct anonymous structs, and libgccjit compares struct types by identity.
+pub fn bytes_type_in_context<'gcc>(cx: &CodegenCx<'gcc, '_>, len: usize) -> Type<'gcc> {
+    let (element_type, count) = byte_run_shape(cx, len);
+    if let Some(&typ) = cx.byte_array_types.borrow().get(&(element_type, count)) {
+        return typ;
+    }
+    let typ = new_array_type(cx.context, None, element_type, count);
+    cx.byte_array_types.borrow_mut().insert((element_type, count), typ);
+    typ
+}
+
+// FIXME(FractalFir): Consider using `global_set_initializer` instead. Before this is done, we need to confirm that
+// `global_set_initializer` is more memory efficient than the current solution.
+// `global_set_initializer` calls `global_set_initializer_rvalue` under the hood - does it generate an array of rvalues,
+// or is it using a more efficient representation?
 pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) -> RValue<'gcc> {
-    // Instead of always using an array of bytes, use an array of larger integers of target endianness
-    // if possible. This reduces the amount of `rvalues` we use, which reduces memory usage significantly.
-    //
-    // FIXME(FractalFir): Consider using `global_set_initializer` instead. Before this is done, we need to confirm that
-    // `global_set_initializer` is more memory efficient than the current solution.
-    // `global_set_initializer` calls `global_set_initializer_rvalue` under the hood - does it generate an array of rvalues,
-    // or is it using a more efficient representation?
-    match bytes.len() % 8 {
+    let typ = bytes_type_in_context(cx, bytes.len());
+    let (element_type, _) = byte_run_shape(cx, bytes.len());
+    let context = &cx.context;
+    // Since we are representing arbitrary byte runs as integers, we need to follow the target
+    // endianness.
+    let endian = cx.sess().target.options.endian;
+    let elements: Vec<_> = match bytes.len() % 8 {
         0 => {
-            debug_assert_eq!(
-                bytes.len() % 8,
-                0,
-                "bytes length is not a multiple of 8, so bytes.as_chunks will have a remainder"
-            );
-            let context = &cx.context;
-            let byte_type = context.new_type::<u64>();
-            let typ = new_array_type(context, None, byte_type, bytes.len() as u64 / 8);
-            let elements: Vec<_> = bytes
-                .as_chunks::<8>()
-                .0
+            let (arrays, remainder) = bytes.as_chunks::<8>();
+            debug_assert!(remainder.is_empty());
+            arrays
                 .iter()
                 .map(|&arr| {
                     context.new_rvalue_from_long(
-                        byte_type,
-                        // Since we are representing arbitrary byte runs as integers, we need to follow the target
-                        // endianness.
-                        match cx.sess().target.options.endian {
+                        element_type,
+                        match endian {
                             rustc_abi::Endian::Little => u64::from_le_bytes(arr) as i64,
                             rustc_abi::Endian::Big => u64::from_be_bytes(arr) as i64,
                         },
                     )
                 })
-                .collect();
-            context.new_array_constructor(None, typ, &elements)
+                .collect()
         }
         4 => {
-            debug_assert_eq!(
-                bytes.len() % 4,
-                0,
-                "bytes length is not a multiple of 4, so bytes.as_chunks will have a remainder"
-            );
-            let context = &cx.context;
-            let byte_type = context.new_type::<u32>();
-            let typ = new_array_type(context, None, byte_type, bytes.len() as u64 / 4);
-            let elements: Vec<_> = bytes
-                .as_chunks::<4>()
-                .0
+            let (arrays, remainder) = bytes.as_chunks::<4>();
+            debug_assert!(remainder.is_empty());
+            arrays
                 .iter()
                 .map(|&arr| {
                     context.new_rvalue_from_int(
-                        byte_type,
-                        match cx.sess().target.options.endian {
+                        element_type,
+                        match endian {
                             rustc_abi::Endian::Little => u32::from_le_bytes(arr) as i32,
                             rustc_abi::Endian::Big => u32::from_be_bytes(arr) as i32,
                         },
                     )
                 })
-                .collect();
-            context.new_array_constructor(None, typ, &elements)
+                .collect()
         }
-        _ => {
-            let context = cx.context;
-            let byte_type = context.new_type::<u8>();
-            let typ = new_array_type(context, None, byte_type, bytes.len() as u64);
-            let elements: Vec<_> = bytes
-                .iter()
-                .map(|&byte| context.new_rvalue_from_int(byte_type, byte as i32))
-                .collect();
-            context.new_array_constructor(None, typ, &elements)
-        }
-    }
+        _ => bytes
+            .iter()
+            .map(|&byte| context.new_rvalue_from_int(element_type, byte as i32))
+            .collect(),
+    };
+    context.new_array_constructor(None, typ, &elements)
 }
 
 pub fn type_is_pointer(typ: Type<'_>) -> bool {
@@ -298,7 +307,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
     fn const_struct(&self, values: &[RValue<'gcc>], packed: bool) -> RValue<'gcc> {
         let fields: Vec<_> = values.iter().map(|value| value.get_type()).collect();
         // FIXME(antoyo): cache the type? It's anonymous, so probably not.
-        let typ = self.type_struct(&fields, packed);
+        let typ = self.type_struct(&fields, &struct_attributes(packed, None));
         let struct_type = typ.is_struct().expect("struct type");
         self.context.new_struct_constructor(None, struct_type.as_type(), None, values)
     }

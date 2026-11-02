@@ -3,8 +3,7 @@ use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{Crate, Expr, ExprKind, Item, ItemKind, MacroDef, ModKind, Ty, TyKind, UseTreeKind};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::kw;
 use rustc_span::{Span, Symbol};
@@ -210,15 +209,15 @@ impl SingleComponentPathImports {
                     // keep track of `use {some_module, some_other_module};` usages
                     if let UseTreeKind::Nested { items, .. } = &use_tree.kind {
                         for tree in items {
-                            let segments = &tree.0.prefix.segments;
+                            let segments = &tree.inner.prefix.segments;
                             if segments.len() == 1
-                                && let UseTreeKind::Simple(None) = tree.0.kind
+                                && let UseTreeKind::Simple(None) = tree.inner.kind
                             {
                                 let name = segments[0].ident.name;
                                 if !macros.contains(&name) {
                                     single_use_usages.push(SingleUse {
                                         name,
-                                        span: tree.0.span(),
+                                        span: tree.inner.span(),
                                         item_id: item.id,
                                         can_suggest: false,
                                     });
@@ -238,7 +237,7 @@ impl SingleComponentPathImports {
                     // nested case such as `use self::{module1::Struct1, module2::Struct2}`
                     if let UseTreeKind::Nested { items, .. } = &use_tree.kind {
                         for tree in items {
-                            let segments = &tree.0.prefix.segments;
+                            let segments = &tree.inner.prefix.segments;
                             if !segments.is_empty() {
                                 imports_reused_with_self.push(segments[0].ident.name);
                             }

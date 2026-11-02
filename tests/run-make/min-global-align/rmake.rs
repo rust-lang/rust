@@ -6,6 +6,8 @@
 //@ only-linux
 // Reason: this test is specific to linux, considering compilation is targeted
 // towards linux architectures only.
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{assert_count_is, llvm_components_contain, rfs, rustc};
 

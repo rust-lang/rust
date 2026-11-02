@@ -10,36 +10,24 @@
 #![feature(default_field_values)]
 #![feature(derive_const)]
 #![feature(exhaustive_patterns)]
-#![feature(never_type)]
-#![feature(variant_count)]
+#![feature(final_associated_functions)]
+#![feature(iter_macro)]
+#![feature(yield_expr)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 mod arena;
-pub mod attrs;
 pub mod def;
-pub mod def_path_hash_map;
-pub mod definitions;
-pub mod diagnostic_items;
 mod hir;
 pub mod intravisit;
-pub mod lang_items;
 pub mod lints;
 pub mod pat_util;
-mod stability;
 mod stable_hash_impls;
-pub mod target;
-pub mod weak_lang_items;
-
-#[cfg(test)]
-mod tests;
+mod target_impls;
 
 #[doc(no_inline)]
 pub use hir::*;
-pub use lang_items::{LangItem, LanguageItems};
 pub use rustc_hir_id::*;
 pub use rustc_span::def_id;
-pub use stability::*;
-pub use target::{MethodKind, Target};
 
 pub use crate::arena::Arena;

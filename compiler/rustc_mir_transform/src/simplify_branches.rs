@@ -23,8 +23,8 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
         }
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(true)
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(true)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -81,14 +81,14 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
                         && let Some(constant) = c.const_.try_eval_bits(tcx, typing_env) =>
                 {
                     let target = targets.target_for_value(constant);
-                    TerminatorKind::Goto { target }
+                    TerminatorKind::goto(target)
                 }
                 TerminatorKind::Assert { target, ref cond, expected, .. }
                     if let Some(c) = try_get_const(&cond, pre_place_const.take())
                         && let Some(constant) = c.const_.try_eval_bool(tcx, typing_env)
                         && constant == expected =>
                 {
-                    TerminatorKind::Goto { target }
+                    TerminatorKind::goto(target)
                 }
                 _ => continue,
             };

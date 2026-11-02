@@ -17,7 +17,7 @@ pub(crate) struct PathInterner {
 impl PathInterner {
     /// Get the id corresponding to `path`.
     ///
-    /// If `path` does not exists in `self`, returns [`None`].
+    /// If `path` does not exist in `self`, returns [`None`].
     pub(crate) fn get(&self, path: &VfsPath) -> Option<FileId> {
         self.map.get_index_of(path).map(|i| FileId(i as u32))
     }
@@ -36,7 +36,7 @@ impl PathInterner {
     ///
     /// # Panics
     ///
-    /// Panics if `id` does not exists in `self`.
+    /// Panics if `id` does not exist in `self`.
     pub(crate) fn lookup(&self, id: FileId) -> &VfsPath {
         self.map.get_index(id.0 as usize).unwrap()
     }

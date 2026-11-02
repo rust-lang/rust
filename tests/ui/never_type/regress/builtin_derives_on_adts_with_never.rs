@@ -1,7 +1,6 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/154900>.
 //
 //@ check-pass
-#![feature(never_type)]
 #![crate_type = "lib"]
 #![warn(unreachable_code)]
 

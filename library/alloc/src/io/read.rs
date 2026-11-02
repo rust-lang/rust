@@ -1,4 +1,3 @@
-use core::cmp;
 use core::mem::{DropGuard, MaybeUninit};
 
 use crate::io::{
@@ -22,8 +21,8 @@ use crate::vec::Vec;
 /// trait.
 ///
 /// Please note that each call to [`read()`] may involve a system call, and
-/// `BufReader`, will be more efficient.
 /// therefore, using something that implements [`BufRead`], such as
+/// `BufReader`, will be more efficient.
 ///
 /// [`BufRead`]: crate::io::BufRead
 ///
@@ -82,8 +81,9 @@ use crate::vec::Vec;
 /// [`&str`]: prim@str
 /// [`std::io`]: crate::io
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(notable_trait)]
+#[doc(notable_trait(color = "transparent"))]
 #[cfg_attr(not(test), rustc_diagnostic_item = "IoRead")]
+#[rustc_must_implement_one_of(read_buf, read)] // Keep this order, it's important for rust-analyzer (the preferred-to-implement method should come first).
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning
     /// how many bytes were read.
@@ -164,7 +164,10 @@ pub trait Read {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        let mut buf = BorrowedBuf::from(buf);
+        self.read_buf(buf.unfilled()).map(|()| buf.len())
+    }
 
     /// Like `read`, except that it reads into a slice of buffers.
     ///
@@ -429,6 +432,7 @@ pub trait Read {
     /// [`ErrorKind::Interrupted`]: crate::io::ErrorKind::Interrupted
     /// [`ErrorKind::UnexpectedEof`]: crate::io::ErrorKind::UnexpectedEof
     #[unstable(feature = "read_buf", issue = "78485")]
+    #[doc(alias("read_exact_buf"))]
     fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_, u8>) -> Result<()> {
         default_read_buf_exact(self, cursor)
     }
@@ -483,6 +487,14 @@ pub trait Read {
     /// The default implementation calls `read` for each byte,
     /// which can be very inefficient for data that's not in memory,
     /// such as `File`. Consider using a `BufReader` in such cases.
+    ///
+    /// # Errors
+    ///
+    /// When the returned iterator calls [`Iterator::next`],
+    /// if it encounters an error of the kind [`ErrorKind::Interrupted`]
+    /// then the error is ignored and it will try to read the byte again.
+    ///
+    /// [`ErrorKind::Interrupted`]: crate::io::ErrorKind::Interrupted
     ///
     /// # Examples
     ///
@@ -628,6 +640,7 @@ pub trait Read {
         self.read_buf_exact(borrowed_buf.unfilled())?;
         // Guard against incorrect `read_buf_exact` implementations.
         assert_eq!(borrowed_buf.len(), N);
+        // SAFETY: Buffer was initialised above.
         Ok(unsafe { MaybeUninit::array_assume_init(buf) })
     }
 
@@ -772,8 +785,8 @@ pub fn read_to_string<R: Read>(mut reader: R) -> Result<String> {
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub const DEFAULT_BUF_SIZE: usize = cfg_select! {
-    target_os = "espidf" => { 512 },
-    _ => { 8 * 1024 }
+    target_os = "espidf" => 512,
+    _ => 8 * 1024,
 };
 
 /// Several `read_to_string` and `read_line` methods in the standard library will
@@ -802,6 +815,7 @@ where
     let len_original = buf.len();
     // SAFETY: invalid UTF-8 discarded before return or unwind
     let buf_vec = unsafe { buf.as_mut_vec() };
+    // ignore-tidy-undocumented-unsafe
     let mut g = DropGuard::new((len_original, buf_vec), |(len, buf)| unsafe {
         buf.set_len(len);
     });
@@ -822,9 +836,11 @@ where
 /// - avoid allocating unless necessary
 /// - avoid overallocating if we know the exact size (#89165)
 /// - avoid passing large buffers to readers that always initialize the free capacity if they perform short reads (#23815, #23820)
+/// - avoid re-initializing unfilled bytes into the spare buffer if we initialized >PROBE_SIZE unfilled bytes in a previous loop (#158008)
 /// - pass large buffers to readers that do not initialize the spare capacity. this can amortize per-call overheads
-/// - and finally pass not-too-small and not-too-large buffers to Windows read APIs because they manage to suffer from both problems
+/// - pass not-too-small and not-too-large buffers to Windows read APIs because they manage to suffer from both problems
 ///   at the same time, i.e. small reads suffer from syscall overhead, all reads incur costs proportional to buffer size (#110650)
+/// - also avoid <4 byte reads as this may split UTF-8 code points, which can be a problem for Windows console reads (#142847)
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub fn default_read_to_end<R: Read + ?Sized>(
@@ -839,6 +855,9 @@ pub fn default_read_to_end<R: Read + ?Sized>(
     let mut max_read_size = size_hint
         .and_then(|s| s.checked_add(1024)?.checked_next_multiple_of(DEFAULT_BUF_SIZE))
         .unwrap_or(DEFAULT_BUF_SIZE);
+
+    // Tracks how many bytes are initialized in the buffer
+    let mut init_until = buf.len();
 
     const PROBE_SIZE: usize = 32;
 
@@ -887,7 +906,7 @@ pub fn default_read_to_end<R: Read + ?Sized>(
     }
 
     loop {
-        if buf.len() == buf.capacity() && buf.capacity() == start_cap {
+        if buf.spare_capacity_mut().len() < PROBE_SIZE && buf.capacity() == start_cap {
             // The buffer might be an exact fit. Let's read into a probe buffer
             // and see if it returns `Ok(0)`. If so, we've avoided an
             // unnecessary doubling of the capacity. But if not, append the
@@ -897,20 +916,42 @@ pub fn default_read_to_end<R: Read + ?Sized>(
             if read == 0 {
                 return Ok(buf.len() - start_len);
             }
+
+            init_until = buf.len();
+            // In the case of very short reads, continue to use the stack buffer
+            // until either we reach the end or we need to reallocate.
+            continue;
         }
 
-        if buf.len() == buf.capacity() {
-            // buf is full, need more space
+        // Avoid unnecessarily short reads by ensuring there's at least PROBE_SIZE space available.
+        // And assert that PROBE_SIZE is always at least large enough to fit any UTF-8 encoded code point.
+        const { assert!(PROBE_SIZE >= char::MAX_LEN_UTF8) }
+        if buf.spare_capacity_mut().len() < PROBE_SIZE {
             buf.try_reserve(PROBE_SIZE)?;
+            // When reallocation occurs, we have to update init_until accordingly
+            // to re-calibrate how many bytes are actually initialized in the buffer
+            init_until = buf.len();
         }
+
+        // We set a threshold of >PROBE_SIZE initialized yet unfilled bytes left in the
+        // spare buffer before determining that we need to initialize more bytes into
+        // the spare buffer
+        let buf_len = if init_until > buf.len() + PROBE_SIZE {
+            init_until - buf.len()
+        } else {
+            usize::min(max_read_size, buf.capacity() - buf.len())
+        };
+        let was_init = init_until >= buf.len() + buf_len;
 
         let mut spare = buf.spare_capacity_mut();
-        let buf_len = cmp::min(spare.len(), max_read_size);
         spare = &mut spare[..buf_len];
         let mut read_buf: BorrowedBuf<'_, u8> = spare.into();
 
-        // Note that we don't track already initialized bytes here, but this is fine
-        // because we explicitly limit the read size
+        if was_init {
+            // SAFETY: These bytes were initialized but not filled in the previous loop
+            unsafe { read_buf.set_init() };
+        }
+
         let mut cursor = read_buf.unfilled();
         let result = loop {
             match r.read_buf(cursor.reborrow()) {
@@ -923,6 +964,10 @@ pub fn default_read_to_end<R: Read + ?Sized>(
 
         let bytes_read = cursor.written();
         let is_init = read_buf.is_init();
+
+        if is_init {
+            init_until = buf.len() + buf_len;
+        }
 
         // SAFETY: BorrowedBuf's invariants mean this much memory is initialized.
         unsafe {
@@ -948,9 +993,11 @@ pub fn default_read_to_end<R: Read + ?Sized>(
             if !is_init {
                 max_read_size = usize::MAX;
             }
-            // we have passed a larger buffer than previously and the
-            // reader still hasn't returned a short read
-            else if buf_len >= max_read_size && bytes_read == buf_len {
+            // the spare buffer has initialized and read in `max_read_size` bytes.
+            // it's possible that we have more than `max_read_size` bytes to read
+            // left, so a larger buffer may be necessary to minimize the number of
+            // iterations of reading in bytes to the buffer
+            else if bytes_read == max_read_size {
                 max_read_size = max_read_size.saturating_mul(2);
             }
         }
@@ -973,6 +1020,7 @@ pub fn default_read_to_string<R: Read + ?Sized>(
     // To prevent extraneously checking the UTF-8-ness of the entire buffer
     // we pass it to our hardcoded `default_read_to_end` implementation which
     // we know is guaranteed to only read data into the end of the buffer.
+    // ignore-tidy-undocumented-unsafe
     unsafe { append_to_string(buf, |b| default_read_to_end(r, b, size_hint)) }
 }
 
@@ -1031,19 +1079,11 @@ pub(super) fn default_read_buf_exact<R: Read + ?Sized>(
     Ok(())
 }
 
-mod sealed {
-    /// This trait being unreachable from outside the crate
-    /// prevents outside implementations of our extension traits.
-    /// This allows adding more trait methods in the future.
-    #[unstable(feature = "sealed", issue = "none")]
-    pub trait Sealed {}
-}
-
 /// Trait for types that can be converted from a fixed-size byte array with a specified endianness
 #[unstable(feature = "read_le_be_internals", reason = "internals", issue = "none")]
 // Once we can use associated consts in the types of method parameters, rewrite this to have
 // `from_le_bytes` and `from_be_bytes` methods, move it to `core`, and make it public.
-pub trait FromEndianBytes: sealed::Sealed + Sized {
+pub impl(self) trait FromEndianBytes: Sized {
     #[doc(hidden)]
     fn read_le_from(r: &mut impl Read) -> Result<Self>;
 
@@ -1053,9 +1093,6 @@ pub trait FromEndianBytes: sealed::Sealed + Sized {
 
 macro_rules! impl_from_endian_bytes {
     ($($t:ty),*$(,)?) => {$(
-        #[unstable(feature = "sealed", issue = "none")]
-        impl sealed::Sealed for $t {}
-
         #[unstable(feature = "read_le_be_internals", reason = "internals", issue = "none")]
         impl FromEndianBytes for $t {
             #[inline]

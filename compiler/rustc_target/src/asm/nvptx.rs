@@ -36,9 +36,9 @@ impl NvptxInlineAsmRegClass {
         _arch: InlineAsmArch,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
-            Self::reg16 => types! { _: I8, I16; },
-            Self::reg32 => types! { _: I8, I16, I32, F32; },
-            Self::reg64 => types! { _: I8, I16, I32, F32, I64, F64; },
+            Self::reg16 => types! { _: I8, I16, F16; },
+            Self::reg32 => types! { _: I8, I16, F16, I32, F32; },
+            Self::reg64 => types! { _: I8, I16, F16, I32, F32, I64, F64; },
         }
     }
 }

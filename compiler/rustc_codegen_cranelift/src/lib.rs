@@ -10,10 +10,9 @@
 #![warn(unused_lifetimes)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate rustc_middle;
 extern crate rustc_abi;
 extern crate rustc_ast;
+extern crate rustc_attr_ir;
 extern crate rustc_codegen_ssa;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
@@ -21,8 +20,11 @@ extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_index;
 extern crate rustc_log;
+extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+#[cfg(feature = "jit")]
+extern crate rustc_structures;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 
@@ -31,7 +33,6 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
-use std::cell::OnceCell;
 use std::env;
 use std::sync::Arc;
 
@@ -39,10 +40,11 @@ use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig, back};
+use rustc_data_structures::unord::UnordSet;
 use rustc_log::tracing::info;
 use rustc_middle::dep_graph::WorkProductMap;
-use rustc_session::Session;
 use rustc_session::config::{NATIVE_CPU, OutputFilenames};
+use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Arch, CfgAbi, Env, Os};
 
@@ -96,7 +98,7 @@ mod prelude {
     pub(crate) use rustc_middle::ty::{
         self, FloatTy, Instance, InstanceKind, IntTy, Ty, TyCtxt, UintTy,
     };
-    pub(crate) use rustc_span::Span;
+    pub(crate) use rustc_span::{Span, bug, span_bug};
 
     pub(crate) use crate::abi::*;
     pub(crate) use crate::base::{codegen_operand, codegen_place};
@@ -117,7 +119,8 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 }
 
 pub struct CraneliftCodegenBackend {
-    pub config: OnceCell<BackendConfig>,
+    // Set by `init` if not already set. (E.g. by cg_clif.)
+    pub config: Option<BackendConfig>,
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
@@ -125,13 +128,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
         "cranelift"
     }
 
-    fn init(&self, sess: &Session) {
-        use rustc_session::config::{InstrumentCoverage, Lto};
-        match sess.lto() {
-            Lto::No | Lto::ThinLocal => {}
-            Lto::Thin | Lto::Fat => {
-                sess.dcx().fatal("LTO is not supported by rustc_codegen_cranelift");
+    fn init(&mut self, sess: &EarlySession) -> CodegenBackendInit {
+        use rustc_session::config::{InstrumentCoverage, LtoCli};
+
+        match (sess.target.requires_lto, sess.early_lto()) {
+            (true, _) | (false, LtoCli::Yes | LtoCli::Fat | LtoCli::NoParam | LtoCli::Thin) => {
+                sess.dcx().fatal("LTO is not supported by rustc_codegen_cranelift")
             }
+            (false, LtoCli::Unspecified | LtoCli::No) => {}
         }
 
         if sess.opts.cg.instrument_coverage() != InstrumentCoverage::No {
@@ -139,7 +143,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 .fatal("`-Cinstrument-coverage` is LLVM specific and not supported by Cranelift");
         }
 
-        let config = self.config.get_or_init(|| {
+        // Set `config` if not already set.
+        let config = self.config.get_or_insert_with(|| {
             BackendConfig::from_opts(&sess.opts.cg.llvm_args)
                 .unwrap_or_else(|err| sess.dcx().fatal(err))
         });
@@ -147,13 +152,16 @@ impl CodegenBackend for CraneliftCodegenBackend {
         if config.jit_mode && !sess.opts.output_types.should_codegen() {
             sess.dcx().fatal("JIT mode doesn't work with `cargo check`");
         }
+
+        CodegenBackendInit {
+            global_backend_features: vec![],
+            replaced_intrinsics: vec![],
+            fallback_intrinsics: vec![sym::type_id_eq],
+            thin_lto_supported: false,
+        }
     }
 
-    fn thin_lto_supported(&self) -> bool {
-        false
-    }
-
-    fn target_config(&self, sess: &Session) -> TargetConfig {
+    fn target_config(&self, sess: &EarlySession) -> TargetConfig {
         // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
         let target_features = match sess.target.arch {
             Arch::X86_64 if sess.target.os != Os::None => {
@@ -170,8 +178,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
             },
             _ => vec![],
         };
-        // FIXME do `unstable_target_features` properly
-        let unstable_target_features = target_features.clone();
 
         // FIXME(f16_f128): `rustc_codegen_llvm` currently disables support on Windows GNU
         // targets due to GCC using a different ABI than LLVM. Therefore `f16` and `f128`
@@ -186,12 +192,12 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let has_reliable_f128_math = has_reliable_f16_f128 && sess.target.env == Env::Gnu;
 
         TargetConfig {
-            target_features,
-            unstable_target_features,
+            internal_target_features: UnordSet::from_iter(target_features),
             // `rustc_codegen_cranelift` polyfills functionality not yet
             // available in Cranelift.
             has_reliable_f16: has_reliable_f16_f128,
             has_reliable_f16_math: has_reliable_f16_f128,
+            has_reliable_f16b: false,
             has_reliable_f128: has_reliable_f16_f128,
             has_reliable_f128_math,
         }
@@ -217,7 +223,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
         info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
-        let config = self.config.get().unwrap();
+        let config = self.config.as_ref().unwrap();
         if config.jit_mode {
             #[cfg(feature = "jit")]
             driver::jit::run_jit(tcx, self.target_cpu(tcx.sess), config.jit_args.clone());
@@ -233,17 +239,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
+        incr_comp_session: Option<&IncrCompSession>,
         _outputs: &OutputFilenames,
         crate_info: &CrateInfo,
     ) -> (CompiledModules, WorkProductMap) {
         ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<driver::aot::AotDriver>>()
             .unwrap()
-            .join(sess, crate_info)
-    }
-
-    fn fallback_intrinsics(&self) -> Vec<Symbol> {
-        vec![sym::type_id_eq]
+            .join(sess, incr_comp_session, crate_info)
     }
 }
 
@@ -257,11 +260,11 @@ fn enable_verifier(sess: &Session) -> bool {
         || env::var("CG_CLIF_ENABLE_VERIFIER").as_deref() == Ok("1")
 }
 
-fn target_triple(sess: &Session) -> target_lexicon::Triple {
-    // Use versioned target triple to make `OperatingSystem::MacOSX(...)`
+fn target_tuple(sess: &Session) -> target_lexicon::Triple {
+    // Use versioned target tuple to make `OperatingSystem::MacOSX(...)`
     // contain a value, which we use when emitting `LC_BUILD_VERSION`.
     match back::versioned_llvm_target(sess).parse() {
-        Ok(triple) => triple,
+        Ok(tuple) => tuple,
         Err(err) => sess.dcx().fatal(format!("target not recognized: {}", err)),
     }
 }
@@ -269,7 +272,7 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
 fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
     use target_lexicon::BinaryFormat;
 
-    let target_triple = crate::target_triple(sess);
+    let target_tuple = crate::target_tuple(sess);
 
     let mut flags_builder = settings::builder();
     flags_builder.set("is_pic", if jit { "false" } else { "true" }).unwrap();
@@ -284,7 +287,7 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
         .set("preserve_frame_pointers", if preserve_frame_pointer { "true" } else { "false" })
         .unwrap();
 
-    let tls_model = match target_triple.binary_format {
+    let tls_model = match target_tuple.binary_format {
         BinaryFormat::Elf => "elf_gd",
         BinaryFormat::Macho => "macho",
         BinaryFormat::Coff => "coff",
@@ -314,19 +317,19 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
         }
     }
 
-    if let target_lexicon::OperatingSystem::Windows = target_triple.operating_system {
+    if let target_lexicon::OperatingSystem::Windows = target_tuple.operating_system {
         // FIXME remove dependency on this from the Rust ABI. cc bytecodealliance/wasmtime#9510
         flags_builder.enable("enable_multi_ret_implicit_sret").unwrap();
     }
 
-    if let target_lexicon::Architecture::S390x = target_triple.architecture {
+    if let target_lexicon::Architecture::S390x = target_tuple.architecture {
         // FIXME remove dependency on this from the Rust ABI. cc bytecodealliance/wasmtime#9510
         flags_builder.enable("enable_multi_ret_implicit_sret").unwrap();
     }
 
     if let target_lexicon::Architecture::Aarch64(_)
     | target_lexicon::Architecture::Riscv64(_)
-    | target_lexicon::Architecture::X86_64 = target_triple.architecture
+    | target_lexicon::Architecture::X86_64 = target_tuple.architecture
     {
         // Windows depends on stack probes to grow the committed part of the stack.
         // On other platforms it helps prevents stack smashing.
@@ -344,8 +347,8 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
         Some(NATIVE_CPU) => cranelift_native::builder_with_options(true).unwrap(),
         Some(value) => {
             let mut builder =
-                cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
-                    sess.dcx().fatal(format!("can't compile for {}: {}", target_triple, err));
+                cranelift_codegen::isa::lookup(target_tuple.clone()).unwrap_or_else(|err| {
+                    sess.dcx().fatal(format!("can't compile for {}: {}", target_tuple, err));
                 });
             if builder.enable(value).is_err() {
                 sess.dcx()
@@ -355,10 +358,10 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
         }
         None => {
             let mut builder =
-                cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
-                    sess.dcx().fatal(format!("can't compile for {}: {}", target_triple, err));
+                cranelift_codegen::isa::lookup(target_tuple.clone()).unwrap_or_else(|err| {
+                    sess.dcx().fatal(format!("can't compile for {}: {}", target_tuple, err));
                 });
-            if target_triple.architecture == target_lexicon::Architecture::X86_64 {
+            if target_tuple.architecture == target_lexicon::Architecture::X86_64 {
                 // Only set the target cpu on x86_64 as Cranelift is missing
                 // the target cpu list for most other targets.
                 builder.enable(sess.target.cpu.as_ref()).unwrap();
@@ -376,5 +379,5 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[unsafe(no_mangle)]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    Box::new(CraneliftCodegenBackend { config: OnceCell::new() })
+    Box::new(CraneliftCodegenBackend { config: None })
 }

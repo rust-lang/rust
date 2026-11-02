@@ -3,6 +3,8 @@ error: the `inline` attribute cannot be used on constants
    |
 LL | #[inline]
    |   ^^^^^^
+...
+LL | const FOO: u8 = 0;
    |
    = help: the `inline` attribute can only be applied to functions
 
@@ -11,6 +13,8 @@ error: the `target_feature` attribute cannot be used on constants
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | const FOO: u8 = 0;
    |
    = help: the `target_feature` attribute can only be applied to functions
 

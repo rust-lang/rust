@@ -123,6 +123,50 @@ fn should_not_lint(
     }
 }
 
+fn should_lint_mut_ref(x: Option<&mut i32>) {
+    if let Some(&mut ref mut x) = x {
+        //~^ needless_borrowed_reference
+        *x = 0;
+    }
+}
+
+fn should_not_lint_mut_ref_nested(x: Option<&mut &mut i32>) {
+    if let Some(&mut &mut ref mut x) = x {
+        *x = 0;
+    }
+}
+
+fn should_not_lint_mut_ref_used_after(x: Option<&mut i32>) -> Option<&mut i32> {
+    if let Some(&mut ref mut x) = x {
+        *x = 0;
+    }
+    x
+}
+
+struct WithDrop<'a>(Option<&'a mut i32>);
+impl Drop for WithDrop<'_> {
+    fn drop(&mut self) {}
+}
+
+fn should_not_lint_mut_ref_drop(x: WithDrop<'_>) {
+    if let Some(&mut ref mut x) = x.0 {
+        *x = 0;
+    }
+}
+
+fn identity<T>(value: T) -> T {
+    value
+}
+
+fn inferred_scrutinee(reference: &mut i32) {
+    let val = identity(Some(reference));
+
+    if let Some(&mut ref mut x) = val {
+        //~^ needless_borrowed_reference
+        *x = 0;
+    }
+}
+
 enum Animal {
     Cat(u64),
     Dog(u64),

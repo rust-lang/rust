@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::res::MaybeResPath as _;
-use clippy_utils::source::{SpanExt, snippet, snippet_with_applicability};
+use clippy_utils::source::{SpanExt as _, snippet, snippet_with_applicability};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::{Visitable, for_each_expr_without_closures};
 use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, sym};
@@ -9,7 +9,7 @@ use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, FnRetTy, HirId, Lit, Node, Path, QPath, TyKind, UnOp};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, FloatTy, GenericArg, InferTy, Ty};
 use rustc_span::Symbol;
@@ -35,13 +35,13 @@ pub(super) fn check<'tcx>(
         // Ignore casts to e.g. type aliases and infer types
         // - p as pointer_alias
         // - p as _
-        && let TyKind::Ptr(to_pointee) = cast_to_hir.kind
+        && let TyKind::Ptr(to_pointee, _) = cast_to_hir.kind
     {
-        match to_pointee.ty.kind {
+        match to_pointee.kind {
             // Ignore casts to pointers that are aliases or cfg dependant, e.g.
             // - p as *const std::ffi::c_char (alias)
             // - p as *const std::os::raw::c_char (cfg dependant)
-            TyKind::Path(qpath) if is_ty_alias(&qpath) || is_hir_ty_cfg_dependant(cx, to_pointee.ty) => {
+            TyKind::Path(qpath) if is_ty_alias(&qpath) || is_hir_ty_cfg_dependant(cx, to_pointee) => {
                 return false;
             },
             // Ignore `p as *const _`
@@ -184,7 +184,7 @@ pub(super) fn check<'tcx>(
         }
 
         if let Some(id) = cast_expr.res_local_id()
-            && !cx.tcx.hir_span(id).eq_ctxt(cast_expr.span)
+            && cx.tcx.hir_span(id).ctxt() != cast_expr.span.ctxt()
         {
             // Binding context is different than the identifiers context.
             // Weird macro wizardry could be involved here.

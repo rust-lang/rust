@@ -7,12 +7,11 @@ use either::{Either, Left, Right};
 use rustc_abi as abi;
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_hir::def::Namespace;
-use rustc_middle::mir::interpret::ScalarSizeMismatch;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
-use rustc_middle::{bug, mir, span_bug, ty};
-use rustc_span::DUMMY_SP;
+use rustc_middle::{mir, ty};
+use rustc_span::{DUMMY_SP, bug, span_bug};
 use tracing::field::Empty;
 use tracing::trace;
 
@@ -342,12 +341,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn to_scalar_int(&self) -> InterpResult<'tcx, ScalarInt> {
         let s = self.to_scalar().to_scalar_int()?;
-        if s.size() != self.layout.size {
-            throw_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
-                target_size: self.layout.size.bytes(),
-                data_size: s.size().bytes(),
-            }));
-        }
+        assert_eq!(s.size(), self.layout.size, "scalar immediate size does not match layout");
         interp_ok(s)
     }
 
@@ -640,7 +634,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Try returning an immediate for the operand. If the layout does not permit loading this as an
     /// immediate, return where in memory we can find the data.
     /// Note that for a given layout, this operation will either always return Left or Right!
-    /// succeed!  Whether it returns Left depends on whether the layout can be represented
+    /// Whether it returns Left depends on whether the layout can be represented
     /// in an `Immediate`, not on which data is stored there currently.
     ///
     /// This is an internal function that should not usually be used; call `read_immediate` instead.
@@ -703,7 +697,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         op: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
-        self.read_scalar(op)?.to_pointer(self)
+        interp_ok(self.read_scalar(op)?.to_pointer(self))
     }
     /// Read a pointer-sized unsigned integer from a place.
     pub fn read_target_usize(
@@ -728,32 +722,38 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(s)
     }
 
-    /// Read from a local of the current frame. Convenience method for [`InterpCx::local_at_frame_to_op`].
+    /// Read from a local of a current frame.
+    /// Will not access memory, instead an indirect `Operand` is returned.
     pub fn local_to_op(
         &self,
         local: mir::Local,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        self.local_at_frame_to_op(self.frame(), local, layout)
-    }
-
-    /// Read from a local of a given frame.
-    /// Will not access memory, instead an indirect `Operand` is returned.
-    ///
-    /// This is public because it is used by [Aquascope](https://github.com/cognitive-engineering-lab/aquascope/)
-    /// to get an OpTy from a local.
-    pub fn local_at_frame_to_op(
-        &self,
-        frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
-        local: mir::Local,
-        layout: Option<TyAndLayout<'tcx>>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let frame = self.frame();
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = *frame.locals[local].access()?;
         if matches!(op, Operand::Immediate(_)) {
             assert!(!layout.is_unsized());
+            if !self.validation_in_progress() {
+                M::after_local_read(self, local)?;
+            }
         }
-        M::after_local_read(self, frame, local)?;
+        interp_ok(OpTy { op, layout })
+    }
+
+    /// Tools like Priroda and [Aquascope](https://github.com/cognitive-engineering-lab/aquascope/)
+    /// need to access any local without triggering any access hook, since these are not actual
+    /// AM-level accesses. Do not call this from inside the interpreter!
+    ///
+    /// Remember to use `ghost_run` when accessing memory for such purposes, to suppress
+    /// the access hooks for that as well.
+    pub fn ghost_local_in_frame_to_op(
+        &self,
+        frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
+        local: mir::Local,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let layout = self.layout_of_local(frame, local, None)?;
+        let op = *frame.locals[local].access()?;
         interp_ok(OpTy { op, layout })
     }
 

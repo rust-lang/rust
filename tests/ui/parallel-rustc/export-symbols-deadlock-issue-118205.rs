@@ -1,8 +1,6 @@
 // Test for #118205, which causes a deadlock bug
-//
-//@ compile-flags: -Z threads=16
+
 //@ build-pass
-//@ compare-output-by-lines
 
 pub static GLOBAL: isize = 3;
 

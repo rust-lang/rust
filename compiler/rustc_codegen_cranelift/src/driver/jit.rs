@@ -25,7 +25,11 @@ fn create_jit_module(
     let mut jit_builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
     crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
     jit_builder.symbol_lookup_fn(dep_symbol_lookup_fn(tcx.sess, crate_info.clone()));
-    let mut jit_module = UnwindModule::new(JITModule::new(jit_builder), false);
+    let mut jit_module = UnwindModule::new(
+        JITModule::new(jit_builder),
+        &rustc_symbol_mangling::eh_personality_symbol(tcx),
+        false,
+    );
 
     let cx = DebugContext::new(tcx, jit_module.isa(), false, "dummy_cgu_name");
 
@@ -37,7 +41,7 @@ fn create_jit_module(
 }
 
 pub(crate) fn run_jit(tcx: TyCtxt<'_>, target_cpu: String, jit_args: Vec<String>) -> ! {
-    if !tcx.crate_types().contains(&rustc_session::config::CrateType::Executable) {
+    if !tcx.crate_types().contains(&rustc_structures::CrateType::Executable) {
         tcx.dcx().fatal("can't jit non-executable crate");
     }
 
@@ -180,7 +184,7 @@ fn dep_symbol_lookup_fn(
 
     let mut dylib_paths = Vec::new();
 
-    let data = &crate_info.dependency_formats[&rustc_session::config::CrateType::Executable];
+    let data = &crate_info.dependency_formats[&rustc_structures::CrateType::Executable];
     // `used_crates` is in reverse postorder in terms of dependencies. Reverse the order here to
     // get a postorder which ensures that all dependencies of a dylib are loaded before the dylib
     // itself. This helps the dynamic linker to find dylibs not in the regular dynamic library

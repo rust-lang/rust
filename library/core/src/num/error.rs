@@ -1,6 +1,5 @@
 //! Error types for conversion to integral types.
 
-use crate::convert::Infallible;
 use crate::error::Error;
 use crate::fmt;
 
@@ -13,8 +12,8 @@ impl TryFromIntError {
     /// Outputs the detailed cause of converting an integer failing.
     #[must_use]
     #[unstable(feature = "try_from_int_error_kind", issue = "153978")]
-    pub const fn kind(&self) -> &IntErrorKind {
-        &self.0
+    pub const fn kind(&self) -> IntErrorKind {
+        self.0
     }
 }
 
@@ -35,23 +34,12 @@ impl fmt::Display for TryFromIntError {
 #[stable(feature = "try_from", since = "1.34.0")]
 impl Error for TryFromIntError {}
 
-#[stable(feature = "try_from", since = "1.34.0")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-const impl From<Infallible> for TryFromIntError {
-    fn from(x: Infallible) -> TryFromIntError {
-        match x {}
-    }
-}
-
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl From<!> for TryFromIntError {
     #[inline]
     fn from(never: !) -> TryFromIntError {
-        // Match rather than coerce to make sure that code like
-        // `From<Infallible> for TryFromIntError` above will keep working
-        // when `Infallible` becomes an alias to `!`.
-        match never {}
+        never
     }
 }
 

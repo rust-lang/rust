@@ -1,4 +1,4 @@
-use crate::io;
+use crate::{fmt, io};
 
 pub fn errno() -> io::RawOsError {
     // Not used in Motor OS because it is ambiguous: Motor OS
@@ -50,17 +50,19 @@ pub fn decode_error_kind(code: io::RawOsError) -> io::ErrorKind {
         moto_rt::Error::BadHandle => io::ErrorKind::InvalidInput,
         moto_rt::Error::FileTooLarge => io::ErrorKind::FileTooLarge,
         moto_rt::Error::NotConnected => io::ErrorKind::NotConnected,
+        moto_rt::Error::ConnectionReset => io::ErrorKind::ConnectionReset,
         moto_rt::Error::StorageFull => io::ErrorKind::StorageFull,
         moto_rt::Error::InvalidData => io::ErrorKind::InvalidData,
         _ => io::ErrorKind::Uncategorized,
     }
 }
 
-pub fn error_string(errno: io::RawOsError) -> String {
-    let error: moto_rt::Error = match errno {
+pub fn format_error(errno: io::RawOsError, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let error = match errno {
         x if x < 0 => moto_rt::Error::Unknown,
         x if x > u16::MAX.into() => moto_rt::Error::Unknown,
-        x => (x as moto_rt::ErrorCode).into(), /* u16 */
+        x => moto_rt::Error::from(x as moto_rt::ErrorCode), /* u16 */
     };
-    format!("{}", error)
+
+    write!(f, "{error}")
 }

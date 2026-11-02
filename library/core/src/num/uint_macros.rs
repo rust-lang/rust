@@ -504,74 +504,138 @@ macro_rules! uint_impl {
             return intrinsics::rotate_right(self, n);
         }
 
-        /// Performs a left funnel shift (concatenates `self` with `rhs`, with `self`
-        /// making up the most significant half, then shifts the combined value left
-        /// by `n`, and most significant half is extracted to produce the result).
+        /// Performs a left funnel shift.
         ///
-        /// Please note this isn't the same operation as the `<<` shifting operator or
-        /// [`rotate_left`](Self::rotate_left), although `a.funnel_shl(a, n)` is *equivalent*
-        /// to `a.rotate_left(n)`.
+        /// This operation can be thought of as concatenating `self` and `right` into an
+        /// integer twice the size of
+        #[doc = concat!("`", stringify!($SelfT) , "`,")]
+        /// performing a left shift by `n`, and returning the **left half** of the result.
+        ///
+        /// The name comes from "funneling" a wider integer to a narrower integer.
         ///
         /// # Panics
         ///
-        /// If `n` is greater than or equal to the number of bits in `self`
+        /// ## Overflow behavior
+        ///
+        /// If overflow checks are enabled (default in debug mode), this function will panic if `n`
+        /// is greater than or equal to the number of bits in `self`. If overflow checks are
+        /// disabled (default in release mode), there is no panic; instead, the value is shifted
+        /// by `n % Self::BITS`.
+        // FIXME(wrapping_funnel_shifts): link to `wrapping_funnel_shl` when stable.
         ///
         /// # Examples
         ///
-        /// Basic usage:
-        ///
         /// ```
-        /// #![feature(funnel_shifts)]
-        #[doc = concat!("let a = ", $rot_op, stringify!($SelfT), ";")]
-        #[doc = concat!("let b = ", $fsh_op, stringify!($SelfT), ";")]
-        #[doc = concat!("let m = ", $fshl_result, ";")]
+        #[doc = concat!("let a = ", $rot_op, "_", stringify!($SelfT), ";")]
+        #[doc = concat!("let b = ", $fsh_op, "_", stringify!($SelfT), ";")]
         ///
-        #[doc = concat!("assert_eq!(a.funnel_shl(b, ", $rot, "), m);")]
+        #[doc = concat!("assert_eq!(a.funnel_shl(b, ", $rot, "), ", $fshl_result, ");")]
+        ///
+        /// // Using zeros as the right operand acts as a normal shift left
+        #[doc = concat!("assert_eq!(a.funnel_shl(0, ", $rot, "), a << ", $rot, ");")]
+        ///
+        /// // Shifting by 0 returns `self` unchanged
+        #[doc = concat!("assert_eq!(a.funnel_shl(b, 0), a);")]
+        ///
+        /// // Using the same value as the right operand acts as a rotate
+        #[doc = concat!("assert_eq!(a.funnel_shl(a, ", $rot, "), a.rotate_left(", $rot, "));")]
         /// ```
-        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
-        #[unstable(feature = "funnel_shifts", issue = "145686")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
+        ///
+        /// Note that while `funnel_shl` can act as a rotate, it does not allow for
+        /// rotating by an unbounded amount like [`rotate_left`](Self::rotate_left) does:
+        ///
+        /// ```should_panic
+        /// # #![feature(cfg_overflow_checks)]
+        /// # #[cfg(overflow_checks)] {
+        #[doc = concat!("let a = ", stringify!($SelfT), "::MAX;")]
+        /// // Okay
+        #[doc = concat!("let _ = a.rotate_left(", stringify!($SelfT), "::BITS);")]
+        /// // Panics (only when overflow checks are enabled)
+        #[doc = concat!("let _ = a.funnel_shl(a, ", stringify!($SelfT), "::BITS);")]
+        /// # }
+        /// # #[cfg(not(overflow_checks))] panic!("fulfill should_panic");
+        /// ```
+        #[rustc_const_stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
-        pub const fn funnel_shl(self, rhs: Self, n: u32) -> Self {
-            assert!(n < Self::BITS, "attempt to funnel shift left with overflow");
-            // SAFETY: just checked that `shift` is in-range
-            unsafe { self.unchecked_funnel_shl(rhs, n) }
+        #[rustc_inherit_overflow_checks]
+        pub const fn funnel_shl(self, right: Self, n: u32) -> Self {
+            if intrinsics::overflow_checks() {
+                assert!(n < Self::BITS, "attempt to funnel shift left with overflow");
+            }
+            // SAFETY: `n` is wrapped to within range
+            unsafe {
+                let n = n & (Self::BITS - 1);
+                self.unchecked_funnel_shl(right, n)
+            }
         }
 
-        /// Performs a right funnel shift (concatenates `self` and `rhs`, with `self`
-        /// making up the most significant half, then shifts the combined value right
-        /// by `n`, and least significant half is extracted to produce the result).
+        /// Performs a right funnel shift.
         ///
-        /// Please note this isn't the same operation as the `>>` shifting operator or
-        /// [`rotate_right`](Self::rotate_right), although `a.funnel_shr(a, n)` is *equivalent*
-        /// to `a.rotate_right(n)`.
+        /// This operation can be thought of as concatenating `self` and `right` into an
+        /// integer twice the size of
+        #[doc = concat!("`", stringify!($SelfT) , "`,")]
+        /// performing a right shift by `n`, and returning the **right half** of the result.
+        ///
+        /// The name comes from "funneling" a wider integer to a narrower integer.
         ///
         /// # Panics
         ///
-        /// If `n` is greater than or equal to the number of bits in `self`
+        /// ## Overflow behavior
+        ///
+        /// If overflow checks are enabled (default in debug mode), this function will panic if `n`
+        /// is greater than or equal to the number of bits in `self`. If overflow checks are
+        /// disabled (default in release mode), there is no panic; instead, the value is shifted
+        /// by `n % Self::BITS`.
+        // FIXME(wrapping_funnel_shifts): link to `wrapping_funnel_shr` when stable.
         ///
         /// # Examples
         ///
-        /// Basic usage:
-        ///
         /// ```
-        /// #![feature(funnel_shifts)]
-        #[doc = concat!("let a = ", $rot_op, stringify!($SelfT), ";")]
-        #[doc = concat!("let b = ", $fsh_op, stringify!($SelfT), ";")]
-        #[doc = concat!("let m = ", $fshr_result, ";")]
+        #[doc = concat!("let a = ", $rot_op, "_", stringify!($SelfT), ";")]
+        #[doc = concat!("let b = ", $fsh_op, "_", stringify!($SelfT), ";")]
         ///
-        #[doc = concat!("assert_eq!(a.funnel_shr(b, ", $rot, "), m);")]
+        #[doc = concat!("assert_eq!(a.funnel_shr(b, ", $rot, "), ", $fshr_result, ");")]
+        ///
+        /// // Using zeros as the left operand acts as a normal shift right
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".funnel_shr(a, ", $rot, "), a >> ", $rot, ");")]
+        ///
+        /// // Shifting by 0 returns `right` unchanged
+        #[doc = concat!("assert_eq!(b.funnel_shr(a, 0), a);")]
+        ///
+        /// // Using the same value as the right operand acts as a rotate
+        #[doc = concat!("assert_eq!(a.funnel_shr(a, ", $rot, "), a.rotate_right(", $rot, "));")]
         /// ```
-        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
-        #[unstable(feature = "funnel_shifts", issue = "145686")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
+        ///
+        /// Note that while `funnel_shr` can act as a rotate, it does not allow for
+        /// rotating by an unbounded amount like [`rotate_right`](Self::rotate_right) does:
+        ///
+        /// ```should_panic
+        /// # #![feature(cfg_overflow_checks)]
+        /// # #[cfg(overflow_checks)] {
+        #[doc = concat!("let a = ", stringify!($SelfT), "::MAX;")]
+        /// // Okay
+        #[doc = concat!("let _ = a.rotate_right(", stringify!($SelfT), "::BITS);")]
+        /// // Panics (only when overflow checks are enabled)
+        #[doc = concat!("let _ = a.funnel_shr(a, ", stringify!($SelfT), "::BITS);")]
+        /// # }
+        /// # #[cfg(not(overflow_checks))] panic!("fulfill should_panic");
+        /// ```
+        #[rustc_const_stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
-        pub const fn funnel_shr(self, rhs: Self, n: u32) -> Self {
-            assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
-            // SAFETY: just checked that `shift` is in-range
-            unsafe { self.unchecked_funnel_shr(rhs, n) }
+        #[rustc_inherit_overflow_checks]
+        pub const fn funnel_shr(self, right: Self, n: u32) -> Self {
+            if intrinsics::overflow_checks() {
+                assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
+            }
+            // SAFETY: `n` is wrapped to within range
+            unsafe {
+                let n = n & (Self::BITS - 1);
+                self.unchecked_funnel_shr(right, n)
+            }
         }
 
         /// Unchecked funnel shift left.
@@ -582,13 +646,13 @@ macro_rules! uint_impl {
         #[doc = concat!("`", stringify!($SelfT) , "::BITS`,")]
         /// i.e. when [`funnel_shl`](Self::funnel_shl) would panic.
         ///
-        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
-        #[unstable(feature = "funnel_shifts", issue = "145686")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_allow_const_fn_unstable(const_trait_impl)]
+        #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
         #[track_caller]
-        pub const unsafe fn unchecked_funnel_shl(self, low: Self, n: u32) -> Self {
+        pub const unsafe fn unchecked_funnel_shl(self, right: Self, n: u32) -> Self {
             assert_unsafe_precondition!(
                 check_language_ub,
                 concat!(stringify!($SelfT), "::unchecked_funnel_shl cannot overflow"),
@@ -597,7 +661,7 @@ macro_rules! uint_impl {
 
             // SAFETY: this is guaranteed to be safe by the caller.
             unsafe {
-                intrinsics::unchecked_funnel_shl(self, low, n)
+                intrinsics::unchecked_funnel_shl(self, right, n)
             }
         }
 
@@ -609,13 +673,13 @@ macro_rules! uint_impl {
         #[doc = concat!("`", stringify!($SelfT) , "::BITS`,")]
         /// i.e. when [`funnel_shr`](Self::funnel_shr) would panic.
         ///
-        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
-        #[unstable(feature = "funnel_shifts", issue = "145686")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_allow_const_fn_unstable(const_trait_impl)]
+        #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
         #[track_caller]
-        pub const unsafe fn unchecked_funnel_shr(self, low: Self, n: u32) -> Self {
+        pub const unsafe fn unchecked_funnel_shr(self, right: Self, n: u32) -> Self {
             assert_unsafe_precondition!(
                 check_language_ub,
                 concat!(stringify!($SelfT), "::unchecked_funnel_shr cannot overflow"),
@@ -624,7 +688,7 @@ macro_rules! uint_impl {
 
             // SAFETY: this is guaranteed to be safe by the caller.
             unsafe {
-                intrinsics::unchecked_funnel_shr(self, low, n)
+                intrinsics::unchecked_funnel_shr(self, right, n)
             }
         }
 
@@ -945,9 +1009,8 @@ macro_rules! uint_impl {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self + rhs > ", stringify!($SelfT), "::MAX`,")]
-        /// i.e. when [`checked_add`] would return `None`.
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_add`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_add`]: ", stringify!($SelfT), "::checked_add")]
@@ -1124,9 +1187,8 @@ macro_rules! uint_impl {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self - rhs < ", stringify!($SelfT), "::MIN`,")]
-        /// i.e. when [`checked_sub`] would return `None`.
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_sub`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_sub`]: ", stringify!($SelfT), "::checked_sub")]
@@ -1333,9 +1395,8 @@ macro_rules! uint_impl {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self * rhs > ", stringify!($SelfT), "::MAX`,")]
-        /// i.e. when [`checked_mul`] would return `None`.
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_mul`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_mul`]: ", stringify!($SelfT), "::checked_mul")]
@@ -1673,48 +1734,45 @@ macro_rules! uint_impl {
             self % rhs
         }
 
-        /// Same value as `self | other`, but UB if any bit position is set in both inputs.
+        /// Disjoint, bitwise or. Computes `self | rhs`, assuming no overlapping one bits.
         ///
-        /// This is a situational micro-optimization for places where you'd rather
-        /// use addition on some platforms and bitwise or on other platforms, based
-        /// on exactly which instructions combine better with whatever else you're
-        /// doing.  Note that there's no reason to bother using this for places
-        /// where it's clear from the operations involved that they can't overlap.
-        /// For example, if you're combining `u16`s into a `u32` with
-        /// `((a as u32) << 16) | (b as u32)`, that's fine, as the backend will
-        /// know those sides of the `|` are disjoint without needing help.
+        /// Practically, this requires that `self | rhs`, `self ^ rhs`, and `self + rhs` all
+        /// yield the same result, allowing for any of the three to be emitted in codegen --
+        /// depending on whichever is cheapest.
         ///
         /// # Examples
         ///
         /// ```
         /// #![feature(disjoint_bitor)]
         ///
-        /// // SAFETY: `1` and `4` have no bits in common.
-        /// unsafe {
-        #[doc = concat!("    assert_eq!(1_", stringify!($SelfT), ".unchecked_disjoint_bitor(4), 5);")]
-        /// }
+        /// assert_eq!(
+        ///     // SAFETY: `1` and `4` have no ones in common.
+        #[doc = concat!("    unsafe { 1_", stringify!($SelfT), ".unchecked_disjoint_bitor(4) },")]
+        ///     5,
+        /// );
         /// ```
         ///
         /// # Safety
         ///
-        /// Requires that `(self & other) == 0`, otherwise it's immediate UB.
-        ///
-        /// Equivalently, requires that `(self | other) == (self + other)`.
+        /// This results in undefined behaviour if `self` and `rhs` have any overlapping one
+        /// bits, i.e. `lhs & rhs` must be zero.
         #[unstable(feature = "disjoint_bitor", issue = "135758")]
         #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
         #[inline]
-        pub const unsafe fn unchecked_disjoint_bitor(self, other: Self) -> Self {
+        pub const unsafe fn unchecked_disjoint_bitor(self, rhs: Self) -> Self {
             assert_unsafe_precondition!(
                 check_language_ub,
-                concat!(stringify!($SelfT), "::unchecked_disjoint_bitor cannot have overlapping bits"),
+                concat!(stringify!($SelfT), "::unchecked_disjoint_bitor cannot bitor overlapping ones"),
                 (
                     lhs: $SelfT = self,
-                    rhs: $SelfT = other,
+                    rhs: $SelfT = rhs,
                 ) => (lhs & rhs) == 0,
             );
 
-            // SAFETY: Same precondition
-            unsafe { intrinsics::disjoint_bitor(self, other) }
+            // SAFETY: Same precondition.
+            unsafe { intrinsics::disjoint_bitor(self, rhs) }
         }
 
         /// Returns the logarithm of the number with respect to an arbitrary base,
@@ -3676,7 +3734,6 @@ macro_rules! uint_impl {
             self / rhs
         }
 
-
         /// Calculates the least remainder of `self` when divided by
         /// `rhs`.
         ///
@@ -3852,28 +3909,6 @@ macro_rules! uint_impl {
             self.count_ones() == 1
         }
 
-        // Returns one less than next power of two.
-        // (For 8u8 next power of two is 8u8 and for 6u8 it is 8u8)
-        //
-        // 8u8.one_less_than_next_power_of_two() == 7
-        // 6u8.one_less_than_next_power_of_two() == 7
-        //
-        // This method cannot overflow, as in the `next_power_of_two`
-        // overflow cases it instead ends up returning the maximum value
-        // of the type, and can return 0 for 0.
-        #[inline]
-        const fn one_less_than_next_power_of_two(self) -> Self {
-            if self <= 1 { return 0; }
-
-            let p = self - 1;
-            // SAFETY: Because `p > 0`, it cannot consist entirely of leading zeros.
-            // That means the shift is always in-bounds, and some processors
-            // (such as intel pre-haswell) have more efficient ctlz
-            // intrinsics when the argument is non-zero.
-            let z = unsafe { intrinsics::ctlz_nonzero(p) };
-            <$SelfT>::MAX >> z
-        }
-
         /// Returns the smallest power of two greater than or equal to `self`.
         ///
         /// When return value overflows (i.e., `self > (1 << (N-1))` for type
@@ -3894,7 +3929,15 @@ macro_rules! uint_impl {
         #[inline]
         #[rustc_inherit_overflow_checks]
         pub const fn next_power_of_two(self) -> Self {
-            self.one_less_than_next_power_of_two() + 1
+            if let Some(npot) = self.checked_next_power_of_two() {
+                npot
+            } else {
+                #[expect(arithmetic_overflow)]
+                {
+                    // Zero but in a way that panics in debug
+                    Self::MAX + 1
+                }
+            }
         }
 
         /// Returns the smallest power of two greater than or equal to `self`. If
@@ -3914,7 +3957,13 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn checked_next_power_of_two(self) -> Option<Self> {
-            self.one_less_than_next_power_of_two().checked_add(1)
+            let m1 = self.saturating_sub(1);
+            if m1.cast_signed() >= 0 {
+                let exp = m1.bit_width();
+                Some(1 << exp)
+            } else {
+                None
+            }
         }
 
         /// Returns the smallest power of two greater than or equal to `n`. If
@@ -3933,10 +3982,11 @@ macro_rules! uint_impl {
         #[inline]
         #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
                    reason = "needs decision on wrapping behavior")]
+        #[rustc_const_unstable(feature = "wrapping_next_power_of_two", issue = "32463")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn wrapping_next_power_of_two(self) -> Self {
-            self.one_less_than_next_power_of_two().wrapping_add(1)
+            self.checked_next_power_of_two().unwrap_or(0)
         }
 
         /// Returns the memory representation of this integer as a byte array in
@@ -4128,7 +4178,7 @@ macro_rules! uint_impl {
         #[rustc_promotable]
         #[inline(always)]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-        #[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on this type")]
+        #[deprecated(since = "1.99.0", note = "replaced by the `MIN` associated constant on this type")]
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_min_value")]
         pub const fn min_value() -> Self { Self::MIN }
 
@@ -4140,7 +4190,7 @@ macro_rules! uint_impl {
         #[rustc_promotable]
         #[inline(always)]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-        #[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on this type")]
+        #[deprecated(since = "1.99.0", note = "replaced by the `MAX` associated constant on this type")]
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_max_value")]
         pub const fn max_value() -> Self { Self::MAX }
 

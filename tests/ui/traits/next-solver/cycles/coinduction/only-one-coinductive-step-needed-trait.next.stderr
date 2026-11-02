@@ -1,0 +1,15 @@
+error[E0275]: overflow evaluating the requirement `Foo<u32>: Send`
+  --> $DIR/only-one-coinductive-step-needed-trait.rs:25:15
+   |
+LL |     is_send::<Foo<u32>>();
+   |               ^^^^^^^^
+   |
+note: required by a bound in `is_send`
+  --> $DIR/only-one-coinductive-step-needed-trait.rs:23:15
+   |
+LL | fn is_send<T: Send>() {}
+   |               ^^^^ required by this bound in `is_send`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

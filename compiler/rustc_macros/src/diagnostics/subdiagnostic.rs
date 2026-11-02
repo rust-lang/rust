@@ -92,16 +92,9 @@ impl SubdiagnosticDerive {
 
         let diag = &self.diag;
 
-        // FIXME(edition_2024): Fix the `keyword_idents_2024` lint to not trigger here?
-        #[allow(keyword_idents_2024)]
         let ret = structure.gen_impl(quote! {
             gen impl rustc_errors::Subdiagnostic for @Self {
-                fn add_to_diag<__G>(
-                    self,
-                    #diag: &mut rustc_errors::Diag<'_, __G>,
-                ) where
-                    __G: rustc_errors::EmissionGuarantee,
-                {
+                fn add_to_diag(self, #diag: &mut rustc_errors::Diag<'_>) {
                     #implementation
                 }
             }
@@ -322,7 +315,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     let binding = info.binding.binding.clone();
                     // FIXME(#100717): support `Option<Span>` on `primary_span` like in the
                     // diagnostic derive
-                    if !matches!(info.ty, FieldInnerTy::Plain(_)) {
+                    if !matches!(info.ty, FieldInnerTy::Plain(_) | FieldInnerTy::Option(_)) {
                         throw_invalid_attr!(attr, |diag| {
                             let diag = diag.note("there must be exactly one primary span");
 

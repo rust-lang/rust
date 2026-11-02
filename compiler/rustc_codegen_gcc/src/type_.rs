@@ -1,18 +1,16 @@
-#[cfg(feature = "master")]
-use std::convert::TryInto;
+use std::mem::discriminant;
 
 #[cfg(feature = "master")]
-use gccjit::CType;
+use gccjit::{CType, TypeAttribute};
 use gccjit::{RValue, Struct, Type};
-use rustc_abi::{AddressSpace, Align, Integer, Size};
-use rustc_codegen_ssa::common::TypeKind;
+use rustc_abi::{AddressSpace, Align, Float, Integer, Size};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, DerivedTypeCodegenMethods, TypeMembershipCodegenMethods,
 };
+use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::{bug, ty};
+use rustc_span::bug;
 
-use crate::common::TypeReflection;
 use crate::context::{CodegenCx, new_array_type};
 use crate::type_of::LayoutGccExt;
 
@@ -101,9 +99,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.bool_type
     }
 
-    pub fn type_struct(&self, fields: &[Type<'gcc>], packed: bool) -> Type<'gcc> {
-        let types = fields.to_vec();
-        if let Some(typ) = self.struct_types.borrow().get(fields) {
+    pub fn type_struct(&self, fields: &[Type<'gcc>], attributes: &[StructAttribute]) -> Type<'gcc> {
+        let key =
+            StructTypeKey { fields: fields.to_vec(), attributes: canonical_attributes(attributes) };
+        if let Some(typ) = self.struct_types.borrow().get(&key) {
             return *typ;
         }
         let fields: Vec<_> = fields
@@ -114,14 +113,125 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             })
             .collect();
         let typ = self.context.new_struct_type(None, "struct", &fields).as_type();
-        if packed {
-            #[cfg(feature = "master")]
-            typ.set_packed();
-        }
-        self.struct_types.borrow_mut().insert(types, typ);
+        apply_struct_attributes(typ, &key.attributes);
+        self.struct_types.borrow_mut().insert(key, typ);
         typ
     }
+
+    /// A struct that holds `first` and `second` in two different eightbytes, so that GCC returns
+    /// them in two registers instead of packing them into one.
+    pub fn type_two_register_pair(&self, first: Type<'gcc>, second: Type<'gcc>) -> Type<'gcc> {
+        if let Some(typ) = self.two_register_pair_types.borrow().get(&(first, second)) {
+            return *typ;
+        }
+        let fields = [
+            self.context.new_field(None, first, "first"),
+            self.context.new_field(None, second.get_aligned(8), "second"),
+        ];
+        let typ = self.context.new_struct_type(None, "two_register_pair", &fields).as_type();
+        self.two_register_pair_types.borrow_mut().insert((first, second), typ);
+        self.two_register_pair_type_set.borrow_mut().insert(typ);
+        typ
+    }
+
+    pub fn is_two_register_pair_type(&self, typ: Type<'gcc>) -> bool {
+        self.two_register_pair_type_set.borrow().contains(&typ)
+    }
+
+    #[cfg_attr(feature = "master", expect(unused_mut))]
+    pub fn type_array(&self, ty: Type<'gcc>, mut len: u64) -> Type<'gcc> {
+        #[cfg(not(feature = "master"))]
+        if let Some(struct_type) = ty.is_struct()
+            && struct_type.get_field_count() == 0
+        {
+            // NOTE: since gccjit only supports i32 for the array size and libcore's tests uses a
+            // size of usize::MAX in test_binary_search, we workaround this by setting the size to
+            // zero for ZSTs.
+            len = 0;
+        }
+
+        new_array_type(self.context, None, ty, len)
+    }
 }
+
+/// An attribute that can be set on a GCC struct type.
+///
+/// This mirrors the subset of `gccjit::TypeAttribute` that cg_gcc needs, rather than using it
+/// directly, because it must exist without the `master` feature and because it is what
+/// `StructTypeKey` is keyed on. Adding a variant here is therefore all it takes to make a new
+/// attribute part of the cache key: there is no second place to remember to update.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum StructAttribute {
+    /// Alignment, in bytes.
+    Aligned(u32),
+    /// Lay the fields out without inserting padding between them.
+    Packed,
+}
+
+/// Identifies an anonymous struct type in `CodegenCx::struct_types`.
+///
+/// Two Rust types with the same field list can still need distinct GCC types — `struct { a: u64,
+/// b: u64 }` with and without `repr(align(16))` produces the same fields — so every attribute has
+/// to be part of the key. Holding them as one [`StructAttribute`] list rather than as separate
+/// fields is what keeps that true when a new attribute is added.
+#[derive(Clone, Eq, Hash, PartialEq)]
+pub struct StructTypeKey<'gcc> {
+    pub fields: Vec<Type<'gcc>>,
+    pub attributes: Vec<StructAttribute>,
+}
+
+/// The attributes a GCC struct needs in order to match the Rust layout it is built from.
+pub fn struct_attributes(packed: bool, align: Option<Align>) -> Vec<StructAttribute> {
+    let mut attributes = Vec::new();
+    if packed {
+        attributes.push(StructAttribute::Packed);
+    }
+    if let Some(align) = align
+        && align.bytes() > 1
+        && align.bytes() <= MAX_STRUCT_ALIGNMENT
+    {
+        attributes.push(StructAttribute::Aligned(align.bytes() as u32));
+    }
+    attributes
+}
+
+/// The largest alignment GCC accepts on a type, in bytes.
+const MAX_STRUCT_ALIGNMENT: u64 = 1 << 28;
+
+/// Put an attribute list into a canonical form so that it can be used as a cache key.
+///
+/// Without this, `[Packed, Aligned(8)]` and `[Aligned(8), Packed]` would hash differently and mint
+/// two GCC types for what is one Rust type.
+fn canonical_attributes(attributes: &[StructAttribute]) -> Vec<StructAttribute> {
+    let mut attributes = attributes.to_vec();
+    attributes.sort_unstable();
+    attributes.dedup();
+    debug_assert!(
+        attributes.windows(2).all(|pair| discriminant(&pair[0]) != discriminant(&pair[1])),
+        "contradictory struct attributes: {attributes:?}"
+    );
+    attributes
+}
+
+/// Set `attributes` on the struct type `typ`.
+///
+/// This is the only place allowed to call `Type::add_attribute`; `clippy.toml` forbids it
+/// everywhere else. An attribute set on a type that `CodegenCx::struct_types` handed out would
+/// change every other use of that type, so attributes have to be decided when the type is created
+/// and be part of its cache key. Going through [`StructAttribute`] is what enforces that.
+#[cfg(feature = "master")]
+#[allow(clippy::disallowed_methods)]
+pub fn apply_struct_attributes(typ: Type<'_>, attributes: &[StructAttribute]) {
+    for attribute in attributes {
+        typ.add_attribute(match *attribute {
+            StructAttribute::Aligned(align) => TypeAttribute::Aligned(align),
+            StructAttribute::Packed => TypeAttribute::Packed,
+        });
+    }
+}
+
+#[cfg(not(feature = "master"))]
+pub fn apply_struct_attributes(_typ: Type<'_>, _attributes: &[StructAttribute]) {}
 
 impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
     fn type_i8(&self) -> Type<'gcc> {
@@ -153,7 +263,15 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         if self.supports_f16_type {
             return self.context.new_c_type(CType::Float16);
         }
-        bug!("unsupported float width 16")
+        self.u16_type
+    }
+
+    fn type_f16b(&self) -> Type<'gcc> {
+        #[cfg(feature = "master")]
+        if self.supports_f16b_type {
+            return self.context.new_c_type(CType::BFloat16);
+        }
+        bug!("unsupported type bfloat16")
     }
 
     fn type_f32(&self) -> Type<'gcc> {
@@ -180,68 +298,14 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         bug!("unsupported float width 128")
     }
 
+    fn type_ppcf128(&self) -> Type<'gcc> {
+        // FIXME(ppcf128): The GCC gcc_jit_types enum (which CType is based on) does not
+        // have __ibm128. It does have long double but it may not correspond to ppc f128.
+        bug!("unsupported ppcf128 type")
+    }
+
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {
         self.context.new_function_pointer_type(None, return_type, params, false)
-    }
-
-    #[cfg(feature = "master")]
-    fn type_kind(&self, typ: Type<'gcc>) -> TypeKind {
-        if self.is_int_type_or_bool(typ) {
-            TypeKind::Integer
-        } else if typ.get_pointee().is_some() {
-            TypeKind::Pointer
-        } else if typ.is_vector() {
-            TypeKind::Vector
-        } else if typ.dyncast_array().is_some() {
-            TypeKind::Array
-        } else if typ.is_struct().is_some() {
-            TypeKind::Struct
-        } else if typ.dyncast_function_ptr_type().is_some() {
-            TypeKind::Function
-        } else if typ.is_compatible_with(self.float_type) {
-            TypeKind::Float
-        } else if typ.is_compatible_with(self.double_type) {
-            TypeKind::Double
-        } else if typ.is_floating_point() {
-            match typ.get_size() {
-                2 => TypeKind::Half,
-                4 => TypeKind::Float,
-                8 => TypeKind::Double,
-                16 => TypeKind::FP128,
-                size => unreachable!("Floating-point type of size {}", size),
-            }
-        } else if typ == self.type_void() {
-            TypeKind::Void
-        } else {
-            // FIXME(antoyo): support other types.
-            unimplemented!();
-        }
-    }
-
-    #[cfg(not(feature = "master"))]
-    fn type_kind(&self, typ: Type<'gcc>) -> TypeKind {
-        if self.is_int_type_or_bool(typ) {
-            TypeKind::Integer
-        } else if typ.is_compatible_with(self.float_type) {
-            TypeKind::Float
-        } else if typ.is_compatible_with(self.double_type) {
-            TypeKind::Double
-        } else if typ.is_vector() {
-            TypeKind::Vector
-        } else if typ.get_pointee().is_some() {
-            TypeKind::Pointer
-        } else if typ.dyncast_array().is_some() {
-            TypeKind::Array
-        } else if typ.is_struct().is_some() {
-            TypeKind::Struct
-        } else if typ.dyncast_function_ptr_type().is_some() {
-            TypeKind::Function
-        } else if typ == self.type_void() {
-            TypeKind::Void
-        } else {
-            // FIXME(antoyo): support other types.
-            unimplemented!();
-        }
     }
 
     fn type_ptr(&self) -> Type<'gcc> {
@@ -252,66 +316,46 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         self.type_ptr_to_ext(self.type_void(), address_space)
     }
 
-    fn element_type(&self, ty: Type<'gcc>) -> Type<'gcc> {
-        if let Some(typ) = ty.dyncast_array() {
-            typ
-        } else if let Some(vector_type) = ty.dyncast_vector() {
-            vector_type.get_element_type()
-        } else if let Some(typ) = ty.get_pointee() {
-            typ
-        } else {
-            unreachable!()
-        }
-    }
-
-    fn vector_length(&self, _ty: Type<'gcc>) -> usize {
-        unimplemented!();
+    fn vector_element_type_and_length(&self, ty: Type<'gcc>) -> Option<(Type<'gcc>, u64)> {
+        ty.dyncast_vector()
+            .map(|vector_type| (vector_type.get_element_type(), vector_type.get_num_units() as u64))
     }
 
     #[cfg(feature = "master")]
-    fn float_width(&self, typ: Type<'gcc>) -> usize {
+    fn float_type(&self, typ: Type<'gcc>) -> Option<Float> {
         if typ.is_floating_point() {
-            (typ.get_size() * u8::BITS).try_into().unwrap()
+            match typ.get_size() {
+                2 => Some(Float::F16),
+                4 => Some(Float::F32),
+                8 => Some(Float::F64),
+                16 => Some(Float::F128),
+                _ => panic!("Cannot get width of float type {typ:?}"),
+            }
         } else {
-            panic!("Cannot get width of float type {:?}", typ);
+            None
         }
     }
 
     #[cfg(not(feature = "master"))]
-    fn float_width(&self, typ: Type<'gcc>) -> usize {
+    fn float_type(&self, typ: Type<'gcc>) -> Option<Float> {
         let f32 = self.context.new_type::<f32>();
         let f64 = self.context.new_type::<f64>();
         if typ.is_compatible_with(f32) {
-            32
+            Some(Float::F32)
         } else if typ.is_compatible_with(f64) {
-            64
+            Some(Float::F64)
         } else {
-            panic!("Cannot get width of float type {:?}", typ);
+            None
         }
         // FIXME(antoyo): support other sizes.
     }
 
-    fn int_width(&self, typ: Type<'gcc>) -> u64 {
-        self.gcc_int_width(typ)
+    fn int_width(&self, typ: Type<'gcc>) -> Option<u64> {
+        if self.is_int_type_or_bool(typ) { Some(self.gcc_int_width(typ)) } else { None }
     }
 
     fn val_ty(&self, value: RValue<'gcc>) -> Type<'gcc> {
         value.get_type()
-    }
-
-    #[cfg_attr(feature = "master", expect(unused_mut))]
-    fn type_array(&self, ty: Type<'gcc>, mut len: u64) -> Type<'gcc> {
-        #[cfg(not(feature = "master"))]
-        if let Some(struct_type) = ty.is_struct()
-            && struct_type.get_field_count() == 0
-        {
-            // NOTE: since gccjit only supports i32 for the array size and libcore's tests uses a
-            // size of usize::MAX in test_binary_search, we workaround this by setting the size to
-            // zero for ZSTs.
-            len = 0;
-        }
-
-        new_array_type(self.context, None, ty, len)
     }
 }
 
@@ -324,17 +368,19 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.type_array(self.type_from_integer(unit), size / unit_size)
     }
 
-    pub fn set_struct_body(&self, typ: Struct<'gcc>, fields: &[Type<'gcc>], packed: bool) {
+    pub fn set_struct_body(
+        &self,
+        typ: Struct<'gcc>,
+        fields: &[Type<'gcc>],
+        attributes: &[StructAttribute],
+    ) {
         let fields: Vec<_> = fields
             .iter()
             .enumerate()
             .map(|(index, field)| self.context.new_field(None, *field, format!("field_{}", index)))
             .collect();
         typ.set_fields(None, &fields);
-        if packed {
-            #[cfg(feature = "master")]
-            typ.as_type().set_packed();
-        }
+        apply_struct_attributes(typ.as_type(), &canonical_attributes(attributes));
     }
 
     pub fn type_named_struct(&self, name: &str) -> Struct<'gcc> {

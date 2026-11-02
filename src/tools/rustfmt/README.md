@@ -1,4 +1,4 @@
-# rustfmt [![linux](https://github.com/rust-lang/rustfmt/actions/workflows/linux.yml/badge.svg?event=push)](https://github.com/rust-lang/rustfmt/actions/workflows/linux.yml) [![mac](https://github.com/rust-lang/rustfmt/actions/workflows/mac.yml/badge.svg?event=push)](https://github.com/rust-lang/rustfmt/actions/workflows/mac.yml) [![windows](https://github.com/rust-lang/rustfmt/actions/workflows/windows.yml/badge.svg?event=push)](https://github.com/rust-lang/rustfmt/actions/workflows/windows.yml) [![crates.io](https://img.shields.io/crates/v/rustfmt-nightly.svg)](https://crates.io/crates/rustfmt-nightly)
+# rustfmt [![tests](https://github.com/rust-lang/rustfmt/actions/workflows/test.yml/badge.svg?event=push)](https://github.com/rust-lang/rustfmt/actions/workflows/test.yml?query=branch%3Amain) [![crates.io](https://img.shields.io/crates/v/rustfmt-nightly.svg)](https://crates.io/crates/rustfmt-nightly)
 
 A tool for formatting Rust code according to style guidelines.
 
@@ -134,8 +134,8 @@ language: rust
 before_script:
 - rustup component add rustfmt
 script:
-- cargo build
-- cargo test
+- cargo build --locked
+- cargo test --locked
 - cargo fmt --all -- --check
 ```
 
@@ -144,11 +144,11 @@ for more info.
 
 ## How to build and test
 
-`cargo build` to build.
+`cargo build --locked` to build.
 
-`cargo test` to run all tests.
+`cargo test --locked` to run all tests.
 
-To run rustfmt after this, use `cargo run --bin rustfmt -- filename`. See the
+To run rustfmt after this, use `cargo run --locked --bin rustfmt -- filename`. See the
 notes above on running rustfmt.
 
 

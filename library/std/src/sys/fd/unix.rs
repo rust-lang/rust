@@ -40,19 +40,14 @@ cfg_select! {
             -1
         }
     }
-    any(
-        all(target_os = "linux", not(target_env = "musl")),
-        target_os = "android",
-        target_os = "hurd",
-    ) => {
+    any(all(target_os = "linux", not(target_env = "musl")), target_os = "android", target_os = "hurd") =>
+    {
         // Prefer explicit pread64 for 64-bit offset independently of libc
         // #[cfg(gnu_file_offset_bits64)].
-        use libc::pread64;
-        use libc::pwrite64;
+        use libc::{pread64, pwrite64};
     }
     _ => {
-        use libc::pread as pread64;
-        use libc::pwrite as pwrite64;
+        use libc::{pread as pread64, pwrite as pwrite64};
     }
 }
 
@@ -77,12 +72,16 @@ pub struct FileDesc(OwnedFd);
 //
 // On Apple targets however, apparently the 64-bit libc is either buggy or
 // intentionally showing odd behavior by rejecting any read with a size
-// larger than INT_MAX. To handle both of these the read size is capped on
-// both platforms.
-const READ_LIMIT: usize = if cfg!(target_vendor = "apple") {
-    libc::c_int::MAX as usize
-} else {
-    libc::ssize_t::MAX as usize
+// larger than INT_MAX.
+//
+// Meanwhile on QNX, reads/writes/sends larger than INT_MAX return the wrong
+// number of bytes written (eg, writing 2^31 bytes returns (2^64 - 2^31) instead
+// of the correct byte count).
+const READ_LIMIT: usize = cfg_select! {
+    any(target_vendor = "apple", target_os = "nto", target_os = "qnx") => {
+        libc::c_int::MAX as usize
+    }
+    _ => libc::ssize_t::MAX as usize,
 };
 
 #[cfg(any(

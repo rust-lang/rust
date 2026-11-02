@@ -1,4 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Since FreeBSD stores user-installed binaries in `/usr/local/bin` we
+# cannot use the `/bin/bash` shebang and instead use the the bash from PATH.
+
 set -eu
 
 function begingroup {
@@ -20,12 +23,14 @@ if ! rustc -vV | grep -q "^host: $HOST_TARGET\$"; then
   exit 1
 fi
 
+export CI=true # just to be sure that it is truly set
+
 endgroup
 
 begingroup "Building Miri"
 
 # Global configuration
-export RUSTFLAGS="-D warnings"
+export CARGO_BUILD_WARNINGS=deny
 export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--locked"
 export CARGO_UNSTABLE_BUILD_DIR_NEW_LAYOUT=true
@@ -40,6 +45,10 @@ time ./miri install
 echo "Building debug version of Miri"
 export FEATURES="--features=expensive-consistency-checks,genmc"
 time ./miri build $FEATURES # the build that all the `./miri test` below will use
+
+# We don't want to error on warnings during the sysroot build, so unset this.
+# (Bootstrap sets this so the tier 1 targets are checked in rustc CI.)
+unset CARGO_BUILD_WARNINGS
 
 endgroup
 
@@ -150,7 +159,7 @@ case $HOST_TARGET in
   i686-unknown-linux-gnu)
     # Host
     MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
-    # Not officially supported tier 2
+    # Not officially supported tier 2. Also covers "64bit target on 32bit host".
     MANY_SEEDS=16 TEST_TARGET=aarch64-linux-android run_tests
     MANY_SEEDS=16 TEST_TARGET=loongarch64-unknown-linux-gnu run_tests
     # Partially supported targets (no_std, tier 2)
@@ -168,14 +177,14 @@ case $HOST_TARGET in
     MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-freebsd run_tests
     MANY_SEEDS=16 TEST_TARGET=i686-unknown-freebsd run_tests
     MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-illumos run_tests
-    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-netbsd run_tests_minimal hello
+    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-netbsd run_tests_minimal hello libc/env.rs libc/misc.rs
     ;;
   armv7-unknown-linux-gnueabihf)
     # Host
     MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Custom target JSON file
     TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 MIRIFLAGS="-Zunstable-options" run_tests_minimal no_std
-    # Not officially supported tier 2
+    # Not officially supported tier 2.
     MANY_SEEDS=16 TEST_TARGET=x86_64-pc-solaris run_tests
     MANY_SEEDS=16 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
     MANY_SEEDS=16 TEST_TARGET=riscv64a23-unknown-linux-gnu run_tests
@@ -187,12 +196,11 @@ case $HOST_TARGET in
     MANY_SEEDS=64 TEST_TARGET=i686-pc-windows-gnu run_tests
     MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
     ;;
-  i686-pc-windows-msvc)
+  x86_64-pc-windows-msvc)
     # Host
     MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 run_tests
     # Extra tier 1
-    # We really want to ensure a Linux target works on a Windows host,
-    # and a 64bit target works on a 32bit host.
+    # We really want to ensure a Linux target works on a Windows host.
     TEST_TARGET=x86_64-unknown-linux-gnu run_tests
     ;;
   aarch64-pc-windows-msvc)
@@ -200,6 +208,10 @@ case $HOST_TARGET in
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
     MANY_SEEDS=64 TEST_TARGET=i686-unknown-linux-gnu run_tests
+    ;;
+  x86_64-unknown-freebsd)
+    # Host
+    MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     ;;
   *)
     echo "FATAL: unknown host target: $HOST_TARGET"

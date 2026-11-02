@@ -2,15 +2,15 @@
 //! This module exists because some integer types are not supported on some gcc platforms, e.g.
 //! 128-bit integers on 32-bit platforms and thus require to be handled manually.
 
-// cSpell:words cmpti divti modti mulodi muloti udivti umodti
-
 use gccjit::{
     BinaryOp, CType, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp,
 };
-use rustc_abi::{CanonAbi, Endian, ExternAbi};
-use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
+use rustc_abi::{CanonAbi, Endian, ExternAbi, Float};
+use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, BuilderMethods, OverflowOp};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::HasTypingEnv as _;
+use rustc_span::bug;
 use rustc_target::callconv::{ArgAbi, ArgAttributes, FnAbi, PassMode};
 use rustc_type_ir::{Interner, TyKind};
 
@@ -21,12 +21,12 @@ use crate::context::CodegenCx;
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     pub fn gcc_urem(&self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         // 128-bit unsigned %: __umodti3
-        self.multiplicative_operation(BinaryOp::Modulo, "mod", false, a, b)
+        self.division_operation(BinaryOp::Modulo, "mod", false, a, b)
     }
 
     pub fn gcc_srem(&self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         // 128-bit signed %:   __modti3
-        self.multiplicative_operation(BinaryOp::Modulo, "mod", true, a, b)
+        self.division_operation(BinaryOp::Modulo, "mod", true, a, b)
     }
 
     pub fn gcc_not(&self, a: RValue<'gcc>) -> RValue<'gcc> {
@@ -69,13 +69,29 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     pub fn gcc_lshr(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+        self.gcc_shr(a, b, false)
+    }
+
+    pub fn gcc_ashr(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+        self.gcc_shr(a, b, true)
+    }
+
+    fn gcc_shr(&mut self, a: RValue<'gcc>, b: RValue<'gcc>, arithmetic: bool) -> RValue<'gcc> {
         let a_type = a.get_type();
         let b_type = b.get_type();
         let a_native = self.is_native_int_type(a_type);
         let b_native = self.is_native_int_type(b_type);
         if a_native && b_native {
+            // `>>` is arithmetic exactly when `a` is signed, but the GCC type of `a` can disagree
+            // with its Rust type: cg_ssa gives a transmute to `u16` the type `i16`, for instance.
+            let shift_type =
+                if arithmetic { a_type.to_signed(self) } else { a_type.to_unsigned(self) };
+            if !shift_type.is_compatible_with(a_type) {
+                let a = self.context.new_cast(self.location, a, shift_type);
+                let result = self.gcc_shr(a, b, arithmetic);
+                return self.context.new_cast(self.location, result, a_type);
+            }
             // FIXME(antoyo): remove the casts when libgccjit can shift an unsigned number by a signed number.
-            // FIXME(antoyo): cast to unsigned to do a logical shift if that does not work.
             if a_type.is_signed(self) != b_type.is_signed(self) {
                 let b = self.context.new_cast(self.location, b, a_type);
                 a >> b
@@ -96,7 +112,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         } else if a_type.is_vector() && b_type.is_vector() {
             a >> b
         } else if a_native && !b_native {
-            self.gcc_lshr(a, self.gcc_int_cast(b, a_type))
+            self.gcc_shr(a, self.gcc_int_cast(b, a_type), arithmetic)
         } else {
             // NOTE: we cannot use the lshr builtin because it's calling hi() (to get the most
             // significant half of the number) which uses lshr.
@@ -121,8 +137,20 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
             let shift_value = self.gcc_sub(b, sixty_four);
             let high = self.high(a);
-            let sign = if a_type.is_signed(self) { high >> sixty_three } else { zero };
-            let array_value = self.concat_low_high_rvalues(a_type, high >> shift_value, sign);
+            let high_shift_type = if arithmetic {
+                native_int_type.to_signed(self.cx)
+            } else {
+                native_int_type.to_unsigned(self.cx)
+            };
+            let context = self.context;
+            let location = self.location;
+            let shift_high = |shift: RValue<'gcc>| {
+                let high = context.new_cast(location, high, high_shift_type);
+                let shift = context.new_cast(location, shift, high_shift_type);
+                context.new_cast(location, high >> shift, native_int_type)
+            };
+            let sign = if arithmetic { shift_high(sixty_three) } else { zero };
+            let array_value = self.concat_low_high_rvalues(a_type, shift_high(shift_value), sign);
             then_block.add_assignment(self.location, result, array_value);
             then_block.end_with_jump(self.location, after_block);
 
@@ -141,7 +169,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let array_value = self.concat_low_high_rvalues(
                 a_type,
                 (high << shift_value) | shifted_low,
-                high >> b,
+                shift_high(b),
             );
             actual_else_block.add_assignment(self.location, result, array_value);
             actual_else_block.end_with_jump(self.location, after_block);
@@ -178,6 +206,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         } else {
             debug_assert!(a_type.dyncast_array().is_some());
             debug_assert!(b_type.dyncast_array().is_some());
+            if a_type != b_type {
+                b = self.gcc_int_cast(b, a_type);
+            }
             let signed = a_type.is_compatible_with(self.i128_type);
             let func_name = match (operation, signed) {
                 (BinaryOp::Plus, true) => "__rust_i128_add",
@@ -187,7 +218,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 _ => unreachable!("unexpected additive operation {:?}", operation),
             };
             let param_a = self.context.new_parameter(self.location, a_type, "a");
-            let param_b = self.context.new_parameter(self.location, b_type, "b");
+            let param_b = self.context.new_parameter(self.location, a_type, "b");
             let func = self.context.new_function(
                 self.location,
                 FunctionType::Extern,
@@ -210,6 +241,27 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
     pub fn gcc_sub(&self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         self.additive_operation(BinaryOp::Minus, a, b)
+    }
+
+    fn division_operation(
+        &self,
+        operation: BinaryOp,
+        operation_name: &str,
+        signed: bool,
+        mut a: RValue<'gcc>,
+        mut b: RValue<'gcc>,
+    ) -> RValue<'gcc> {
+        let a_type = a.get_type();
+        if self.is_native_int_type(a_type) && self.is_native_int_type(b.get_type()) {
+            let typ = if signed { a_type.to_signed(self.cx) } else { a_type.to_unsigned(self.cx) };
+            if !typ.is_compatible_with(a_type) {
+                a = self.context.new_cast(self.location, a, typ);
+            }
+            if !typ.is_compatible_with(b.get_type()) {
+                b = self.context.new_cast(self.location, b, typ);
+            }
+        }
+        self.multiplicative_operation(operation, operation_name, signed, a, b)
     }
 
     fn multiplicative_operation(
@@ -238,10 +290,13 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         } else {
             debug_assert!(a_type.dyncast_array().is_some());
             debug_assert!(b_type.dyncast_array().is_some());
+            if a_type != b_type {
+                b = self.gcc_int_cast(b, a_type);
+            }
             let sign = if signed { "" } else { "u" };
             let func_name = format!("__{}{}ti3", sign, operation_name);
             let param_a = self.context.new_parameter(self.location, a_type, "a");
-            let param_b = self.context.new_parameter(self.location, b_type, "b");
+            let param_b = self.context.new_parameter(self.location, a_type, "b");
             let func = self.context.new_function(
                 self.location,
                 FunctionType::Extern,
@@ -255,15 +310,13 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     pub fn gcc_sdiv(&self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // FIXME(antoyo): check if the types are signed?
         // 128-bit, signed: __divti3
-        // FIXME(antoyo): convert the arguments to signed?
-        self.multiplicative_operation(BinaryOp::Divide, "div", true, a, b)
+        self.division_operation(BinaryOp::Divide, "div", true, a, b)
     }
 
     pub fn gcc_udiv(&self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         // 128-bit, unsigned: __udivti3
-        self.multiplicative_operation(BinaryOp::Divide, "div", false, a, b)
+        self.division_operation(BinaryOp::Divide, "div", false, a, b)
     }
 
     pub fn gcc_checked_binop(
@@ -362,10 +415,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             128 => self.tcx.types.i128,
             _ => unreachable!("unexpected integer size"),
         };
-        let layout = self
-            .tcx
-            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(res_ty))
-            .unwrap();
+        let layout = self.tcx.layout_of(self.cx.typing_env().as_query_input(res_ty)).unwrap();
 
         let arg_abi = ArgAbi { layout, mode: PassMode::Direct(ArgAttributes::new()) };
         let mut fn_abi = FnAbi {
@@ -432,7 +482,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         if self.is_non_native_int_type(a_type) || self.is_non_native_int_type(b_type) {
             // This algorithm is based on compiler-rt's __cmpti2:
             // https://github.com/llvm-mirror/compiler-rt/blob/f0745e8476f069296a7c71accedd061dce4cdf79/lib/builtins/cmpti2.c#L21
-            let result = self.current_func().new_local(self.location, self.int_type, "icmp_result");
+            let result = self.new_temp(self.current_func(), self.location, self.int_type);
             let block1 = self.current_func().new_block("block1");
             let block2 = self.current_func().new_block("block2");
             let block3 = self.current_func().new_block("block3");
@@ -462,9 +512,18 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     lhs_high = self.context.new_cast(self.location, lhs_high, unsigned_type);
                     rhs_high = self.context.new_cast(self.location, rhs_high, unsigned_type);
                 }
-                // FIXME(antoyo): we probably need to handle signed comparison for unsigned
-                // integers.
-                _ => (),
+                IntPredicate::IntSGT
+                | IntPredicate::IntSGE
+                | IntPredicate::IntSLT
+                | IntPredicate::IntSLE => {
+                    let signed_type = native_int_type.to_signed(self.cx);
+                    lhs_high = self.context.new_cast(self.location, lhs_high, signed_type);
+                    rhs_high = self.context.new_cast(self.location, rhs_high, signed_type);
+                }
+                IntPredicate::IntEQ | IntPredicate::IntNE => {
+                    lhs_high = self.context.new_cast(self.location, lhs_high, unsigned_type);
+                    rhs_high = self.context.new_cast(self.location, rhs_high, unsigned_type);
+                }
             }
 
             let condition = self.context.new_comparison(
@@ -602,9 +661,17 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                         rhs = self.context.new_cast(self.location, rhs, unsigned_type);
                     }
                 }
-                // FIXME(antoyo): we probably need to handle signed comparison for unsigned
-                // integers.
-                _ => (),
+                IntPredicate::IntSGT
+                | IntPredicate::IntSGE
+                | IntPredicate::IntSLT
+                | IntPredicate::IntSLE => {
+                    if !a_type.is_vector() {
+                        let signed_type = a_type.to_signed(self.cx);
+                        lhs = self.context.new_cast(self.location, lhs, signed_type);
+                        rhs = self.context.new_cast(self.location, rhs, signed_type);
+                    }
+                }
+                IntPredicate::IntEQ | IntPredicate::IntNE => (),
             }
             self.context.new_comparison(self.location, op.to_gcc_comparison(), lhs, rhs)
         }
@@ -623,6 +690,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             }
             a ^ b
         } else {
+            if a_type != b_type {
+                b = self.gcc_int_cast(b, a_type);
+            }
             self.concat_low_high_rvalues(
                 a_type,
                 self.low(a) ^ self.low(b),
@@ -832,6 +902,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 !a_native && !b_native,
                 "both types should either be native or non-native for or operation"
             );
+            if a_type != b_type {
+                b = self.gcc_int_cast(b, a_type);
+            }
             let native_int_type = a_type.dyncast_array().expect("get element type");
             self.concat_low_high_rvalues(
                 a_type,
@@ -862,7 +935,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.bitwise_operation(BinaryOp::BitwiseOr, a, b, loc)
     }
 
-    // FIXME(antoyo): can we use https://github.com/rust-lang/compiler-builtins/blob/master/src/int/mod.rs#L379 instead?
+    // FIXME(antoyo): can we use https://github.com/rust-lang/compiler-builtins/blob/1a99c2aa295bb2d507fa0e67a3b5eef64fba92a0/libm/src/math/support/int_traits.rs#L485 instead?
     pub fn gcc_int_cast(&self, value: RValue<'gcc>, dest_typ: Type<'gcc>) -> RValue<'gcc> {
         let value_type = value.get_type();
         if self.is_native_int_type_or_bool(dest_typ) && self.is_native_int_type_or_bool(value_type)
@@ -905,13 +978,17 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
 
         debug_assert!(value_type.dyncast_array().is_some());
-        let name_suffix = match self.type_kind(dest_typ) {
-            // cSpell:disable
-            TypeKind::Float => "tisf",
-            TypeKind::Double => "tidf",
-            TypeKind::FP128 => "titf",
-            // cSpell:enable
-            kind => panic!("cannot cast a non-native integer to type {:?}", kind),
+        let name_suffix = match self.float_type(dest_typ) {
+            Some(Float::F16) => {
+                let value = self.int_to_float_cast(signed, value, self.float_type);
+                return self.context.new_cast(None, value, dest_typ);
+            }
+            Some(Float::F32) => "tisf",
+            Some(Float::F64) => "tidf",
+            Some(Float::F128) => "titf",
+            None | Some(Float::F16B | Float::PpcF128) => {
+                panic!("cannot cast a non-native integer to type {dest_typ:?}")
+            }
         };
         let sign = if signed { "" } else { "un" };
         let func_name = format!("__float{}{}", sign, name_suffix);
@@ -951,18 +1028,18 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
 
         debug_assert!(dest_typ.dyncast_array().is_some());
-        let (dest_type, param_type) = match self.type_kind(value_type) {
-            TypeKind::Half => (Some(self.float_type), self.float_type),
+        let (dest_type, param_type) = match self.float_type(value_type) {
+            Some(Float::F16) => (Some(self.float_type), self.float_type),
             _ => (None, value_type),
         };
-        let name_suffix = match self.type_kind(value_type) {
-            // cSpell:disable
+        let name_suffix = match self.float_type(value_type) {
             // Since we will cast Half to a float, we use sfti for both.
-            TypeKind::Half | TypeKind::Float => "sfti",
-            TypeKind::Double => "dfti",
-            TypeKind::FP128 => "tfti",
-            // cSpell:enable
-            kind => panic!("cannot cast a {:?} to non-native integer", kind),
+            Some(Float::F16 | Float::F32) => "sfti",
+            Some(Float::F64) => "dfti",
+            Some(Float::F128) => "tfti",
+            None | Some(Float::F16B | Float::PpcF128) => {
+                bug!("cannot cast a {value_type:?} to non-native integer")
+            }
         };
         let sign = if signed { "" } else { "uns" };
         let func_name = format!("__fix{}{}", sign, name_suffix);

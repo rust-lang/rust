@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
@@ -95,8 +94,8 @@ use crate::patch::MirPatch;
 pub(super) struct EarlyOtherwiseBranch;
 
 impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() >= 2)
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 2)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -175,7 +174,6 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
                         discr: parent_op,
                         targets: eq_targets,
                     },
-                    attributes: ThinVec::new(),
                 }),
                 bbs[parent].is_cleanup,
             );
@@ -230,7 +228,6 @@ fn evaluate_candidate<'tcx>(
     let Terminator {
         kind: TerminatorKind::SwitchInt { targets: child_targets, discr: child_discr },
         source_info,
-        attributes: _,
     } = bbs[child].terminator()
     else {
         return None;

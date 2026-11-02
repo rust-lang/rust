@@ -4,13 +4,13 @@ use std::rc::Rc;
 use std::{fmt, iter, mem};
 
 use rustc_abi::FieldIdx;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::lang_items::LangItem;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
@@ -18,25 +18,23 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
 };
-use rustc_infer::traits::PredicateObligations;
-use rustc_middle::bug;
+use rustc_infer::traits::{Obligation, ObligationCause, PredicateObligations};
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgsRef,
-    RegionUtilitiesExt, Ty, TyCtxt, TypeVisitableExt, UserArgs, UserTypeAnnotationIndex,
-    fold_regions,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgs, Ty, TyCtxt,
+    TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::{Span, Spanned, sym};
+use rustc_span::{Span, Spanned, bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
-use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
+use rustc_trait_selection::traits::query::type_op::{self, TypeOp, TypeOpOutput};
 use tracing::{debug, instrument, trace};
 
 use crate::borrow_set::BorrowSet;
@@ -49,7 +47,7 @@ use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderI
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use crate::universal_regions::{DefiningTy, UniversalRegions};
-use crate::{BorrowCheckRootCtxt, BorrowckInferCtxt, DeferredClosureRequirements, path_utils};
+use crate::{BorrowckInferCtxt, DeferredClosureRequirements, path_utils};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -96,7 +94,6 @@ mod relate_tys;
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `location_map` -- map between MIR `Location` and `PointIndex`
 pub(crate) fn type_check<'tcx>(
-    root_cx: &BorrowCheckRootCtxt<'_, 'tcx>,
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
@@ -147,7 +144,6 @@ pub(crate) fn type_check<'tcx>(
 
     let mut deferred_closure_requirements = Default::default();
     let mut typeck = TypeChecker {
-        root_cx,
         infcx,
         last_span: body.span,
         body,
@@ -188,8 +184,8 @@ pub(crate) fn type_check<'tcx>(
         typeck.infcx.destructure_solver_region_constraints_for_borrowck(
             &mut converter,
             typeck.known_type_outlives_obligations,
+            typeck.region_bound_pairs,
             universal_region_relations.outlives.clone(),
-            infcx.tcx.def_span(infcx.root_def_id),
         );
     }
 
@@ -229,7 +225,6 @@ enum FieldAccessError {
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
 struct TypeChecker<'a, 'tcx> {
-    root_cx: &'a BorrowCheckRootCtxt<'a, 'tcx>,
     infcx: &'a BorrowckInferCtxt<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,
@@ -240,7 +235,7 @@ struct TypeChecker<'a, 'tcx> {
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-    known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesPredicate<'tcx>],
+    known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesClause<'tcx>],
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
     universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a PoloniusLocationTable,
@@ -249,7 +244,7 @@ struct TypeChecker<'a, 'tcx> {
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     deferred_closure_requirements: &'a mut DeferredClosureRequirements<'tcx>,
     /// When using `-Zpolonius=next`, the liveness helper data used to create polonius constraints.
-    polonius_context: Option<PoloniusContext>,
+    polonius_context: Option<PoloniusContext<'tcx>>,
 }
 
 /// Holder struct for passing results from MIR typeck to the rest of the non-lexical regions
@@ -258,9 +253,9 @@ pub(crate) struct MirTypeckResults<'tcx> {
     pub(crate) constraints: MirTypeckRegionConstraints<'tcx>,
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     pub(crate) region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
-    pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
+    pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesClause<'tcx>>>,
     pub(crate) deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
-    pub(crate) polonius_context: Option<PoloniusContext>,
+    pub(crate) polonius_context: Option<PoloniusContext<'tcx>>,
 }
 
 /// A collection of region constraints that must be satisfied for the
@@ -322,7 +317,7 @@ impl<'tcx> MirTypeckRegionConstraints<'tcx> {
 /// required to hold. Normally, this is at a particular point which
 /// created the obligation, but for constraints that the user gave, we
 /// want the constraint to hold at all points.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Locations {
     /// Indicates that a type constraint should always be true. This
     /// is particularly important in the new borrowck analysis for
@@ -480,9 +475,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let projected_ty = curr_projected_ty.projection_ty_core(
                 tcx,
                 proj,
-                |ty| self.normalize(ty::Unnormalized::new_wip(ty), locations),
-                |ty, variant_index, field, ()| {
-                    PlaceTy::field_ty(tcx, ty, variant_index, field).skip_norm_wip()
+                |ty, variant_index, field_index, ()| {
+                    self.normalize(
+                        PlaceTy::field_ty(tcx, ty, variant_index, field_index),
+                        locations,
+                    )
                 },
                 |_| unreachable!(),
             );
@@ -594,7 +591,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
 
         for (block, block_data) in body.basic_blocks.iter_enumerated() {
-            let mut location = Location { block, statement_index: 0 };
+            let mut location = block.start_location();
             for stmt in &block_data.statements {
                 self.visit_statement(stmt, location);
                 location.statement_index += 1;
@@ -1363,7 +1360,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => (),
+                            (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int)) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1381,7 +1378,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => (),
+                            (Some(CastTy::Int), Some(CastTy::Ptr(_))) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1398,7 +1395,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Int(_)), Some(CastTy::Int(_))) => (),
+                            (Some(from), Some(to)) if from.is_int_like() && to.is_int_like() => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1415,7 +1412,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Int(_)), Some(CastTy::Float)) => (),
+                            (Some(CastTy::Int), Some(CastTy::Float)) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1432,7 +1429,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Float), Some(CastTy::Int(_))) => (),
+                            (Some(CastTy::Float), Some(CastTy::Int)) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1605,8 +1602,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ),
                         }
                     }
-                    CastKind::Subtype => {
-                        bug!("CastKind::Subtype shouldn't exist in borrowck")
+                    CastKind::Subtype | CastKind::BoxDerefTransmute => {
+                        bug!("CastKind::{cast_kind:?} shouldn't exist in borrowck")
                     }
                 }
             }
@@ -1769,7 +1766,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 Const::Ty(_, ct) => match ct.kind() {
                     ty::ConstKind::Alias(_, alias_const) => match alias_const.kind {
                         ty::AliasConstKind::Projection { def_id }
-                        | ty::AliasConstKind::Inherent { def_id }
+                        | ty::AliasConstKind::InherentSelf { def_id }
+                        | ty::AliasConstKind::InherentImpl { def_id }
                         | ty::AliasConstKind::Free { def_id }
                         | ty::AliasConstKind::Anon { def_id } => Some(UnevaluatedConst {
                             def: def_id,
@@ -1849,7 +1847,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 assert_eq!(tcx.trait_impl_of_assoc(def_id), None);
                 self.prove_clauses(
-                    args.types().map(|ty| ty::ClauseKind::WellFormed(ty.into())),
+                    args.terms().map(|t| ty::ClauseKind::WellFormed(t)),
                     locations,
                     ConstraintCategory::Boring,
                 );
@@ -1896,6 +1894,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             // All these projections don't add any constraints, so there's nothing to
             // do here. We check their invariants in the MIR validator after all.
             ProjectionElem::Deref
+            | ProjectionElem::PhantomDeref
             | ProjectionElem::Index(_)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
@@ -2082,7 +2081,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_iscleanup(&mut self, block_data: &BasicBlockData<'tcx>) {
         let is_cleanup = block_data.is_cleanup;
         match block_data.terminator().kind {
-            TerminatorKind::Goto { target } => {
+            TerminatorKind::Goto { target, .. } => {
                 self.assert_iscleanup(block_data, target, is_cleanup)
             }
             TerminatorKind::SwitchInt { ref targets, .. } => {
@@ -2466,6 +2465,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         _ => bug!("unexpected deref ty {:?} in {:?}", base_ty, borrowed_place),
                     }
                 }
+                ProjectionElem::PhantomDeref => {
+                    bug!("unexpected PhantomDeref in add_reborrow_constraint")
+                }
                 ProjectionElem::Field(..)
                 | ProjectionElem::Downcast(..)
                 | ProjectionElem::OpaqueCast(..)
@@ -2483,41 +2485,40 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         mutability: Mutability,
         location: Location,
-        borrowed_place: &Place<'tcx>,
-        dest_ty: Ty<'tcx>,
+        src_place: &Place<'tcx>,
+        dst_ty: Ty<'tcx>,
     ) {
         let Self { borrow_set, location_table, polonius_facts, constraints, infcx, body, .. } =
             self;
 
         debug!(
             "add_generic_reborrow_constraint({:?}, {:?}, {:?}, {:?})",
-            mutability, location, borrowed_place, dest_ty
+            mutability, location, src_place, dst_ty
         );
 
         let tcx = infcx.tcx;
         let def = body.source.def_id().expect_local();
         let upvars = tcx.closure_captures(def);
-        let field =
-            path_utils::is_upvar_field_projection(tcx, upvars, borrowed_place.as_ref(), body);
+        let field = path_utils::is_upvar_field_projection(tcx, upvars, src_place.as_ref(), body);
         let category = if let Some(field) = field {
             ConstraintCategory::ClosureUpvar(field)
         } else {
             ConstraintCategory::Boring
         };
 
-        let borrowed_ty = borrowed_place.ty(self.body, tcx).ty;
+        let src_ty = src_place.ty(self.body, tcx).ty;
 
-        let ty::Adt(dest_adt, dest_args) = dest_ty.kind() else { bug!() };
-        let [dest_arg, ..] = ***dest_args else { bug!() };
-        let ty::GenericArgKind::Lifetime(dest_region) = dest_arg.kind() else { bug!() };
-        constraints.liveness_constraints.add_location(dest_region.as_var(), location);
+        let ty::Adt(dst_adt, dst_args) = dst_ty.kind() else { bug!() };
+        let [dst_arg, ..] = *dst_args.as_slice() else { bug!() };
+        let ty::GenericArgKind::Lifetime(dst_region) = dst_arg.kind() else { bug!() };
+        constraints.liveness_constraints.add_location(dst_region.as_var(), location);
 
         // In Polonius mode, we also push a `loan_issued_at` fact
         // linking the loan to the region.
         if let Some(polonius_facts) = polonius_facts {
             let _prof_timer = infcx.tcx.prof.generic_activity("polonius_fact_generation");
             if let Some(borrows) = borrow_set.borrows_at_location(&location) {
-                let region_vid = dest_region.as_var();
+                let region_vid = dst_region.as_var();
                 for borrow_index in borrows {
                     polonius_facts.loan_issued_at.push((
                         region_vid.into(),
@@ -2529,38 +2530,96 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
 
         if mutability.is_not() {
+            // When performing a CoerceShared reborrow, we have to take into account lifetimes on
+            // the trait definition. The trait impl should therefore be:
+            //
+            // ```rust
+            // impl<'a: 'b, 'b> CoerceShared<Target<'b>> for Source<'a> {}
+            // ```
+            //
+            // If the lifetimes are misconfigured, then the below we'll likely end up generating an
+            // invariance relation between the source and target. This is in conflict with the
+            // original design intent of the trait, where the same lifetime was meant to be used on
+            // both the Source and Target types, but works better with the type system and was
+            // therefore changed.
+            //
+            // The reason why we want to take the lifetimes into account is to catch impls like
+            // `CoerceShared<Target<'static>> for Source<'a>` and, in those cases, correctly
+            // generate a `'a: 'static` bound.
+            let Some(coerce_shared_trait_did) = self.tcx().lang_items().coerce_shared() else {
+                bug!("HIR type check passed CoerceShared but MIR found no such lang item");
+            };
+            let tcx = self.tcx();
+            self.fully_perform_op(
+                location.to_locations(),
+                ConstraintCategory::Assignment,
+                type_op::custom::CustomTypeOp::new(
+                    |ocx| {
+                        let coerce_shared_trait_ref =
+                            ty::TraitRef::new(tcx, coerce_shared_trait_did, [src_ty, dst_ty]);
+                        let obligation = Obligation::new(
+                            tcx,
+                            ObligationCause::dummy(),
+                            self.infcx.param_env,
+                            ty::Binder::dummy(coerce_shared_trait_ref),
+                        );
+                        ocx.register_obligation(obligation);
+                        Ok(())
+                    },
+                    "user_type_evaluate_coerce_shared",
+                ),
+            )
+            .unwrap_or_else(|_| {
+                bug!("HIR type check passed CoerceShared but MIR found an issue");
+            });
+
             // FIXME(reborrow): for CoerceShared we need to relate the types manually, field by
             // field. We cannot just attempt to relate `T` and `<T as CoerceShared>::Target` by
             // calling relate_types as they are (generally) two unrelated user-defined ADTs, such as
             // `CustomMut<'a>` and `CustomRef<'a>`, or `CustomMut<'a, T>` and `CustomRef<'a, T>`.
-            // Field-by-field relate_types is expected to work based on the wf-checks that the
-            // CoerceShared trait performs.
-            let ty::Adt(borrowed_adt, borrowed_args) = borrowed_ty.kind() else { unreachable!() };
-            let borrowed_fields = borrowed_adt.all_fields().collect::<Vec<_>>();
-            for dest_field in dest_adt.all_fields() {
-                let Some(borrowed_field) =
-                    borrowed_fields.iter().find(|f| f.name == dest_field.name)
-                else {
+            // Field-by-field relate_types is expected to work because the trait has wf-checks
+            // built-in.
+            //
+            // Eventually we'd prefer to do this based on some query result which tells us what
+            // field pairs of src and dst to touch, and what to do to them (&mut coercion, just
+            // copy, or CoerceShared). This might also need to be a recursive operation when fields
+            // themselves implement CoerceShared.
+            //
+            // Or it might be that we don't need this loop at all and can just trust the trait
+            // lifetime definitions to carry the day...? At least all reborrow tests pass without
+            // this loop at the time of writing this comment.
+            let ty::Adt(src_adt, src_args) = src_ty.kind() else { unreachable!() };
+            let src_fields = src_adt.all_fields().collect::<Vec<_>>();
+            for dst_field in dst_adt.all_fields() {
+                let Some(src_field) = src_fields.iter().find(|f| f.name == dst_field.name) else {
                     continue;
                 };
-                let dest_ty = dest_field.ty(tcx, dest_args).skip_norm_wip();
-                let borrowed_ty = borrowed_field.ty(tcx, borrowed_args).skip_norm_wip();
+                // These field types can still contain projections from the source or target type
+                // and normalize them before handing them to `NllTypeRelating`
+                let dst_ty = self.normalize(dst_field.ty(tcx, *dst_args), location.to_locations());
+                let src_ty = self.normalize(src_field.ty(tcx, *src_args), location.to_locations());
+
                 if let (
-                    ty::Ref(borrow_region, _, Mutability::Mut),
-                    ty::Ref(ref_region, _, Mutability::Not),
-                ) = (borrowed_ty.kind(), dest_ty.kind())
+                    ty::Ref(src_region, _, Mutability::Mut),
+                    ty::Ref(dst_region, _, Mutability::Not),
+                ) = (src_ty.kind(), dst_ty.kind())
                 {
+                    // FIXME(reborrow): the covariance relations here seem confused even after we
+                    // flipped them around. relate_types does dst <: src while outlives does
+                    // src <: dst. That seems incomprehensible.
                     self.relate_types(
-                        borrowed_ty.peel_refs(),
+                        // dst <: src
+                        src_ty.peel_refs(),
                         ty::Variance::Covariant,
-                        dest_ty.peel_refs(),
+                        dst_ty.peel_refs(),
                         location.to_locations(),
                         category,
                     )
                     .unwrap();
                     self.constraints.outlives_constraints.push(OutlivesConstraint {
-                        sup: ref_region.as_var(),
-                        sub: borrow_region.as_var(),
+                        // 'src: 'dst
+                        sup: src_region.as_var(),
+                        sub: dst_region.as_var(),
                         locations: location.to_locations(),
                         span: location.to_locations().span(self.body),
                         category,
@@ -2569,9 +2628,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     });
                 } else {
                     self.relate_types(
-                        borrowed_ty,
+                        // dst <: src
+                        src_ty,
                         ty::Variance::Covariant,
-                        dest_ty,
+                        dst_ty,
                         location.to_locations(),
                         category,
                     )
@@ -2581,9 +2641,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         } else {
             // Exclusive reborrow
             self.relate_types(
-                borrowed_ty,
+                src_ty,
                 ty::Variance::Covariant,
-                dest_ty,
+                dst_ty,
                 location.to_locations(),
                 category,
             )
@@ -2649,10 +2709,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         location: Location,
     ) -> ty::InstantiatedClauses<'tcx> {
-        let root_def_id = self.root_cx.root_def_id();
+        let root_def_id = self.infcx.root_def_id;
         // We will have to handle propagated closure requirements for this closure,
         // but need to defer this until the nested body has been fully borrow checked.
         self.deferred_closure_requirements.push((def_id, args, location.to_locations()));
@@ -2668,16 +2728,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // FIXME(async_closures): It may be useful to add a debug assert here
                 // to actually call `type_of` and check the `parent_args` are the same
                 // length as the `typeck_root_args`.
-                &args[..typeck_root_args.len()]
+                tcx.mk_args(&args.as_slice()[..typeck_root_args.len()])
             }
             DefKind::AnonConst
                 if tcx.anon_const_kind(def_id) == ty::AnonConstKind::NonTypeSystemInline =>
             {
-                args.as_inline_const().parent_args()
+                tcx.mk_args(args.as_inline_const().parent_args())
             }
             other => bug!("unexpected item {:?}", other),
         };
-        let parent_args = tcx.mk_args(parent_args);
 
         assert_eq!(typeck_root_args.len(), parent_args.len());
         if let Err(_) = self.eq_args(

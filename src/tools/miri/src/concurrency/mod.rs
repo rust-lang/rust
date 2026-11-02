@@ -1,5 +1,4 @@
 pub mod blocking_io;
-pub mod cpu_affinity;
 pub mod data_race;
 mod data_race_handler;
 pub mod init_once;
@@ -23,5 +22,5 @@ pub mod weak_memory;
 mod genmc;
 
 pub use self::data_race_handler::{AllocDataRaceHandler, GlobalDataRaceHandler};
-pub use self::genmc::{ExitType, GenmcConfig, GenmcCtx, GenmcEvalContextExt, run_genmc_mode};
+pub use self::genmc::{GenmcConfig, GenmcCtx, GenmcEvalContextExt, run_genmc_mode};
 pub use self::vector_clock::VClock;

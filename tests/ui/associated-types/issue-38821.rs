@@ -32,8 +32,6 @@ pub trait Column: Expression {}
 //~| ERROR the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
 //~| ERROR the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
 //~| ERROR the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
-//~| ERROR the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
-//~| ERROR the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
 pub enum ColumnInsertValue<Col, Expr> where
 //~^ ERROR the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
 //~| ERROR the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
@@ -44,6 +42,8 @@ pub enum ColumnInsertValue<Col, Expr> where
 //~^ ERROR the trait bound `<Col as Expression>::SqlType: IntoNullable` is not satisfied
 {
     Expression(Col, Expr),
+    //~^ ERROR the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
+    //~| ERROR the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
     Default(Col),
 }
 

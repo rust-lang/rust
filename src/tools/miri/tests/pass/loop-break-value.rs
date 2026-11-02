@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![allow(unreachable_code)]
 
 #[allow(unused)]

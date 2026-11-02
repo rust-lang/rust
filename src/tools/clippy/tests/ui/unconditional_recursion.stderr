@@ -278,6 +278,8 @@ LL |         self == self
 error: function cannot return without recursing
   --> tests/ui/unconditional_recursion.rs:169:13
    |
+LL |   macro_rules! impl_partial_eq {
+...
 LL | /             fn eq(&self, other: &Self) -> bool {
 LL | |
 LL | |
@@ -296,7 +298,6 @@ LL |                 self == other
 ...
 LL | impl_partial_eq!(S5);
    | -------------------- in this macro invocation
-   = note: this error originates in the macro `impl_partial_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: function cannot return without recursing
   --> tests/ui/unconditional_recursion.rs:199:5

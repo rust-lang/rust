@@ -21,13 +21,15 @@ LL + use foo2::Bar;
 error[E0423]: cannot find function, tuple struct or tuple variant `Bar` in this scope
   --> $DIR/privacy-ns2.rs:27:5
    |
-LL |     pub struct Baz;
-   |     --------------- similarly named unit struct `Baz` defined here
-...
 LL |     Bar();
-   |     ^^^
+   |     ^^^ not found in this scope
    |
    = note: a trait named `Bar` exists in another namespace
+note: similarly named unit struct `Baz` defined here
+  --> $DIR/privacy-ns2.rs:13:5
+   |
+LL |     pub struct Baz;
+   |     ^^^^^^^^^^^^^^^
 note: these functions exist but are inaccessible
   --> $DIR/privacy-ns2.rs:15:5
    |

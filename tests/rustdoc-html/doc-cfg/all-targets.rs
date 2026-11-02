@@ -77,13 +77,13 @@ pub fn bar() {}
 //  'Available on target_os=fake_os and target_os=unknown and AIX and AMD HSA \
 //  and Android and bare-metal and CUDA and Cygwin and DragonFly BSD and \
 //  Emscripten and ESP-IDF and FreeBSD and Fuchsia and GNU/Hurd and Haiku \
-//  and HelenOS and Hermit and Horizon and illumos and iOS and L4Re and Linux \
-//  and LynxOS-178 and macOS and Managarm and Motor OS and NetBSD and NuttX \
-//  and OpenBSD and Play Station 1 and Play Station Portable and Play Station Vita \
-//  and QNX SDP 7.x and QNX SDP 8.0+ and QuRT and Redox OS and RTEMS OS and Solaris and \
-//  SOLID ASP3 and TEEOS and Trusty and tvOS and UEFI and VEXos and visionOS \
-//  and VxWorks and WASI and watchOS and Windows and Xous and zero knowledge \
-//  Virtual Machine only.'
+//  and HelenOS and Hermit and Horizon and Hyperlight and illumos and iOS and L4Re \
+//  and Linux and LynxOS-178 and macOS and Managarm and Motor OS and NetBSD and \
+//  NuttX and OpenBSD and Play Station 1 and Play Station 3 and Play Station Portable \
+//  and Play Station Vita and QNX SDP 7.x and QNX SDP 8.0+ and QuRT and Redox OS \
+//  and RTEMS OS and Solaris and SOLID ASP3 and TEEOS and Trusty and tvOS and UEFI \
+//  and VEXos and visionOS and VxWorks and WASI and watchOS and Windows and Xous \
+//  and zero knowledge Virtual Machine only.'
 #[doc(cfg(all(
     target_os = "aix",
     target_os = "amdhsa",
@@ -100,6 +100,7 @@ pub fn bar() {}
     target_os = "hermit",
     target_os = "horizon",
     target_os = "hurd",
+    target_os = "hyperlight",
     target_os = "illumos",
     target_os = "ios",
     target_os = "l4re",
@@ -114,6 +115,7 @@ pub fn bar() {}
     target_os = "qnx",
     target_os = "nuttx",
     target_os = "openbsd",
+    target_os = "ps3",
     target_os = "psp",
     target_os = "psx",
     target_os = "qurt",

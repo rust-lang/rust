@@ -1,23 +1,23 @@
 use std::{assert_matches, fmt};
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_hir::lang_items::LangItem;
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable};
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, bug, span_bug};
 use tracing::{debug, instrument};
 
-use crate::error;
+use crate::diagnostics;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::print::{FmtPrinter, Print};
 use crate::ty::{
-    self, AssocContainer, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, AssocContainer, EarlyBinder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 
 /// An `InstanceKind` along with the args that are needed to substitute the instance.
@@ -32,7 +32,7 @@ use crate::ty::{
 #[derive(StableHash, Lift, TypeFoldable, TypeVisitable)]
 pub struct Instance<'tcx> {
     pub def: InstanceKind<'tcx>,
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
 }
 
 /// Describes why a `ReifyShim` was created. This is needed to distinguish a ReifyShim created to
@@ -75,7 +75,7 @@ pub enum InstanceKind<'tcx> {
     /// "magically" evaluate calls to intrinsics purely in the caller.
     Intrinsic(DefId),
 
-    /// An LLVM intrinsic `fn` item (with `extern "unadjusted"`).
+    /// An LLVM intrinsic `fn` item (with `extern "llvm-intrinsic"`).
     ///
     /// Alongside `Intrinsic` and `Virtual`, this is the only `InstanceKind`
     /// that does not have its own callable MIR. Instead, codegen and const eval
@@ -177,12 +177,19 @@ pub enum ShimKind<'tcx> {
     /// The `DefId` is for `Clone::clone`, the `Ty` is the type `T` with the builtin `Clone` impl.
     Clone(DefId, Ty<'tcx>),
 
-    /// Compiler-generated `<T as FnPtr>::addr` implementation.
+    /// Compiler-generated `<T as FnPtr>::as_ptr` implementation.
     ///
     /// Automatically generated for all potentially higher-ranked `fn(I) -> R` types.
     ///
-    /// The `DefId` is for `FnPtr::addr`, the `Ty` is the type `T`.
-    FnPtrAddr(DefId, Ty<'tcx>),
+    /// The `DefId` is for `FnPtr::as_ptr`, the `Ty` is the type `T`.
+    FnPtrAsPtr(DefId, Ty<'tcx>),
+
+    /// Compiler-generated `<T as FnPtr>::from_ptr` implementation.
+    ///
+    /// Automatically generated for all potentially higher-ranked `fn(I) -> R` types.
+    ///
+    /// The `DefId` is for `FnPtr::from_ptr`, the `Ty` is the type `T`.
+    FnPtrFromPtr(DefId, Ty<'tcx>),
 
     /// `core::future::async_drop::async_drop_in_place::<'_, T>`.
     ///
@@ -224,7 +231,7 @@ impl<'tcx> Instance<'tcx> {
         if !tcx.sess.opts.share_generics()
             // However, if the def_id is marked inline(never), then it's fine to just reuse the
             // upstream monomorphization.
-            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_hir::attrs::InlineAttr::Never
+            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_attr_ir::InlineAttr::Never
         {
             return None;
         }
@@ -344,7 +351,8 @@ impl<'tcx> ShimKind<'tcx> {
             }
             | ShimKind::DropGlue(def_id, _)
             | ShimKind::Clone(def_id, _)
-            | ShimKind::FnPtrAddr(def_id, _)
+            | ShimKind::FnPtrAsPtr(def_id, _)
+            | ShimKind::FnPtrFromPtr(def_id, _)
             | ShimKind::FutureDropPoll(def_id, _, _)
             | ShimKind::AsyncDropGlue(def_id, _)
             | ShimKind::AsyncDropGlueCtor(def_id, _) => def_id,
@@ -366,7 +374,8 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::ConstructCoroutineInClosure { .. }
             | ShimKind::DropGlue(..)
             | ShimKind::Clone(..)
-            | ShimKind::FnPtrAddr(..) => None,
+            | ShimKind::FnPtrAsPtr(..)
+            | ShimKind::FnPtrFromPtr(..) => None,
         }
     }
 
@@ -385,8 +394,9 @@ impl<'tcx> ShimKind<'tcx> {
         match *self {
             ShimKind::Clone(..)
             | ShimKind::ThreadLocal(..)
-            | ShimKind::FnPtrAddr(..)
             | ShimKind::FnPtr(..)
+            | ShimKind::FnPtrAsPtr(..)
+            | ShimKind::FnPtrFromPtr(..)
             | ShimKind::DropGlue(_, Some(_))
             | ShimKind::FutureDropPoll(..)
             | ShimKind::AsyncDropGlue(_, _) => false,
@@ -471,7 +481,7 @@ fn resolve_async_drop_poll<'tcx>(mut cor_ty: Ty<'tcx>) -> Instance<'tcx> {
                         first_cor,
                         cor_ty,
                     )),
-                    args: proxy_args,
+                    args: *proxy_args,
                 };
             }
         } else {
@@ -485,12 +495,12 @@ fn resolve_async_drop_poll<'tcx>(mut cor_ty: Ty<'tcx>) -> Instance<'tcx> {
                         first_cor,
                         cor_ty,
                     )),
-                    args: proxy_args,
+                    args: *proxy_args,
                 };
             } else {
                 return Instance {
                     def: ty::InstanceKind::Shim(ShimKind::AsyncDropGlue(poll_def_id, cor_ty)),
-                    args: child_args,
+                    args: *child_args,
                 };
             }
         }
@@ -506,7 +516,7 @@ impl<'tcx> Instance<'tcx> {
     /// this function should probably use [`Instance::expect_resolve`], or if run
     /// in a polymorphic environment or within a lint (that may encounter ambiguity)
     /// [`Instance::try_resolve`] instead.
-    pub fn new_raw(def_id: DefId, args: GenericArgsRef<'tcx>) -> Instance<'tcx> {
+    pub fn new_raw(def_id: DefId, args: GenericArgs<'tcx>) -> Instance<'tcx> {
         assert!(
             !args.has_escaping_bound_vars(),
             "args of instance {def_id:?} has escaping bound vars: {args:?}"
@@ -563,14 +573,14 @@ impl<'tcx> Instance<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
         assert_matches!(
             tcx.def_kind(def_id),
             DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::Const { .. }
-                | DefKind::AssocConst { .. }
+                | DefKind::Const
+                | DefKind::AssocConst
                 | DefKind::AnonConst
                 | DefKind::Static { .. }
                 | DefKind::Ctor(_, CtorKind::Fn)
@@ -604,7 +614,7 @@ impl<'tcx> Instance<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         span: Span,
     ) -> Instance<'tcx> {
         // We compute the span lazily, to avoid unnecessary query calls.
@@ -618,7 +628,7 @@ impl<'tcx> Instance<'tcx> {
             Ok(None) => {
                 let type_length = type_length(args);
                 if !tcx.type_length_limit().value_within_limit(type_length) {
-                    tcx.dcx().emit_fatal(error::TypeLengthLimit {
+                    tcx.dcx().emit_fatal(diagnostics::TypeLengthLimit {
                         // We don't use `def_span(def_id)` so that diagnostics point
                         // to the crate root during mono instead of to foreign items.
                         // This is arguably better.
@@ -646,7 +656,7 @@ impl<'tcx> Instance<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, args={:?})", def_id, args);
         // Use either `resolve_closure` or `resolve_for_vtable`
@@ -695,7 +705,7 @@ impl<'tcx> Instance<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         span: Span,
     ) -> Instance<'tcx> {
         debug!("resolve_for_vtable(def_id={:?}, args={:?})", def_id, args);
@@ -775,7 +785,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_closure(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
         requested_kind: ty::ClosureKind,
     ) -> Instance<'tcx> {
         let actual_kind = args.as_closure().kind();
@@ -823,7 +833,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn fn_once_adapter_instance(
         tcx: TyCtxt<'tcx>,
         closure_did: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> Instance<'tcx> {
         let fn_once = tcx.require_lang_item(LangItem::FnOnce, DUMMY_SP);
         let call_once = tcx
@@ -854,7 +864,7 @@ impl<'tcx> Instance<'tcx> {
         tcx: TyCtxt<'tcx>,
         trait_item_id: DefId,
         trait_id: DefId,
-        rcvr_args: ty::GenericArgsRef<'tcx>,
+        rcvr_args: ty::GenericArgs<'tcx>,
     ) -> Option<Instance<'tcx>> {
         let ty::Coroutine(coroutine_def_id, args) = *rcvr_args.type_at(0).kind() else {
             return None;
@@ -866,22 +876,22 @@ impl<'tcx> Instance<'tcx> {
                 coroutine_kind,
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
             );
-            hir::LangItem::FuturePoll
+            LangItem::FuturePoll
         } else if tcx.is_lang_item(trait_id, LangItem::Iterator) {
             assert_matches!(
                 coroutine_kind,
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
             );
-            hir::LangItem::IteratorNext
+            LangItem::IteratorNext
         } else if tcx.is_lang_item(trait_id, LangItem::AsyncIterator) {
             assert_matches!(
                 coroutine_kind,
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)
             );
-            hir::LangItem::AsyncIteratorPollNext
+            LangItem::AsyncIteratorPollNext
         } else if tcx.is_lang_item(trait_id, LangItem::Coroutine) {
             assert_matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
-            hir::LangItem::CoroutineResume
+            LangItem::CoroutineResume
         } else {
             return None;
         };
@@ -926,7 +936,7 @@ impl<'tcx> Instance<'tcx> {
     /// This function returns `Some(args)` in the former case and `None` otherwise -- i.e., if
     /// this function returns `None`, then the MIR body does not require instantiation during
     /// codegen.
-    fn args_for_mir_body(&self) -> Option<GenericArgsRef<'tcx>> {
+    fn args_for_mir_body(&self) -> Option<GenericArgs<'tcx>> {
         self.def.has_polymorphic_mir_body().then_some(self.args)
     }
 

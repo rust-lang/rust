@@ -24,7 +24,6 @@ which also will affect its size if the enum has a non-zero size.
 
 #![allow(dead_code)]
 #![deny(improper_ctypes)]
-#![feature(ptr_internals)]
 
 use std::num;
 
@@ -44,7 +43,6 @@ extern "C" {
     fn result_ref_t(x: Result<&'static u8, ()>);
     fn result_fn_t(x: Result<extern "C" fn(), ()>);
     fn result_nonnull_t(x: Result<std::ptr::NonNull<u8>, ()>);
-    fn result_unique_t(x: Result<std::ptr::Unique<u8>, ()>);
     fn result_nonzero_u8_t(x: Result<num::NonZero<u8>, ()>);
     fn result_nonzero_u16_t(x: Result<num::NonZero<u16>, ()>);
     fn result_nonzero_u32_t(x: Result<num::NonZero<u32>, ()>);
@@ -64,7 +62,6 @@ extern "C" {
     fn result_ref_e(x: Result<(), &'static u8>);
     fn result_fn_e(x: Result<(), extern "C" fn()>);
     fn result_nonnull_e(x: Result<(), std::ptr::NonNull<u8>>);
-    fn result_unique_e(x: Result<(), std::ptr::Unique<u8>>);
     fn result_nonzero_u8_e(x: Result<(), num::NonZero<u8>>);
     fn result_nonzero_u16_e(x: Result<(), num::NonZero<u16>>);
     fn result_nonzero_u32_e(x: Result<(), num::NonZero<u32>>);
@@ -92,7 +89,6 @@ extern "C" {
     fn either_ref_t(x: Either<&'static u8, ()>);
     fn either_fn_t(x: Either<extern "C" fn(), ()>);
     fn either_nonnull_t(x: Either<std::ptr::NonNull<u8>, ()>);
-    fn either_unique_t(x: Either<std::ptr::Unique<u8>, ()>);
     fn either_nonzero_u8_t(x: Either<num::NonZero<u8>, ()>);
     fn either_nonzero_u16_t(x: Either<num::NonZero<u16>, ()>);
     fn either_nonzero_u32_t(x: Either<num::NonZero<u32>, ()>);
@@ -112,7 +108,6 @@ extern "C" {
     fn either_ref_e(x: Either<(), &'static u8>);
     fn either_fn_e(x: Either<(), extern "C" fn()>);
     fn either_nonnull_e(x: Either<(), std::ptr::NonNull<u8>>);
-    fn either_unique_e(x: Either<(), std::ptr::Unique<u8>>);
     fn either_nonzero_u8_e(x: Either<(), num::NonZero<u8>>);
     fn either_nonzero_u16_e(x: Either<(), num::NonZero<u16>>);
     fn either_nonzero_u32_e(x: Either<(), num::NonZero<u32>>);

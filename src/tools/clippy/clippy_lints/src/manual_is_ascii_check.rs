@@ -2,16 +2,15 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{higher, is_in_const_context, peel_ref_operators, sym};
 use rustc_ast::LitKind::{Byte, Char};
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Lit, Node, Param, PatExpr, PatExprKind, PatKind, RangeEnd};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -26,31 +25,27 @@ declare_clippy_lint! {
     /// ASCII (lowercase|uppercase|digit|hexdigit) characters.
     /// ### Example
     /// ```no_run
-    /// fn main() {
-    ///     assert!(matches!('x', 'a'..='z'));
-    ///     assert!(matches!(b'X', b'A'..=b'Z'));
-    ///     assert!(matches!('2', '0'..='9'));
-    ///     assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
-    ///     assert!(matches!('C', '0'..='9' | 'a'..='f' | 'A'..='F'));
+    /// assert!(matches!('x', 'a'..='z'));
+    /// assert!(matches!(b'X', b'A'..=b'Z'));
+    /// assert!(matches!('2', '0'..='9'));
+    /// assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
+    /// assert!(matches!('C', '0'..='9' | 'a'..='f' | 'A'..='F'));
     ///
-    ///     ('0'..='9').contains(&'0');
-    ///     ('a'..='z').contains(&'a');
-    ///     ('A'..='Z').contains(&'A');
-    /// }
+    /// ('0'..='9').contains(&'0');
+    /// ('a'..='z').contains(&'a');
+    /// ('A'..='Z').contains(&'A');
     /// ```
     /// Use instead:
     /// ```no_run
-    /// fn main() {
-    ///     assert!('x'.is_ascii_lowercase());
-    ///     assert!(b'X'.is_ascii_uppercase());
-    ///     assert!('2'.is_ascii_digit());
-    ///     assert!('x'.is_ascii_alphabetic());
-    ///     assert!('C'.is_ascii_hexdigit());
+    /// assert!('x'.is_ascii_lowercase());
+    /// assert!(b'X'.is_ascii_uppercase());
+    /// assert!('2'.is_ascii_digit());
+    /// assert!('x'.is_ascii_alphabetic());
+    /// assert!('C'.is_ascii_hexdigit());
     ///
-    ///     '0'.is_ascii_digit();
-    ///     'a'.is_ascii_lowercase();
-    ///     'A'.is_ascii_uppercase();
-    /// }
+    /// '0'.is_ascii_digit();
+    /// 'a'.is_ascii_lowercase();
+    /// 'A'.is_ascii_uppercase();
     /// ```
     #[clippy::version = "1.67.0"]
     pub MANUAL_IS_ASCII_CHECK,
@@ -66,7 +61,7 @@ pub struct ManualIsAsciiCheck {
 
 impl ManualIsAsciiCheck {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 

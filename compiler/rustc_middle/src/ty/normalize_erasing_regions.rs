@@ -8,11 +8,12 @@
 //! or constant found within. (This underlying query is what is cached.)
 
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
 use crate::traits::query::NoSolution;
 use crate::ty::{
-    self, EarlyBinder, FallibleTypeFolder, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    self, EarlyBinder, FallibleTypeFolder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeVisitableExt, Unnormalized,
 };
 
@@ -73,10 +74,14 @@ impl<'tcx> TyCtxt<'tcx> {
     ) {
         let value = self.erase_and_anonymize_regions(value);
         if value.has_aliases() {
-            assert_eq!(
-                value.clone(),
-                value.fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, typing_env })
-            )
+            // We want this check to also detect cases where an alias is incorrectly
+            // rigid in the current `TypingEnv`. This is the case if we use values
+            // which have been normalized in a different `TypingEnv` without
+            // renormalizing them. This was necessary to catch e.g. #163724.
+            let normalized = ty::set_aliases_to_non_rigid(self, value.clone())
+                .skip_normalization()
+                .fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, typing_env });
+            assert_eq!(value, normalized);
         }
     }
 
@@ -156,7 +161,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub fn instantiate_and_normalize_erasing_regions<T>(
         self,
-        param_args: GenericArgsRef<'tcx>,
+        param_args: GenericArgs<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         value: EarlyBinder<'tcx, T>,
     ) -> T
@@ -174,7 +179,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub fn try_instantiate_and_normalize_erasing_regions<T>(
         self,
-        param_args: GenericArgsRef<'tcx>,
+        param_args: GenericArgs<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         value: EarlyBinder<'tcx, T>,
     ) -> Result<T, NormalizationError<'tcx>>

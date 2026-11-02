@@ -9,6 +9,8 @@
 //! we don't abort when locking a lock owned by a thread that has already exited
 //! and we do not detect copying of the lock, but macOS doesn't guarantee anything
 //! in that case either.
+//! FIXME: synchronize behavior on lock copies/moves with macOS guarantees. Apparently there
+//! is hope that macOS might eventually guarantee more than it does today.
 
 use std::cell::Cell;
 use std::time::Duration;
@@ -17,6 +19,10 @@ use rustc_abi::{Endian, FieldIdx, Size};
 
 use crate::concurrency::sync::{AccessKind, FutexRef, SyncObj};
 use crate::*;
+
+// The in-memory marker values we use to indicate whether objects have been initialized.
+const SYNC_UNINIT: u8 = 0;
+const SYNC_INIT: u8 = 1;
 
 #[derive(Clone)]
 enum MacOsUnfairLock {
@@ -69,6 +75,34 @@ struct MacOsFutex {
 
 impl SyncObj for MacOsFutex {}
 
+#[derive(Clone)]
+struct MacOsSemaphore {
+    semaphore: SemaphoreRef,
+    init_value: u64,
+}
+
+// The offset into the semaphore where we are storing the "init" flag.
+const SEM_INIT_OFFSET: Size = Size::ZERO;
+
+// Constants from the dispatch semaphore API.
+const DISPATCH_TIME_NOW: u64 = 0;
+const DISPATCH_TIME_FOREVER: u64 = !0;
+
+impl SyncObj for MacOsSemaphore {
+    fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
+        if !self.semaphore.queue_is_empty() {
+            throw_ub_format!(
+                "{access_kind} of `os_unfair_lock` is forbidden while the queue is non-empty"
+            );
+        }
+        interp_ok(())
+    }
+
+    fn delete_on_write(&self) -> bool {
+        true
+    }
+}
+
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn os_unfair_lock_get_data<'a>(
@@ -87,8 +121,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.get_immovable_sync_with_static_init(
             &lock,
             Size::ZERO, // offset for init tracking
-            /* uninit_val */ 0,
-            /* init_val */ 1,
+            SYNC_UNINIT,
+            SYNC_INIT,
             |this| {
                 let field = this.project_field(&lock, FieldIdx::from_u32(0))?;
                 let val = this.read_scalar(&field)?.to_u32()?;
@@ -109,6 +143,24 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     throw_ub_format!("`os_unfair_lock` was not properly initialized at this location, or it got overwritten");
                 }
             },
+        )
+    }
+
+    fn dispatch_semaphore_get_data<'a>(
+        &'a mut self,
+        sem_ptr: &ImmTy<'tcx>,
+    ) -> InterpResult<'tcx, &'a MacOsSemaphore>
+    where
+        'tcx: 'a,
+    {
+        let this = self.eval_context_mut();
+        let sem = this.deref_pointer_as(sem_ptr, this.machine.layouts.u8)?;
+        this.get_immovable_sync_with_static_init(
+            &sem,
+            SEM_INIT_OFFSET,
+            SYNC_UNINIT,
+            SYNC_INIT,
+            |_ecx| throw_ub_format!("`dispatch_semaphore_t` value has not been initialized with `dispatch_semaphore_create`"),
         )
     }
 }
@@ -437,6 +489,144 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
         }
 
+        interp_ok(())
+    }
+
+    fn dispatch_semaphore_create(
+        &mut self,
+        value: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let value = this.read_target_isize(value)?;
+
+        let Ok(value) = u64::try_from(value) else {
+            throw_machine_stop!(TerminationInfo::Abort(
+                "dispatch_semaphore_create called with a negative value".to_owned()
+            ));
+        };
+
+        // Create an allocation to hold the semaphore "state" (mostly meta state for us).
+        let alloc = this.allocate(this.machine.layouts.u8, MiriMemoryKind::Runtime.into())?;
+        // Initialize semaphore.
+        let data = MacOsSemaphore { semaphore: SemaphoreRef::new(value), init_value: value };
+        this.init_immovable_sync(&alloc, SEM_INIT_OFFSET, SYNC_INIT, data)?;
+
+        this.write_pointer(alloc.ptr(), dest)?;
+        interp_ok(())
+    }
+
+    fn dispatch_semaphore_wait(
+        &mut self,
+        sem_ptr: &OpTy<'tcx>,
+        timeout: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let sem_ptr = this.read_immediate(sem_ptr)?;
+        let timeout = this.read_scalar(timeout)?.to_u64()?;
+
+        let deadline = if timeout == DISPATCH_TIME_FOREVER {
+            None
+        } else {
+            // `timeout` is an absolute nanosecond value on the monotone clock.
+            // (This also handles `DISPATCH_TIME_NOW` as that is 0.)
+            let deadline =
+                this.machine.monotonic_clock.epoch().add_lossy(Duration::from_nanos(timeout));
+            Some(deadline.into())
+        };
+
+        let data = this.dispatch_semaphore_get_data(&sem_ptr)?.clone();
+        let dest = dest.clone();
+        this.semaphore_decrement(
+            data.semaphore,
+            deadline,
+            callback!(
+                @capture<'tcx> {
+                    dest: MPlaceTy<'tcx>,
+                }
+                |this, unblock: UnblockKind| {
+                    match unblock {
+                        UnblockKind::Ready => this.write_null(&dest),
+                        UnblockKind::TimedOut => this.write_int(1, &dest),
+                    }
+                }
+            ),
+        )?;
+
+        interp_ok(())
+    }
+
+    fn dispatch_semaphore_signal(
+        &mut self,
+        sem_ptr: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let sem_ptr = this.read_immediate(sem_ptr)?;
+
+        let data = this.dispatch_semaphore_get_data(&sem_ptr)?.clone();
+        let woke_thread = this.semaphore_increment(&data.semaphore)?;
+
+        // The `dispatch_semaphore_signal` docs do not discuss the return value,
+        // but the Swift-level docs say:
+        // > This function returns non-zero if a thread is woken. Otherwise, zero is returned.
+
+        this.write_int(woke_thread, dest)?;
+        interp_ok(())
+    }
+
+    fn dispatch_release(&mut self, sem_ptr: &OpTy<'tcx>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let sem_ptr = this.read_immediate(sem_ptr)?;
+
+        let data = this.dispatch_semaphore_get_data(&sem_ptr)?.clone();
+        // macOS aborts if the final value is below the initial value.
+        if data.semaphore.value() < data.init_value {
+            throw_machine_stop!(TerminationInfo::Abort(
+                "dispatch_semaphore destroyed while in use".to_owned()
+            ));
+        }
+
+        // Freeing the memory will also free the meta-object in `AllocExtra`.
+        let sem_ptr = sem_ptr.to_scalar().to_pointer(this);
+        this.deallocate_ptr(sem_ptr, None, MiriMemoryKind::Runtime.into())?;
+
+        interp_ok(())
+    }
+
+    fn dispatch_time(
+        &mut self,
+        when: &OpTy<'tcx>,
+        delta: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let when = this.read_scalar(when)?.to_u64()?;
+        let delta = this.read_scalar(delta)?.to_i64()?;
+
+        if when != DISPATCH_TIME_NOW {
+            throw_unsup_format!(
+                "dispatch_time is only supported with `when` being `DISPATCH_TIME_NOW`"
+            );
+        }
+        let Ok(delta) = u64::try_from(delta) else {
+            throw_unsup_format!("dispatch_time with negative `delta` is not supported");
+        };
+
+        // `delta` is in nanoseconds. Uses the monotone clock.
+        let deadline = this.machine.monotonic_clock.now().add_lossy(Duration::from_nanos(delta));
+        // Convert back to absolute nanoseconds for return value.
+        let duration = deadline.duration_since(this.machine.monotonic_clock.epoch());
+        let Ok(nanos) = u64::try_from(duration.as_nanos()) else {
+            throw_unsup_format!("dispatch_time with too big `delta` is not supported");
+        };
+        this.write_int(nanos, dest)?;
         interp_ok(())
     }
 }

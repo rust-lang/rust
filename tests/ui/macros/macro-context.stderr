@@ -34,24 +34,23 @@ LL |         m!() => {}
 error: expected expression, found reserved keyword `typeof`
   --> $DIR/macro-context.rs:3:17
    |
+LL | macro_rules! m {
 LL |     () => ( i ; typeof );
    |                 ^^^^^^ expected expression
 ...
 LL |     m!();
    |     ---- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find type `i` in this scope
   --> $DIR/macro-context.rs:3:13
    |
+LL | macro_rules! m {
 LL |     () => ( i ; typeof );
-   |             ^
+   |             ^ not found in this scope
 ...
 LL |     let a: m!();
    |            ---- in this macro invocation
    |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a builtin type with a similar name exists
    |
 LL |     () => ( i8 ; typeof );
@@ -60,17 +59,17 @@ LL |     () => ( i8 ; typeof );
 error[E0425]: cannot find value `i` in this scope
   --> $DIR/macro-context.rs:3:13
    |
+LL | macro_rules! m {
 LL |     () => ( i ; typeof );
    |             ^ not found in this scope
 ...
 LL |     let i = m!();
    |             ---- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trailing semicolon in macro used in expression position
   --> $DIR/macro-context.rs:3:15
    |
+LL | macro_rules! m {
 LL |     () => ( i ; typeof );
    |               ^
 ...
@@ -80,7 +79,6 @@ LL |     let i = m!();
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
    = note: `#[deny(semicolon_in_expressions_from_macros)]` (part of `#[deny(future_incompatible)]`) on by default
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 7 previous errors
 
@@ -89,6 +87,7 @@ Future incompatibility report: Future breakage diagnostic:
 error: trailing semicolon in macro used in expression position
   --> $DIR/macro-context.rs:3:15
    |
+LL | macro_rules! m {
 LL |     () => ( i ; typeof );
    |               ^
 ...
@@ -98,5 +97,4 @@ LL |     let i = m!();
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
    = note: `#[deny(semicolon_in_expressions_from_macros)]` (part of `#[deny(future_incompatible)]`) on by default
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 

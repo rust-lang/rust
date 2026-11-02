@@ -1,5 +1,4 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::Ty;
@@ -93,7 +92,6 @@ impl<'tcx> MirPatch<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::UnwindResume,
-                attributes: ThinVec::new(),
             }),
             true,
         ));
@@ -110,7 +108,6 @@ impl<'tcx> MirPatch<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Unreachable,
-                attributes: ThinVec::new(),
             }),
             true,
         ));
@@ -127,7 +124,6 @@ impl<'tcx> MirPatch<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Unreachable,
-                attributes: ThinVec::new(),
             }),
             false,
         ));
@@ -146,7 +142,6 @@ impl<'tcx> MirPatch<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::UnwindTerminate(reason),
-                attributes: ThinVec::new(),
             }),
             true,
         ));
@@ -213,6 +208,21 @@ impl<'tcx> MirPatch<'tcx> {
         assert!(!self.term_patch_map.contains_key(&block));
         debug!("MirPatch: patch_terminator({:?}, {:?})", block, new);
         self.term_patch_map.insert(block, new);
+    }
+
+    /// Modifies the terminator of a block, reading the existing patch if one exists or
+    /// cloning from the body otherwise.
+    pub(crate) fn mutate_terminator(
+        &mut self,
+        body: &Body<'tcx>,
+        bb: BasicBlock,
+        f: impl FnOnce(&mut TerminatorKind<'tcx>),
+    ) {
+        let kind = self
+            .term_patch_map
+            .entry(bb)
+            .or_insert_with(|| body.basic_blocks[bb].terminator().kind.clone());
+        f(kind);
     }
 
     /// Mark given statement to be replaced by a `Nop`.

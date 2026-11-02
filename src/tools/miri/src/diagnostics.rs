@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use rustc_abi::{Align, Size};
 use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_errors::{Diag, Level};
-use rustc_span::{DUMMY_SP, Span, SpanData, Symbol};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
 use crate::borrow_tracker::tree_borrows::diagnostics as tree_diagnostics;
@@ -14,7 +14,7 @@ use crate::*;
 /// Details of premature program termination.
 pub enum TerminationInfo {
     Exit {
-        code: i32,
+        exit_code: i32,
         leak_check: bool,
     },
     Abort(String),
@@ -32,23 +32,23 @@ pub enum TerminationInfo {
         history: tree_diagnostics::HistoryData,
     },
     Int2PtrWithStrictProvenance,
-    /// GenMC deemed this execution invalid, so Miri drops it, i.e., it skips to the next execution
-    /// (mirrors GenMC's `Invalid` result).
-    GenmcInvalid,
+    /// GenMC deemed this execution "moot" or invalid, so Miri drops it, i.e., it skips to the next
+    /// execution. Mirrors GenMC's `Invalid` result or a "moot" result from the scheduler.
+    GenmcMoot,
     /// All threads are blocked.
     GlobalDeadlock,
     /// Some thread discovered a deadlock condition (e.g. in a mutex with reentrancy checking).
     LocalDeadlock,
     MultipleSymbolDefinitions {
         link_name: Symbol,
-        first: SpanData,
+        first: Span,
         first_crate: Symbol,
-        second: SpanData,
+        second: Span,
         second_crate: Symbol,
     },
     SymbolShimClashing {
         link_name: Symbol,
-        span: SpanData,
+        span: Span,
     },
     DataRace {
         involves_non_atomic: bool,
@@ -64,14 +64,15 @@ pub enum TerminationInfo {
 pub struct RacingOp {
     pub action: String,
     pub thread_info: String,
-    pub span: SpanData,
+    pub span: Span,
 }
 
 impl fmt::Display for TerminationInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use TerminationInfo::*;
         match self {
-            Exit { code, .. } => write!(f, "the evaluated program completed with exit code {code}"),
+            Exit { exit_code, .. } =>
+                write!(f, "the evaluated program completed with exit code {exit_code}"),
             Abort(msg) => write!(f, "{msg}"),
             Interrupted => write!(f, "interpretation was interrupted"),
             UnsupportedInIsolation(msg) => write!(f, "{msg}"),
@@ -84,7 +85,7 @@ impl fmt::Display for TerminationInfo {
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             GlobalDeadlock => write!(f, "the evaluated program deadlocked"),
             LocalDeadlock => write!(f, "a thread deadlocked"),
-            GenmcInvalid => write!(f, "GenMC wants to skip this execution"),
+            GenmcMoot => write!(f, "GenMC wants to skip this execution"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
@@ -148,12 +149,6 @@ pub enum NonHaltingDiagnostic {
     },
     ExternTypeReborrow,
     GenmcCompareExchangeWeak,
-    GenmcCompareExchangeOrderingMismatch {
-        success_ordering: AtomicRwOrd,
-        upgraded_success_ordering: AtomicRwOrd,
-        failure_ordering: AtomicReadOrd,
-        effective_failure_ordering: AtomicReadOrd,
-    },
     FileInProcOpened,
     ConnectingSocketGetsockname,
     SocketAddressResolution {
@@ -237,7 +232,7 @@ pub fn prune_stacktrace<'tcx>(
 /// Report the result of a Miri execution.
 ///
 /// Returns `Some` if this was regular program termination with a given exit code and a `bool`
-/// indicating whether a leak check should happen; `None` otherwise.
+/// indicating whether a leak check should happen; `None` if execution was aborted with an error.
 pub fn report_result<'tcx>(
     ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
     res: InterpErrorInfo<'tcx>,
@@ -251,14 +246,14 @@ pub fn report_result<'tcx>(
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
         use TerminationInfo::*;
         let title = match info {
-            &Exit { code, leak_check } => return Some((code, leak_check)),
+            &Exit { exit_code, leak_check } => return Some((exit_code, leak_check)),
             Abort(_) => Some("abnormal termination"),
             Interrupted => None,
             UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance | UnsupportedForeignItem(_) =>
                 Some("unsupported operation"),
             StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
                 Some("Undefined Behavior"),
-            GenmcInvalid => {
+            GenmcMoot => {
                 assert!(ecx.machine.data_race.as_genmc_ref().is_some());
                 return Some((0, false));
             }
@@ -372,10 +367,7 @@ pub fn report_result<'tcx>(
                 ..
             }) => {
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
-                bug!(
-                    "This validation error should be impossible in Miri: {}",
-                    format_interp_error(res)
-                );
+                bug!("This validation error should be impossible in Miri: {}", res.to_string());
             }
             UndefinedBehavior(_) => "Undefined Behavior",
             ResourceExhaustion(_) => "resource exhaustion",
@@ -391,7 +383,7 @@ pub fn report_result<'tcx>(
             ) => "post-monomorphization error",
             _ => {
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
-                bug!("This error should be impossible in Miri: {}", format_interp_error(res));
+                bug!("This error should be impossible in Miri: {}", res.to_string());
             }
         };
         #[rustfmt::skip]
@@ -468,7 +460,7 @@ pub fn report_result<'tcx>(
     if let Some(title) = title {
         write!(primary_msg, "{title}: ").unwrap();
     }
-    write!(primary_msg, "{}", format_interp_error(res)).unwrap();
+    write!(primary_msg, "{}", res.to_string()).unwrap();
 
     if labels.is_empty() {
         labels.push(format!(
@@ -503,7 +495,7 @@ pub fn report_result<'tcx>(
         trace!("-------------------");
         trace!("Frame {}", i);
         trace!("    return: {:?}", frame.return_place());
-        for (i, local) in frame.locals.iter().enumerate() {
+        for (i, local) in frame.locals().iter().enumerate() {
             trace!("    local {}: {:?}", i, local);
         }
     }
@@ -557,8 +549,8 @@ fn report_msg<'tcx>(
     diag_level: DiagLevel,
     title: String,
     span_msg: Vec<String>,
-    notes: Vec<(Option<SpanData>, String)>,
-    helps: Vec<(Option<SpanData>, String)>,
+    notes: Vec<(Option<Span>, String)>,
+    helps: Vec<(Option<Span>, String)>,
     stacktrace: &[FrameInfo<'tcx>],
     thread: Option<ThreadId>,
     machine: &MiriMachine<'tcx>,
@@ -572,10 +564,10 @@ fn report_msg<'tcx>(
     let tcx = machine.tcx;
     let level = match diag_level {
         DiagLevel::Error => Level::Error,
-        DiagLevel::Warning => Level::Warning,
+        DiagLevel::Warning => Level::Warning(None),
         DiagLevel::Note => Level::Note,
     };
-    let mut err = Diag::<()>::new(tcx.sess.dcx(), level, title);
+    let mut err = Diag::new(tcx.sess.dcx(), level, title);
     err.span(span);
 
     // Show main message.
@@ -584,16 +576,16 @@ fn report_msg<'tcx>(
     }
 
     // Show note and help messages.
-    for (span_data, note) in notes {
-        if let Some(span_data) = span_data {
-            err.span_note(span_data.span(), note);
+    for (span, note) in notes {
+        if let Some(span) = span {
+            err.span_note(span, note);
         } else {
             err.note(note);
         }
     }
-    for (span_data, help) in helps {
-        if let Some(span_data) = span_data {
-            err.span_help(span_data.span(), help);
+    for (span, help) in helps {
+        if let Some(span) = span {
+            err.span_help(span, help);
         } else {
             err.help(help);
         }
@@ -654,7 +646,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 ("sharing memory with a native function".to_string(), DiagLevel::Warning),
             ExternTypeReborrow =>
                 ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
-            GenmcCompareExchangeWeak | GenmcCompareExchangeOrderingMismatch { .. } =>
+            GenmcCompareExchangeWeak =>
                 ("GenMC might miss possible behaviors of this code".to_string(), DiagLevel::Warning),
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
@@ -700,22 +692,8 @@ impl<'tcx> MiriMachine<'tcx> {
             ExternTypeReborrow =>
                 format!("reborrow of a reference to `extern type` is not properly supported"),
             GenmcCompareExchangeWeak =>
-                "GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures."
+                "GenMC does not model spurious failures of `compare_exchange_weak` by default. Miri with GenMC might miss bugs related to spurious failures."
                     .to_string(),
-            GenmcCompareExchangeOrderingMismatch {
-                success_ordering,
-                upgraded_success_ordering,
-                failure_ordering,
-                effective_failure_ordering,
-            } => {
-                let was_upgraded_msg = if success_ordering != upgraded_success_ordering {
-                    format!("Success ordering '{success_ordering:?}' was upgraded to '{upgraded_success_ordering:?}' to match failure ordering '{failure_ordering:?}'")
-                } else {
-                    assert_ne!(failure_ordering, effective_failure_ordering);
-                    format!("Due to success ordering '{success_ordering:?}', the failure ordering '{failure_ordering:?}' is treated like '{effective_failure_ordering:?}'")
-                };
-                format!("GenMC currently does not model the failure ordering for `compare_exchange`. {was_upgraded_msg}. Miri with GenMC might miss bugs related to this memory access.")
-            }
             FileInProcOpened => format!("files in `/proc` can bypass the Abstract Machine and might not work properly in Miri"),
             ConnectingSocketGetsockname => format!("connecting sockets return unspecified socket addresses on Windows hosts"),
             SocketAddressResolution { error } => format!("address resolution failed: {error}"),
@@ -824,6 +802,10 @@ impl<'tcx> MiriMachine<'tcx> {
                     ),
                 ]
             }
+            GenmcCompareExchangeWeak =>
+                vec![note!(
+                    "add `-Zmiri-genmc-weak-cas-spurious-failures` to MIRIFLAGS to explore spurious failures; all retry loops around `compare_exchange_weak` then need to be bounded"
+                )],
             _ => vec![],
         };
 

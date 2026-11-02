@@ -12,8 +12,6 @@ mod riscv;
 #[macro_use]
 mod powerpc;
 #[macro_use]
-mod powerpc64;
-#[macro_use]
 mod mips;
 #[macro_use]
 mod mips64;
@@ -39,13 +37,9 @@ cfg_select! {
         #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")]
         pub use riscv::*;
     }
-    target_arch = "powerpc" => {
+    any(target_arch = "powerpc", target_arch = "powerpc64") => {
         #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
         pub use powerpc::*;
-    }
-    target_arch = "powerpc64" => {
-        #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
-        pub use powerpc64::*;
     }
     target_arch = "mips" => {
         #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
@@ -67,7 +61,7 @@ cfg_select! {
         // Unimplemented architecture:
         #[doc(hidden)]
         pub(crate) enum Feature {
-            Null
+            Null,
         }
         #[doc(hidden)]
         #[unstable(feature = "stdarch_internal", issue = "none")]
@@ -75,9 +69,13 @@ cfg_select! {
 
         impl Feature {
             #[doc(hidden)]
-            pub(crate) fn from_str(_s: &str) -> Result<Feature, ()> { Err(()) }
+            pub(crate) fn from_str(_s: &str) -> Result<Feature, ()> {
+                Err(())
+            }
             #[doc(hidden)]
-            pub(crate) fn to_str(self) -> &'static str { "" }
+            pub(crate) fn to_str(self) -> &'static str {
+                ""
+            }
         }
     }
 }

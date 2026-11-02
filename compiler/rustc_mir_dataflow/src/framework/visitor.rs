@@ -1,9 +1,9 @@
-use rustc_middle::mir::{self, BasicBlock, Location, traversal};
+use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Results};
 
-/// Calls the corresponding method in `ResultsVisitor` for every location in a `mir::Body` with the
-/// dataflow state at that location.
+/// Calls the visitor methods in `vis` for every location in every block in `blocks`. Note that
+/// every block in `blocks` must be reachable, and a `debug_assert` checks this.
 pub fn visit_results<'mir, 'tcx, A>(
     body: &'mir mir::Body<'tcx>,
     blocks: impl IntoIterator<Item = BasicBlock>,
@@ -27,18 +27,6 @@ pub fn visit_results<'mir, 'tcx, A>(
     }
 }
 
-/// Like `visit_results`, but only for reachable blocks.
-pub fn visit_reachable_results<'mir, 'tcx, A>(
-    body: &'mir mir::Body<'tcx>,
-    results: &Results<'tcx, A>,
-    vis: &mut impl ResultsVisitor<'tcx, A>,
-) where
-    A: Analysis<'tcx>,
-{
-    let blocks = traversal::reachable(body).map(|(bb, _)| bb);
-    visit_results(body, blocks, results, vis)
-}
-
 /// A visitor over the results of an `Analysis`. Use this when you want to inspect domain values in
 /// many or all locations; use `ResultsCursor` if you want to inspect domain values only in certain
 /// locations.
@@ -46,10 +34,16 @@ pub trait ResultsVisitor<'tcx, A>
 where
     A: Analysis<'tcx>,
 {
+    /// Called after all effects in a block have been applied in the direction
+    /// of the analysis.
+    ///
+    /// In a forwards analysis, `state` is from the block's end. In a backwards
+    /// analysis, `state` is from the block's start.
+    fn visit_block_exit(&mut self, _state: &A::Domain, _block: BasicBlock) {}
+
     /// Called after the "early" effect of the given statement is applied to `state`.
     fn visit_after_early_statement_effect(
         &mut self,
-        _analysis: &A,
         _state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -59,7 +53,6 @@ where
     /// Called after the "primary" effect of the given statement is applied to `state`.
     fn visit_after_primary_statement_effect(
         &mut self,
-        _analysis: &A,
         _state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -69,7 +62,6 @@ where
     /// Called after the "early" effect of the given terminator is applied to `state`.
     fn visit_after_early_terminator_effect(
         &mut self,
-        _analysis: &A,
         _state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
@@ -81,7 +73,6 @@ where
     /// The `call_return_effect` (if one exists) will *not* be applied to `state`.
     fn visit_after_primary_terminator_effect(
         &mut self,
-        _analysis: &A,
         _state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,

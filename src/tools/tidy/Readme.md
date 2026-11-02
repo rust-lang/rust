@@ -103,7 +103,8 @@ fn eee() {}
 fn z() {}
 // tidy-alphabetical-end
 ```
-<!--ignore-tidy-todo-->While not exactly a tidy directive, // TODO will fail tidy and make sure you can't merge a PR with unfinished work.
+<!-- ignore-tidy-todo -->
+While not exactly a tidy directive, // TODO will fail tidy and make sure you can't merge a PR with unfinished work.
 
 ### Test Specific Directives
 

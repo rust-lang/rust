@@ -44,7 +44,7 @@ impl<'tcx> UnixEnvVars<'tcx> {
         }
 
         // This is memory backing an extern static, hence `ExternStatic`, not `Env`.
-        let layout = ecx.machine.layouts.mut_raw_ptr;
+        let layout = ecx.machine.layouts.unit_ptr_mut;
         let environ = ecx.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
         let environ_block = alloc_environ_block(ecx, env_vars_machine.values().copied().collect())?;
         ecx.write_pointer(environ_block, &environ)?;
@@ -113,7 +113,7 @@ fn alloc_environ_block<'tcx>(
     // Make an array with all these pointers inside Miri.
     let vars_layout = ecx.layout_of(Ty::new_array(
         *ecx.tcx,
-        ecx.machine.layouts.mut_raw_ptr.ty,
+        ecx.machine.layouts.unit_ptr_mut.ty,
         u64::try_from(vars.len()).unwrap(),
     ))?;
     let vars_place = ecx.allocate(vars_layout, MiriMemoryKind::Machine.into())?;
@@ -126,8 +126,8 @@ fn alloc_environ_block<'tcx>(
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn getenv(&mut self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, Pointer> {
-        let this = self.eval_context_mut();
+    fn getenv(&self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, Pointer> {
+        let this = self.eval_context_ref();
         this.assert_target_os_is_unix("getenv");
 
         let name_ptr = this.read_pointer(name_op)?;
@@ -326,8 +326,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    fn getpid(&mut self) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+    fn getpid(&self) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_ref();
         this.assert_target_os_is_unix("getpid");
 
         // The reason we need to do this wacky of a conversion is because
@@ -367,7 +367,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
 
-        let uname = this.deref_pointer_as(uname, this.libc_ty_layout("utsname"))?;
+        let uname = this.deref_pointer(uname)?;
         let arch = this.machine.tcx.sess.target.arch.desc_symbol();
         // Values required by POSIX.
         let mut values = vec![
@@ -419,6 +419,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.machine.threads.active_thread()
         } else {
             // Our pthread_t is just the raw ThreadId.
+            // macOS documents this to return an error and indeed it does not seem to segfault.
             let Ok(thread) = this.thread_id_try_from(thread) else {
                 return interp_ok(this.eval_libc("ESRCH"));
             };
@@ -427,7 +428,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This returns an `int`, not a `pthread_t`, so we treat it like we treat `gettid` on Linux.
         let tid = this.get_tid(thread);
-        let tid_dest = this.deref_pointer_as(tid_op, this.machine.layouts.u64)?;
+        let tid_dest = this.deref_pointer(tid_op)?;
         this.write_int(tid, &tid_dest)?;
 
         // Possible errors have been handled, return success.

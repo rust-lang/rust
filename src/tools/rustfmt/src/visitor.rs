@@ -277,7 +277,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         let align_to_right = if unindent_comment && contains_comment(comment_snippet) {
             let first_lines = comment_snippet.splitn(2, '/').next().unwrap_or("");
-            last_line_width(first_lines) > last_line_width(comment_snippet)
+            last_line_width(first_lines, config.tab_spaces())
+                > last_line_width(comment_snippet, config.tab_spaces())
         } else {
             false
         };
@@ -330,7 +331,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     } else {
                         if comment_on_same_line {
                             // 1 = a space before `//`
-                            let offset_len = 1 + last_line_width(&self.buffer)
+                            let offset_len = 1 + last_line_width(&self.buffer, config.tab_spaces())
                                 .saturating_sub(self.block_indent.width());
                             match comment_shape
                                 .visual_indent(offset_len)
@@ -526,9 +527,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.visit_struct(&StructParts::from_item(item));
                 }
                 ast::ItemKind::Enum(ident, ref generics, ref def) => {
-                    self.format_missing_with_indent(source!(self, item.span).lo());
                     self.visit_enum(ident, &item.vis, def, generics, item.span);
-                    self.last_pos = source!(self, item.span).hi();
                 }
                 ast::ItemKind::Mod(safety, ident, ref mod_kind) => {
                     self.format_missing_with_indent(source!(self, item.span).lo());
@@ -631,6 +630,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     // For now, leave the contents of the Span unformatted.
                     self.push_rewrite(item.span, None)
                 }
+                ast::ItemKind::TestBinderConstraints(..) => self.push_rewrite(item.span, None),
             };
         }
         self.skip_context = skip_context_saved;

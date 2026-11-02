@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use syntax::{
-    AstToken, Direction, SyntaxElement, TextRange,
-    ast::{self, Comment, CommentKind, CommentShape, Whitespace, edit::IndentLevel},
+    AstToken, SyntaxToken, TextRange,
+    ast::{self, CommentKind, CommentShape, Whitespace, edit::IndentLevel},
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -22,19 +22,19 @@ use crate::{AssistContext, AssistId, Assists};
 //   */
 // ```
 pub(crate) fn convert_comment_block(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
-    let comment = ctx.find_token_at_offset::<ast::Comment>()?;
+    let comment = ctx.find_token_at_offset::<ast::AnyComment>()?;
     // Only allow comments which are alone on their line
     if let Some(prev) = comment.syntax().prev_token() {
         Whitespace::cast(prev).filter(|w| w.text().contains('\n'))?;
     }
 
-    match comment.kind().shape {
+    match comment.shape() {
         ast::CommentShape::Block => block_to_line(acc, comment),
         ast::CommentShape::Line => line_to_block(acc, comment),
     }
 }
 
-fn block_to_line(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
+fn block_to_line(acc: &mut Assists, comment: ast::AnyComment) -> Option<()> {
     let target = comment.syntax().text_range();
 
     acc.add(
@@ -45,9 +45,7 @@ fn block_to_line(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
             let indentation = IndentLevel::from_token(comment.syntax());
             let line_prefix = CommentKind { shape: CommentShape::Line, ..comment.kind() }.prefix();
 
-            let text = comment.text();
-            let text = &text[comment.prefix().len()..(text.len() - "*/".len())].trim();
-
+            let text = comment.text().trim();
             let lines = text.lines().peekable();
 
             let indent_spaces = indentation.to_string();
@@ -69,7 +67,7 @@ fn block_to_line(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
     )
 }
 
-fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
+fn line_to_block(acc: &mut Assists, comment: ast::AnyComment) -> Option<()> {
     // Find all the comments we'll be collapsing into a block
     let comments = relevant_line_comments(&comment);
 
@@ -109,37 +107,26 @@ fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
 /// The line -> block assist can  be invoked from anywhere within a sequence of line comments.
 /// relevant_line_comments crawls backwards and forwards finding the complete sequence of comments that will
 /// be joined.
-pub(crate) fn relevant_line_comments(comment: &ast::Comment) -> Vec<Comment> {
-    // The prefix identifies the kind of comment we're dealing with
-    let prefix = comment.prefix();
-    let same_prefix = |c: &ast::Comment| c.prefix() == prefix;
+pub(crate) fn relevant_line_comments(comment: &ast::AnyComment) -> Vec<ast::AnyComment> {
+    let expected_kind = comment.kind();
+    let same_kind = |c: &ast::AnyComment| c.kind() == expected_kind;
 
     // These tokens are allowed to exist between comments
-    let skippable = |not: &SyntaxElement| {
-        not.clone()
-            .into_token()
-            .and_then(Whitespace::cast)
-            .map(|w| !w.spans_multiple_lines())
-            .unwrap_or(false)
+    let skippable = |not: &SyntaxToken| {
+        Whitespace::cast(not.clone()).map(|w| !w.spans_multiple_lines()).unwrap_or(false)
     };
 
     // Find all preceding comments (in reverse order) that have the same prefix
-    let prev_comments = comment
-        .syntax()
-        .siblings_with_tokens(Direction::Prev)
+    let prev_comments = std::iter::successors(Some(comment.syntax().clone()), |it| it.prev_token())
         .filter(|s| !skippable(s))
-        .map(|not| not.into_token().and_then(Comment::cast).filter(same_prefix))
-        .take_while(|opt_com| opt_com.is_some())
-        .flatten()
+        .map_while(ast::AnyComment::cast)
+        .take_while(same_kind)
         .skip(1); // skip the first element so we don't duplicate it in next_comments
 
-    let next_comments = comment
-        .syntax()
-        .siblings_with_tokens(Direction::Next)
+    let next_comments = std::iter::successors(Some(comment.syntax().clone()), |it| it.next_token())
         .filter(|s| !skippable(s))
-        .map(|not| not.into_token().and_then(Comment::cast).filter(same_prefix))
-        .take_while(|opt_com| opt_com.is_some())
-        .flatten();
+        .map_while(ast::AnyComment::cast)
+        .take_while(same_kind);
 
     let mut comments: Vec<_> = prev_comments.collect();
     comments.reverse();
@@ -161,7 +148,7 @@ pub(crate) fn relevant_line_comments(comment: &ast::Comment) -> Vec<Comment> {
 //              */
 //
 // But since such comments aren't idiomatic we're okay with this.
-pub(crate) fn line_comment_text(indentation: IndentLevel, comm: ast::Comment) -> String {
+pub(crate) fn line_comment_text(indentation: IndentLevel, comm: ast::AnyComment) -> String {
     let text = comm.text();
     let contents_without_prefix = text.strip_prefix(comm.prefix()).unwrap_or(text);
     let contents = contents_without_prefix.strip_prefix(' ').unwrap_or(contents_without_prefix);

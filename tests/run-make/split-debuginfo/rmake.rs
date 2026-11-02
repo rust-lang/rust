@@ -55,6 +55,9 @@
 // at all, and lumped windows-msvc and windows-gnu together at that.
 //@ ignore-windows-gnu
 
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 #![deny(warnings)]
 
 use std::collections::BTreeSet;

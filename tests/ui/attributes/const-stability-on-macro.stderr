@@ -3,6 +3,8 @@ error: the `rustc_const_stable` attribute cannot be used on macro defs
    |
 LL | #[rustc_const_stable(feature = "foo", since = "3.3.3")]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | macro_rules! foo {
    |
    = help: the `rustc_const_stable` attribute can be applied to associated consts, constants, crates, functions, impl blocks, statics, traits, and use statements
 
@@ -11,6 +13,8 @@ error: the `rustc_const_unstable` attribute cannot be used on macro defs
    |
 LL | #[rustc_const_unstable(feature = "bar", issue = "none")]
    |   ^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | macro_rules! bar {
    |
    = help: the `rustc_const_unstable` attribute can be applied to associated consts, constants, crates, functions, impl blocks, statics, traits, and use statements
 

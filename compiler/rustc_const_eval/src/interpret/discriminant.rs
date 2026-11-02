@@ -1,9 +1,10 @@
 //! Functions for reading and writing discriminants of multi-variant layouts (enums and coroutines).
 
 use rustc_abi::{self as abi, FieldIdx, TagEncoding, VariantIdx, Variants};
+use rustc_middle::mir;
 use rustc_middle::ty::layout::{PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::{self, CoroutineArgsExt, ScalarInt, Ty};
-use rustc_middle::{mir, span_bug};
+use rustc_span::span_bug;
 use tracing::{instrument, trace};
 
 use super::{
@@ -210,7 +211,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Reading the discriminant of an uninhabited variant is UB. This is the basis for the
         // `uninhabited_enum_branching` MIR pass. It also ensures consistency with
         // `write_discriminant`.
-        if op.layout().for_variant(self, index).is_uninhabited() {
+        if op.layout().is_variant_uninhabited(index) {
             throw_ub!(UninhabitedEnumVariantRead(Some(index)))
         }
         interp_ok(index)
@@ -252,7 +253,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Therefore, there's no way to represent those variants in the given layout.
         // Essentially, uninhabited variants do not have a tag that corresponds to their
         // discriminant, so we have to bail out here.
-        if layout.for_variant(self, variant_index).is_uninhabited() {
+        if layout.is_variant_uninhabited(variant_index) {
             throw_ub!(UninhabitedEnumVariantWritten(variant_index))
         }
 

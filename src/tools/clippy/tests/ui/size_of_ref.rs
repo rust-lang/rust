@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::size_of_ref)]
 
 use std::mem::size_of_val;

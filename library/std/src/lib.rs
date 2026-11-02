@@ -241,9 +241,9 @@
 // Lints:
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
+#![warn(unreachable_pub)]
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
-#![allow(unused_lifetimes)]
 #![allow(internal_features)]
 #![deny(implicit_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -302,8 +302,6 @@
 #![feature(must_not_suspend)]
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
-#![feature(never_type)]
-#![feature(optimize_attribute)]
 #![feature(prelude_import)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
@@ -314,14 +312,13 @@
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]
 #![feature(type_alias_impl_trait)]
-#![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 //
 // Library features (core):
 // tidy-alphabetical-start
 #![feature(borrowed_buf_init)]
-#![feature(bstr)]
-#![feature(bstr_internals)]
+#![feature(byte_str)]
+#![feature(byte_str_internals)]
 #![feature(c_size_t)]
 #![feature(can_vector)]
 #![feature(cast_maybe_uninit)]
@@ -335,22 +332,18 @@
 #![feature(core_io)]
 #![feature(core_io_borrowed_buf)]
 #![feature(core_io_internals)]
-#![feature(cstr_display)]
 #![feature(cursor_split)]
 #![feature(derive_const)]
-#![feature(drop_guard)]
 #![feature(duration_constants)]
 #![feature(error_generic_member_access)]
 #![feature(error_iter)]
 #![feature(exact_size_is_empty)]
-#![feature(exclusive_wrapper)]
 #![feature(extend_one)]
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
 #![feature(fmt_internals)]
-#![feature(fn_ptr_trait)]
+#![feature(fn_static)]
 #![feature(formatting_options)]
-#![feature(funnel_shifts)]
 #![feature(generic_atomic)]
 #![feature(hash_map_internals)]
 #![feature(hash_map_macro)]
@@ -365,18 +358,19 @@
 #![feature(io_error_uncategorized)]
 #![feature(io_slice_as_bytes)]
 #![feature(ip)]
+#![feature(ipv6_hop_limit)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(maybe_dangling)]
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(maybe_uninit_fill)]
+#![feature(once_lazy_lock_get_unchecked)]
 #![feature(panic_can_unwind)]
 #![feature(panic_internals)]
 #![feature(pin_coerce_unsized_trait)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(ptr_as_uninit)]
-#![feature(ptr_cast_slice)]
 #![feature(ptr_mask)]
 #![feature(random)]
 #![feature(raw_os_error_ty)]
@@ -386,13 +380,13 @@
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]
-#![feature(slice_split_once)]
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(sync_unsafe_cell)]
 #![feature(temporary_niche_types)]
 #![feature(ub_checks)]
 #![feature(uint_carryless_mul)]
+#![feature(unsafe_pinned)]
 #![feature(used_with_arg)]
 #![feature(write_all_vectored)]
 // tidy-alphabetical-end
@@ -400,7 +394,7 @@
 // Library features (alloc):
 // tidy-alphabetical-start
 #![feature(alloc_io)]
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 #![feature(buf_read_has_data_left)]
 #![feature(clone_from_ref)]
 #![feature(get_mut_unchecked)]
@@ -539,24 +533,24 @@ pub use core::future;
 #[stable(feature = "core_hint", since = "1.27.0")]
 pub use core::hint;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::i8;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::i16;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::i32;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::i64;
 #[stable(feature = "i128", since = "1.26.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::i128;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::intrinsics;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::isize;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::iter;
@@ -577,24 +571,24 @@ pub use core::range;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::u8;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::u16;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::u32;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::u64;
 #[stable(feature = "i128", since = "1.26.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::u128;
 #[unstable(feature = "unsafe_binders", issue = "130516")]
 pub use core::unsafe_binder;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, clippy::legacy_numeric_constants)]
 pub use core::usize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -629,8 +623,8 @@ pub mod f64;
 pub mod thread;
 pub mod ascii;
 pub mod backtrace;
-#[unstable(feature = "bstr", issue = "134915")]
-pub mod bstr;
+#[unstable(feature = "byte_str", issue = "134915")]
+pub mod byte_str;
 pub mod collections;
 pub mod env;
 pub mod error;
@@ -640,6 +634,7 @@ pub mod hash;
 pub mod io;
 pub mod net;
 pub mod num;
+#[allow(unreachable_pub)]
 pub mod os;
 pub mod panic;
 #[unstable(feature = "pattern_type_macro", issue = "123646")]
@@ -650,7 +645,6 @@ pub mod process;
 pub mod random;
 pub mod sync;
 pub mod time;
-#[cfg_attr(feature = "nightly", not(bootstrap))]
 #[unstable(feature = "view_type_macro", issue = "155938")]
 pub mod view;
 
@@ -713,9 +707,11 @@ pub mod arch {
     pub use std_detect::is_aarch64_feature_detected;
     #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
     pub use std_detect::is_arm_feature_detected;
-    #[unstable(feature = "is_loongarch_feature_detected", issue = "117425")]
+    #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")]
     pub use std_detect::is_loongarch_feature_detected;
-    #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
+    #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
+    pub use std_detect::is_powerpc_feature_detected;
+    #[stable(feature = "riscv_ratified", since = "1.78.0")]
     pub use std_detect::is_riscv_feature_detected;
     #[stable(feature = "stdarch_s390x_feature_detection", since = "1.93.0")]
     pub use std_detect::is_s390x_feature_detected;
@@ -723,14 +719,13 @@ pub mod arch {
     pub use std_detect::is_x86_feature_detected;
     #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
     pub use std_detect::{is_mips_feature_detected, is_mips64_feature_detected};
-    #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
-    pub use std_detect::{is_powerpc_feature_detected, is_powerpc64_feature_detected};
 }
 
 // This was stabilized in the crate root so we have to keep it there.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub use std_detect::is_x86_feature_detected;
 
+#[allow(unreachable_pub)]
 mod sys;
 
 pub mod alloc;
@@ -739,7 +734,8 @@ pub mod alloc;
 mod panicking;
 
 #[path = "../../backtrace/src/lib.rs"]
-#[allow(dead_code, unused_attributes, implicit_provenance_casts, unsafe_op_in_unsafe_fn)]
+#[allow(implicit_provenance_casts, unsafe_op_in_unsafe_fn)]
+#[allow(clippy::len_zero, clippy::needless_borrow, clippy::filter_map_next)] // FIXME
 mod backtrace_rs;
 
 #[stable(feature = "cfg_select", since = "1.95.0")]
@@ -750,15 +746,20 @@ pub use core::cfg_select;
     reason = "`concat_bytes` is not stable enough for use and is subject to change"
 )]
 pub use core::concat_bytes;
+#[allow(clippy::useless_attribute)]
+#[expect(
+    ineffective_unstable_reexports,
+    reason = "accepted as stable after accidental stabilization in 1.96, see #154645"
+)]
 #[unstable(feature = "derive_macro_global_path", issue = "154645")]
 pub use core::derive;
+#[unstable(feature = "gca_min_const_items", issue = "132980", implied_by = "gca_adts")]
+pub use core::gca;
 #[stable(feature = "matches_macro", since = "1.42.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::matches;
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use core::primitive;
 #[stable(feature = "todo_macro", since = "1.40.0")]
-#[allow(deprecated, deprecated_in_future)]
 pub use core::todo;
 // Re-export built-in macros defined through core.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
@@ -769,7 +770,7 @@ pub use core::{
 };
 // Re-export macros defined in core.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[expect(deprecated, reason = "`try! macro")]
 pub use core::{
     assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, r#try, unimplemented,
     unreachable, write, writeln,

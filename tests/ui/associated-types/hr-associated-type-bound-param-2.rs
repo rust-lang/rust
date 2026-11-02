@@ -9,8 +9,6 @@ where
     fn h(&self, x: &T::W) {
         <T::W>::clone(x);
         //~^ ERROR the trait bound `str: Clone` is not satisfied
-        //~| ERROR the trait bound `str: Clone` is not satisfied
-        //~| ERROR the trait bound `str: Clone` is not satisfied
     }
 }
 

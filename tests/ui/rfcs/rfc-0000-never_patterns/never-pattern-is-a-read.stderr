@@ -1,5 +1,5 @@
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/never-pattern-is-a-read.rs:11:16
+  --> $DIR/never-pattern-is-a-read.rs:10:16
    |
 LL |     let U { a: ! } = u;
    |                ^ access to union field

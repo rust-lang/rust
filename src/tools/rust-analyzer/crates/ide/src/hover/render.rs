@@ -509,7 +509,7 @@ pub(super) fn definition(
                         Some(if it >= 10 { format!("{it} ({it:#X})") } else { format!("{it}") })
                     }
                     Err(err) => {
-                        let res = it.value(db).map(|it| format!("{it:?}"));
+                        let res = it.value(db).map(|it| it.to_string());
                         if env::var_os("RA_DEV").is_some() {
                             let res = res.as_deref().unwrap_or("");
                             Some(format!(
@@ -829,6 +829,23 @@ struct DropInfo {
     has_dtor: Option<bool>,
 }
 
+pub(super) fn cfg_predicate(
+    sema: &Semantics<'_, RootDatabase>,
+    predicate: ast::CfgPredicate,
+) -> Option<Markup> {
+    let krate = sema.scope(predicate.syntax())?.krate();
+    let cfg = cfg::CfgExpr::parse_from_ast(predicate.clone());
+    let evaluated = krate.cfg(sema.db).check(&cfg);
+
+    let output = match evaluated {
+        Some(true) => "true",
+        Some(false) => "false",
+        None => "unknown",
+    };
+    let s = format!("cfg predicate evaluated: `{output}` (`{predicate}`)");
+    Some(s.into())
+}
+
 pub(super) fn literal(
     sema: &Semantics<'_, RootDatabase>,
     token: SyntaxToken,
@@ -842,6 +859,29 @@ pub(super) fn literal(
     }
     .original;
 
+    let parse_float = |text: &str| {
+        if ty.as_builtin().map(|it| it.is_f16()).unwrap_or(false) {
+            match text.parse::<f16>() {
+                Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
+                Err(e) => Err(e.0.to_owned()),
+            }
+        } else if ty.as_builtin().map(|it| it.is_f32()).unwrap_or(false) {
+            match text.parse::<f32>() {
+                Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
+                Err(e) => Err(e.to_string()),
+            }
+        } else if ty.as_builtin().map(|it| it.is_f128()).unwrap_or(false) {
+            match text.parse::<f128>() {
+                Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
+                Err(e) => Err(e.0.to_owned()),
+            }
+        } else {
+            match text.parse::<f64>() {
+                Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
+                Err(e) => Err(e.to_string()),
+            }
+        }
+    };
     let value = match_ast! {
         match token {
             ast::String(string)     => string.value().as_ref().map_err(|e| format!("{e:?}")).map(ToString::to_string),
@@ -849,29 +889,9 @@ pub(super) fn literal(
             ast::CString(string)    => string.value().as_ref().map_err(|e| format!("{e:?}")).map(|it| std::str::from_utf8(it).map_or_else(|e| format!("{e:?}"), ToOwned::to_owned)),
             ast::Char(char)         => char  .value().as_ref().map_err(|e| format!("{e:?}")).map(ToString::to_string),
             ast::Byte(byte)         => byte  .value().as_ref().map_err(|e| format!("{e:?}")).map(|it| format!("0x{it:X}")),
-            ast::FloatNumber(num) => {
-                let text = num.value_string();
-                if ty.as_builtin().map(|it| it.is_f16()).unwrap_or(false) {
-                    match text.parse::<f16>() {
-                        Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
-                        Err(e) => Err(e.0.to_owned()),
-                    }
-                } else if ty.as_builtin().map(|it| it.is_f32()).unwrap_or(false) {
-                    match text.parse::<f32>() {
-                        Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
-                        Err(e) => Err(e.to_string()),
-                    }
-                } else if ty.as_builtin().map(|it| it.is_f128()).unwrap_or(false) {
-                    match text.parse::<f128>() {
-                        Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
-                        Err(e) => Err(e.0.to_owned()),
-                    }
-                } else {
-                    match text.parse::<f64>() {
-                        Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
-                        Err(e) => Err(e.to_string()),
-                    }
-                }
+            ast::FloatNumber(num) => parse_float(&num.value_string()),
+            ast::IntNumber(num) if matches!(num.suffix(), Some("f16" | "f32" | "f64" | "f128")) => {
+                parse_float(&num.value_string())
             },
             ast::IntNumber(num) => match num.value() {
                 Ok(num) => Ok(format!("{num} (0x{num:X}|0b{num:b})")),

@@ -58,7 +58,7 @@ fn has_structurally_impossible_sized_clause<'tcx>(
     };
     let trait_predicate = trait_predicate.skip_binder();
 
-    trait_predicate.polarity == ty::PredicatePolarity::Positive
+    trait_predicate.polarity == ty::ClausePolarity::Positive
         && trait_predicate.def_id() == sized_trait
         && is_structurally_unsized(tcx, trait_predicate.self_ty())
 }
@@ -114,8 +114,8 @@ impl<'tcx> MirPass<'tcx> for ImpossibleClauses {
         }
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // This can only replace code proven unreachable with immediate UB, so it cannot remove UB.
-        PassPolicy::optional_non_optimization(true)
+        PassPolicy::optional(true)
     }
 }

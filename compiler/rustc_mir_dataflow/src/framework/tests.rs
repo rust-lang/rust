@@ -2,7 +2,6 @@
 
 use std::marker::PhantomData;
 
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::IndexVec;
 use rustc_middle::ty;
 use rustc_span::DUMMY_SP;
@@ -22,7 +21,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
 
         blocks.push(mir::BasicBlockData::new_stmts(
             std::iter::repeat(&nop).cloned().take(n).collect(),
-            Some(mir::Terminator { source_info, kind, attributes: ThinVec::new() }),
+            Some(mir::Terminator { source_info, kind }),
             false,
         ))
     };
@@ -197,15 +196,14 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
         assert!(state.insert(idx));
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
+        _terminator: &mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         let idx = self.effect(Effect::Primary.at_index(location.statement_index));
         assert!(state.insert(idx));
-        terminator.edges()
     }
 }
 

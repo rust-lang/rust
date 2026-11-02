@@ -1,10 +1,6 @@
-use std::fmt;
-
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
-use rustc_middle::mir::{
-    self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
-};
+use rustc_middle::mir::{self, BasicBlock, Body, CallReturnPlaces, Location, Place};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::impls::{
@@ -14,11 +10,14 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::{Analysis, GenKill, JoinSemiLattice};
 use tracing::debug;
 
-use crate::{BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict};
+use crate::{
+    AccessDepth, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict,
+};
 
 // This analysis is different to most others. Its results aren't computed with
 // `iterate_to_fixpoint`, but are instead composed from the results of three sub-analyses that are
-// computed individually with `iterate_to_fixpoint`.
+// computed individually with `iterate_to_fixpoint`. Because it's faster that way than having a
+// single analysis where the domain has three components.
 pub(crate) struct Borrowck<'a, 'tcx> {
     pub(crate) borrows: Borrows<'a, 'tcx>,
     pub(crate) uninits: MaybeUninitializedPlaces<'a, 'tcx>,
@@ -76,19 +75,15 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
         self.ever_inits.apply_early_terminator_effect(&mut state.ever_inits, term, loc);
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        term: &'mir mir::Terminator<'tcx>,
+        term: &mir::Terminator<'tcx>,
         loc: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         self.borrows.apply_primary_terminator_effect(&mut state.borrows, term, loc);
         self.uninits.apply_primary_terminator_effect(&mut state.uninits, term, loc);
         self.ever_inits.apply_primary_terminator_effect(&mut state.ever_inits, term, loc);
-
-        // This return value doesn't matter. It's only used by `iterate_to_fixpoint`, which this
-        // analysis doesn't use.
-        TerminatorEdges::None
     }
 
     fn apply_call_return_effect(
@@ -109,53 +104,28 @@ impl JoinSemiLattice for BorrowckDomain {
     }
 }
 
-impl<'tcx, C> DebugWithContext<C> for BorrowckDomain
-where
-    C: rustc_mir_dataflow::move_paths::HasMoveData<'tcx>,
-{
-    fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("borrows: ")?;
-        self.borrows.fmt_with(ctxt, f)?;
-        f.write_str(" uninits: ")?;
-        self.uninits.fmt_with(ctxt, f)?;
-        f.write_str(" ever_inits: ")?;
-        self.ever_inits.fmt_with(ctxt, f)?;
-        Ok(())
-    }
-
-    fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self == old {
-            return Ok(());
-        }
-
-        if self.borrows != old.borrows {
-            f.write_str("borrows: ")?;
-            self.borrows.fmt_diff_with(&old.borrows, ctxt, f)?;
-            f.write_str("\n")?;
-        }
-
-        if self.uninits != old.uninits {
-            f.write_str("uninits: ")?;
-            self.uninits.fmt_diff_with(&old.uninits, ctxt, f)?;
-            f.write_str("\n")?;
-        }
-
-        if self.ever_inits != old.ever_inits {
-            f.write_str("ever_inits: ")?;
-            self.ever_inits.fmt_diff_with(&old.ever_inits, ctxt, f)?;
-            f.write_str("\n")?;
-        }
-
-        Ok(())
-    }
-}
-
 /// The transient state of the dataflow analyses used by the borrow checker.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) struct BorrowckDomain {
     pub(crate) borrows: BorrowsDomain,
     pub(crate) uninits: MaybeUninitializedPlacesDomain,
     pub(crate) ever_inits: EverInitializedPlacesDomain,
+}
+
+impl Clone for BorrowckDomain {
+    fn clone(&self) -> Self {
+        Self {
+            borrows: self.borrows.clone(),
+            uninits: self.uninits.clone(),
+            ever_inits: self.ever_inits.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.borrows.clone_from(&source.borrows);
+        self.uninits.clone_from(&source.uninits);
+        self.ever_inits.clone_from(&source.ever_inits);
+    }
 }
 
 rustc_index::newtype_index! {
@@ -478,26 +448,18 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             .map(|bs| bs.iter().copied())
             .into_flat_iter();
 
-        // If the borrowed place is a local with no projections, all other borrows of this
-        // local must conflict. This is purely an optimization so we don't have to call
-        // `places_conflict` for every borrow.
-        if place.projection.is_empty() {
-            if !self.body.local_decls[place.local].is_ref_to_static() {
-                state.kill_all(other_borrows_of_local);
-            }
-            return;
-        }
-
         // By passing `PlaceConflictBias::NoOverlap`, we conservatively assume that any given
         // pair of array indices are not equal, so that when `places_conflict` returns true, we
         // will be assured that two places being compared definitely denotes the same sets of
         // locations.
         let definitely_conflicting_borrows = other_borrows_of_local.filter(|&i| {
-            places_conflict(
+            places_conflict::borrow_conflicts_with_place(
                 self.tcx,
                 self.body,
                 self.borrow_set[i].borrowed_place,
-                place,
+                self.borrow_set[i].kind,
+                place.as_ref(),
+                AccessDepth::Deep,
                 PlaceConflictBias::NoOverlap,
             )
         });
@@ -598,12 +560,12 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
         self.kill_loans_out_of_scope_at_location(state, location);
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
+        terminator: &mir::Terminator<'tcx>,
         _location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         if let mir::TerminatorKind::InlineAsm { operands, .. } = &terminator.kind {
             for op in operands {
                 if let mir::InlineAsmOperand::Out { place: Some(place), .. }
@@ -613,7 +575,6 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
                 }
             }
         }
-        terminator.edges()
     }
 }
 

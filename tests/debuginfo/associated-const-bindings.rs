@@ -10,14 +10,18 @@
 //@ cdb-command:dv /t /n local
 //@ cdb-check:struct ref$<dyn$<associated_const_bindings::Trait<assoc$<N,101> > > > local = [...]
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(unused_variables, incomplete_features)]
 
+use std::gca;
+
 trait Trait {
-    type const N: usize;
+    #[rustc_always_gca]
+    const N: usize;
 }
+
 impl Trait for () {
-    type const N: usize = 101;
+    const N: usize = gca!(101);
 }
 
 fn main() {

@@ -7,10 +7,12 @@ use std::{fs, io};
 
 use sha2::digest::Digest;
 
+use crate::core::backend::CodegenBackendKind;
 use crate::core::builder::Builder;
+use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
-use crate::utils::helpers::{hex_encode, mtime};
-use crate::{CodegenBackendKind, Compiler, Mode, helpers, t};
+use crate::core::session::Mode;
+use crate::utils::helpers::{self, hex_encode, mtime, t};
 
 #[cfg(test)]
 mod tests;
@@ -112,7 +114,13 @@ pub fn clear_if_dirty(builder: &Builder<'_>, dir: &Path, input: &Path) -> bool {
     let stamp = BuildStamp::new(dir);
     let mut cleared = false;
     if mtime(stamp.path()) < mtime(input) {
-        builder.do_if_verbose(|| println!("Dirty - {}", dir.display()));
+        builder.do_if_verbose(|| {
+            println!(
+                "Removing dirty directory `{}` because `{}` changed",
+                dir.display(),
+                input.display(),
+            )
+        });
         let _ = fs::remove_dir_all(dir);
         cleared = true;
     } else if stamp.path().exists() {

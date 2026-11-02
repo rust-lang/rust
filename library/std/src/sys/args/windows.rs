@@ -115,7 +115,7 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
             BACKSLASH => {
                 let backslash_count = code_units.advance_while(|w| w == BACKSLASH) + 1;
                 if code_units.peek() == Some(QUOTE) {
-                    cur.extend(iter::repeat(BACKSLASH.get()).take(backslash_count / 2));
+                    cur.extend(iter::repeat_n(BACKSLASH.get(), backslash_count / 2));
                     // The quote is escaped if there are an odd number of backslashes.
                     if backslash_count % 2 == 1 {
                         code_units.next();
@@ -123,7 +123,7 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
                     }
                 } else {
                     // If there is no quote on the end then there is no escaping.
-                    cur.extend(iter::repeat(BACKSLASH.get()).take(backslash_count));
+                    cur.extend(iter::repeat_n(BACKSLASH.get(), backslash_count));
                 }
             }
             // If `in_quotes` and not backslash escaped (see above) then a quote either
@@ -295,7 +295,7 @@ pub(crate) fn make_bat_command_line(
     force_quotes: bool,
 ) -> io::Result<Vec<u16>> {
     const INVALID_ARGUMENT_ERROR: io::Error =
-        io::const_error!(io::ErrorKind::InvalidInput, r#"batch file arguments are invalid"#);
+        io::const_error!(io::ErrorKind::InvalidInput, r"batch file arguments are invalid");
     // Set the start of the command line to `cmd.exe /c "`
     // It is necessary to surround the command in an extra pair of quotes,
     // hence the trailing quote here. It will be closed after all arguments
@@ -307,10 +307,12 @@ pub(crate) fn make_bat_command_line(
     cmd.push(b'"' as u16);
     // Windows file names cannot contain a `"` character or end with `\\`.
     // If the script name does then return an error.
-    if script.contains(&(b'"' as u16)) || script.last() == Some(&(b'\\' as u16)) {
+    // Also we disallow `^` and `%` to prevent escaping or environment variable substitution.
+    const INVALID: &[u16] = &[b'"' as u16, b'^' as u16, b'%' as u16];
+    if script.iter().any(|c| INVALID.contains(c)) || script.last() == Some(&(b'\\' as u16)) {
         return Err(io::const_error!(
             io::ErrorKind::InvalidInput,
-            "Windows file names may not contain `\"` or end with `\\`"
+            "`Command` rejects batch scripts that contain contain `\"`, `^` or `%` or end with `\\`"
         ));
     }
     cmd.extend_from_slice(script.strip_suffix(&[0]).unwrap_or(script));

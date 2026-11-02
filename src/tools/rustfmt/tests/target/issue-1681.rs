@@ -1,4 +1,4 @@
-// rustfmt-max_width: 80
+//@ rustfmt-max_width: 80
 
 // We would like to surround closure body with block when overflowing the last
 // argument of function call if the last argument has condition and without

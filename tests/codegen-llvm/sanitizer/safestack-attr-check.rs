@@ -4,8 +4,16 @@
 //@ compile-flags: -Zsanitizer=safestack -Copt-level=0 -C unsafe-allow-abi-mismatch=sanitizer
 
 #![crate_type = "lib"]
+#![feature(sanitize)]
 
 // CHECK: ; Function Attrs:{{.*}}safestack
+// CHECK-NEXT: define void @tagged
+#[no_mangle]
 pub fn tagged() {}
 
-// CHECK: attributes #0 = {{.*}}safestack
+// CHECK: ; Function Attrs:
+// CHECK-NOT: safestack
+// CHECK: define void @untagged
+#[no_mangle]
+#[sanitize(safestack = "off")]
+pub fn untagged() {}

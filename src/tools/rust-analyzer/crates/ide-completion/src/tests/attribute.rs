@@ -1,7 +1,8 @@
 //! Completion tests for attributes.
 use expect_test::expect;
 
-use crate::tests::{check, check_edit};
+use crate::CompletionConfig;
+use crate::tests::{TEST_CONFIG, check, check_edit, check_edit_with_config};
 
 #[test]
 fn derive_helpers() {
@@ -28,7 +29,6 @@ pub struct Foo(#[m$0] i32);
             at cold
             at deny(…)
             at deprecated
-            at derive                                  macro derive
             at derive(…)
             at diagnostic::do_not_recommend
             at diagnostic::on_unimplemented
@@ -92,7 +92,6 @@ pub struct Foo(#[$0] i32);
             at cold
             at deny(…)
             at deprecated
-            at derive                                  macro derive
             at derive(…)
             at diagnostic::do_not_recommend
             at diagnostic::on_unimplemented
@@ -140,6 +139,7 @@ fn proc_macros() {
     check(
         r#"
 //- proc_macros: identity
+//- minicore: derive
 #[$0]
 struct Foo;
 "#,
@@ -150,6 +150,7 @@ struct Foo;
             at deny(…)
             at deprecated
             at derive(…)
+            at derive_const macro derive_const
             at doc = "…"
             at doc = include_str!("…")
             at doc(alias = "…")
@@ -162,6 +163,7 @@ struct Foo;
             at repr(…)
             at unsafe(…)
             at warn(…)
+            md core::
             md proc_macros::
             kw crate::
             kw self::
@@ -448,7 +450,6 @@ struct Foo;
             at cfg_attr(…)
             at deny(…)
             at deprecated
-            at derive             macro derive
             at derive(…)
             at derive_const macro derive_const
             at doc = "…"
@@ -924,6 +925,52 @@ struct Foo;
 }
 
 #[test]
+fn attr_before_arg() {
+    check_edit("allow", r#"#[$0()] fn main() {}"#, r#"#[allow()] fn main() {}"#);
+    check_edit("cfg_attr", r#"#[c$0(test)] fn main() {}"#, r#"#[cfg_attr(test)] fn main() {}"#);
+}
+
+#[test]
+fn attr_without_snippet() {
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "derive",
+        r#"#[$0]"#,
+        r#"#[derive]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "allow",
+        r#"#[$0]"#,
+        r#"#[allow]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "doc",
+        r#"#![$0]"#,
+        r#"#![doc = ]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "type_length_limit",
+        r#"#![$0]"#,
+        r#"#![type_length_limit = ]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "docinclude",
+        r#"#[$0]"#,
+        r#"#[doc = include_str!()]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "automatically_derived",
+        r#"#[$0]"#,
+        r#"#[automatically_derived]"#,
+    );
+}
+
+#[test]
 fn issue_17479() {
     check(
         r#"
@@ -959,6 +1006,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -974,6 +1022,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -993,6 +1042,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -1008,6 +1058,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -1023,6 +1074,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -1038,6 +1090,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -1058,6 +1111,7 @@ fn f() {}
             expect![[r#"
                 ba all
                 ba any
+                ba false
                 ba feature
                 ba not
                 ba true
@@ -1088,7 +1142,7 @@ fn f() {}
 #[cfg($0)]
 "#,
             r#"
-#[cfg(opt_level = $0)]
+#[cfg(opt_level = "$1")]
 "#,
         );
     }
@@ -1109,6 +1163,16 @@ fn f() {}
                 ba little
             "#]],
         );
+        check(
+            r#"#[cfg(target_endian = "$0""#,
+            expect![[r#"
+                ba big
+                ba little
+            "#]],
+        );
+
+        check_edit("big", r#"#[cfg(target_endian = b$0"#, r#"#[cfg(target_endian = "big""#);
+        check_edit("big", r#"#[cfg(target_endian = "b$0""#, r#"#[cfg(target_endian = "big""#);
     }
 
     #[test]
@@ -1340,9 +1404,9 @@ mod lint {
     #[test]
     fn lint_feature() {
         check_edit(
-            "box_patterns",
-            r#"#[feature(box_$0)] struct Test;"#,
-            r#"#[feature(box_patterns)] struct Test;"#,
+            "deref_patterns",
+            r#"#[feature(deref_$0)] struct Test;"#,
+            r#"#[feature(deref_patterns)] struct Test;"#,
         )
     }
 

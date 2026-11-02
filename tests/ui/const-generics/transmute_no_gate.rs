@@ -83,9 +83,11 @@ fn main() {
   let _ = ident([[0; 8]; 16]);
   let _ = flatten([[0; 13]; 5]);
   let _: [[_; 5]; 13] = coagulate([0; 65]);
+  //~^ ERROR mismatched types
   let _ = flatten_3d([[[0; 3]; 13]; 5]);
   let _ = flatten_somewhat([[[0; 3]; 13]; 5]);
   let _ = known_size([16; 13]);
   let _: [u16; 5] = condense_bytes([16u8; 10]);
+  //~^ ERROR mismatched types
   let _ = singleton_each([16; 10]);
 }

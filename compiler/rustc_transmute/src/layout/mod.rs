@@ -11,12 +11,14 @@ pub(crate) use dfa::{Dfa, union};
 #[derive(Debug)]
 pub(crate) struct Uninhabited;
 
-/// A range of byte values (including an uninit byte value).
+/// A half-open range of byte values, which may include an uninitialized byte.
+///
+/// The range is `[start, end)`. Values `0..=255` represent initialized bytes,
+/// and `256` represents an uninitialized byte. A range containing that value
+/// therefore has an exclusive upper bound of `257`.
 #[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
 pub(crate) struct Byte {
-    // An inclusive-exclusive range. We use this instead of `Range` because `Range: !Copy`.
-    //
-    // Uninit byte value is represented by 256.
+    // Store the endpoints separately because `Range` is not `Copy`.
     pub(crate) start: u16,
     pub(crate) end: u16,
 }
@@ -37,6 +39,7 @@ impl Byte {
         Byte { start: val, end: val + 1 }
     }
 
+    /// A byte that may be initialized to any value or uninitialized.
     #[inline]
     fn uninit() -> Byte {
         Byte { start: 0, end: Self::UNINIT + 1 }
@@ -136,7 +139,7 @@ pub mod rustc {
     use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, LayoutError};
     use rustc_middle::ty::{self, Region, Ty};
 
-    /// A visibility node in the layout.
+    /// A layout annotation used to check for safety invariants during pruning.
     #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
     pub enum Def<'tcx> {
         Adt(ty::AdtDef<'tcx>),
@@ -147,9 +150,9 @@ pub mod rustc {
 
     impl<'tcx> super::Def for Def<'tcx> {
         fn has_safety_invariants(&self) -> bool {
-            // Rust presently has no notion of 'unsafe fields', so for now we
-            // make the conservative assumption that everything besides
-            // primitive types carry safety invariants.
+            // Conservatively treat every ADT, variant, and field definition as
+            // potentially carrying safety invariants. This check does not
+            // inspect `unsafe` field annotations.
             self != &Self::Primitive
         }
     }

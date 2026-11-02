@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use std::ops::{Index, Shr};
 
 use rustc_index::Idx;
-use rustc_span::{DUMMY_SP, Span, SpanData};
+use rustc_span::{DUMMY_SP, Span};
 use smallvec::SmallVec;
 
 use super::data_race::NaReadType;
@@ -102,11 +102,6 @@ impl VTimestamp {
     #[inline]
     pub(super) fn set_read_type(&mut self, read_type: NaReadType) {
         self.time_and_read_type = Self::encode_time_and_read_type(self.time(), read_type);
-    }
-
-    #[inline]
-    pub(super) fn span_data(&self) -> SpanData {
-        self.span.data()
     }
 }
 

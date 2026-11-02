@@ -1,4 +1,4 @@
-// rustfmt-group_imports: StdExternalCrate
+//@ rustfmt-group_imports: StdExternalCrate
 use alloc::alloc::Layout;
 
 use chrono::Utc;

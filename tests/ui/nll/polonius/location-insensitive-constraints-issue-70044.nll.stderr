@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `one` as immutable because it is also borrowed as mutable
-  --> $DIR/location-insensitive-constraints-issue-70044.rs:22:20
+  --> $DIR/location-insensitive-constraints-issue-70044.rs:23:20
    |
 LL |         let mut y = &mut one;
    |                     -------- mutable borrow occurs here

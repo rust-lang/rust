@@ -244,6 +244,40 @@ fn foo() -> foo::Num
 "#,
     );
 
+    check_edit(
+        "u32",
+        r#"
+macro_rules! identity { ($($t:tt)*) => {$($t)*}; }
+identity! {
+    fn foo() u$0
+}
+"#,
+        r#"
+macro_rules! identity { ($($t:tt)*) => {$($t)*}; }
+identity! {
+    fn foo() -> u32
+}
+"#,
+    );
+
+    check_edit(
+        "Num",
+        r#"
+macro_rules! identity { ($($t:tt)*) => {$($t)*}; }
+mod foo { pub type Num = u32; }
+identity! {
+    fn foo() foo::N$0
+}
+"#,
+        r#"
+macro_rules! identity { ($($t:tt)*) => {$($t)*}; }
+mod foo { pub type Num = u32; }
+identity! {
+    fn foo() -> foo::Num
+}
+"#,
+    );
+
     // no spaces, test edit order
     check_edit(
         "foo",
@@ -1043,7 +1077,7 @@ trait MyTrait {
 fn f(t: impl MyTrait<C = $0
 "#,
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             ma makro!(…) macro_rules! makro
             kw crate::
             kw dyn
@@ -1157,8 +1191,8 @@ fn completes_const_and_type_generics_separately() {
     }
             "#,
         expect![[r#"
-            ct CONST                   Unit
-            ct X                      usize
+            ct CONST  = Unit           Unit
+            ct X  = 0                 usize
             ma makro!(…) macro_rules! makro
             kw crate::
             kw dyn
@@ -1208,8 +1242,8 @@ fn completes_const_and_type_generics_separately() {
     }
             "#,
         expect![[r#"
-            ct CONST                   Unit
-            ct X                      usize
+            ct CONST  = Unit           Unit
+            ct X  = 0                 usize
             ma makro!(…) macro_rules! makro
             kw crate::
             kw dyn
@@ -1260,8 +1294,8 @@ fn completes_const_and_type_generics_separately() {
     fn foo<T: Bar<Baz<(), $0> = ()>>() {}
             "#,
         expect![[r#"
-            ct CONST                   Unit
-            ct X                      usize
+            ct CONST  = Unit           Unit
+            ct X  = 0                 usize
             ma makro!(…) macro_rules! makro
             kw crate::
             kw dyn
@@ -1282,8 +1316,8 @@ fn completes_const_and_type_generics_separately() {
     }
             "#,
         expect![[r#"
-            ct CONST                   Unit
-            ct X                      usize
+            ct CONST  = Unit           Unit
+            ct X  = 0                 usize
             ma makro!(…) macro_rules! makro
             kw crate::
             kw dyn
@@ -1305,8 +1339,8 @@ fn completes_const_and_type_generics_separately() {
     }
             "#,
         expect![[r#"
-            ct CONST                   Unit
-            ct X                      usize
+            ct CONST  = Unit           Unit
+            ct X  = 0                 usize
             ma makro!(…) macro_rules! makro
             kw crate::
             kw dyn
@@ -1327,8 +1361,8 @@ fn completes_const_and_type_generics_separately() {
     }
             "#,
         expect![[r#"
-            ct CONST                   Unit
-            ct X                      usize
+            ct CONST  = Unit           Unit
+            ct X  = 0                 usize
             ma makro!(…) macro_rules! makro
             kw crate::
             kw dyn
@@ -1347,8 +1381,8 @@ fn completes_const_and_type_generics_separately() {
     impl Foo<(), $0> for () {}
             "#,
         expect![[r#"
-            ct CONST                   Unit
-            ct X                      usize
+            ct CONST  = Unit           Unit
+            ct X  = 0                 usize
             ma makro!(…) macro_rules! makro
             kw crate::
             kw dyn
@@ -1369,8 +1403,8 @@ fn completes_const_and_type_generics_separately() {
     fn foo<T: Bar<X$0, ()>>() {}
             "#,
         expect![[r#"
-            ct CONST                   Unit
-            ct X                      usize
+            ct CONST  = Unit           Unit
+            ct X  = 0                 usize
             ma makro!(…) macro_rules! makro
             kw crate::
             kw dyn
@@ -1388,7 +1422,7 @@ struct S<'a, 'b, const C: usize, T>(core::marker::PhantomData<&'a &'b T>);
 fn foo<'a>() { S::<F$0, _>; }
         "#,
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             ma makro!(…) macro_rules! makro
             kw crate::
             kw dyn
@@ -1405,7 +1439,7 @@ struct S<'a, 'b, const C: usize, T>(core::marker::PhantomData<&'a &'b T>);
 fn foo<'a>() { S::<'static, 'static, F$0, _>; }
         "#,
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             ma makro!(…) macro_rules! makro
             kw crate::
             kw dyn

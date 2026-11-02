@@ -183,6 +183,8 @@ impl SourceDatabase for RootDatabase {
     }
 }
 
+hir::impl_hir_database!(RootDatabase);
+
 impl Default for RootDatabase {
     fn default() -> RootDatabase {
         RootDatabase::new(None)
@@ -256,6 +258,7 @@ impl RootDatabase {
 pub fn line_index(db: &dyn SourceDatabase, file_id: FileId) -> &Arc<LineIndex> {
     #[salsa::interned]
     pub struct InternedFileId {
+        #[returns(copy)]
         id: FileId,
     }
     #[salsa::tracked(returns(ref))]

@@ -187,7 +187,7 @@ LL |     let _ = await!(bar());
 help: `await` is a postfix operation
    |
 LL -     let _ = await!(bar());
-LL +     let _ = bar().await);
+LL +     let _ = bar().await;
    |
 
 error: incorrect use of `await`
@@ -199,7 +199,7 @@ LL |     let _ = await!(bar())?;
 help: `await` is a postfix operation
    |
 LL -     let _ = await!(bar())?;
-LL +     let _ = bar().await)?;
+LL +     let _ = bar().await?;
    |
 
 error: incorrect use of `await`
@@ -211,7 +211,7 @@ LL |         let _ = await!(bar())?;
 help: `await` is a postfix operation
    |
 LL -         let _ = await!(bar())?;
-LL +         let _ = bar().await)?;
+LL +         let _ = bar().await?;
    |
 
 error: incorrect use of `await`
@@ -223,7 +223,7 @@ LL |         let _ = await!(bar())?;
 help: `await` is a postfix operation
    |
 LL -         let _ = await!(bar())?;
-LL +         let _ = bar().await)?;
+LL +         let _ = bar().await?;
    |
 
 error: expected expression, found `=>`

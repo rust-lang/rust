@@ -1,6 +1,5 @@
 //@ check-pass
 //@ revisions: ai ia ii
-//@ compile-flags: -Znext-solver=coherence
 
 // Regression test for nalgebra hang <https://github.com/rust-lang/rust/issues/130056>.
 

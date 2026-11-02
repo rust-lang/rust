@@ -9,12 +9,9 @@ enum E {
     //~^ NOTE `E` defined here
     //~| NOTE `E` defined here
     //~| NOTE `E` defined here
-    //~| NOTE
-    //~| NOTE
-    //~| NOTE
-    //~| NOTE
-    //~| NOTE
-    //~| NOTE
+    //~| NOTE `E` defined here
+    //~| NOTE `E` defined here
+    //~| NOTE `E` defined here
     A,
     B,
     //~^ NOTE  not covered
@@ -82,8 +79,7 @@ fn by_ref_thrice(e: & &mut &E) {
 
 enum Opt {
     //~^ NOTE `Opt` defined here
-    //~| NOTE
-    //~| NOTE
+    //~| NOTE `Opt` defined here
     Some(u8),
     None,
     //~^ NOTE not covered

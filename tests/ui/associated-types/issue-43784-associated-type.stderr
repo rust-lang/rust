@@ -12,6 +12,7 @@ LL | pub trait Partial<X: ?Sized>: Copy {
 note: required by a bound in `Complete::Assoc`
   --> $DIR/issue-43784-associated-type.rs:5:17
    |
+LL | pub trait Complete {
 LL |     type Assoc: Partial<Self>;
    |                 ^^^^^^^^^^^^^ required by this bound in `Complete::Assoc`
 help: consider restricting type parameter `T` with trait `Copy`

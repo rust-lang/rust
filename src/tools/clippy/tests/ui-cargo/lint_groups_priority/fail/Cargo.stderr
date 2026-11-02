@@ -9,7 +9,7 @@ error: lint group `rust_2018_idioms` has the same priority (0) as a lint
    |
    = note: the order of the lints in the table is ignored by Cargo
    = note: `#[deny(clippy::lint_groups_priority)]` on by default
-help: to have lints override the group set `rust_2018_idioms` to a lower priority
+help: to have lints override the group, set `rust_2018_idioms` to a lower priority
    |
  7 - rust_2018_idioms = "warn"
  7 + rust_2018_idioms = { level = "warn", priority = -1 }
@@ -25,7 +25,7 @@ error: lint group `unused` has the same priority (0) as a lint
    | ----------------- has the same priority as this lint
    |
    = note: the order of the lints in the table is ignored by Cargo
-help: to have lints override the group set `unused` to a lower priority
+help: to have lints override the group, set `unused` to a lower priority
    |
 10 | unused = { level = "deny", priority = -1 }
    |                          +++++++++++++++
@@ -39,7 +39,7 @@ error: lint group `pedantic` has the same priority (-1) as a lint
    | ------------- has the same priority as this lint
    |
    = note: the order of the lints in the table is ignored by Cargo
-help: to have lints override the group set `pedantic` to a lower priority
+help: to have lints override the group, set `pedantic` to a lower priority
    |
 15 - pedantic = { level = "warn", priority = -1 }
 15 + pedantic = { level = "warn", priority = -2 }
@@ -54,7 +54,7 @@ error: lint group `rust_2018_idioms` has the same priority (0) as a lint
    | ------------------ has the same priority as this lint
    |
    = note: the order of the lints in the table is ignored by Cargo
-help: to have lints override the group set `rust_2018_idioms` to a lower priority
+help: to have lints override the group, set `rust_2018_idioms` to a lower priority
    |
 19 - rust_2018_idioms = "warn"
 19 + rust_2018_idioms = { level = "warn", priority = -1 }
@@ -69,7 +69,7 @@ error: lint group `pedantic` has the same priority (0) as a lint
    | ------------- has the same priority as this lint
    |
    = note: the order of the lints in the table is ignored by Cargo
-help: to have lints override the group set `pedantic` to a lower priority
+help: to have lints override the group, set `pedantic` to a lower priority
    |
 23 - pedantic = "warn"
 23 + pedantic = { level = "warn", priority = -1 }

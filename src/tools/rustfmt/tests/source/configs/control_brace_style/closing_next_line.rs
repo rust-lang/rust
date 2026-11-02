@@ -1,4 +1,4 @@
-// rustfmt-control_brace_style: ClosingNextLine
+//@ rustfmt-control_brace_style: ClosingNextLine
 // Control brace style
 
 fn main() {

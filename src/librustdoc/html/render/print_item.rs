@@ -1,13 +1,12 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::collections::hash_map::DefaultHasher;
 use std::fmt::{self, Display, Write as _};
-use std::hash::{Hash, Hasher};
 use std::iter;
 
 use askama::Template;
 use rustc_abi::VariantIdx;
 use rustc_ast::join_path_syms;
+use rustc_attr_ir::NotableTraitColor;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, MacroKinds};
@@ -58,8 +57,8 @@ struct NotableTraitBadgeVars {
     full_path: String,
     /// Relative URL to the trait page, or `None` when not linkable.
     href: Option<String>,
-    /// Index of the `.notable-trait-badge-{n}` color class.
-    color_index: u8,
+    /// Name of the `.notable-trait-badge-{color}` color class.
+    color: NotableTraitColor,
 }
 
 #[derive(Template)]
@@ -126,22 +125,14 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
 
         let notable_trait_badges: Vec<NotableTraitBadgeVars> = notable_trait_badges(item, cx)
             .into_iter()
-            .map(|info| {
-                // Stable per-trait color from a hash of the trait path so the
-                // same trait gets the same badge color across pages.
-                // This won't be stable between releases though.
-                let mut h = DefaultHasher::new();
-                info.full_path.hash(&mut h);
-                const BADGE_COLORS: u8 = 6;
-                let color_index = (h.finish() as u8) % BADGE_COLORS;
-                NotableTraitBadgeVars {
-                    name: info.name,
-                    full_path: info.full_path,
-                    href: info.href,
-                    color_index,
-                }
+            .map(|info| NotableTraitBadgeVars {
+                name: info.name,
+                full_path: info.full_path,
+                href: info.href,
+                color: info.color,
             })
             .collect();
+        let has_notable_trait_badges = !notable_trait_badges.is_empty();
 
         let path_components = if item.is_fake_item() {
             vec![]
@@ -219,11 +210,11 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
 
         // Render notable-traits.js used for all methods in this module.
         let mut types_with_notable_traits = cx.types_with_notable_traits.borrow_mut();
-        if !types_with_notable_traits.is_empty() {
+        if !types_with_notable_traits.is_empty() || has_notable_trait_badges {
             write!(
                 buf,
                 r#"<script type="text/json" id="notable-traits-data">{}</script>"#,
-                notable_traits_json(types_with_notable_traits.iter(), cx),
+                notable_traits_json(types_with_notable_traits.iter(), item, cx),
             )?;
             types_with_notable_traits.clear();
         }
@@ -814,9 +805,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
             }
         })?;
 
-        if let rustc_middle::ty::trait_def::ImplRestrictionKind::Restricted(def_id, _) =
-            impl_restriction
-        {
+        if let rustc_middle::ty::RestrictionKind::Restricted(def_id, _) = impl_restriction {
             let v1;
             let v2;
             write!(
@@ -962,11 +951,17 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
             )?;
 
             if let Some(list) = must_implement_one_of_functions.as_deref() {
-                write!(
-                    w,
-                    "<div class=\"stab must_implement\">At least one of the `{}` methods is required.</div>",
-                    fmt::from_fn(|f| list.iter().joined("`, `", f)),
+                w.write_str(
+                    "<span class=\"item-info\">\
+                         <div class=\"stab must_implement\">At least one of the ",
                 )?;
+                for (pos, method) in list.iter().enumerate() {
+                    if pos > 0 {
+                        w.write_str(", ")?;
+                    }
+                    write!(w, "<a href=\"#method.{method}\"><code>{method}</code></a>")?;
+                }
+                w.write_str(" methods is required.</div></span>")?;
             }
 
             for m in required_methods {
@@ -1298,79 +1293,71 @@ fn item_trait_alias(
 
 fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> impl fmt::Display {
     fmt::from_fn(|w| {
+        let def_id = it.def_id().unwrap();
+
         wrap_item(w, |w| {
             render_attributes_in_code(w, it, "", cx)?;
             write!(
                 w,
-                "{vis}type {name}{generics}{where_clause} = {type_};",
+                "{vis}type {name}{generics}",
                 vis = visibility_print_with_space(it, cx),
                 name = it.name.unwrap(),
                 generics = print_generics(&t.generics, cx),
-                where_clause =
-                    print_where_clause(&t.generics, cx, 0, Ending::Newline).maybe_display(),
-                type_ = print_type(&t.type_, cx),
-            )
+            )?;
+
+            let type_ = print_type(&t.type_, cx);
+            let where_clause =
+                print_where_clause(&t.generics, cx, 0, Ending::NoNewline).maybe_display();
+
+            if cx.tcx().type_alias_is_checked(def_id) {
+                write!(w, " = {type_}{where_clause}")
+            } else {
+                write!(w, "{where_clause} = {type_}")
+            }?;
+
+            w.write_str(";")
         })?;
 
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
 
         if let Some(inner_type) = &t.inner_type {
-            write!(w, "{}", write_section_heading("Aliased Type", "aliased-type", None, ""),)?;
+            write!(w, "{}", write_section_heading("Aliased Type", "aliased-type", None, ""))?;
+
+            let ty = cx.tcx().type_of(def_id).instantiate_identity().skip_norm_wip();
+            let adt_def_id = ty.ty_adt_def().unwrap().did();
 
             match inner_type {
                 clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive } => {
-                    let ty = cx
-                        .tcx()
-                        .type_of(it.def_id().unwrap())
-                        .instantiate_identity()
-                        .skip_norm_wip();
-                    let enum_def_id = ty.ty_adt_def().unwrap().did();
-
                     DisplayEnum {
                         variants,
                         generics: &t.generics,
                         is_non_exhaustive: *is_non_exhaustive,
-                        def_id: enum_def_id,
+                        def_id: adt_def_id,
                     }
                     .render_into(cx, it, true, w)?;
                 }
                 clean::TypeAliasInnerType::Union { fields } => {
-                    let ty = cx
-                        .tcx()
-                        .type_of(it.def_id().unwrap())
-                        .instantiate_identity()
-                        .skip_norm_wip();
-                    let union_def_id = ty.ty_adt_def().unwrap().did();
-
                     ItemUnion {
                         cx,
                         it,
                         fields,
                         generics: &t.generics,
                         is_type_alias: true,
-                        def_id: union_def_id,
+                        def_id: adt_def_id,
                     }
                     .render_into(w)?;
                 }
                 clean::TypeAliasInnerType::Struct { ctor_kind, fields } => {
-                    let ty = cx
-                        .tcx()
-                        .type_of(it.def_id().unwrap())
-                        .instantiate_identity()
-                        .skip_norm_wip();
-                    let struct_def_id = ty.ty_adt_def().unwrap().did();
-
                     DisplayStruct {
                         ctor_kind: *ctor_kind,
                         generics: &t.generics,
                         fields,
-                        def_id: struct_def_id,
+                        def_id: adt_def_id,
                     }
                     .render_into(cx, it, true, w)?;
                 }
             }
         } else {
-            let def_id = it.item_id.expect_def_id();
             // Render any items associated directly to this alias, as otherwise they
             // won't be visible anywhere in the docs. It would be nice to also show
             // associated items from the aliased type (see discussion in #32077), but
@@ -1457,12 +1444,12 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
         // [^115718]: https://github.com/rust-lang/rust/issues/115718
         let cache = &cx.shared.cache;
         if let Some(target_did) = t.type_.def_id(cache)
-            && let get_extern = { || cache.external_paths.get(&target_did) }
-            && let Some(&(ref target_fqp, target_type)) =
-                cache.paths.get(&target_did).or_else(get_extern)
+            && let get_extern = { || cache.external_paths.get(&target_did).map(|(fqp, shortty)| (fqp, *shortty)) }
+            && let Some((target_fqp, target_type)) =
+                cache.paths.get(&target_did).map(|info| (&info.parts, info.ty)).or_else(get_extern)
             && target_type.is_adt() // primitives cannot be inlined
             && let Some(self_did) = it.item_id.as_def_id()
-            && let get_local = { || cache.paths.get(&self_did).map(|(p, _)| p) }
+            && let get_local = { || cache.paths.get(&self_did).map(|info| &info.parts) }
             && let Some(self_fqp) = cache.exact_paths.get(&self_did).or_else(get_local)
         {
             let mut js_src_path: UrlPartsBuilder =
@@ -2019,13 +2006,11 @@ fn item_constant(
 
             write!(
                 w,
-                "{vis}const {name}{generics}: {typ}{where_clause}",
+                "{vis}const {name}{generics}: {typ}",
                 vis = visibility_print_with_space(it, cx),
                 name = it.name.unwrap(),
                 generics = print_generics(generics, cx),
                 typ = print_type(ty, cx),
-                where_clause =
-                    print_where_clause(generics, cx, 0, Ending::NoNewline).maybe_display(),
             )?;
 
             // FIXME: The code below now prints
@@ -2041,9 +2026,7 @@ fn item_constant(
             let is_literal = c.is_literal(tcx);
             let expr = c.expr(tcx);
             if value.is_some() || is_literal {
-                write!(w, " = {expr};", expr = Escape(&expr))?;
-            } else {
-                w.write_str(";")?;
+                write!(w, " = {expr}", expr = Escape(&expr))?;
             }
 
             if !is_literal && let Some(value) = &value {
@@ -2053,9 +2036,14 @@ fn item_constant(
                 if value_lowercase != expr_lowercase
                     && value_lowercase.trim_end_matches("i32") != expr_lowercase
                 {
-                    write!(w, " // {value}", value = Escape(value))?;
+                    write!(w, " /* {value} */", value = Escape(value))?;
                 }
             }
+
+            print_where_clause(generics, cx, 0, Ending::NoNewline).maybe_display().fmt(w)?;
+
+            w.write_str(";")?;
+
             Ok::<(), fmt::Error>(())
         })?;
 

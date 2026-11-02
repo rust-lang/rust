@@ -1,0 +1,15 @@
+- // MIR for `borrowed_source_tail` before TailCopyToMove
++ // MIR for `borrowed_source_tail` after TailCopyToMove
+  
+  fn borrowed_source_tail(_1: u32) -> u32 {
+      let mut _0: u32;
+      let mut _2: *const u32;
+  
+      bb0: {
+          _2 = &raw const _1;
+-         _0 = copy _1;
++         _0 = move _1;
+          return;
+      }
+  }
+  

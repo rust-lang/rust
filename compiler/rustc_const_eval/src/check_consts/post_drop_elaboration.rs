@@ -1,4 +1,4 @@
-use rustc_hir::find_attr;
+use rustc_attr_ir::find_attr;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::TyCtxt;

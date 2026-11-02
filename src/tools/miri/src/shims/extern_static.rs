@@ -1,7 +1,7 @@
 //! Provides the `extern static` that this platform expects.
 
 use rustc_span::Symbol;
-use rustc_target::spec::Os;
+use rustc_target::spec::{Env, Os};
 
 use crate::*;
 
@@ -16,11 +16,11 @@ impl<'tcx> MiriMachine<'tcx> {
         ecx: &mut MiriInterpCx<'tcx>,
         name: &str,
         val: ImmTy<'tcx>,
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, Pointer> {
         let place = ecx.allocate(val.layout, MiriMemoryKind::ExternStatic.into())?;
         ecx.write_immediate(*val, &place)?;
         Self::add_extern_static(ecx, name, place.ptr());
-        interp_ok(())
+        interp_ok(place.ptr())
     }
 
     /// Make `ptr` available as a weak symbol with the given name.
@@ -30,7 +30,7 @@ impl<'tcx> MiriMachine<'tcx> {
         ptr: Pointer,
     ) -> InterpResult<'tcx> {
         // Allocate the extra indirection place and add it to the map.
-        let layout = ecx.machine.layouts.mut_raw_ptr;
+        let layout = ecx.machine.layouts.unit_ptr_mut;
         let place = ecx.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
         ecx.write_scalar(Scalar::from_maybe_pointer(ptr, ecx), &place)?;
         let weak_ptr = place.ptr().into_pointer_or_addr().unwrap();
@@ -61,6 +61,18 @@ impl<'tcx> MiriMachine<'tcx> {
         match &ecx.tcx.sess.target.os {
             Os::Linux => {
                 Self::weak_fn_symbols(ecx, &["getrandom", "gettid", "statx", "strlen"])?;
+                if ecx.tcx.sess.target.env == Env::Gnu {
+                    // FIXME: enabling this with genmc causes test failures because of how
+                    // std then uses pthread keys and genmc does not know about their state.
+                    if ecx.machine.data_race.as_genmc_ref().is_none() {
+                        Self::weak_fn_symbols(ecx, &["__cxa_thread_atexit_impl"])?;
+                    }
+                    // The __dso_handle symbol just marks a unique global address.
+                    let val = ImmTy::from_int(0, ecx.machine.layouts.u8);
+                    let ptr = Self::alloc_extern_static(ecx, "__dso_handle", val)?;
+                    // We also need a weak symbol for `__dso_handle`.
+                    Self::add_weak_symbol(ecx, "__dso_handle", ptr)?;
+                }
             }
             Os::Android => {
                 Self::weak_fn_symbols(

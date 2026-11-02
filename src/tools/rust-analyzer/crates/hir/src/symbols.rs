@@ -2,7 +2,7 @@
 
 use std::marker::PhantomData;
 
-use base_db::{FxIndexSet, salsa::Update};
+use base_db::{FxIndexSet, salsa::SalsaValue};
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, AstIdLoc, Complete, DefWithBodyId, ExternCrateId, HasModule, ImplId,
@@ -16,7 +16,7 @@ use hir_def::{
     visibility::{Visibility, VisibilityExplicitness},
 };
 use hir_expand::{HirFileId, name::Name};
-use hir_ty::{
+use hir_ide::{
     db::HirDatabase,
     display::{HirDisplay, hir_display_with_store},
 };
@@ -28,7 +28,7 @@ use crate::{Crate, HasCrate, Module, ModuleDef, Semantics};
 
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
-#[derive(Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct FileSymbol<'db> {
     pub name: Symbol,
     pub def: ModuleDef,

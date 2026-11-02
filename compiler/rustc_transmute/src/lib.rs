@@ -1,6 +1,13 @@
+//! Checks whether one type's representation can be reinterpreted as another.
+//!
+//! The analysis converts compiler layouts into trees of bytes, references, and
+//! definition markers. It prunes destination paths that may carry safety invariants unless
+//! safety is assumed, then converts the trees into deterministic finite automata.
+//! Comparing the automata produces an [`rustc_middle::ty::transmute::Answer`]; reference transitions can leave
+//! [`rustc_middle::ty::transmute::Condition`]s for the trait solver to discharge.
+
 // tidy-alphabetical-start
 #![cfg_attr(test, feature(test))]
-#![feature(never_type)]
 #![feature(option_into_flat_iter)]
 // tidy-alphabetical-end
 
@@ -9,6 +16,10 @@ pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set}
 pub mod layout;
 mod maybe_transmutable;
 
+/// Proof obligations supplied by the caller rather than checked by the analysis.
+///
+/// This mirrors `core::mem::Assume`. A `true` field transfers the corresponding
+/// obligation to the caller; the default leaves all four obligations to the compiler.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Assume {
     pub alignment: bool,
@@ -17,79 +28,10 @@ pub struct Assume {
     pub validity: bool,
 }
 
-/// Either transmutation is allowed, we have an error, or we have an optional
-/// Condition that must hold.
-#[derive(Debug, Hash, Eq, PartialEq, Clone)]
-pub enum Answer<R, T> {
-    Yes,
-    No(Reason<T>),
-    If(Condition<R, T>),
-}
-
-/// A condition which must hold for safe transmutation to be possible.
-#[derive(Debug, Hash, Eq, PartialEq, Clone)]
-pub enum Condition<R, T> {
-    /// `Src` is transmutable into `Dst`, if `src` is transmutable into `dst`.
-    Transmutable { src: T, dst: T },
-
-    /// The region `long` must outlive `short`.
-    Outlives { long: R, short: R },
-
-    /// The `ty` is immutable.
-    Immutable { ty: T },
-
-    /// `Src` is transmutable into `Dst`, if all of the enclosed requirements are met.
-    IfAll(Vec<Condition<R, T>>),
-
-    /// `Src` is transmutable into `Dst` if any of the enclosed requirements are met.
-    IfAny(Vec<Condition<R, T>>),
-}
-
-/// Answers "why wasn't the source type transmutable into the destination type?"
-#[derive(Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Clone)]
-pub enum Reason<T> {
-    /// The layout of the source type is not yet supported.
-    SrcIsNotYetSupported,
-    /// The layout of the destination type is not yet supported.
-    DstIsNotYetSupported,
-    /// The layout of the destination type is bit-incompatible with the source type.
-    DstIsBitIncompatible,
-    /// The destination type is uninhabited.
-    DstUninhabited,
-    /// The destination type may carry safety invariants.
-    DstMayHaveSafetyInvariants,
-    /// `Dst` is larger than `Src`, and the excess bytes were not exclusively uninitialized.
-    DstIsTooBig,
-    /// `Dst` is larger `Src`.
-    DstRefIsTooBig {
-        /// The referent of the source type.
-        src: T,
-        /// The size of the source type's referent.
-        src_size: usize,
-        /// The too-large referent of the destination type.
-        dst: T,
-        /// The size of the destination type's referent.
-        dst_size: usize,
-    },
-    /// Src should have a stricter alignment than Dst, but it does not.
-    DstHasStricterAlignment { src_min_align: usize, dst_min_align: usize },
-    /// Can't go from shared pointer to unique pointer
-    DstIsMoreUnique,
-    /// Encountered a type error
-    TypeError,
-    /// The layout of src is unknown
-    SrcLayoutUnknown,
-    /// The layout of dst is unknown
-    DstLayoutUnknown,
-    /// The size of src is overflow
-    SrcSizeOverflow,
-    /// The size of dst is overflow
-    DstSizeOverflow,
-}
-
 #[cfg(feature = "rustc")]
 mod rustc {
-    use rustc_hir::lang_items::LangItem;
+    use rustc_attr_ir::lang_items::LangItem;
+    use rustc_middle::ty::transmute::Answer;
     use rustc_middle::ty::{Const, Region, Ty, TyCtxt};
 
     use super::*;
@@ -108,7 +50,7 @@ mod rustc {
             src: Ty<'tcx>,
             dst: Ty<'tcx>,
             assume: crate::Assume,
-        ) -> crate::Answer<Region<'tcx>, Ty<'tcx>> {
+        ) -> Answer<Region<'tcx>, Ty<'tcx>> {
             crate::maybe_transmutable::MaybeTransmutableQuery::new(src, dst, assume, self.tcx)
                 .answer()
         }

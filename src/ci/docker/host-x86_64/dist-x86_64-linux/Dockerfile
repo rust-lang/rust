@@ -52,6 +52,10 @@ WORKDIR /tmp
 RUN mkdir /home/user
 COPY scripts/shared.sh /tmp/
 
+# GCC needs make >= 4
+COPY scripts/build-make.sh /tmp/
+RUN ./build-make.sh
+
 # Need at least GCC 5.1 to compile LLVM nowadays
 COPY scripts/build-gcc.sh /tmp/
 ENV GCC_VERSION=9.5.0
@@ -65,7 +69,7 @@ RUN ./cmake.sh
 # Now build LLVM+Clang, afterwards configuring further compilations to use the
 # clang/clang++ compilers.
 COPY scripts/build-clang.sh /tmp/
-ENV LLVM_BUILD_TARGETS=X86
+ENV LLVM_BUILD_TARGETS="X86;AMDGPU;NVPTX"
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 
@@ -90,7 +94,8 @@ ENV RUST_CONFIGURE_ARGS="--enable-full-tools \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
       --set llvm.libzstd=true \
-      --set rust.override-allocator=jemalloc \
+      --set build.allocator=jemalloc \
+      --set llvm.offload-clang-dir="/rustroot/lib/cmake/clang" \
       --set rust.bootstrap-override-lld=true \
       --set rust.lto=thin \
       --set rust.codegen-units=1"

@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
+use rustc_attr_ir::diagnostic::{CustomDiagnostic, FilterOptions, FormatArgs};
+use rustc_attr_ir::find_attr;
 use rustc_hir as hir;
-use rustc_hir::attrs::diagnostic::{CustomDiagnostic, FilterOptions, FormatArgs};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::find_attr;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, GenericParamDef, GenericParamDefKind};
 use rustc_span::Symbol;
@@ -33,11 +33,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     pub fn on_unimplemented_note(
         &self,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         long_ty_path: &mut Option<PathBuf>,
     ) -> CustomDiagnostic {
-        if trait_pred.polarity() != ty::PredicatePolarity::Positive {
+        if trait_pred.polarity() != ty::ClausePolarity::Positive {
             return CustomDiagnostic::default();
         }
         // This is needed as `on_unimplemented` is currently not allowed on trait aliases,
@@ -59,7 +59,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     pub(crate) fn on_unimplemented_components(
         &self,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_pred: ty::PolyTraitClause<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         long_ty_path: &mut Option<PathBuf>,
         print_infer_ty_var: bool,

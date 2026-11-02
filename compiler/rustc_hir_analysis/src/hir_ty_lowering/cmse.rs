@@ -1,10 +1,9 @@
 use rustc_abi::ExternAbi;
 use rustc_errors::{DiagCtxtHandle, E0781, struct_span_code_err};
 use rustc_hir::{self as hir, HirId};
-use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutCx, LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 
 use crate::diagnostics;
 
@@ -171,7 +170,7 @@ fn is_valid_cmse_output_layout<'tcx>(cx: LayoutCx<'tcx>, layout: TyAndLayout<'tc
 
     // Accept (transparently wrapped) scalar 64-bit primitives.
     matches!(
-        layout.peel_transparent_wrappers(&cx).ty.kind(),
+        layout.peel_transparent_wrappers_from_non_1zst(&cx).ty.kind(),
         ty::Int(ty::IntTy::I64) | ty::Uint(ty::UintTy::U64) | ty::Float(ty::FloatTy::F64)
     )
 }

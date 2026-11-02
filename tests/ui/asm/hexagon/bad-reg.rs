@@ -3,8 +3,6 @@
 //@ needs-llvm-components: hexagon
 //@ ignore-backends: gcc
 
-//~? WARN unstable feature specified for `-Ctarget-feature`: `hvx-length128b`
-
 #![crate_type = "lib"]
 #![feature(no_core, asm_experimental_arch)]
 #![no_core]

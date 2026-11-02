@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _};
 use clippy_utils::{is_none_expr, last_path_segment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, AmbigArg};

@@ -31,6 +31,12 @@ macro_rules! TrivialTypeTraversalImpls {
                     <F::Result as $crate::VisitorResult>::output()
                 }
             }
+
+            // NOTE: this deliberately avoids adding an `I: Interner` generic, because that would
+            // allow creating a trivial impl for arena-allocating types, which would be incorrect.
+            unsafe impl<V> $crate::GenericTypeVisitable<V> for $ty {
+                fn generic_visit_with(&self, _visitor: &mut V) {}
+            }
         )+
     };
 }
@@ -44,21 +50,55 @@ macro_rules! TrivialTypeTraversalImpls {
 TrivialTypeTraversalImpls! {
     (),
     bool,
-    usize,
+    i8,
+    i16,
+    i32,
+    i64,
+    i128,
+    isize,
     u8,
     u16,
     u32,
     u64,
+    usize,
     // tidy-alphabetical-start
     crate::BoundConstness,
+    crate::BoundVar,
+    crate::ClausePolarity,
     crate::DebruijnIndex,
-    crate::PredicatePolarity,
+    crate::FloatTy,
+    crate::InferConst,
+    crate::InferTy,
+    crate::IntTy,
+    crate::RegionVid,
+    crate::TypeFlags,
+    crate::UintTy,
     crate::UniverseIndex,
     crate::Variance,
+    crate::region_constraint::NoSpan,
     crate::solve::BuiltinImplSource,
     crate::solve::Certainty,
     crate::solve::GoalSource,
+    crate::solve::IsIdentity,
     crate::solve::VisibleForLeakCheck,
+    rustc_abi::ExternAbi,
     rustc_ast_ir::Mutability,
     // tidy-alphabetical-end
+}
+
+macro_rules! TrivialLiftImpls {
+    ($($ty:ty),+ $(,)?) => {
+        $(
+            impl<I: $crate::Interner> $crate::lift::Lift<I> for $ty {
+                type Lifted = Self;
+                fn lift_to_interner(self, _: I) -> Self {
+                    self
+                }
+            }
+        )+
+    };
+}
+
+TrivialLiftImpls! {
+    crate::LateParamRegion<I>
 }

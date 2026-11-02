@@ -7,10 +7,10 @@ use rustc_errors::{
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, GenericArg};
+use rustc_lint_defs::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_middle::ty::{
-    self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
+    self, GenericArgs, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
 };
-use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_span::kw;
 use rustc_trait_selection::traits;
 use smallvec::SmallVec;
@@ -68,9 +68,9 @@ fn generic_arg_mismatch_err(
         ) => match path.res {
             Res::Err => {
                 add_braces_suggestion(arg, &mut err);
-                return err
-                    .with_primary_message("unresolved item provided when a constant was expected")
-                    .emit();
+                err.primary_message("unresolved item provided when a constant was expected");
+                // A resolve error will already have been emitted pointing at this.
+                return err.delay_as_bug();
             }
             Res::Def(DefKind::TyParam, src_def_id) => {
                 if let Some(param_local_id) = param.def_id.as_local() {
@@ -97,12 +97,24 @@ fn generic_arg_mismatch_err(
             GenericArg::Type(hir::Ty { kind: hir::TyKind::Array(_, len), .. }),
             GenericParamDefKind::Const { .. },
         ) if tcx.type_of(param.def_id).skip_binder() == tcx.types.usize => {
+            err.span_label(arg.span(), "array type provided where a `usize` was expected");
             let snippet = sess.source_map().span_to_snippet(tcx.hir_span(len.hir_id));
             if let Ok(snippet) = snippet {
-                err.span_suggestion(
+                let sugg = if let hir::ConstArgKind::Anon(hir::AnonConst { body, .. }) = len.kind
+                    && let hir::ExprKind::Lit(..) = tcx.hir_body(*body).value.kind
+                {
+                    // We don't need to surround literals in braces when used as consts
+                    snippet
+                } else if let hir::ConstArgKind::Literal { .. } = len.kind {
+                    // We don't need to surround literals in braces when used as consts
+                    snippet
+                } else {
+                    format!("{{ {snippet} }}")
+                };
+                err.span_suggestion_verbose(
                     arg.span(),
-                    "array type provided where a `usize` was expected, try",
-                    format!("{{ {snippet} }}"),
+                    format!("you might have meant to use the array's length's value"),
+                    sugg,
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -145,7 +157,7 @@ fn generic_arg_mismatch_err(
         }
     }
 
-    err.emit()
+    err.emit_err()
 }
 
 /// Lower generic arguments from the HIR to the [`rustc_middle::ty`] representation.
@@ -183,7 +195,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
     self_ty: Option<Ty<'tcx>>,
     arg_count: &GenericArgCountResult,
     ctx: &mut impl GenericArgsLowerer<'a, 'tcx>,
-) -> GenericArgsRef<'tcx> {
+) -> GenericArgs<'tcx> {
     let tcx = cx.tcx();
     // Collect the segments of the path; we need to instantiate arguments
     // for parameters throughout the entire path (wherever there are
@@ -254,7 +266,11 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                     match (arg, &param.kind, arg_count.explicit_late_bound) {
                         (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
                         | (
-                            GenericArg::Type(_) | GenericArg::Infer(_),
+                            GenericArg::Type(_)
+                            | GenericArg::Infer(hir::InferArg {
+                                kind: hir::InferArgKind::TypeOrConst,
+                                ..
+                            }),
                             GenericParamDefKind::Type { .. },
                             _,
                         )
@@ -411,6 +427,22 @@ pub(crate) fn check_generic_arg_count(
     let gen_args = seg.args();
     let default_counts = gen_params.own_defaults();
     let param_counts = gen_params.own_counts();
+    // If we have any `Vec<foo: Bar>` constraint, where `Bar` is unresolved, the user likely meant
+    // to write `Vec<foo::Bar>`, so we silence the incorrect number of generics error.
+    let has_invalid_bound = match seg.args {
+        Some(args) => args.constraints.iter().any(|c| {
+            if let hir::AssocItemConstraintKind::Bound {
+                bounds: [hir::GenericBound::Trait(poly_trait_ref)],
+            } = c.kind
+                && let Res::Err = poly_trait_ref.trait_ref.path.res
+            {
+                true
+            } else {
+                false
+            }
+        }),
+        None => false,
+    };
 
     // Subtracting from param count to ensure type params synthesized from `impl Trait`
     // cannot be explicitly specified.
@@ -419,8 +451,11 @@ pub(crate) fn check_generic_arg_count(
         .iter()
         .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Type { synthetic: true, .. }))
         .count();
+    // arg position const params are supplied through call arguments, so they
+    // cannot be explicitly specified via turbofish.
+    let arg_const_param_count = gen_params.own_arg_pos_consts().count();
     let named_type_param_count = param_counts.types - has_self as usize - synth_type_param_count;
-    let named_const_param_count = param_counts.consts;
+    let named_const_param_count = param_counts.consts - arg_const_param_count;
     let infer_lifetimes =
         (gen_pos != GenericArgPosition::Type || seg.infer_args) && !gen_args.has_lifetime_args();
 
@@ -471,6 +506,7 @@ pub(crate) fn check_generic_arg_count(
             has_self as usize,
             gen_args,
             def_id,
+            cx.item_def_id(),
         ));
 
         Err(reported)
@@ -585,8 +621,9 @@ pub(crate) fn check_generic_arg_count(
                     params_offset,
                     gen_args,
                     def_id,
+                    cx.item_def_id(),
                 ))
-                .emit_unless_delay(all_params_are_binded)
+                .emit_err_unless_delay(all_params_are_binded || has_invalid_bound)
         });
 
         Err(reported)
@@ -596,7 +633,7 @@ pub(crate) fn check_generic_arg_count(
         let expected_min = if seg.infer_args {
             0
         } else {
-            param_counts.consts + named_type_param_count
+            named_const_param_count + named_type_param_count
                 - default_counts.types
                 - default_counts.consts
         };
@@ -635,8 +672,8 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         msg: &'static str,
     }
 
-    impl<'a> Diagnostic<'a, ()> for LifetimeArgsIssue {
-        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+    impl<'a> Diagnostic<'a> for LifetimeArgsIssue {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
             let Self { msg } = self;
             Diag::new(dcx, level, msg)
         }

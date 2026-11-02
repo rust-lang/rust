@@ -1,14 +1,18 @@
 // issue: <https://github.com/rust-lang/rust/issues/151631>
 //@ compile-flags: -Znext-solver
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
+
+use std::gca;
 
 trait SuperTrait {}
 trait Trait: SuperTrait {
-    type const K: u32;
+    #[rustc_always_gca]
+    const K: u32;
 }
-impl Trait for () { //~ ERROR: the trait bound `(): SuperTrait` is not satisfied
-    type const K: u32 = const { 1 };
+impl Trait for () {
+    //~^ ERROR: the trait bound `(): SuperTrait` is not satisfied
+    const K: u32 = gca!(const { 1 });
 }
 
 fn check(_: impl Trait<K = 0>) {}

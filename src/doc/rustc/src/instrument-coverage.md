@@ -42,7 +42,7 @@ LLVM coverage reporting tools generate results that can include function names a
 One option for a Rust demangler is [`rustfilt`], which can be installed with:
 
 ```shell
-cargo install rustfilt
+cargo install --locked rustfilt
 ```
 
 [`rustfilt`]: https://crates.io/crates/rustfilt

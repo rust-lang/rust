@@ -2,25 +2,25 @@
 
 use rustc_ast::{self as ast, AssignOp, BinOp};
 use rustc_data_structures::packed::Pu128;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, AssignOpKind, BinOpKind, Expr, ExprKind};
 use rustc_infer::traits::ObligationCauseCode;
-use rustc_middle::bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
-use rustc_session::diagnostics::ExprParenthesesNeeded;
-use rustc_span::{Span, Spanned, Symbol, sym};
+use rustc_span::{Span, Spanned, Symbol, bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, Obligation, ObligationCtxt};
 use tracing::debug;
 
 use super::FnCtxt;
 use super::method::MethodCallee;
+use crate::diagnostics::ExprParenthesesNeeded;
 use crate::method::TreatNotYetDefinedOpaques;
 use crate::{Expectation, diagnostics};
 
@@ -220,7 +220,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr(lhs_expr)
             }
         };
-        let lhs_ty = self.resolve_vars_with_obligations(lhs_ty);
+        let lhs_ty = self.deeply_resolve_ignoring_regions_with_obligations(lhs_ty);
 
         // N.B., as we have not yet type-checked the RHS, we don't have the
         // type at hand. Make a variable to represent it. The whole reason
@@ -255,7 +255,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             },
         );
-        let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
+        let rhs_ty = self.deeply_resolve_ignoring_regions_with_obligations(rhs_ty);
 
         let return_ty = self.overloaded_binop_ret_ty(
             expr, lhs_expr, rhs_expr, op, expected, lhs_ty, result, rhs_ty,
@@ -272,7 +272,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         op: Op,
         expected: Expectation<'tcx>,
         lhs_ty: Ty<'tcx>,
-        result: Result<MethodCallee<'tcx>, Vec<FulfillmentError<'tcx>>>,
+        result: Result<MethodCallee<'tcx>, ThinVec<FulfillmentError<'tcx>>>,
         rhs_ty: Ty<'tcx>,
     ) -> Ty<'tcx> {
         match result {
@@ -335,7 +335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         lhs_ty: Ty<'tcx>,
         rhs_ty: Ty<'tcx>,
-        errors: Vec<FulfillmentError<'tcx>>,
+        errors: ThinVec<FulfillmentError<'tcx>>,
     ) -> Ty<'tcx> {
         let (_, trait_def_id) = lang_item_for_binop(self.tcx, op);
 
@@ -557,7 +557,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &mut err,
         );
 
-        Ty::new_error(self.tcx, err.emit())
+        Ty::new_error(self.tcx, err.emit_err())
     }
 
     fn suggest_deref_or_call_for_binop_error(
@@ -978,7 +978,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 method.sig.output()
             }
             Err(errors) => {
-                let actual = self.resolve_vars_if_possible(operand_ty);
+                let actual = self.deeply_resolve_ignoring_regions(operand_ty);
                 let guar = actual.error_reported().err().unwrap_or_else(|| {
                     let mut file = None;
                     let ty_str = self.tcx.short_string(actual, &mut file);
@@ -1010,8 +1010,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let sp = self.tcx.sess.source_map().start_point(ex.span).with_parent(None);
-                    if let Some(sp) =
-                        self.tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp)
+                    if let Some(sp) = self
+                        .tcx
+                        .sess
+                        .psess
+                        .complete_stmt_exprs_before_bin_op_lookalike
+                        .borrow()
+                        .get(&sp)
                     {
                         // If the previous expression was a block expression, suggest parentheses
                         // (turning this into a binary subtraction operation instead.)
@@ -1060,7 +1065,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    err.emit()
+                    err.emit_err()
                 });
                 Ty::new_error(self.tcx, guar)
             }
@@ -1074,10 +1079,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         (opname, trait_did): (Symbol, Option<hir::def_id::DefId>),
         span: Span,
         expected: Expectation<'tcx>,
-    ) -> Result<MethodCallee<'tcx>, Vec<FulfillmentError<'tcx>>> {
+    ) -> Result<MethodCallee<'tcx>, ThinVec<FulfillmentError<'tcx>>> {
         let Some(trait_did) = trait_did else {
             // Bail if the operator trait is not defined.
-            return Err(vec![]);
+            return Err(thin_vec![]);
         };
 
         debug!(
@@ -1155,7 +1160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 let ocx = ObligationCtxt::new_with_diagnostics(&self.infcx);
                 ocx.register_obligation(obligation);
-                Err(ocx.evaluate_obligations_error_on_ambiguity())
+                Err(ocx.evaluate_obligations_error_on_ambiguity().into_thin_vec())
             }
         }
     }

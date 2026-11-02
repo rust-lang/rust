@@ -109,4 +109,66 @@ fn in_closure() {
     }
 }
 
+fn issue_15112() {
+    {
+        let v = std::sync::Mutex::new(0);
+        match { *v.lock().unwrap() } {
+            1 => {
+                todo!()
+            },
+            2 => {
+                todo!()
+            },
+            _ => {},
+        }
+    }
+
+    {
+        // No Drop impl, so braces should be removed
+        struct Foo;
+
+        impl Foo {
+            fn foo(&self) -> i32 {
+                0
+            }
+        }
+
+        match { Foo.foo() } {
+            //~^ ERROR: omit braces around single expression condition
+            1 => {
+                todo!()
+            },
+            2 => {
+                todo!()
+            },
+            _ => {},
+        }
+    }
+
+    {
+        // Drop impl, so braces should be kept
+        struct Bar;
+
+        impl Drop for Bar {
+            fn drop(&mut self) {}
+        }
+
+        impl Bar {
+            fn bar(&self) -> i32 {
+                0
+            }
+        }
+
+        match { Bar.bar() } {
+            1 => {
+                todo!()
+            },
+            2 => {
+                todo!()
+            },
+            _ => {},
+        }
+    }
+}
+
 fn main() {}

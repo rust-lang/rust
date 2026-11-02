@@ -11,10 +11,12 @@ pub type HalfRep<F> = <<F as Float>::Int as DInt>::H;
 ///
 /// Note that MIPS is doing some general migration here, though this is only available on (rare)
 /// modern MIPS hardware per discussion at <https://github.com/WebAssembly/design/issues/976>.
-const MIPS_NAN: bool = cfg!(target_arch = "mips") || cfg!(target_arch = "mips64");
+const MIPS_NAN: bool = cfg!(target_arch = "mips")
+    || cfg!(target_arch = "mips64")
+    || cfg!(target_arch = "mips32r6")
+    || cfg!(target_arch = "mips64r6");
 
 /// Trait for some basic operations on floats
-// #[allow(dead_code)]
 #[allow(dead_code)] // Some constants are only used with tests
 pub trait Float:
     Copy
@@ -55,6 +57,9 @@ pub trait Float:
     const SNAN: Self;
     const NEG_NAN: Self;
     const NEG_SNAN: Self;
+    /// The result of quieting the default sNaN.
+    const QSNAN: Self;
+    const NEG_QSNAN: Self;
 
     const EPSILON: Self;
     const PI: Self;
@@ -106,6 +111,9 @@ pub trait Float:
     /// A mask for the top bit of the significand, useful for NaN ops.
     const SIG_TOP_BIT: Self::Int;
 
+    /// The minimum subnormal number.
+    const TINY_BITS: Self::Int = Self::Int::ONE;
+
     /// Returns `self` transmuted to `Self::Int`
     fn to_bits(self) -> Self::Int;
 
@@ -152,6 +160,12 @@ pub trait Float:
 
     /// Returns true if the value is +inf or -inf.
     fn is_infinite(self) -> bool;
+
+    /// Returns true if this number is neither infinite nor NaN.
+    #[allow(dead_code)]
+    fn is_finite(self) -> bool {
+        self.abs() < Self::INFINITY
+    }
 
     /// Returns true if the sign is negative. Extracts the sign bit regardless of zero or NaN.
     fn is_sign_negative(self) -> bool;
@@ -209,6 +223,12 @@ pub trait Float:
     /// Fused multiply add, rounding once.
     fn fma(self, y: Self, z: Self) -> Self;
 
+    /// Round down to the nearest integer.
+    fn floor(self) -> Self;
+
+    /// Round to the nearest integer, breaking ties toward even.
+    fn roundeven(self) -> Self;
+
     /// Returns (normalized exponent, normalized significand)
     fn normalize(significand: Self::Int) -> (i32, Self::Int);
 
@@ -230,6 +250,50 @@ pub trait Float:
         // <https://github.com/llvm/llvm-project/issues/32650>).
         self * Self::ONE
     }
+
+    /// Increment by one ULP, saturating at infinity.
+    fn next_up(self) -> Self {
+        // FIXME: Replace with `next_up` from `core` once `libm` MSRV reaches 1.86.
+        let bits = self.to_bits();
+        if self.is_nan() || bits == Self::INFINITY.to_bits() {
+            return self;
+        }
+
+        let abs = self.abs().to_bits();
+        let next_bits = if abs == Self::Int::ZERO {
+            // Next up from 0 is the smallest subnormal
+            Self::TINY_BITS
+        } else if bits == abs {
+            // Positive: counting up is more positive
+            bits + Self::Int::ONE
+        } else {
+            // Negative: counting down is more positive
+            bits - Self::Int::ONE
+        };
+        Self::from_bits(next_bits)
+    }
+
+    /// Decrement by one ULP, saturating at negative infinity.
+    fn next_down(self) -> Self {
+        // FIXME: Replace with `next_down` from `core` once `libm` MSRV reaches 1.86.
+        let bits = self.to_bits();
+        if self.is_nan() || bits == Self::NEG_INFINITY.to_bits() {
+            return self;
+        }
+
+        let abs = self.abs().to_bits();
+        let next_bits = if abs == Self::Int::ZERO {
+            // Next up from 0 is the smallest negative subnormal
+            Self::TINY_BITS | Self::SIGN_MASK
+        } else if bits == abs {
+            // Positive: counting down is more negative
+            bits - Self::Int::ONE
+        } else {
+            // Negative: counting up is more negative
+            bits + Self::Int::ONE
+        };
+        Self::from_bits(next_bits)
+    }
 }
 
 /// Access the associated `Int` type from a float (helper to avoid ambiguous associated types).
@@ -245,7 +309,8 @@ macro_rules! float_impl {
         $from_bits:path,
         $to_bits:path,
         $fma_fn:ident,
-        $fma_intrinsic:ident
+        $floor_fn:ident,
+        $roundeven_fn:ident
     ) => {
         impl Float for $ty {
             type Int = $ity;
@@ -274,10 +339,16 @@ macro_rules! float_impl {
             } else {
                 Self::EXP_MASK | (Self::SIG_TOP_BIT >> 1)
             });
+            const QSNAN: Self = if MIPS_NAN {
+                <Self as Float>::NAN
+            } else {
+                $from_bits($to_bits(Self::SNAN) | Self::SIG_TOP_BIT)
+            };
             // NAN isn't guaranteed to be positive but it usually is. We only use these for
             // tests.
             const NEG_NAN: Self = $from_bits($to_bits(Self::NAN) | Self::SIGN_MASK);
             const NEG_SNAN: Self = $from_bits($to_bits(Self::SNAN) | Self::SIGN_MASK);
+            const NEG_QSNAN: Self = $from_bits($to_bits(Self::QSNAN) | Self::SIGN_MASK);
 
             const EPSILON: Self = <$ty>::EPSILON;
 
@@ -337,32 +408,56 @@ macro_rules! float_impl {
                 Self::from_bits(a)
             }
             fn abs(self) -> Self {
-                cfg_if! {
+                cfg_select_nofmt! {
                     // FIXME(msrv): `abs` is available in `core` starting with 1.85.
-                    if #[cfg(intrinsics_enabled)] {
+                    intrinsics_enabled => {
                         self.abs()
-                    } else {
+                    }
+                    _ => {
                         super::super::generic::fabs(self)
                     }
                 }
             }
             fn copysign(self, other: Self) -> Self {
-                cfg_if! {
+                cfg_select_nofmt! {
                     // FIXME(msrv): `copysign` is available in `core` starting with 1.85.
-                    if #[cfg(intrinsics_enabled)] {
+                    intrinsics_enabled => {
                         self.copysign(other)
-                    } else {
+                    }
+                    _ => {
                         super::super::generic::copysign(self, other)
                     }
                 }
             }
             fn fma(self, y: Self, z: Self) -> Self {
-                cfg_if! {
+                cfg_select_nofmt! {
                     // fma is not yet available in `core`
-                    if #[cfg(intrinsics_enabled)] {
-                        core::intrinsics::$fma_intrinsic(self, y, z)
-                    } else {
+                    intrinsics_enabled => {
+                        core::intrinsics::fma(self, y, z)
+                    }
+                    _ => {
                         super::super::$fma_fn(self, y, z)
+                    }
+                }
+            }
+            #[inline]
+            fn floor(self) -> Self {
+                cfg_select_nofmt! {
+                    intrinsics_enabled => {
+                        core::intrinsics::floor(self)
+                    }
+                    _ => {
+                        super::super::$floor_fn(self)
+                    }
+                }
+            }
+            fn roundeven(self) -> Self {
+                cfg_select_nofmt! {
+                    intrinsics_enabled => {
+                        core::intrinsics::round_ties_even(self)
+                    }
+                    _ => {
+                        super::super::$roundeven_fn(self)
                     }
                 }
             }
@@ -384,7 +479,8 @@ float_impl!(
     f16::from_bits,
     f16::to_bits,
     fmaf16,
-    fmaf16
+    floorf16,
+    roundevenf16
 );
 float_impl!(
     f32,
@@ -395,7 +491,8 @@ float_impl!(
     f32_from_bits,
     f32_to_bits,
     fmaf,
-    fmaf32
+    floorf,
+    roundevenf
 );
 float_impl!(
     f64,
@@ -406,7 +503,8 @@ float_impl!(
     f64_from_bits,
     f64_to_bits,
     fma,
-    fmaf64
+    floor,
+    roundeven
 );
 #[cfg(f128_enabled)]
 float_impl!(
@@ -418,7 +516,8 @@ float_impl!(
     f128::from_bits,
     f128::to_bits,
     fmaf128,
-    fmaf128
+    floorf128,
+    roundevenf128
 );
 
 /* FIXME(msrv): vendor some things that are not const stable at our MSRV */
@@ -453,28 +552,28 @@ pub const fn f64_to_bits(x: f64) -> u64 {
     unsafe { mem::transmute::<f64, u64>(x) }
 }
 
-/// Trait for floats twice the bit width of another integer.
-pub trait DFloat: Float {
+/// Trait for floats that are wider than a `NFloat` type.
+pub trait WideFloat: Float {
     /// Float that is half the bit width of the floatthis trait is implemented for.
-    type H: HFloat<D = Self>;
+    type H: NarrowFloat<D = Self>;
 
     /// Narrow the float type.
     fn narrow(self) -> Self::H;
 }
 
-/// Trait for floats half the bit width of another float.
-pub trait HFloat: Float {
+/// Trait for floats narrower than a `WFloat` type.
+pub trait NarrowFloat: Float {
     /// Float that is double the bit width of the float this trait is implemented for.
-    type D: DFloat<H = Self>;
+    type D: WideFloat<H = Self>;
 
     /// Widen the float type.
     fn widen(self) -> Self::D;
 }
 
-macro_rules! impl_d_float {
+macro_rules! impl_wide_float {
     ($($X:ident $D:ident),*) => {
         $(
-            impl DFloat for $D {
+            impl WideFloat for $D {
                 type H = $X;
 
                 fn narrow(self) -> Self::H {
@@ -485,10 +584,10 @@ macro_rules! impl_d_float {
     };
 }
 
-macro_rules! impl_h_float {
+macro_rules! impl_narrow_float {
     ($($H:ident $X:ident),*) => {
         $(
-            impl HFloat for $H {
+            impl NarrowFloat for $H {
                 type D = $X;
 
                 fn widen(self) -> Self::D {
@@ -499,17 +598,17 @@ macro_rules! impl_h_float {
     };
 }
 
-impl_d_float!(f32 f64);
+impl_wide_float!(f32 f64);
 #[cfg(f16_enabled)]
-impl_d_float!(f16 f32);
+impl_wide_float!(f16 f32);
 #[cfg(f128_enabled)]
-impl_d_float!(f64 f128);
+impl_wide_float!(f64 f128);
 
-impl_h_float!(f32 f64);
+impl_narrow_float!(f32 f64);
 #[cfg(f16_enabled)]
-impl_h_float!(f16 f32);
+impl_narrow_float!(f16 f32);
 #[cfg(f128_enabled)]
-impl_h_float!(f64 f128);
+impl_narrow_float!(f64 f128);
 
 #[cfg(test)]
 mod tests {
@@ -528,13 +627,16 @@ mod tests {
         // Value of NAN and FLT16_SNAN in C. We don't strictly need to match up, but it is good to
         // be aware if there are platforms where we don't.
         if MIPS_NAN {
-            assert_biteq!(f16::NAN, f16::from_bits(0x7fbf));
+            assert_biteq!(<f16 as Float>::NAN, f16::from_bits(0x7dff));
             assert_biteq!(f16::SNAN, f16::from_bits(0x7fff));
+            assert_biteq!(f16::QSNAN, f16::from_bits(0x7dff));
         } else {
             assert_biteq!(f16::NAN, f16::from_bits(0x7e00));
             assert_biteq!(f16::SNAN, f16::from_bits(0x7d00));
+            assert_biteq!(f16::QSNAN, f16::from_bits(0x7f00));
         }
-        assert!(f16::NAN.is_qnan());
+        assert!(<f16 as Float>::NAN.is_qnan());
+        assert!(f16::SNAN.is_snan());
 
         // `exp_unbiased`
         assert_eq!(f16::FRAC_PI_2.exp_unbiased(), 0);
@@ -565,13 +667,15 @@ mod tests {
         // Value of NAN and FLT_SNAN in C. We don't strictly need to match up, but it is good to
         // be aware if there are platforms where we don't.
         if MIPS_NAN {
-            assert_biteq!(f32::NAN, f32::from_bits(0x7fbfffff));
+            assert_biteq!(<f32 as Float>::NAN, f32::from_bits(0x7fbfffff));
             assert_biteq!(f32::SNAN, f32::from_bits(0x7fffffff));
+            assert_biteq!(f32::QSNAN, f32::from_bits(0x7fbfffff));
         } else {
             assert_biteq!(f32::NAN, f32::from_bits(0x7fc00000));
             assert_biteq!(f32::SNAN, f32::from_bits(0x7fa00000));
+            assert_biteq!(f32::QSNAN, f32::from_bits(0x7fe00000));
         }
-        assert!(f32::NAN.is_qnan());
+        assert!(<f32 as Float>::NAN.is_qnan());
         // FIXME(rust-lang/rust#115567): x87 use in `is_snan` quiets the sNaN
         if !cfg!(x86_no_sse2) {
             assert!(f32::SNAN.is_snan());
@@ -610,13 +714,15 @@ mod tests {
         // Value of NAN and DBL_SNAN in C. We don't strictly need to match up, but it is good to
         // be aware if there are platforms where we don't.
         if MIPS_NAN {
-            assert_biteq!(f64::NAN, f64::from_bits(0x7ff7ffffffffffff));
+            assert_biteq!(<f64 as Float>::NAN, f64::from_bits(0x7ff7ffffffffffff));
             assert_biteq!(f64::SNAN, f64::from_bits(0x7fffffffffffffff));
+            assert_biteq!(f64::QSNAN, f64::from_bits(0x7ff7ffffffffffff));
         } else {
             assert_biteq!(f64::NAN, f64::from_bits(0x7ff8000000000000));
             assert_biteq!(f64::SNAN, f64::from_bits(0x7ff4000000000000));
+            assert_biteq!(f64::QSNAN, f64::from_bits(0x7ffc000000000000));
         }
-        assert!(f64::NAN.is_qnan());
+        assert!(<f64 as Float>::NAN.is_qnan());
         // FIXME(rust-lang/rust#115567): x87 use in `is_snan` quiets the sNaN
         if !cfg!(x86_no_sse2) {
             assert!(f64::SNAN.is_snan());
@@ -657,12 +763,16 @@ mod tests {
         // be aware if there are platforms where we don't.
         if MIPS_NAN {
             assert_biteq!(
-                f128::NAN,
+                <f128 as Float>::NAN,
                 f128::from_bits(0x7fff7fffffffffffffffffffffffffff)
             );
             assert_biteq!(
                 f128::SNAN,
                 f128::from_bits(0x7fffffffffffffffffffffffffffffff)
+            );
+            assert_biteq!(
+                f128::QSNAN,
+                f128::from_bits(0x7fff7fffffffffffffffffffffffffff)
             );
         } else {
             assert_biteq!(
@@ -673,8 +783,12 @@ mod tests {
                 f128::SNAN,
                 f128::from_bits(0x7fff4000000000000000000000000000)
             );
+            assert_biteq!(
+                f128::QSNAN,
+                f128::from_bits(0x7fffc000000000000000000000000000)
+            );
         }
-        assert!(f128::NAN.is_qnan());
+        assert!(<f128 as Float>::NAN.is_qnan());
         assert!(f128::SNAN.is_snan());
 
         // `exp_unbiased`

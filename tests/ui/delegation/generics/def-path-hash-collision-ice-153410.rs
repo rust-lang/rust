@@ -18,7 +18,7 @@
 
 impl Iterator {
 //~^ ERROR: expected a type, found a trait [E0782]
-    reuse< < <for<'a> fn()>::Output>::Item as Iterator>::*;
+    reuse< < <for<'a> fn()>::Output>::Item as Iterator>::*; //~ ERROR failed to resolve delegation callee
     //~^ ERROR: cannot find method or associated constant `Item` in trait `Iterator`
     //~| ERROR: ambiguous associated type
 }

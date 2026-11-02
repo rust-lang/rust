@@ -2,7 +2,7 @@
 // It ensures that the expected error is displayed.
 
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 trait T {
     type A: S<C<X = 0i32> = 34>;
@@ -11,7 +11,8 @@ trait T {
 }
 
 trait S {
-    type const C: i32;
+    #[rustc_always_gca]
+    const C: i32;
 }
 
 fn main() {}

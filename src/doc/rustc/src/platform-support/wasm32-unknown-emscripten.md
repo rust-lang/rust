@@ -25,14 +25,15 @@ does not (easily) support interop with C/C++ code. Please refer to the
 [wasm-bindgen](https://crates.io/crates/wasm-bindgen) crate in case you want to
 interoperate with JavaScript with this target.
 
-Like Emscripten, the WASI targets [`wasm32-wasip1`](./wasm32-wasip1.md) and
-[`wasm32-wasip2`](./wasm32-wasip2.md) also provide access to the host environment,
-support interop with C/C++ (and other languages), and support most of the Rust
-standard library. While the WASI targets are portable across different hosts
-(web and non-web), WASI has no standard way of accessing web APIs, whereas
-Emscripten has the ability to run arbitrary JS from WASM and access many web APIs.
-If you are only targeting the web and need to access web APIs, the
-`wasm32-unknown-emscripten` target may be preferable.
+Like Emscripten, the WASI targets [`wasm32-wasip1`](./wasm32-wasip1.md),
+[`wasm32-wasip2`](./wasm32-wasip2.md), and
+[`wasm32-wasip3`](./wasm32-wasip3.md), also provide access to the host
+environment, support interop with C/C++ (and other languages), and support most
+of the Rust standard library. While the WASI targets are portable across
+different hosts (web and non-web), WASI has no standard way of accessing web
+APIs, whereas Emscripten has the ability to run arbitrary JS from WASM and
+access many web APIs.  If you are only targeting the web and need to access web
+APIs, the `wasm32-unknown-emscripten` target may be preferable.
 
 ## Target maintainers
 
@@ -42,12 +43,13 @@ If you are only targeting the web and need to access web APIs, the
 ## Requirements
 
 This target is cross-compiled. The Emscripten compiler toolchain `emcc` must be
-installed to link WASM binaries for this target. You can install `emcc` using:
+installed to link WASM binaries for this target. Emscripten 4.0.0 or newer is
+required. You can install `emcc` using:
 
 ```sh
 git clone https://github.com/emscripten-core/emsdk.git --depth 1
-./emsdk/emsdk install 3.1.68
-./emsdk/emsdk activate 3.1.68
+./emsdk/emsdk install latest
+./emsdk/emsdk activate latest
 source ./emsdk/emsdk_env.sh
 ```
 

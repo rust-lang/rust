@@ -1,76 +1,292 @@
 error: used underscore-prefixed binding
-  --> tests/ui/used_underscore_binding.rs:23:5
+  --> tests/ui/used_underscore_binding.rs:24:9
    |
-LL |     _foo + 1
-   |     ^^^^
+LL |         _a;
+   |         ^^
    |
 note: binding is defined here
-  --> tests/ui/used_underscore_binding.rs:22:22
+  --> tests/ui/used_underscore_binding.rs:19:13
    |
-LL | fn prefix_underscore(_foo: u32) -> u32 {
-   |                      ^^^^
+LL |         let _a = 0;
+   |             ^^
    = note: `-D clippy::used-underscore-binding` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::used_underscore_binding)]`
 
 error: used underscore-prefixed binding
-  --> tests/ui/used_underscore_binding.rs:29:20
+  --> tests/ui/used_underscore_binding.rs:25:10
    |
-LL |     println!("{}", _foo);
-   |                    ^^^^
-   |
-note: binding is defined here
-  --> tests/ui/used_underscore_binding.rs:28:24
-   |
-LL | fn in_macro_or_desugar(_foo: u32) {
-   |                        ^^^^
-
-error: used underscore-prefixed binding
-  --> tests/ui/used_underscore_binding.rs:31:16
-   |
-LL |     assert_eq!(_foo, _foo);
-   |                ^^^^
+LL |         *_b;
+   |          ^^
    |
 note: binding is defined here
-  --> tests/ui/used_underscore_binding.rs:28:24
+  --> tests/ui/used_underscore_binding.rs:20:13
    |
-LL | fn in_macro_or_desugar(_foo: u32) {
-   |                        ^^^^
-
-error: used underscore-prefixed binding
-  --> tests/ui/used_underscore_binding.rs:31:22
-   |
-LL |     assert_eq!(_foo, _foo);
-   |                      ^^^^
-   |
-note: binding is defined here
-  --> tests/ui/used_underscore_binding.rs:28:24
-   |
-LL | fn in_macro_or_desugar(_foo: u32) {
-   |                        ^^^^
-
-error: used underscore-prefixed binding
-  --> tests/ui/used_underscore_binding.rs:46:5
-   |
-LL |     s._underscore_field += 1;
-   |     ^^^^^^^^^^^^^^^^^^^
-   |
-note: binding is defined here
-  --> tests/ui/used_underscore_binding.rs:40:5
-   |
-LL |     _underscore_field: u32,
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-
-error: used underscore-prefixed binding
-  --> tests/ui/used_underscore_binding.rs:108:16
-   |
-LL |         uses_i(_i);
-   |                ^^
-   |
-note: binding is defined here
-  --> tests/ui/used_underscore_binding.rs:107:13
-   |
-LL |         let _i = 5;
+LL |         let _b = &0;
    |             ^^
 
-error: aborting due to 6 previous errors
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:26:9
+   |
+LL |         _c.0;
+   |         ^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:21:13
+   |
+LL |         let _c = (0, &0);
+   |             ^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:27:10
+   |
+LL |         *_c.1;
+   |          ^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:21:13
+   |
+LL |         let _c = (0, &0);
+   |             ^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:28:9
+   |
+LL |         _d.is_empty();
+   |         ^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:22:13
+   |
+LL |         let _d = String::new();
+   |             ^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:42:10
+   |
+LL |         *_c = 0;
+   |          ^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:35:13
+   |
+LL |         let mut _c = &mut c;
+   |             ^^^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:43:9
+   |
+LL |         _d.0 = 0;
+   |         ^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:37:13
+   |
+LL |         let _d = &mut d;
+   |             ^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:44:11
+   |
+LL |         (*_d).0 = 0;
+   |           ^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:37:13
+   |
+LL |         let _d = &mut d;
+   |             ^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:56:9
+   |
+LL |         c._x;
+   |         ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:49:13
+   |
+LL |             _x: &'a mut (u32, u32),
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:57:9
+   |
+LL |         c._x = &mut b;
+   |         ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:49:13
+   |
+LL |             _x: &'a mut (u32, u32),
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:58:10
+   |
+LL |         *c._x;
+   |          ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:49:13
+   |
+LL |             _x: &'a mut (u32, u32),
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:59:10
+   |
+LL |         *c._x = (0, 0);
+   |          ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:49:13
+   |
+LL |             _x: &'a mut (u32, u32),
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:60:11
+   |
+LL |         (*c._x).0 = 0;
+   |           ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:49:13
+   |
+LL |             _x: &'a mut (u32, u32),
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:61:9
+   |
+LL |         c._x.0 = 0;
+   |         ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:49:13
+   |
+LL |             _x: &'a mut (u32, u32),
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:70:17
+   |
+LL |                 _a;
+   |                 ^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:69:21
+   |
+LL |                 let _a = 0;
+   |                     ^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:105:9
+   |
+LL |         _d += "";
+   |         ^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:99:13
+   |
+LL |         let mut _d = String::new();
+   |             ^^^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:134:21
+   |
+LL |             $(@expr _a);
+   |                     ^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:126:13
+   |
+LL |         let _a = 0;
+   |             ^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:135:21
+   |
+LL |             $(@expr _b.0);
+   |                     ^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:127:13
+   |
+LL |         let _b = (0, 0);
+   |             ^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:138:21
+   |
+LL |             $(@expr e._x);
+   |                     ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:123:13
+   |
+LL |             _x: u32,
+   |             ^^^^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:139:21
+   |
+LL |             $(@expr f._x) = 0;
+   |                     ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:123:13
+   |
+LL |             _x: u32,
+   |             ^^^^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:142:14
+   |
+LL |             $_a;
+   |              ^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:126:13
+   |
+LL |         let _a = 0;
+   |             ^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:143:15
+   |
+LL |             $(_b.0);
+   |               ^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:127:13
+   |
+LL |         let _b = (0, 0);
+   |             ^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:146:15
+   |
+LL |             $(e._x);
+   |               ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:123:13
+   |
+LL |             _x: u32,
+   |             ^^^^^^^
+
+error: used underscore-prefixed binding
+  --> tests/ui/used_underscore_binding.rs:147:15
+   |
+LL |             $(f._x) = 0;
+   |               ^^^^
+   |
+note: binding is defined here
+  --> tests/ui/used_underscore_binding.rs:123:13
+   |
+LL |             _x: u32,
+   |             ^^^^^^^
+
+error: aborting due to 24 previous errors
 

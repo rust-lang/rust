@@ -1,5 +1,4 @@
 //@no-rustfix
-#![allow(unused_must_use)]
 #![warn(clippy::write_literal)]
 
 use std::io::Write;

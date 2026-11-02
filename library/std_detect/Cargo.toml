@@ -24,3 +24,7 @@ libc = { version = "0.2.0", default-features = false }
 
 [features]
 std_detect_env_override = []
+
+[lints.cargo]
+# libc is definitely used in code but the lint doesn't realize that (unclear why)
+unused_dependencies = "allow"

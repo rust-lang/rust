@@ -18,7 +18,7 @@ extern crate compiler_builtins;
 extern crate panic_handler;
 
 // SAFETY: no definitions, only used for linking
-#[cfg(all(not(thumb), not(windows), not(target_arch = "wasm32")))]
+#[cfg(all(not(target_os = "none"), not(windows), not(target_arch = "wasm32")))]
 #[link(name = "c")]
 unsafe extern "C" {}
 
@@ -389,6 +389,47 @@ mod intrinsics {
         a % b
     }
 
+    /* Unaligned memory access */
+
+    // LLVM only emits calls to `__aeabi_uread*` and `__aeabi_uwrite*` for functions optimized
+    // for minimum size on AEABI targets without unaligned access support.
+
+    /// # Safety
+    ///
+    /// `p` must be valid for reading four bytes.
+    #[optimize(size)]
+    pub unsafe fn aeabi_uread4(p: *const u8) -> u32 {
+        // SAFETY: guaranteed by the caller.
+        unsafe { p.cast::<u32>().read_unaligned() }
+    }
+
+    /// # Safety
+    ///
+    /// `p` must be valid for reading eight bytes.
+    #[optimize(size)]
+    pub unsafe fn aeabi_uread8(p: *const u8) -> u64 {
+        // SAFETY: guaranteed by the caller.
+        unsafe { p.cast::<u64>().read_unaligned() }
+    }
+
+    /// # Safety
+    ///
+    /// `p` must be valid for writing four bytes.
+    #[optimize(size)]
+    pub unsafe fn aeabi_uwrite4(x: u32, p: *mut u8) {
+        // SAFETY: guaranteed by the caller.
+        unsafe { p.cast::<u32>().write_unaligned(x) }
+    }
+
+    /// # Safety
+    ///
+    /// `p` must be valid for writing eight bytes.
+    #[optimize(size)]
+    pub unsafe fn aeabi_uwrite8(x: u64, p: *mut u8) {
+        // SAFETY: guaranteed by the caller.
+        unsafe { p.cast::<u64>().write_unaligned(x) }
+    }
+
     /* u64 operations */
 
     // floatundisf
@@ -500,6 +541,13 @@ fn run() {
     bb(aeabi_ui2f(bb(2)));
     bb(aeabi_uidiv(bb(2), bb(3)));
     bb(aeabi_uidivmod(bb(2), bb(3)));
+    // SAFETY: the pointers point to buffers large enough for the access.
+    unsafe {
+        bb(aeabi_uread4(bb([0u8; 4].as_ptr())));
+        bb(aeabi_uread8(bb([0u8; 8].as_ptr())));
+        bb(aeabi_uwrite4(bb(2), bb([0u8; 4].as_mut_ptr())));
+        bb(aeabi_uwrite8(bb(2), bb([0u8; 8].as_mut_ptr())));
+    }
     bb(aeabi_ul2d(bb(2)));
     bb(aeabi_ul2f(bb(2)));
     bb(aeabi_uldivmod(bb(2), bb(3)));
@@ -601,14 +649,14 @@ fn something_with_a_dtor(f: &dyn Fn()) {
 }
 
 #[unsafe(no_mangle)]
-#[cfg(not(thumb))]
+#[cfg(not(target_os = "none"))]
 extern "C" fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ffi::c_int {
     run();
     0
 }
 
 #[unsafe(no_mangle)]
-#[cfg(thumb)]
+#[cfg(target_os = "none")]
 extern "C" fn _start() -> ! {
     run();
     loop {}
@@ -627,23 +675,5 @@ pub fn __aeabi_unwind_cpp_pr0() {}
 #[unsafe(no_mangle)]
 pub fn __aeabi_unwind_cpp_pr1() {}
 
-#[cfg(not(any(windows, target_os = "cygwin")))]
-#[allow(non_snake_case)]
-#[unsafe(no_mangle)]
-pub fn _Unwind_Resume() {}
-
-#[cfg(not(any(windows, target_os = "cygwin")))]
 #[lang = "eh_personality"]
 pub extern "C" fn eh_personality() {}
-
-#[cfg(any(all(windows, target_env = "gnu"), target_os = "cygwin"))]
-mod mingw_unwinding {
-    #[unsafe(no_mangle)]
-    pub fn rust_eh_personality() {}
-    #[unsafe(no_mangle)]
-    pub fn rust_eh_unwind_resume() {}
-    #[unsafe(no_mangle)]
-    pub fn rust_eh_register_frames() {}
-    #[unsafe(no_mangle)]
-    pub fn rust_eh_unregister_frames() {}
-}

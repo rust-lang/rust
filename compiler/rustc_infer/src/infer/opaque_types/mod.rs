@@ -1,6 +1,5 @@
 use hir::def_id::{DefId, LocalDefId};
 use rustc_hir as hir;
-use rustc_middle::bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -8,7 +7,7 @@ use rustc_middle::ty::{
     self, BottomUpFolder, OpaqueTypeKey, ProvisionalHiddenType, Ty, TyCtxt, TypeFoldable,
     TypeVisitableExt, Unnormalized,
 };
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use tracing::{debug, instrument};
 
 use super::{DefineOpaqueTypes, RegionVariableOrigin};
@@ -166,7 +165,7 @@ impl<'tcx> InferCtxt<'tcx> {
         } else if let Some(res) = process(b, a) {
             res
         } else {
-            let (a, b) = self.resolve_vars_if_possible((a, b));
+            let (a, b) = self.deeply_resolve_ignoring_regions((a, b));
             Err(TypeError::Sorts(ExpectedFound::new(a, b)))
         }
     }
@@ -254,7 +253,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     );
                 }
             }
-            ty::TypingMode::PostTypeckUntilBorrowck { .. } => {
+            ty::TypingMode::PostTypeckThroughBorrowck { .. } => {
                 let prev = self
                     .inner
                     .borrow_mut()
@@ -297,7 +296,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn add_item_bounds_for_hidden_type(
         &self,
         def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
         goals: &mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
@@ -335,7 +334,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         goals.push(Goal::new(
                             self.tcx,
                             param_env,
-                            ty::ProjectionPredicate {
+                            ty::ProjectionClause {
                                 projection_term: projection_ty.into(),
                                 term: ty_var.into(),
                             },

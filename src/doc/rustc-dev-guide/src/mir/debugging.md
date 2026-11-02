@@ -89,4 +89,4 @@ control-flow diagram for the whole crate:
 
 TODO: anything else?
 
-[dataflow state]: ./dataflow.html#graphviz-diagrams
+[dataflow state]: ./dataflow.md#graphviz-diagrams

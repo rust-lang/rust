@@ -1,29 +1,22 @@
-//! Collects trait impls for each item in the crate. For example, if a crate
-//! defines a struct that implements a trait, this pass will note that the
-//! struct implements that trait.
+//! Collects trait impls for each item in the crate.
+//!
+//! For example, if a crate defines a struct that implements a trait,
+//! this pass will note that the struct implements that trait.
 
+use rustc_attr_ir::{Attribute, AttributeKind, DocAttribute, find_attr};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::FatalError;
-use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::{Attribute, find_attr};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::kw;
 use tracing::debug;
 
-use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::visit::DocVisitor;
 
-pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {
-    name: "collect-trait-impls",
-    run: Some(collect_trait_impls),
-    description: "retrieves trait impls for items in the crate",
-};
-
-pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(super) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     let tcx = cx.tcx;
     // We need to check if there are errors before running this pass because it would crash when
     // we try to get auto and blanket implementations.
@@ -55,7 +48,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
                 debug!("considering extern trait impl {trait_ref:?}");
                 if crate_items.contains(&ItemId::DefId(trait_ref.def_id()))
                     || Some(trait_ref.def_id()) == tcx.lang_items().deref_trait()
-                    || tcx.is_doc_notable_trait(trait_ref.def_id())
+                    || tcx.doc_notable_trait(trait_ref.def_id()).is_some()
                 {
                     debug!("-> inlining due to trait");
                     cx.with_param_env(impl_def_id, |cx| {

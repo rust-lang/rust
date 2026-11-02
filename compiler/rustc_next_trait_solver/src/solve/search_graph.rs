@@ -1,12 +1,9 @@
 use std::convert::Infallible;
 use std::marker::PhantomData;
 
-use rustc_type_ir::data_structures::ensure_sufficient_stack;
+use rustc_type_ir::Interner;
 use rustc_type_ir::search_graph::{self, PathKind};
-use rustc_type_ir::solve::{
-    AccessedOpaques, CanonicalInput, Certainty, NoSolution, QueryResult, RerunResultExt,
-};
-use rustc_type_ir::{Interner, MayBeErased, TypingMode};
+use rustc_type_ir::solve::{AccessedOpaques, Certainty, NoSolution, QueryResult, RerunResultExt};
 
 use crate::canonical::response_no_constraints_raw;
 use crate::delegate::SolverDelegate;
@@ -31,7 +28,7 @@ where
     type ValidationScope = Infallible;
     fn enter_validation_scope(
         _cx: Self::Cx,
-        _input: CanonicalInput<I>,
+        _input: I::CanonicalInput,
     ) -> Option<Self::ValidationScope> {
         None
     }
@@ -48,36 +45,28 @@ where
     fn initial_provisional_result(
         cx: I,
         kind: PathKind,
-        input: CanonicalInput<I>,
+        input: I::CanonicalInput,
     ) -> (QueryResult<I>, AccessedOpaques<I>) {
         match kind {
             PathKind::Coinductive => response_no_constraints(cx, input, Certainty::Yes),
             PathKind::Unknown | PathKind::ForcedAmbiguity => {
                 response_no_constraints(cx, input, Certainty::overflow(false))
             }
-            // Even though we know these cycles to be unproductive, we still return
-            // overflow during coherence. This is both as we are not 100% confident in
-            // the implementation yet and any incorrect errors would be unsound there.
+            // Even though we know some cycles to be unproductive, we still treat them
+            // as unknown for now. This is both as we are not 100% confident in the
+            // implementation yet and any incorrect errors would be unsound there.
+            //
             // The affected cases are also fairly artificial and not necessarily desirable
             // so keeping this as ambiguity is fine for now.
             //
-            // See `tests/ui/traits/next-solver/cycles/unproductive-in-coherence.rs` for an
-            // example where this would matter. We likely should change these cycles to `NoSolution`
-            // even in coherence once this is a bit more settled.
-            PathKind::Inductive => match input.typing_mode.0 {
-                TypingMode::Coherence => {
-                    response_no_constraints(cx, input, Certainty::overflow(false))
-                }
-                TypingMode::Typeck { .. }
-                | TypingMode::PostTypeckUntilBorrowck { .. }
-                | TypingMode::Reflection
-                | TypingMode::PostBorrowck { .. }
-                | TypingMode::PostAnalysis
-                | TypingMode::Codegen
-                | TypingMode::ErasedNotCoherence(MayBeErased) => {
-                    (Err(NoSolution), AccessedOpaques::default())
-                }
-            },
+            // See `tests/ui/traits/next-solver/cycles/unproductive-in-coherence.rs` and
+            // `tests/ui/traits/next-solver/overflow/recursive-self-normalization-simple.rs`
+            // for examples where this would matter.
+            //
+            // FIXME(-Znext-solver=coinductive): Long term, we probably do want to
+            // return `NoSolution` here. This should happen separately from the
+            // stabilization of the new solver.
+            PathKind::Inductive => unreachable!(),
         }
     }
 
@@ -102,7 +91,7 @@ where
 
     fn stack_overflow_result(
         cx: I,
-        input: CanonicalInput<I>,
+        input: I::CanonicalInput,
     ) -> (QueryResult<I>, AccessedOpaques<I>) {
         response_no_constraints(cx, input, Certainty::overflow(true))
     }
@@ -110,7 +99,7 @@ where
     const FIXPOINT_OVERFLOW_AMBIGUITY_KIND: Certainty = Certainty::overflow(false);
     fn fixpoint_overflow_result(
         cx: I,
-        input: CanonicalInput<I>,
+        input: I::CanonicalInput,
     ) -> (QueryResult<I>, AccessedOpaques<I>) {
         response_no_constraints(cx, input, Certainty::overflow(false))
     }
@@ -130,24 +119,22 @@ where
     fn compute_goal(
         search_graph: &mut SearchGraph<D>,
         cx: I,
-        input: CanonicalInput<I>,
+        input: I::CanonicalInput,
         inspect: &mut Self::ProofTreeBuilder,
     ) -> (QueryResult<I>, AccessedOpaques<I>) {
-        ensure_sufficient_stack(|| {
-            EvalCtxt::enter_canonical(cx, search_graph, input, inspect, |ecx, goal| {
-                // if we're in `RerunNonErased`, don't even bother with inspect, and immediately return
-                let result = ecx.compute_goal(goal).map_err_to_rerun()?;
+        EvalCtxt::enter_canonical(cx, search_graph, input, inspect, |ecx, goal| {
+            // if we're in `RerunNonErased`, don't even bother with inspect, and immediately return
+            let result = ecx.compute_goal(goal).map_err_to_rerun()?;
 
-                ecx.inspect.query_result(result);
-                result.map_err(Into::into)
-            })
+            ecx.inspect.query_result(result);
+            result.map_err(Into::into)
         })
     }
 }
 
 fn response_no_constraints<I: Interner>(
     cx: I,
-    input: CanonicalInput<I>,
+    input: I::CanonicalInput,
     certainty: Certainty,
 ) -> (QueryResult<I>, AccessedOpaques<I>) {
     (

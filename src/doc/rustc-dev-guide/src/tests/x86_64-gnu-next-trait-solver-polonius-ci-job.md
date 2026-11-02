@@ -5,7 +5,7 @@ alpha with a goal to stabilize them in 2026. To achieve this, we need to ensure
 these unstable features are well tested and continuously well tested so they do
 not regress.
 
-This calls for a dedicated CI job [`x86_64-gnu-next-trait-solver-polonius`] which is
+This calls for a dedicated CI job [`test-x86_64-gnu-next-trait-solver-polonius`] which is
 blocking in PR CI and thus also Merge CI to catch regressions.
 
 For more context, see:
@@ -51,4 +51,4 @@ a new topic in [t-compiler zulip
 channel](https://rust-lang.zulipchat.com/#narrow/channel/131828-t-compiler).
 
 
-[`x86_64-gnu-next-trait-solver-polonius`]: https://github.com/rust-lang/rust/pull/157322
+[`test-x86_64-gnu-next-trait-solver-polonius`]: https://github.com/rust-lang/rust/pull/157322

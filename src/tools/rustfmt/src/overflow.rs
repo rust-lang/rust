@@ -385,7 +385,7 @@ impl<'a> Context<'a> {
 
         // 1 = "(" or ")"
         let one_line_shape = shape
-            .offset_left_opt(last_line_width(ident) + 1)
+            .offset_left_opt(last_line_width(ident, context.config.tab_spaces()) + 1)
             .and_then(|shape| shape.sub_width_opt(1))
             .unwrap_or(Shape { width: 0, ..shape });
         let nested_shape = shape_from_indent_style(context, shape, used_width + 2, used_width + 1);
@@ -669,7 +669,10 @@ impl<'a> Context<'a> {
 
     fn wrap_items(&self, items_str: &str, shape: Shape, is_extendable: bool) -> String {
         let shape = Shape {
-            width: shape.width.saturating_sub(last_line_width(self.ident)),
+            width: shape.width.saturating_sub(last_line_width(
+                self.ident,
+                self.context.config.tab_spaces(),
+            )),
             ..shape
         };
 

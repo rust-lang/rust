@@ -1,7 +1,10 @@
+//! Utilities for node resolution.
+
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    self as hir, Expr, ExprKind, HirId, LangItem, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, TyKind,
+    self as hir, Expr, ExprKind, HirId, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, TyKind,
 };
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::HasTyCtxt;
@@ -10,6 +13,7 @@ use rustc_span::{Ident, Symbol};
 
 /// Either a `HirId` or a type which can be identified by one.
 pub trait HasHirId: Copy {
+    /// Returns the [`HirId`] identifying `self`.
     fn hir_id(self) -> HirId;
 }
 impl HasHirId for HirId {
@@ -27,6 +31,7 @@ impl HasHirId for &Expr<'_> {
 
 type DefRes = (DefKind, DefId);
 
+/// Either a [`TypeckResults`] or a type that may contain one.
 pub trait MaybeTypeckRes<'tcx> {
     /// Gets the contained `TypeckResults`.
     ///
@@ -72,7 +77,7 @@ impl<'tcx> MaybeTypeckRes<'tcx> for LateContext<'tcx> {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     fn typeck_res(&self) -> Option<&TypeckResults<'tcx>> {
-        if let Some(typeck) = self.maybe_typeck_results() {
+        if let Some(typeck) = self.typeck_results {
             Some(typeck)
         } else {
             // It's possible to get the `TypeckResults` for any other body, but
@@ -339,6 +344,8 @@ impl<'tcx, T: Copy + MaybeQPath<'tcx>> MaybeQPath<'tcx> for &Option<T> {
 /// A resolved path and the explicit `Self` type if there is one.
 type OptResPath<'tcx> = (Option<&'tcx hir::Ty<'tcx>>, Option<&'tcx Path<'tcx>>);
 
+type OptTyRelPath<'tcx> = Option<(&'tcx hir::Ty<'tcx>, &'tcx PathSegment<'tcx>)>;
+
 /// A HIR node which might be a `QPath::Resolved`.
 ///
 /// The following are resolved paths:
@@ -353,6 +360,10 @@ pub trait MaybeResPath<'a>: Copy {
     /// If this node is a resolved path gets both the contained path and the
     /// type associated with it.
     fn opt_res_path(self) -> OptResPath<'a>;
+
+    /// If this node is a type relative path gets both the type and the final
+    /// segments of the path.
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a>;
 
     /// If this node is a resolved path gets it's resolution. Returns `Res::Err`
     /// otherwise.
@@ -392,6 +403,11 @@ impl<'a> MaybeResPath<'a> for &'a Path<'a> {
     }
 
     #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        None
+    }
+
+    #[inline]
     fn basic_res(self) -> &'a Res {
         &self.res
     }
@@ -404,6 +420,14 @@ impl<'a> MaybeResPath<'a> for &QPath<'a> {
             QPath::TypeRelative(..) => (None, None),
         }
     }
+
+    #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        match *self {
+            QPath::TypeRelative(ty, seg) => Some((ty, seg)),
+            QPath::Resolved(..) => None,
+        }
+    }
 }
 impl<'a> MaybeResPath<'a> for &Expr<'a> {
     #[inline]
@@ -411,6 +435,14 @@ impl<'a> MaybeResPath<'a> for &Expr<'a> {
         match &self.kind {
             ExprKind::Path(qpath) => qpath.opt_res_path(),
             _ => (None, None),
+        }
+    }
+
+    #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        match &self.kind {
+            ExprKind::Path(qpath) => qpath.opt_ty_rel_path(),
+            _ => None,
         }
     }
 }
@@ -422,6 +454,14 @@ impl<'a> MaybeResPath<'a> for &PatExpr<'a> {
             PatExprKind::Lit { .. } => (None, None),
         }
     }
+
+    #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        match &self.kind {
+            PatExprKind::Path(qpath) => qpath.opt_ty_rel_path(),
+            PatExprKind::Lit { .. } => None,
+        }
+    }
 }
 impl<'a, AmbigArg> MaybeResPath<'a> for &hir::Ty<'a, AmbigArg> {
     #[inline]
@@ -431,6 +471,14 @@ impl<'a, AmbigArg> MaybeResPath<'a> for &hir::Ty<'a, AmbigArg> {
             _ => (None, None),
         }
     }
+
+    #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        match &self.kind {
+            TyKind::Path(qpath) => qpath.opt_ty_rel_path(),
+            _ => None,
+        }
+    }
 }
 impl<'a> MaybeResPath<'a> for &Pat<'a> {
     #[inline]
@@ -438,6 +486,14 @@ impl<'a> MaybeResPath<'a> for &Pat<'a> {
         match self.kind {
             PatKind::Expr(e) => e.opt_res_path(),
             _ => (None, None),
+        }
+    }
+
+    #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        match self.kind {
+            PatKind::Expr(e) => e.opt_ty_rel_path(),
+            _ => None,
         }
     }
 }
@@ -451,6 +507,11 @@ impl<'a, T: MaybeResPath<'a>> MaybeResPath<'a> for Option<T> {
     }
 
     #[inline]
+    fn opt_ty_rel_path(self) -> OptTyRelPath<'a> {
+        self.and_then(T::opt_ty_rel_path)
+    }
+
+    #[inline]
     fn basic_res(self) -> &'a Res {
         self.map_or(&Res::Err, T::basic_res)
     }
@@ -458,6 +519,7 @@ impl<'a, T: MaybeResPath<'a>> MaybeResPath<'a> for Option<T> {
 
 /// A type which may either contain a `DefId` or be referred to by a `DefId`.
 pub trait MaybeDef: Copy {
+    /// Gets the [`DefId`] contained by or referring to `self`
     fn opt_def_id(self) -> Option<DefId>;
 
     /// Gets this definition's id and kind. This will lookup the kind in the def
@@ -519,7 +581,7 @@ pub trait MaybeDef: Copy {
     #[inline]
     fn assoc_parent<'tcx>(self, tcx: &impl HasTyCtxt<'tcx>) -> Option<DefId> {
         match self.opt_def(tcx) {
-            Some((DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy, id)) => tcx.tcx().opt_parent(id),
+            Some((DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, id)) => tcx.tcx().opt_parent(id),
             _ => None,
         }
     }

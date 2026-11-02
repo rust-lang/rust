@@ -8,17 +8,18 @@
 use std::fmt::Write as _;
 
 use rustc_abi::{ExternAbi, Integer};
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_hir::find_attr;
-use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self, Const, ExistentialPredicate, FloatTy, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
+    self, Const, ExistentialPredicate, FloatTy, FnSig, GenericArg, GenericArgKind, GenericArgs,
     IntTy, List, Region, RegionKind, TermKind, Ty, TyCtxt, TypeFoldable, UintTy,
 };
+use rustc_span::bug;
 use rustc_span::def_id::DefId;
+use rustc_target::spec::Arch;
 use tracing::instrument;
 
 use crate::cfi::typeid::TypeIdOptions;
@@ -66,7 +67,7 @@ fn compress<'tcx>(
 /// types that are not used at the FFI boundary.
 fn encode_args<'tcx>(
     tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
+    args: GenericArgs<'tcx>,
     for_def: DefId,
     has_erased_self: bool,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
@@ -469,7 +470,17 @@ pub(crate) fn encode_ty<'tcx>(
                 FloatTy::F16 => "Dh",
                 FloatTy::F32 => "f",
                 FloatTy::F64 => "d",
-                FloatTy::F128 => "g",
+                FloatTy::F128 => match tcx.sess.target.arch {
+                    Arch::PowerPC | Arch::PowerPC64 => "u9__ieee128", // "g" is used for __ibm128
+                    // Clang is more friendly toward `long double`, and not all platforms support `_Float128`.
+                    Arch::AArch64
+                        if !tcx.sess.target.is_like_darwin && !tcx.sess.target.is_like_windows =>
+                    {
+                        "e"
+                    }
+                    Arch::RiscV32 | Arch::RiscV64 | Arch::LoongArch64 => "e",
+                    _ => "g",
+                },
             });
         }
 
@@ -552,9 +563,10 @@ pub(crate) fn encode_ty<'tcx>(
                 // Don't compress user-defined builtin types (see
                 // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-builtin and
                 // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-compression).
+                #[rustfmt::skip]
                 let builtin_types = [
                     "v", "w", "b", "c", "a", "h", "s", "t", "i", "j", "l", "m", "x", "y", "n", "o",
-                    "f", "d", "e", "g", "z", "Dh",
+                    "f", "d", "e", "g", "z", "Dh", "u9__ieee128",
                 ];
                 if !builtin_types.contains(&encoding) {
                     compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
@@ -581,7 +593,7 @@ pub(crate) fn encode_ty<'tcx>(
                 // <subst>, as vendor extended type.
                 let name = encode_ty_name(tcx, def_id);
                 let _ = write!(s, "u{}{}", name.len(), name);
-                s.push_str(&encode_args(tcx, args, def_id, false, dict, options));
+                s.push_str(&encode_args(tcx, *args, def_id, false, dict, options));
                 compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             }
             typeid.push_str(&s);
@@ -609,7 +621,7 @@ pub(crate) fn encode_ty<'tcx>(
             let mut s = String::new();
             let name = encode_ty_name(tcx, *def_id);
             let _ = write!(s, "u{}{}", name.len(), name);
-            s.push_str(&encode_args(tcx, args, *def_id, false, dict, options));
+            s.push_str(&encode_args(tcx, *args, *def_id, false, dict, options));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
@@ -805,7 +817,8 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             | hir::definitions::DefPathData::MacroNs(..)
             | hir::definitions::DefPathData::OpaqueLifetime(..)
             | hir::definitions::DefPathData::LifetimeNs(..)
-            | hir::definitions::DefPathData::AnonAssocTy(..) => {
+            | hir::definitions::DefPathData::AnonAssocTy(..)
+            | hir::definitions::DefPathData::TestBinderConstraints => {
                 bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data);
             }
         });

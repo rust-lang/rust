@@ -1,6 +1,6 @@
 use rustc_ast::{
     self as ast, AttrVec, DUMMY_NODE_ID, GenericBounds, GenericParam, GenericParamKind, TyKind,
-    WhereClause, token,
+    WhereClause, WherePredicate, token,
 };
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{Ident, Span, kw, sym};
@@ -25,7 +25,7 @@ impl<'a> Parser<'a> {
     /// ```text
     /// BOUND = LT_BOUND (e.g., `'a`)
     /// ```
-    fn parse_lt_param_bounds(&mut self) -> GenericBounds {
+    pub(crate) fn parse_lt_param_bounds(&mut self) -> GenericBounds {
         let mut lifetimes = ThinVec::new();
         while self.check_lifetime() {
             lifetimes.push(ast::GenericBound::Outlives(self.expect_lifetime()));
@@ -119,7 +119,7 @@ impl<'a> Parser<'a> {
                     ": /* Type */".to_string(),
                     Applicability::HasPlaceholders,
                 );
-                let kind = TyKind::Err(err.emit());
+                let kind = TyKind::Err(err.emit_err());
                 let ty = self.mk_ty(span, kind);
                 Ok(GenericParam {
                     ident,
@@ -411,15 +411,15 @@ impl<'a> Parser<'a> {
         &mut self,
         struct_: Option<(Ident, Span)>,
     ) -> PResult<'a, (WhereClause, Option<ThinVec<ast::FieldDef>>)> {
-        let mut where_clause = WhereClause {
-            has_where_token: false,
-            predicates: ThinVec::new(),
-            span: self.prev_token.span.shrink_to_hi(),
-        };
-        let mut tuple_struct_body = None;
-
         if !self.eat_keyword(exp!(Where)) {
-            return Ok((where_clause, None));
+            return Ok((
+                WhereClause {
+                    has_where_token: false,
+                    predicates: ThinVec::new(),
+                    span: self.prev_token.span.shrink_to_hi(),
+                },
+                None,
+            ));
         }
 
         if self.eat_noexpect(&token::Colon) {
@@ -435,7 +435,6 @@ impl<'a> Parser<'a> {
                 .emit();
         }
 
-        where_clause.has_where_token = true;
         let where_lo = self.prev_token.span;
 
         // We are considering adding generics to the `where` keyword as an alternative higher-rank
@@ -445,6 +444,24 @@ impl<'a> Parser<'a> {
             let generics = self.parse_generics()?;
             self.dcx().emit_err(diagnostics::WhereOnGenerics { span: generics.span });
         }
+
+        let (predicates, tuple_struct_body) =
+            self.parse_where_clause_predicates(struct_, where_lo)?;
+        let where_clause = WhereClause {
+            has_where_token: true,
+            predicates,
+            span: where_lo.to(self.prev_token.span),
+        };
+        Ok((where_clause, tuple_struct_body))
+    }
+
+    pub(super) fn parse_where_clause_predicates(
+        &mut self,
+        struct_: Option<(Ident, Span)>,
+        where_lo: Span,
+    ) -> PResult<'a, (ThinVec<WherePredicate>, Option<ThinVec<ast::FieldDef>>)> {
+        let mut predicates = ThinVec::new();
+        let mut tuple_struct_body = None;
 
         loop {
             let where_sp = where_lo.to(self.prev_token.span);
@@ -498,7 +515,7 @@ impl<'a> Parser<'a> {
                 Ok((predicate, Trailing::No, UsePreAttrPos::No))
             })?;
             match predicate {
-                Some(predicate) => where_clause.predicates.push(predicate),
+                Some(predicate) => predicates.push(predicate),
                 None => break,
             }
 
@@ -516,8 +533,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        where_clause.span = where_lo.to(self.prev_token.span);
-        Ok((where_clause, tuple_struct_body))
+        Ok((predicates, tuple_struct_body))
     }
 
     fn parse_ty_where_predicate_kind_or_recover_tuple_struct_body(
@@ -536,7 +552,9 @@ impl<'a> Parser<'a> {
         };
 
         match self.parse_ty_where_predicate_kind() {
-            Ok(pred) => Ok(PredicateKindOrStructBody::PredicateKind(pred)),
+            Ok(pred) => Ok(PredicateKindOrStructBody::PredicateKind(
+                ast::WherePredicateKind::BoundPredicate(pred),
+            )),
             Err(type_err) => {
                 let Some(((struct_name, body_insertion_point), mut snapshot)) = snapshot else {
                     return Err(type_err);
@@ -584,7 +602,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_ty_where_predicate_kind(&mut self) -> PResult<'a, ast::WherePredicateKind> {
+    pub(crate) fn parse_ty_where_predicate_kind(
+        &mut self,
+    ) -> PResult<'a, ast::WhereBoundPredicate> {
         // Parse optional `for<'a, 'b>`.
         // This `for` is parsed greedily and applies to the whole predicate,
         // the bounded type can have its own `for` applying only to it.
@@ -600,11 +620,11 @@ impl<'a> Parser<'a> {
             // The bounds may be empty; we intentionally accept predicates like  `Ty:`.
             let bounds = self.parse_generic_bounds()?;
 
-            return Ok(ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
+            return Ok(ast::WhereBoundPredicate {
                 bound_generic_params: bound_vars,
                 bounded_ty: ty,
                 bounds,
-            }));
+            });
         }
 
         // NOTE: If we ever end up impl'ing and stabilizing equality predicates (#20041),

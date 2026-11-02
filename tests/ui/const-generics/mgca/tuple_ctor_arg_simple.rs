@@ -1,6 +1,5 @@
 //@ run-pass
-#![feature(min_generic_const_args, macroless_generic_const_args, adt_const_params)]
-#![expect(incomplete_features)]
+#![feature(gca_adts, gca_min_const_items, gca_macroless_args, adt_const_params)]
 #![allow(dead_code)]
 
 use std::marker::ConstParamTy;
@@ -15,7 +14,8 @@ enum MyEnum<T> {
 }
 
 trait Trait {
-    type const ASSOC: u32;
+    #[rustc_always_gca]
+    const ASSOC: u32;
 }
 
 fn with_point<const P: Point>() -> Point {

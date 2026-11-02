@@ -1,6 +1,5 @@
 //@ check-pass
 
-#![feature(never_type)]
 #![allow(dead_code)]
 #![expect(unreachable_code)]
 #![expect(unused_variables)]

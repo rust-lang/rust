@@ -2,37 +2,37 @@
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_pointer_rendering.rs:59
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: target, Id: _1, Ty: [u8; 2], Value: [0a 14]
-Name: pointer_at_offset0, Id: _2, Ty: PointerAtOffset0<'_>, Value: [{ALLOC_PTR}]
+Name: target, Id: _1, Ty: [u8; 2], Value: [[0a], [14]]
+Name: pointer_at_offset0, Id: _2, Ty: PointerAtOffset0<'_>, Value: PointerAtOffset0 { ptr: [{ALLOC_PTR}] }
 Name: <none>, Id: _3, Ty: &u8, Value: <dead>
 Name: <none>, Id: _4, Ty: &u8, Value: <dead>
 Name: <none>, Id: _5, Ty: usize, Value: <dead>
 Name: <none>, Id: _6, Ty: bool, Value: true
-Name: pointer_after_bytes, Id: _7, Ty: PointerAfterBytes<'_>, Value: [01 02 03 __ __ __ __ __ {ALLOC_PTR}]
+Name: pointer_after_bytes, Id: _7, Ty: PointerAfterBytes<'_>, Value: PointerAfterBytes { bytes: [[01], [02], [03]], ptr: [{ALLOC_PTR}] }
 Name: <none>, Id: _8, Ty: [u8; 3], Value: <dead>
 Name: <none>, Id: _9, Ty: &u8, Value: <dead>
 Name: <none>, Id: _10, Ty: &u8, Value: <dead>
 Name: <none>, Id: _11, Ty: usize, Value: <dead>
 Name: <none>, Id: _12, Ty: bool, Value: true
-Name: pointer_at_end, Id: _13, Ty: PointerAtEnd<'_>, Value: [04 __ __ __ __ __ __ __ {ALLOC_PTR}]
+Name: pointer_at_end, Id: _13, Ty: PointerAtEnd<'_>, Value: PointerAtEnd { byte: [04], ptr: [{ALLOC_PTR}] }
 Name: <none>, Id: _14, Ty: &u8, Value: <dead>
 Name: <none>, Id: _15, Ty: &u8, Value: <dead>
 Name: <none>, Id: _16, Ty: usize, Value: <dead>
 Name: <none>, Id: _17, Ty: bool, Value: true
-Name: uninit_around_pointer, Id: _18, Ty: UninitAroundPointer<'_>, Value: [__ __ __ __ __ __ __ __ {ALLOC_PTR} __ __ __ __ __ __ __ __]
+Name: uninit_around_pointer, Id: _18, Ty: UninitAroundPointer<'_>, Value: UninitAroundPointer { before: [__ __], ptr: [{ALLOC_PTR}], after: [__ __] }
 Name: <none>, Id: _19, Ty: std::mem::MaybeUninit<[u8; 2]>, Value: <dead>
 Name: <none>, Id: _20, Ty: &u8, Value: <dead>
 Name: <none>, Id: _21, Ty: &u8, Value: <dead>
 Name: <none>, Id: _22, Ty: usize, Value: <dead>
 Name: <none>, Id: _23, Ty: bool, Value: true
 Name: <none>, Id: _24, Ty: std::mem::MaybeUninit<[u8; 2]>, Value: <dead>
-Name: integer_and_pointer, Id: _25, Ty: IntegerAndPointer<'_>, Value: [11 22 33 44 __ __ __ __ {ALLOC_PTR}]
+Name: integer_and_pointer, Id: _25, Ty: IntegerAndPointer<'_>, Value: IntegerAndPointer { integer: [11 22 33 44], ptr: [{ALLOC_PTR}] }
 Name: <none>, Id: _26, Ty: &u8, Value: <dead>
 Name: <none>, Id: _27, Ty: &u8, Value: <dead>
 Name: <none>, Id: _28, Ty: usize, Value: <dead>
 Name: <none>, Id: _29, Ty: bool, Value: true
 Name: fixed_addr_ptr, Id: _30, Ty: *const u8, Value: [0x1234[wildcard]]
-Name: short_pointer_bytes, Id: _31, Ty: [u8; 1], Value: [34]
+Name: short_pointer_bytes, Id: _31, Ty: [u8; 1], Value: [[34]]
 Name: bytes, Id: _32, Ty: std::mem::MaybeUninit<[u8; 1]>, Value: <dead>
 Name: <none>, Id: _33, Ty: (), Value: <dead>
 Name: <none>, Id: _34, Ty: *const u8, Value: <dead>
@@ -52,5 +52,5 @@ Name: <none>, Id: _47, Ty: &UninitAroundPointer<'_>, Value: <dead>
 Name: <none>, Id: _48, Ty: &IntegerAndPointer<'_>, Value: <dead>
 Name: <none>, Id: _49, Ty: &*const u8, Value: <dead>
 Name: <none>, Id: _50, Ty: &[u8; 1], Value: <dead>
-(priroda) Id: _2, Ty: PointerAtOffset0<'_>, Value: [{ALLOC_PTR}]
+(priroda) Id: _2, Ty: PointerAtOffset0<'_>, Value: PointerAtOffset0 { ptr: [{ALLOC_PTR}] }
 (priroda) quitting

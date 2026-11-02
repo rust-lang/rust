@@ -1,5 +1,5 @@
 error: passing a unit value to a function
-  --> tests/ui/unit_arg.rs:63:5
+  --> tests/ui/unit_arg.rs:57:5
    |
 LL | /     foo({
 LL | |
@@ -24,7 +24,7 @@ LL ~     foo(());
    |
 
 error: passing a unit value to a function
-  --> tests/ui/unit_arg.rs:67:5
+  --> tests/ui/unit_arg.rs:61:5
    |
 LL |     foo(foo(1));
    |     ^^^^^^^^^^^
@@ -36,7 +36,7 @@ LL ~     foo(());
    |
 
 error: passing a unit value to a function
-  --> tests/ui/unit_arg.rs:69:5
+  --> tests/ui/unit_arg.rs:63:5
    |
 LL | /     foo({
 LL | |
@@ -61,7 +61,7 @@ LL ~     foo(());
    |
 
 error: passing a unit value to a function
-  --> tests/ui/unit_arg.rs:75:5
+  --> tests/ui/unit_arg.rs:69:5
    |
 LL | /     b.bar({
 LL | |
@@ -84,7 +84,7 @@ LL ~     b.bar(());
    |
 
 error: passing unit values to a function
-  --> tests/ui/unit_arg.rs:79:5
+  --> tests/ui/unit_arg.rs:73:5
    |
 LL |     taking_multiple_units(foo(0), foo(1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ LL ~     taking_multiple_units((), ());
    |
 
 error: passing unit values to a function
-  --> tests/ui/unit_arg.rs:81:5
+  --> tests/ui/unit_arg.rs:75:5
    |
 LL | /     taking_multiple_units(foo(0), {
 LL | |
@@ -123,7 +123,7 @@ LL ~     taking_multiple_units((), ());
    |
 
 error: passing unit values to a function
-  --> tests/ui/unit_arg.rs:86:5
+  --> tests/ui/unit_arg.rs:80:5
    |
 LL | /     taking_multiple_units(
 LL | |
@@ -162,7 +162,7 @@ LL ~     );
    |
 
 error: passing a unit value to a function
-  --> tests/ui/unit_arg.rs:98:13
+  --> tests/ui/unit_arg.rs:92:13
    |
 LL |     None.or(Some(foo(2)));
    |             ^^^^^^^^^^^^
@@ -176,7 +176,7 @@ LL ~     });
    |
 
 error: passing a unit value to a function
-  --> tests/ui/unit_arg.rs:102:5
+  --> tests/ui/unit_arg.rs:96:5
    |
 LL |     foo(foo(()));
    |     ^^^^^^^^^^^^
@@ -188,7 +188,7 @@ LL ~     foo(());
    |
 
 error: passing a unit value to a function
-  --> tests/ui/unit_arg.rs:140:5
+  --> tests/ui/unit_arg.rs:132:5
    |
 LL |     Some(foo(1))
    |     ^^^^^^^^^^^^
@@ -200,19 +200,19 @@ LL +     Some(())
    |
 
 error: passing a unit value to a function
-  --> tests/ui/unit_arg.rs:168:5
+  --> tests/ui/unit_arg.rs:160:5
    |
 LL |     fn_take_unit(mac!(def));
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: passing a unit value to a function
-  --> tests/ui/unit_arg.rs:170:5
+  --> tests/ui/unit_arg.rs:162:5
    |
 LL |     fn_take_unit(mac!(func Default::default));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: passing a unit value to a function
-  --> tests/ui/unit_arg.rs:172:5
+  --> tests/ui/unit_arg.rs:164:5
    |
 LL |     fn_take_unit(mac!(nonempty_block Default::default()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

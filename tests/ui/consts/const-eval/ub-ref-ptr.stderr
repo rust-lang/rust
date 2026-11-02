@@ -181,6 +181,8 @@ LL | const MAYBE_NULL_FN_PTR: fn() = unsafe { mem::transmute({
 error[E0080]: accessing memory based on pointer with alignment 1, but alignment 4 is required
   --> $DIR/ub-ref-ptr.rs:77:5
    |
+LL | const UNALIGNED_READ: () = unsafe {
+...
 LL |     ptr.read();
    |     ^^^^^^^^^^ evaluation of `UNALIGNED_READ` failed here
 

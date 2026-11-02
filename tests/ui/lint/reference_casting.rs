@@ -1,5 +1,8 @@
 //@ check-fail
 
+use std::cell::UnsafeCell;
+use std::marker::PhantomData;
+
 extern "C" {
     // N.B., mutability can be easily incorrect in FFI calls -- as
     // in C, the default is mutable pointers.
@@ -9,6 +12,18 @@ extern "C" {
 
 fn static_u8() -> &'static u8 {
     &8
+}
+
+#[repr(transparent)]
+struct FakeUnsafeCell<T> {
+    data: T,
+    _p: PhantomData<UnsafeCell<T>>,
+}
+
+#[repr(transparent)]
+struct MyUnsafeCell<T> {
+    data: UnsafeCell<T>,
+    _zst: (),
 }
 
 unsafe fn ref_to_mut() {
@@ -74,6 +89,36 @@ unsafe fn ref_to_mut() {
 
     fn as_mut_i32(x: &i32) -> &mut i32 {
         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    unsafe fn cast_option<T>(ptr: &Option<T>) -> &mut T {
+        let t = ptr as *const Option<T> as *mut T;
+        unsafe { &mut *t }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    unsafe fn cast_option_unsafe<T>(ptr: &Option<UnsafeCell<T>>) -> &mut T {
+        let t = ptr as *const Option<UnsafeCell<T>> as *mut T;
+        unsafe { &mut *t }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    unsafe fn cast_tuple<T>(ptr: &(T, UnsafeCell<T>)) -> &mut T {
+        let t = ptr as *const (T, UnsafeCell<T>) as *mut T;
+        unsafe { &mut *t }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    unsafe fn cast_slice<T>(ptr: &[T]) -> &mut [T] {
+        let t = ptr as *const _ as *mut [T];
+        unsafe { &mut *t }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    unsafe fn cast_fake<T>(ptr: &FakeUnsafeCell<T>) -> &mut T {
+        let t = ptr as *const FakeUnsafeCell<T> as *mut T;
+        unsafe { &mut *t }
         //~^ ERROR casting `&T` to `&mut T` is undefined behavior
     }
 }
@@ -320,6 +365,16 @@ unsafe fn no_warn() {
 
     unsafe fn get_mut_unchecked4(x: &DoesContainUnsafeCell) -> &mut DoesContainUnsafeCell {
         unsafe { &mut *(x as *const DoesContainUnsafeCell as *mut _) }
+    }
+
+    unsafe fn cast<T>(ptr: &MyUnsafeCell<T>) -> &mut T {
+        let t = ptr as *const MyUnsafeCell<T> as *mut T;
+        unsafe { &mut *t }
+    }
+
+    unsafe fn cast_slice<T>(ptr: &[std::cell::UnsafeCell<T>]) -> &mut [T] {
+        let t = ptr as *const _ as *mut [T];
+        unsafe { &mut *t }
     }
 }
 

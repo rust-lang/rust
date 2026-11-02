@@ -52,7 +52,7 @@ pub struct StructSignature {
 
 bitflags! {
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-    pub struct StructFlags: u8 {
+    pub struct StructFlags: u16 {
         /// Indicates whether this struct has `#[repr]`.
         const HAS_REPR = 1 << 0;
         /// Indicates whether the struct has a `#[rustc_has_incoherent_inherent_impls]` attribute.
@@ -69,6 +69,8 @@ bitflags! {
         const IS_UNSAFE_CELL   = 1 << 6;
         /// Indicates whether this struct is `UnsafePinned`.
         const IS_UNSAFE_PINNED = 1 << 7;
+        /// Indicates whether this struct is `CovariantUnsafeCell`.
+        const IS_COVARIANT_UNSAFE_CELL = 1 << 8;
     }
 }
 
@@ -104,6 +106,9 @@ impl StructSignature {
                 _ if lang == sym::owned_box => flags |= StructFlags::IS_BOX,
                 _ if lang == sym::manually_drop => flags |= StructFlags::IS_MANUALLY_DROP,
                 _ if lang == sym::unsafe_cell => flags |= StructFlags::IS_UNSAFE_CELL,
+                _ if lang == sym::covariant_unsafe_cell => {
+                    flags |= StructFlags::IS_COVARIANT_UNSAFE_CELL
+                }
                 _ if lang == sym::unsafe_pinned => flags |= StructFlags::IS_UNSAFE_PINNED,
                 _ => (),
             }
@@ -545,7 +550,7 @@ impl TraitSignature {
         let attrs = AttrFlags::query(db, id.into());
         let source = loc.source(db);
         if source.value.auto_token().is_some() {
-            flags.insert(TraitFlags::AUTO);
+            flags.insert(TraitFlags::AUTO | TraitFlags::COINDUCTIVE);
         }
         if source.value.unsafe_token().is_some() {
             flags.insert(TraitFlags::UNSAFE);
@@ -829,7 +834,7 @@ impl TypeAliasSignature {
         let source = loc.source(db);
         let name = as_name_opt(source.value.name());
         let (store, source_map, generic_params, bounds, ty) =
-            lower_type_alias(db, loc.container.module(db), source, id);
+            lower_type_alias(db, loc.container, source, id);
 
         (
             Arc::new(TypeAliasSignature { store, generic_params, flags, bounds, name, ty }),
@@ -843,14 +848,6 @@ pub struct FunctionBody {
     pub store: ExpressionStore,
     pub parameters: Box<[PatId]>,
 }
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct SimpleBody {
-    pub store: ExpressionStore,
-}
-pub type StaticBody = SimpleBody;
-pub type ConstBody = SimpleBody;
-pub type EnumVariantBody = SimpleBody;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct VariantFieldsBody {
@@ -1147,7 +1144,7 @@ impl EnumVariants {
     }
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub(crate) fn extern_block_abi(db: &dyn SourceDatabase, extern_block: ExternBlockId) -> ExternAbi {
     let source = extern_block.lookup(db).source(db);
     source

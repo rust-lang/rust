@@ -132,6 +132,7 @@ impl<W> IntoInnerError<W> {
     /// obtain ownership of the underlying error.
     ///
     /// # Example
+    ///
     /// ```
     /// use std::io::{BufWriter, ErrorKind, Write};
     ///
@@ -154,6 +155,7 @@ impl<W> IntoInnerError<W> {
     /// advanced error recovery.
     ///
     /// # Example
+    ///
     /// ```
     /// use std::io::{BufWriter, ErrorKind, Write};
     ///

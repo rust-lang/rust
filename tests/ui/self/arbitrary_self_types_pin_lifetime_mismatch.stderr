@@ -32,8 +32,9 @@ error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:21:9
    |
 LL |     fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() {
-   |            --  ---- has type `Pin<&'1 Foo>`
-   |            |
+   |            --  ----        - lifetime `'1` introduced here
+   |            |   |
+   |            |   has type `Pin<&'1 Foo>`
    |            lifetime `'a` defined here
 LL |         arg
    |         ^^^ method was supposed to return data with lifetime `'1` but it is returning data with lifetime `'a`

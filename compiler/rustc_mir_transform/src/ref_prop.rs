@@ -3,12 +3,12 @@ use std::borrow::Cow;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::bug;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{MaybeStorageDead, always_storage_live_locals};
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
 use crate::PassPolicy;
@@ -73,8 +73,8 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 pub(super) struct ReferencePropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() >= 2)
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 2)
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -335,7 +335,7 @@ fn compute_replacement<'tcx>(
                     //
                     // This also allows to detect cases where `target.local` is not replaceable,
                     // and mark it as such.
-                    if let &[PlaceElem::Deref] = &target.projection[..] {
+                    if target.is_indirect_first_projection() {
                         assert!(perform_opt);
                         self.allowed_replacements.insert((target.local, loc));
                         place.local = target.local;

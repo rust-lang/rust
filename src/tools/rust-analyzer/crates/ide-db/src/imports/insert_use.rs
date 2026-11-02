@@ -314,7 +314,7 @@ impl ImportGroup {
             PathSegmentKind::SelfKw => ImportGroup::ThisModule,
             PathSegmentKind::SuperKw => ImportGroup::SuperModule,
             PathSegmentKind::CrateKw => ImportGroup::ThisCrate,
-            PathSegmentKind::Name(name) => match name.text().as_str() {
+            PathSegmentKind::Name(name) => match name.text() {
                 "std" => ImportGroup::Std,
                 "core" => ImportGroup::Std,
                 _ => ImportGroup::ExternCrate,
@@ -573,5 +573,5 @@ fn insert_use_with_editor_(
 }
 
 fn is_inner_attribute(node: SyntaxNode) -> bool {
-    ast::Attr::cast(node).map(|attr| attr.kind()) == Some(ast::AttrKind::Inner)
+    ast::AnyAttr::cast(node).map(|attr| attr.kind()) == Some(ast::AttrKind::Inner)
 }

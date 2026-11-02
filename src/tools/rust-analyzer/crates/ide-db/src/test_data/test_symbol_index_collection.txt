@@ -2,7 +2,7 @@
     (
         Module {
             id: ModuleIdLt {
-                [salsa id]: Id(2800),
+                [salsa id]: Id(500),
             },
         },
         [
@@ -11,14 +11,14 @@
                 def: EnumVariant(
                     EnumVariant {
                         id: EnumVariantId(
-                            7000,
+                            0e00,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -47,14 +47,14 @@
                 def: TypeAlias(
                     TypeAlias {
                         id: TypeAliasId(
-                            6400,
+                            0c80,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -81,14 +81,14 @@
                 def: EnumVariant(
                     EnumVariant {
                         id: EnumVariantId(
-                            7001,
+                            0e01,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -117,14 +117,14 @@
                 def: Const(
                     Const {
                         id: ConstId(
-                            5c00,
+                            0b80,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -151,14 +151,14 @@
                 def: Const(
                     Const {
                         id: ConstId(
-                            5c02,
+                            0b82,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -186,7 +186,7 @@
                     Enum(
                         Enum {
                             id: EnumId(
-                                4800,
+                                0900,
                             ),
                         },
                     ),
@@ -194,7 +194,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -222,7 +222,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4400,
+                                0880,
                             ),
                         ),
                     },
@@ -230,7 +230,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -258,7 +258,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4400,
+                                0880,
                             ),
                         ),
                     },
@@ -266,7 +266,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -293,14 +293,14 @@
                 def: Static(
                     Static {
                         id: StaticId(
-                            6000,
+                            0c00,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -328,7 +328,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4001,
+                                0801,
                             ),
                         },
                     ),
@@ -336,7 +336,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -364,7 +364,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4000,
+                                0800,
                             ),
                         },
                     ),
@@ -372,7 +372,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: MacroFile(
                         MacroCallId(
-                            Id(3800),
+                            Id(700),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -400,7 +400,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4005,
+                                0805,
                             ),
                         },
                     ),
@@ -408,7 +408,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -438,7 +438,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4006,
+                                0806,
                             ),
                         },
                     ),
@@ -446,7 +446,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -476,7 +476,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4007,
+                                0807,
                             ),
                         },
                     ),
@@ -484,7 +484,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -512,7 +512,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4002,
+                                0802,
                             ),
                         },
                     ),
@@ -520,7 +520,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -547,14 +547,14 @@
                 def: Trait(
                     Trait {
                         id: TraitId(
-                            5400,
+                            0a80,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -582,7 +582,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4400,
+                                0880,
                             ),
                         ),
                     },
@@ -590,7 +590,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -618,7 +618,7 @@
                     Union(
                         Union {
                             id: UnionId(
-                                4c00,
+                                0980,
                             ),
                         },
                     ),
@@ -626,7 +626,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -653,14 +653,14 @@
                 def: Module(
                     Module {
                         id: ModuleIdLt {
-                            [salsa id]: Id(2801),
+                            [salsa id]: Id(501),
                         },
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -687,14 +687,14 @@
                 def: Module(
                     Module {
                         id: ModuleIdLt {
-                            [salsa id]: Id(2802),
+                            [salsa id]: Id(502),
                         },
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -722,7 +722,7 @@
                     Macro {
                         id: MacroRulesId(
                             MacroRulesId(
-                                3401,
+                                0681,
                             ),
                         ),
                     },
@@ -730,7 +730,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -757,14 +757,14 @@
                 def: Function(
                     FunctionId(
                         FunctionId(
-                            5802,
+                            0b02,
                         ),
                     ),
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -793,14 +793,14 @@
                 def: Function(
                     FunctionId(
                         FunctionId(
-                            5801,
+                            0b01,
                         ),
                     ),
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -830,7 +830,7 @@
                     Macro {
                         id: MacroRulesId(
                             MacroRulesId(
-                                3400,
+                                0680,
                             ),
                         ),
                     },
@@ -838,7 +838,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -865,14 +865,14 @@
                 def: Function(
                     FunctionId(
                         FunctionId(
-                            5800,
+                            0b00,
                         ),
                     ),
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -900,7 +900,7 @@
                     Macro {
                         id: MacroRulesId(
                             MacroRulesId(
-                                3401,
+                                0681,
                             ),
                         ),
                     },
@@ -908,7 +908,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -935,14 +935,14 @@
                 def: Function(
                     FunctionId(
                         FunctionId(
-                            5803,
+                            0b03,
                         ),
                     ),
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -971,7 +971,7 @@
     (
         Module {
             id: ModuleIdLt {
-                [salsa id]: Id(2801),
+                [salsa id]: Id(501),
             },
         },
         [
@@ -981,7 +981,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4003,
+                                0803,
                             ),
                         },
                     ),
@@ -989,7 +989,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2400),
+                            Id(480),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -1016,7 +1016,7 @@
     (
         Module {
             id: ModuleIdLt {
-                [salsa id]: Id(2802),
+                [salsa id]: Id(502),
             },
         },
         [
@@ -1025,14 +1025,14 @@
                 def: Trait(
                     Trait {
                         id: TraitId(
-                            5400,
+                            0a80,
                         ),
                     },
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2401),
+                            Id(481),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -1060,7 +1060,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4400,
+                                0880,
                             ),
                         ),
                     },
@@ -1068,7 +1068,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2401),
+                            Id(481),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -1096,7 +1096,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4004,
+                                0804,
                             ),
                         },
                     ),
@@ -1104,7 +1104,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2401),
+                            Id(481),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -1132,7 +1132,7 @@
                     Macro {
                         id: Macro2Id(
                             Macro2Id(
-                                4400,
+                                0880,
                             ),
                         ),
                     },
@@ -1140,7 +1140,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2401),
+                            Id(481),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -1168,7 +1168,7 @@
                     Struct(
                         Struct {
                             id: StructId(
-                                4004,
+                                0804,
                             ),
                         },
                     ),
@@ -1176,7 +1176,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
                         EditionedFileId(
-                            Id(2401),
+                            Id(481),
                         ),
                     ),
                     ptr: SyntaxNodePtr {

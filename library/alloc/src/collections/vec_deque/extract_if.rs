@@ -27,7 +27,7 @@ pub struct ExtractIf<
     'a,
     T,
     F,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     vec: &'a mut VecDeque<T, A>,
     /// The index of the item that will be inspected by the next call to `next`.
@@ -57,7 +57,7 @@ impl<'a, T, F, A: Allocator> ExtractIf<'a, T, F, A> {
     }
 
     /// Returns a reference to the underlying allocator.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
     #[inline]
     pub fn allocator(&self) -> &A {
         self.vec.allocator()
@@ -74,6 +74,7 @@ where
     fn next(&mut self) -> Option<T> {
         while self.idx < self.end {
             let i = self.idx;
+            let idx = self.vec.to_wrapped_index(i);
             // SAFETY:
             //  We know that `i < self.end` from the if guard and that `self.end <= self.old_len` from
             //  the validity of `Self`. Therefore `i` points to an element within `vec`.
@@ -83,7 +84,6 @@ where
             //
             //  Note: we can't use `vec.get_mut(i).unwrap()` here since the precondition for that
             //  function is that i < vec.len, but we've set vec's length to zero.
-            let idx = self.vec.to_wrapped_index(i);
             let cur = unsafe { &mut *self.vec.ptr().add(idx.as_index()) };
             let drained = (self.pred)(cur);
             // Update the index *after* the predicate is called. If the index

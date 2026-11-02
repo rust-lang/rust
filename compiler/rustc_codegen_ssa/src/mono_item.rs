@@ -1,4 +1,4 @@
-use rustc_hir::attrs::Linkage;
+use rustc_attr_ir::Linkage;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mono::{MonoItem, MonoItemData, Visibility};
 use rustc_middle::ty::layout::HasTyCtxt;
@@ -89,7 +89,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
     fn to_raw_string(&self) -> String {
         match *self {
             MonoItem::Fn(instance) => {
-                format!("Fn({:?}, {})", instance.def, instance.args.as_ptr().addr())
+                format!("Fn({:?}, {})", instance.def, instance.args.as_slice().as_ptr().addr())
             }
             MonoItem::Static(id) => format!("Static({id:?})"),
             MonoItem::GlobalAsm(id) => format!("GlobalAsm({id:?})"),

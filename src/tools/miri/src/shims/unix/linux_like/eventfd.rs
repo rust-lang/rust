@@ -40,6 +40,7 @@ impl FileDescription for EventFd {
 
     fn metadata<'tcx>(
         &self,
+        _communicate_allowed: bool,
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
         // On Linux, eventfd is an "anonymous inode" reported as S_IFREG.
         interp_ok(Either::Right("S_IFREG"))
@@ -116,10 +117,7 @@ impl FileDescription for EventFd {
         }
     }
 
-    fn as_unix<'tcx>(
-        self: FileDescriptionRef<Self>,
-        _ecx: &MiriInterpCx<'tcx>,
-    ) -> FileDescriptionRef<dyn UnixFileDescription> {
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
         self
     }
 }

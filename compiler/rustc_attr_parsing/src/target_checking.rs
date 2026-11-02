@@ -1,17 +1,20 @@
 use std::borrow::Cow;
 
 use rustc_ast::{AttrStyle, Safety};
+use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
+use rustc_attr_ir::{AttrItem, Attribute, AttributeKind};
 use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{AttrItem, Attribute, MethodKind, Target};
+use rustc_lint_defs::builtin::{
+    INVALID_DOC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES, USELESS_DEPRECATED,
+};
 use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
 use crate::context::AcceptContext;
 use crate::diagnostics::{
-    InvalidAttrAtCrateLevel, ItemFollowingInnerAttr, UnsupportedAttributesInWhere,
+    InvalidAttrAtCrateLevel, InvalidTarget, InvalidTargetHelp, ItemFollowingInnerAttr,
+    UnsupportedAttributesInWhere,
 };
-use crate::session_diagnostics::{InvalidTarget, InvalidTargetHelp};
 use crate::target_checking::Policy::Allow;
 use crate::{AttributeParser, ShouldEmit};
 
@@ -128,23 +131,31 @@ impl<'sess> AttributeParser<'sess> {
         let (applied, only) = allowed_targets_applied(allowed_targets, cx.target, cx.features);
         let is_diagnostic_attr = cx.attr_path.segments[0] == sym::diagnostic;
 
+        let span = if attribute_args.is_empty() {
+            // Example: for the attribute `#[inline]`, name+attribute_args gives "inline",
+            // and the path span covers `inline` which is just what we want.
+            cx.attr_path.span
+        } else {
+            // Example 1: for the attribute `#[repr(C)]`, name+attribute_args gives
+            // "repr(C)", and the inner span covers `repr(C)` which is just what we want.
+            //
+            // Example 2: for the attribute `#[repr(C, packed)]`, name+attribute_args gives
+            // "repr(C)", and the inner span covers `repr(C, packed)` which doesn't match
+            // exactly but is as close as we can get.
+            cx.inner_span
+        };
+        let target_span = if span.ctxt() == cx.target_span.ctxt() && cx.target != Target::Crate {
+            cx.target_span.shrink_to_lo()
+        } else {
+            span
+        };
+
         let diag = InvalidTarget {
-            span: if attribute_args.is_empty() {
-                // Example: for the attribute `#[inline]`, name+attribute_args gives "inline",
-                // and the path span covers `inline` which is just what we want.
-                cx.attr_path.span
-            } else {
-                // Example 1: for the attribute `#[repr(C)]`, name+attribute_args gives
-                // "repr(C)", and the inner span covers `repr(C)` which is just what we want.
-                //
-                // Example 2: for the attribute `#[repr(C, packed)]`, name+attribute_args gives
-                // "repr(C)", and the inner span covers `repr(C, packed)` which doesn't match
-                // exactly but is as close as we can get.
-                cx.inner_span
-            },
+            span,
             attr_span: cx.attr_span,
             name: cx.attr_path.clone(),
             target: cx.target.plural_name(),
+            target_span,
             only: if only { "only " } else { "" },
             applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
             attribute_args: attribute_args.to_string(),
@@ -166,11 +177,11 @@ impl<'sess> AttributeParser<'sess> {
                     ]
                     .contains(&cx.target)
                 {
-                    rustc_session::lint::builtin::USELESS_DEPRECATED
+                    USELESS_DEPRECATED
                 } else if is_diagnostic_attr {
-                    rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES
+                    MISPLACED_DIAGNOSTIC_ATTRIBUTES
                 } else {
-                    rustc_session::lint::builtin::UNUSED_ATTRIBUTES
+                    UNUSED_ATTRIBUTES
                 };
 
                 let attr_span = cx.attr_span;
@@ -233,6 +244,16 @@ impl<'sess> AttributeParser<'sess> {
             })
             .unwrap_or_default();
 
+        if name == "doc" {
+            let diag = crate::diagnostics::AttrCrateLevelOnly;
+            if warn {
+                cx.emit_lint(INVALID_DOC_ATTRIBUTES, diag, attr_span);
+            } else {
+                cx.emit_err(diag);
+            }
+            return;
+        }
+
         let diag = crate::diagnostics::InvalidAttrStyle {
             name,
             is_used_as_inner,
@@ -243,7 +264,7 @@ impl<'sess> AttributeParser<'sess> {
             span: attr_span,
         };
         if warn {
-            cx.emit_lint(rustc_session::lint::builtin::UNUSED_ATTRIBUTES, diag, attr_span);
+            cx.emit_lint(UNUSED_ATTRIBUTES, diag, attr_span);
         } else {
             cx.emit_err(diag);
         }
@@ -347,7 +368,7 @@ impl<'sess> AttributeParser<'sess> {
                     Attribute::Parsed(AttributeKind::Doc(attr)) => Some(attr.first_span),
                     // Checked during attribute parsing target checking
                     Attribute::Parsed(_) => None,
-                    Attribute::Unparsed(attr) => Some(attr.span),
+                    Attribute::Tool(attr) | Attribute::DeriveHelper(attr) => Some(attr.span),
                 }
             })
             .collect::<Vec<_>>();
@@ -507,12 +528,16 @@ pub(crate) const ALL_TARGETS: &[Policy] = {
         Allow(Target::Expression),
         Allow(Target::Statement),
         Allow(Target::Arm),
-        Allow(Target::AssocConst),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
         Allow(Target::ForeignTy),
@@ -525,30 +550,9 @@ pub(crate) const ALL_TARGETS: &[Policy] = {
         Allow(Target::Crate),
         Allow(Target::Delegation { mac: false }),
         Allow(Target::Delegation { mac: true }),
-        Allow(Target::GenericParam {
-            kind: rustc_hir::target::GenericParamKind::Const,
-            has_default: false,
-        }),
-        Allow(Target::GenericParam {
-            kind: rustc_hir::target::GenericParamKind::Const,
-            has_default: true,
-        }),
-        Allow(Target::GenericParam {
-            kind: rustc_hir::target::GenericParamKind::Lifetime,
-            has_default: false,
-        }),
-        Allow(Target::GenericParam {
-            kind: rustc_hir::target::GenericParamKind::Lifetime,
-            has_default: true,
-        }),
-        Allow(Target::GenericParam {
-            kind: rustc_hir::target::GenericParamKind::Type,
-            has_default: false,
-        }),
-        Allow(Target::GenericParam {
-            kind: rustc_hir::target::GenericParamKind::Type,
-            has_default: true,
-        }),
+        Allow(Target::ConstParam),
+        Allow(Target::LifetimeParam),
+        Allow(Target::TypeParam),
         Allow(Target::Loop),
         Allow(Target::ForLoop),
         Allow(Target::While),

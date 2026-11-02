@@ -1,6 +1,4 @@
-//@ run-rustfix
 #![allow(dead_code, mismatched_lifetime_syntaxes)]
-#![deny(no_mangle_generic_items)]
 
 #[no_mangle]
 pub fn foo<T>() {} //~ ERROR functions generic over types or consts must be mangled
@@ -13,6 +11,9 @@ pub fn baz(x: &i32) -> &i32 { x }
 
 #[no_mangle]
 pub fn qux<'a>(x: &'a i32) -> &i32 { x }
+
+#[no_mangle]
+pub fn generic_const<const N: usize>() {} //~ ERROR functions generic over types or consts must be mangled
 
 pub struct Foo;
 

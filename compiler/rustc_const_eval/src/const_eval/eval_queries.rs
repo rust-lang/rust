@@ -6,12 +6,12 @@ use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo, ReportedErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
 use rustc_middle::query::TyCtxtAt;
+use rustc_middle::throw_inval;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
-use rustc_middle::{bug, throw_inval};
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::{Span, bug};
 use tracing::{debug, instrument, trace};
 
 use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
@@ -42,7 +42,7 @@ fn retry_codegen_mode_with_postanalysis<'tcx, K: TypeVisitable<TyCtxt<'tcx>>, V>
         }
         ty::TypingMode::Coherence
         | ty::TypingMode::Typeck { .. }
-        | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+        | ty::TypingMode::PostTypeckThroughBorrowck { .. }
         | ty::TypingMode::PostBorrowck { .. }
         | ty::TypingMode::Reflection
         | ty::TypingMode::PostAnalysis => {}
@@ -61,11 +61,11 @@ fn setup_for_eval<'tcx>(
         cid.promoted.is_some()
             || matches!(
                 ecx.tcx.def_kind(cid.instance.def_id()),
-                DefKind::Const { .. }
+                DefKind::Const
                     | DefKind::Static { .. }
                     | DefKind::ConstParam
                     | DefKind::AnonConst
-                    | DefKind::AssocConst { .. }
+                    | DefKind::AssocConst
             ),
         "Unexpected DefKind: {:?}",
         ecx.tcx.def_kind(cid.instance.def_id())
@@ -108,6 +108,19 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
         with_no_trimmed_paths!(ecx.tcx.def_path_str(cid.instance.def_id())),
         cid.promoted.map_or_else(String::new, |p| format!("::{p:?}"))
     );
+
+    // We are about to initialize a frame without any arguments,
+    // and without `#[track_caller]` support.
+    // Make sure that the body expects this.
+    // Note: Promoteds don't require a caller location,
+    // even when inside an `Instance` with `#[track_caller]`
+    assert_eq!(body.arg_count, 0);
+    if cid.promoted.is_none() && cid.instance.def.requires_caller_location(tcx) {
+        // FIXME: Once #131787 is fixed, turn this delayed bug into an assertion.
+        throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
+            tcx.dcx().span_delayed_bug(body.span, "can't evaluate body with `#[track_caller]`")
+        )));
+    }
 
     // This can't use `init_stack_frame` since `body` is not a function,
     // so computing its ABI would fail. It's also not worth it since there are no arguments to pass.
@@ -311,7 +324,7 @@ pub(super) fn op_to_const<'tcx>(
                     imm.layout.ty,
                 );
                 let msg = "`op_to_const` on an immediate scalar pair must only be used on slice references to the beginning of an actual allocation";
-                let ptr = a.to_pointer(ecx).expect(msg);
+                let ptr = a.to_pointer(ecx);
                 let (prov, offset) =
                     ptr.into_pointer_or_addr().expect(msg).prov_and_relative_offset();
                 let alloc_id = prov.alloc_id();
@@ -440,8 +453,13 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
     typing_env: ty::TypingEnv<'tcx>,
 ) -> Result<R, ErrorHandled> {
     let def = cid.instance.def.def_id();
-    // `type const` don't have bodys
-    debug_assert!(!tcx.is_type_const(def), "CTFE tried to evaluate type-const: {:?}", def);
+    // directly represented consts don't have bodies
+    if cfg!(debug_assertions) && matches!(tcx.def_kind(def), DefKind::Const | DefKind::AssocConst) {
+        debug_assert!(
+            tcx.const_of_item(def).is_none(),
+            "CTFE tried to evaluate directly represented const item: {def:?}"
+        );
+    }
 
     let is_static = tcx.is_static(def);
     let mut ecx = InterpCx::new(
@@ -514,6 +532,9 @@ fn report_eval_error<'tcx>(
                 where_ = if num_frames == 0 { "here" } else { "inside this call" },
             ),
         );
+        for span in crate::util::context_spans(*ecx.tcx, span, cid.instance.def_id()) {
+            diag.span_context(span);
+        }
         for frame in frames {
             diag.subdiagnostic(frame);
         }

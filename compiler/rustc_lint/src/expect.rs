@@ -1,12 +1,13 @@
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_lint_defs::builtin::UNFULFILLED_LINT_EXPECTATIONS;
+use rustc_lint_defs::{LintExpectationId, StableLintExpectationId};
 use rustc_middle::lint::LintExpectation;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::builtin::UNFULFILLED_LINT_EXPECTATIONS;
-use rustc_session::lint::{LintExpectationId, StableLintExpectationId};
 use rustc_span::Symbol;
 
-use crate::lints::{Expectation, ExpectationNote};
+use crate::diagnostics::{Expectation, ExpectationNote};
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { lint_expectations, check_expectations, ..*providers };
@@ -35,7 +36,11 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
             LintExpectationId::Unstable(id) => (id.attr_id, id.lint_index),
             LintExpectationId::Stable(id) => {
                 // We are an `eval_always` query, so looking at the attribute's `AttrId` is ok.
-                (tcx.hir_attrs(id.hir_id)[id.attr_index as usize].id(), id.lint_index)
+
+                let lint_checks = find_attr!(tcx, id.hir_id, LintCheck(lints) => lints).unwrap();
+                let attr_id = lint_checks[id.lint_index as usize].attr_id.attr_id;
+
+                (attr_id, id.lint_index)
             }
         };
         (attr_id, lint_index)

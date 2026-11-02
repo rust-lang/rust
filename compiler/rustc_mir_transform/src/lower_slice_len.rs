@@ -10,8 +10,8 @@ use crate::PassPolicy;
 pub(super) struct LowerSliceLenCalls;
 
 impl<'tcx> crate::MirPass<'tcx> for LowerSliceLenCalls {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() > 0)
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 1)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -57,7 +57,7 @@ fn lower_slice_len_call<'tcx>(block: &mut BasicBlockData<'tcx>, slice_len_fn_ite
         let add_statement = Statement::new(terminator.source_info, len_statement_kind);
 
         // modify terminator into simple Goto
-        let new_terminator_kind = TerminatorKind::Goto { target: *bb };
+        let new_terminator_kind = TerminatorKind::goto(*bb);
 
         block.statements.push(add_statement);
         block.terminator_mut().kind = new_terminator_kind;

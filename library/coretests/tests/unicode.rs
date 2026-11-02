@@ -15,15 +15,15 @@ fn test_boolean_property(ranges: &[RangeInclusive<char>], lookup: fn(char) -> bo
     let mut start = '\u{80}';
     for range in ranges {
         for c in start..*range.start() {
-            assert!(!lookup(c), "{c:?}");
+            assert!(!lookup(c), "{c:?} (U+{:06x})", u32::from(c));
         }
         for c in range.clone() {
-            assert!(lookup(c), "{c:?}");
+            assert!(lookup(c), "{c:?} (U+{:06x})", u32::from(c));
         }
         start = Step::forward(*range.end(), 1);
     }
     for c in start..=char::MAX {
-        assert!(!lookup(c), "{c:?}");
+        assert!(!lookup(c), "{c:?} (U+{:06x})", u32::from(c));
     }
 }
 
@@ -36,13 +36,13 @@ fn test_case_mapping(
     let mut start = '\u{80}';
     for &(key, val) in ranges {
         for c in start..key {
-            assert_eq!(lookup(c), fallback(c), "{c:?}");
+            assert_eq!(lookup(c), fallback(c), "{c:?} (U+{:06x})", u32::from(c));
         }
-        assert_eq!(lookup(key), val, "{key:?}");
+        assert_eq!(lookup(key), val, "{key:?} (U+{:06x})", u32::from(key));
         start = char::from_u32(key as u32 + 1).unwrap();
     }
     for c in start..=char::MAX {
-        assert_eq!(lookup(c), fallback(c), "{c:?}");
+        assert_eq!(lookup(c), fallback(c), "{c:?} (U+{:06x})", u32::from(c));
     }
 }
 
@@ -119,6 +119,20 @@ fn uppercase() {
 fn white_space() {
     test_boolean_property(test_data::WHITE_SPACE, unicode_data::white_space::lookup);
     test_boolean_property(test_data::WHITE_SPACE, char::is_whitespace);
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
+fn xid_continue() {
+    test_boolean_property(test_data::XID_CONTINUE, unicode_data::xid_continue::lookup);
+    test_boolean_property(test_data::XID_CONTINUE, char::is_xid_continue);
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
+fn xid_start() {
+    test_boolean_property(test_data::XID_START, unicode_data::xid_start::lookup);
+    test_boolean_property(test_data::XID_START, char::is_xid_start);
 }
 
 #[test]

@@ -17,11 +17,11 @@ LL |     fn foo() -> Self;
              B
            consider defining an enum where each variant holds one of these types,
            implementing `DynIncompatible` for this new enum and using it instead
-help: consider turning `foo` into a method by giving it a `&self` argument
+help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn foo(&self) -> Self;
    |            +++++
-help: alternatively, consider constraining `foo` so it does not apply to trait objects
+help: alternatively, consider constraining `foo` so it is explicitly marked as not applying to trait objects
    |
 LL |     fn foo() -> Self where Self: Sized;
    |                      +++++++++++++++++
@@ -67,11 +67,11 @@ LL |     fn foo() -> Self;
              B
            consider defining an enum where each variant holds one of these types,
            implementing `DynIncompatible` for this new enum and using it instead
-help: consider turning `foo` into a method by giving it a `&self` argument
+help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn foo(&self) -> Self;
    |            +++++
-help: alternatively, consider constraining `foo` so it does not apply to trait objects
+help: alternatively, consider constraining `foo` so it is explicitly marked as not applying to trait objects
    |
 LL |     fn foo() -> Self where Self: Sized;
    |                      +++++++++++++++++
@@ -100,11 +100,11 @@ help: consider using an opaque type instead
 LL - fn car() -> dyn DynIncompatible {
 LL + fn car() -> impl DynIncompatible {
    |
-help: consider turning `foo` into a method by giving it a `&self` argument
+help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn foo(&self) -> Self;
    |            +++++
-help: alternatively, consider constraining `foo` so it does not apply to trait objects
+help: alternatively, consider constraining `foo` so it is explicitly marked as not applying to trait objects
    |
 LL |     fn foo() -> Self where Self: Sized;
    |                      +++++++++++++++++
@@ -134,11 +134,11 @@ help: consider using an opaque type instead
 LL - fn car() -> dyn DynIncompatible {
 LL + fn car() -> impl DynIncompatible {
    |
-help: consider turning `foo` into a method by giving it a `&self` argument
+help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn foo(&self) -> Self;
    |            +++++
-help: alternatively, consider constraining `foo` so it does not apply to trait objects
+help: alternatively, consider constraining `foo` so it is explicitly marked as not applying to trait objects
    |
 LL |     fn foo() -> Self where Self: Sized;
    |                      +++++++++++++++++

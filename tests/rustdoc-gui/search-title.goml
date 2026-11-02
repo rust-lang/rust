@@ -12,8 +12,7 @@ assert-document-property: {"title": '"test" Search - Rust'}
 set-property: (".search-input", {"value": "another one"})
 // To be SURE that the search will be run.
 press-key: 'Enter'
-wait-for: "#crate-search"
-wait-for-false: "#search-tabs .count.loading"
+call-function: ("wait-for-search-results", {})
 
 assert-document-property: {"title": '"another one" Search - Rust'}
 

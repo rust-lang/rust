@@ -48,7 +48,7 @@
 //!
 //! [ill-formed-utf-16]: https://simonsapin.github.io/wtf-8/#ill-formed-utf-16
 //! [`collect`]: crate::iter::Iterator::collect
-//! [U+FFFD]: crate::char::REPLACEMENT_CHARACTER
+//! [U+FFFD]: char::REPLACEMENT_CHARACTER
 //! [`std::ffi`]: crate::ffi
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -58,6 +58,7 @@ use alloc::wtf8::Wtf8Buf;
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::iter::FusedIterator;
+use crate::macros::rustdoc_skip_body;
 use crate::sys::os_str::Buf;
 use crate::sys::{AsInner, FromInner};
 
@@ -72,7 +73,8 @@ pub impl(self) trait OsStringExt {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::ffi::OsString;
     /// use std::os::windows::prelude::*;
     ///
@@ -87,6 +89,7 @@ pub impl(self) trait OsStringExt {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl OsStringExt for OsString {
+    #[rustdoc_skip_body]
     fn from_wide(wide: &[u16]) -> OsString {
         FromInner::from_inner(Buf { inner: Wtf8Buf::from_wide(wide) })
     }
@@ -104,7 +107,8 @@ pub impl(self) trait OsStrExt {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::ffi::OsString;
     /// use std::os::windows::prelude::*;
     ///
@@ -123,6 +127,7 @@ pub impl(self) trait OsStrExt {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl OsStrExt for OsStr {
     #[inline]
+    #[rustdoc_skip_body]
     fn encode_wide(&self) -> EncodeWide<'_> {
         EncodeWide { inner: self.as_inner().inner.encode_wide() }
     }

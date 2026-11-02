@@ -1,4 +1,4 @@
-// Regression test for rust-lang/rust#158033.
+//! Regression test for rust-lang/rust#158033.
 
 #![feature(reborrow)]
 #![allow(dead_code)]

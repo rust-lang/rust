@@ -50,7 +50,7 @@ impl Category {
             | ExprKind::If { .. }
             | ExprKind::Let { .. }
             | ExprKind::NeverToAny { .. }
-            | ExprKind::Use { .. }
+            | ExprKind::ValueExpr { .. }
             | ExprKind::Adt { .. }
             | ExprKind::Borrow { .. }
             | ExprKind::RawBorrow { .. }

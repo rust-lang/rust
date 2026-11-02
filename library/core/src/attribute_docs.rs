@@ -82,7 +82,7 @@
 ///
 /// [`unused_must_use`]: ../rustc/lints/listing/warn-by-default.html#unused-must-use
 /// [the `must_use` attribute]: ../reference/attributes/diagnostics.html#the-must_use-attribute
-mod must_use_attribute {}
+const _: () = ();
 
 #[doc(attribute = "allow")]
 //
@@ -144,7 +144,7 @@ mod must_use_attribute {}
 /// [`forbid`]: ./attribute.forbid.html
 /// [`warn`]: ./attribute.warn.html
 /// [`deny`]: ./attribute.deny.html
-mod allow_attribute {}
+const _: () = ();
 
 #[doc(attribute = "cfg")]
 //
@@ -189,10 +189,46 @@ mod allow_attribute {}
 ///
 /// For more information, see the Reference on [the `cfg` attribute].
 ///
-/// [`cfg_attr`]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
+/// [`cfg_attr`]: ./attribute.cfg_attr.html
 /// [the `cfg` attribute]: ../reference/conditional-compilation.html#the-cfg-attribute
 /// [`if`]: ./keyword.if.html
-mod cfg_attribute {}
+const _: () = ();
+
+#[doc(attribute = "crate_name")]
+//
+/// Specifies the name of the crate.
+///
+/// Written as an inner attribute at the top of the crate root, `crate_name` is used
+/// to specify the name of a crate.
+///
+/// ```
+/// #![crate_name = "my_crate"]
+/// ```
+///
+/// The crate name must not be empty, and must only contain [Unicode alphanumeric] or
+/// `_` (U+005F) characters.
+///
+/// Note that the specified name must match the name given by the `--crate-name` flag.
+///
+/// ```text
+/// error: `--crate-name` and `#[crate_name]` are required to match, but `cli_name` != `attr_name`
+///  --> main.rs:1:17
+///   |
+/// 1 | #![crate_name = "attr_name"]
+///   |                 ^^^^^^^^^^^
+/// ```
+///
+/// In a Cargo project the crate name is always passed as `--crate-name`, derived from the target
+/// name (`[lib] name` or `[[bin]] name` if set, otherwise `[package] name` for libraries and the
+/// primary binary, or the source file name for other binaries). The `crate_name` attribute is
+/// therefore redundant here: it adds nothing, and if it is present it must match Cargo's name,
+/// otherwise `rustc` reports an error.
+///
+/// For more information, see the Reference on [the `crate_name` attribute].
+///
+/// [Unicode alphanumeric]: ../std/primitive.char.html#method.is_alphanumeric
+/// [the `crate_name` attribute]: ../reference/crates-and-source-files.html#the-crate_name-attribute
+const _: () = ();
 
 #[doc(attribute = "deny")]
 //
@@ -240,7 +276,7 @@ mod cfg_attribute {}
 /// [`allow`]: ./attribute.allow.html
 /// [`warn`]: ./attribute.warn.html
 /// [`deny`]: ./attribute.deny.html
-mod deny_attribute {}
+const _: () = ();
 
 #[doc(attribute = "forbid")]
 //
@@ -276,7 +312,7 @@ mod deny_attribute {}
 /// [the `forbid` attribute]: ../reference/attributes/diagnostics.html#lint-check-attributes
 /// [`allow`]: ./attribute.allow.html
 /// [`warn`]: ./attribute.warn.html
-mod forbid_attribute {}
+const _: () = ();
 
 #[doc(attribute = "deprecated")]
 //
@@ -302,7 +338,7 @@ mod forbid_attribute {}
 /// For more information, see the Reference on [the `deprecated` attribute].
 ///
 /// [the `deprecated` attribute]: ../reference/attributes/diagnostics.html#the-deprecated-attribute
-mod deprecated_attribute {}
+const _: () = ();
 
 #[doc(attribute = "warn")]
 //
@@ -348,7 +384,7 @@ mod deprecated_attribute {}
 /// [`allow`]: ./attribute.allow.html
 /// [`deny`]: ./attribute.deny.html
 /// [`forbid`]: ./attribute.forbid.html
-mod warn_attribute {}
+const _: () = ();
 
 #[doc(attribute = "no_std")]
 //
@@ -404,7 +440,105 @@ mod warn_attribute {}
 /// [`Option`]: option::Option
 /// [`Result`]: result::Result
 /// [the `no_std` attribute]: ../reference/names/preludes.html#the-no_std-attribute
-mod no_std_attribute {}
+const _: () = ();
+
+#[doc(attribute = "no_main")]
+/// Prevents emitting the `main` entrypoint symbol.
+///
+/// Written as an inner attribute at the top of the crate root, the `no_main` attribute prevents
+/// the compiler from generating the program's standard Rust entrypoint, leaving that up to you.
+/// This is useful when some other object being linked into the program defines the entrypoint,
+/// or when you want to define the platform's `main` symbol yourself.
+///
+/// If you define an entry point symbol that is suitable for your target, it must also be exported
+/// under an unmangled name using the [`no_mangle` attribute]:
+///
+/// ```no_run
+/// #![no_main]
+///
+/// use std::ffi::{c_char, c_int};
+///
+/// #[unsafe(no_mangle)]
+/// pub extern "C" fn main(_argc: c_int, _argv: *const *const c_char) -> c_int {
+///     println!("Hello world!");
+///     0
+/// }
+/// ```
+///
+/// Unlike `no_std`, the `no_main` attribute does not prevent the compiler from generating
+/// the startup routine or linking the standard library provided by the operating system's executable [ABI].
+///
+/// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
+/// [`no_mangle` attribute]: ../reference/abi.html#the-no_mangle-attribute
+const _: () = ();
+
+#[doc(attribute = "repr")]
+/// Specifies the [representation] of a type.
+///
+/// Written as an outer attribute on a `struct`, `enum` or `union`, `repr` controls how the
+/// type is laid out in memory. This is needed when passing types across an [FFI] boundary
+/// or whenever you rely on a specific layout.
+///
+/// The available representations are:
+///
+/// * [`Rust`] (the default): the layout is unspecified and may change between compilations.
+/// * [`C`]: the layout follows the rules of the C language for the target platform.
+/// * The [primitive representations] (`u8`, `i32`, `usize`, ...): set the discriminant
+///   type of an enum.
+/// * [`transparent`]: the type has the same layout and ABI as its only non-zero-sized field.
+///
+/// The `align(N)` and `packed(N)` modifiers raise or lower the alignment of a type, respectively.
+/// `N` must be a power of two no greater than 2<sup>29</sup>. The two modifiers cannot be
+/// applied to the same type, and references to fields of a `packed` type cannot be created,
+/// since they may be unaligned.
+///
+/// # Examples
+///
+/// ```
+/// #[repr(C, align(16))]
+/// struct Foo {
+///     first: u32,
+///     second: u32,
+///     third: u32,
+/// }
+///
+/// assert_eq!(align_of::<Foo>(), 16);
+/// // 12 bytes of fields, rounded up to a multiple of the alignment.
+/// assert_eq!(size_of::<Foo>(), 16);
+/// ```
+///
+/// ```
+/// #[repr(C, packed(2))]
+/// struct Foo {
+///     first: u32,
+///     second: u32,
+///     third: u32,
+/// }
+///
+/// assert_eq!(align_of::<Foo>(), 2);
+/// assert_eq!(size_of::<Foo>(), 12);
+/// ```
+///
+/// ```
+/// #[repr(C)]
+/// struct Foo<T> {
+///     item: T,
+/// }
+/// ```
+///
+/// `Foo` is laid out according to the C rules and is guaranteed to be 16-byte aligned.
+///
+/// The representation is a property of the type definition, so it does
+/// parameters: below, `Foo<u8>` and `Foo<u64>` both use the `C` representation. Their actual
+/// layouts still differ, because they depend on `T`.
+///
+/// [representation]: ../reference/type-layout.html#representations
+/// [`Rust`]: ../reference/type-layout.html#the-rust-representation
+/// [`C`]: ../reference/type-layout.html#the-c-representation
+/// [primitive representations]: ../reference/type-layout.html#primitive-representations
+/// [`transparent`]: ../reference/type-layout.html#the-transparent-representation
+/// [FFI]: https://en.wikipedia.org/wiki/Foreign_function_interface
+const _: () = ();
 
 #[doc(attribute = "inline")]
 //
@@ -444,7 +578,7 @@ mod no_std_attribute {}
 /// For more information, see the Reference on [the `inline` attribute].
 ///
 /// [the `inline` attribute]: ../reference/attributes/codegen.html#the-inline-attribute
-mod inline_attribute {}
+const _: () = ();
 
 #[doc(attribute = "cold")]
 //
@@ -474,7 +608,7 @@ mod inline_attribute {}
 /// For more information, see the Reference on [the `cold` attribute].
 ///
 /// [the `cold` attribute]: ../reference/attributes/codegen.html#the-cold-attribute
-mod cold_attribute {}
+const _: () = ();
 
 #[doc(attribute = "track_caller")]
 //
@@ -505,7 +639,7 @@ mod cold_attribute {}
 /// [`Location::caller`]: panic::Location::caller
 /// [`Option::unwrap`]: Option::unwrap
 /// [the `track_caller` attribute]: ../reference/attributes/codegen.html#the-track_caller-attribute
-mod track_caller_attribute {}
+const _: () = ();
 
 #[doc(attribute = "proc_macro")]
 //
@@ -554,7 +688,7 @@ mod track_caller_attribute {}
 /// [`TokenStream`]: ../proc_macro/struct.TokenStream.html
 /// [function-like procedural macros]: ../reference/procedural-macros.html#the-proc_macro-attribute
 /// [`proc_macro`]: ../proc_macro/index.html
-mod proc_macro_attribute {}
+const _: () = ();
 
 #[doc(attribute = "link_section")]
 //
@@ -580,4 +714,270 @@ mod proc_macro_attribute {}
 /// For more information, see the Reference on [the `link_section` attribute].
 ///
 /// [the `link_section` attribute]: ../reference/abi.html#the-link_section-attribute
-mod link_section_attribute {}
+const _: () = ();
+
+#[doc(attribute = "non_exhaustive")]
+//
+/// Indicates that a type might have more fields or variants added in the future.
+///
+/// Placing `#[non_exhaustive]` on a struct or enum tells code in other crates not to assume
+/// the definition is complete. This lets a library add new fields or variants without breaking
+/// existing code.
+///
+/// On an enum, code outside the defining crate must include a wildcard arm when matching:
+///
+/// ```rust,ignore (cross-crate effect only)
+/// // in crate `errors`:
+/// #[non_exhaustive]
+/// pub enum ConnectionError {
+///     Refused,
+///     Timeout,
+/// }
+///
+/// // in another crate:
+/// use errors::ConnectionError;
+///
+/// match error {
+///     ConnectionError::Refused => println!("connection refused"),
+///     ConnectionError::Timeout => println!("timed out"),
+///     _ => println!("other error"), // required because of #[non_exhaustive]
+/// }
+/// ```
+///
+/// On a struct, code outside the defining crate cannot construct instances using struct literal
+/// syntax:
+///
+/// ```rust,ignore (cross-crate effect only)
+/// // in crate `config`:
+/// #[non_exhaustive]
+/// pub struct Config {
+///     pub width: u32,
+///     pub height: u32,
+/// }
+///
+/// // in another crate:
+/// use config::Config;
+///
+/// let c = Config { width: 800, height: 600 }; // ERROR: cannot construct
+/// ```
+///
+/// Inside the defining crate, exhaustive matching and direct construction are still allowed.
+///
+/// For more information, see the Reference on [the `non_exhaustive` attribute].
+///
+/// [the `non_exhaustive` attribute]: ../reference/attributes/type_system.html#the-non_exhaustive-attribute
+const _: () = ();
+
+#[doc(attribute = "automatically_derived")]
+//
+/// The `automatically_derived` attribute is used to indicate that an `impl` block is automatically
+/// generated by a [derive macro]. It has no direct effect, but it may be used by tools and
+/// diagnostic lints, such as [Clippy], to detect these automatically generated implementations.
+///
+/// Example:
+///
+/// ```rust
+/// // Given #[derive(Clone)] on struct Example, the derive macro may produce:
+/// #[automatically_derived]
+/// impl ::core::clone::Clone for Example {
+///     fn clone(&self) -> Self { Example }
+/// }
+/// # struct Example;
+/// ```
+///
+/// The attribute may only be applied to an `impl` block.
+///
+/// Because code generated by a macro becomes part of the source code representation of the crate
+/// that calls the macro, diagnostic lints for the expanded macro will be emitted in the caller's
+/// workspace (whereas warnings generated while building dependencies not in the local workspace
+/// are suppressed by Cargo). This may be undesirable, so the author of the macro can use the
+/// `automatically_derived` attribute to hint to tools that the generated code is not written by the
+/// caller (and that tools should not render warnings for it).
+///
+/// For example, this `impl` block lacks `#[automatically_derived]`:
+///
+/// ```rust
+/// // Suppose this impl block is the output of a derive macro
+/// impl ::core::cmp::PartialEq for Example {
+///     fn eq(&self, other: &Self) -> bool { true }
+///     fn ne(&self, other: &Self) -> bool { !(self == other) }
+/// }
+/// # struct Example;
+/// ```
+///
+/// In the example above, Clippy will emit the following warning:
+///
+/// ```text
+/// warning: re-implementing `PartialEq::ne` is unnecessary
+///  --> src/lib.rs:7:9
+///   |
+/// 4 |         fn ne(&self, other: &Self) -> bool { !(self == other) }
+///   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+///   |
+///   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#partialeq_ne_impl
+///   = note: `#[warn(clippy::partialeq_ne_impl)]` on by default
+/// ```
+///
+/// However, if the derive macro were written so that it outputs `#[automatically_derived]` on the
+/// `impl` block, as below, then Clippy will not emit the above `partialeq_ne_impl` lint:
+///
+/// ```rust
+/// // Suppose this impl block is the output of a derive macro
+/// #[automatically_derived]
+/// impl ::core::cmp::PartialEq for Example {
+///     fn eq(&self, other: &Self) -> bool { true }
+///     fn ne(&self, other: &Self) -> bool { !(self == other) }
+/// }
+/// # struct Example;
+/// ```
+///
+/// The `automatically_derived` attribute should be preferred over the [`allow`] attribute for
+/// suppressing unintended user-facing diagnostics in automatically generated code.
+///
+/// For more information, see the Reference on [the `automatically_derived` attribute].
+///
+/// [`allow`]: ./attribute.allow.html
+/// [derive macro]: ./attr.derive.html
+/// [Clippy]: https://github.com/rust-lang/rust-clippy
+/// [the `automatically_derived` attribute]: ../reference/attributes/derive.html#the-automatically_derived-attribute
+const _: () = ();
+
+#[doc(attribute = "cfg_attr")]
+//
+/// The `cfg_attr` attribute is used to conditionally apply one or more attributes to an item.
+///
+/// Example:
+///
+/// ```rust
+/// // The struct derives `Debug` when the `debug_impls` feature is enabled.
+/// #[cfg_attr(feature = "debug_impls", derive(Debug))]
+/// struct X;
+/// ```
+///
+/// You can apply multiple attributes by separating them with commas:
+///
+/// ```rust
+/// #[cfg_attr(feature = "nightly", allow(dead_code), deny(unused_variables))]
+/// // This function only gets the `allow(dead_code)` and `deny(unused_variables)` attributes when
+/// // `feature = "nightly"` is active.
+/// fn nightly_only_function() {
+///     let x = 42;
+/// }
+/// ```
+///
+/// For complex conditions, you can combine `all(...)`, `any(...)`, and `not(...)`.
+///
+/// * `all`: True if all given predicates are true.
+/// * `any`: True if at least one of the given predicates is true.
+/// * `not`: True if the predicate is false.
+///
+/// ```rust
+/// #[cfg_attr(
+///     all(feature = "system", feature = "disk"),
+///     doc = "These docs only show up if both `system`, and `disk` are enabled.",
+/// )]
+/// mod my_module {
+///     // ...
+/// }
+/// ```
+///
+/// For more information, see the Reference on [the `cfg_attr` attribute].
+///
+/// [`cfg`]: ./attribute.cfg.html
+/// [the `cfg_attr` attribute]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
+const _: () = ();
+
+#[doc(attribute = "windows_subsystem")]
+//
+/// The `windows_subsystem` attribute is used to specify the subsystem for a Windows application.
+///
+/// Example:
+///
+/// ```rust
+/// #![windows_subsystem = "windows"]
+///
+/// fn main() {}
+/// ```
+///
+/// Accepted values are "console" (default) and "windows".
+///
+/// The `windows_subsystem` attribute may only be applied to the crate root.
+///
+/// Only the first use of `windows_subsystem` has effect.
+///
+/// The `windows_subsystem` attribute is ignored on non-Windows targets and non-bin crate types.
+/// If a "console" process is run from an existing console then it will be attached to said console;
+/// otherwise a new one will be created.
+/// The "windows" subsystem will run detached from any existing "console".
+///
+/// [Reference](../reference/runtime.html#the-windows_subsystem-attribute)
+const _: () = ();
+
+#[doc(attribute = "recursion_limit")]
+//
+/// Sets the maximum depth for recursive compile-time operations.
+///
+/// The compiler limits how deeply it recurses while performing operations that could
+/// otherwise expand forever, such as macro expansion and auto-dereference. The
+/// `recursion_limit` attribute raises that limit. It applies to the whole crate and is
+/// written at the crate root:
+///
+/// ```
+/// #![recursion_limit = "256"]
+///
+/// // Macros may now expand up to 256 levels deep.
+/// ```
+///
+/// The value is a string containing the new limit. The default is 128.
+///
+/// This limit affects only compile-time recursion. It does not change how deeply
+/// recursive code can run at runtime.
+///
+/// When a compile-time operation recurses deeper than the limit, compilation fails. For
+/// example, this macro expands itself forever, so it always hits the limit:
+///
+/// ```compile_fail
+/// macro_rules! a {
+///     () => { a!(); };
+/// }
+///
+/// a!();
+/// ```
+///
+/// This produces an error whose help message suggests how to raise the limit:
+///
+/// ```text
+/// error: recursion limit reached while expanding `a!`
+///  --> src/main.rs:2:13
+///   |
+/// 2 |     () => { a!(); };
+///   |             ^^^^
+/// ...
+/// 5 | a!();
+///   | ---- in this macro invocation
+///   |
+///   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+///           attribute to your crate
+/// ```
+///
+/// Auto-dereference is limited in the same way:
+///
+/// ```compile_fail
+/// #![recursion_limit = "1"]
+///
+/// // Error: two recursive steps are needed to auto-dereference `&&&1` to `&u8`.
+/// let f = |_: &u8| {};
+/// f(&&&1);
+/// ```
+///
+/// Reaching the limit is most common in code that nests many macros, such as code expanded
+/// by `derive` macros or deeply nested `async` code. Raising the limit is safe, but very
+/// large values can make the compiler use more time and memory, and deeply nested code can
+/// still overflow the compiler's own stack. Increase the limit in measured steps rather
+/// than jumping to a very large number. If the limit is reached without an obvious cause,
+/// the code may be more deeply recursive than intended.
+///
+/// For more information, see the Reference on [the `recursion_limit` attribute].
+///
+/// [the `recursion_limit` attribute]: ../reference/attributes/limits.html#the-recursion_limit-attribute
+const _: () = ();

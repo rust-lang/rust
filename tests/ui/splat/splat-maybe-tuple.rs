@@ -5,7 +5,7 @@
 #![feature(splat)]
 #![expect(unused)]
 
-fn unbound_generic_arg<T>(#[rustc_splat] t: T) {} //~ ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a u32
+fn unbound_generic_arg<T>(#[rustc_splat] t: T) {} //~ ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a u32
 
 fn main() {
     unbound_generic_arg();

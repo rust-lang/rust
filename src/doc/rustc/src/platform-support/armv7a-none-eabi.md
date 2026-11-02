@@ -22,7 +22,7 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 ## Target maintainers
 
 - [Rust Embedded Devices Working Group Arm Team]
-- [@rust-lang/arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
+- [arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
     - Use `@rustbot ping arm-maintainers` to ping us
 
 [Rust Embedded Devices Working Group Arm Team]: https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team
@@ -49,10 +49,10 @@ disabled as needed with `-C target-feature=(+/-)`.
 
 In general, the following four combinations are possible:
 
-- VFPv3-D16, target feature `+vfp3` and `-d32`
-- VFPv3-D32, target feature `+vfp3` and `+d32`
-- VFPv4-D16, target feature `+vfp4` and `-d32`
-- VFPv4-D32, target feature `+vfp4` and `+d32`
+- VFPv3-D16, target default
+- VFPv3-D32, target feature `+d32`
+- VFPv4-D16, llvm target feature `+vfp4d16`
+- VFPv4-D32, target feature `+vfp4`
 
 An Armv7-A processor may optionally include a NEON hardware unit which
 provides Single Instruction Multiple Data (SIMD) operations. The

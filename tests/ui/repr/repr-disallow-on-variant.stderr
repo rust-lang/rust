@@ -3,6 +3,8 @@ error: the `repr(u8)` attribute cannot be used on enum variants
    |
 LL |     #[repr(u8)]
    |       ^^^^^^^^
+LL |
+LL |     Variant,
    |
    = help: the `repr(u8)` attribute can only be applied to enums
 

@@ -8,15 +8,16 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::{
     FromSolverError, PolyTraitObligation, PredicateObligations, ProjectionCacheKey, SelectionError,
-    TraitEngine,
+    TraitEngine, TraitErrors,
 };
-use rustc_middle::bug;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, Binder, Const, DelayedSet, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, Binder, Const, DelayedSet, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode, may_use_unstable_feature,
 };
+use rustc_next_trait_solver::solve::TyOrConstInferVar;
+use rustc_span::bug;
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, debug_span, instrument};
 
@@ -28,7 +29,7 @@ use super::{
     ScrubbedTraitError, const_evaluatable, wf,
 };
 use crate::error_reporting::InferCtxtErrorExt;
-use crate::infer::{InferCtxt, TyOrConstInferVar};
+use crate::infer::InferCtxt;
 use crate::traits::normalize::normalize_with_depth_to;
 use crate::traits::project::{PolyProjectionObligation, ProjectionCacheKeyExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -104,7 +105,7 @@ where
     }
 
     /// Attempts to select obligations using `selcx`.
-    fn select(&mut self, selcx: SelectionContext<'_, 'tcx>) -> Vec<E> {
+    fn select(&mut self, selcx: SelectionContext<'_, 'tcx>) -> TraitErrors<E> {
         let span = debug_span!("select", obligation_forest_size = ?self.predicates.len());
         let _enter = span.enter();
         let infcx = selcx.infcx;
@@ -116,11 +117,9 @@ where
         // FIXME: if we kept the original cache key, we could mark projection
         // obligations as complete for the projection cache here.
 
-        let errors: Vec<E> = outcome
-            .errors
-            .into_iter()
-            .map(|err| E::from_solver_error(infcx, OldSolverError(err)))
-            .collect();
+        let errors = TraitErrors::from_iter(
+            outcome.errors.into_iter().map(|err| E::from_solver_error(infcx, OldSolverError(err))),
+        );
 
         debug!(
             "select({} predicates remaining, {} errors) done",
@@ -146,7 +145,7 @@ where
         // this helps to reduce duplicate errors, as well as making
         // debug output much nicer to read and so on.
         debug_assert!(!obligation.param_env.has_non_region_infer());
-        obligation.predicate = infcx.resolve_vars_if_possible(obligation.predicate);
+        obligation.predicate = infcx.deeply_resolve_ignoring_regions(obligation.predicate);
 
         debug!(?obligation, "register_predicate_obligation");
 
@@ -154,15 +153,16 @@ where
             .register_obligation(PendingPredicateObligation { obligation, stalled_on: vec![] });
     }
 
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
-        self.predicates
-            .to_errors(FulfillmentErrorCode::Ambiguity { overflow: None })
-            .into_iter()
-            .map(|err| E::from_solver_error(infcx, OldSolverError(err)))
-            .collect()
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
+        TraitErrors::from_iter(
+            self.predicates
+                .to_errors(FulfillmentErrorCode::Ambiguity { overflow: None })
+                .into_iter()
+                .map(|err| E::from_solver_error(infcx, OldSolverError(err))),
+        )
     }
 
-    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
         let selcx = SelectionContext::new(infcx);
         self.select(selcx)
     }
@@ -175,12 +175,14 @@ where
             TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
-            TypingMode::Coherence
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowck { defined_opaque_types: _ }
             | TypingMode::Reflection
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => return Default::default(),
+            TypingMode::Coherence => {
+                unreachable!("old solver coherence")
+            }
         };
 
         if stalled_coroutines.is_empty() {
@@ -236,7 +238,7 @@ where
                 }
 
                 self.infcx
-                    .resolve_vars_if_possible(pending_obligation.obligation.predicate)
+                    .deeply_resolve_ignoring_regions(pending_obligation.obligation.predicate)
                     .visit_with(&mut StalledOnCoroutines {
                         stalled_coroutines: self.stalled_coroutines,
                         cache: Default::default(),
@@ -387,7 +389,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
         debug!(?obligation, "pre-resolve");
 
         if obligation.predicate.has_non_region_infer() {
-            obligation.predicate = self.selcx.infcx.resolve_vars_if_possible(obligation.predicate);
+            obligation.predicate =
+                self.selcx.infcx.deeply_resolve_ignoring_regions(obligation.predicate);
         }
 
         let obligation = &pending_obligation.obligation;
@@ -499,7 +502,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     ProcessResult::Changed(Default::default())
                 }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
+                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesClause(
                     t_a,
                     r_b,
                 ))) => {
@@ -618,8 +621,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         obligation.cause.span,
                     ) {
                         None => {
-                            pending_obligation.stalled_on =
-                                vec![TyOrConstInferVar::maybe_from_term(term).unwrap()];
+                            pending_obligation.stalled_on = vec![
+                                TyOrConstInferVar::maybe_from_term::<TyCtxt<'tcx>>(term).unwrap(),
+                            ];
                             ProcessResult::Unchanged
                         }
                         Some(os) => ProcessResult::Changed(mk_pending(obligation, os)),
@@ -684,11 +688,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         Ok(()) => ProcessResult::Changed(Default::default()),
                         Err(NotConstEvaluatable::MentionsInfer) => {
                             pending_obligation.stalled_on.clear();
-                            pending_obligation.stalled_on.extend(
-                                alias_const
-                                    .walk()
-                                    .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
-                            );
+                            pending_obligation.stalled_on.extend(alias_const.walk().filter_map(
+                                TyOrConstInferVar::maybe_from_generic_arg::<TyCtxt<'tcx>>,
+                            ));
                             ProcessResult::Unchanged
                         }
                         Err(
@@ -721,7 +723,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     && matches!(
                                         a.kind,
                                         ty::AliasConstKind::Projection { .. }
-                                            | ty::AliasConstKind::Inherent { .. }
+                                            | ty::AliasConstKind::InherentSelf { .. }
+                                            | ty::AliasConstKind::InherentImpl { .. }
                                     ) =>
                             {
                                 if let Ok(new_obligations) = infcx
@@ -765,15 +768,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 self.selcx.infcx,
                                 c,
                                 obligation.param_env,
+                                |ty| Ok::<_, !>(ty.skip_norm_wip()),
                             ) {
                                 Ok(val) => Ok(val),
                                 e @ Err(EvaluateConstErr::HasGenericsOrInfers) => {
-                                    stalled_on.extend(
-                                        alias_const
-                                            .args
-                                            .iter()
-                                            .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
-                                    );
+                                    stalled_on.extend(alias_const.args.iter().filter_map(
+                                        TyOrConstInferVar::maybe_from_generic_arg::<TyCtxt<'tcx>>,
+                                    ));
                                     e
                                 }
                                 e @ Err(
@@ -872,8 +873,9 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         trait_obligation: PolyTraitObligation<'tcx>,
         stalled_on: &mut Vec<TyOrConstInferVar>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
+        debug_assert!(!self.selcx.typing_mode().is_coherence(), "old solver coherence");
         let infcx = self.selcx.infcx;
-        if obligation.predicate.is_global() && !self.selcx.typing_mode().is_coherence() {
+        if obligation.predicate.is_global() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if infcx.predicate_must_hold_considering_regions(obligation) {
@@ -905,7 +907,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
 
                 debug!(
                     "process_predicate: pending obligation {:?} now stalled on {:?}",
-                    infcx.resolve_vars_if_possible(obligation.clone()),
+                    infcx.deeply_resolve_ignoring_regions(obligation.clone()),
                     stalled_on
                 );
 
@@ -925,9 +927,11 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         project_obligation: PolyProjectionObligation<'tcx>,
         stalled_on: &mut Vec<TyOrConstInferVar>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
+        debug_assert!(!self.selcx.typing_mode().is_coherence(), "old solver coherence");
+
         let tcx = self.selcx.tcx();
         let infcx = self.selcx.infcx;
-        if obligation.predicate.is_global() && !self.selcx.typing_mode().is_coherence() {
+        if obligation.predicate.is_global() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if infcx.predicate_must_hold_considering_regions(obligation) {
@@ -956,13 +960,15 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
             }
             ProjectAndUnifyResult::Holds(os) => {
                 let input_projection_term = infcx
-                    .resolve_vars_if_possible(project_obligation.predicate)
+                    .deeply_resolve_ignoring_regions(project_obligation.predicate)
                     .map_bound(|p| p.projection_term);
                 let all_same_projection_term = os.iter().all(|o| {
                     let Some(proj_clause) = o.predicate.as_projection_clause() else {
                         return false;
                     };
-                    infcx.resolve_vars_if_possible(proj_clause).map_bound(|p| p.projection_term)
+                    infcx
+                        .deeply_resolve_ignoring_regions(proj_clause)
+                        .map_bound(|p| p.projection_term)
                         == input_projection_term
                 });
                 if all_same_projection_term {
@@ -1027,11 +1033,11 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
 /// Returns the set of inference variables contained in `args`.
 fn args_infer_vars<'tcx>(
     selcx: &SelectionContext<'_, 'tcx>,
-    args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
+    args: ty::Binder<'tcx, GenericArgs<'tcx>>,
 ) -> impl Iterator<Item = TyOrConstInferVar> {
     selcx
         .infcx
-        .resolve_vars_if_possible(args)
+        .deeply_resolve_ignoring_regions(args)
         .skip_binder() // ok because this check doesn't care about regions
         .iter()
         .filter(|arg| arg.has_non_region_infer())
@@ -1045,7 +1051,7 @@ fn args_infer_vars<'tcx>(
             }
             walker.visited.into_iter()
         })
-        .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
+        .filter_map(TyOrConstInferVar::maybe_from_generic_arg::<TyCtxt<'tcx>>)
 }
 
 #[derive(Debug)]
@@ -1069,6 +1075,7 @@ impl<'tcx> FromSolverError<'tcx, OldSolverError<'tcx>> for ScrubbedTraitError<'t
         match error.0.error {
             FulfillmentErrorCode::Select(_)
             | FulfillmentErrorCode::Project(_)
+            | FulfillmentErrorCode::Outlives
             | FulfillmentErrorCode::Subtype(_, _)
             | FulfillmentErrorCode::ConstEquate(_, _) => ScrubbedTraitError::TrueError,
             FulfillmentErrorCode::Ambiguity { overflow: _ } => ScrubbedTraitError::Ambiguity,

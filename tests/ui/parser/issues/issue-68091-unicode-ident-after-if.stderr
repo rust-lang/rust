@@ -1,6 +1,8 @@
 error: missing condition for `if` expression
   --> $DIR/issue-68091-unicode-ident-after-if.rs:3:13
    |
+LL | macro_rules! x {
+LL |     ($($c:tt)*) => {
 LL |         $($c)ö* {}
    |             ^   - if this block is the condition of the `if` expression, then it must be followed by another block
    |             |
@@ -8,8 +10,6 @@ LL |         $($c)ö* {}
 ...
 LL |     x!(if);
    |     ------ in this macro invocation
-   |
-   = note: this error originates in the macro `x` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

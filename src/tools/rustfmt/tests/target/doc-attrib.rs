@@ -1,5 +1,5 @@
-// rustfmt-wrap_comments: true
-// rustfmt-normalize_doc_attributes: true
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-normalize_doc_attributes: true
 
 // Only doc = "" attributes should be normalized
 //! Example doc attribute comment

@@ -132,13 +132,23 @@ fn test_env_expand() {
 #[rustc_builtin_macro]
 macro_rules! env {() => {}}
 
-fn main() { env!("TEST_ENV_VAR"); }
+fn main() {
+    env!("TEST_ENV_VAR");
+    env!("TEST_ENV_VAR",);
+    env!("TEST_ENV_VAR", "error");
+    env!("TEST_ENV_VAR", "error",);
+}
 "#,
         expect![[r##"
 #[rustc_builtin_macro]
 macro_rules! env {() => {}}
 
-fn main() { "UNRESOLVED_ENV_VAR"; }
+fn main() {
+    "UNRESOLVED_ENV_VAR";
+    "UNRESOLVED_ENV_VAR";
+    "UNRESOLVED_ENV_VAR";
+    "UNRESOLVED_ENV_VAR";
+}
 "##]],
     );
 }
@@ -150,13 +160,21 @@ fn test_option_env_expand() {
 #[rustc_builtin_macro]
 macro_rules! option_env {() => {}}
 
-fn main() { option_env!("TEST_ENV_VAR"); }
+fn main() {
+    option_env!("TEST_ENV_VAR");
+    option_env!("TEST_ENV_VAR",);
+    option_env!("TEST_ENV_VAR", "invalid");
+}
 "#,
         expect![[r#"
 #[rustc_builtin_macro]
 macro_rules! option_env {() => {}}
 
-fn main() { $crate::option::Option::None:: < &str>; }
+fn main() {
+    $crate::option::Option::None:: < &str>;
+    $crate::option::Option::None:: < &str>;
+    /* error: unexpected input */;
+}
 "#]],
     );
 }
@@ -607,6 +625,37 @@ const _: bool = foo::<(), fn() -> Foo<i32, i64>>(1, );
 
 /* error: expected a token tree after `=>` */
 
+    "#]],
+    );
+}
+
+#[test]
+fn eager_recursion_limit() {
+    check(
+        r#"
+//- minicore: concat
+
+macro_rules! concat_separator {
+    () => {
+        concat!("", concat_separator!())
+    };
+}
+
+fn main() {
+    concat_separator!()
+}
+    "#,
+        expect![[r#"
+
+macro_rules! concat_separator {
+    () => {
+        concat!("", concat_separator!())
+    };
+}
+
+fn main() {
+    concat!("", concat_separator!())
+}
     "#]],
     );
 }

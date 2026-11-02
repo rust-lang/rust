@@ -75,17 +75,10 @@ fn loongarch() {
 }
 
 #[test]
-#[cfg(target_arch = "powerpc")]
+#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
 fn powerpc() {
     let _ = is_powerpc_feature_detected!("altivec");
     let _ = is_powerpc_feature_detected!("altivec",);
-}
-
-#[test]
-#[cfg(target_arch = "powerpc64")]
-fn powerpc64() {
-    let _ = is_powerpc64_feature_detected!("altivec");
-    let _ = is_powerpc64_feature_detected!("altivec",);
 }
 
 #[test]

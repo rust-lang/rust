@@ -1,12 +1,12 @@
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::UnsafeBinderCastKind;
-use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{AttributeKind, HasAttrs, UnrollAttr, find_attr};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, HasAttrs};
+use rustc_hir::HirId;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{HirId, LangItem, find_attr};
 use rustc_index::Idx;
 use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
@@ -21,24 +21,57 @@ use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InlineConstArgs, InlineConstArgsParts, ScalarInt, SplattedDef, Ty,
     TyCtxt, UpvarArgs,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DesugaringKind, Span};
+use rustc_span::{DesugaringKind, Span, bug, span_bug};
 use tracing::{debug, info, instrument, trace};
 
 use crate::diagnostics::*;
 use crate::thir::cx::ThirBuildCx;
 
-fn parsed_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<AttributeKind> {
+/// The receiver of a splatted method, or the expression for a splatted function call.
+#[derive(Copy, Clone, Debug)]
+enum SplattedFunc<'tcx> {
+    /// The expression for a method receiver. Always a FnDef.
+    FnDefReceiver(&'tcx hir::Expr<'tcx>),
+    /// The expression or path for a function call.
+    /// This can be a FnDef or FnPtr.
+    FnExpression(&'tcx hir::Expr<'tcx>),
+}
+
+impl<'tcx> SplattedFunc<'tcx> {
+    fn has_receiver(&self) -> bool {
+        matches!(self, SplattedFunc::FnDefReceiver(_))
+    }
+
+    fn receiver(&self) -> Option<&'tcx hir::Expr<'tcx>> {
+        match self {
+            SplattedFunc::FnDefReceiver(receiver) => Some(receiver),
+            SplattedFunc::FnExpression(_fn_expression) => None,
+        }
+    }
+
+    fn fn_expression(&self) -> Option<&'tcx hir::Expr<'tcx>> {
+        match self {
+            SplattedFunc::FnDefReceiver(_receiver) => None,
+            SplattedFunc::FnExpression(fn_expression) => Some(fn_expression),
+        }
+    }
+}
+
+fn filter_loop_hint_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<UnrollAttr> {
     HasAttrs::get_attrs(id, &tcx)
         .into_iter()
         .filter_map(|attr| match attr {
-            hir::Attribute::Parsed(attrkind) => Some(attrkind.clone()),
-            hir::Attribute::Unparsed(_) => None,
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::Unroll(unroll)) => Some(unroll.clone()),
+            _ => None,
         })
         .collect()
 }
 
 impl<'tcx> ThirBuildCx<'tcx> {
+    pub(crate) fn mirror_exprs(&mut self, exprs: &'tcx [hir::Expr<'tcx>]) -> Box<[ExprId]> {
+        exprs.iter().map(|expr| self.mirror_expr(expr)).collect()
+    }
+
     /// Create a THIR expression for the given HIR expression. This expands all
     /// adjustments and directly adds the type information from the
     /// `typeck_results`. See the [dev-guide] for more details.
@@ -47,20 +80,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
     /// "reversed".)
     ///
     /// [dev-guide]: https://rustc-dev-guide.rust-lang.org/thir.html
-    pub(crate) fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
-        // `mirror_expr` is recursing very deep. Make sure the stack doesn't overflow.
-        ensure_sufficient_stack(|| self.mirror_expr_inner(expr))
-    }
-
-    pub(crate) fn mirror_exprs(&mut self, exprs: &'tcx [hir::Expr<'tcx>]) -> Box<[ExprId]> {
-        // `mirror_exprs` may also recurse deeply, so it needs protection from stack overflow.
-        // Note that we *could* forward to `mirror_expr` for that, but we can consolidate the
-        // overhead of stack growth by doing it outside the iteration.
-        ensure_sufficient_stack(|| exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect())
-    }
-
     #[instrument(level = "trace", skip(self, hir_expr))]
-    pub(super) fn mirror_expr_inner(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> ExprId {
+    pub(crate) fn mirror_expr(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> ExprId {
         let expr_scope =
             region::Scope { local_id: hir_expr.hir_id.local_id, data: region::ScopeData::Node };
 
@@ -70,7 +91,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
         trace!(?expr.ty);
 
-        let mut attrs = ThinVec::new();
+        let mut loop_hint_attrs = ThinVec::new();
 
         if let hir::ExprKind::Loop(_, _, _, span) = hir_expr.kind {
             match span.desugaring_kind() {
@@ -82,12 +103,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     // ignore async for loops
                     if let hir::Node::Expr(expr) = self.tcx.parent_hir_node(expr.hir_id) {
                         std::assert_matches!(expr.kind, hir::ExprKind::DropTemps(..));
-                        attrs = parsed_attrs(expr.hir_id, self.tcx)
+                        loop_hint_attrs = filter_loop_hint_attrs(expr.hir_id, self.tcx)
                     }
                 }
                 // For loops defined with `loop` and `while`, the expr already has the attrs
                 Some(DesugaringKind::WhileLoop) | None => {
-                    attrs = parsed_attrs(hir_expr.hir_id, self.tcx);
+                    loop_hint_attrs = filter_loop_hint_attrs(hir_expr.hir_id, self.tcx);
                 }
                 _ => (),
             }
@@ -107,11 +128,14 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let ty = expr.ty;
         let value = self.thir.exprs.push(expr);
 
-        if !attrs.is_empty() {
-            self.thir.attributes.insert(value, attrs);
+        if !loop_hint_attrs.is_empty() {
+            self.thir.loop_hint_attrs.insert(value, loop_hint_attrs);
         }
 
         // Finally, wrap this up in the expr's scope.
+        //
+        // (In addition to marking scope, coverage instrumentation also uses this node
+        // to help mark the point in MIR where an expression is about to be evaluated.)
         expr = Expr {
             temp_scope_id: expr_scope.local_id,
             ty,
@@ -249,7 +273,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 });
 
                 // kind = Pin { pointer }
-                let pin_did = self.tcx.require_lang_item(rustc_hir::LangItem::Pin, span);
+                let pin_did = self.tcx.require_lang_item(LangItem::Pin, span);
                 let args = self.tcx.mk_args(&[new_pin_target.into()]);
                 let kind = ExprKind::Adt(Box::new(AdtExpr {
                     adt_def: self.tcx.adt_def(pin_did),
@@ -290,7 +314,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         // using a coercion (or is a no-op).
         if self.typeck_results.is_coercion_cast(source.hir_id) {
             // Convert the lexpr to a vexpr.
-            ExprKind::Use { source: self.mirror_expr(source) }
+            ExprKind::ValueExpr { source: self.mirror_expr(source) }
         } else if self.typeck_results.expr_ty(source).is_ref() {
             // Special cased so that we can type check that the element
             // type of the source matches the pointed to type of the
@@ -303,7 +327,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         } else if let hir::ExprKind::Path(ref qpath) = source.kind
             && let res = self.typeck_results.qpath_res(qpath, source.hir_id)
             && let ty = self.typeck_results.node_type(source.hir_id)
-            && let ty::Adt(adt_def, args) = ty.kind()
+            && let ty::Adt(adt_def, _) = ty.kind()
             && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), variant_ctor_id) = res
         {
             // Check whether this is casting an enum variant discriminant.
@@ -345,6 +369,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 // in case we are offsetting from a computed discriminant
                 // and not the beginning of discriminants (which is always `0`)
                 Some(did) => {
+                    let args = self.tcx.mk_args(&[]);
+                    self.tcx.debug_assert_args_compatible(did, args);
                     let kind = ExprKind::NamedConst { def_id: did, args, user_ty: None };
                     let lhs =
                         self.thir.exprs.push(Expr { temp_scope_id, ty: discr_ty, span, kind });
@@ -375,16 +401,43 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 if self.typeck_results.is_splatted_call(expr) {
                     // The callee has a splatted tuple argument.
                     // rewrite `receiver.f(a, u, v)` into `receiver.f(a, #[rustc_splat] (u, v))`
-                    self.convert_splatted_callee(expr, fn_span, args, Some(receiver))
+                    self.convert_splatted_callee(
+                        expr,
+                        fn_span,
+                        args,
+                        SplattedFunc::FnDefReceiver(receiver),
+                    )
                 } else {
                     // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
                     let expr = self.method_callee(expr, segment.ident.span, None);
                     info!("Using method span: {:?}", expr.span);
 
-                    let args = std::iter::once(receiver)
-                        .chain(args.iter())
-                        .map(|expr| self.mirror_expr(expr))
-                        .collect();
+                    // Arg position const args are already part of the callee's generic args,
+                    // so we skip them when building runtime arguments.
+                    let generics = match *expr.ty.kind() {
+                        ty::FnDef(def_id, _) => Some(tcx.generics_of(def_id)),
+                        _ => None,
+                    };
+                    let args = if generics.is_some_and(|g| g.has_arg_pos_consts) {
+                        let is_const_arg = |idx: usize| {
+                            generics.is_some_and(|g| {
+                                g.own_arg_pos_consts().any(|(_, pos)| pos as usize == idx)
+                            })
+                        };
+
+                        std::iter::once(receiver)
+                            .chain(args.iter())
+                            .enumerate()
+                            .filter(|&(idx, _)| !is_const_arg(idx))
+                            .map(|(_, arg)| self.mirror_expr(arg))
+                            .collect()
+                    } else {
+                        std::iter::once(receiver)
+                            .chain(args.iter())
+                            .map(|arg| self.mirror_expr(arg))
+                            .collect()
+                    };
+
                     ExprKind::Call {
                         ty: expr.ty,
                         fun: self.thir.exprs.push(expr),
@@ -425,7 +478,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 } else if self.typeck_results.is_splatted_call(expr) {
                     // The callee has a splatted tuple argument.
                     // rewrite `f(a, u, v)` into `f(a, #[rustc_splat] (u, v))`
-                    self.convert_splatted_callee(expr, fun.span, args, None)
+                    self.convert_splatted_callee(
+                        expr,
+                        fun.span,
+                        args,
+                        SplattedFunc::FnExpression(fun),
+                    )
                 } else {
                     // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.
                     let adt_data = if let hir::ExprKind::Path(ref qpath) = fun.kind
@@ -481,10 +539,32 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             base: AdtExprBase::None,
                         }))
                     } else {
+                        // Arg position const args are already part of the callee's generic args,
+                        // so we skip them when building runtime arguments.
+                        let fn_ty = self.typeck_results.node_type(fun.hir_id);
+                        let generics = match *fn_ty.kind() {
+                            ty::FnDef(def_id, _) => Some(tcx.generics_of(def_id)),
+                            _ => None,
+                        };
+                        let args = if generics.is_some_and(|g| g.has_arg_pos_consts) {
+                            let is_const_arg = |idx: usize| {
+                                generics.is_some_and(|g| {
+                                    g.own_arg_pos_consts().any(|(_, pos)| pos as usize == idx)
+                                })
+                            };
+                            args.iter()
+                                .enumerate()
+                                .filter(|&(idx, _)| !is_const_arg(idx))
+                                .map(|(_, arg)| self.mirror_expr(arg))
+                                .collect()
+                        } else {
+                            args.iter().map(|arg| self.mirror_expr(arg)).collect()
+                        };
+
                         ExprKind::Call {
-                            ty: self.typeck_results.node_type(fun.hir_id),
+                            ty: fn_ty,
                             fun: self.mirror_expr(fun),
-                            args: self.mirror_exprs(args),
+                            args,
                             from_hir_call: true,
                             fn_span: expr.span,
                         }
@@ -507,7 +587,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             // Make `&pin mut $expr` and `&pin const $expr` into
             // `Pin { __pointer: &mut { $expr } }` and `Pin { __pointer: &$expr }`.
             hir::ExprKind::AddrOf(hir::BorrowKind::Pin, mutbl, arg_expr) => match expr_ty.kind() {
-                &ty::Adt(adt_def, args) if tcx.is_lang_item(adt_def.did(), hir::LangItem::Pin) => {
+                &ty::Adt(adt_def, args) if tcx.is_lang_item(adt_def.did(), LangItem::Pin) => {
                     let ty = args.type_at(0);
                     let arg_ty = self.typeck_results.expr_ty(arg_expr);
                     let mut arg = self.mirror_expr(arg_expr);
@@ -655,7 +735,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         ExprKind::Adt(Box::new(AdtExpr {
                             adt_def: *adt,
                             variant_index: FIRST_VARIANT,
-                            args,
+                            args: *args,
                             user_ty,
                             fields: self.field_refs(fields),
                             base: match base {
@@ -698,7 +778,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                                 ExprKind::Adt(Box::new(AdtExpr {
                                     adt_def: *adt,
                                     variant_index: index,
-                                    args,
+                                    args: *args,
                                     user_ty,
                                     fields: self.field_refs(fields),
                                     base: match base {
@@ -791,22 +871,27 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     .operands
                     .iter()
                     .map(|(op, _op_sp)| match *op {
-                        hir::InlineAsmOperand::In { reg, expr } => {
-                            InlineAsmOperand::In { reg, expr: self.mirror_expr(expr) }
-                        }
+                        hir::InlineAsmOperand::In { reg, expr } => InlineAsmOperand::In {
+                            reg: reg.as_target(),
+                            expr: self.mirror_expr(expr),
+                        },
                         hir::InlineAsmOperand::Out { reg, late, ref expr } => {
                             InlineAsmOperand::Out {
-                                reg,
+                                reg: reg.as_target(),
                                 late,
                                 expr: expr.map(|expr| self.mirror_expr(expr)),
                             }
                         }
                         hir::InlineAsmOperand::InOut { reg, late, expr } => {
-                            InlineAsmOperand::InOut { reg, late, expr: self.mirror_expr(expr) }
+                            InlineAsmOperand::InOut {
+                                reg: reg.as_target(),
+                                late,
+                                expr: self.mirror_expr(expr),
+                            }
                         }
                         hir::InlineAsmOperand::SplitInOut { reg, late, in_expr, ref out_expr } => {
                             InlineAsmOperand::SplitInOut {
-                                reg,
+                                reg: reg.as_target(),
                                 late,
                                 in_expr: self.mirror_expr(in_expr),
                                 out_expr: out_expr.map(|expr| self.mirror_expr(expr)),
@@ -819,9 +904,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             let parent_args = tcx.erase_and_anonymize_regions(
                                 GenericArgs::identity_for_item(tcx, typeck_root_def_id),
                             );
-                            let args =
-                                InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty })
-                                    .args;
+                            let args = InlineConstArgs::new(
+                                tcx,
+                                InlineConstArgsParts { parent_args: parent_args.as_slice(), ty },
+                            )
+                            .args;
 
                             let uneval = mir::UnevaluatedConst::new(did.to_def_id(), args);
                             let value = mir::Const::Unevaluated(uneval, ty);
@@ -901,7 +988,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     tcx,
                     typeck_root_def_id,
                 ));
-                let args = InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty }).args;
+                let args = InlineConstArgs::new(
+                    tcx,
+                    InlineConstArgsParts { parent_args: parent_args.as_slice(), ty },
+                )
+                .args;
 
                 ExprKind::ConstBlock { did: did.to_def_id(), args }
             }
@@ -1146,7 +1237,9 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 ExprKind::WrapUnsafeBinder { source: mirrored }
             }
 
-            hir::ExprKind::DropTemps(source) => ExprKind::Use { source: self.mirror_expr(source) },
+            hir::ExprKind::DropTemps(source) => {
+                ExprKind::ValueExpr { source: self.mirror_expr(source) }
+            }
             hir::ExprKind::Array(fields) => ExprKind::Array { fields: self.mirror_exprs(fields) },
             hir::ExprKind::Tup(fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
 
@@ -1170,8 +1263,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
             Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::AssocFn, _)
             | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
-            | Res::Def(DefKind::Const { .. }, _)
-            | Res::Def(DefKind::AssocConst { .. }, _) => {
+            | Res::Def(DefKind::Const, _)
+            | Res::Def(DefKind::AssocConst, _) => {
                 self.typeck_results.user_provided_types().get(hir_id).copied().map(Box::new)
             }
 
@@ -1224,95 +1317,42 @@ impl<'tcx> ThirBuildCx<'tcx> {
         }
     }
 
-    fn splatted_callee(
-        &mut self,
-        expr: &hir::Expr<'_>,
-        span: Span,
-    ) -> (Expr<'tcx>, u16 /* arg_index */, u16 /* arg_count */) {
-        let SplattedDef { def_id, arg_index, arg_count } =
-            self.typeck_results.splatted_def(expr.hir_id).unwrap_or_else(|| {
-                span_bug!(expr.span, "no splatted def for function or method callee")
-            });
-
-        let expr = if let Some(def_id) = def_id {
-            // We're calling a function via a FnDef, and its possibly generic type
-            let def_kind = self.tcx.def_kind(def_id);
-            let user_ty = self.user_args_applied_to_res(expr.hir_id, Res::Def(def_kind, def_id));
-            debug!(
-                "splatted_callee FnDef: user_ty={:?} def_kind={:?} def_id={:?} arg_index={:?} arg_count={:?}",
-                user_ty, def_kind, def_id, arg_index, arg_count,
-            );
-
-            Expr {
-                temp_scope_id: expr.hir_id.local_id,
-                ty: self
-                    .tcx
-                    .type_of(def_id)
-                    .instantiate(self.tcx, self.typeck_results.node_args(expr.hir_id))
-                    .skip_norm_wip(),
-                span,
-                kind: ExprKind::ZstLiteral { user_ty },
-            }
-        } else {
-            // We're calling a function via a FnPtr and its type
-            // FIXME(splat): populate the side-tables for FnPtrs, using liberated_fn_sigs if needed
-            let fn_ty = self.typeck_results.expr_ty_adjusted(expr);
-            let user_ty =
-                self.typeck_results.user_provided_types().get(expr.hir_id).copied().map(Box::new);
-            debug!(
-                "splatted_callee FnPtr: user_ty={:?} fn_ty={:?} arg_index={:?} arg_count={:?}",
-                user_ty, fn_ty, arg_index, arg_count,
-            );
-
-            if !fn_ty.is_fn() {
-                span_bug!(expr.span, "splatted FnPtr side-tables are not yet implemented")
-            }
-
-            Expr {
-                temp_scope_id: expr.hir_id.local_id,
-                // Create a new FnPtr FnSig type, representing the splatted function arguments with
-                // user-supplied generic types applied
-                ty: Ty::new_fn_ptr(self.tcx, fn_ty.fn_sig(self.tcx)),
-                span,
-                kind: ExprKind::ZstLiteral { user_ty },
-            }
-        };
-
-        (expr, arg_index, arg_count)
-    }
-
     /// The callee has a splatted tuple argument.
     /// Rewrite a splatted call `receiver.f(a, u, v)` into `receiver.f(a, #[rustc_splat] (u, v))`.
     /// The receiver is optional.
     fn convert_splatted_callee(
         &mut self,
-        expr: &hir::Expr<'_>,
+        call_expr: &'tcx hir::Expr<'_>,
         fn_span: Span,
         args: &'tcx [hir::Expr<'tcx>],
-        receiver: Option<&'tcx hir::Expr<'tcx>>,
+        receiver_or_func: SplattedFunc<'tcx>,
     ) -> ExprKind<'tcx> {
         let tcx = self.tcx;
 
-        // The callee has a splatted tuple argument.
-        let (func, tupled_arg_index, tupled_args_count) = self.splatted_callee(expr, fn_span);
-        let tupled_arg_index = usize::from(tupled_arg_index);
-        let tupled_args_count = usize::from(tupled_args_count);
+        // Look up the typeck results
+        let splatted_def =
+            self.typeck_results.splatted_def(call_expr.hir_id).unwrap_or_else(|| {
+                span_bug!(call_expr.span, "no splatted def for function or method callee")
+            });
+
+        let tupled_arg_index = usize::from(splatted_def.arg_index());
+        let tupled_args_count = usize::from(splatted_def.arg_count());
 
         // Splatting an empty tuple is permitted: `a.f() -> Trait::f(a, #[rustc_splat] ())`.
         // In that case, the tupled arg index is one past the end of the args.
         if tupled_arg_index + tupled_args_count > args.len() {
             span_bug!(
-                expr.span,
-                "splatted arg index out of bounds of function args: {:?} + {:?} > {:?} for function call: receiver {:?}, args {:?}",
+                call_expr.span,
+                "splatted arg index out of bounds of function args: {:?} + {:?} > {:?} for function call: {:?}, args {:?}",
                 tupled_arg_index,
                 tupled_args_count,
                 args.len(),
-                receiver,
+                receiver_or_func,
                 args,
             );
         }
 
-        info!("Using splatted function span: {:?}", func.span);
+        debug!("Using splatted function span: {:?}", fn_span);
 
         // Split into non-tupled and tupled arguments
         let initial_non_tupled_args =
@@ -1331,29 +1371,94 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
         let tupled_arg_tys = tupled_args.iter().map(|e| self.typeck_results.expr_ty_adjusted(e));
 
-        let temp_scope_id =
-            if receiver.is_some() { func.temp_scope_id } else { expr.hir_id.local_id };
+        // We need the tupled arguments in HIR/MIR for type checking
+        // FIXME(splat): de-tuple args in codegen for performance
         let tupled_args = Expr {
             ty: Ty::new_tup_from_iter(tcx, tupled_arg_tys),
-            temp_scope_id,
-            span: expr.span,
+            temp_scope_id: call_expr.hir_id.local_id,
+            span: call_expr.span,
             kind: ExprKind::Tuple { fields: self.mirror_exprs(tupled_args) },
         };
 
         let tupled_args = self.thir.exprs.push(tupled_args);
 
-        let mut args =
-            if let Some(receiver) = receiver { vec![self.mirror_expr(receiver)] } else { vec![] };
+        // Handle the receiver as the first arg, if present
+        let mut args = Vec::with_capacity(
+            usize::from(receiver_or_func.has_receiver())
+                + initial_non_tupled_args.len()
+                + 1
+                + final_non_tupled_args.len(),
+        );
+        if let Some(receiver) = receiver_or_func.receiver() {
+            args.push(self.mirror_expr(receiver));
+        }
         args.extend(initial_non_tupled_args);
         args.push(tupled_args);
         args.extend(final_non_tupled_args);
 
-        // We need the tupled arguments in HIR/MIR for type checking, but codegen can
-        // de-tuple them for performance
-        let fn_span = if receiver.is_some() { func.span } else { expr.span };
+        let fn_span = if receiver_or_func.has_receiver() { fn_span } else { call_expr.span };
+
+        let (fn_ty, fun_expr) = match (splatted_def, receiver_or_func.fn_expression()) {
+            // Create a FnDef shim for user-provided types
+            (SplattedDef::FnDef { def_id, arg_index, arg_count }, _) => {
+                // We're calling a function via a FnDef, and its possibly generic type
+                // This is effectively `self.method_callee(call_expr, fn_span, None)`,
+                // applied to `splatted_def` instead of `type_dependent_def`.
+                let def_kind = self.tcx.def_kind(def_id);
+                let user_ty =
+                    self.user_args_applied_to_res(call_expr.hir_id, Res::Def(def_kind, def_id));
+                debug!(
+                    "splatted_callee FnDef: user_ty={:?} def_kind={:?} def_id={:?} arg_index={:?} arg_count={:?}",
+                    user_ty, def_kind, def_id, arg_index, arg_count,
+                );
+
+                // Create a new FnDef expression with user-provided type applied
+                let callee_expr = Expr {
+                    temp_scope_id: call_expr.hir_id.local_id,
+                    ty: self
+                        .tcx
+                        .type_of(def_id)
+                        .instantiate(self.tcx, self.typeck_results.node_args(call_expr.hir_id))
+                        .skip_norm_wip(),
+                    span: fn_span,
+                    kind: ExprKind::ZstLiteral { user_ty },
+                };
+                (callee_expr.ty, self.thir.exprs.push(callee_expr))
+            }
+
+            // We're calling a function via a FnPtr and its type
+            // FIXME(splat): do we need to populate and apply user_provided_types() ?
+            (SplattedDef::FnPtr { fn_ptr_type, arg_index, arg_count }, Some(fn_expression)) => {
+                debug!(
+                    "splatted_callee FnPtr: fn_ty={:?} arg_index={:?} arg_count={:?}",
+                    fn_ptr_type, arg_index, arg_count,
+                );
+
+                if !fn_ptr_type.is_fn() {
+                    span_bug!(
+                        call_expr.span,
+                        "splatted FnPtr side-tables were not populated correctly, non-fn type received: {:?}",
+                        fn_ptr_type
+                    )
+                }
+
+                // Pass through the FnPtr type and the mirrored function path
+                (fn_ptr_type, self.mirror_expr(fn_expression))
+            }
+            // FnPtrs must have a function expression (and they never have method receivers)
+            (SplattedDef::FnPtr { .. }, None) => {
+                span_bug!(
+                    call_expr.span,
+                    "convert_splatted_callee: FnPtr without fn expression (or with receiver) is invalid: splatted_def={:?}, receiver_or_func={:?}",
+                    splatted_def,
+                    receiver_or_func,
+                );
+            }
+        };
+
         ExprKind::Call {
-            ty: func.ty,
-            fun: self.thir.exprs.push(func),
+            ty: fn_ty,
+            fun: fun_expr,
             args: args.into_boxed_slice(),
             from_hir_call: true,
             fn_span,
@@ -1399,8 +1504,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 ExprKind::ConstParam { param, def_id }
             }
 
-            Res::Def(DefKind::Const { .. }, def_id)
-            | Res::Def(DefKind::AssocConst { .. }, def_id) => {
+            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 let user_ty = self.user_args_applied_to_res(expr.hir_id, res);
                 ExprKind::NamedConst { def_id, args, user_ty }
             }
@@ -1416,7 +1520,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     ty::Adt(adt_def, args) => ExprKind::Adt(Box::new(AdtExpr {
                         adt_def: *adt_def,
                         variant_index: adt_def.variant_index_with_ctor_id(def_id),
-                        args,
+                        args: *args,
                         user_ty,
                         fields: Box::new([]),
                         base: AdtExprBase::None,
@@ -1561,7 +1665,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     name: field,
                 },
                 HirProjectionKind::OpaqueCast => {
-                    ExprKind::Use { source: self.thir.exprs.push(captured_place_expr) }
+                    ExprKind::ValueExpr { source: self.thir.exprs.push(captured_place_expr) }
                 }
                 HirProjectionKind::UnwrapUnsafeBinder => ExprKind::PlaceUnwrapUnsafeBinder {
                     source: self.thir.exprs.push(captured_place_expr),

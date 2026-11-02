@@ -17,7 +17,7 @@
    LL|       |    // Splitting this across multiple lines makes it easier to see where the
    LL|       |    // coverage mapping regions begin and end.
    LL|       |    #[rustfmt::skip]
-   LL|      1|    let _closure =
+   LL|       |    let _closure =
    LL|       |        |
    LL|       |            _arg: (),
    LL|       |        |
@@ -60,7 +60,7 @@
    LL|      1|    black_box(());
    LL|       |
    LL|       |    #[rustfmt::skip]
-   LL|      1|    let _const =
+   LL|       |    let _const =
    LL|       |        const
    LL|       |        {
    LL|       |            7 + 4
@@ -70,7 +70,7 @@
    LL|      1|    black_box(());
    LL|       |
    LL|       |    #[rustfmt::skip]
-   LL|      1|    let _async =
+   LL|       |    let _async =
    LL|       |        async
    LL|      0|        {
    LL|      0|            7 + 4
@@ -83,9 +83,9 @@
    LL|       |    // such as the length of an array literal. Handling this case requires
    LL|       |    // `nested_filter::OnlyBodies` or equivalent.
    LL|       |    #[rustfmt::skip]
-   LL|      1|    let _const_block_inside_anon_const =
+   LL|       |    let _const_block_inside_anon_const =
    LL|       |        [
-   LL|       |            0
+   LL|      1|            0
    LL|       |            ;
    LL|       |            7
    LL|       |            +

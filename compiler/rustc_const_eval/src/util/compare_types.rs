@@ -43,5 +43,5 @@ pub fn relate_types<'tcx>(
         Ok(()) => {}
         Err(_) => return false,
     };
-    ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+    ocx.evaluate_obligations_error_on_ambiguity().no_errors()
 }

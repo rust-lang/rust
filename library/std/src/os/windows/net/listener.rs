@@ -1,4 +1,6 @@
 #![unstable(feature = "windows_unix_domain_sockets", issue = "150487")]
+
+use crate::macros::rustdoc_skip_body;
 use crate::os::windows::io::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
 use crate::os::windows::net::{SocketAddr, UnixStream};
 use crate::path::Path;
@@ -16,7 +18,8 @@ use crate::{fmt, io};
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(windows, doc = "```no_run")]
+#[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
 /// #![feature(windows_unix_domain_sockets)]
 /// use std::thread;
 /// use std::os::windows::net::{UnixStream, UnixListener};
@@ -61,7 +64,8 @@ impl UnixListener {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
@@ -84,7 +88,8 @@ impl UnixListener {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::{UnixListener};
     ///
@@ -122,7 +127,8 @@ impl UnixListener {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
@@ -148,7 +154,8 @@ impl UnixListener {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
@@ -158,6 +165,7 @@ impl UnixListener {
     ///     Ok(())
     /// }
     /// ```
+    #[rustdoc_skip_body]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { getsockname(self.0.as_raw(), addr, len) })
     }
@@ -170,7 +178,8 @@ impl UnixListener {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
@@ -194,7 +203,8 @@ impl UnixListener {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
@@ -212,7 +222,8 @@ impl UnixListener {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
@@ -236,7 +247,8 @@ impl UnixListener {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_unix_domain_sockets)]
     /// use std::thread;
     /// use std::os::windows::net::{UnixStream, UnixListener};
@@ -272,7 +284,8 @@ impl UnixListener {
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(windows, doc = "```no_run")]
+#[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
 /// #![feature(windows_unix_domain_sockets)]
 /// use std::thread;
 /// use std::os::windows::net::{UnixStream, UnixListener};
@@ -315,6 +328,7 @@ impl<'a> Iterator for Incoming<'a> {
 
 impl AsRawSocket for UnixListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_socket(&self) -> RawSocket {
         self.0.as_raw_socket()
     }
@@ -322,6 +336,7 @@ impl AsRawSocket for UnixListener {
 
 impl FromRawSocket for UnixListener {
     #[inline]
+    #[rustdoc_skip_body]
     unsafe fn from_raw_socket(sock: RawSocket) -> Self {
         UnixListener(unsafe { Socket::from_raw_socket(sock) })
     }
@@ -329,6 +344,7 @@ impl FromRawSocket for UnixListener {
 
 impl IntoRawSocket for UnixListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_socket(self) -> RawSocket {
         self.0.into_raw_socket()
     }

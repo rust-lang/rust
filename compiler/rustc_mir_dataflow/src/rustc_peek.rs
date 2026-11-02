@@ -1,5 +1,4 @@
-use rustc_hir::attrs::RustcMirKind;
-use rustc_hir::find_attr;
+use rustc_attr_ir::{RustcMirKind, find_attr};
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{Span, sym};

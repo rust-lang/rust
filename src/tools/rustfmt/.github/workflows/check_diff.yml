@@ -32,6 +32,14 @@ on:
       rustfmt_configs:
         description: 'Optional comma separated list of rustfmt config options to pass when running the feature branch'
         required: false
+      release_channel:
+        description: 'Configure which release channel to use when compiling rustfmt'
+        default: stable
+        type: choice
+        options:
+          - stable
+          - beta
+          - nightly
 
 permissions:
   contents: read
@@ -42,11 +50,11 @@ jobs:
 
     steps:
     - name: checkout
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Build check_diff binary
       working-directory: ./check_diff
-      run: cargo build --release
+      run: cargo build --release --locked
 
     - name: Run Diff Check
       working-directory: ./check_diff

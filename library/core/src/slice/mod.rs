@@ -45,6 +45,8 @@ mod specialize;
 
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 pub use ascii::EscapeAscii;
+#[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+pub use ascii::SplitAsciiWhitespace;
 #[unstable(feature = "str_internals", issue = "none")]
 #[doc(hidden)]
 pub use ascii::is_ascii_simple;
@@ -883,7 +885,7 @@ impl<T> [T] {
 
     /// Swaps two elements in the slice.
     ///
-    /// If `a` equals to `b`, it's guaranteed that elements won't change value.
+    /// If `a` equals `b`, it's guaranteed that elements won't change value.
     ///
     /// # Arguments
     ///
@@ -2123,7 +2125,7 @@ impl<T> [T] {
     /// Divides one slice into two at an index, returning `None` if the slice is
     /// too short.
     ///
-    /// If `mid ≤ len` returns a pair of slices where the first will contain all
+    /// If `mid ≤ len`, returns a pair of slices where the first will contain all
     /// indices from `[0, mid)` (excluding the index `mid` itself) and the
     /// second will contain all indices from `[mid, len)` (excluding the index
     /// `len` itself).
@@ -2172,7 +2174,7 @@ impl<T> [T] {
     /// Divides one mutable slice into two at an index, returning `None` if the
     /// slice is too short.
     ///
-    /// If `mid ≤ len` returns a pair of slices where the first will contain all
+    /// If `mid ≤ len`, returns a pair of slices where the first will contain all
     /// indices from `[0, mid)` (excluding the index `mid` itself) and the
     /// second will contain all indices from `[mid, len)` (excluding the index
     /// `len` itself).
@@ -2521,7 +2523,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_split_once)]
     /// let s = [1, 2, 3, 2, 4];
     /// assert_eq!(s.split_once(|&x| x == 2), Some((
     ///     &[1][..],
@@ -2529,7 +2530,7 @@ impl<T> [T] {
     /// )));
     /// assert_eq!(s.split_once(|&x| x == 0), None);
     /// ```
-    #[unstable(feature = "slice_split_once", issue = "112811")]
+    #[stable(feature = "slice_split_once", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn split_once<F>(&self, pred: F) -> Option<(&[T], &[T])>
     where
@@ -2550,7 +2551,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_split_once)]
     /// let s = [1, 2, 3, 2, 4];
     /// assert_eq!(s.rsplit_once(|&x| x == 2), Some((
     ///     &[1, 2, 3][..],
@@ -2558,7 +2558,7 @@ impl<T> [T] {
     /// )));
     /// assert_eq!(s.rsplit_once(|&x| x == 0), None);
     /// ```
-    #[unstable(feature = "slice_split_once", issue = "112811")]
+    #[stable(feature = "slice_split_once", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn rsplit_once<F>(&self, pred: F) -> Option<(&[T], &[T])>
     where
@@ -2784,8 +2784,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(trim_prefix_suffix)]
-    ///
     /// let v = &[10, 40, 30];
     ///
     /// // Prefix present - removes it
@@ -2801,7 +2799,7 @@ impl<T> [T] {
     /// assert_eq!(b"hello".trim_prefix(prefix.as_bytes()), b"llo".as_ref());
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    #[stable(feature = "trim_prefix_suffix", since = "1.100.0")]
     pub fn trim_prefix<P: SlicePattern<Item = T> + ?Sized>(&self, prefix: &P) -> &[T]
     where
         T: PartialEq,
@@ -2827,8 +2825,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(trim_prefix_suffix)]
-    ///
     /// let v = &[10, 40, 30];
     ///
     /// // Suffix present - removes it
@@ -2841,7 +2837,7 @@ impl<T> [T] {
     /// assert_eq!(v.trim_suffix(&[50, 30]), &[10, 40, 30][..]);
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    #[stable(feature = "trim_prefix_suffix", since = "1.100.0")]
     pub fn trim_suffix<P: SlicePattern<Item = T> + ?Sized>(&self, suffix: &P) -> &[T]
     where
         T: PartialEq,
@@ -5331,6 +5327,32 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), Some(Range { start: 4, end: 4 }));
     /// assert_eq!(iter.next(), Some(Range { start: 5, end: 6 }));
     /// ```
+    /// Returning `None` with a slice not aligned to the elements of the base array:
+    /// ```
+    /// use core::range::Range;
+    /// use core::slice::from_ref;
+    ///
+    /// let arr: &[[u8; 4]] = &[[0, 1, 2, 3], [4, 5, 6, 7]];
+    /// let flattened: &[u8] = arr.as_flattened();
+    ///
+    /// // This sub-slice is aligned with the first element of `arr`:
+    /// // &[[0, 1, 2, 3], [4, 5, 6, 7]]
+    /// // &[[0, 1, 2, 3]]
+    /// let aligned_elem: &[u8; 4] = flattened[0..4].try_into().unwrap();
+    /// let aligned_slice: &[[u8; 4]] = from_ref(aligned_elem);
+    ///
+    /// // `aligned_slice` is `&arr[0..1]`
+    /// assert_eq!(arr.subslice_range(aligned_slice), Some(Range { start: 0, end: 1 }));
+    ///
+    /// // This sub-slice is **not** aligned to the elements of `arr`, despite pointing inside it:
+    /// // &[[0, 1, 2, 3], [4, 5, 6, 7]]
+    /// //    &[[1, 2, 3,   4]]
+    /// let misaligned_elem: &[u8; 4] = flattened[1..5].try_into().unwrap();
+    /// let misaligned_slice: &[[u8; 4]] = from_ref(misaligned_elem);
+    ///
+    /// // `misaligned_slice` has no corresponding slice of `arr`
+    /// assert_eq!(arr.subslice_range(misaligned_slice), None);
+    /// ```
     #[must_use]
     #[stable(feature = "substr_range", since = "1.98.0")]
     pub fn subslice_range(&self, subslice: &[T]) -> Option<core::range::Range<usize>> {
@@ -5626,11 +5648,8 @@ where
         // But since it can't be relied on we also have an explicit specialization for T: Copy.
         let len = self.len();
         let src = &src[..len];
-        // FIXME(const_hack): make this a `for idx in 0..self.len()` loop.
-        let mut idx = 0;
-        while idx < self.len() {
-            self[idx].clone_from(&src[idx]);
-            idx += 1;
+        for i in 0..len {
+            self[i].clone_from(&src[i]);
         }
     }
 }
@@ -5667,7 +5686,7 @@ const impl<T> Default for &mut [T] {
     }
 }
 
-#[unstable(feature = "slice_pattern", reason = "stopgap trait for slice patterns", issue = "56345")]
+#[unstable(feature = "slice_pattern", issue = "none", reason = "stopgap trait for slice patterns")]
 /// Patterns in slices - currently, only used by `strip_prefix` and `strip_suffix`.  At a future
 /// point, we hope to generalise `core::str::Pattern` (which at the time of writing is limited to
 /// `str`) to slices, and then this trait will be replaced or abolished.

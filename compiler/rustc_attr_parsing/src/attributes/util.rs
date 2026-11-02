@@ -1,14 +1,14 @@
 use std::num::IntErrorKind;
 
 use rustc_ast::{LitKind, ast};
-use rustc_data_structures::Limit;
+use rustc_attr_ir::RustcVersion;
 use rustc_feature::is_builtin_attr_name;
-use rustc_hir::attrs::RustcVersion;
 use rustc_span::Symbol;
+use rustc_structures::Limit;
 
 use crate::context::AcceptContext;
+use crate::diagnostics::LimitInvalid;
 use crate::parser::{ArgParser, NameValueParser};
-use crate::session_diagnostics::LimitInvalid;
 
 /// Parse a rustc version number written inside string literal in an attribute,
 /// like appears in `since = "1.0.0"`. Suffixes like "-dev" and "-nightly" are

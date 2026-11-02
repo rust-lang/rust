@@ -6,7 +6,7 @@ use crate::diagnostics::{CheckId, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
 pub fn check(path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("edition").path(path));
+    let check = tidy_ctx.start_check(CheckId::new("edition").path(path));
     walk(path, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap();

@@ -1,14 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::macro_backtrace;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::ty::expr_sig;
 use clippy_utils::{is_default_equivalent, sym};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
-use rustc_hir::{AmbigArg, Block, Expr, ExprKind, HirId, LangItem, LetStmt, Node, QPath, Ty, TyKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::declare_lint_pass;
+use rustc_hir::intravisit::{InferKind, Visitor, walk_ty};
+use rustc_hir::{AmbigArg, Block, Expr, ExprKind, HirId, LetStmt, Node, QPath, Ty, TyKind};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -53,7 +53,7 @@ impl LateLintPass<'_> for BoxDefault {
             && !expr.span.in_external_macro(cx.sess().source_map())
             // And the argument expression has the same context as the outer call expression
             // or that we are inside a `vec!` macro expansion
-            && (expr.span.eq_ctxt(arg.span) || is_local_vec_expn(cx, arg, expr))
+            && (expr.span.ctxt() == arg.span.ctxt() || is_local_vec_expn(cx, arg, expr))
             // And the argument is `Default::default()` or the type is specified
             && (is_plain_default(cx, arg_path) || (given_type(cx, expr) && is_default_equivalent(cx, arg)))
         {
@@ -83,9 +83,9 @@ fn is_plain_default(cx: &LateContext<'_>, arg_path: &Expr<'_>) -> bool {
 }
 
 fn is_local_vec_expn(cx: &LateContext<'_>, expr: &Expr<'_>, ref_expr: &Expr<'_>) -> bool {
-    macro_backtrace(expr.span)
-        .next()
-        .is_some_and(|call| cx.tcx.is_diagnostic_item(sym::vec_macro, call.def_id) && call.span.eq_ctxt(ref_expr.span))
+    macro_backtrace(expr.span).next().is_some_and(|call| {
+        cx.tcx.is_diagnostic_item(sym::vec_macro, call.def_id) && call.span.ctxt() == ref_expr.span.ctxt()
+    })
 }
 
 #[derive(Default)]

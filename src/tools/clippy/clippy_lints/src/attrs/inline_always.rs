@@ -1,8 +1,8 @@
 use super::INLINE_ALWAYS;
 use super::utils::is_relevant_expr;
 use clippy_utils::diagnostics::span_lint;
-use rustc_hir::attrs::InlineAttr;
-use rustc_hir::{Attribute, BodyId, find_attr};
+use rustc_attr_ir::{Attribute, InlineAttr, find_attr};
+use rustc_hir::BodyId;
 use rustc_lint::LateContext;
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;

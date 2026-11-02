@@ -352,6 +352,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 tooltip.as_ref(),
                 playground_button.as_deref(),
                 &added_classes,
+                edition,
             )
         );
         Some(Event::Html(s.into()))
@@ -527,7 +528,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for TableWrapper<'a, I> {
         Some(match event {
             Event::Start(Tag::Table(t)) => {
                 self.stored_events.push_back(Event::Start(Tag::Table(t)));
-                Event::Html(CowStr::Borrowed("<div>"))
+                Event::Html(CowStr::Borrowed(r#"<div class="table">"#))
             }
             Event::End(TagEnd::Table) => {
                 self.stored_events.push_back(Event::Html(CowStr::Borrowed("</div>")));
@@ -697,6 +698,14 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
     }
 }
 
+/// A type representing a position of a code block in Markdown.
+///
+/// Either a relative one or more precisely via a `Span`.
+pub(crate) enum CodeBlockPosition {
+    Relative(MdRelLine),
+    Span(Span),
+}
+
 /// A newtype that represents a relative line number in Markdown.
 ///
 /// In other words, this represents an offset from the first line of Markdown
@@ -779,8 +788,26 @@ pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
                 if nb_lines != 0 && !&doc[prev_offset..offset.start].ends_with('\n') {
                     nb_lines -= 1;
                 }
-                let line = MdRelLine::new(nb_lines);
-                tests.visit_test(text, block_info, line, code_mappings);
+
+                let position = if let Some(extra_info) = extra_info
+                    && let Some(fragments) = &extra_info.fragments
+                {
+                    let code_block_str = &doc[offset.clone()];
+                    // let's find the end of line of the lang string, if not assume at least ```
+                    let nl_offset = code_block_str.find('\n').unwrap_or(3);
+                    let lang_range = offset.start..(offset.start + nl_offset);
+                    if let Some((sp, _)) =
+                        source_span_for_markdown_range(extra_info.tcx, doc, &lang_range, fragments)
+                    {
+                        CodeBlockPosition::Span(sp)
+                    } else {
+                        CodeBlockPosition::Relative(MdRelLine::new(nb_lines))
+                    }
+                } else {
+                    CodeBlockPosition::Relative(MdRelLine::new(nb_lines))
+                };
+
+                tests.visit_test(text, block_info, position, code_mappings);
                 prev_offset = offset.start;
             }
             Event::Start(Tag::Heading { level, .. }) => {
@@ -874,7 +901,7 @@ impl<'doc, 'tcx> ExtraInfo<'doc, 'tcx> {
     fn error_invalid_codeblock_attr_with_help(
         &self,
         msg: impl Into<DiagMessage>,
-        f: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
+        f: impl for<'a, 'b> FnOnce(&'b mut Diag<'a>),
     ) {
         self.tcx.emit_node_span_lint(
             crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
@@ -1595,8 +1622,8 @@ impl MarkdownSummaryLine<'_> {
 
         html::push_html(&mut s, without_paragraphs);
 
-        let has_more_content =
-            matches!(summary.inner.peek(), Some(Event::Start(_))) || summary.skipped_tags > 0;
+        let has_more_content = matches!(summary.inner.peek(), Some(Event::Start(_) | Event::Rule))
+            || summary.skipped_tags > 0;
 
         (s, has_more_content)
     }

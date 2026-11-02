@@ -134,7 +134,7 @@ where
         if A::Direction::IS_FORWARD {
             self.seek_to_block_entry(block)
         } else {
-            self.seek_after(Location { block, statement_index: 0 }, Effect::Primary)
+            self.seek_after(block.start_location(), Effect::Primary)
         }
     }
 

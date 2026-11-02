@@ -12,11 +12,13 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clap = { version = "4", features = ["derive", "env"] }
 itertools = "0.15.0"
 proc-macro2 = "1.0"
 quote = "1.0"
 regex = "1.5"
 serde = { version = "1.0", features = ["derive"] }
+stdarch-gen-common = { path = "../stdarch-gen-common" }
 serde_with = { version = "3.2.0", default-features = false, features = ["macros"] }
 serde_yaml = "0.8"
 walkdir = "2.3.2"

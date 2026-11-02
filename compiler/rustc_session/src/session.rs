@@ -1,24 +1,23 @@
 use std::any::Any;
+use std::ops::{Deref, DerefMut};
+use std::path::Component::Prefix;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::{env, io};
 
+use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
-use rustc_data_structures::sync::{
-    AppendOnlyVec, DynSend, DynSync, Lock, MappedReadGuard, ReadGuard, RwLock,
-};
-use rustc_data_structures::{Limit, flock};
+use rustc_data_structures::sync::{AppendOnlyVec, DynSend, DynSync, Lock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
 use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, stderr_destination};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::{
-    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
-    TerminalUrl,
+    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, PResult, TerminalUrl,
 };
 use rustc_feature::UnstableFeatures;
 use rustc_macros::StableHash;
@@ -26,19 +25,20 @@ pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{RealFileName, Span, Symbol};
+use rustc_structures::{CrateType, Limit, LintName};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    Arch, CfgAbi, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel,
-    SanitizerSet, SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility,
-    Target, TargetTuple, TlsModel, apple,
+    Arch, CfgAbi, CodeModel, DebuginfoKind, MergeFunctions, Os, PanicStrategy, RelocModel,
+    RelroLevel, SanitizerSet, SmallDataThresholdSupport, SplitDebuginfo, StackProtector,
+    SymbolVisibility, Target, TargetTuple, TlsModel, apple,
 };
 
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo,
-    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU,
-    OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
+    self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, DebugInfo,
+    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, LtoCli,
+    NATIVE_CPU, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -323,14 +323,142 @@ impl PointerAuthConfig {
     }
 }
 
-/// Represents the data associated with a compilation
-/// session for a single crate.
-pub struct Session {
+/// Partial session built before the full session. More specifically, `EarlySession` is used to
+/// init the codegen backend, and then both pieces are used to build the full `Session`.
+pub struct EarlySession {
     pub target: Target,
     pub host: Target,
     pub opts: config::Options,
-    pub target_tlib_path: Arc<SearchPath>,
     pub psess: ParseSess,
+}
+
+// JUSTIFICATION: defn of the suggested wrapper fns
+#[allow(rustc::bad_opt_access)]
+impl EarlySession {
+    #[inline]
+    pub fn dcx(&self) -> DiagCtxtHandle<'_> {
+        self.psess.dcx()
+    }
+
+    #[inline]
+    pub fn source_map(&self) -> &SourceMap {
+        self.psess.source_map()
+    }
+
+    /// Note: this is simpler than `Session::lto`, hence the `early_` prefix (to more clearly
+    /// distinguish it).
+    pub fn early_lto(&self) -> LtoCli {
+        self.opts.cg.lto
+    }
+
+    pub fn print_llvm_stats(&self) -> bool {
+        self.opts.unstable_opts.print_codegen_stats
+    }
+
+    pub fn print_llvm_stats_json(&self) -> Option<&String> {
+        self.opts.unstable_opts.print_codegen_stats_json.as_ref()
+    }
+
+    pub fn relocation_model(&self) -> RelocModel {
+        self.opts.cg.relocation_model.unwrap_or(self.target.relocation_model)
+    }
+
+    pub fn code_model(&self) -> Option<CodeModel> {
+        self.opts.cg.code_model.or(self.target.code_model)
+    }
+
+    pub fn tls_model(&self) -> TlsModel {
+        self.opts.unstable_opts.tls_model.unwrap_or(self.target.tls_model)
+    }
+
+    /// Returns the panic strategy for this compile session. If the user explicitly selected one
+    /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
+    pub fn panic_strategy(&self) -> PanicStrategy {
+        self.opts.cg.panic.unwrap_or(self.target.panic_strategy)
+    }
+
+    /// Get the deployment target on Apple platforms based on the standard environment variables,
+    /// or fall back to the minimum version supported by `rustc`.
+    ///
+    /// This should be guarded behind `if sess.target.is_like_darwin`.
+    pub fn apple_deployment_target(&self) -> apple::OSVersion {
+        let min = apple::OSVersion::minimum_deployment_target(&self.target);
+        let env_var = apple::deployment_target_env_var(&self.target.os);
+
+        // FIXME(madsmtm): Track changes to this.
+        if let Ok(deployment_target) = env::var(env_var) {
+            match apple::OSVersion::from_str(&deployment_target) {
+                Ok(version) => {
+                    let os_min = apple::OSVersion::os_minimum_deployment_target(&self.target.os);
+                    // It is common that the deployment target is set a bit too low, for example on
+                    // macOS Aarch64 to also target older x86_64. So we only want to warn when
+                    // variable is lower than the minimum OS supported by rustc, not when the
+                    // variable is lower than the minimum for a specific target.
+                    if version < os_min {
+                        self.dcx().emit_warn(diagnostics::AppleDeploymentTarget::TooLow {
+                            env_var,
+                            version: version.fmt_pretty().to_string(),
+                            os_min: os_min.fmt_pretty().to_string(),
+                        });
+                    }
+
+                    // Raise the deployment target to the minimum supported.
+                    version.max(min)
+                }
+                Err(error) => {
+                    self.dcx()
+                        .emit_err(diagnostics::AppleDeploymentTarget::Invalid { env_var, error });
+                    min
+                }
+            }
+        } else {
+            // If no deployment target variable is set, default to the minimum found above.
+            min
+        }
+    }
+
+    pub fn sanitizers(&self) -> SanitizerSet {
+        self.opts
+            .unstable_opts
+            .sanitizer
+            .combine_with_defaults(self.target.options.default_sanitizers)
+    }
+
+    pub fn merge_functions(&self) -> MergeFunctions {
+        self.opts.unstable_opts.merge_functions.unwrap_or(self.target.merge_functions)
+    }
+
+    pub fn is_nightly_build(&self) -> bool {
+        self.opts.unstable_features.is_nightly_build()
+    }
+}
+
+/// Some info about the backend, returned by `CodegenBackend::init` and put into the `Session`.
+#[derive(Default)]
+pub struct CodegenBackendInit {
+    /// See `Session::global_backend_features`.
+    pub global_backend_features: Vec<String>,
+
+    /// See `Session::replaced_intrinsics`.
+    pub replaced_intrinsics: Vec<Symbol>,
+
+    /// See `Session::fallback_intrinsics`.
+    pub fallback_intrinsics: Vec<Symbol>,
+
+    /// See `Session::thin_lto_supported`.
+    pub thin_lto_supported: bool = true,
+}
+
+/// Represents the data associated with a compilation
+/// session for a single crate.
+pub struct Session {
+    /// The `EarlySession` is embedded so it can be passed to functions that need it.
+    /// `Session::deref{_,mut}` exist so the fields within can be accessed as if they were direct
+    /// fields of `Session`.
+    pub early_sess: EarlySession,
+    pub wasm_proc_macro_tuple: TargetTuple,
+    pub wasm_proc_macro_target: Target,
+    pub target_tlib_path: SearchPath,
     pub unstable_features: UnstableFeatures,
     pub config: Cfg,
     pub check_config: CheckCfg,
@@ -340,8 +468,6 @@ pub struct Session {
 
     /// Input, input file path and output file path to this compilation process.
     pub io: CompilerIO,
-
-    incr_comp_session: RwLock<IncrCompSession>,
 
     /// Used by `-Z self-profile`.
     pub prof: SelfProfilerRef,
@@ -375,11 +501,17 @@ pub struct Session {
     /// Architecture to use for interpreting asm!.
     pub asm_arch: Option<InlineAsmArch>,
 
-    /// Set of enabled features for the current target.
-    pub target_features: FxIndexSet<Symbol>,
+    /// Set of actually enabled features for the current target, including ones that are not
+    /// in `cfg(target_feature)` because they are unstable or internal-only.
+    /// This is used by the compiler itself when it needs to know which target features are actually
+    /// going to be enabled in the backend (e.g. for knowing which registers inline asm can use).
+    pub internal_target_features: FxIndexSet<Symbol>,
 
-    /// Set of enabled features for the current target, including unstable ones.
-    pub unstable_target_features: FxIndexSet<Symbol>,
+    /// The list of backend target features for this session. Not used by Rust itself because the
+    /// concrete feature names can be backend-specific. This is computed from the target's base
+    /// features, `-Ctarget-cpu`, `-Ctarget-feature`, and other flags that the current backend
+    /// models as target features (but that are not considered target features in Rust).
+    pub global_backend_features: Vec<String>,
 
     /// The version of the rustc process, possibly including a commit hash and description.
     pub cfg_version: &'static str,
@@ -396,14 +528,16 @@ pub struct Session {
     /// File paths accessed during the build.
     pub file_depinfo: Lock<FxIndexSet<Symbol>>,
 
-    target_filesearch: FileSearch,
-    host_filesearch: FileSearch,
+    target_filesearch: Arc<FileSearch>,
+    host_filesearch: Arc<FileSearch>,
+    wasm_proc_macro_filesearch: Option<Arc<FileSearch>>,
 
-    /// The names of intrinsics that the current codegen backend replaces
-    /// with its own implementations.
+    /// A list of all intrinsics that the current codegen backend definitely replaces with its own
+    /// implementations, which means their fallback bodies do not need to be monomorphized.
     pub replaced_intrinsics: FxHashSet<Symbol>,
-    /// The names of intrinsics that the current codegen backend does *not* replace
-    /// with its own implementations.
+
+    /// A list of all intrinsics that the current codegen backend definitely does *not* replace
+    /// with its own implementations, which means their fallback bodies can be MIR-inlined.
     pub fallback_intrinsics: FxHashSet<Symbol>,
 
     /// Does the codegen backend support ThinLTO?
@@ -415,17 +549,29 @@ pub struct Session {
     /// optimization-pass execution candidate during this compilation.
     pub mir_opt_bisect_eval_count: AtomicUsize,
 
-    /// Enabled features that are used in the current compilation.
-    ///
-    /// The value is the `DepNodeIndex` of the node encodes the used feature.
-    pub used_features: Lock<FxHashMap<Symbol, u32>>,
-
     /// Whether the test harness removed a user-written `#[rustc_main]` attribute
     /// while generating the synthetic test entry point.
     pub removed_rustc_main_attr: AtomicBool,
 
     /// Config specifying targets' pointer authentication preference.
     pub pointer_auth_config: Option<PointerAuthConfig>,
+
+    /// Cached sanitizer set. Cached because it is accessed frequently.
+    sanitizers: SanitizerSet,
+}
+
+impl Deref for Session {
+    type Target = EarlySession;
+
+    fn deref(&self) -> &EarlySession {
+        &self.early_sess
+    }
+}
+
+impl DerefMut for Session {
+    fn deref_mut(&mut self) -> &mut EarlySession {
+        &mut self.early_sess
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -450,7 +596,7 @@ impl CodegenUnits {
 }
 
 pub struct LintGroup {
-    pub name: &'static str,
+    pub name: LintName,
     pub lints: Vec<LintId>,
     pub is_externally_loaded: bool,
 }
@@ -541,16 +687,6 @@ impl Session {
         self.dcx().set_must_produce_diag()
     }
 
-    #[inline]
-    pub fn dcx(&self) -> DiagCtxtHandle<'_> {
-        self.psess.dcx()
-    }
-
-    #[inline]
-    pub fn source_map(&self) -> &SourceMap {
-        self.psess.source_map()
-    }
-
     pub fn proc_macro_quoted_spans(&self) -> impl Iterator<Item = (usize, Span)> {
         // This is equivalent to `.iter().copied().enumerate()`, but that isn't possible for
         // AppendOnlyVec, so we resort to this scheme.
@@ -607,6 +743,18 @@ impl Session {
 
     pub fn is_sanitizer_cfi_normalize_integers_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer_cfi_normalize_integers == Some(true)
+    }
+
+    pub fn is_sanitizer_cfi_recover_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_recover == Some(true)
+    }
+
+    pub fn is_sanitizer_cfi_diag_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_diag == Some(true)
+    }
+
+    pub fn is_sanitizer_cfi_minimal_runtime_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_minimal_runtime == Some(true)
     }
 
     pub fn is_sanitizer_kcfi_arity_enabled(&self) -> bool {
@@ -667,6 +815,9 @@ impl Session {
     pub fn host_filesearch(&self) -> &filesearch::FileSearch {
         &self.host_filesearch
     }
+    pub fn wasm_proc_macro_filesearch(&self) -> &filesearch::FileSearch {
+        self.wasm_proc_macro_filesearch.as_ref().expect("wasm_filesearch not set")
+    }
 
     /// Returns a list of directories where target-specific tool binaries are located. Some fallback
     /// directories are also returned, for example if `--sysroot` is used but tools are missing
@@ -686,45 +837,6 @@ impl Session {
         } else {
             search_paths.collect()
         }
-    }
-
-    pub fn init_incr_comp_session(&self, session_dir: PathBuf, lock_file: flock::Lock) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        if let IncrCompSession::NotInitialized = *incr_comp_session {
-        } else {
-            panic!("Trying to initialize IncrCompSession `{:?}`", *incr_comp_session)
-        }
-
-        *incr_comp_session =
-            IncrCompSession::Active { session_directory: session_dir, _lock_file: lock_file };
-    }
-
-    pub fn finalize_incr_comp_session(&self) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        if let IncrCompSession::Active { .. } = *incr_comp_session {
-        } else {
-            panic!("trying to finalize `IncrCompSession` `{:?}`", *incr_comp_session);
-        }
-
-        // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::FinalizedOrRemoved;
-    }
-
-    pub fn incr_comp_session_dir(&self) -> MappedReadGuard<'_, PathBuf> {
-        let incr_comp_session = self.incr_comp_session.borrow();
-        ReadGuard::map(incr_comp_session, |incr_comp_session| match incr_comp_session {
-            IncrCompSession::NotInitialized | IncrCompSession::FinalizedOrRemoved => panic!(
-                "trying to get session directory from `IncrCompSession`: {:?}",
-                incr_comp_session,
-            ),
-            IncrCompSession::Active { session_directory, .. } => session_directory,
-        })
-    }
-
-    pub fn incr_comp_session_dir_opt(&self) -> Option<MappedReadGuard<'_, PathBuf>> {
-        self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
     }
 
     /// Is this edition 2015?
@@ -815,6 +927,46 @@ impl Session {
             None => Box::new(std::iter::empty()),
         }
     }
+
+    /// Resolves a `path` mentioned inside Rust code, returning an absolute path.
+    ///
+    /// This unifies the logic used for resolving `include_*!` and debugger visualizers.
+    pub fn resolve_path(&self, path: impl Into<PathBuf>, span: Span) -> PResult<'_, PathBuf> {
+        let path = path.into();
+
+        // Relative paths are resolved relative to the file in which they are found
+        // after macro expansion (that is, they are unhygienic).
+        if !path.is_absolute() {
+            let callsite = span.source_callsite();
+            let source_map = self.source_map();
+            let Some(mut base_path) = source_map.span_to_filename(callsite).into_local_path()
+            else {
+                return Err(self.dcx().create_err(diagnostics::ResolveRelativePath {
+                    span,
+                    path: source_map
+                        .filename_for_diagnostics(&source_map.span_to_filename(callsite))
+                        .to_string(),
+                }));
+            };
+            base_path.pop();
+            base_path.push(path);
+            Ok(base_path)
+        } else {
+            // This ensures that Windows verbatim paths are fixed if mixed path separators are used,
+            // which can happen when `concat!` is used to join paths.
+            match path.components().next() {
+                Some(Prefix(prefix)) if prefix.kind().is_verbatim() => {
+                    Ok(path.components().collect())
+                }
+                _ => Ok(path),
+            }
+        }
+    }
+
+    /// Should metadata be embedded within .rlib and .dylib files?
+    pub fn embed_metadata(&self) -> bool {
+        self.opts.cg.embed_metadata.or(self.opts.unstable_opts.embed_metadata).unwrap_or(true)
+    }
 }
 
 // JUSTIFICATION: defn of the suggested wrapper fns
@@ -822,14 +974,6 @@ impl Session {
 impl Session {
     pub fn verbose_internals(&self) -> bool {
         self.opts.unstable_opts.verbose_internals
-    }
-
-    pub fn print_llvm_stats(&self) -> bool {
-        self.opts.unstable_opts.print_codegen_stats
-    }
-
-    pub fn print_llvm_stats_json(&self) -> Option<&String> {
-        self.opts.unstable_opts.print_codegen_stats_json.as_ref()
     }
 
     pub fn verify_llvm_ir(&self) -> bool {
@@ -841,10 +985,7 @@ impl Session {
     }
 
     pub fn mir_opt_level(&self) -> usize {
-        self.opts
-            .unstable_opts
-            .mir_opt_level
-            .unwrap_or_else(|| if self.opts.optimize != OptLevel::No { 2 } else { 1 })
+        self.opts.unstable_opts.mir_opt_level.unwrap_or_else(|| self.opts.optimize.mir_opt_level())
     }
 
     /// Calculates the flavor of LTO to use for this compilation.
@@ -921,12 +1062,6 @@ impl Session {
         }
     }
 
-    /// Returns the panic strategy for this compile session. If the user explicitly selected one
-    /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
-    pub fn panic_strategy(&self) -> PanicStrategy {
-        self.opts.cg.panic.unwrap_or(self.target.panic_strategy)
-    }
-
     pub fn fewer_names(&self) -> bool {
         if let Some(fewer_names) = self.opts.unstable_opts.fewer_names {
             fewer_names
@@ -934,7 +1069,7 @@ impl Session {
             let more_names = self.opts.output_types.contains_key(&OutputType::LlvmAssembly)
                 || self.opts.output_types.contains_key(&OutputType::Bitcode)
                 // AddressSanitizer and MemorySanitizer use alloca name when reporting an issue.
-                || self.opts.unstable_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY);
+                || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY);
             !more_names
         }
     }
@@ -957,18 +1092,6 @@ impl Session {
 
     pub fn contract_checks(&self) -> bool {
         self.opts.unstable_opts.contract_checks.unwrap_or(false)
-    }
-
-    pub fn relocation_model(&self) -> RelocModel {
-        self.opts.cg.relocation_model.unwrap_or(self.target.relocation_model)
-    }
-
-    pub fn code_model(&self) -> Option<CodeModel> {
-        self.opts.cg.code_model.or(self.target.code_model)
-    }
-
-    pub fn tls_model(&self) -> TlsModel {
-        self.opts.unstable_opts.tls_model.unwrap_or(self.target.tls_model)
     }
 
     pub fn direct_access_external_data(&self) -> Option<bool> {
@@ -1060,15 +1183,6 @@ impl Session {
                 .unwrap_or(self.panic_strategy().unwinds() || self.target.default_uwtable)
     }
 
-    /// Returns the number of threads used for the thread pool.
-    ///
-    /// `None` means thread pool is not used and synchronization is disabled.
-    /// `Some(n)` means synchronization is enabled with `n` worker threads.
-    #[inline]
-    pub fn threads(&self) -> Option<usize> {
-        self.opts.unstable_opts.threads
-    }
-
     /// Returns the number of codegen units that should be used for this
     /// compilation
     pub fn codegen_units(&self) -> CodegenUnits {
@@ -1151,48 +1265,8 @@ impl Session {
         self.opts.cg.link_dead_code.unwrap_or(false)
     }
 
-    /// Get the deployment target on Apple platforms based on the standard environment variables,
-    /// or fall back to the minimum version supported by `rustc`.
-    ///
-    /// This should be guarded behind `if sess.target.is_like_darwin`.
-    pub fn apple_deployment_target(&self) -> apple::OSVersion {
-        let min = apple::OSVersion::minimum_deployment_target(&self.target);
-        let env_var = apple::deployment_target_env_var(&self.target.os);
-
-        // FIXME(madsmtm): Track changes to this.
-        if let Ok(deployment_target) = env::var(env_var) {
-            match apple::OSVersion::from_str(&deployment_target) {
-                Ok(version) => {
-                    let os_min = apple::OSVersion::os_minimum_deployment_target(&self.target.os);
-                    // It is common that the deployment target is set a bit too low, for example on
-                    // macOS Aarch64 to also target older x86_64. So we only want to warn when variable
-                    // is lower than the minimum OS supported by rustc, not when the variable is lower
-                    // than the minimum for a specific target.
-                    if version < os_min {
-                        self.dcx().emit_warn(diagnostics::AppleDeploymentTarget::TooLow {
-                            env_var,
-                            version: version.fmt_pretty().to_string(),
-                            os_min: os_min.fmt_pretty().to_string(),
-                        });
-                    }
-
-                    // Raise the deployment target to the minimum supported.
-                    version.max(min)
-                }
-                Err(error) => {
-                    self.dcx()
-                        .emit_err(diagnostics::AppleDeploymentTarget::Invalid { env_var, error });
-                    min
-                }
-            }
-        } else {
-            // If no deployment target variable is set, default to the minimum found above.
-            min
-        }
-    }
-
     pub fn sanitizers(&self) -> SanitizerSet {
-        return self.opts.unstable_opts.sanitizer | self.target.options.default_sanitizers;
+        self.sanitizers
     }
 
     pub fn pointer_authentication(&self) -> bool {
@@ -1268,15 +1342,11 @@ fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<D
 
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
-pub fn build_session(
+pub fn build_early_session(
     sopts: config::Options,
-    io: CompilerIO,
-    driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     target: Target,
-    cfg_version: &'static str,
     ice_file: Option<PathBuf>,
-    using_internal_features: &'static AtomicBool,
-) -> Session {
+) -> EarlySession {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
     // later via the source code.
@@ -1311,6 +1381,37 @@ pub fn build_session(
         dcx.handle().warn(warning)
     }
 
+    let psess = ParseSess::with_dcx(dcx, source_map);
+
+    EarlySession { target, host, opts: sopts, psess }
+}
+
+// JUSTIFICATION: literally session construction
+#[allow(rustc::bad_opt_access)]
+pub fn build_session(
+    early_sess: EarlySession,
+    codegen_backend_init: CodegenBackendInit,
+    io: CompilerIO,
+    driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    cfg_version: &'static str,
+    using_internal_features: &'static AtomicBool,
+) -> Session {
+    let EarlySession { target, host, opts: sopts, psess } = &early_sess;
+    let dcx = psess.dcx();
+
+    let wasm_proc_macro_tuple = TargetTuple::from_tuple("wasm32-wasip2");
+    let (wasm_proc_macro_target, target_warnings) = Target::search(
+        &wasm_proc_macro_tuple,
+        sopts.sysroot.path(),
+        sopts.unstable_opts.unstable_options,
+    )
+    .unwrap_or_else(|e| {
+        dcx.fatal(format!("Error loading wasm proc-macro target specification: {e}"))
+    });
+    for warning in target_warnings.warning_messages() {
+        dcx.warn(warning)
+    }
+
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
     {
         let directory = if let Some(directory) = d { directory } else { std::path::Path::new(".") };
@@ -1324,7 +1425,7 @@ pub fn build_session(
         match profiler {
             Ok(profiler) => Some(Arc::new(profiler)),
             Err(e) => {
-                dcx.handle().emit_warn(diagnostics::FailedToCreateProfiler { err: e.to_string() });
+                dcx.emit_warn(diagnostics::FailedToCreateProfiler { err: e.to_string() });
                 None
             }
         }
@@ -1332,20 +1433,13 @@ pub fn build_session(
         None
     };
 
-    let psess = ParseSess::with_dcx(dcx, source_map);
-
     let host_triple = config::host_tuple();
     let target_triple = sopts.target_triple.tuple();
     // FIXME use host sysroot?
-    let host_tlib_path =
-        Arc::new(SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), host_triple));
-    let target_tlib_path = if host_triple == target_triple {
-        // Use the same `SearchPath` if host and target triple are identical to avoid unnecessary
-        // rescanning of the target lib path and an unnecessary allocation.
-        Arc::clone(&host_tlib_path)
-    } else {
-        Arc::new(SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), target_triple))
-    };
+    let host_tlib_path = SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), host_triple);
+    let target_tlib_path = SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), target_triple);
+    let wasm_proc_macro_tlib_path =
+        SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), wasm_proc_macro_tuple.tuple());
 
     let prof = SelfProfilerRef::new(
         self_profiler,
@@ -1359,36 +1453,59 @@ pub fn build_session(
     });
 
     let asm_arch = if target.allow_asm { InlineAsmArch::from_arch(&target.arch) } else { None };
-    let target_filesearch = filesearch::FileSearch::new(
+    let target_filesearch = Arc::new(filesearch::FileSearch::new(
         &sopts.search_paths,
         &target_tlib_path,
         &target,
         sopts.unstable_opts.implicit_sysroot_deps,
-    );
-    let host_filesearch = filesearch::FileSearch::new(
-        &sopts.search_paths,
-        &host_tlib_path,
-        &host,
-        sopts.unstable_opts.implicit_sysroot_deps,
-    );
+    ));
+    let host_filesearch = if target == host {
+        Arc::clone(&target_filesearch)
+    } else {
+        Arc::new(filesearch::FileSearch::new(
+            &sopts.search_paths,
+            &host_tlib_path,
+            &host,
+            sopts.unstable_opts.implicit_sysroot_deps,
+        ))
+    };
+    let wasm_proc_macro_filesearch = if sopts.unstable_opts.wasm_proc_macros {
+        Some(Arc::new(FileSearch::new(
+            &sopts.search_paths,
+            &wasm_proc_macro_tlib_path,
+            &wasm_proc_macro_target,
+            sopts.unstable_opts.implicit_sysroot_deps,
+        )))
+    } else {
+        None
+    };
 
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
     let pointer_auth_config: Option<PointerAuthConfig> =
         PointerAuthConfig::from_raw(&sopts.unstable_opts.pointer_authentication, &target);
 
+    // `EarlySess::sanitizers` does some computation but is called infrequently. `Sess::sanitizers`
+    // is called much more often so we cache the value.
+    let sanitizers = early_sess.sanitizers();
+
+    let CodegenBackendInit {
+        global_backend_features,
+        replaced_intrinsics,
+        fallback_intrinsics,
+        thin_lto_supported,
+    } = codegen_backend_init;
+
     let sess = Session {
-        target,
-        host,
-        opts: sopts,
+        early_sess,
+        wasm_proc_macro_tuple,
+        wasm_proc_macro_target,
         target_tlib_path,
-        psess,
         unstable_features: UnstableFeatures::from_environment(None),
         config: Cfg::default(),
         check_config: CheckCfg::default(),
         proc_macro_quoted_spans: Default::default(),
         io,
-        incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,
         timings,
         code_stats: Default::default(),
@@ -1397,21 +1514,22 @@ pub fn build_session(
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,
-        target_features: Default::default(),
-        unstable_target_features: Default::default(),
+        internal_target_features: Default::default(),
+        global_backend_features,
         cfg_version,
         using_internal_features,
         env_depinfo: Default::default(),
         file_depinfo: Default::default(),
         target_filesearch,
         host_filesearch,
-        replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
-        fallback_intrinsics: FxHashSet::default(), // filled by `run_compiler`
-        thin_lto_supported: true,                  // filled by `run_compiler`
+        wasm_proc_macro_filesearch,
+        replaced_intrinsics: FxHashSet::from_iter(replaced_intrinsics),
+        fallback_intrinsics: FxHashSet::from_iter(fallback_intrinsics),
+        thin_lto_supported,
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
-        used_features: Lock::default(),
         removed_rustc_main_attr: AtomicBool::new(false),
         pointer_auth_config,
+        sanitizers,
     };
 
     validate_commandline_args_with_session_available(&sess);
@@ -1474,7 +1592,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Do the same for sample profile data.
-    if let Some(ref path) = sess.opts.unstable_opts.profile_sample_use {
+    if let Some(ref path) = sess.opts.cg.profile_sample_use {
         if !path.exists() {
             sess.dcx().emit_err(diagnostics::ProfileSampleUseFileDoesNotExist { path });
         }
@@ -1489,7 +1607,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // Sanitizers can only be used on platforms that we know have working sanitizer codegen.
     let supported_sanitizers = sess.target.options.supported_sanitizers;
-    let mut unsupported_sanitizers = sess.opts.unstable_opts.sanitizer - supported_sanitizers;
+    let mut unsupported_sanitizers = sess.sanitizers() - supported_sanitizers;
     // Niche: if `fixed-x18`, or effectively switching on `reserved-x18` flag, is enabled
     // we should allow Shadow Call Stack sanitizer.
     if sess.opts.unstable_opts.fixed_x18 && sess.target.arch == Arch::AArch64 {
@@ -1510,7 +1628,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Cannot mix and match mutually-exclusive sanitizers.
-    if let Some((first, second)) = sess.opts.unstable_opts.sanitizer.mutually_exclusive() {
+    if let Some((first, second)) = sess.sanitizers().mutually_exclusive() {
         sess.dcx().emit_err(diagnostics::CannotMixAndMatchSanitizers {
             first: first.to_string(),
             second: second.to_string(),
@@ -1518,10 +1636,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Cannot enable crt-static with sanitizers on Linux
-    if sess.crt_static(None)
-        && !sess.opts.unstable_opts.sanitizer.is_empty()
-        && !sess.target.is_like_msvc
-    {
+    if sess.crt_static(None) && !sess.sanitizers().is_empty() && !sess.target.is_like_msvc {
         sess.dcx().emit_err(diagnostics::CannotEnableCrtStaticLinux);
     }
 
@@ -1568,6 +1683,30 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     if sess.is_sanitizer_cfi_generalize_pointers_enabled() {
         if !(sess.is_sanitizer_cfi_enabled() || sess.is_sanitizer_kcfi_enabled()) {
             sess.dcx().emit_err(diagnostics::SanitizerCfiGeneralizePointersRequiresCfi);
+        }
+    }
+
+    // LLVM CFI recovery requires CFI.
+    if sess.is_sanitizer_cfi_recover_enabled() {
+        if !sess.is_sanitizer_cfi_enabled() {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiRecoverRequiresCfi);
+        }
+    }
+
+    // LLVM CFI diagnostics requires CFI.
+    if sess.is_sanitizer_cfi_diag_enabled() {
+        if !sess.is_sanitizer_cfi_enabled() {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiDiagRequiresCfi);
+        }
+    }
+
+    // LLVM CFI minimal runtime requires CFI recovery or CFI diagnostics.
+    if sess.is_sanitizer_cfi_minimal_runtime_enabled() {
+        if !sess.is_sanitizer_cfi_enabled() {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiMinimalRuntimeRequiresCfi);
+        } else if !(sess.is_sanitizer_cfi_recover_enabled() || sess.is_sanitizer_cfi_diag_enabled())
+        {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiMinimalRuntimeRequiresCfiRecoverOrDiag);
         }
     }
 
@@ -1645,10 +1784,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
-    if sess.opts.unstable_opts.instrument_mcount == InstrumentMcount::Fentry
-        && !sess.target.options.supports_fentry
-    {
-        sess.dcx().emit_err(diagnostics::InstrumentationNotSupported { us: "fentry".to_string() });
+    if let InstrumentMcount::Fentry(opts) = sess.opts.unstable_opts.instrument_mcount {
+        if !sess.target.options.supports_fentry {
+            sess.dcx()
+                .emit_err(diagnostics::InstrumentationNotSupported { us: "fentry".to_string() });
+        }
+        if (opts.no_call || opts.record) && sess.target.arch != Arch::S390x {
+            sess.dcx()
+                .emit_err(diagnostics::InstrumentationNotSupported { us: "fentry-*".to_string() });
+        }
     }
 
     if sess.opts.unstable_opts.instrument_xray.is_some() && !sess.target.options.supports_xray {
@@ -1722,20 +1866,51 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 }
 
 /// Holds data on the current incremental compilation session, if there is one.
-#[derive(Debug)]
-enum IncrCompSession {
-    /// This is the state the session will be in until the incr. comp. dir is
-    /// needed.
-    NotInitialized,
-    /// This is the state during which the session directory is private and can
-    /// be modified. `_lock_file` is never directly used, but its presence
-    /// alone has an effect, because the file will unlock when the session is
-    /// dropped.
-    Active { session_directory: PathBuf, _lock_file: flock::Lock },
-    /// This is the state after the session directory has been finalized or
-    /// removed after errors. In this state, the contents of the directory must
-    /// not be modified any more.
-    FinalizedOrRemoved,
+pub struct IncrCompSession {
+    /// The directory from which cached data of a previous session can be read.
+    pub old_session_directory: Option<flock::LockedDir>,
+    /// The directory to which cached data for the current session can be
+    /// written to.
+    pub new_session_directory: flock::LockedDir,
+    borrows: Arc<()>,
+}
+
+impl IncrCompSession {
+    pub fn new(
+        old_session_directory: Option<flock::LockedDir>,
+        new_session_directory: flock::LockedDir,
+    ) -> Self {
+        IncrCompSession { old_session_directory, new_session_directory, borrows: Arc::new(()) }
+    }
+
+    pub fn borrow(&self) -> BorrowedIncrCompSession {
+        BorrowedIncrCompSession {
+            old_session_directory: self.old_session_directory.as_deref().map(ToOwned::to_owned),
+            new_session_directory: (&*self.new_session_directory).to_owned(),
+            _borrows: Arc::clone(&self.borrows),
+        }
+    }
+}
+
+impl Drop for IncrCompSession {
+    fn drop(&mut self) {
+        // Check that there are no worker threads remaining that use the incr
+        // comp session before we unlock the old and new session dir. If there
+        // does exist a worker thread, there is not much we can do, but at
+        // least we will unconditionally complain rather than the worker thread
+        // sometimes crashing depending on what other rustc instances run.
+        assert!(
+            Arc::strong_count(&self.borrows) == 1,
+            "Incr comp session dropped while there are still references",
+        );
+    }
+}
+
+/// A runtime tracked borrow of the incr comp session. Can be sent to worker threads.
+pub struct BorrowedIncrCompSession {
+    pub old_session_directory: Option<PathBuf>,
+    pub new_session_directory: PathBuf,
+    _borrows: Arc<()>,
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
@@ -1758,14 +1933,6 @@ impl EarlyDiagCtxt {
         self.dcx = DiagCtxt::new(emitter);
     }
 
-    pub fn early_note(&self, msg: impl Into<DiagMessage>) {
-        self.dcx.handle().note(msg)
-    }
-
-    pub fn early_help(&self, msg: impl Into<DiagMessage>) {
-        self.dcx.handle().struct_help(msg).emit()
-    }
-
     #[must_use = "raise_fatal must be called on the returned ErrorGuaranteed in order to exit with a non-zero status code"]
     pub fn early_err(&self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
         self.dcx.handle().err(msg)
@@ -1775,7 +1942,7 @@ impl EarlyDiagCtxt {
         self.dcx.handle().fatal(msg)
     }
 
-    pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_, FatalAbort> {
+    pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_> {
         self.dcx.handle().struct_fatal(msg)
     }
 
@@ -1783,7 +1950,7 @@ impl EarlyDiagCtxt {
         self.dcx.handle().warn(msg)
     }
 
-    pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
+    pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_> {
         self.dcx.handle().struct_warn(msg)
     }
 }

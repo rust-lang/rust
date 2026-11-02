@@ -1,6 +1,6 @@
 use crate::map_unit_fn::OPTION_MAP_UNIT_FN;
 use crate::matches::MATCH_AS_REF;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_unsafe_fn, peel_and_count_ty_refs};
@@ -113,11 +113,12 @@ where
     // it's being passed by value.
     let scrutinee = peel_hir_expr_refs(scrutinee).0;
     let (scrutinee_str, _) = snippet_with_context(cx, scrutinee.span, expr_ctxt, "..", &mut app);
-    let scrutinee_str = if scrutinee.span.eq_ctxt(expr.span) && cx.precedence(scrutinee) < ExprPrecedence::Unambiguous {
-        format!("({scrutinee_str})")
-    } else {
-        scrutinee_str.into()
-    };
+    let scrutinee_str =
+        if scrutinee.span.ctxt() == expr.span.ctxt() && cx.precedence(scrutinee) < ExprPrecedence::Unambiguous {
+            format!("({scrutinee_str})")
+        } else {
+            scrutinee_str.into()
+        };
 
     let closure_expr_snip = some_expr.to_snippet_with_context(cx, expr_ctxt, &mut app);
     let closure_body = if some_expr.needs_unsafe_block {
@@ -129,7 +130,7 @@ where
     let body_str = if let PatKind::Binding(annotation, id, some_binding, None) = some_pat.kind {
         if !some_expr.needs_unsafe_block
             && let Some(func) = can_pass_as_func(cx, id, some_expr.expr)
-            && func.span.eq_ctxt(some_expr.expr.span)
+            && func.span.ctxt() == some_expr.expr.span.ctxt()
         {
             snippet_with_applicability(cx, func.span, "..", &mut app).into_owned()
         } else {

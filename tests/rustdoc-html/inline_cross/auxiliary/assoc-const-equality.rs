@@ -1,8 +1,9 @@
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 
 pub fn accept(_: impl Trait<K = 0>) {}
 
 pub trait Trait {
-    type const K: i32;
+    #[rustc_always_gca]
+    const K: i32;
 }

@@ -4,7 +4,8 @@ use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::interpret::{AllocInit, Allocation, GlobalAlloc, InterpResult, Pointer};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{PolyExistentialPredicate, Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
-use rustc_middle::{mir, span_bug, ty};
+use rustc_middle::{mir, ty};
+use rustc_span::span_bug;
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 
@@ -24,7 +25,7 @@ pub(crate) fn type_implements_dyn_trait<'tcx, M: Machine<'tcx>>(
 
     let ty::Dynamic(preds, _) = trait_ty.kind() else {
         span_bug!(
-            ecx.find_closest_untracked_caller_location(),
+            ecx.cur_span(),
             "Invalid type provided to type_implements_predicates. U must be dyn Trait, got {trait_ty}."
         );
     };
@@ -43,7 +44,7 @@ pub(crate) fn type_implements_dyn_trait<'tcx, M: Machine<'tcx>>(
         });
         Obligation::new(ecx.tcx.tcx, ObligationCause::dummy(), param_env, pred)
     }));
-    let type_impls_trait = ocx.evaluate_obligations_error_on_ambiguity().is_empty();
+    let type_impls_trait = ocx.evaluate_obligations_error_on_ambiguity().no_errors();
     // Since `assumed_wf_tys=[]` the choice of LocalDefId is irrelevant, so using the "default"
     let regions_are_valid = ocx.resolve_regions(CRATE_DEF_ID, param_env, []).is_empty();
 

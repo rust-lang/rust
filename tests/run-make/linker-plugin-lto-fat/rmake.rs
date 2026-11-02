@@ -5,6 +5,8 @@
 
 //@ only-x86_64-unknown-linux-gnu
 //@ needs-rust-lld
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{dynamic_lib_name, llvm_as, llvm_objdump, rustc};
 

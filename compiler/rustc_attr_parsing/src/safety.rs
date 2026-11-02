@@ -1,9 +1,8 @@
 use rustc_ast::Safety;
+use rustc_attr_ir::AttrPath;
 use rustc_errors::{Diagnostic, MultiSpan};
-use rustc_hir::AttrPath;
-use rustc_lint_defs::builtin::UNSAFE_CODE;
-use rustc_session::lint::LintId;
-use rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE;
+use rustc_lint_defs::LintId;
+use rustc_lint_defs::builtin::{UNSAFE_ATTR_OUTSIDE_UNSAFE, UNSAFE_CODE};
 use rustc_span::Span;
 
 use crate::attributes::AttributeSafety;
@@ -66,10 +65,10 @@ impl<'sess> AttributeParser<'sess> {
                 }
 
                 if emit_error {
-                    self.emit_err(crate::session_diagnostics::UnsafeAttrOutsideUnsafe {
+                    self.emit_err(crate::diagnostics::UnsafeAttrOutsideUnsafe {
                         span: path_span,
                         suggestion: not_from_proc_macro.then(|| {
-                            crate::session_diagnostics::UnsafeAttrOutsideUnsafeSuggestion {
+                            crate::diagnostics::UnsafeAttrOutsideUnsafeSuggestion {
                                 left: diag_span.shrink_to_lo(),
                                 right: diag_span.shrink_to_hi(),
                             }
@@ -85,7 +84,10 @@ impl<'sess> AttributeParser<'sess> {
                                 suggestion: not_from_proc_macro
                                     .then(|| (diag_span.shrink_to_lo(), diag_span.shrink_to_hi()))
                                     .map(|(left, right)| {
-                                        crate::session_diagnostics::UnsafeAttrOutsideUnsafeSuggestion { left, right }
+                                        crate::diagnostics::UnsafeAttrOutsideUnsafeSuggestion {
+                                            left,
+                                            right,
+                                        }
                                     }),
                             }
                             .into_diag(dcx, level)
@@ -97,7 +99,7 @@ impl<'sess> AttributeParser<'sess> {
             // - Normal builtin attribute
             // - Writing `#[unsafe(..)]` is not permitted on normal builtin attributes
             (AttributeSafety::Normal, Safety::Unsafe(unsafe_span)) => {
-                self.emit_err(crate::session_diagnostics::InvalidAttrUnsafe {
+                self.emit_err(crate::diagnostics::InvalidAttrUnsafe {
                     span: unsafe_span,
                     name: attr_path.clone(),
                 });

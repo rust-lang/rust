@@ -8,6 +8,7 @@
 // Test that ABIs for which C-variadics are not supported report an error.
 
 extern crate minicore;
+use minicore::ffi::VaList;
 use minicore::*;
 
 #[rustfmt::skip]
@@ -27,9 +28,6 @@ mod foreign {
     extern "thiscall-unwind"  { fn thiscall_unwind_foreign(_: ...); }
     //~^ ERROR C-variadic functions with the "thiscall-unwind" calling convention are not supported
 }
-
-#[lang = "va_list"]
-struct VaList(*mut u8);
 
 unsafe fn rust_free(_: ...) {}
 //~^ ERROR `...` is not supported for non-extern functions

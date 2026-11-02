@@ -36,7 +36,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
     // Armv8.0 features not using the standard identifiers
     let fp = _sysctlbyname(c"hw.optional.floatingpoint");
-    let asimd = _sysctlbyname(c"hw.optional.AdvSIMD");
+    let asimd = _sysctlbyname(c"hw.optional.AdvSIMD") || _sysctlbyname(c"hw.optional.arm.AdvSIMD");
     let crc_old = _sysctlbyname(c"hw.optional.armv8_crc32");
 
     // Armv8 and Armv9 features using the standard identifiers

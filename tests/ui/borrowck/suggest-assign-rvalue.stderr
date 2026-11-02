@@ -1,5 +1,5 @@
 error[E0381]: used binding `chaenomeles` isn't initialized
-  --> $DIR/suggest-assign-rvalue.rs:14:11
+  --> $DIR/suggest-assign-rvalue.rs:13:11
    |
 LL |     let chaenomeles;
    |         ----------- binding declared here but left uninitialized
@@ -12,7 +12,7 @@ LL |     let chaenomeles = 42;
    |                     ++++
 
 error[E0381]: used binding `my_float` isn't initialized
-  --> $DIR/suggest-assign-rvalue.rs:23:30
+  --> $DIR/suggest-assign-rvalue.rs:22:30
    |
 LL |     let my_float: f32;
    |         -------- binding declared here but left uninitialized
@@ -25,7 +25,7 @@ LL |     let my_float: f32 = 3.14159;
    |                       +++++++++
 
 error[E0381]: used binding `demo` isn't initialized
-  --> $DIR/suggest-assign-rvalue.rs:26:28
+  --> $DIR/suggest-assign-rvalue.rs:25:28
    |
 LL |     let demo: Demo;
    |         ---- binding declared here but left uninitialized
@@ -38,7 +38,7 @@ LL |     let demo: Demo = Default::default();
    |                    ++++++++++++++++++++
 
 error[E0381]: used binding `demo_no` isn't initialized
-  --> $DIR/suggest-assign-rvalue.rs:30:31
+  --> $DIR/suggest-assign-rvalue.rs:29:31
    |
 LL |     let demo_no: DemoNoDef;
    |         ------- binding declared here but left uninitialized
@@ -51,7 +51,7 @@ LL |     let demo_no: DemoNoDef = /* value */;
    |                            +++++++++++++
 
 error[E0381]: used binding `arr` isn't initialized
-  --> $DIR/suggest-assign-rvalue.rs:34:27
+  --> $DIR/suggest-assign-rvalue.rs:33:27
    |
 LL |     let arr: [i32; 5];
    |         --- binding declared here but left uninitialized
@@ -64,7 +64,7 @@ LL |     let arr: [i32; 5] = [42; 5];
    |                       +++++++++
 
 error[E0381]: used binding `foo` isn't initialized
-  --> $DIR/suggest-assign-rvalue.rs:37:27
+  --> $DIR/suggest-assign-rvalue.rs:36:27
    |
 LL |     let foo: Vec<&str>;
    |         --- binding declared here but left uninitialized
@@ -77,7 +77,7 @@ LL |     let foo: Vec<&str> = vec![];
    |                        ++++++++
 
 error[E0381]: used binding `my_string` isn't initialized
-  --> $DIR/suggest-assign-rvalue.rs:41:31
+  --> $DIR/suggest-assign-rvalue.rs:40:31
    |
 LL |     let my_string: String;
    |         --------- binding declared here but left uninitialized
@@ -90,7 +90,7 @@ LL |     let my_string: String = Default::default();
    |                           ++++++++++++++++++++
 
 error[E0381]: used binding `my_int` isn't initialized
-  --> $DIR/suggest-assign-rvalue.rs:45:28
+  --> $DIR/suggest-assign-rvalue.rs:44:28
    |
 LL |     let my_int: &i32;
    |         ------ binding declared here but left uninitialized
@@ -103,7 +103,7 @@ LL |     let my_int: &i32 = &42;
    |                      +++++
 
 error[E0381]: used binding `hello` isn't initialized
-  --> $DIR/suggest-assign-rvalue.rs:49:27
+  --> $DIR/suggest-assign-rvalue.rs:48:27
    |
 LL |     let hello: &str;
    |         ----- binding declared here but left uninitialized
@@ -116,7 +116,7 @@ LL |     let hello: &str = "";
    |                     ++++
 
 error[E0381]: used binding `never` isn't initialized
-  --> $DIR/suggest-assign-rvalue.rs:53:27
+  --> $DIR/suggest-assign-rvalue.rs:52:27
    |
 LL |     let never: !;
    |         ----- binding declared here but left uninitialized

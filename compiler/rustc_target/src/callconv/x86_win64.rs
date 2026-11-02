@@ -1,4 +1,4 @@
-use rustc_abi::{BackendRepr, Float, Integer, Primitive, Size, TyAbiInterface};
+use rustc_abi::{BackendRepr, Integer, Primitive, Size, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg};
 use crate::spec::{HasTargetSpec, RustcAbi};
@@ -35,11 +35,7 @@ where
                         // FIXME(#134288): This may change for the `-msvc` targets in the future.
                         a.cast_to(Reg::opaque_vector(Size::from_bits(128)));
                     }
-                } else if a.layout.size.bytes() > 8
-                    && !matches!(scalar.primitive(), Primitive::Float(Float::F128))
-                {
-                    // Match what LLVM does for `f128` so that `compiler-builtins` builtins match up
-                    // with what LLVM expects.
+                } else if a.layout.size.bytes() > 8 {
                     a.make_indirect();
                 } else {
                     a.extend_integer_width_to(32);
@@ -48,18 +44,25 @@ where
         }
     };
 
-    if !fn_abi.ret.is_ignore() {
+    // Windows ABIs do not talk about ZST since such types do not exist in MSVC.
+    // However, clang and gcc allow ZST in their windows-gnu targets, and pass them by pointer indirection.
+    // We follow that for `repr(C)` ZSTs (and `repr(transparent)` wrappers around them),
+    // but `repr(Rust)` ones are always ignored (ensuring that `()` matches C `void`).
+
+    if fn_abi.ret.is_ignore() {
+        if fn_abi.ret.layout.is_repr_c() {
+            fn_abi.ret.make_indirect_from_ignore();
+        }
+    } else {
         fixup(&mut fn_abi.ret, true);
     }
 
     for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() && arg.layout.is_zst() {
-            // Windows ABIs do not talk about ZST since such types do not exist in MSVC.
-            // In that sense we can do whatever we want here, and maybe we should throw an error
-            // (but of course that would be a massive breaking change now).
-            // We try to match clang and gcc (which allow ZST is their windows-gnu targets), so we
-            // pass ZST via pointer indirection.
-            arg.make_indirect_from_ignore();
+        if arg.is_ignore() {
+            if arg.layout.is_repr_c() {
+                arg.make_indirect_from_ignore();
+            }
+
             continue;
         }
         if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
@@ -68,7 +71,4 @@ where
         }
         fixup(arg, false);
     }
-    // FIXME: We should likely also do something about ZST return types, similar to above.
-    // However, that's non-trivial due to `()`.
-    // See <https://github.com/rust-lang/unsafe-code-guidelines/issues/552>.
 }

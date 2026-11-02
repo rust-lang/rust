@@ -1,4 +1,4 @@
-main
+src/main.rs
 hello world
 "hello world"
 he\\llo\"world

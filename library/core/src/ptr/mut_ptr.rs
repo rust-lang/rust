@@ -40,8 +40,6 @@ impl<T: PointeeSized> *mut T {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(pointer_try_cast_aligned)]
-    ///
     /// let mut x = 0u64;
     ///
     /// let aligned: *mut u64 = &mut x;
@@ -50,7 +48,7 @@ impl<T: PointeeSized> *mut T {
     /// assert!(aligned.try_cast_aligned::<u32>().is_some());
     /// assert!(unaligned.try_cast_aligned::<u32>().is_none());
     /// ```
-    #[unstable(feature = "pointer_try_cast_aligned", issue = "141221")]
+    #[stable(feature = "pointer_try_cast_aligned", since = "CURRENT_RUSTC_VERSION")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -140,6 +138,7 @@ impl<T: PointeeSized> *mut T {
     /// [without_provenance]: without_provenance_mut
     #[must_use]
     #[inline(always)]
+    #[expect(clippy::transmutes_expressible_as_ptr_casts, reason = "implements pointer cast")]
     #[stable(feature = "strict_provenance", since = "1.84.0")]
     pub fn addr(self) -> usize {
         // A pointer-to-integer transmute currently has exactly the right semantics: it returns the
@@ -256,7 +255,6 @@ impl<T: PointeeSized> *mut T {
     /// [`as_uninit_ref`]: #method.as_uninit_ref-1
     /// [`as_ref_unchecked`]: #method.as_ref_unchecked-1
     /// [`as_mut`]: #method.as_mut
-
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[rustc_const_stable(feature = "const_ptr_is_null", since = "1.84.0")]
     #[inline]
@@ -1127,6 +1125,7 @@ impl<T: PointeeSized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[allow(clippy::ptr_offset_with_cast)]
     #[inline(always)]
     pub const fn wrapping_add(self, count: usize) -> Self
     where
@@ -1375,6 +1374,7 @@ impl<T: PointeeSized> *mut T {
     /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+    #[rustc_diagnostic_item = "ptr_drop_in_place_self"]
     #[inline(always)]
     pub const unsafe fn drop_in_place(self)
     where
@@ -1648,17 +1648,14 @@ impl<T> *mut T {
     /// Performs the same functionality as [`cast_slice`] on a `*const T`, except that a
     /// raw mutable slice is returned, as opposed to a raw immutable slice.
     ///
-    /// This function is safe, but actually using the return value is unsafe.
-    /// See the documentation of [`slice::from_raw_parts_mut`] for slice safety requirements.
+    /// See [`ptr::slice_from_raw_parts`] for more information.
     ///
-    /// [`slice::from_raw_parts_mut`]: crate::slice::from_raw_parts_mut
+    /// [`ptr::slice_from_raw_parts`]: crate::ptr::slice_from_raw_parts
     /// [`cast_slice`]: pointer::cast_slice
     ///
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(ptr_cast_slice)]
-    ///
     /// let x = &mut [5, 6, 7];
     /// let raw_mut_slice = x.as_mut_ptr().cast_slice(3);
     ///
@@ -1673,7 +1670,6 @@ impl<T> *mut T {
     /// the raw slice. A slice reference must never have a null pointer, even if it's empty.
     ///
     /// ```rust,should_panic
-    /// #![feature(ptr_cast_slice)]
     /// use std::ptr;
     /// let danger: *mut [u8] = ptr::null_mut::<u8>().cast_slice(0);
     /// unsafe {
@@ -1681,7 +1677,8 @@ impl<T> *mut T {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "ptr_cast_slice", issue = "149103")]
+    #[stable(feature = "ptr_cast_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_cast_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn cast_slice(self, len: usize) -> *mut [T] {
         slice_from_raw_parts_mut(self, len)
     }
@@ -2028,7 +2025,7 @@ impl<T, const N: usize> *mut [T; N] {
     }
 }
 
-/// Pointer equality is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
+/// For thin pointers, equality is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[diagnostic::on_const(
     message = "pointers cannot be reliably compared during const eval",
@@ -2050,7 +2047,7 @@ impl<T: PointeeSized> PartialEq for *mut T {
 )]
 impl<T: PointeeSized> Eq for *mut T {}
 
-/// Pointer comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
+/// For thin pointers, comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[diagnostic::on_const(
     message = "pointers cannot be reliably compared during const eval",
@@ -2070,7 +2067,7 @@ impl<T: PointeeSized> Ord for *mut T {
     }
 }
 
-/// Pointer comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
+/// For thin pointers, comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[diagnostic::on_const(
     message = "pointers cannot be reliably compared during const eval",

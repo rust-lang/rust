@@ -1,4 +1,4 @@
-//@ only-wasm32-wasip1
+//@ only-wasm32
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -15,20 +15,17 @@ fn main() {
 fn test(args: &[&str]) {
     eprintln!("running with {args:?}");
 
-    rustc().input("bar.rs").target("wasm32-wasip1").args(args).run();
-    rustc().input("foo.rs").target("wasm32-wasip1").args(args).run();
-    rustc().input("main.rs").target("wasm32-wasip1").args(args).run();
+    rustc().input("bar.rs").args(args).run();
+    rustc().input("foo.rs").args(args).emit_wasm_core_module().run();
+    rustc().input("main.rs").args(args).emit_wasm_core_module().run();
 
-    verify_exports(Path::new("foo.wasm"), &[("foo", Func), ("FOO", Global), ("memory", Memory)]);
+    verify_exports(
+        Path::new("foo.wasm"),
+        &[("foo", Func), ("FOO", Global), ("memory", Memory), ("_initialize", Func)],
+    );
     verify_exports(
         Path::new("main.wasm"),
-        &[
-            ("foo", Func),
-            ("FOO", Global),
-            ("_start", Func),
-            ("__main_void", Func),
-            ("memory", Memory),
-        ],
+        &[("foo", Func), ("FOO", Global), ("__main_void", Func), ("memory", Memory)],
     );
 }
 
@@ -41,7 +38,16 @@ fn verify_exports(path: &Path, exports: &[(&str, wasmparser::ExternalKind)]) {
         if let wasmparser::Payload::ExportSection(s) = payload {
             for export in s {
                 let export = export.unwrap();
-                wasm_exports.insert(export.name, export.kind);
+                match export.name {
+                    "__wasm_task_hook"
+                    | "cabi_realloc"
+                    | "__indirect_function_table"
+                    | "_start" => {}
+                    name if name.starts_with("wasi:") => {}
+                    other => {
+                        wasm_exports.insert(other, export.kind);
+                    }
+                }
             }
         }
     }

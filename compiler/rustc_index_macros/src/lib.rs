@@ -26,6 +26,7 @@ mod newtype;
 ///
 /// Accepted attributes for customization:
 /// - `#[stable_hash]`: derives `StableHash`.
+/// - `#[default]`: derives `std::default::Default` returning `Self::ZERO`.
 /// - `#[encodable]`: derives `Encodable`/`Decodable`.
 /// - `#[orderable]`: derives `PartialOrd`/`Ord`, plus step-related methods.
 /// - `#[debug_format = "Foo({})"]`: derives `Debug` with particular output.

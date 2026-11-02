@@ -92,10 +92,10 @@ fn dont_remove_comparison(a: i8) -> i32 {
     // CHECK: switchInt(copy _1) -> [17: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
     // CHECK: [[BB1]]:
     // CHECK: [[cast_1:_.*]] = copy [[b]] as i32 (IntToInt);
-    // CHECK: _0 = Add(const 100_i32, move [[cast_1]]);
+    // CHECK: _0 = Add(move [[cast_1]], const 100_i32);
     // CHECK: [[BB2]]:
     // CHECK: [[cast_2:_.*]] = copy [[b]] as i32 (IntToInt);
-    // CHECK: _0 = Add(const 10_i32, move [[cast_2]]);
+    // CHECK: _0 = Add(move [[cast_2]], const 10_i32);
     let b = a == 17;
     match b {
         false => 10 + b as i32,

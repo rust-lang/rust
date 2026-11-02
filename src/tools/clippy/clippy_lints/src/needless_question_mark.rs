@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::MaybeQPath as _;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Block, Body, Expr, ExprKind, LangItem, MatchSource};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_hir::{Block, Body, Expr, ExprKind, MatchSource};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -107,7 +107,7 @@ fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let ExprKind::Call(called, [inner_expr]) = &inner_expr_with_q.kind
         && let ExprKind::Path(qpath) = called.kind
         && cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitBranch)
-        && expr.span.eq_ctxt(inner_expr.span)
+        && expr.span.ctxt() == inner_expr.span.ctxt()
         && let expr_ty = cx.typeck_results().expr_ty(expr)
         && let inner_ty = cx.typeck_results().expr_ty(inner_expr)
         && expr_ty == inner_ty

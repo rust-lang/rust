@@ -9,6 +9,7 @@ pub mod native_lib;
 mod unix;
 mod windows;
 
+pub mod cpu_affinity;
 pub mod env;
 pub mod extern_static;
 pub mod foreign_items;
@@ -22,9 +23,11 @@ pub mod time;
 pub mod tls;
 pub mod unwind;
 
+pub use self::cpu_affinity::CpuAffinityMask;
 pub use self::files::{FdId, FdTable, FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
 #[cfg(all(feature = "native-lib", unix))]
 pub use self::native_lib::trace::{init_sv, register_retcode_sv};
+pub use self::readiness::DelayedReadinessUpdates;
 pub use self::unix::DirTable;
 
 /// What needs to be done after emulating an item (a shim or an intrinsic) is done.
@@ -43,7 +46,7 @@ impl EmulateItemResult {
     pub fn jump_to_next_block<'tcx, T: Default>(
         self,
         ecx: &mut crate::MiriInterpCx<'tcx>,
-        dest: &crate::MPlaceTy<'tcx>,
+        dest: &crate::PlaceTy<'tcx>,
         ret: Option<rustc_middle::mir::BasicBlock>,
         unwind: Option<rustc_middle::mir::UnwindAction>,
         not_supported: impl FnOnce(&mut crate::MiriInterpCx<'tcx>) -> crate::InterpResult<'tcx, T>,
@@ -52,7 +55,7 @@ impl EmulateItemResult {
 
         match self {
             EmulateItemResult::NeedsReturn => {
-                trace!("{:?}", ecx.dump_place(&dest.clone().into()));
+                trace!("{:?}", ecx.dump_place(dest));
                 ecx.return_to_block(ret)?;
                 interp_ok(T::default())
             }

@@ -27,14 +27,14 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
+#![cfg_attr(bootstrap, feature(debug_closure_helpers))]
 #![cfg_attr(doc, feature(intra_doc_pointers))]
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 #![feature(associated_type_defaults)]
 #![feature(closure_track_caller)]
 #![feature(const_default)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
-#![feature(debug_closure_helpers)]
 #![feature(decl_macro)]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
@@ -44,7 +44,6 @@
 #![feature(gen_blocks)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
-#![feature(never_type)]
 #![feature(option_into_flat_iter)]
 #![feature(ptr_alignment_type)]
 #![feature(range_bounds_is_empty)]
@@ -56,6 +55,7 @@
 #![feature(try_trait_v2_residual)]
 #![feature(try_trait_v2_yeet)]
 #![feature(type_alias_impl_trait)]
+#![feature(variant_count)]
 #![feature(yeet_expr)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
@@ -70,16 +70,16 @@ mod macros;
 pub mod arena;
 
 pub mod dep_graph;
-pub mod error;
+pub mod diagnostics;
 pub mod hir;
 pub mod hooks;
 pub mod ich;
 pub mod infer;
 pub mod lint;
-pub mod metadata;
 pub mod middle;
 pub mod mir;
 pub mod mono;
+pub mod ptrauth;
 pub mod queries;
 pub mod query;
 pub mod thir;

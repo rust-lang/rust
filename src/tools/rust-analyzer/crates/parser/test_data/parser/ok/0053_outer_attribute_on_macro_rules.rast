@@ -1,6 +1,7 @@
 SOURCE_FILE
   MACRO_RULES
-    COMMENT "/// Some docs"
+    DOC_COMMENT
+      OUTER_DOC_COMMENT "/// Some docs"
     WHITESPACE "\n"
     ATTR
       POUND "#"

@@ -1,12 +1,15 @@
-#![feature(generic_const_items, min_generic_const_args)]
+#![feature(generic_const_items, gca_min_const_items)]
 #![expect(incomplete_features)]
 
+use std::gca;
+
 trait Foo {
-    type const ASSOC<const N: u32>: u32;
+    #[rustc_always_gca]
+    const ASSOC<const N: u32>: u32;
 }
 
 impl Foo for () {
-    type const ASSOC<const N: u32>: u32 = N;
+    const ASSOC<const N: u32>: u32 = gca!(N);
 }
 
 fn bar<const N: u64, T: Foo<ASSOC<N> = { N }>>() {}

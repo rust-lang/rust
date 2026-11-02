@@ -47,6 +47,8 @@
     //~^ WARN unexpected `cfg` condition value
     relocation_model = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
+    rust_analyzer = "_UNEXPECTED_VALUE",
+    //~^ WARN unexpected `cfg` condition value
     rustfmt = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     sanitize = "_UNEXPECTED_VALUE",

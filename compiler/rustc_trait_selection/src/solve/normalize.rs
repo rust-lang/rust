@@ -2,7 +2,8 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::at::At;
 use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{
-    FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine,
+    FromSolverError, Normalized, Obligation, PredicateObligation, PredicateObligations,
+    TraitEngine, TraitErrors,
 };
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
@@ -11,22 +12,32 @@ use rustc_middle::ty::{
 };
 use rustc_next_trait_solver::normalize::{NormalizationFolder, NormalizationWasAmbiguous};
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
+use thin_vec::{ThinVec, thin_vec};
 
 use super::{FulfillmentCtxt, NextSolverError};
 use crate::solve::{Certainty, SolverDelegate};
 use crate::traits::{BoundVarReplacer, ScrubbedTraitError};
 
-/// see `normalize_with_universes`.
+/// Normalize a value, deferring ambiguity and errors to fulfillment.
 pub fn normalize<'tcx, T>(at: At<'_, 'tcx>, value: Unnormalized<'tcx, T>) -> Normalized<'tcx, T>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {
-    normalize_with_universes(at, value, vec![])
+    match normalize_with_universes(at, value.clone(), vec![]) {
+        Ok(normalized) => normalized,
+        Err(_) => {
+            let mut replacer =
+                ReplaceAliasWithInfer { at, obligations: Default::default(), universes: vec![] };
+            let value = at.infcx.deeply_resolve_ignoring_regions(value.skip_normalization());
+            let value = value.fold_with(&mut replacer);
+            Normalized { value, obligations: replacer.obligations }
+        }
+    }
 }
 
 /// Like `deeply_normalize`, but we handle ambiguity and inference variables in this routine.
 /// The behavior should be same as the old solver.
-/// For error, we return an infer var plus the failed obligation.
+/// On error, return the failed obligation.
 /// For ambiguity, we have two cases:
 ///   - has_escaping_bound_vars: return the original alias.
 ///   - otherwise: return the normalized result. It can be (partially) inferred
@@ -35,30 +46,36 @@ fn normalize_with_universes<'tcx, T>(
     at: At<'_, 'tcx>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
-) -> Normalized<'tcx, T>
+) -> Result<Normalized<'tcx, T>, PredicateObligation<'tcx>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {
     let infcx = at.infcx;
     let value = value.skip_normalization();
-    let value = infcx.resolve_vars_if_possible(value);
+    let value = infcx.deeply_resolve_ignoring_regions(value);
 
     if !infcx.tcx.renormalize_rigid_aliases() && !value.has_non_rigid_aliases() {
-        return Normalized { value, obligations: Default::default() };
+        return Ok(Normalized { value, obligations: Default::default() });
     }
 
-    let original_value = value.clone();
     let mut stalled_goals = vec![];
-    let mut folder = NormalizationFolder::new(infcx, universes.clone(), |alias_term| {
+    let mut folder = NormalizationFolder::new(infcx, universes, |alias_term| {
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
         let infer_term = delegate.next_term_var_of_alias_kind(alias_term, at.cause.span);
-        let predicate = ty::ProjectionPredicate { projection_term: alias_term, term: infer_term };
+        let predicate = ty::ProjectionClause { projection_term: alias_term, term: infer_term };
         let goal = Goal::new(infcx.tcx, at.param_env, predicate);
         let result = match delegate.evaluate_root_goal(goal, at.cause.span, None) {
             Ok(result) => result,
-            Err(err) => return Err(err),
+            Err(_) => {
+                return Err(Obligation::new(
+                    infcx.tcx,
+                    at.cause.clone(),
+                    goal.param_env,
+                    goal.predicate,
+                ));
+            }
         };
-        let normalized = infcx.resolve_vars_if_possible(infer_term);
+        let normalized = infcx.deeply_resolve_ignoring_regions(infer_term);
         let normalization_was_ambiguous = match result.certainty {
             Certainty::Yes => NormalizationWasAmbiguous::No,
             Certainty::Maybe { .. } => {
@@ -68,19 +85,12 @@ where
         };
         Ok((normalized, normalization_was_ambiguous))
     });
-    if let Ok(value) = value.try_fold_with(&mut folder) {
-        let obligations = stalled_goals
-            .into_iter()
-            .map(|goal| {
-                Obligation::new(infcx.tcx, at.cause.clone(), goal.param_env, goal.predicate)
-            })
-            .collect();
-        Normalized { value, obligations }
-    } else {
-        let mut replacer = ReplaceAliasWithInfer { at, obligations: Default::default(), universes };
-        let value = original_value.fold_with(&mut replacer);
-        Normalized { value, obligations: replacer.obligations }
-    }
+    let value = value.try_fold_with(&mut folder)?;
+    let obligations = stalled_goals
+        .into_iter()
+        .map(|goal| Obligation::new(infcx.tcx, at.cause.clone(), goal.param_env, goal.predicate))
+        .collect();
+    Ok(Normalized { value, obligations })
 }
 
 struct ReplaceAliasWithInfer<'me, 'tcx> {
@@ -97,7 +107,7 @@ impl<'me, 'tcx> ReplaceAliasWithInfer<'me, 'tcx> {
             infcx.tcx,
             self.at.cause.clone(),
             self.at.param_env,
-            ty::ProjectionPredicate { projection_term: alias_term, term: infer_term },
+            ty::ProjectionClause { projection_term: alias_term, term: infer_term },
         );
         self.obligations.push(obligation);
         infer_term
@@ -133,6 +143,8 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
         if ty.has_escaping_bound_vars() {
             let (replaced, ..) =
                 BoundVarReplacer::replace_bound_vars(self.at.infcx, &mut self.universes, alias);
+            // Keep the higher-ranked alias in the folded value; the fresh term is only
+            // used to register its projection obligation.
             let _ = self.term_to_infer(replaced.into());
             ty
         } else {
@@ -157,6 +169,8 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
                 &mut self.universes,
                 alias_const,
             );
+            // Keep the higher-ranked alias in the folded value; the fresh term is only
+            // used to register its projection obligation.
             let _ = self.term_to_infer(replaced.into());
             ct
         } else {
@@ -170,7 +184,7 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
 pub fn deeply_normalize<'tcx, T, E>(
     at: At<'_, 'tcx>,
     value: Unnormalized<'tcx, T>,
-) -> Result<T, Vec<E>>
+) -> Result<T, ThinVec<E>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
@@ -189,7 +203,7 @@ pub fn deeply_normalize_with_skipped_universes<'tcx, T, E>(
     at: At<'_, 'tcx>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
-) -> Result<T, Vec<E>>
+) -> Result<T, ThinVec<E>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
@@ -216,12 +230,15 @@ pub fn deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals<'tc
     at: At<'_, 'tcx>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
-) -> Result<(T, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), Vec<E>>
+) -> Result<(T, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), ThinVec<E>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {
-    let Normalized { value, obligations } = normalize_with_universes(at, value, universes);
+    let Normalized { value, obligations } = normalize_with_universes(at, value, universes)
+        .map_err(|obligation| {
+            thin_vec![E::from_solver_error(at.infcx, NextSolverError::TrueError(obligation))]
+        })?;
 
     let mut fulfill_cx = FulfillmentCtxt::new(at.infcx);
     for pred in obligations {
@@ -229,7 +246,7 @@ where
     }
 
     let errors = fulfill_cx.try_evaluate_obligations(at.infcx);
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         return Err(errors);
     }
 
@@ -240,7 +257,7 @@ where
         .collect();
 
     let errors = fulfill_cx.collect_remaining_errors(at.infcx);
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         return Err(errors);
     }
 
@@ -269,7 +286,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let infcx = self.at.infcx;
-        let result: Result<_, Vec<ScrubbedTraitError<'tcx>>> = infcx.commit_if_ok(|_| {
+        let result: Result<_, ThinVec<ScrubbedTraitError<'tcx>>> = infcx.commit_if_ok(|_| {
             deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
                 self.at,
                 Unnormalized::new_wip(ty),
@@ -284,7 +301,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let infcx = self.at.infcx;
-        let result: Result<_, Vec<ScrubbedTraitError<'tcx>>> = infcx.commit_if_ok(|_| {
+        let result: Result<_, ThinVec<ScrubbedTraitError<'tcx>>> = infcx.commit_if_ok(|_| {
             deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
                 self.at,
                 Unnormalized::new_wip(ct),

@@ -12,14 +12,14 @@ pub(crate) fn covmap_var_name() -> CString {
     .expect("covmap variable name should not contain NUL")
 }
 
-pub(crate) fn covmap_section_name(llmod: &llvm::Module) -> CString {
+pub(crate) fn covmap_section_name<'ll>(llmod: llvm::Module<'ll>) -> CString {
     CString::new(llvm::build_byte_buffer(|s| {
         llvm::LLVMRustCoverageWriteCovmapSectionNameToString(llmod, s);
     }))
     .expect("covmap section name should not contain NUL")
 }
 
-pub(crate) fn covfun_section_name(llmod: &llvm::Module) -> CString {
+pub(crate) fn covfun_section_name<'ll>(llmod: llvm::Module<'ll>) -> CString {
     CString::new(llvm::build_byte_buffer(|s| {
         llvm::LLVMRustCoverageWriteCovfunSectionNameToString(llmod, s);
     }))
@@ -64,7 +64,7 @@ pub(crate) fn write_filenames_to_buffer(filenames: &[impl AsRef<str>]) -> Vec<u8
 ///
 /// Each field name has a `_regions` suffix for improved readability after
 /// exhaustive destructing, which ensures that all region types are handled.
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub(crate) struct Regions {
     pub(crate) code_regions: Vec<ffi::CodeRegion>,
     pub(crate) expansion_regions: Vec<ffi::ExpansionRegion>,

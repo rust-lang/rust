@@ -1,5 +1,5 @@
 warning: type parameter `T` must be covered by another type when it appears before the first local type (`B`)
-  --> $DIR/orphan-check-alias.rs:21:6
+  --> $DIR/orphan-check-alias.rs:22:6
    |
 LL | impl<T> foreign::Trait2<B, T> for <T as Id>::Assoc {
    |      ^ uncovered type parameter

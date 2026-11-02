@@ -1,8 +1,8 @@
 // data structures
 #[doc(hidden)]
-pub(super) use rustc_hir::attrs::AttributeKind;
+pub(super) use rustc_attr_ir::AttributeKind;
 #[doc(hidden)]
-pub(super) use rustc_hir::{MethodKind, Target};
+pub(super) use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
 #[doc(hidden)]
 pub(super) use rustc_span::{Ident, Span, Symbol, sym};
 #[doc(hidden)]

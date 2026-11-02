@@ -110,6 +110,7 @@ pub trait Int:
     fn borrowing_sub(self, other: Self, borrow: bool) -> (Self, bool);
     fn leading_zeros(self) -> u32;
     fn trailing_zeros(self) -> u32;
+    fn count_ones(self) -> u32;
     fn ilog2(self) -> u32;
 }
 
@@ -177,6 +178,10 @@ macro_rules! int_impl_common {
 
         fn trailing_zeros(self) -> u32 {
             <Self>::trailing_zeros(self)
+        }
+
+        fn count_ones(self) -> u32 {
+            <Self>::count_ones(self)
         }
 
         fn ilog2(self) -> u32 {
@@ -442,6 +447,7 @@ macro_rules! cast_into {
     };
     ($ty:ty; $($into:ty),*) => {$(
         impl CastInto<$into> for $ty {
+            #[inline]
             fn cast(self) -> $into {
                 // All we can really do to enforce casting rules is check the rules when in
                 // debug mode.
@@ -450,6 +456,7 @@ macro_rules! cast_into {
                 self as $into
             }
 
+            #[inline]
             fn cast_lossy(self) -> $into {
                 self as $into
             }
@@ -469,12 +476,14 @@ macro_rules! cast_into_float {
     };
     ($ty:ty; $($into:ty),*) => {$(
         impl CastInto<$into> for $ty {
+            #[inline]
             fn cast(self) -> $into {
                 #[cfg(not(feature = "compiler-builtins"))]
                 debug_assert_eq!(self as $into as $ty, self, "inexact float cast");
                 self as $into
             }
 
+            #[inline]
             fn cast_lossy(self) -> $into {
                 self as $into
             }
@@ -500,3 +509,5 @@ cast_into_float!(i16);
 cast_into_float!(i32);
 cast_into_float!(i64);
 cast_into_float!(i128);
+cast_into_float!(u64; f64);
+cast_into_float!(f64; f32, i32, i64);

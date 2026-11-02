@@ -7,7 +7,7 @@ use crate::spec::{
 
 pub(crate) fn target() -> Target {
     Target {
-        llvm_target: "armv7-unknown-linux-gnueabihf".into(),
+        llvm_target: "arm-unknown-linux-gnueabihf".into(),
         metadata: TargetMetadata {
             description: Some("Armv7-A Linux, hardfloat (kernel 3.2, glibc 2.17)".into()),
             tier: Some(2),
@@ -21,7 +21,7 @@ pub(crate) fn target() -> Target {
             cfg_abi: CfgAbi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             // Info about features at https://wiki.debian.org/ArmHardFloatPort
-            features: "+v7,+vfp3d16,+thumb2,-neon".into(),
+            features: "+v7,+db,+dsp,+aclass,+perfmon,+vfp3d16,+thumb2".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}__gnu_mcount_nc".into(),
             llvm_mcount_intrinsic: Some("llvm.arm.gnu.eabi.mcount".into()),

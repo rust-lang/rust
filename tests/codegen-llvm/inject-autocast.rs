@@ -1,7 +1,7 @@
 //@ compile-flags: -C opt-level=0 -C target-feature=+kl,+avx512vp2intersect,+avx512vl,+avx512dq,+avxneconvert,+amx-int8
 //@ only-x86_64
 
-#![feature(link_llvm_intrinsics, abi_unadjusted, simd_ffi, portable_simd, repr_simd)]
+#![feature(link_llvm_intrinsics, simd_ffi, portable_simd, repr_simd)]
 #![crate_type = "lib"]
 
 use std::simd::{f32x4, i16x8, i64x2};
@@ -16,7 +16,7 @@ pub struct Tile([i8; 1024]);
 // CHECK-LABEL: @struct_autocast
 #[no_mangle]
 pub unsafe fn struct_autocast(key_metadata: u32, key: i64x2) -> Bar {
-    extern "unadjusted" {
+    extern "llvm-intrinsic" {
         #[link_name = "llvm.x86.encodekey128"]
         fn foo(key_metadata: u32, key: i64x2) -> Bar;
     }
@@ -42,7 +42,7 @@ pub unsafe fn struct_autocast(key_metadata: u32, key: i64x2) -> Bar {
 // CHECK-LABEL: @struct_with_i1_vector_autocast
 #[no_mangle]
 pub unsafe fn struct_with_i1_vector_autocast(a: i64x2, b: i64x2) -> (u8, u8) {
-    extern "unadjusted" {
+    extern "llvm-intrinsic" {
         #[link_name = "llvm.x86.avx512.vp2intersect.q.128"]
         fn foo(a: i64x2, b: i64x2) -> (u8, u8);
     }
@@ -62,7 +62,7 @@ pub unsafe fn struct_with_i1_vector_autocast(a: i64x2, b: i64x2) -> (u8, u8) {
 // CHECK-LABEL: @i1_vector_autocast
 #[no_mangle]
 pub unsafe fn i1_vector_autocast(a: u8, b: u8) -> u8 {
-    extern "unadjusted" {
+    extern "llvm-intrinsic" {
         #[link_name = "llvm.x86.avx512.kadd.b"]
         fn foo(a: u8, b: u8) -> u8;
     }
@@ -77,7 +77,7 @@ pub unsafe fn i1_vector_autocast(a: u8, b: u8) -> u8 {
 // CHECK-LABEL: @bf16_vector_autocast
 #[no_mangle]
 pub unsafe fn bf16_vector_autocast(a: f32x4) -> i16x8 {
-    extern "unadjusted" {
+    extern "llvm-intrinsic" {
         #[link_name = "llvm.x86.vcvtneps2bf16128"]
         fn foo(a: f32x4) -> i16x8;
     }
@@ -90,7 +90,7 @@ pub unsafe fn bf16_vector_autocast(a: f32x4) -> i16x8 {
 // CHECK-LABEL: @amx_autocast
 #[no_mangle]
 pub unsafe fn amx_autocast(m: u16, n: u16, k: u16, a: Tile, b: Tile, c: Tile) -> Tile {
-    extern "unadjusted" {
+    extern "llvm-intrinsic" {
         #[link_name = "llvm.x86.tdpbuud.internal"]
         fn foo(m: u16, n: u16, k: u16, a: Tile, b: Tile, c: Tile) -> Tile;
     }

@@ -1,6 +1,6 @@
 ---
 name: Tracking Issue
-about: A tracking issue for an accepted feature or RFC in Rust.
+about: A tracking issue for an unstable feature in Rust.
 title: Tracking Issue for XXX
 labels: C-tracking-issue
 ---
@@ -8,19 +8,27 @@ labels: C-tracking-issue
 NOTE: For library features, please use the "Library Tracking Issue" template instead.
 
 Thank you for creating a tracking issue! 📜 Tracking issues are for tracking a
-feature from implementation to stabilisation. Make sure to include the relevant
-RFC for the feature if it has one. Otherwise provide a short summary of the
-feature and link any relevant PRs or issues, and remove any sections that are
-not relevant to the feature.
+feature from implementation to stabilisation.
 
 Remember to add team labels to the tracking issue.
-For a language team feature, this would e.g., be `T-lang`.
+For a language team feature, this would e.g., be `T-lang`:
+
+> @rustbot label T-lang
+
 Such a feature should also be labeled with e.g., `F-my_feature`.
 This label is used to associate issues (e.g., bugs and design questions) to the feature.
 -->
 
-This is a tracking issue for the RFC "XXX" (rust-lang/rfcs#NNN).
-The feature gate for the issue is `#![feature(FFF)]`.
+This is a tracking issue for `#![feature(FFF)]`.
+The RFC for this feature is rust-lang/rfcs#NNN.
+
+<!-- 
+Make sure to include the relevant RFC for the feature if it has one.
+
+Otherwise, provide a short summary and motivation of the
+feature and link any relevant PRs or issues.
+Remove any sections that are not relevant to the feature.
+-->
 
 ### About tracking issues
 
@@ -38,8 +46,8 @@ implementing a feature, followed by a PR that stabilises the feature. However
 for larger features an implementation could be broken up into multiple PRs.
 -->
 
-- [ ] Implement the RFC (cc @rust-lang/XXX -- can anyone write up mentoring
-      instructions?)
+- [ ] Create the feature gate
+- [ ] Implement the feature
 - [ ] Adjust documentation ([see instructions on rustc-dev-guide][doc-guide])
 - [ ] Style updates for any new syntax ([nightly-style-procedure])
   - [ ] Style team decision on new formatting
@@ -59,8 +67,8 @@ stabilised. It is useful to link related discussions and conculsions as they
 develop.
 -->
 
-- [ ] list all the "unresolved questions" found in the RFC to ensure they are
-  not forgotten.
+- [ ] List any unresolved questions, including those listed in the RFC if there is one,
+      to ensure they are not forgotten.
 
 ### Implementation history
 

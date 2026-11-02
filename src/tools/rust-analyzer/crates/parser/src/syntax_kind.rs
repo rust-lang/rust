@@ -36,4 +36,19 @@ impl SyntaxKind {
         // Assuming no edition removed keywords...
         self == SyntaxKind::IDENT || self.is_keyword(Edition::LATEST)
     }
+
+    #[inline]
+    pub fn is_l_delimiter(self) -> bool {
+        matches!(self, SyntaxKind::L_CURLY | Self::L_PAREN | Self::L_BRACK)
+    }
+
+    #[inline]
+    pub fn is_r_delimiter(self) -> bool {
+        matches!(self, SyntaxKind::R_CURLY | Self::R_PAREN | Self::R_BRACK)
+    }
+
+    #[inline]
+    pub fn is_delimiter(self) -> bool {
+        self.is_l_delimiter() || self.is_r_delimiter()
+    }
 }

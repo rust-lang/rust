@@ -1,5 +1,6 @@
 use core::fmt;
 use std::hash::{Hash, Hasher};
+use std::range::RangeInclusive;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
@@ -9,10 +10,10 @@ use crate::data_structures::DelayedMap;
 use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
-use crate::solve::VisibleForLeakCheck;
+use crate::solve::{TyOrConstInferVar, VisibleForLeakCheck};
 use crate::{
-    self as ty, Interner, Region, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
+    self as ty, Const, Interner, PredicateProxy, Region, TyVid, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 
 mod private {
@@ -110,16 +111,16 @@ pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// }
     /// ```
     Typeck { defining_opaque_types_and_generators: I::LocalDefIds },
-    /// `PostTypeckUntilBorrowck` is used after `Typeck` has finished, up to and including borrowck,
+    /// `PostTypeckThroughBorrowck` is used after `Typeck` has finished, up to and including borrowck,
     /// for anything that accesses typeck results. This is the behavior that's used mainly in borrowck,
     /// but, for example, also in late lints and other analyses while building MIR. The behavior of
-    /// `PostTypeckUntilBorrowck` is identical to `TypingMode::Typeck` except that the initial value for
+    /// `PostTypeckThroughBorrowck` is identical to `TypingMode::Typeck` except that the initial value for
     /// opaque types is the type computed during HIR typeck with unique unconstrained region inference variables.
     ///
     /// This is currently only used by the new solver as it results in new
     /// non-universal defining uses of opaque types, which is a breaking change.
     /// See tests/ui/impl-trait/non-defining-use/as-projection-term.rs.
-    PostTypeckUntilBorrowck { defining_opaque_types: I::LocalDefIds },
+    PostTypeckThroughBorrowck { defining_opaque_types: I::LocalDefIds },
     /// Any analysis after borrowck for a given body should be able to use all the
     /// hidden types defined by borrowck, without being able to define any new ones.
     ///
@@ -154,6 +155,10 @@ pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// we bail out, setting a field on `EvalCtxt` that indicates the canonicalization must be
     /// rerun in the original typing mode.
     ///
+    /// Specifically, we always reveal auto traits for rigid aliases and thus we don't allow
+    /// incorrectly marked rigid local opaques. We ensure this by immediately bailing out
+    /// when normalizing local opaques.
+    ///
     /// `TypingMode::Coherence` is not replaced by this and is always kept as-is.
     ErasedNotCoherence(S),
 }
@@ -186,8 +191,8 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
                 TypingMode::Typeck { defining_opaque_types_and_generators: r },
             ) => l == r,
             (
-                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: l },
-                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: r },
+                TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: l },
+                TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: r },
             ) => l == r,
             (
                 TypingMode::PostBorrowck { defined_opaque_types: l },
@@ -203,7 +208,7 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
                 TypingMode::Coherence
                 | TypingMode::Reflection
                 | TypingMode::Typeck { .. }
-                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostTypeckThroughBorrowck { .. }
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen
@@ -226,7 +231,7 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
         match self {
             TypingMode::Coherence => true,
             TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. }
             | TypingMode::Reflection
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
@@ -244,7 +249,7 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
         match self {
             TypingMode::Reflection => true,
             TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. }
             | TypingMode::Coherence
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
@@ -263,7 +268,7 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             TypingMode::ErasedNotCoherence(_) => true,
             TypingMode::Coherence
             | TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. }
             | TypingMode::Reflection
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
@@ -283,8 +288,8 @@ impl<I: Interner> TypingMode<I, MayBeErased> {
             TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 TypingMode::Typeck { defining_opaque_types_and_generators }
             }
-            TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
-                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types }
+            TypingMode::PostTypeckThroughBorrowck { defining_opaque_types } => {
+                TypingMode::PostTypeckThroughBorrowck { defining_opaque_types }
             }
             TypingMode::PostBorrowck { defined_opaque_types } => {
                 TypingMode::PostBorrowck { defined_opaque_types }
@@ -328,7 +333,7 @@ impl<I: Interner> TypingMode<I, CantBeErased> {
         if defining_opaque_types.is_empty() {
             TypingMode::non_body_analysis()
         } else {
-            TypingMode::PostTypeckUntilBorrowck { defining_opaque_types }
+            TypingMode::PostTypeckThroughBorrowck { defining_opaque_types }
         }
     }
 
@@ -349,8 +354,8 @@ impl<I: Interner> From<TypingMode<I, CantBeErased>> for TypingMode<I, MayBeErase
             TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 TypingMode::Typeck { defining_opaque_types_and_generators }
             }
-            TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
-                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types }
+            TypingMode::PostTypeckThroughBorrowck { defining_opaque_types } => {
+                TypingMode::PostTypeckThroughBorrowck { defining_opaque_types }
             }
             TypingMode::PostBorrowck { defined_opaque_types } => {
                 TypingMode::PostBorrowck { defined_opaque_types }
@@ -362,6 +367,22 @@ impl<I: Interner> From<TypingMode<I, CantBeErased>> for TypingMode<I, MayBeErase
     }
 }
 
+/// `InferCtxtLike` is one of the two traits abstracting over the [InferCtxt][inferctxt-doc], which
+/// had to be split due to coherence reasons:
+/// - `InferCtxtLike`] contains the parts that have to live in `rustc_infer`, and thus aren't only
+///   about trait-solving. It is implemented [directly on `InferCtxt`][inferctxtlike-impl-doc],
+/// - [SolverDelegate][solverdelegate-doc] contains the parts depending on trait-solving logic, to
+///   provide functionality in `rustc_trait_selection`, and is implemented by a [simple wrapper over
+///   `InferCtxt`][inferctxt-wrapper-doc] there.
+///
+/// More information can also be found in the dedicated chapter in the dev-guide, in [this
+/// section][dev-guide].
+///
+/// [inferctxt-doc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html
+/// [inferctxtlike-impl-doc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#impl-InferCtxtLike-for-InferCtxt%3C'tcx%3E
+/// [solverdelegate-doc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_next_trait_solver/delegate/trait.SolverDelegate.html
+/// [inferctxt-wrapper-doc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/solve/delegate/struct.SolverDelegate.html
+/// [dev-guide]: https://rustc-dev-guide.rust-lang.org/solve/sharing-crates-with-rust-analyzer.html#trait-inferctxtlike-and-trait-solverdelegate
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_infer_ctxt_like")]
 pub trait InferCtxtLike: Sized {
     type Interner: Interner;
@@ -387,45 +408,42 @@ pub trait InferCtxtLike: Sized {
     fn insert_placeholder_assumptions(
         &self,
         u: ty::UniverseIndex,
-        assumptions: Option<crate::region_constraint::Assumptions<Self::Interner>>,
+        assumptions: crate::region_constraint::Assumptions<Self::Interner>,
     );
     fn get_placeholder_assumptions(
         &self,
         u: ty::UniverseIndex,
-    ) -> Option<crate::region_constraint::Assumptions<Self::Interner>>;
+    ) -> crate::region_constraint::Assumptions<Self::Interner>;
+    fn has_placeholder_assumptions(&self, range: RangeInclusive<ty::UniverseIndex>) -> bool;
     fn get_solver_region_constraint(
         &self,
     ) -> crate::region_constraint::RegionConstraint<Self::Interner>;
     fn overwrite_solver_region_constraint(
         &self,
         constraint: crate::region_constraint::RegionConstraint<Self::Interner>,
+        span: <Self::Interner as Interner>::Span,
     );
 
     fn universe_of_ty(&self, ty: ty::TyVid) -> Option<ty::UniverseIndex>;
-    fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex>;
-    fn universe_of_ct(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex>;
+    fn universe_of_region(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex>;
+    fn universe_of_const(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex>;
 
     fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid;
+    fn is_sub_unification_table_root_var(&self, var: ty::TyVid) -> bool;
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid;
 
-    fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> <Self::Interner as Interner>::Ty;
-    fn opportunistic_resolve_int_var(&self, vid: ty::IntVid) -> <Self::Interner as Interner>::Ty;
-    fn opportunistic_resolve_float_var(
-        &self,
-        vid: ty::FloatVid,
-    ) -> <Self::Interner as Interner>::Ty;
-    fn opportunistic_resolve_ct_var(
-        &self,
-        vid: ty::ConstVid,
-    ) -> <Self::Interner as Interner>::Const;
-    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
+    fn shallow_resolve_ty_var(&self, vid: ty::TyVid) -> <Self::Interner as Interner>::Ty;
+    fn shallow_resolve_int_var(&self, vid: ty::IntVid) -> <Self::Interner as Interner>::Ty;
+    fn shallow_resolve_float_var(&self, vid: ty::FloatVid) -> <Self::Interner as Interner>::Ty;
+    fn shallow_resolve_const_var(&self, vid: ty::ConstVid) -> Const<Self::Interner>;
+    fn shallow_resolve_region_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
 
-    fn is_changed_arg(&self, arg: <Self::Interner as Interner>::GenericArg) -> bool;
+    fn ty_or_const_infer_var_changed(&self, var: TyOrConstInferVar) -> bool;
 
     fn next_region_infer(&self) -> Region<Self::Interner>;
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
-    fn next_const_infer(&self) -> <Self::Interner as Interner>::Const;
+    fn next_const_infer(&self) -> Const<Self::Interner>;
     fn fresh_args_for_item(
         &self,
         def_id: <Self::Interner as Interner>::DefId,
@@ -462,7 +480,7 @@ pub trait InferCtxtLike: Sized {
     fn instantiate_ty_var_raw(&self, vid: ty::TyVid, ty: <Self::Interner as Interner>::Ty);
     /// Use `instantiate_const_var` instead unless you have reasons to skip
     /// generalization.
-    fn instantiate_const_var_raw(&self, vid: ty::ConstVid, ct: <Self::Interner as Interner>::Const);
+    fn instantiate_const_var_raw(&self, vid: ty::ConstVid, ct: Const<Self::Interner>);
     fn instantiate_ty_var<R: PredicateEmittingRelation<Self>>(
         &self,
         relation: &mut R,
@@ -478,7 +496,7 @@ pub trait InferCtxtLike: Sized {
         relation: &mut R,
         target_is_expected: bool,
         target_vid: ty::ConstVid,
-        source_ct: <Self::Interner as Interner>::Const,
+        source_ct: Const<Self::Interner>,
     ) -> RelateResult<Self::Interner, ()>;
 
     fn set_tainted_by_errors(&self, e: <Self::Interner as Interner>::ErrorGuaranteed);
@@ -487,12 +505,9 @@ pub trait InferCtxtLike: Sized {
         &self,
         ty: <Self::Interner as Interner>::Ty,
     ) -> <Self::Interner as Interner>::Ty;
-    fn shallow_resolve_const(
-        &self,
-        ty: <Self::Interner as Interner>::Const,
-    ) -> <Self::Interner as Interner>::Const;
+    fn shallow_resolve_const(&self, ty: Const<Self::Interner>) -> Const<Self::Interner>;
 
-    fn resolve_vars_if_possible<T>(&self, value: T) -> T
+    fn deeply_resolve_ignoring_regions<T>(&self, value: T) -> T
     where
         T: TypeFoldable<Self::Interner>;
 
@@ -519,6 +534,7 @@ pub trait InferCtxtLike: Sized {
     fn register_solver_region_constraint(
         &self,
         c: crate::region_constraint::RegionConstraint<Self::Interner>,
+        span: <Self::Interner as Interner>::Span,
     );
 
     fn register_ty_outlives(
@@ -559,6 +575,20 @@ pub trait InferCtxtLike: Sized {
     );
 
     fn reset_opaque_types(&self);
+
+    /// Where possible, replaces type/const/region variables in `value` with their final value.
+    /// If a type/const/region variable has not (yet) been unified, it is left as is.
+    ///
+    /// This is an idempotent operation that does not affect inference state in any way,
+    /// which means it's safe to call this function at will.
+    fn deeply_resolve_via_unification_table<T: TypeFoldable<Self::Interner>>(&self, value: T) -> T {
+        if value.has_infer() {
+            let mut folder = DeepVariableResolver::new(self);
+            value.fold_with(&mut folder)
+        } else {
+            value
+        }
+    }
 }
 
 pub fn may_use_unstable_feature<'a, I: Interner, Infcx>(
@@ -570,7 +600,7 @@ where
     Infcx: InferCtxtLike<Interner = I>,
 {
     // Iterate through all goals in param_env to find the one that has the same symbol.
-    for clause in param_env.caller_bounds().iter() {
+    for clause in param_env.caller_bounds() {
         if let ty::ClauseKind::UnstableFeature(sym) = clause.kind().skip_binder() {
             if sym == symbol {
                 return true;
@@ -597,7 +627,7 @@ where
     match infcx.typing_mode_raw().assert_not_erased() {
         TypingMode::Coherence
         | TypingMode::Typeck { .. }
-        | TypingMode::PostTypeckUntilBorrowck { .. }
+        | TypingMode::PostTypeckThroughBorrowck { .. }
         | TypingMode::Reflection
         | TypingMode::PostBorrowck { .. }
         | TypingMode::PostAnalysis => infcx.cx().features().feature_bound_holds_in_crate(symbol),
@@ -605,20 +635,7 @@ where
     }
 }
 
-/// Resolves ty, region, and const vars to their inferred values or their root vars.
-pub fn eager_resolve_vars<Infcx: InferCtxtLike, T: TypeFoldable<Infcx::Interner>>(
-    infcx: &Infcx,
-    value: T,
-) -> T {
-    if value.has_infer() {
-        let mut folder = EagerResolver::new(infcx);
-        value.fold_with(&mut folder)
-    } else {
-        value
-    }
-}
-
-struct EagerResolver<'a, D, I = <D as InferCtxtLike>::Interner>
+struct DeepVariableResolver<'a, D, I = <D as InferCtxtLike>::Interner>
 where
     D: InferCtxtLike<Interner = I>,
     I: Interner,
@@ -629,13 +646,15 @@ where
     cache: DelayedMap<I::Ty, I::Ty>,
 }
 
-impl<'a, Infcx: InferCtxtLike> EagerResolver<'a, Infcx> {
+impl<'a, Infcx: InferCtxtLike> DeepVariableResolver<'a, Infcx> {
     fn new(delegate: &'a Infcx) -> Self {
-        EagerResolver { delegate, cache: Default::default() }
+        DeepVariableResolver { delegate, cache: Default::default() }
     }
 }
 
-impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerResolver<'_, Infcx> {
+impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
+    for DeepVariableResolver<'_, Infcx>
+{
     fn cx(&self) -> I {
         self.delegate.cx()
     }
@@ -643,15 +662,15 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         match t.kind() {
             ty::Infer(ty::TyVar(vid)) => {
-                let resolved = self.delegate.opportunistic_resolve_ty_var(vid);
+                let resolved = self.delegate.shallow_resolve_ty_var(vid);
                 if t != resolved && resolved.has_infer() {
                     resolved.fold_with(self)
                 } else {
                     resolved
                 }
             }
-            ty::Infer(ty::IntVar(vid)) => self.delegate.opportunistic_resolve_int_var(vid),
-            ty::Infer(ty::FloatVar(vid)) => self.delegate.opportunistic_resolve_float_var(vid),
+            ty::Infer(ty::IntVar(vid)) => self.delegate.shallow_resolve_int_var(vid),
+            ty::Infer(ty::FloatVar(vid)) => self.delegate.shallow_resolve_float_var(vid),
             _ => {
                 if t.has_infer() {
                     if let Some(&ty) = self.cache.get(&t) {
@@ -669,15 +688,15 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
 
     fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
-            ty::ReVar(vid) => self.delegate.opportunistic_resolve_lt_var(vid),
+            ty::ReVar(vid) => self.delegate.shallow_resolve_region_var(vid),
             _ => r,
         }
     }
 
-    fn fold_const(&mut self, c: I::Const) -> I::Const {
+    fn fold_const(&mut self, c: Const<I>) -> Const<I> {
         match c.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                let resolved = self.delegate.opportunistic_resolve_ct_var(vid);
+                let resolved = self.delegate.shallow_resolve_const_var(vid);
                 if c != resolved && resolved.has_infer() {
                     resolved.fold_with(self)
                 } else {
@@ -694,7 +713,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
         }
     }
 
-    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+    fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         if p.has_infer() { p.super_fold_with(self) } else { p }
     }
 

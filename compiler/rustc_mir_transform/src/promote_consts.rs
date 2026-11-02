@@ -16,15 +16,14 @@ use std::{assert_matches, cmp, iter, mem};
 use either::{Left, Right};
 use rustc_const_eval::check_consts::{ConstCx, qualifs};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_middle::mir;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, GenericArgs, List, RegionUtilitiesExt, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, mir, span_bug};
-use rustc_span::{Span, Spanned};
+use rustc_middle::ty::{self, GenericArgs, List, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::{Span, Spanned, bug, span_bug};
 use tracing::{debug, instrument};
 
 use crate::PassPolicy;
@@ -64,7 +63,7 @@ impl<'tcx> crate::MirPass<'tcx> for PromoteTemps<'tcx> {
         self.promoted_fragments.set(promoted);
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Implements promotion by extracting eligible values into separate constant MIR bodies.
         PassPolicy::Required
     }
@@ -299,7 +298,9 @@ impl<'tcx> Validator<'_, 'tcx> {
             | ProjectionElem::UnwrapUnsafeBinder(_) => {}
 
             // Never recurse.
-            ProjectionElem::OpaqueCast(..) | ProjectionElem::Downcast(..) => {
+            ProjectionElem::PhantomDeref
+            | ProjectionElem::OpaqueCast(..)
+            | ProjectionElem::Downcast(..) => {
                 return Err(Unpromotable);
             }
 
@@ -321,6 +322,8 @@ impl<'tcx> Validator<'_, 'tcx> {
                     // can only promote static accesses inside statics.
                     && let Some(hir::ConstContext::Static(..)) = self.const_kind
                     && !self.tcx.is_thread_local_static(did)
+                    // Extern statics can never be read by CTFE, even inside a static.
+                    && !self.tcx.is_foreign_item(did)
                 {
                     // Recurse.
                 } else {
@@ -606,7 +609,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             safe_blocks.insert(safe_block);
             // Let's see if we can find another safe block.
             safe_block = match body.basic_blocks[safe_block].terminator().kind {
-                TerminatorKind::Goto { target } => target,
+                TerminatorKind::Goto { target, .. } => target,
                 TerminatorKind::Call { target: Some(target), .. }
                 | TerminatorKind::Drop { target, .. } => {
                     // This calls a function or the destructor. `target` does not get executed if
@@ -752,7 +755,6 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(span),
                 kind: TerminatorKind::Return,
-                attributes: ThinVec::new(),
             }),
             false,
         ))
@@ -812,11 +814,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         rhs.clone()
                     } else {
                         let unit = Rvalue::Use(
-                            Operand::Constant(Box::new(ConstOperand {
-                                span: statement.source_info.span,
-                                user_ty: None,
-                                const_: Const::zero_sized(self.tcx.types.unit),
-                            })),
+                            Operand::zero_sized_constant(
+                                self.tcx.types.unit,
+                                statement.source_info.span,
+                            ),
                             WithRetag::Yes,
                         );
                         mem::replace(rhs, unit)
@@ -840,8 +841,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 };
                 Terminator {
                     source_info: terminator.source_info,
-                    kind: mem::replace(&mut terminator.kind, TerminatorKind::Goto { target }),
-                    attributes: ThinVec::new(),
+                    kind: mem::replace(&mut terminator.kind, TerminatorKind::goto(target)),
                 }
             };
 
@@ -1094,7 +1094,7 @@ fn promote_candidates<'tcx>(
             && let Some(index) = place.as_local()
         {
             if promoted(index) {
-                terminator.kind = TerminatorKind::Goto { target: *target };
+                terminator.kind = TerminatorKind::goto(*target);
             }
         }
     }

@@ -206,7 +206,7 @@ pub(crate) fn apply_demorgan_iterator(
     let closure_body = closure_expr.body()?;
 
     let op_range = method_call.syntax().text_range();
-    let label = format!("Apply De Morgan's law to `Iterator::{}`", name.text().as_str());
+    let label = format!("Apply De Morgan's law to `Iterator::{}`", name.text());
     acc.add_group(
         &GroupLabel("Apply De Morgan's law".to_owned()),
         AssistId::refactor_rewrite("apply_demorgan_iterator"),
@@ -216,7 +216,7 @@ pub(crate) fn apply_demorgan_iterator(
             let editor = builder.make_editor(method_call.syntax());
             let make = editor.make();
             // replace the method name
-            let new_name = match name.text().as_str() {
+            let new_name = match name.text() {
                 "all" => make.name_ref("any"),
                 "any" => make.name_ref("all"),
                 "is_some_and" => make.name_ref("is_none_or"),

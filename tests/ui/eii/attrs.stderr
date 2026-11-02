@@ -1,5 +1,5 @@
 error: only a small subset of attributes are supported on externally implementable items
-  --> $DIR/attrs.rs:12:1
+  --> $DIR/attrs.rs:9:1
    |
 LL | fn example() {}
    | ^^^^^^^^^^^^
@@ -10,8 +10,20 @@ note: this attribute is not supported
 LL | #[macro_export]
    | ^^^^^^^^^^^^^^^
 
+error: only a small subset of attributes are supported on externally implementable items
+  --> $DIR/attrs.rs:23:1
+   |
+LL | fn no_inline() {}
+   | ^^^^^^^^^^^^^^
+   |
+note: this attribute is not supported
+  --> $DIR/attrs.rs:21:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+
 error: use of deprecated macro `example`: foo
-  --> $DIR/attrs.rs:16:3
+  --> $DIR/attrs.rs:13:3
    |
 LL | #[example]
    |   ^^^^^^^
@@ -23,10 +35,10 @@ LL | #![deny(deprecated)]
    |         ^^^^^^^^^^
 
 error: use of deprecated function `example`: foo
-  --> $DIR/attrs.rs:20:5
+  --> $DIR/attrs.rs:17:5
    |
 LL |     example()
    |     ^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

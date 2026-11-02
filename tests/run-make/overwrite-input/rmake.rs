@@ -8,8 +8,9 @@
 use run_make_support::{diff, rustc};
 
 fn main() {
-    let file_out = rustc().input("main.rs").output("main.rs").run_fail().stderr_utf8();
-    let folder_out = rustc().input("main.rs").output(".").run_fail().stderr_utf8();
+    let file_out =
+        rustc().edition("2015").input("main.rs").output("main.rs").run_fail().stderr_utf8();
+    let folder_out = rustc().edition("2015").input("main.rs").output(".").run_fail().stderr_utf8();
     diff().expected_file("file.stderr").actual_text("actual-file-stderr", file_out).run();
     diff().expected_file("folder.stderr").actual_text("actual-folder-stderr", folder_out).run();
 }

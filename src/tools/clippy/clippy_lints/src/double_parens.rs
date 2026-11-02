@@ -1,9 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{SpanExt, snippet_with_applicability, snippet_with_context};
+use clippy_utils::source::{SpanExt as _, snippet_with_applicability, snippet_with_context};
 use rustc_ast::ast::{Expr, ExprKind, MethodCall};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -48,7 +47,7 @@ impl EarlyLintPass for DoubleParens {
             //  ^^^^  inner
             ExprKind::Paren(inner)
                 if matches!(inner.kind, ExprKind::Paren(_) | ExprKind::Tup(_))
-                    && expr.span.eq_ctxt(inner.span)
+                    && expr.span.ctxt() == inner.span.ctxt()
                     && !expr.span.in_external_macro(cx.sess().source_map())
                     && check_source(cx, inner) =>
             {
@@ -74,10 +73,10 @@ impl EarlyLintPass for DoubleParens {
             // ^^^^^^^^^ expr
             //      ^^^  arg
             //       ^   inner
-            ExprKind::Call(_, args) | ExprKind::MethodCall(box MethodCall { args, .. })
+            ExprKind::Call(_, args) | ExprKind::MethodCall(MethodCall { args, .. })
                 if let [arg] = &**args
                     && let ExprKind::Paren(inner) = &arg.kind
-                    && expr.span.eq_ctxt(arg.span)
+                    && expr.span.ctxt() == arg.span.ctxt()
                     && !arg.span.in_external_macro(cx.sess().source_map())
                     && check_source(cx, arg) =>
             {

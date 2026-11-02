@@ -1,9 +1,8 @@
-use rustc_hir::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_session::Session;
 
 use crate::PassPolicy;
 use crate::check_pointers::{BorrowedFieldProjectionMode, PointerCheck, check_pointers};
@@ -11,9 +10,9 @@ use crate::check_pointers::{BorrowedFieldProjectionMode, PointerCheck, check_poi
 pub(super) struct CheckNull;
 
 impl<'tcx> crate::MirPass<'tcx> for CheckNull {
-    fn policy(&self, sess: &Session) -> PassPolicy {
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // When UB checks are enabled this is part of their semantics, not an optimization.
-        PassPolicy::optional_non_optimization(sess.ub_checks())
+        PassPolicy::optional(ctx.ub_checks())
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -70,8 +69,12 @@ fn insert_null_check<'tcx>(
         // Other usages of null pointers only are UB if the pointee is not a ZST.
         _ => {
             let size_of = tcx.require_lang_item(LangItem::SizeOf, source_info.span);
-            let size_of =
-                Operand::unevaluated_constant(tcx, size_of, &[pointee_ty.into()], source_info.span);
+            let size_of = Operand::unevaluated_constant(
+                tcx,
+                size_of,
+                tcx.mk_args(&[pointee_ty.into()]),
+                source_info.span,
+            );
 
             let pointee_should_be_checked =
                 local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();

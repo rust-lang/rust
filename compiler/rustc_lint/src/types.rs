@@ -2,19 +2,21 @@ use std::iter;
 
 use rustc_abi::{BackendRepr, TagEncoding, Variants, WrappingRange};
 use rustc_ast as ast;
+use rustc_ast::util::parser::ExprPrecedence;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir as hir;
-use rustc_hir::{Expr, ExprKind, HirId, LangItem, find_attr};
-use rustc_middle::bug;
+use rustc_hir::{Expr, ExprKind, HirId};
+use rustc_lint_defs::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
-use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, bug, sym};
 use tracing::debug;
 
 mod improper_ctypes; // these files do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
 pub(crate) use improper_ctypes::ImproperCTypesLint;
 
-use crate::lints::{
+use crate::diagnostics::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
     AmbiguousWidePointerComparisonsAddrSuggestion, AmbiguousWidePointerComparisonsCastSuggestion,
     AmbiguousWidePointerComparisonsExpectSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
@@ -23,6 +25,7 @@ use crate::lints::{
     UnpredictableFunctionPointerComparisonsSuggestion, UnusedComparisons,
     VariantSizeDifferencesDiag,
 };
+use crate::utils::std_or_core;
 use crate::{LateContext, LateLintPass, LintContext};
 
 mod literal;
@@ -110,8 +113,8 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `invalid_nan_comparisons` lint checks comparison with `f32::NAN` or `f64::NAN`
-    /// as one of the operand.
+    /// The `invalid_nan_comparisons` lint checks comparisons with the `NAN` constants
+    /// of `f16`, `f32`, `f64`, and `f128`.
     ///
     /// ### Example
     ///
@@ -124,8 +127,8 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// NaN does not compare meaningfully to anything – not
-    /// even itself – so those comparisons are always false.
+    /// NaN compares unequal to every floating-point value, including itself.
+    /// Use the `is_nan` method to check whether a value is NaN.
     INVALID_NAN_COMPARISONS,
     Warn,
     "detects invalid floating point NaN comparisons"
@@ -226,59 +229,124 @@ fn lint_nan<'tcx>(
     l: &'tcx hir::Expr<'tcx>,
     r: &'tcx hir::Expr<'tcx>,
 ) {
-    fn is_nan(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-        let expr = expr.peel_blocks().peel_borrows();
-        match expr.kind {
-            ExprKind::Path(qpath) => {
-                let Some(def_id) = cx.typeck_results().qpath_res(&qpath, expr.hir_id).opt_def_id()
-                else {
-                    return false;
-                };
-
-                matches!(
-                    cx.tcx.get_diagnostic_name(def_id),
-                    Some(sym::f16_nan | sym::f32_nan | sym::f64_nan | sym::f128_nan)
-                )
+    fn nan_ty(cx: &LateContext<'_>, mut expr: &hir::Expr<'_>) -> Option<ty::FloatTy> {
+        loop {
+            expr = expr.peel_blocks();
+            match expr.kind {
+                ExprKind::AddrOf(.., inner) => expr = inner,
+                _ => break,
             }
-            _ => false,
+        }
+        let ExprKind::Path(qpath) = expr.kind else { return None };
+        let def_id = cx.typeck_results().qpath_res(&qpath, expr.hir_id).opt_def_id()?;
+        Some(match cx.tcx.get_diagnostic_name(def_id)? {
+            sym::f16_nan => ty::FloatTy::F16,
+            sym::f32_nan => ty::FloatTy::F32,
+            sym::f64_nan => ty::FloatTy::F64,
+            sym::f128_nan => ty::FloatTy::F128,
+            _ => return None,
+        })
+    }
+
+    fn nan_method_path(
+        cx: &LateContext<'_>,
+        mut nan: &hir::Expr<'_>,
+        float_ty: ty::FloatTy,
+        cmp_span: Span,
+    ) -> Option<String> {
+        loop {
+            match nan.kind {
+                ExprKind::AddrOf(.., inner) => nan = inner,
+                ExprKind::Block(block, _) if block.stmts.is_empty() => nan = block.expr?,
+                _ => break,
+            }
+        }
+        let ExprKind::Path(hir::QPath::TypeRelative(ty, _)) = nan.kind else {
+            return None;
+        };
+        if !ty.span.from_expansion() && cmp_span.contains(ty.span) {
+            let ty = cx.sess().source_map().span_to_snippet(ty.span).ok()?;
+            Some(format!("<{ty}>::is_nan"))
+        } else if matches!(float_ty, ty::FloatTy::F32 | ty::FloatTy::F64) {
+            let krate = std_or_core(cx)?;
+            Some(format!("::{krate}::primitive::{}::is_nan", float_ty.name_str()))
+        } else {
+            None
         }
     }
 
-    fn eq_ne(
-        e: &hir::Expr<'_>,
-        l: &hir::Expr<'_>,
-        r: &hir::Expr<'_>,
-        f: impl FnOnce(Span, Span) -> InvalidNanComparisonsSuggestion,
-    ) -> InvalidNanComparisons {
-        let suggestion = if let Some(l_span) = l.span.find_ancestor_inside(e.span)
-            && let Some(r_span) = r.span.find_ancestor_inside(e.span)
-        {
-            f(l_span, r_span)
+    fn eq_ne_suggestion<'a>(
+        cx: &LateContext<'a>,
+        cmp: &'a hir::Expr<'a>,
+        value: &'a hir::Expr<'a>,
+        nan: &'a hir::Expr<'a>,
+        float_ty: ty::FloatTy,
+        is_ne: bool,
+    ) -> InvalidNanComparisonsSuggestion {
+        if cmp.span.from_expansion() {
+            return InvalidNanComparisonsSuggestion::Spanless;
+        }
+        let (Some(value_span), Some(nan_span)) = (
+            value.span.find_ancestor_inside_same_ctxt(cmp.span),
+            nan.span.find_ancestor_inside_same_ctxt(cmp.span),
+        ) else {
+            return InvalidNanComparisonsSuggestion::Spanless;
+        };
+        if value_span.overlaps(nan_span) {
+            return InvalidNanComparisonsSuggestion::Spanless;
+        }
+        let remove_nan = if nan_span.lo() < value_span.lo() {
+            nan_span.until(value_span)
         } else {
-            InvalidNanComparisonsSuggestion::Spanless
+            value_span.shrink_to_hi().to(nan_span)
         };
 
-        InvalidNanComparisons::EqNe { suggestion }
+        let Some(mut ty) = cx.typeck_results().expr_ty_opt(value) else {
+            return InvalidNanComparisonsSuggestion::Spanless;
+        };
+        let mut deref_count = 0;
+        while let ty::Ref(_, inner, _) = *ty.kind() {
+            deref_count += 1;
+            ty = inner;
+        }
+        let neg = if is_ne { "!" } else { "" };
+        let Some(method_path) = nan_method_path(cx, nan, float_ty, cmp.span) else {
+            return InvalidNanComparisonsSuggestion::Spanless;
+        };
+        let (open, suffix) = if deref_count != 0 && cx.precedence(value) < ExprPrecedence::Prefix {
+            ("(", "))")
+        } else {
+            ("", ")")
+        };
+        InvalidNanComparisonsSuggestion::Ufcs {
+            prefix: format!("{neg}{method_path}({}{open}", "*".repeat(deref_count)),
+            prefix_span: value_span.shrink_to_lo(),
+            suffix,
+            close_span: value_span.shrink_to_hi(),
+            remove_nan,
+        }
     }
 
+    let Some((value, nan, float_ty)) = nan_ty(cx, l)
+        .map(|float_ty| (r, l, float_ty))
+        .or_else(|| nan_ty(cx, r).map(|float_ty| (l, r, float_ty)))
+    else {
+        return;
+    };
+    let typeck_results = cx.typeck_results();
+    // Custom comparison implementations need not follow primitive float NaN semantics.
+    if ![l, r].into_iter().all(|operand| {
+        typeck_results
+            .expr_ty_opt(operand)
+            .is_some_and(|ty| matches!(*ty.peel_refs().kind(), ty::Float(fty) if fty == float_ty))
+    }) {
+        return;
+    }
     let lint = match binop {
-        hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, l) => {
-            eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
-                nan_plus_binop: l_span.until(r_span),
-                float: r_span.shrink_to_hi(),
-                neg: (binop == hir::BinOpKind::Ne).then(|| r_span.shrink_to_lo()),
-            })
-        }
-        hir::BinOpKind::Eq | hir::BinOpKind::Ne if is_nan(cx, r) => {
-            eq_ne(e, l, r, |l_span, r_span| InvalidNanComparisonsSuggestion::Spanful {
-                nan_plus_binop: l_span.shrink_to_hi().to(r_span),
-                float: l_span.shrink_to_hi(),
-                neg: (binop == hir::BinOpKind::Ne).then(|| l_span.shrink_to_lo()),
-            })
-        }
-        hir::BinOpKind::Lt | hir::BinOpKind::Le | hir::BinOpKind::Gt | hir::BinOpKind::Ge
-            if is_nan(cx, l) || is_nan(cx, r) =>
-        {
+        hir::BinOpKind::Eq | hir::BinOpKind::Ne => InvalidNanComparisons::EqNe {
+            suggestion: eq_ne_suggestion(cx, e, value, nan, float_ty, binop == hir::BinOpKind::Ne),
+        },
+        hir::BinOpKind::Lt | hir::BinOpKind::Le | hir::BinOpKind::Gt | hir::BinOpKind::Ge => {
             InvalidNanComparisons::LtLeGtGe
         }
         _ => return,
@@ -317,7 +385,7 @@ fn lint_wide_pointer<'tcx>(
         let mut modifiers = String::new();
         ty = match ty.kind() {
             ty::RawPtr(ty, _) => *ty,
-            ty::Adt(def, args) if cx.tcx.is_diagnostic_item(sym::NonNull, def.did()) => {
+            ty::Adt(def, args) if cx.tcx.is_lang_item(def.did(), LangItem::NonNull) => {
                 modifiers.push_str(".as_ptr()");
                 args.type_at(0)
             }
@@ -346,13 +414,21 @@ fn lint_wide_pointer<'tcx>(
         return;
     };
 
+    let Some(krate) = std_or_core(cx) else {
+        return cx.emit_span_lint(
+            AMBIGUOUS_WIDE_POINTER_COMPARISONS,
+            e.span,
+            AmbiguousWidePointerComparisons::Warn,
+        );
+    };
+
     let (Some(l_span), Some(r_span)) =
         (l.span.find_ancestor_inside(e.span), r.span.find_ancestor_inside(e.span))
     else {
         return cx.emit_span_lint(
             AMBIGUOUS_WIDE_POINTER_COMPARISONS,
             e.span,
-            AmbiguousWidePointerComparisons::Spanless,
+            AmbiguousWidePointerComparisons::Spanless { krate },
         );
     };
 
@@ -378,6 +454,7 @@ fn lint_wide_pointer<'tcx>(
             AmbiguousWidePointerComparisons::SpanfulEq {
                 addr_metadata_suggestion: (!is_dyn_comparison).then(|| {
                     AmbiguousWidePointerComparisonsAddrMetadataSuggestion {
+                        krate,
                         ne,
                         deref_left,
                         deref_right,
@@ -389,6 +466,7 @@ fn lint_wide_pointer<'tcx>(
                     }
                 }),
                 addr_suggestion: AmbiguousWidePointerComparisonsAddrSuggestion {
+                    krate,
                     ne,
                     deref_left,
                     deref_right,
@@ -510,6 +588,14 @@ fn lint_fn_pointer<'tcx>(
     let middle = l_span.shrink_to_hi().until(r_span.shrink_to_lo());
     let right = r_span.shrink_to_hi().until(e.span.shrink_to_hi());
 
+    let Some(krate) = std_or_core(cx) else {
+        return cx.emit_span_lint(
+            UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
+            e.span,
+            UnpredictableFunctionPointerComparisons::Warn,
+        );
+    };
+
     let sugg =
         // We only check for a right cast as `FnDef` == `FnPtr` is not possible,
         // only `FnPtr == FnDef` is possible.
@@ -517,6 +603,7 @@ fn lint_fn_pointer<'tcx>(
             let fn_sig = r_ty.fn_sig(cx.tcx);
 
             UnpredictableFunctionPointerComparisonsSuggestion::FnAddrEqWithCast {
+                krate,
                 ne,
                 fn_sig,
                 deref_left,
@@ -527,6 +614,7 @@ fn lint_fn_pointer<'tcx>(
             }
         } else {
             UnpredictableFunctionPointerComparisonsSuggestion::FnAddrEq {
+                krate,
                 ne,
                 deref_left,
                 deref_right,
@@ -745,7 +833,7 @@ fn ty_is_known_nonnull<'tcx>(
             }
 
             def.variants().iter().filter_map(|variant| transparent_newtype_field(tcx, variant)).any(
-                |field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, args).skip_norm_wip()),
+                |field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, *args).skip_norm_wip()),
             )
         }
         ty::Pat(base, pat) => {
@@ -867,10 +955,10 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
         ty::Adt(ty_def, args) => {
             let field_ty = match &ty_def.variants().raw[..] {
                 [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
-                    ([], [field]) | ([field], []) => field.ty(tcx, args).skip_norm_wip(),
+                    ([], [field]) | ([field], []) => field.ty(tcx, *args).skip_norm_wip(),
                     ([field1], [field2]) => {
-                        let ty1 = field1.ty(tcx, args).skip_norm_wip();
-                        let ty2 = field2.ty(tcx, args).skip_norm_wip();
+                        let ty1 = field1.ty(tcx, *args).skip_norm_wip();
+                        let ty2 = field2.ty(tcx, *args).skip_norm_wip();
 
                         if is_niche_optimization_candidate(tcx, typing_env, ty1) {
                             ty2

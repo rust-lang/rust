@@ -59,7 +59,7 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK:     _0 = Result::<i32, i32>::Ok(
     // CHECK:     goto -> bb4;
     // CHECK: bb3: {
-    // CHECK:     {{_.*}} = copy (([[controlflow]] as Break).0: std::result::Result<std::convert::Infallible, i32>);
+    // CHECK:     {{_.*}} = copy (([[controlflow]] as Break).0: std::result::Result<!, i32>);
     // CHECK:     _0 = Result::<i32, i32>::Err(
     // CHECK:     goto -> bb4;
     // CHECK: bb4: {
@@ -68,11 +68,11 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK:     switchInt(move _5) -> [0: bb2, 1: bb3, otherwise: bb1];
     // CHECK: bb6: {
     // CHECK:     {{_.*}} = move (([[x]] as Err).0: i32);
-    // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Break(
+    // CHECK:     [[controlflow]] = ControlFlow::<Result<!, i32>, i32>::Break(
     // CHECK:     goto -> bb8;
     // CHECK: bb7: {
     // CHECK:     {{_.*}} = move (([[x]] as Ok).0: i32);
-    // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Continue(
+    // CHECK:     [[controlflow]] = ControlFlow::<Result<!, i32>, i32>::Continue(
     // CHECK:     goto -> bb9;
     // CHECK: bb8: {
     // CHECK:     goto -> bb3;
@@ -656,6 +656,42 @@ fn chained_conditions() -> u8 {
     }
 }
 
+union U {
+    a: u8,
+    b: u8,
+}
+
+fn union_field(x: u8) -> u8 {
+    // CHECK-LABEL: fn union_field(
+    // CHECK: debug u => [[u:_.*]];
+    // CHECK: bb0: {
+    // CHECK:     switchInt(copy ([[u]].0: u8)) -> [0: bb2, otherwise: bb1];
+    // CHECK: bb1: {
+    // CHECK:     goto -> bb3;
+    // CHECK: bb2: {
+    // CHECK:     goto -> bb3;
+    // CHECK: bb3: {
+    // CHECK:     ([[u]].1: u8) = const 5_u8;
+    // CHECK:     switchInt(copy ([[u]].0: u8)) -> [0: bb5, otherwise: bb4];
+
+    // Test for #161898, where the write to `u.b` did not invalidate what was known about `u.a`.
+    let mut u = U { a: x };
+    let r = unsafe {
+        match u.a {
+            0 => 100,
+            _ => 200,
+        }
+    };
+    u.b = 5;
+    let r2 = unsafe {
+        match u.a {
+            0 => 1,
+            _ => 2,
+        }
+    };
+    r + r2
+}
+
 fn main() {
     // CHECK-LABEL: fn main(
     too_complex(Ok(0));
@@ -673,6 +709,7 @@ fn main() {
     floats();
     bitwise_not();
     logical_not();
+    union_field(0);
 }
 
 // EMIT_MIR jump_threading.too_complex.JumpThreading.diff
@@ -693,3 +730,4 @@ fn main() {
 // EMIT_MIR jump_threading.bitwise_not.JumpThreading.diff
 // EMIT_MIR jump_threading.logical_not.JumpThreading.diff
 // EMIT_MIR jump_threading.chained_conditions.JumpThreading.diff
+// EMIT_MIR jump_threading.union_field.JumpThreading.diff

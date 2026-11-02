@@ -2,7 +2,6 @@ error[E0158]: constant pattern cannot depend on generic parameters
   --> $DIR/issue-73976-polymorphic.rs:19:37
    |
 LL | impl<T: 'static> GetTypeId<T> {
-   | -----------------------------
 LL |     pub const VALUE: TypeId = TypeId::of::<T>();
    |     ----------------------- constant defined here
 ...
@@ -15,7 +14,6 @@ error[E0158]: constant pattern cannot depend on generic parameters
   --> $DIR/issue-73976-polymorphic.rs:30:42
    |
 LL | impl<T: 'static> GetTypeNameLen<T> {
-   | ----------------------------------
 LL |     pub const VALUE: usize = any::type_name::<T>().len();
    |     ---------------------- constant defined here
 ...

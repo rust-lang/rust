@@ -1,4 +1,4 @@
-// rustfmt-file_lines: [{"file":"tests/source/issue-3494/crlf.rs","range":[4,5]}]
+//@ rustfmt-file_lines: [{"file":"tests/source/issue-3494/crlf.rs","range":[4,5]}]
 
 pub fn main() {
     let world1 = "world";

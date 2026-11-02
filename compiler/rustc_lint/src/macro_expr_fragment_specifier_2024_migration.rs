@@ -2,14 +2,13 @@
 
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-use rustc_session::lint::fcw;
-use rustc_session::{declare_lint, declare_lint_pass};
+use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
 use rustc_span::edition::Edition;
 use rustc_span::sym;
 use tracing::debug;
 
 use crate::EarlyLintPass;
-use crate::lints::MacroExprFragment2024;
+use crate::diagnostics::MacroExprFragment2024;
 
 declare_lint! {
     /// The `edition_2024_expr_fragment_specifier` lint detects the use of

@@ -13,10 +13,10 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn normalize_anon_const(
         &mut self,
-        goal: Goal<I, ty::ProjectionPredicate<I>>,
+        goal: Goal<I, ty::ProjectionClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let alias_const = goal.predicate.projection_term.expect_ct();
-        self.evaluate_const_and_instantiate_projection_term(
+        self.evaluate_const(
             goal.param_env,
             goal.predicate.projection_term,
             goal.predicate.term,

@@ -1,7 +1,9 @@
 //@ compile-flags: -Znext-solver
 
-#![feature(min_generic_const_args, macroless_generic_const_args, generic_const_args)]
+#![feature(gca_min_const_items, gca_const_items)]
 #![expect(incomplete_features)]
+
+use std::gca;
 
 trait Trait {
     const PROJECTED_A: usize;
@@ -27,13 +29,13 @@ const FREE_B: usize = 1;
 struct Struct<const N: usize>;
 
 fn f<const N: usize>() {
-    let _: Struct<{ <GenericStructImpl<N> as Trait>::PROJECTED_A }> =
-        Struct::<{ <GenericStructImpl<N> as Trait>::PROJECTED_B }>;
+    let _: Struct<{ gca!(<GenericStructImpl<N> as Trait>::PROJECTED_A) }> =
+        Struct::<{ gca!(<GenericStructImpl<N> as Trait>::PROJECTED_B) }>;
     //~^ ERROR mismatched types
 }
 
 fn g<T: Trait>() {
-    let _: Struct<{ T::PROJECTED_A }> = Struct::<{ T::PROJECTED_B }>;
+    let _: Struct<{ gca!(T::PROJECTED_A) }> = Struct::<{ gca!(T::PROJECTED_B) }>;
     //~^ ERROR mismatched types
 }
 

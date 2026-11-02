@@ -29,7 +29,7 @@ intrinsics! {
         pow(a, b)
     }
 
-    #[ppc_alias = __powikf2]
+    #[ppc_name = __powikf2]
     #[cfg(f128_enabled)]
     pub extern "C" fn __powitf2(a: f128, b: i32) -> f128 {
         pow(a, b)

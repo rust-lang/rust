@@ -1,6 +1,7 @@
 // tidy-alphabetical-start
 #![cfg_attr(not(panic = "abort"), feature(reentrant_lock))]
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
+#![feature(abort_immediate)]
 #![feature(array_ptr_get)]
 #![feature(array_try_from_fn)]
 #![feature(array_try_map)]
@@ -8,13 +9,21 @@
 #![feature(ascii_char_variants)]
 #![feature(async_iter_from_iter)]
 #![feature(async_iterator)]
+#![feature(atomic_volatile)]
 #![feature(borrowed_buf_init)]
-#![feature(bstr)]
+#![feature(breakpoint)]
+#![feature(byte_str)]
 #![feature(casefold)]
+#![feature(cfg_overflow_checks)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(char_internals)]
+#![feature(char_is_xid)]
+#![feature(clamp_magnitude)]
+#![feature(clamp_to)]
 #![feature(clone_to_uninit)]
 #![feature(cmp_minmax)]
+#![feature(cmp_splat)]
+#![feature(complex_numbers)]
 #![feature(const_array)]
 #![feature(const_bool)]
 #![feature(const_cell_traits)]
@@ -28,6 +37,7 @@
 #![feature(const_eval_select)]
 #![feature(const_index)]
 #![feature(const_iter)]
+#![feature(const_nonzero_strict_ops)]
 #![feature(const_ops)]
 #![feature(const_option_ops)]
 #![feature(const_ref_cell)]
@@ -41,10 +51,7 @@
 #![feature(core_io_borrowed_buf)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
-#![feature(cstr_display)]
-#![feature(debug_closure_helpers)]
 #![feature(dec2flt)]
-#![feature(drop_guard)]
 #![feature(duration_constants)]
 #![feature(duration_constructors)]
 #![feature(exact_div)]
@@ -53,6 +60,7 @@
 #![feature(extern_types)]
 #![feature(f16)]
 #![feature(f128)]
+#![feature(float_conversions)]
 #![feature(float_exact_integer_constants)]
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
@@ -60,7 +68,6 @@
 #![feature(fmt_internals)]
 #![feature(formatting_options)]
 #![feature(freeze)]
-#![feature(funnel_shifts)]
 #![feature(future_join)]
 #![feature(generic_assert_internals)]
 #![feature(hasher_prefixfree_extras)]
@@ -82,14 +89,13 @@
 #![feature(iter_partition_in_place)]
 #![feature(iterator_try_collect)]
 #![feature(iterator_try_reduce)]
-#![feature(layout_for_ptr)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(maybe_uninit_fill)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(min_specialization)]
-#![feature(never_type)]
 #![feature(next_index)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
+#![feature(nonzero_strict_ops)]
 #![feature(num_internals)]
 #![feature(numfmt)]
 #![feature(one_sided_range)]
@@ -98,6 +104,7 @@
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
+#![feature(raw_os_error_ty)]
 #![feature(rustc_attrs)]
 #![feature(signed_bigint_helpers)]
 #![feature(slice_from_ptr_range)]
@@ -105,8 +112,8 @@
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(slice_shift)]
-#![feature(slice_split_once)]
 #![feature(sliceindex_wrappers)]
+#![feature(splat)]
 #![feature(split_array)]
 #![feature(split_as_slice)]
 #![feature(std_internals)]
@@ -121,12 +128,13 @@
 #![feature(try_from_int_error_kind)]
 #![feature(try_trait_v2)]
 #![feature(type_info)]
+#![feature(u8_split_ascii_whitespace)]
 #![feature(uint_carryless_mul)]
 #![feature(uint_gather_scatter_bits)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
-#![feature(unwrap_infallible)]
 // tidy-alphabetical-end
+#![allow(incomplete_features)]
 #![allow(internal_features)]
 #![deny(implicit_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -175,7 +183,7 @@ mod asserting;
 mod async_iter;
 mod atomic;
 mod bool;
-mod bstr;
+mod byte_str;
 mod cell;
 mod char;
 mod clone;
@@ -196,7 +204,6 @@ mod macros;
 mod manually_drop;
 mod mem;
 mod net;
-mod nonzero;
 mod num;
 mod ops;
 mod option;
@@ -204,6 +211,7 @@ mod panic;
 mod pattern;
 mod pin;
 mod pin_macro;
+mod process;
 mod ptr;
 mod result;
 mod simd;

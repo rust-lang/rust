@@ -16,7 +16,7 @@ use hir_expand::{
     mod_path::{ModPath, PathKind},
     name::Name,
 };
-use hir_ty::{
+use hir_ide::{
     db::HirDatabase,
     method_resolution::{self, CandidateId, MethodError, MethodResolutionContext},
     next_solver::{DbInterner, TypingMode, infer::DbInternerInferExt},
@@ -100,6 +100,8 @@ impl AttrsWithOwner {
         }
     }
 
+    /// **Do not** use this to detect visibility of the macro, this does not account for macros 2.0.
+    /// Use this only if you're interested in `#[macro_export]` literally (for example, because it exports under the crate root).
     #[inline]
     pub fn is_macro_export(&self) -> bool {
         self.attrs.contains(AttrFlags::IS_MACRO_EXPORT)
@@ -165,7 +167,7 @@ impl AttrsWithOwner {
     #[inline]
     pub fn hir_docs<'db>(&self, db: &'db dyn HirDatabase) -> Option<&'db Docs> {
         match self.owner {
-            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it).as_deref(),
+            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it),
             AttrsOwner::Field(it) => AttrFlags::field_docs(db, it),
             AttrsOwner::LifetimeParam(_) | AttrsOwner::TypeOrConstParam(_) | AttrsOwner::Dummy => {
                 None
@@ -194,7 +196,7 @@ pub trait HasAttrs: Sized {
     #[inline]
     fn hir_docs(self, db: &dyn HirDatabase) -> Option<&Docs> {
         match self.attr_id(db) {
-            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it).as_deref(),
+            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it),
             AttrsOwner::Field(it) => AttrFlags::field_docs(db, it),
             AttrsOwner::LifetimeParam(_) | AttrsOwner::TypeOrConstParam(_) | AttrsOwner::Dummy => {
                 None
@@ -237,8 +239,8 @@ impl HasAttrs for Function {
 impl HasAttrs for Impl {
     fn attr_id(self, _db: &dyn HirDatabase) -> AttrsOwner {
         match self.id {
-            hir_ty::next_solver::AnyImplId::ImplId(id) => AttrsOwner::AttrDef(id.into()),
-            hir_ty::next_solver::AnyImplId::BuiltinDeriveImplId(..) => AttrsOwner::Dummy,
+            hir_ide::next_solver::AnyImplId::ImplId(id) => AttrsOwner::AttrDef(id.into()),
+            hir_ide::next_solver::AnyImplId::BuiltinDeriveImplId(..) => AttrsOwner::Dummy,
         }
     }
 }
@@ -504,8 +506,8 @@ fn resolve_impl_trait_item<'db>(
         traits_in_scope: &traits_in_scope,
         edition: krate.data(db).edition,
         features,
-        call_span: hir_ty::Span::Dummy,
-        receiver_span: hir_ty::Span::Dummy,
+        call_span: hir_ide::Span::Dummy,
+        receiver_span: hir_ide::Span::Dummy,
     };
     let resolution =
         ctx.probe_for_name(method_resolution::Mode::Path, name.clone(), ty.ty.skip_binder());

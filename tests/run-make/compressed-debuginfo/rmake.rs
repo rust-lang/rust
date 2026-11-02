@@ -2,6 +2,8 @@
 
 //@ only-linux
 //@ ignore-cross-compile
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 // FIXME: This test isn't comprehensive and isn't covering all possible combinations.
 
@@ -10,6 +12,7 @@ use run_make_support::{assert_contains, llvm_readobj, run_in_tmpdir, rustc};
 fn check_compression(compression: &str, to_find: &str) {
     run_in_tmpdir(|| {
         let out = rustc()
+            .edition("2015")
             .crate_name("foo")
             .crate_type("lib")
             .emit("obj")

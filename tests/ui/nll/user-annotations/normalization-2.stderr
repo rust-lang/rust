@@ -23,7 +23,11 @@ LL | fn test_closure_sig<'a, 'b>() {
 LL |     || -> Option<Ty<'b>> { None };
    |           ^^^^^^^^^^^^^^ requires that `'b` must outlive `'static`
 
-help: the following changes may resolve your lifetime errors
+error: one or more lifetime errors were found in this item
+  --> $DIR/normalization-2.rs:47:4
+   |
+LL | fn test_closure_sig<'a, 'b>() {
+   |    ^^^^^^^^^^^^^^^^
    |
    = help: replace `'a` with `'static`
    = help: replace `'b` with `'static`
@@ -99,7 +103,11 @@ LL | fn test_path<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h>() {
 LL |     MyTy::<Ty<'h>>::Unit;
    |     ^^^^^^^^^^^^^^^^^^^^ requires that `'h` must outlive `'static`
 
-help: the following changes may resolve your lifetime errors
+error: one or more lifetime errors were found in this item
+  --> $DIR/normalization-2.rs:54:4
+   |
+LL | fn test_path<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h>() {
+   |    ^^^^^^^^^
    |
    = help: replace `'a` with `'static`
    = help: replace `'b` with `'static`
@@ -127,11 +135,14 @@ LL | fn test_call<'a, 'b, 'c>() {
 LL |     <Ty<'static>>::method::<Ty<'b>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'static`
 
-help: the following changes may resolve your lifetime errors
+error: one or more lifetime errors were found in this item
+  --> $DIR/normalization-2.rs:81:4
+   |
+LL | fn test_call<'a, 'b, 'c>() {
+   |    ^^^^^^^^^
    |
    = help: replace `'a` with `'static`
    = help: replace `'b` with `'static`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: lifetime may not live long enough
   --> $DIR/normalization-2.rs:89:5
@@ -159,7 +170,11 @@ LL | fn test_variants<'a, 'b, 'c>() {
 LL |     <Ty<'c>>::Unit;
    |     ^^^^^^^^^^^^^^ requires that `'c` must outlive `'static`
 
-help: the following changes may resolve your lifetime errors
+error: one or more lifetime errors were found in this item
+  --> $DIR/normalization-2.rs:88:4
+   |
+LL | fn test_variants<'a, 'b, 'c>() {
+   |    ^^^^^^^^^^^^^
    |
    = help: replace `'a` with `'static`
    = help: replace `'b` with `'static`
@@ -182,11 +197,14 @@ LL | fn test_method_call<'a, 'b>(x: MyTy<()>) {
 LL |     x.trait_method::<Ty<'b>>();
    |       ^^^^^^^^^^^^ requires that `'b` must outlive `'static`
 
-help: the following changes may resolve your lifetime errors
+error: one or more lifetime errors were found in this item
+  --> $DIR/normalization-2.rs:97:4
+   |
+LL | fn test_method_call<'a, 'b>(x: MyTy<()>) {
+   |    ^^^^^^^^^^^^^^^^
    |
    = help: replace `'a` with `'static`
    = help: replace `'b` with `'static`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: lifetime may not live long enough
   --> $DIR/normalization-2.rs:117:5
@@ -224,7 +242,11 @@ LL | fn test_struct_path<'a, 'b, 'c, 'd>() {
 LL |     <Ty<'d> as Project>::Struct { x: None, }; // with SelfTy
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'d` must outlive `'static`
 
-help: the following changes may resolve your lifetime errors
+error: one or more lifetime errors were found in this item
+  --> $DIR/normalization-2.rs:104:4
+   |
+LL | fn test_struct_path<'a, 'b, 'c, 'd>() {
+   |    ^^^^^^^^^^^^^^^^
    |
    = help: replace `'a` with `'static`
    = help: replace `'b` with `'static`
@@ -285,7 +307,11 @@ LL | fn test_pattern<'a, 'b, 'c, 'd, 'e, 'f>() {
 LL |         <Ty<'f>>::Unit => {},
    |         ^^^^^^^^^^^^^^ requires that `'f` must outlive `'static`
 
-help: the following changes may resolve your lifetime errors
+error: one or more lifetime errors were found in this item
+  --> $DIR/normalization-2.rs:129:4
+   |
+LL | fn test_pattern<'a, 'b, 'c, 'd, 'e, 'f>() {
+   |    ^^^^^^^^^^^^
    |
    = help: replace `'a` with `'static`
    = help: replace `'b` with `'static`
@@ -294,5 +320,5 @@ help: the following changes may resolve your lifetime errors
    = help: replace `'e` with `'static`
    = help: replace `'f` with `'static`
 
-error: aborting due to 28 previous errors
+error: aborting due to 35 previous errors
 

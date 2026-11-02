@@ -1,16 +1,17 @@
 use std::fmt::{self, Debug, Display, Formatter};
 
 use rustc_abi::{HasDataLayout, Size};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_span::{DUMMY_SP, RemapPathScopeComponents, Span, Symbol};
+use rustc_span::{DUMMY_SP, RemapPathScopeComponents, Span, Symbol, bug};
 use rustc_type_ir::TypeVisitableExt;
 
 use super::interpret::ReportedErrorInfo;
 use crate::mir::interpret::{AllocId, AllocRange, ErrorHandled, GlobalAlloc, Scalar, alloc_range};
 use crate::mir::{Promoted, pretty_print_const_value};
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
-use crate::ty::{self, ConstKind, GenericArgsRef, ScalarInt, Ty, TyCtxt};
+use crate::ty::{self, ConstKind, GenericArgs, ScalarInt, Ty, TyCtxt};
 
 ///////////////////////////////////////////////////////////////////////////
 /// Evaluated Constants
@@ -104,10 +105,7 @@ impl ConstValue {
         typing_env: ty::TypingEnv<'tcx>,
         ty: Ty<'tcx>,
     ) -> Option<u128> {
-        let size = tcx
-            .layout_of(typing_env.with_post_analysis_normalized(tcx).as_query_input(ty))
-            .ok()?
-            .size;
+        let size = tcx.layout_of(typing_env.as_query_input(ty)).ok()?.size;
         self.try_to_bits(size)
     }
 
@@ -154,7 +152,7 @@ impl ConstValue {
                         /* read_provenance */ true,
                     )
                     .ok()?;
-                let ptr = ptr.to_pointer(&tcx).discard_err()?;
+                let ptr = ptr.to_pointer(&tcx);
                 let len = a
                     .read_scalar(
                         &tcx,
@@ -320,6 +318,10 @@ impl<'tcx> Const<'tcx> {
     ) -> Result<ConstValue, ErrorHandled> {
         match self {
             Const::Ty(_, c) => {
+                if let Err(e) = c.error_reported() {
+                    return Err(ReportedErrorInfo::non_const_eval_error(e).into());
+                }
+
                 // FIXME(generic_const_exprs): We shouldn't encounter placeholders here
                 // and could change this to ICE when encountering them instead.
                 if c.has_non_region_param() || c.has_non_region_placeholders() {
@@ -376,10 +378,7 @@ impl<'tcx> Const<'tcx> {
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<u128> {
         let int = self.try_eval_scalar_int(tcx, typing_env)?;
-        let size = tcx
-            .layout_of(typing_env.with_post_analysis_normalized(tcx).as_query_input(self.ty()))
-            .ok()?
-            .size;
+        let size = tcx.layout_of(typing_env.as_query_input(self.ty())).ok()?.size;
         Some(int.to_bits(size))
     }
 
@@ -466,7 +465,7 @@ impl<'tcx> Const<'tcx> {
 #[derive(Hash, StableHash, TypeFoldable, TypeVisitable, Lift)]
 pub struct UnevaluatedConst<'tcx> {
     pub def: DefId,
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
     pub promoted: Option<Promoted>,
 }
 
@@ -474,13 +473,27 @@ impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
     pub fn shrink(self, tcx: TyCtxt<'tcx>) -> ty::AliasConst<'tcx> {
         assert_eq!(self.promoted, None);
-        ty::AliasConst::new(tcx, ty::AliasConstKind::new_from_def_id(tcx, self.def), self.args)
+
+        let kind = match tcx.def_kind(self.def) {
+            DefKind::AssocConst => {
+                if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(self.def)) {
+                    ty::AliasConstKind::InherentImpl { def_id: self.def }
+                } else {
+                    ty::AliasConstKind::Projection { def_id: self.def }
+                }
+            }
+            DefKind::Const => ty::AliasConstKind::Free { def_id: self.def },
+            DefKind::AnonConst => ty::AliasConstKind::Anon { def_id: self.def },
+            kind => bug!("unexpected DefKind in MIR UnevaluatedConst: {kind:?}"),
+        };
+
+        ty::AliasConst::new(tcx, kind, self.args)
     }
 }
 
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn new(def: DefId, args: GenericArgsRef<'tcx>) -> UnevaluatedConst<'tcx> {
+    pub fn new(def: DefId, args: GenericArgs<'tcx>) -> UnevaluatedConst<'tcx> {
         UnevaluatedConst { def, args, promoted: Default::default() }
     }
 

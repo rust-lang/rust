@@ -1,11 +1,11 @@
 use rustc_abi::{BackendRepr, FieldsShape, Scalar, Variants};
+use rustc_middle::ty;
 use rustc_middle::ty::layout::{
     HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{PseudoCanonicalInput, ScalarInt, Ty, TyCtxt};
-use rustc_middle::{bug, ty};
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, bug};
 
 use crate::const_eval::{CanAccessMutGlobal, CheckAlignment, CompileTimeMachine};
 use crate::interpret::{InterpCx, MemoryKind};
@@ -124,7 +124,7 @@ fn check_validity_requirement_lax<'tcx>(
             BackendRepr::ScalarPair { a: s1, b: s2, b_offset: _ } => {
                 scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2)
             }
-            BackendRepr::SimdVector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
+            BackendRepr::SimdVector { element: s, count: _ } => scalar_allows_raw_init(s),
             BackendRepr::Memory { .. } => true, // Fields are checked below.
             BackendRepr::SimdScalableVector { element, .. } => scalar_allows_raw_init(element),
         };

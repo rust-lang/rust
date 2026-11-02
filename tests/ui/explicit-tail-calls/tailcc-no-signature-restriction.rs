@@ -1,9 +1,9 @@
 //@ run-pass
 //@ ignore-backends: gcc
-//@ min-llvm-version: 22
-//@ revisions: x86_64 aarch64
+//@ min-llvm-version: 23
+//@ revisions: x86 x86_64 aarch64
 //
-// FIXME: enable x86 on LLVM 23.
+//@ [x86] only-x86
 //@ [x86_64] only-x86_64
 //@ [aarch64] only-aarch64
 #![feature(explicit_tail_calls, rust_tail_cc)]
@@ -18,6 +18,7 @@ pub extern "tail" fn add() -> u64 {
     become add(1, 2);
 }
 
+#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), not(windows)))]
 #[inline(never)]
 pub extern "tail" fn pass_struct(a: u64, d: u64) -> u64 {
     #[derive(Clone, Copy)]
@@ -39,11 +40,32 @@ pub extern "tail" fn pass_struct(a: u64, d: u64) -> u64 {
     become add(large);
 }
 
+#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), not(windows)))]
+#[inline(never)]
+pub extern "tail" fn pass_vector(x: [f32; 4]) -> [f32; 4] {
+    #[derive(Clone, Copy)]
+    pub struct F32x4([f32; 4]);
+
+    #[inline(never)]
+    extern "tail" fn identity(x: F32x4) -> F32x4 {
+        x
+    }
+
+    #[inline(never)]
+    extern "tail" fn forward(x: F32x4) -> F32x4 {
+        become identity(x);
+    }
+
+    forward(F32x4(x)).0
+}
+
 fn main() {
     assert_eq!(add(), 3);
 
-    // FIXME: LLVM 22 has a bug which makes this miscompile.
-    if false {
+    // Windows and Aarch64 in LLVM 23 do not support byval arguments.
+    #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), not(windows)))]
+    {
         assert_eq!(pass_struct(5, 6), 5 + 6);
+        assert_eq!(pass_vector([1.0, 2.0, 3.0, 4.0]), [1.0, 2.0, 3.0, 4.0]);
     }
 }

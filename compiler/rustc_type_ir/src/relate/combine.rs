@@ -10,7 +10,7 @@ use crate::inherent::*;
 use crate::relate::VarianceDiagInfo;
 use crate::solve::Goal;
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, InferCtxtLike, Interner, TypingMode, Upcast};
+use crate::{self as ty, Const, InferCtxtLike, Interner, TypingMode, Upcast};
 
 pub trait PredicateEmittingRelation<Infcx, I = <Infcx as InferCtxtLike>::Interner>:
     TypeRelation<I>
@@ -31,8 +31,6 @@ where
         &mut self,
         obligations: impl IntoIterator<Item: Upcast<I, I::Predicate>>,
     );
-
-    fn ambient_variance(&self) -> ty::Variance;
 }
 
 pub fn super_combine_tys<Infcx, I, R>(
@@ -107,60 +105,10 @@ where
         {
             panic!("We do not expect to encounter `Fresh` variables in the new solver")
         }
-
-        (ty::Alias(ty::IsRigid::No, alias), _) | (_, ty::Alias(ty::IsRigid::No, alias))
+        (ty::Alias(ty::IsRigid::No, _), _) | (_, ty::Alias(ty::IsRigid::No, _))
             if infcx.next_trait_solver() =>
         {
-            // If both sides are aliases, arbitrarily do the LHS first
-            let terms_are_inverted = !matches!(a.kind(), ty::Alias(ty::IsRigid::No, _));
-            let other = if terms_are_inverted { a } else { b };
-            match (relation.ambient_variance(), terms_are_inverted) {
-                (ty::Invariant, _) => relation.register_predicates([ty::ProjectionPredicate {
-                    projection_term: alias.into(),
-                    term: other.into(),
-                }]),
-                (ty::Covariant, false) | (ty::Contravariant, true) => {
-                    // Generate a new var to represent `alias <: other`
-                    // with `alias == ?A && ?A <: other`
-                    let new_var = infcx.next_ty_infer();
-                    relation.register_predicates([
-                        ty::PredicateKind::Clause(ty::ClauseKind::Projection(
-                            ty::ProjectionPredicate {
-                                projection_term: alias.into(),
-                                term: new_var.into(),
-                            },
-                        )),
-                        ty::PredicateKind::Subtype(ty::SubtypePredicate {
-                            a_is_expected: !terms_are_inverted,
-                            a: new_var,
-                            b: other,
-                        }),
-                    ]);
-                }
-                (ty::Contravariant, false) | (ty::Covariant, true) => {
-                    // a :> b is b <: a
-                    let new_var = infcx.next_ty_infer();
-                    relation.register_predicates([
-                        ty::PredicateKind::Clause(ty::ClauseKind::Projection(
-                            ty::ProjectionPredicate {
-                                projection_term: alias.into(),
-                                term: new_var.into(),
-                            },
-                        )),
-                        ty::PredicateKind::Subtype(ty::SubtypePredicate {
-                            a_is_expected: terms_are_inverted,
-                            a: other,
-                            b: new_var,
-                        }),
-                    ]);
-                }
-                (ty::Bivariant, _) => {
-                    unreachable!(
-                        "cannot handle bivariant aliases in register_projection_with_variance"
-                    )
-                }
-            }
-            Ok(a)
+            panic!("non-rigid aliases should be handled in the caller of super_combine_tys")
         }
 
         // All other cases of inference are errors
@@ -181,7 +129,7 @@ where
                 }
                 TypingMode::Typeck { .. }
                 | TypingMode::Reflection
-                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostTypeckThroughBorrowck { .. }
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen => structurally_relate_tys(relation, a, b),
@@ -195,9 +143,9 @@ where
 pub fn super_combine_consts<Infcx, I, R>(
     infcx: &Infcx,
     relation: &mut R,
-    a: I::Const,
-    b: I::Const,
-) -> RelateResult<I, I::Const>
+    a: Const<I>,
+    b: Const<I>,
+) -> RelateResult<I, Const<I>>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
@@ -231,6 +179,21 @@ where
             )
         }
 
+        (ty::ConstKind::Alias(ty::IsRigid::No, alias), _) if infcx.next_trait_solver() => {
+            relation.register_predicates([ty::ProjectionClause {
+                projection_term: alias.into(),
+                term: b.into(),
+            }]);
+            Ok(b)
+        }
+        (_, ty::ConstKind::Alias(ty::IsRigid::No, alias)) if infcx.next_trait_solver() => {
+            relation.register_predicates([ty::ProjectionClause {
+                projection_term: alias.into(),
+                term: a.into(),
+            }]);
+            Ok(b)
+        }
+
         (ty::ConstKind::Infer(ty::InferConst::Var(vid)), _) => {
             infcx.instantiate_const_var(relation, true, vid, b)?;
             Ok(b)
@@ -241,20 +204,11 @@ where
             Ok(a)
         }
 
-        (ty::ConstKind::Alias(ty::IsRigid::No, alias), _)
-        | (_, ty::ConstKind::Alias(ty::IsRigid::No, alias))
-            if (infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver()) =>
+        (ty::ConstKind::Alias(ty::IsRigid::No, _), _)
+        | (_, ty::ConstKind::Alias(ty::IsRigid::No, _))
+            if infcx.cx().features().generic_const_exprs() =>
         {
-            if infcx.next_trait_solver() {
-                let other = if matches!(a.kind(), ty::ConstKind::Alias(..)) { b } else { a };
-                relation.register_predicates([ty::ProjectionPredicate {
-                    projection_term: alias.into(),
-                    term: other.into(),
-                }])
-            } else {
-                relation.register_predicates([ty::PredicateKind::ConstEquate(a, b)]);
-            }
-
+            relation.register_predicates([ty::PredicateKind::ConstEquate(a, b)]);
             Ok(b)
         }
 
@@ -289,7 +243,7 @@ where
             ty::Bivariant => {
                 let has_non_region_infer = |arg: I::GenericArg| {
                     arg.has_non_region_infer()
-                        && infcx.resolve_vars_if_possible(arg).has_non_region_infer()
+                        && infcx.deeply_resolve_ignoring_regions(arg).has_non_region_infer()
                 };
                 if has_non_region_infer(a) || has_non_region_infer(b) {
                     has_unconstrained_bivariant_arg = true;

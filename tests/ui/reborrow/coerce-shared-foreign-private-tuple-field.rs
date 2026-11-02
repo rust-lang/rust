@@ -1,4 +1,5 @@
-//@ check-pass
+//! Test that CoerceShared cannot be implemented targeting a foreign tuple struct with private
+//! fields.
 
 #![feature(reborrow)]
 
@@ -18,5 +19,6 @@ struct LocalPtrMut<'a>(*const i32, PhantomData<&'a ()>);
 impl<'a> Reborrow for LocalPtrMut<'a> {}
 
 impl<'a> CoerceShared<ForeignPtrRef<'a>> for LocalPtrMut<'a> {}
+//~^ ERROR
 
 fn main() {}

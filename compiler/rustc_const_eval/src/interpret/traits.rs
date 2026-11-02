@@ -112,7 +112,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             matches!(mplace.layout.ty.kind(), ty::Dynamic(_, _)),
             "`unpack_dyn_trait` only makes sense on `dyn*` types"
         );
-        let vtable = mplace.meta().unwrap_meta().to_pointer(self)?;
+        let vtable = mplace.meta().unwrap_meta().to_pointer(self);
         let ty = self.get_ptr_vtable_ty(vtable, Some(expected_trait))?;
         // This is a kind of transmute, from a place with unsized type and metadata to
         // a place with sized type and no metadata.

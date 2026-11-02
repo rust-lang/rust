@@ -5,6 +5,7 @@ use cranelift_codegen::ir::UserFuncName;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_module::ModuleError;
 use rustc_ast::InlineAsmOptions;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::DiagCtxtHandle;
@@ -206,7 +207,8 @@ pub(crate) fn compile_fn(
                     Some(Box::new(&clif_comments)),
                     err,
                 );
-                dcx.fatal(format!("cranelift verify error:\n{pretty_error}"));
+                eprintln!("{pretty_error}");
+                bug!("cranelift verify error");
             }
             Err(err) => {
                 let mut clif = format_clif_ir_header(module.isa(), &codegened_func.symbol_name);
@@ -217,8 +219,9 @@ pub(crate) fn compile_fn(
                 )
                 .unwrap();
 
-                panic!(
-                    "Error while defining {name}: {err:?}\n\nPost-optimization Cranelift IR:\n{clif}",
+                bug!(
+                    "Error while defining {name}: {err:?}\n\n
+                    Post-optimization Cranelift IR:\n{clif}",
                     name = codegened_func.symbol_name
                 );
             }
@@ -273,7 +276,8 @@ fn verify_func(tcx: TyCtxt<'_>, writer: &crate::pretty_clif::CommentWriter, func
                     Some(Box::new(writer)),
                     err,
                 );
-                tcx.dcx().fatal(format!("cranelift verify error:\n{}", pretty_error));
+                eprintln!("{pretty_error}");
+                bug!("cranelift verify error");
             }
         }
     });
@@ -338,7 +342,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             crate::PrintOnPanic(|| format!("terminator {:?}", bb_data.terminator().kind));
 
         match &bb_data.terminator().kind {
-            TerminatorKind::Goto { target } => {
+            TerminatorKind::Goto { target, loop_hint_attrs: _ } => {
                 if let TerminatorKind::Return = fx.mir[*target].terminator().kind {
                     let mut can_immediately_return = true;
                     for stmt in &fx.mir[*target].statements {
@@ -390,7 +394,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                         codegen_panic_inner(
                             fx,
-                            rustc_hir::LangItem::PanicBoundsCheck,
+                            LangItem::PanicBoundsCheck,
                             &[index, len, location],
                             *unwind,
                             source_info.span,
@@ -403,7 +407,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                         codegen_panic_inner(
                             fx,
-                            rustc_hir::LangItem::PanicMisalignedPointerDereference,
+                            LangItem::PanicMisalignedPointerDereference,
                             &[required, found, location],
                             *unwind,
                             source_info.span,
@@ -414,7 +418,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                         codegen_panic_inner(
                             fx,
-                            rustc_hir::LangItem::PanicNullPointerDereference,
+                            LangItem::PanicNullPointerDereference,
                             &[location],
                             *unwind,
                             source_info.span,
@@ -425,7 +429,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                         codegen_panic_inner(
                             fx,
-                            rustc_hir::LangItem::PanicNullReferenceConstructed,
+                            LangItem::PanicNullReferenceConstructed,
                             &[location],
                             *unwind,
                             source_info.span,
@@ -437,7 +441,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
 
                         codegen_panic_inner(
                             fx,
-                            rustc_hir::LangItem::PanicInvalidEnumConstruction,
+                            LangItem::PanicInvalidEnumConstruction,
                             &[source, location],
                             *unwind,
                             source_info.span,
@@ -715,7 +719,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                             let func_ref = fx.get_function_ref(
                                 Instance::resolve_for_fn_ptr(
                                     fx.tcx,
-                                    ty::TypingEnv::fully_monomorphized(),
+                                    fx.typing_env(),
                                     def_id,
                                     args.no_bound_vars().unwrap(),
                                 )
@@ -766,8 +770,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
 
                     fn is_wide_ptr<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
                         ty.builtin_deref(true).is_some_and(|pointee_ty| {
-                            fx.tcx
-                                .type_has_metadata(pointee_ty, ty::TypingEnv::fully_monomorphized())
+                            fx.tcx.type_has_metadata(pointee_ty, fx.typing_env())
                         })
                     }
 
@@ -823,7 +826,11 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     let operand = codegen_operand(fx, operand);
                     crate::unsize::coerce_unsized_into(fx, operand, lval);
                 }
-                Rvalue::Cast(CastKind::Transmute | CastKind::Subtype, ref operand, _to_ty) => {
+                Rvalue::Cast(
+                    CastKind::Transmute | CastKind::BoxDerefTransmute | CastKind::Subtype,
+                    ref operand,
+                    _to_ty,
+                ) => {
                     let operand = codegen_operand(fx, operand);
                     lval.write_cvalue_transmute(fx, operand);
                 }
@@ -989,6 +996,7 @@ pub(crate) fn codegen_place<'tcx>(
             PlaceElem::Deref => {
                 cplace = cplace.place_deref(fx);
             }
+            PlaceElem::PhantomDeref => bug!("encountered PhantomDeref in codegen"),
             PlaceElem::OpaqueCast(ty) => bug!("encountered OpaqueCast({ty}) in codegen"),
             PlaceElem::UnwrapUnsafeBinder(ty) => {
                 cplace = cplace.place_transmute_type(fx, fx.monomorphize(ty));
@@ -1078,7 +1086,7 @@ pub(crate) fn codegen_panic_nounwind<'tcx>(
 
     codegen_panic_inner(
         fx,
-        rustc_hir::LangItem::PanicNounwind,
+        LangItem::PanicNounwind,
         &args,
         UnwindAction::Terminate(UnwindTerminateReason::Abi),
         span,
@@ -1095,7 +1103,7 @@ pub(crate) fn codegen_unwind_terminate<'tcx>(
 
 fn codegen_panic_inner<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    lang_item: rustc_hir::LangItem,
+    lang_item: LangItem,
     args: &[Value],
     unwind: UnwindAction,
     span: Span,

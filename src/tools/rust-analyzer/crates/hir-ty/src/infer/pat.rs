@@ -530,9 +530,6 @@ impl<'db> InferenceContext<'db> {
                 self.infer_slice_pat(pat, before, slice, after, expected, pat_info)
             }
             Pat::Expr(expr) => self.infer_destructuring_assignment_expr(expr, expected),
-            Pat::ConstBlock(expr) => {
-                self.infer_expr(expr, &Expectation::has_type(expected), ExprIsRead::Yes)
-            }
         }
     }
 
@@ -634,9 +631,8 @@ impl<'db> InferenceContext<'db> {
             // All other literals result in non-reference types.
             // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo" {}` unless
             // `deref_patterns` is enabled.
-            &Pat::Lit(expr) | &Pat::ConstBlock(expr) => {
+            &Pat::Lit(expr) => {
                 let lit_ty = self.infer_expr_pat_unadjusted(expr);
-                // Call `resolve_vars_if_possible` here for inline const blocks.
                 let lit_ty = self.infcx().resolve_vars_if_possible(lit_ty);
                 // If `deref_patterns` is enabled, allow `if let "foo" = &&"foo" {}`.
                 if self.features.deref_patterns {
@@ -872,7 +868,7 @@ impl<'db> InferenceContext<'db> {
             expected,
         );
         if !(ty.is_numeric() || ty.is_char() || ty.references_error()) {
-            // FIXME: Emit an error.
+            self.push_diagnostic(InferenceDiagnostic::InvalidRangePatType { pat });
             return self.types.types.error;
         }
         ty
@@ -1124,7 +1120,7 @@ impl<'db> InferenceContext<'db> {
         let element_tys_iter = (0..max_len).map(|i| {
             self.table.next_ty_var(elements.get(i).copied().map(Span::PatId).unwrap_or(Span::Dummy))
         });
-        let element_tys = Tys::new_from_iter(interner, element_tys_iter);
+        let element_tys = Tys::new_from_iter(element_tys_iter);
         let pat_ty = Ty::new(interner, TyKind::Tuple(element_tys));
         if self.demand_eqtype(pat.into(), expected, pat_ty).is_err() {
             let expected = if let TyKind::Tuple(tys) =
@@ -1618,7 +1614,7 @@ impl<'db> InferenceContext<'db> {
             TyKind::Array(element_ty, len) => {
                 let min = before.len() as u64 + after.len() as u64;
                 let (opt_slice_ty, expected) =
-                    self.check_array_pat_len(pat, element_ty, expected, slice, len, min.into());
+                    self.check_array_pat_len(pat, element_ty, expected, slice, len, min);
                 // `opt_slice_ty.is_none()` => `slice.is_none()`.
                 // Note, though, that opt_slice_ty could be `Some(error_ty)`.
                 assert!(opt_slice_ty.is_some() || slice.is_none());
@@ -1662,11 +1658,11 @@ impl<'db> InferenceContext<'db> {
         arr_ty: Ty<'db>,
         slice: Option<PatId>,
         len: Const<'db>,
-        min_len: u128,
+        min_len: u64,
     ) -> (Option<Ty<'db>>, Ty<'db>) {
-        let len = crate::consteval::try_const_usize(self.db, len);
+        let len = self.table.try_structurally_resolve_const(pat.into(), len);
 
-        if let Some(len) = len {
+        if let Some(len) = len.try_to_target_usize(self.data_layout()) {
             // Now we know the length...
             if slice.is_none() {
                 // ...and since there is no variable-length pattern,
@@ -1702,7 +1698,7 @@ impl<'db> InferenceContext<'db> {
             let updated_arr_ty = Ty::new_array(self.interner(), element_ty, min_len);
             _ = self.demand_eqtype(pat.into(), updated_arr_ty, arr_ty);
             return (None, updated_arr_ty);
-        } else {
+        } else if !len.is_error() {
             // We have a variable-length pattern and don't know the array length.
             // This happens if we have e.g.,
             // `let [a, b, ..] = arr` where `arr: [T; N]` where `const N: usize`.

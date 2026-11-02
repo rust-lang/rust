@@ -1,5 +1,8 @@
 //@ run-pass
 
+//! Test that a custom mut type (a wrapper over &mut T) implementing Reborrow can be reborrowed
+//! multiple times.
+
 #![feature(reborrow)]
 use std::marker::Reborrow;
 

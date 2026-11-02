@@ -1,8 +1,12 @@
 error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/issue-75361-mismatched-impl.rs:18:3
    |
+LL | pub trait Graph {
+...
 LL |   fn adjacent_edges(&self) -> Box<dyn MyTrait<Item = &Self::EdgeType>>;
    |   --------------------------------------------------------------------- expected `fn(&'1 T) -> Box<(dyn MyTrait<Item = &'1 T> + 'static)>`
+...
+LL | impl<T> Graph for T {
 ...
 LL |   fn adjacent_edges(&self) -> Box<dyn MyTrait<Item = &Self::EdgeType> + '_> {
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 T) -> Box<(dyn MyTrait<Item = &'1 T> + '1)>`

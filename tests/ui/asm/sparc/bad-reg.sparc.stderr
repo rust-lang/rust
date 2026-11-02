@@ -64,7 +64,7 @@ error: register class `yreg` can only be used as a clobber, not as an input or o
 LL |         asm!("/* {} */", out(yreg) _);
    |                          ^^^^^^^^^^^
 
-error: cannot use register `r5`: g5 is reserved for system on SPARC32
+error: cannot use register `g5`: g5 is reserved for system on SPARC32
   --> $DIR/bad-reg.rs:30:18
    |
 LL |         asm!("", out("g5") _);
@@ -94,5 +94,17 @@ LL |         asm!("/* {} */", in(yreg) x);
    |
    = note: register class `yreg` supports these types: 
 
-error: aborting due to 15 previous errors
+error: cannot use register `d62`: floating point registers in the upper half can only be used on SPARCv9
+  --> $DIR/bad-reg.rs:57:18
+   |
+LL |         asm!("", in("d62") 0.0_f64);
+   |                  ^^^^^^^^^^^^^^^^^
+
+error: cannot use register `q60`: floating point registers in the upper half can only be used on SPARCv9
+  --> $DIR/bad-reg.rs:59:18
+   |
+LL |         asm!("", in("q60") 0.0_f128);
+   |                  ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 17 previous errors
 

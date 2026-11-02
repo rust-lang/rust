@@ -4,7 +4,7 @@
 
 #![warn(clippy::unnecessary_semicolon)]
 #![feature(postfix_match)]
-#![allow(clippy::single_match)]
+#![expect(clippy::single_match)]
 
 fn no_lint(mut x: u32) -> Option<u32> {
     Some(())?;

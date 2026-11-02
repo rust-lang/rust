@@ -82,11 +82,6 @@ LL | const fn stable_indirect() -> u32 { foo2_gated() }
    |                                     ^^^^^^^^^^^^
    |
    = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
-help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
-   |
-LL + #[rustc_const_unstable(feature = "...", issue = "...")]
-LL | const fn stable_indirect() -> u32 { foo2_gated() }
-   |
 
 error: aborting due to 7 previous errors
 

@@ -659,7 +659,7 @@ impl GlobalState {
             Config::user_config_dir_path().as_deref(),
         );
 
-        if (self.proc_macro_clients.is_empty() || !same_workspaces)
+        if (self.proc_macro_clients.len() < self.workspaces.len() || !same_workspaces)
             && self.config.expand_proc_macros()
         {
             info!("Spawning proc-macro servers");
@@ -901,6 +901,8 @@ impl GlobalState {
                     self.config.default_root_path().clone(),
                     None,
                     None,
+                    None,
+                    None,
                 )]
             }
             crate::flycheck::InvocationStrategy::PerWorkspace => {
@@ -920,6 +922,7 @@ impl GlobalState {
                                     cargo.workspace_root(),
                                     Some(cargo.manifest_path()),
                                     Some(cargo.target_directory()),
+                                    cargo.build_directory(),
                                 ),
                                 ProjectWorkspaceKind::Json(project) => {
                                     let config_json = crate::flycheck::FlycheckConfigJson {
@@ -931,10 +934,10 @@ impl GlobalState {
                                     // in the workspace configuration.
                                     match config {
                                         _ if config_json.any_configured() => {
-                                            (config_json, project.path(), None, None)
+                                            (config_json, project.path(), None, None, None)
                                         }
                                         FlycheckConfig::CustomCommand { .. } => {
-                                            (config_json, project.path(), None, None)
+                                            (config_json, project.path(), None, None, None)
                                         }
                                         _ => return None,
                                     }
@@ -942,21 +945,31 @@ impl GlobalState {
                                 ProjectWorkspaceKind::DetachedFile { .. } => return None,
                             },
                             ws.sysroot.root().map(ToOwned::to_owned),
+                            ws.toolchain.clone(),
                         ))
                     })
-                    .map(|(id, (config_json, root, manifest_path, target_dir), sysroot_root)| {
-                        FlycheckHandle::spawn(
+                    .map(
+                        |(
                             id,
-                            generation.clone(),
-                            sender.clone(),
-                            config.clone(),
-                            config_json,
+                            (config_json, root, manifest_path, target_dir, build_dir),
                             sysroot_root,
-                            root.to_path_buf(),
-                            manifest_path.map(|it| it.to_path_buf()),
-                            target_dir.map(|it| AsRef::<Utf8Path>::as_ref(it).to_path_buf()),
-                        )
-                    })
+                            toolchain,
+                        )| {
+                            FlycheckHandle::spawn(
+                                id,
+                                generation.clone(),
+                                sender.clone(),
+                                config.clone(),
+                                config_json,
+                                sysroot_root,
+                                root.to_path_buf(),
+                                manifest_path.map(|it| it.to_path_buf()),
+                                target_dir.map(|it| AsRef::<Utf8Path>::as_ref(it).to_path_buf()),
+                                build_dir.map(|it| AsRef::<Utf8Path>::as_ref(it).to_path_buf()),
+                                toolchain,
+                            )
+                        },
+                    )
                     .collect()
             }
         }

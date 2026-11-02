@@ -1,6 +1,6 @@
 use tempfile::TempDir;
 
-use crate::BuildStamp;
+use crate::utils::build_stamp::BuildStamp;
 
 #[test]
 #[should_panic(expected = "prefix can not start or end with '.'")]

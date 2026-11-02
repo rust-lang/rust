@@ -1,4 +1,4 @@
-// rustfmt-group_imports: One
+//@ rustfmt-group_imports: One
 use chrono::Utc;
 use super::update::convert_publish_payload;
 

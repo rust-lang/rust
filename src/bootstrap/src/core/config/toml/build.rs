@@ -6,13 +6,11 @@
 //! various feature flags. These options apply across different stages and components
 //! unless specifically overridden by other configuration sections or command-line flags.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 
-use serde::{Deserialize, Deserializer};
-
-use crate::core::config::toml::ReplaceOpt;
-use crate::core::config::{CompilerBuiltins, DebuggerPath, Merge, StringOrBool};
-use crate::{HashSet, PathBuf, define_config, exit};
+use crate::core::config::macros::define_config;
+use crate::core::config::{Allocator, CompilerBuiltins, DebuggerPath, StringOrBool};
 
 define_config! {
     /// TOML representation of various global build decisions.
@@ -77,6 +75,7 @@ define_config! {
         exclude: Option<Vec<PathBuf>> = "exclude",
         record_failed_tests_path: Option<String> = "record_failed_tests_path",
         sde: Option<String> = "sde",
+        allocator: Option<Allocator> = "allocator",
     }
 }
 

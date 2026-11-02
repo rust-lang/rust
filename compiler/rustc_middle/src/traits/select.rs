@@ -12,13 +12,11 @@ use super::{SelectionError, SelectionResult};
 use crate::traits::cache::WithDepNodeCache;
 use crate::ty;
 
-pub type SelectionCache<'tcx, ENV> = WithDepNodeCache<
-    (ENV, ty::TraitPredicate<'tcx>),
-    SelectionResult<'tcx, SelectionCandidate<'tcx>>,
->;
+pub type SelectionCache<'tcx, ENV> =
+    WithDepNodeCache<(ENV, ty::TraitClause<'tcx>), SelectionResult<'tcx, SelectionCandidate<'tcx>>>;
 
 pub type EvaluationCache<'tcx, ENV> =
-    WithDepNodeCache<(ENV, ty::PolyTraitPredicate<'tcx>), EvaluationResult>;
+    WithDepNodeCache<(ENV, ty::PolyTraitClause<'tcx>), EvaluationResult>;
 
 /// The selection process begins by considering all impls, where
 /// clauses, and so forth that might resolve an obligation. Sometimes
@@ -114,7 +112,7 @@ pub enum SelectionCandidate<'tcx> {
     /// Implementation of transmutability trait.
     TransmutabilityCandidate,
 
-    ParamCandidate(ty::PolyTraitPredicate<'tcx>),
+    ParamCandidate(ty::PolyTraitClause<'tcx>),
     ImplCandidate(DefId),
     AutoImplCandidate,
 

@@ -51,7 +51,10 @@ enum State<T, F> {
 /// //   92
 /// ```
 #[stable(feature = "lazy_cell", since = "1.80.0")]
-pub struct LazyCell<T, F = fn() -> T> {
+pub struct LazyCell<
+    #[rustc_assert_variance(invariant)] T,
+    #[rustc_assert_variance(invariant)] F = fn() -> T,
+> {
     state: UnsafeCell<State<T, F>>,
 }
 

@@ -3,7 +3,6 @@
 //
 //@ run-pass
 
-#![feature(never_type)]
 #![expect(unused_variables)]
 #![expect(unreachable_code)]
 

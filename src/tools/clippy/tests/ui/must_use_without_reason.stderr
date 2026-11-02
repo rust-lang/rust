@@ -1,0 +1,23 @@
+error: `#[must_use]` attribute without a reason
+  --> tests/ui/must_use_without_reason.rs:10:1
+   |
+LL | #[must_use]
+   | ^^^^^^^^^^^ help: add a reason why the value must be used: `#[must_use = "<REASON>"]`
+   |
+   = note: `-D clippy::must-use-without-reason` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::must_use_without_reason)]`
+
+error: `#[must_use]` attribute without a reason
+  --> tests/ui/must_use_without_reason.rs:26:5
+   |
+LL |     #[must_use]
+   |     ^^^^^^^^^^^ help: add a reason why the value must be used: `#[must_use = "<REASON>"]`
+
+error: `#[must_use]` attribute without a reason
+  --> tests/ui/must_use_without_reason.rs:41:5
+   |
+LL |     #[must_use]
+   |     ^^^^^^^^^^^ help: add a reason why the value must be used: `#[must_use = "<REASON>"]`
+
+error: aborting due to 3 previous errors
+

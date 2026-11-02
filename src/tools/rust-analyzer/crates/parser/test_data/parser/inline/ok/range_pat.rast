@@ -16,6 +16,77 @@ SOURCE_FILE
           MATCH_EXPR
             MATCH_KW "match"
             WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              MATCH_ARM
+                PAREN_PAT
+                  L_PAREN "("
+                  RANGE_PAT
+                    DOT2 ".."
+                    LITERAL_PAT
+                      LITERAL
+                        INT_NUMBER "1"
+                  R_PAREN ")"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                PAREN_PAT
+                  L_PAREN "("
+                  RANGE_PAT
+                    DOT2EQ "..="
+                    LITERAL_PAT
+                      LITERAL
+                        INT_NUMBER "3"
+                  R_PAREN ")"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                PAREN_PAT
+                  L_PAREN "("
+                  OR_PAT
+                    RANGE_PAT
+                      DOT2 ".."
+                      LITERAL_PAT
+                        LITERAL
+                          INT_NUMBER "2"
+                    WHITESPACE " "
+                    PIPE "|"
+                    WHITESPACE " "
+                    LITERAL_PAT
+                      LITERAL
+                        INT_NUMBER "4"
+                  R_PAREN ")"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
             LITERAL
               INT_NUMBER "92"
             WHITESPACE " "
@@ -468,6 +539,6 @@ SOURCE_FILE
               COMMA ","
             WHITESPACE "\n    "
             R_CURLY "}"
-        WHITESPACE "\n"
+        WHITESPACE "\n\n"
         R_CURLY "}"
   WHITESPACE "\n"

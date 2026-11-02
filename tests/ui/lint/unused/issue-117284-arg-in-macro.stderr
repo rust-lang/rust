@@ -1,6 +1,8 @@
 error: unused variable: `var`
   --> $DIR/issue-117284-arg-in-macro.rs:4:13
    |
+LL | macro_rules! make_var {
+LL |     ($struct:ident, $var:ident) => {
 LL |         let $var = $struct.$var;
    |             ^^^^
 ...
@@ -20,7 +22,6 @@ note: the lint level is defined here
    |
 LL | #![deny(unused_variables)]
    |         ^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `make_var` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unused variable: `a`
   --> $DIR/issue-117284-arg-in-macro.rs:16:9

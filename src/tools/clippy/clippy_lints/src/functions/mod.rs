@@ -15,9 +15,8 @@ use clippy_utils::paths::{PathNS, lookup_path_str};
 use rustc_ast::{self as ast, visit};
 use rustc_hir as hir;
 use rustc_hir::intravisit;
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, declare_lint_pass, impl_lint_pass};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::{declare_lint_pass, impl_lint_pass};
 use rustc_span::Span;
 use rustc_span::def_id::{DefIdSet, LocalDefId};
 
@@ -25,7 +24,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for a `#[must_use]` attribute without
     /// further information on functions and methods that return a type already
-    /// marked as `#[must_use]`.
+    /// considered as `#[must_use]`.
     ///
     /// ### Why is this bad?
     /// The attribute isn't needed. Not using the result
@@ -38,6 +37,12 @@ declare_clippy_lint! {
     /// fn double_must_use() -> Result<(), ()> {
     ///     unimplemented!();
     /// }
+    /// ```
+    ///
+    /// ### Note
+    /// The compiler may consider a type as being indirectly `#[must_use]`. For
+    /// example, although `Box<_>` itself is not `#[must_use]`, `Box<T>` will be
+    /// considered `#[must_use]` if `T` is.
     /// ```
     #[clippy::version = "1.40.0"]
     pub DOUBLE_MUST_USE,
@@ -186,6 +191,30 @@ declare_clippy_lint! {
     pub MUST_USE_UNIT,
     style,
     "`#[must_use]` attribute on a unit-returning function / method"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `#[must_use]` attributes without a reason.
+    ///
+    /// ### Why restrict this?
+    /// A reason explains why the return value must be used. Without it,
+    /// users only see a generic "unused must-use value" message which is less helpful.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[must_use]
+    /// fn compute() -> i32 { 42 }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// #[must_use = "computation is expensive"]
+    /// fn compute() -> i32 { 42 }
+    /// ```
+    #[clippy::version = "1.99.0"]
+    pub MUST_USE_WITHOUT_REASON,
+    restriction,
+    "`#[must_use]` attribute without a reason"
 }
 
 declare_clippy_lint! {
@@ -481,6 +510,7 @@ impl_lint_pass!(Functions => [
     MISNAMED_GETTERS,
     MUST_USE_CANDIDATE,
     MUST_USE_UNIT,
+    MUST_USE_WITHOUT_REASON,
     NOT_UNSAFE_PTR_ARG_DEREF,
     REF_OPTION,
     RENAMED_FUNCTION_PARAMS,
@@ -525,7 +555,7 @@ impl Functions {
                 .iter()
                 .flat_map(|p| lookup_path_str(tcx, PathNS::Type, p))
                 .collect(),
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
         }
     }
 }

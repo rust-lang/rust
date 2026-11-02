@@ -6,5 +6,5 @@ To install, run the following commands:
 
 ```
 $ cd rust/src/tools/x/
-$ cargo install --path .
+$ cargo install --locked --path .
 ```

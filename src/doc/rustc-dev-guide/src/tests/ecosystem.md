@@ -7,14 +7,15 @@ regressions and make informed decisions about the evolution of the language.
 
 ### Crater
 
-Crater is a tool which runs tests on many thousands of public projects. This
-tool has its own separate infrastructure for running, and is not run as part of
-CI. See the [Crater chapter](crater.md) for more details.
+Crater is a tool which runs tests on many thousands of public projects.
+This tool has its own separate infrastructure for running, and is not run as part of
+CI.
+See the [Crater chapter](crater.md) for more details.
 
 ### `cargotest`
 
 `cargotest` is a small tool which runs `cargo test` on a few sample projects
-(such as `servo`, `ripgrep`, `tokei`, etc.). This runs as part of CI and ensures
+(such as `stylo`, `ripgrep`, `tokei`, etc.). This runs as part of CI and ensures
 there aren't any significant regressions:
 
 ```console
@@ -23,8 +24,8 @@ there aren't any significant regressions:
 
 ### Large OSS Project builders
 
-We have CI jobs that build large open-source Rust projects that are used as
-regression tests in CI. Our integration jobs build the following projects:
+We have CI jobs that build large open-source Rust projects that are used as regression tests in CI.
+Our integration jobs build the following projects:
 
 - [Fuchsia](./ecosystem-test-jobs/fuchsia.md)
 - [Rust for Linux](./ecosystem-test-jobs/rust-for-linux.md)

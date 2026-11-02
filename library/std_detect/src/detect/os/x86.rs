@@ -121,6 +121,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
         enable(extended_features_ecx, 8, Feature::gfni);
         enable(extended_features_ecx, 9, Feature::vaes);
         enable(extended_features_ecx, 10, Feature::vpclmulqdq);
+        enable(extended_features_ecx, 27, Feature::movdiri);
+        enable(extended_features_ecx, 28, Feature::movdir64b);
 
         enable(extended_features_ebx, 3, Feature::bmi1);
         enable(extended_features_ebx, 8, Feature::bmi2);

@@ -41,5 +41,5 @@ SECTIONS
   .gcc_except_table : { *(.gcc_except_table .gcc_except_table.*) }
   .bss : { *(.bss .bss.*) }
 
-  /DISCARD/ : { *(.rel.sceStub.text .MIPS.abiflags .reginfo) }
+  /DISCARD/ : { *(.rel.sceStub.text .MIPS.abiflags .reginfo .pdr) }
 }

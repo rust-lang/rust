@@ -21,9 +21,8 @@ use clippy_utils::msrvs::Msrv;
 use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
@@ -242,7 +241,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Creating a null function pointer is undefined behavior.
     ///
-    /// More info: https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization
+    /// More info: <https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization>
     ///
     /// ### Known problems
     /// Not all cases can be detected at the moment of this writing.
@@ -493,7 +492,7 @@ pub struct Transmute {
 }
 impl Transmute {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 
     /// When transmuting, a struct containing a single field works like the field.

@@ -7,10 +7,10 @@ use rustc_data_structures::svh::Svh;
 use rustc_errors::timings::TimingSection;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::{DepGraph, WorkProductMap};
+use rustc_middle::dep_graph::{DepGraph, WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
 use rustc_session::config::{self, OutputFilenames, OutputType};
+use rustc_session::{IncrCompSession, Session};
 
 use crate::diagnostics::FailedWritingFile;
 use crate::passes;
@@ -46,7 +46,12 @@ impl Linker {
         }
     }
 
-    pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) {
+    pub fn link(
+        self,
+        sess: &Session,
+        incr_comp_session: Option<IncrCompSession>,
+        codegen_backend: &dyn CodegenBackend,
+    ) {
         let (compiled_modules, mut work_products) = sess.time("finish_ongoing_codegen", || {
             match self.ongoing_codegen.downcast::<CompiledModules>() {
                 // This was a check only build
@@ -55,35 +60,12 @@ impl Linker {
                 Err(ongoing_codegen) => codegen_backend.join_codegen(
                     ongoing_codegen,
                     sess,
+                    incr_comp_session.as_ref(),
                     &self.output_filenames,
                     &self.crate_info,
                 ),
             }
         });
-
-        if sess.codegen_units().as_usize() == 1 && sess.opts.unstable_opts.time_llvm_passes {
-            codegen_backend.print_pass_timings()
-        }
-
-        if sess.print_llvm_stats() {
-            codegen_backend.print_statistics()
-        }
-
-        if let Some(out_path) = sess.print_llvm_stats_json() {
-            let llvm_stats_json = codegen_backend.print_statistics_json();
-
-            if !llvm_stats_json.is_empty() {
-                if let Err(e) = std::fs::write(&out_path, llvm_stats_json) {
-                    sess.dcx().err(format!("failed to write stats to {}: {}", out_path, e));
-                }
-            } else {
-                sess.dcx().warn(format!(
-                    "requested to print LLVM statistics to JSON file {}, but the codegen backend \
-                    did not provide any statistics",
-                    out_path,
-                ));
-            }
-        }
 
         sess.timings.end_section(sess.dcx(), TimingSection::Codegen);
 
@@ -92,9 +74,9 @@ impl Linker {
         {
             let (id, product) = rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
                 sess,
-                "metadata",
-                &[("rmeta", path)],
-                &[],
+                incr_comp_session.as_ref().unwrap(),
+                WorkProduct::METADATA_WORKPRODUCT_CGU_NAME,
+                &[(OutputType::Metadata.extension(), path)],
             );
             work_products.insert(id, product);
         }
@@ -106,7 +88,12 @@ impl Linker {
         let _timer = sess.timer("link");
 
         sess.time("serialize_work_products", || {
-            rustc_incremental::save_work_product_index(sess, &self.dep_graph, work_products)
+            rustc_incremental::save_work_product_index(
+                sess,
+                incr_comp_session.as_ref(),
+                &self.dep_graph,
+                work_products,
+            )
         });
 
         let prof = sess.prof.clone();
@@ -114,7 +101,19 @@ impl Linker {
 
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)
-        rustc_incremental::finalize_session_directory(sess, self.crate_hash);
+        rustc_incremental::finalize_session_directory(sess, incr_comp_session, self.crate_hash);
+
+        // The `HostMetadata` offload pass only writes the kernel manifest.
+        // Codegen was already skipped so there are no files to link.
+        if sess
+            .opts
+            .unstable_opts
+            .offload
+            .iter()
+            .any(|o| matches!(o, config::Offload::HostMetadata(_)))
+        {
+            return;
+        }
 
         if !sess
             .opts

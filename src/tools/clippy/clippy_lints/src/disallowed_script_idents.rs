@@ -2,9 +2,8 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::impl_lint_pass;
-use unicode_script::{Script, UnicodeScript};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, impl_lint_pass};
+use unicode_script::{Script, UnicodeScript as _};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -78,7 +77,7 @@ impl EarlyLintPass for DisallowedScriptIdents {
         // Sort by `Span` so that error messages make sense with respect to the
         // order of identifier locations in the code.
         let mut symbols: Vec<_> = symbols.iter().collect();
-        symbols.sort_unstable_by_key(|k| k.1);
+        symbols.sort_unstable_by_key(|k| k.1.lo_hi());
 
         for &(symbol, &span) in &symbols {
             // Note: `symbol.as_str()` is an expensive operation, thus should not be called

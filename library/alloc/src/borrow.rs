@@ -188,7 +188,7 @@ impl<'a, B: ?Sized + ToOwned> Borrow<B> for Cow<'a, B>
 //     B::Owned: [const] Borrow<B>,
 {
     fn borrow(&self) -> &B {
-        &**self
+        self
     }
 }
 
@@ -280,6 +280,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn to_mut(&mut self) -> &mut <B as ToOwned>::Owned {
         match *self {
             Borrowed(borrowed) => {

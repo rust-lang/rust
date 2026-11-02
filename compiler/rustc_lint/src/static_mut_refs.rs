@@ -1,12 +1,11 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, Stmt};
+use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
 use rustc_middle::ty::{Mutability, TyKind};
-use rustc_session::lint::fcw;
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{BytePos, Span};
 
-use crate::lints::{MutRefSugg, RefOfMutStatic, StaticMutRefsInteriorMutabilitySugg};
+use crate::diagnostics::{MutRefSugg, RefOfMutStatic, StaticMutRefsInteriorMutabilitySugg};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {

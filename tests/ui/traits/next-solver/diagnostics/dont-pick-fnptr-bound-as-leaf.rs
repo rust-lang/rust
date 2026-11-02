@@ -6,9 +6,9 @@
 // to give as the reason why the bound does not hold. This test checks that we do not
 // try to tell the user that `Foo: FnPtr` is unimplemented as that would be confusing.
 
-#![feature(fn_ptr_trait)]
+#![feature(fn_static)]
 
-use std::marker::FnPtr;
+use std::ops::FnPtr;
 
 trait Trait {}
 

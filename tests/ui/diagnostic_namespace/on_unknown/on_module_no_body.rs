@@ -1,7 +1,7 @@
 #![crate_type = "lib"]
 #![feature(diagnostic_on_unknown)]
 
-#[diagnostic::on_unknown(message = "oh no, that is not in aux module `{This}`")]
+#[diagnostic::on_unknown(message = "oh no, that is not in aux module `{this}`")]
 #[path = "auxiliary/module.rs"]
 pub mod x;
 

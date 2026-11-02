@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_hir_and_then};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::Visibility;
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does

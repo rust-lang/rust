@@ -67,13 +67,14 @@ pub type SEL = *mut objc_selector;
 ///
 /// # Example
 ///
-/// ```no_run
+#[cfg_attr(target_os = "macos", doc = "```no_run")]
+#[cfg_attr(not(target_os = "macos"), doc = "```ignore (needs macos)")]
 /// #![feature(darwin_objc)]
 /// use core::os::darwin::objc;
 ///
 /// let string_class = objc::class!("NSString");
 /// ```
-#[allow_internal_unstable(rustc_attrs)]
+#[allow_internal_unstable(core_os, rustc_attrs)]
 pub macro class($classname:expr) {{
     // Since static Objective-C class references actually end up with multiple definitions
     // across dylib boundaries, we only expose the value of the static and don't provide a way to
@@ -93,14 +94,15 @@ pub macro class($classname:expr) {{
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(target_os = "macos", doc = "```no_run")]
+#[cfg_attr(not(target_os = "macos"), doc = "```ignore (needs macos)")]
 /// #![feature(darwin_objc)]
 /// use core::os::darwin::objc;
 ///
 /// let alloc_sel = objc::selector!("alloc");
 /// let init_sel = objc::selector!("initWithCString:encoding:");
 /// ```
-#[allow_internal_unstable(rustc_attrs)]
+#[allow_internal_unstable(core_os, rustc_attrs)]
 pub macro selector($methname:expr) {{
     // Since static Objective-C selector references actually end up with multiple definitions
     // across dylib boundaries, we only expose the value of the static and don't provide a way to

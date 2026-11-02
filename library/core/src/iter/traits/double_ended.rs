@@ -185,15 +185,53 @@ pub const trait DoubleEndedIterator: [const] Iterator {
     /// [`Err(k)`]: Err
     #[inline]
     #[unstable(feature = "iter_advance_by", issue = "77404")]
-    #[rustc_non_const_trait_method]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        for i in 0..n {
-            if self.next_back().is_none() {
-                // SAFETY: `i` is always less than `n`.
-                return Err(unsafe { NonZero::new_unchecked(n - i) });
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>>
+    where
+        Self::Item: [const] Destruct,
+    {
+        /// Helper trait to specialize `advance_back_by` via `try_rfold` for `Sized` iterators.
+
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const trait SpecAdvanceBackBy {
+            fn spec_advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>>;
+        }
+
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const impl<I: [const] DoubleEndedIterator + ?Sized> SpecAdvanceBackBy for I
+        where
+            I::Item: [const] Destruct,
+        {
+            default fn spec_advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+                for i in 0..n {
+                    if self.next_back().is_none() {
+                        // SAFETY: `i` is always less than `n`.
+                        return Err(unsafe { NonZero::new_unchecked(n - i) });
+                    }
+                }
+                Ok(())
             }
         }
-        Ok(())
+
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const impl<I: [const] DoubleEndedIterator> SpecAdvanceBackBy for I
+        where
+            I::Item: [const] Destruct,
+        {
+            fn spec_advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+                let Some(n) = NonZero::new(n) else {
+                    return Ok(());
+                };
+
+                let res = self.try_rfold(n, const |n, _| NonZero::new(n.get() - 1));
+
+                match res {
+                    None => Ok(()),
+                    Some(n) => Err(n),
+                }
+            }
+        }
+
+        self.spec_advance_back_by(n)
     }
 
     /// Returns the `n`th element from the end of the iterator.
@@ -239,11 +277,11 @@ pub const trait DoubleEndedIterator: [const] Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_nth_back", since = "1.37.0")]
-    #[rustc_non_const_trait_method]
-    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        if self.advance_back_by(n).is_err() {
-            return None;
-        }
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item>
+    where
+        Self::Item: [const] Destruct,
+    {
+        self.advance_back_by(n).ok()?;
         self.next_back()
     }
 
@@ -415,15 +453,21 @@ pub const trait DoubleEndedIterator: [const] Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_rfind", since = "1.27.0")]
-    #[rustc_non_const_trait_method]
     fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
     where
         Self: Sized,
-        P: FnMut(&Self::Item) -> bool,
+        P: [const] FnMut(&Self::Item) -> bool + [const] Destruct,
+        Self::Item: [const] Destruct,
     {
         #[inline]
-        fn check<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut((), T) -> ControlFlow<T> {
-            move |(), x| {
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const fn check<T>(
+            mut predicate: impl [const] FnMut(&T) -> bool + [const] Destruct,
+        ) -> impl [const] FnMut((), T) -> ControlFlow<T> + [const] Destruct
+        where
+            T: [const] Destruct,
+        {
+            const move |(), x| {
                 if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::Continue(()) }
             }
         }

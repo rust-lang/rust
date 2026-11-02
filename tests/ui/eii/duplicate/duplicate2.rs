@@ -1,7 +1,6 @@
 //@ aux-build: impl1.rs
 //@ aux-build: impl2.rs
 //@ aux-build: impl3.rs
-//@ ignore-backends: gcc
 // FIXME(#125418): linking on Windows GNU targets is not yet supported.
 //@ ignore-windows-gnu
 // Tests the error message when there are multiple implementations of an EII in many crates.

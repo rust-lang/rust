@@ -40,13 +40,13 @@ LL |         let _ = core::iter::once_with(|| 0);
 error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.43.0`
   --> tests/ui/incompatible_msrv.rs:69:21
    |
+LL |     macro_rules! my_panic {
+LL |         ($msg:expr) => {
 LL |             let _ = core::iter::once_with(|| $msg);
    |                     ^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     my_panic!("foo");
    |     ---------------- in this macro invocation
-   |
-   = note: this error originates in the macro `my_panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.43.0`
   --> tests/ui/incompatible_msrv.rs:76:13

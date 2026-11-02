@@ -1,5 +1,5 @@
 //@ run-rustfix
-// https://github.com/rust-lang/rust/issues/82081
+// https://github.com/rust-lang/rust/issues/82081 & https://github.com/rust-lang/rust/issues/49839
 
 use std::collections::HashMap;
 
@@ -7,7 +7,7 @@ struct Test {
     v: u32,
 }
 
-fn main() {
+fn a() {
     let mut map = HashMap::new();
     map.insert("a", Test { v: 0 });
 
@@ -18,4 +18,23 @@ fn main() {
         //~^ ERROR cannot assign to `v.v`
         //~| NOTE `v` is a `&` reference
     }
+}
+
+fn b() {
+    let mut map = HashMap::new();
+    map.insert("a", Test { v: 0 });
+
+    let x = map.iter_mut();
+    //~^ HELP use mutable method
+    for (_k, v) in x {
+        //~^ NOTE this iterator yields `&` references
+        v.v += 1;
+        //~^ ERROR cannot assign to `v.v`
+        //~| NOTE `v` is a `&` reference
+    }
+}
+
+fn main() {
+    a();
+    b();
 }

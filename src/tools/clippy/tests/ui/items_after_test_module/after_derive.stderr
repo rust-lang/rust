@@ -1,0 +1,40 @@
+error: items after a test module
+  --> tests/ui/items_after_test_module/after_derive.rs:12:5
+   |
+LL |     mod tests {
+   |     ^^^^^^^^^
+...
+LL |     struct ShouldLint;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::items-after-test-module` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::items_after_test_module)]`
+   = help: move the items to before the test module was defined
+
+error: items after a test module
+  --> tests/ui/items_after_test_module/after_derive.rs:26:5
+   |
+LL |     mod tests {
+   |     ^^^^^^^^^
+...
+LL |     struct ShouldLint;
+   |     ^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn should_also_lint() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: move the items to before the test module was defined
+
+error: items after a test module
+  --> tests/ui/items_after_test_module/after_derive.rs:42:5
+   |
+LL |     mod tests {
+   |     ^^^^^^^^^
+...
+LL |     struct ShouldLint;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: move the items to before the test module was defined
+
+error: aborting due to 3 previous errors
+

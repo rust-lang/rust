@@ -104,7 +104,7 @@ impl<T> JoinHandle<T> {
     /// Otherwise, it fully waits for the thread to finish, including all destructors
     /// for thread-local variables that might be running after the main function of the thread.
     ///
-    /// In terms of [atomic memory orderings],  the completion of the associated
+    /// In terms of [atomic memory orderings], the completion of the associated
     /// thread synchronizes with this function returning. In other words, all
     /// operations performed by that thread [happen
     /// before](https://doc.rust-lang.org/nomicon/atomics.html#data-accesses) all

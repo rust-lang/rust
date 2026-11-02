@@ -16,10 +16,6 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-#[cfg(target_feature = "atomics")]
-#[path = "atomics/futex.rs"]
-pub mod futex;
-
 #[path = "../unsupported/common.rs"]
 #[deny(unsafe_op_in_unsafe_fn)]
 mod common;

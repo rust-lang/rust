@@ -1,6 +1,5 @@
 #![crate_type = "lib"]
 #![deny(unused_features)]
-
 // Unused language features
 #![feature(coroutines)]
 //~^ ERROR feature `coroutines` is declared but not used
@@ -16,10 +15,10 @@
 //~^ ERROR feature `negative_impls` is declared but not used
 
 // Not enabled via cfg_attr, so should not warn even if unused
-#![cfg_attr(any(), feature(never_type))]
+#![cfg_attr(any(), feature(type_ascription))]
 
 macro_rules! use_asm_unwind {
     () => {
         unsafe { std::arch::asm!("", options(may_unwind)) };
-    }
+    };
 }

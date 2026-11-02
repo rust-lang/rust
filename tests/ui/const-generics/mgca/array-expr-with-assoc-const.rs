@@ -1,12 +1,12 @@
 //@ run-pass
-#![expect(incomplete_features)]
-#![feature(min_generic_const_args, macroless_generic_const_args, adt_const_params)]
+#![feature(gca_adts, gca_min_const_items, gca_macroless_args, adt_const_params)]
 #![allow(dead_code)]
 
 fn takes_array<const A: [u32; 3]>() {}
 
 trait Trait {
-    type const ASSOC: u32;
+    #[rustc_always_gca]
+    const ASSOC: u32;
 }
 
 fn generic_caller<T: Trait, const N: u32>() {

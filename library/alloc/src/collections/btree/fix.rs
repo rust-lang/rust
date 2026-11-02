@@ -1,4 +1,4 @@
-use core::alloc::Allocator;
+use core::alloc::AllocatorClone;
 
 use super::map::MIN_LEN;
 use super::node::ForceResult::*;
@@ -10,7 +10,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// sibling. If successful but at the cost of shrinking the parent node,
     /// returns that shrunk parent node. Returns an `Err` if the node is
     /// an empty root.
-    fn fix_node_through_parent<A: Allocator + Clone>(
+    fn fix_node_through_parent<A: AllocatorClone>(
         self,
         alloc: A,
     ) -> Result<Option<NodeRef<marker::Mut<'a>, K, V, marker::Internal>>, Self> {
@@ -57,10 +57,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     ///
     /// This method does not expect ancestors to already be underfull upon entry
     /// and panics if it encounters an empty ancestor.
-    pub(super) fn fix_node_and_affected_ancestors<A: Allocator + Clone>(
-        mut self,
-        alloc: A,
-    ) -> bool {
+    pub(super) fn fix_node_and_affected_ancestors<A: AllocatorClone>(mut self, alloc: A) -> bool {
         loop {
             match self.fix_node_through_parent(alloc.clone()) {
                 Ok(Some(parent)) => self = parent.forget_type(),
@@ -73,7 +70,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
 
 impl<K, V> Root<K, V> {
     /// Removes empty levels on the top, but keeps an empty leaf if the entire tree is empty.
-    pub(super) fn fix_top<A: Allocator + Clone>(&mut self, alloc: A) {
+    pub(super) fn fix_top<A: AllocatorClone>(&mut self, alloc: A) {
         while self.height() > 0 && self.len() == 0 {
             self.pop_internal_level(alloc.clone());
         }
@@ -82,7 +79,7 @@ impl<K, V> Root<K, V> {
     /// Stocks up or merge away any underfull nodes on the right border of the
     /// tree. The other nodes, those that are not the root nor a rightmost edge,
     /// must already have at least MIN_LEN elements.
-    pub(super) fn fix_right_border<A: Allocator + Clone>(&mut self, alloc: A) {
+    pub(super) fn fix_right_border<A: AllocatorClone>(&mut self, alloc: A) {
         self.fix_top(alloc.clone());
         if self.len() > 0 {
             self.borrow_mut().last_kv().fix_right_border_of_right_edge(alloc.clone());
@@ -91,7 +88,7 @@ impl<K, V> Root<K, V> {
     }
 
     /// The symmetric clone of `fix_right_border`.
-    pub(super) fn fix_left_border<A: Allocator + Clone>(&mut self, alloc: A) {
+    pub(super) fn fix_left_border<A: AllocatorClone>(&mut self, alloc: A) {
         self.fix_top(alloc.clone());
         if self.len() > 0 {
             self.borrow_mut().first_kv().fix_left_border_of_left_edge(alloc.clone());
@@ -121,14 +118,14 @@ impl<K, V> Root<K, V> {
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
-    fn fix_left_border_of_left_edge<A: Allocator + Clone>(mut self, alloc: A) {
+    fn fix_left_border_of_left_edge<A: AllocatorClone>(mut self, alloc: A) {
         while let Internal(internal_kv) = self.force() {
             self = internal_kv.fix_left_child(alloc.clone()).first_kv();
             debug_assert!(self.reborrow().into_node().len() > MIN_LEN);
         }
     }
 
-    fn fix_right_border_of_right_edge<A: Allocator + Clone>(mut self, alloc: A) {
+    fn fix_right_border_of_right_edge<A: AllocatorClone>(mut self, alloc: A) {
         while let Internal(internal_kv) = self.force() {
             self = internal_kv.fix_right_child(alloc.clone()).last_kv();
             debug_assert!(self.reborrow().into_node().len() > MIN_LEN);
@@ -141,7 +138,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     /// provisions an extra element to allow merging its children in turn
     /// without becoming underfull.
     /// Returns the left child.
-    fn fix_left_child<A: Allocator + Clone>(
+    fn fix_left_child<A: AllocatorClone>(
         self,
         alloc: A,
     ) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
@@ -164,7 +161,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     /// provisions an extra element to allow merging its children in turn
     /// without becoming underfull.
     /// Returns wherever the right child ended up.
-    fn fix_right_child<A: Allocator + Clone>(
+    fn fix_right_child<A: AllocatorClone>(
         self,
         alloc: A,
     ) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {

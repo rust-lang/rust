@@ -77,11 +77,8 @@ pub trait CrateDef {
 
     /// Return registered tool attributes with the given attribute name.
     ///
-    /// FIXME(jdonszelmann): may panic on non-tool attributes. After more attribute work, non-tool
-    /// attributes will simply return an empty list.
-    ///
-    /// Single segmented name like `#[clippy]` is specified as `&["clippy".to_string()]`.
-    /// Multi-segmented name like `#[rustfmt::skip]` is specified as `&["rustfmt".to_string(), "skip".to_string()]`.
+    /// For example, `#![rustfmt::skip]` can be specified as
+    /// `&["rustfmt".to_string(), "skip".to_string()]`.
     fn tool_attrs(&self, attr: &[Symbol]) -> Vec<Attribute> {
         let def_id = self.def_id();
         with(|cx| cx.tool_attrs(def_id, attr))
@@ -134,24 +131,30 @@ impl Attribute {
 }
 
 macro_rules! crate_def {
-    ( $(#[$attr:meta])*
-      $vis:vis $name:ident $(;)?
-    ) => {
-        $(#[$attr])*
-        #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
-        $vis struct $name(pub DefId);
+    ($(
+        $(#[$attr:meta])*
+        $vis:vis $name:ident;
+    )*) => {
+        $(
+            $(#[$attr])*
+            #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+            $vis struct $name(pub DefId);
 
-        impl CrateDef for $name {
-            fn def_id(&self) -> DefId {
-                self.0
+            impl CrateDef for $name {
+                fn def_id(&self) -> DefId {
+                    self.0
+                }
             }
-        }
+        )*
     };
 }
 
 macro_rules! crate_def_with_ty {
-    ( $(#[$attr:meta])*
-      $vis:vis $name:ident $(;)?
+    () => {};
+    (
+        $(#[$attr:meta])*
+        $vis:vis $name:ident;
+        $($rest:tt)*
     ) => {
         $(#[$attr])*
         #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
@@ -164,14 +167,18 @@ macro_rules! crate_def_with_ty {
         }
 
         impl CrateDefType for $name {}
+
+        crate_def_with_ty!($($rest)*);
     };
-    ( $(#[$attr:meta])*
-      $vis:vis $name:ident {
-        $(
-            $(#[$f_attr:meta])*
-            $f_vis:vis $f_name:ident: $f_ty:ty,
-        )*
-      }
+    (
+        $(#[$attr:meta])*
+        $vis:vis $name:ident {
+            $(
+                $(#[$f_attr:meta])*
+                $f_vis:vis $f_name:ident: $f_ty:ty,
+            )*
+        }
+        $($rest:tt)*
     ) => {
         $(#[$attr])*
         #[derive(Clone, PartialEq, Eq, Debug)]
@@ -190,5 +197,7 @@ macro_rules! crate_def_with_ty {
         }
 
         impl CrateDefType for $name {}
+
+        crate_def_with_ty!($($rest)*);
     };
 }

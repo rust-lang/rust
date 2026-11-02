@@ -71,7 +71,9 @@ pub(crate) fn goto_definition(
         | T![super]
         | T![crate]
         | T![Self]
-        | COMMENT => 4,
+        | COMMENT
+        | INNER_DOC_COMMENT
+        | OUTER_DOC_COMMENT => 4,
         // index and prefix ops
         T!['['] | T![']'] | T![?] | T![*] | T![-] | T![!] => 3,
         kind if kind.is_keyword(edition) => 2,
@@ -719,6 +721,13 @@ mod tests {
             .info;
 
         assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {navs:?}")
+    }
+
+    #[track_caller]
+    fn check_no_definition(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
+        let (analysis, position) = fixture::position(ra_fixture);
+        let navs = analysis.goto_definition(position, &TEST_CONFIG).unwrap();
+        assert!(navs.is_none(), "didn't expect this to resolve anywhere: {navs:?}");
     }
 
     fn check_name(expected_name: &str, #[rust_analyzer::rust_fixture] ra_fixture: &str) {
@@ -2131,6 +2140,30 @@ pub fn foo() { }
     }
 
     #[test]
+    fn no_panic_on_offset_inside_doc_comment_prefix() {
+        // If the cursor (offset) points inside `///`/`//!`/the opening quote, i.e. before the docs' contents,
+        // this should not create navigation.
+        check_no_definition(
+            r#"
+$0/// [`S`]
+struct S;
+"#,
+        );
+        check_no_definition(
+            r#"
+//$0! [`S`]
+struct S;
+"#,
+        );
+        check_no_definition(
+            r#"
+#[doc = $0"[`S`]"]
+struct S;
+"#,
+        );
+    }
+
+    #[test]
     fn goto_def_for_intra_doc_link_outer_same_file() {
         check(
             r#"
@@ -2328,10 +2361,7 @@ fn main() {
         );
     }
 
-    // macros in this position are not yet supported
     #[test]
-    // FIXME
-    #[should_panic]
     fn goto_doc_include_str() {
         check(
             r#"

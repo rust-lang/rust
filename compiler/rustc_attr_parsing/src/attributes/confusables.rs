@@ -1,7 +1,7 @@
 use rustc_feature::AttributeStability;
 
 use super::prelude::*;
-use crate::session_diagnostics::EmptyConfusables;
+use crate::diagnostics::EmptyConfusables;
 
 #[derive(Default)]
 pub(crate) struct ConfusablesParser {

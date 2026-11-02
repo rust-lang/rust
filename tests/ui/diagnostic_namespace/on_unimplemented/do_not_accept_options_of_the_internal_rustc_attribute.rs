@@ -35,14 +35,14 @@ impl Bar for i32 {}
     //~|WARN there is no parameter `r#struct` on trait `Baz`
     //~|WARN there is no parameter `r#enum` on trait `Baz`
     //~|WARN there is no parameter `union` on trait `Baz`
-    label = "{float}{_Self}{crate_local}{This}{ItemContext}{This:path}{This:resolved}"
+    label = "{float}{_Self}{crate_local}{this}{item_context}{this:path}{this:resolved}"
     //~^WARN there is no parameter `float` on trait `Baz`
     //~|WARN there is no parameter `_Self` on trait `Baz`
     //~|WARN there is no parameter `crate_local` on trait `Baz`
-    //~|WARN there is no parameter `ItemContext` on trait `Baz`
-    //~|WARN there is no parameter `This` on trait `Baz`
-    //~|WARN there is no parameter `This` on trait `Baz`
-    //~|WARN there is no parameter `This` on trait `Baz`
+    //~|WARN there is no parameter `item_context` on trait `Baz`
+    //~|WARN there is no parameter `this` on trait `Baz`
+    //~|WARN there is no parameter `this` on trait `Baz`
+    //~|WARN there is no parameter `this` on trait `Baz`
     //~|WARN format specifiers are not permitted in diagnostic attributes
     //~|WARN format specifiers are not permitted in diagnostic attributes
 )]

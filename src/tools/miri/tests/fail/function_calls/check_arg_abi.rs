@@ -6,6 +6,6 @@ fn main() {
     }
 
     unsafe {
-        let _ = malloc(0); //~ ERROR: calling a function with calling convention "C" using caller calling convention "Rust"
+        let _ = malloc(0); //~ ERROR: has calling convention "C", but the caller is using calling convention "Rust"
     };
 }

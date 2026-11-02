@@ -3,10 +3,13 @@
 use derive_where::derive_where;
 use indexmap::IndexSet;
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
-#[cfg(feature = "nightly")]
 use rustc_data_structures::transitive_relation::{TransitiveRelation, TransitiveRelationBuilder};
+#[cfg(feature = "nightly")]
+use rustc_macros::StableHash_NoContext;
+use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::{debug, instrument};
+
+use crate::Const;
 
 // Workaround for TransitiveRelation being in rustc_data_structures which isn't accessible on stable
 #[cfg(not(feature = "nightly"))]
@@ -45,23 +48,38 @@ impl<T> Default for TransitiveRelationBuilder<T> {
     }
 }
 
+use smallvec::SmallVec;
+
 use crate::data_structures::IndexMap;
 use crate::fold::TypeSuperFoldable;
 use crate::inherent::*;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
+use crate::visit::TypeVisitableExt;
 use crate::{
-    AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, DebruijnIndex, FallibleTypeFolder,
-    GenericTypeVisitable, InferCtxtLike, Interner, IsRigid, OutlivesPredicate, Region, RegionKind,
-    TyKind, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex,
-    Variance, VisitorResult, max_universe, set_aliases_to_non_rigid, try_visit,
-    walk_visitable_list,
+    AliasTy, Binder, BoundRegion, BoundRegionKind, BoundVar, BoundVariableKind, ClauseKind,
+    DebruijnIndex, InferCtxtLike, Interner, IsRigid, OutlivesClause, Region, RegionKind, TyKind,
+    TypeFoldable, TypeFolder, TypingMode, UniverseIndex, Variance, elaborate, max_universe,
+    set_aliases_to_non_rigid,
 };
 
-#[derive_where(Clone, Debug; I: Interner)]
+#[derive_where(Clone; I: Interner)]
 pub struct Assumptions<I: Interner> {
-    pub type_outlives: Vec<Binder<I, OutlivesPredicate<I, I::Ty>>>,
+    pub type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
+    /// Known `'a: 'b` assumptions, stored as an edge from the outliving region to the
+    /// outlived one, i.e. an edge `('a, 'b)` means `'a: 'b`. Constructors expect a relation
+    /// with this direction, see [`regions_outlived_by`] and [`regions_outliving`] for how it
+    /// is consumed.
     pub region_outlives: TransitiveRelation<Region<I>>,
     pub inverse_region_outlives: TransitiveRelation<Region<I>>,
+}
+
+impl<I: Interner> std::fmt::Debug for Assumptions<I> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        f.debug_struct("Assumptions")
+            .field("type_outlives", &self.type_outlives)
+            .field("region_graph", &"elided")
+            .finish()
+    }
 }
 
 impl<I: Interner> Assumptions<I> {
@@ -73,8 +91,67 @@ impl<I: Interner> Assumptions<I> {
         }
     }
 
+    /// Builds assumptions from `clauses`, elaborating them and keeping the outlives ones.
+    ///
+    /// Callers hand us their clauses straight from the environment, so we have to elaborate
+    /// here to get at the implied outlives bounds:
+    /// - a `Ty: 'a` clause tells us that every region component of `Ty` outlives `'a`, e.g.
+    ///   `&'b u8: 'a` implies `'b: 'a`. Without it we'd fail to prove `'b: 'a` when leaving
+    ///   the binder these assumptions belong to.
+    /// - it also gives us the components as type outlives, e.g. `Vec<T>: 'a` implies `T: 'a`,
+    ///   which we need for placeholder and alias outlives.
+    /// - trait clauses imply their supertraits, so `T: Bound<'a>` where `trait Bound<'c>: 'c`
+    ///   gives us `T: 'a`. This is why we take clauses rather than just the outlives ones:
+    ///   filtering down to outlives before elaborating would throw those away.
+    ///
+    /// Only the clauses whose max universe is exactly `universe` are kept, which is what the
+    /// solver wants when computing the assumptions of a single binder. This happens after
+    /// elaboration on purpose, so a clause whose regions live in more than one universe still
+    /// contributes its implied bounds to each of them: `(&'b u8, &'c u8): 'a` gives us
+    /// `'c: 'a` in `'c`s universe even though the clause itself is in `'b`s.
+    ///
+    /// Use [`Assumptions::new_unelaborated`] when the caller needs the assumptions to be
+    /// exactly the clauses it passed in.
     pub fn new(
-        type_outlives: Vec<Binder<I, OutlivesPredicate<I, I::Ty>>>,
+        infcx: &impl InferCtxtLike<Interner = I>,
+        clauses: impl IntoIterator<Item = I::Clause>,
+        region_outlives: TransitiveRelation<Region<I>>,
+        universe: UniverseIndex,
+    ) -> Self {
+        let mut type_outlives = vec![];
+        let mut region_outlives_builder = TransitiveRelationBuilder::default();
+        for (r1, r2) in region_outlives.base_edges() {
+            region_outlives_builder.add(r1, r2);
+        }
+
+        let clauses = elaborate::elaborate(infcx.cx(), clauses)
+            .filter(|clause| max_universe(infcx, *clause) == universe);
+        for clause in clauses {
+            match clause.kind().skip_binder() {
+                // The type outlives assumptions are kept around as they are required for
+                // proving placeholder and alias outlives.
+                ClauseKind::TypeOutlives(_) => {
+                    type_outlives.push(clause.as_type_outlives_clause().unwrap());
+                }
+                ClauseKind::RegionOutlives(OutlivesClause(r1, r2)) => {
+                    // `elaborate` drops the components which are bound inside of the type and
+                    // bails on `for<'a> Ty: 'a`, so both regions here are free even though the
+                    // clause itself may still be under a binder.
+                    debug_assert!(!r1.is_bound() && !r2.is_bound());
+                    region_outlives_builder.add(r1, r2);
+                }
+                // Anything else can't be used as an outlives assumption.
+                _ => (),
+            }
+        }
+
+        Self::new_unelaborated(type_outlives, region_outlives_builder.freeze())
+    }
+
+    /// Builds assumptions from exactly the given clauses, see [`Assumptions::new`] for when
+    /// the clauses should get elaborated instead.
+    pub fn new_unelaborated(
+        type_outlives: Vec<Binder<I, OutlivesClause<I, I::Ty>>>,
         region_outlives: TransitiveRelation<Region<I>>,
     ) -> Self {
         Self {
@@ -91,11 +168,30 @@ impl<I: Interner> Assumptions<I> {
     }
 }
 
-#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
-#[derive(GenericTypeVisitable)]
-pub enum RegionConstraint<I: Interner> {
-    Ambiguity,
-    RegionOutlives(Region<I>, Region<I>),
+/// The span stored in a [`RegionConstraint`] and friends.
+///
+/// Constraints are created with spans during type checking, but are also stored
+/// without any span, e.g. in query responses, in which case [`NoSpan`] is used.
+/// This trait exists so that code which is generic over the span only needs a
+/// single bound instead of repeating all of the supertrait bounds.
+pub trait ConstraintSpan: Clone + std::fmt::Debug + Eq + std::hash::Hash {}
+
+/// Placeholder for constraints which do not carry a span, see [`ConstraintSpan`].
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+pub struct NoSpan;
+
+impl ConstraintSpan for NoSpan {}
+
+#[cfg(feature = "nightly")]
+impl ConstraintSpan for rustc_span::Span {}
+
+#[derive_where(Clone, Hash, PartialEq, Eq; I: Interner, S)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+pub enum LeafRegionConstraint<I: Interner, S: Clone = NoSpan> {
+    Ambiguity(S),
+    RegionOutlives(Region<I>, Region<I>, S),
     /// Requirement that a (potentially higher ranked) alias outlives some (potentially higher ranked)
     /// region due to an assumption in the environment. This cannot be satisfied via component outlives
     /// or item bounds.
@@ -105,7 +201,7 @@ pub enum RegionConstraint<I: Interner> {
     ///
     /// We eagerly destructure alias outlives requirements into region outlives requirements corresponding to
     /// component outlives & item bound outlives rules, leaving only param env candidates.
-    AliasTyOutlivesViaEnv(Binder<I, (AliasTy<I>, Region<I>)>),
+    AliasTyOutlivesViaEnv(Binder<I, (AliasTy<I>, Region<I>)>, S),
     /// This is an `I::Ty` for two reasons:
     /// 1. We need the type visitable impl to be able to `visit_ty` on this so canonicalization
     ///    knows about the placeholder
@@ -115,309 +211,434 @@ pub enum RegionConstraint<I: Interner> {
     ///
     /// We cannot eagerly look at assumptions as we are usually working with an incomplete set of assumptions
     /// and there may wind up being assumptions we can use to prove this when we're in a smaller universe.
-    PlaceholderTyOutlives(I::Ty, Region<I>),
-
-    And(Box<[RegionConstraint<I>]>),
-    Or(Box<[RegionConstraint<I>]>),
+    PlaceholderTyOutlives(I::Ty, Region<I>, S),
 }
 
-// This is not a derived impl because a perfect derive leads to inductive
-// cycle causing the trait to never actually be implemented.
-#[cfg(feature = "nightly")]
-impl<I: Interner> StableHash for RegionConstraint<I>
-where
-    Region<I>: StableHash,
-    I::Ty: StableHash,
-    I::GenericArgs: StableHash,
-    I::TraitAssocTyId: StableHash,
-    I::InherentAssocTyId: StableHash,
-    I::OpaqueTyId: StableHash,
-    I::FreeTyAliasId: StableHash,
-    I::BoundVarKinds: StableHash,
-{
-    #[inline]
-    fn stable_hash<CTX: StableHashCtxt>(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        use RegionConstraint::*;
-
-        std::mem::discriminant(self).stable_hash(hcx, hasher);
+impl<I: Interner, S: Clone> std::fmt::Debug for LeafRegionConstraint<I, S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            Ambiguity => (),
-            RegionOutlives(a, b) => {
-                a.stable_hash(hcx, hasher);
-                b.stable_hash(hcx, hasher);
+            Self::Ambiguity(_span) => f.write_str("ambiguity"),
+            Self::RegionOutlives(r1, r2, _span) => {
+                r1.fmt(f)?;
+                f.write_str(": ")?;
+                r2.fmt(f)
             }
-            AliasTyOutlivesViaEnv(outlives) => {
-                outlives.stable_hash(hcx, hasher);
+            Self::AliasTyOutlivesViaEnv(bound_outlives, _span) => {
+                f.write_str("for<")?;
+                bound_outlives.bound_vars().fmt(f)?;
+                f.write_str(">")?;
+                let (ty, r) = bound_outlives.skip_binder();
+                ty.fmt(f)?;
+                f.write_str(": ")?;
+                r.fmt(f)
             }
-            PlaceholderTyOutlives(a, b) => {
-                a.stable_hash(hcx, hasher);
-                b.stable_hash(hcx, hasher);
-            }
-            And(and) => {
-                for a in and.iter() {
-                    a.stable_hash(hcx, hasher);
-                }
-            }
-            Or(or) => {
-                for a in or.iter() {
-                    a.stable_hash(hcx, hasher);
-                }
+            Self::PlaceholderTyOutlives(ty, r, _span) => {
+                ty.fmt(f)?;
+                f.write_str(": ")?;
+                r.fmt(f)
             }
         }
     }
 }
 
-impl<I: Interner> TypeFoldable<I> for RegionConstraint<I> {
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, f: &mut F) -> Result<Self, F::Error> {
-        use RegionConstraint::*;
-        Ok(match self {
-            Ambiguity => self,
-            RegionOutlives(a, b) => RegionOutlives(a.try_fold_with(f)?, b.try_fold_with(f)?),
-            AliasTyOutlivesViaEnv(outlives) => AliasTyOutlivesViaEnv(outlives.try_fold_with(f)?),
-            PlaceholderTyOutlives(a, b) => {
-                PlaceholderTyOutlives(a.try_fold_with(f)?, b.try_fold_with(f)?)
-            }
-            And(and) => {
-                let mut new_and = Vec::new();
-                for a in and {
-                    new_and.push(a.try_fold_with(f)?);
-                }
-                And(new_and.into_boxed_slice())
-            }
-            Or(or) => {
-                let mut new_or = Vec::new();
-                for a in or {
-                    new_or.push(a.try_fold_with(f)?);
-                }
-                Or(new_or.into_boxed_slice())
-            }
-        })
-    }
+impl<I: Interner> LeafRegionConstraint<I> {
+    pub fn with_span<S: ConstraintSpan>(self, span: S) -> LeafRegionConstraint<I, S> {
+        use LeafRegionConstraint::*;
 
-    fn fold_with<F: TypeFolder<I>>(self, f: &mut F) -> Self {
-        use RegionConstraint::*;
         match self {
-            Ambiguity => self,
-            RegionOutlives(a, b) => RegionOutlives(a.fold_with(f), b.fold_with(f)),
-            AliasTyOutlivesViaEnv(outlives) => AliasTyOutlivesViaEnv(outlives.fold_with(f)),
-            PlaceholderTyOutlives(a, b) => PlaceholderTyOutlives(a.fold_with(f), b.fold_with(f)),
-            And(and) => {
-                let mut new_and = Vec::new();
-                for a in and {
-                    new_and.push(a.fold_with(f));
-                }
-                And(new_and.into_boxed_slice())
+            Ambiguity(NoSpan) => Ambiguity(span),
+            RegionOutlives(r1, r2, NoSpan) => RegionOutlives(r1, r2, span),
+            AliasTyOutlivesViaEnv(bound_outlives, NoSpan) => {
+                AliasTyOutlivesViaEnv(bound_outlives, span)
             }
-            Or(or) => {
-                let mut new_or = Vec::new();
-                for a in or {
-                    new_or.push(a.fold_with(f));
-                }
-                Or(new_or.into_boxed_slice())
-            }
+            PlaceholderTyOutlives(ty, r, NoSpan) => PlaceholderTyOutlives(ty, r, span),
         }
     }
 }
 
-impl<I: Interner> TypeVisitable<I> for RegionConstraint<I> {
-    fn visit_with<F: TypeVisitor<I>>(&self, f: &mut F) -> F::Result {
-        use RegionConstraint::*;
+impl<I: Interner, S: ConstraintSpan> LeafRegionConstraint<I, S> {
+    pub fn without_span(self) -> LeafRegionConstraint<I> {
+        use LeafRegionConstraint::*;
 
         match self {
-            Ambiguity => (),
-            RegionOutlives(a, b) => {
-                try_visit!(a.visit_with(f));
-                try_visit!(b.visit_with(f));
+            Ambiguity(_) => Ambiguity(NoSpan),
+            RegionOutlives(r1, r2, _) => RegionOutlives(r1, r2, NoSpan),
+            AliasTyOutlivesViaEnv(bound_outlives, _) => {
+                AliasTyOutlivesViaEnv(bound_outlives, NoSpan)
             }
-            AliasTyOutlivesViaEnv(outlives) => {
-                try_visit!(outlives.visit_with(f));
-            }
-            PlaceholderTyOutlives(a, b) => {
-                try_visit!(a.visit_with(f));
-                try_visit!(b.visit_with(f));
-            }
-            And(and) => {
-                walk_visitable_list!(f, and);
-            }
-            Or(or) => {
-                walk_visitable_list!(f, or);
-            }
-        };
+            PlaceholderTyOutlives(ty, r, _) => PlaceholderTyOutlives(ty, r, NoSpan),
+        }
+    }
 
-        F::Result::output()
+    pub fn span(&self) -> S {
+        use LeafRegionConstraint::*;
+
+        let (Ambiguity(s)
+        | RegionOutlives(_, _, s)
+        | AliasTyOutlivesViaEnv(_, s)
+        | PlaceholderTyOutlives(_, _, s)) = self;
+        s.clone()
     }
 }
 
-impl<I: Interner> Default for RegionConstraint<I> {
-    fn default() -> Self {
-        Self::new_true()
+#[derive_where(Clone, Hash, PartialEq, Eq; I: Interner, S)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+/// An OR of AND of LEAF constraints. Always in "canonical form" meaning:
+/// - No AND is a superset of another AND
+/// - All ANDs are in canonical form
+/// - If any AND is empty, i.e. trivially true, it is the only AND
+pub struct Or<I: Interner, S: Clone + std::fmt::Debug = NoSpan>(pub SmallVec<[And<I, S>; 1]>);
+impl<I: Interner> Or<I> {
+    pub fn with_spans<S: ConstraintSpan>(self, span: S) -> Or<I, S> {
+        Or(self.0.into_iter().map(|and| and.with_spans(span.clone())).collect())
     }
 }
+enum AndRelation {
+    /// example:
+    /// existed: OR(AND('a: 'b))
+    /// new: AND('a: 'b, 'b: 'c)
+    Subset,
 
-impl<I: Interner> RegionConstraint<I> {
+    /// example:
+    /// existed: OR(AND('a: 'b, 'b: 'c))
+    /// new: AND('a: 'b)
+    Superset,
+
+    /// example:
+    /// existed: OR(AND('a: 'b))
+    /// new: AND('a: 'c)
+    Incomparable,
+}
+
+impl<I: Interner, S: ConstraintSpan> Or<I, S> {
     pub fn new_true() -> Self {
-        RegionConstraint::And(Box::new([]))
+        Self(SmallVec::from_buf([And::new_true()]))
     }
 
     pub fn is_true(&self) -> bool {
-        match self {
-            Self::And(and) => and.is_empty(),
-            _ => false,
+        // OR([AND([])])
+        if let [and] = &*self.0
+            && and.0.is_empty()
+        {
+            true
+        } else {
+            false
         }
     }
 
     pub fn new_false() -> Self {
-        RegionConstraint::Or(Box::new([]))
+        Self(SmallVec::new())
     }
 
     pub fn is_false(&self) -> bool {
-        match self {
-            Self::Or(or) => or.is_empty(),
-            _ => false,
+        // OR([])
+        self.0.is_empty()
+    }
+
+    pub fn new(i: impl IntoIterator<Item = And<I, S>>) -> Self {
+        let mut new_ands: SmallVec<[And<I, S>; _]> = SmallVec::new();
+
+        for and in i {
+            // An empty AND is trivially true, which makes the whole OR true no matter what the
+            // other candidates are. `And::new` discards leaf constraints which are trivially
+            // true, so this is how e.g. a reflexive `'a: 'a` candidate discharges an OR.
+            if and.0.is_empty() {
+                return Self::new_true();
+            }
+
+            // Currently, this is a more general canonical form:
+            // comparing the existing `new_ands` with a new `and`,
+            // we always keep the and with fewer constraints in new_ands.
+            // In particular, the equivalent case is also classified under the subset branch, and no push operation is performed.
+            let mut is_subset_new = false;
+            new_ands.retain(|c| {
+                let relation = c.compare_and_relation(&and);
+                match relation {
+                    AndRelation::Superset => false,
+                    AndRelation::Subset => {
+                        is_subset_new = true;
+                        return true;
+                    }
+                    AndRelation::Incomparable => true,
+                }
+            });
+            if is_subset_new {
+                continue;
+            }
+            new_ands.push(and);
+        }
+
+        Self(new_ands)
+    }
+
+    pub fn new_ambig(s: S) -> Self {
+        Or::new_leaf(LeafRegionConstraint::Ambiguity(s))
+    }
+
+    pub fn new_leaf(l: LeafRegionConstraint<I, S>) -> Self {
+        Or::new([And::new([l])])
+    }
+
+    pub fn build_and(a: Or<I, S>, b: Or<I, S>) -> Self {
+        // FIXME(-Zassumptions-on-binders): probably bad for perf, doing a lot of reallocating
+        // and whatnot here :3
+
+        // Important: keeps `ands` empty if either `b_and` or `a_and` is empty
+        let mut ands = Vec::new();
+        for b_and in b.0 {
+            for a_and in a.0.clone().into_iter() {
+                ands.push(And::new(a_and.0.into_iter().chain(b_and.0.clone())))
+            }
+        }
+
+        Or::new(ands)
+    }
+
+    pub fn build_or(a: Or<I, S>, b: Or<I, S>) -> Self {
+        Or::new(a.0.into_iter().chain(b.0))
+    }
+
+    pub fn without_spans(self) -> Or<I> {
+        Or(self.0.into_iter().map(|and| and.without_spans()).collect())
+    }
+}
+
+impl<I: Interner, S: Clone + std::fmt::Debug> std::fmt::Debug for Or<I, S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0.is_empty() {
+            f.write_str("false")
+        } else if let [single] = &*self.0 {
+            single.fmt(f)
+        } else {
+            f.write_str("or ")?;
+            f.debug_set().entries(&self.0).finish()
+        }
+    }
+}
+
+#[derive_where(Clone, Hash, PartialEq, Eq; I: Interner, S)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+/// An AND of leaf constraints. Always in "canonical form", meaning:
+/// - No leaf constraints are present twice in this AND
+/// - No leaf constraint is trivially true, i.e. a reflexive `'a: 'a`
+pub struct And<I: Interner, S: Clone + std::fmt::Debug = NoSpan>(
+    pub SmallVec<[LeafRegionConstraint<I, S>; 1]>,
+);
+impl<I: Interner> And<I> {
+    pub fn with_spans<S: ConstraintSpan>(self, span: S) -> And<I, S> {
+        And(self.0.into_iter().map(|leaf| leaf.with_span(span.clone())).collect())
+    }
+}
+impl<I: Interner, S: ConstraintSpan> And<I, S> {
+    pub fn new_true() -> Self {
+        Self(SmallVec::new())
+    }
+
+    pub fn new(i: impl IntoIterator<Item = LeafRegionConstraint<I, S>>) -> Self {
+        let mut seen = IndexSet::new();
+        And(i
+            .into_iter()
+            .filter(|leaf| {
+                // Outlives is reflexive so a `'a: 'a` leaf is always true and carries no
+                // information. Dropping it here keeps the rest of the code from having to special
+                // case it, and is what lets an OR with a reflexive candidate be recognized as true.
+                if let LeafRegionConstraint::RegionOutlives(r1, r2, _) = leaf
+                    && r1 == r2
+                {
+                    return false;
+                }
+
+                if seen.contains(&leaf.clone().without_span()) {
+                    false
+                } else {
+                    seen.insert(leaf.clone().without_span());
+                    true
+                }
+            })
+            .collect())
+    }
+
+    fn compare_and_relation(&self, other: &And<I, S>) -> AndRelation {
+        let this = self.clone().0;
+        let other = other.clone().0;
+
+        // if newcome is superset
+        // In particular, the equivalent case is also classified under the subset branch
+        if this
+            .iter()
+            .all(|c1| other.iter().any(|c2| c1.clone().without_span() == c2.clone().without_span()))
+        {
+            return AndRelation::Subset;
+        }
+
+        // if newcome is subset
+        if other
+            .iter()
+            .all(|c2| this.iter().any(|c1| c1.clone().without_span() == c2.clone().without_span()))
+        {
+            return AndRelation::Superset;
+        }
+        return AndRelation::Incomparable;
+    }
+
+    pub fn without_spans(self) -> And<I> {
+        And(self.0.into_iter().map(|leaf| leaf.without_span()).collect())
+    }
+}
+
+impl<I: Interner, S: Clone + std::fmt::Debug> std::fmt::Debug for And<I, S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0.is_empty() {
+            f.write_str("true")
+        } else if let [single] = &*self.0 {
+            single.fmt(f)
+        } else {
+            f.write_str("and ")?;
+            f.debug_set().entries(&self.0).finish()
+        }
+    }
+}
+
+#[derive_where(Clone, Hash, PartialEq; I: Interner, S)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+/// An `And` and an `Or` constraint both in canonical forms, with two additional constraints:
+/// - If the `or_constraint` is false then the `and_constraint` is empty
+/// - The `or_constraint` does not have any constraints present in all of its inner `And`s
+///    - i.e. `OR ( AND ('a: 'b, 'b: 'c), AND ('a: 'b, 'b: 'd))` is not a thing
+/// - The OR constraint is in canonical form
+/// - The AND constraint is in canonical form
+///
+/// This should be thought of as an AND consisting of a set of LEAF constraints as well
+/// as a single OR constraint.
+pub struct RegionConstraint<I: Interner, S: Clone + std::fmt::Debug = NoSpan> {
+    pub and_constraint: And<I, S>,
+    pub or_constraint: Or<I, S>,
+}
+
+impl<I: Interner> RegionConstraint<I> {
+    pub fn with_spans<S: ConstraintSpan>(self, span: S) -> RegionConstraint<I, S> {
+        RegionConstraint {
+            and_constraint: self.and_constraint.with_spans(span.clone()),
+            or_constraint: self.or_constraint.with_spans(span.clone()),
+        }
+    }
+}
+impl<I: Interner, S: ConstraintSpan> RegionConstraint<I, S> {
+    pub fn new_from_or(or: Or<I, S>) -> Self {
+        let Some(fst) = or.0.get(0).clone() else {
+            return RegionConstraint::new_false();
+        };
+        let mut and_constraint = fst.0.to_vec();
+
+        for and in or.0.split_first().unwrap().1 {
+            and_constraint.retain(|c| {
+                and.0.iter().any(|c2| c.clone().without_span() == c2.clone().without_span())
+            });
+        }
+        let and_constraint = And::new(and_constraint);
+
+        let or_constraint = Or::new(or.0.into_iter().map(|and| {
+            And::new(and.0.into_iter().filter(|c| {
+                and_constraint
+                    .0
+                    .iter()
+                    .all(|s_c| c.clone().without_span() != s_c.clone().without_span())
+            }))
+        }));
+
+        Self {
+            and_constraint: if or_constraint.is_false() { And::new_true() } else { and_constraint },
+            or_constraint,
         }
     }
 
-    pub fn is_or(&self) -> bool {
-        matches!(self, Self::Or(_))
+    pub fn splatted_and_constraints(&self) -> Or<I, S> {
+        Or::new(self.or_constraint.0.iter().map(|and| {
+            And::new(and.0.iter().cloned().chain(self.and_constraint.0.iter().cloned()))
+        }))
     }
 
-    pub fn unwrap_or(self) -> Box<[RegionConstraint<I>]> {
-        match self {
-            Self::Or(ors) => ors,
-            _ => panic!("`unwrap_or` on non-Or: {self:?}"),
+    pub fn build_and(a: RegionConstraint<I, S>, b: RegionConstraint<I, S>) -> Self {
+        let and_constraint = And::new(a.and_constraint.0.into_iter().chain(b.and_constraint.0));
+        let or_constraint = Or::build_and(a.or_constraint, b.or_constraint);
+
+        Self {
+            and_constraint: if or_constraint.is_false() { And::new_true() } else { and_constraint },
+            or_constraint,
         }
     }
 
-    pub fn unwrap_and(self) -> Box<[RegionConstraint<I>]> {
-        match self {
-            Self::And(ands) => ands,
-            _ => panic!("`unwrap_and` on non-And: {self:?}"),
-        }
+    pub fn build_or(a: RegionConstraint<I, S>, b: RegionConstraint<I, S>) -> Self {
+        Self::new_from_or(Or::build_or(a.splatted_and_constraints(), b.splatted_and_constraints()))
     }
 
-    pub fn is_and(&self) -> bool {
-        matches!(self, Self::And(_))
+    pub fn new_true() -> Self {
+        Self { and_constraint: And::new_true(), or_constraint: Or::new_true() }
+    }
+
+    pub fn is_true(&self) -> bool {
+        self.and_constraint.0.is_empty() && self.or_constraint.is_true()
+    }
+
+    pub fn new_false() -> Self {
+        Self { and_constraint: And::new_true(), or_constraint: Or::new_false() }
+    }
+
+    pub fn is_false(&self) -> bool {
+        self.or_constraint.is_false()
+    }
+
+    pub fn new_ambig(span: S) -> Self {
+        Self {
+            and_constraint: And::new([LeafRegionConstraint::Ambiguity(span)]),
+            or_constraint: Or::new_true(),
+        }
     }
 
     pub fn is_ambig(&self) -> bool {
-        matches!(self, Self::Ambiguity)
-    }
-
-    pub fn and(self, other: RegionConstraint<I>) -> RegionConstraint<I> {
-        use RegionConstraint::*;
-
-        match (self, other) {
-            (And(a_ands), And(b_ands)) => And(a_ands
-                .into_iter()
-                .chain(b_ands.into_iter())
-                .collect::<Vec<_>>()
-                .into_boxed_slice()),
-            (And(ands), other) | (other, And(ands)) => {
-                And(ands.into_iter().chain([other]).collect::<Vec<_>>().into_boxed_slice())
-            }
-            (this, other) => And(Box::new([this, other])),
+        if let [c] = &*self.and_constraint.0
+            && c.is_ambig()
+            && self.or_constraint.is_true()
+        {
+            true
+        } else {
+            false
         }
     }
 
-    /// Converts the region constraint into an ORs of ANDs of "leaf" constraints. Where
-    /// a leaf constraint is a non-or/and constraint.
-    #[instrument(level = "debug", ret)]
-    pub fn canonical_form(self) -> Self {
-        use RegionConstraint::*;
-
-        fn permutations<I: Interner>(
-            ors: &[Vec<RegionConstraint<I>>],
-        ) -> Vec<Vec<RegionConstraint<I>>> {
-            match ors {
-                [] => vec![vec![]],
-                [or1] => {
-                    let mut choices = vec![];
-                    for choice in or1 {
-                        choices.push(vec![choice.clone()]);
-                    }
-                    choices
-                }
-                [or1, rest_ors @ ..] => {
-                    let mut choices = vec![];
-                    for choice in or1 {
-                        choices.extend(permutations(rest_ors).into_iter().map(|mut and| {
-                            and.push(choice.clone());
-                            and
-                        }));
-                    }
-                    choices
-                }
-            }
-        }
-
-        let canonical = match self {
-            And(ands) => {
-                // AND of OR of AND of LEAFs
-                //
-                // We can turn `AND of OR of X` into `OR of AND of X` by enumerating every set of choices
-                // for the list of ORs. For example if we have `AND ( OR(A, B), OR(C, D) )` we can convert this into
-                // `OR ( AND (A, C), AND (A, D), AND (B, C), AND (B, D ))`
-                //
-                // if A/B/C/D are all in canonical forms then we wind up with an `OR of AND of AND of LEAFs` which
-                // is trivially canonicalizeable by flattening the multiple layers of AND into one.
-                let ors = ands
-                    .into_iter()
-                    .map(|c| c.canonical_form().unwrap_or().to_vec())
-                    .collect::<Vec<_>>();
-                debug!(?ors);
-                let or_permutations = permutations(&ors);
-                debug!(?or_permutations);
-
-                Or(or_permutations
-                    .into_iter()
-                    .map(|c| {
-                        And(c
-                            .into_iter()
-                            .flat_map(|c2| c2.unwrap_and().into_iter())
-                            .collect::<Vec<_>>()
-                            .into_boxed_slice())
-                    })
-                    .collect::<Vec<_>>()
-                    .into_boxed_slice())
-            }
-            Or(ors) => {
-                // OR of OR of AND of LEAFs
-                //
-                // trivially canonicalizeable by concatenating all of the ORs into one big OR
-                Or(ors
-                    .into_iter()
-                    .flat_map(|c| c.canonical_form().unwrap_or().into_iter())
-                    .collect::<Vec<_>>()
-                    .into_boxed_slice())
-            }
-            _ => Or(Box::new([And(Box::new([self]))])),
-        };
-
-        assert!(
-            canonical.is_canonical_form(),
-            "non canonical form region constraint: {:?}",
-            canonical
-        );
-        canonical
-    }
-
-    fn is_leaf_constraint(&self) -> bool {
-        use RegionConstraint::*;
-        match self {
-            Ambiguity
-            | RegionOutlives(..)
-            | AliasTyOutlivesViaEnv(..)
-            | PlaceholderTyOutlives(..) => true,
-            And(..) | Or(..) => false,
+    pub fn without_spans(self) -> RegionConstraint<I> {
+        RegionConstraint {
+            and_constraint: self.and_constraint.without_spans(),
+            or_constraint: self.or_constraint.without_spans(),
         }
     }
 
-    fn is_canonical_and(&self) -> bool {
-        if let Self::And(ands) = self { ands.iter().all(|c| c.is_leaf_constraint()) } else { false }
+    pub fn new_leaf(l: LeafRegionConstraint<I, S>) -> Self {
+        RegionConstraint { and_constraint: And::new([l]), or_constraint: Or::new_true() }
     }
+}
 
-    pub fn is_canonical_form(&self) -> bool {
-        if let Self::Or(ors) = self { ors.iter().all(|c| c.is_canonical_and()) } else { false }
+impl<I: Interner, S: Clone + std::fmt::Debug> std::fmt::Debug for RegionConstraint<I, S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let [single_or] = &*self.or_constraint.0
+            && single_or.0.is_empty()
+        {
+            self.and_constraint.fmt(f)
+        } else if self.and_constraint.0.is_empty() {
+            self.or_constraint.fmt(f)
+        } else {
+            f.write_str("and ")?;
+            f.debug_set().entries(&self.and_constraint.0).entry(&self.or_constraint).finish()
+        }
+    }
+}
+
+impl<I: Interner, S: Clone + std::fmt::Debug> LeafRegionConstraint<I, S> {
+    pub fn is_ambig(&self) -> bool {
+        matches!(self, Self::Ambiguity(_))
     }
 }
 
@@ -440,8 +661,9 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
     constraint: RegionConstraint<I>,
     u: UniverseIndex,
 ) -> RegionConstraint<I> {
-    use RegionConstraint::*;
+    assert!(u > UniverseIndex::ROOT, "eagerly handle placeholders called for root universe");
 
+    let constraint = infcx.deeply_resolve_via_unification_table(constraint);
     let assumptions = infcx.get_placeholder_assumptions(u);
 
     // 1. rewrite type outlives constraints involving things from `u` into either region constraints
@@ -455,29 +677,16 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
         &assumptions,
     );
 
-    // 2. rewrite the constraint into a canonical ORs of ANDs form
-    let constraint = constraint.canonical_form();
-
-    // 3. compute transitive region outlives and get a new set of region outlives constraints by
+    // 2. compute transitive region outlives and get a new set of region outlives constraints by
     //     looking for every region which either a placeholder_u flows into it, or it flows into
     //     the placeholder.
-    //
-    //    do this for each element in the top level OR
-    let constraint = Or(constraint
-        .unwrap_or()
-        .into_iter()
-        .map(|c| {
-            let and =
-                And(compute_new_region_constraints(infcx, &c.unwrap_and(), u).into_boxed_slice());
+    let constraint = compute_new_region_constraints(infcx, constraint, u);
 
-            // 4. rewrite region outlives constraints (potentially to false/true)
-            pull_region_outlives_constraints_out_of_universe(infcx, and, u, &assumptions)
-        })
-        .collect::<Vec<_>>()
-        .into_boxed_slice());
+    // 3. rewrite region outlives constraints (potentially to false/true)
+    let constraint =
+        pull_region_outlives_constraints_out_of_universe(infcx, constraint, u, &assumptions);
 
-    // 5. actually evaluate the constraint to eagerly error on false
-    evaluate_solver_constraint(&constraint)
+    constraint
 }
 
 /// Filter our region constraints to not include constraints between region variables from `u` and
@@ -491,108 +700,74 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
 #[instrument(level = "debug", skip(infcx), ret)]
 fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
     infcx: &Infcx,
-    constraints: &[RegionConstraint<I>],
+    constraint: RegionConstraint<I>,
     u: UniverseIndex,
-) -> Vec<RegionConstraint<I>> {
-    use RegionConstraint::*;
-
-    let mut new_constraints = vec![];
-
-    let mut region_flows_builder = TransitiveRelationBuilder::default();
-    let mut regions = IndexSet::new();
-    for c in constraints {
-        match c {
-            And(..) | Or(..) => unreachable!(),
-            Ambiguity | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
-                new_constraints.push(c.clone())
-            }
-            RegionOutlives(r1, r2) => {
-                regions.insert(r1);
-                regions.insert(r2);
-                region_flows_builder.add(r2, r1);
-            }
-        }
-    }
-
-    let region_flow = region_flows_builder.freeze();
-    for r in regions.into_iter() {
-        for ub in region_flow.reachable_from(r) {
-            // we want to retain any region constraints between two "placeholder-likes" where for our
-            // purposes a placeholder-like is either a placeholder or variable in a lower universe
-            let is_placeholder_like = |r: Region<I>| match r.kind() {
-                RegionKind::ReLateParam(..)
-                | RegionKind::ReEarlyParam(..)
-                | RegionKind::RePlaceholder(..)
-                | RegionKind::ReStatic => true,
-                RegionKind::ReVar(..) => max_universe(infcx, r) < u,
-                RegionKind::ReError(..) => false,
-                RegionKind::ReErased | RegionKind::ReBound(..) => unreachable!(),
-            };
-
-            if is_placeholder_like(*r) && is_placeholder_like(*ub) {
-                new_constraints.push(RegionOutlives(*ub, *r));
-            }
-        }
-    }
-
-    new_constraints
-}
-
-/// Evaluate ANDs and ORs to true/false/ambiguous based on whether their arguments are true/false/ambiguous
-#[instrument(level = "debug", ret)]
-pub fn evaluate_solver_constraint<I: Interner>(
-    constraint: &RegionConstraint<I>,
 ) -> RegionConstraint<I> {
-    use RegionConstraint::*;
-    match constraint {
-        Ambiguity | RegionOutlives(..) | AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => {
-            constraint.clone()
-        }
-        And(and) => {
-            let mut and_constraints = Vec::new();
-            let mut is_ambiguous_constraint = false;
-            for c in and.iter() {
-                let evaluated_constraint = evaluate_solver_constraint(c);
-                if evaluated_constraint.is_true() {
-                    // - do nothing
-                } else if evaluated_constraint.is_false() {
-                    return RegionConstraint::new_false();
-                } else if evaluated_constraint.is_ambig() {
-                    is_ambiguous_constraint = true;
-                } else {
-                    and_constraints.push(evaluated_constraint);
+    use LeafRegionConstraint::*;
+
+    let extend_from_and = |builder: &mut TransitiveRelationBuilder<_>,
+                           regions: &mut IndexSet<_>,
+                           constraints: &mut Vec<_>,
+                           and: &And<I>| {
+        for c in &and.0 {
+            match c {
+                Ambiguity(NoSpan) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
+                    constraints.push(c.clone())
+                }
+                RegionOutlives(r1, r2, NoSpan) => {
+                    regions.insert(*r1);
+                    regions.insert(*r2);
+                    builder.add(*r2, *r1);
                 }
             }
-
-            if is_ambiguous_constraint {
-                RegionConstraint::Ambiguity
-            } else {
-                RegionConstraint::And(and_constraints.into_boxed_slice())
-            }
         }
-        Or(or) => {
-            let mut or_constraints = Vec::new();
-            let mut is_ambiguous_constraint = false;
-            for c in or.iter() {
-                let evaluated_constraint = evaluate_solver_constraint(c);
-                if evaluated_constraint.is_false() {
-                    // do nothing
-                } else if evaluated_constraint.is_true() {
-                    return RegionConstraint::new_true();
-                } else if evaluated_constraint.is_ambig() {
-                    is_ambiguous_constraint = true;
-                } else {
-                    or_constraints.push(evaluated_constraint);
+    };
+
+    let mut base_region_flows_builder = TransitiveRelationBuilder::default();
+    let mut base_regions = IndexSet::new();
+    let mut base_constraints = Vec::new();
+    extend_from_and(
+        &mut base_region_flows_builder,
+        &mut base_regions,
+        &mut base_constraints,
+        &constraint.and_constraint,
+    );
+
+    let mut new_ands = Vec::new();
+    for and in &constraint.or_constraint.0 {
+        let mut region_flows_builder = base_region_flows_builder.clone();
+        let mut regions = base_regions.clone();
+        let mut constraints = base_constraints.clone();
+        extend_from_and(&mut region_flows_builder, &mut regions, &mut constraints, and);
+
+        let region_flow = region_flows_builder.freeze();
+        for r in regions.into_iter() {
+            for ub in region_flow.reachable_from(r) {
+                // we want to retain any region constraints between two "placeholder-likes" where for our
+                // purposes a placeholder-like is either a placeholder or variable in a lower universe
+                let is_placeholder_like = |r: Region<I>| match r.kind() {
+                    RegionKind::ReLateParam(..)
+                    | RegionKind::ReEarlyParam(..)
+                    | RegionKind::RePlaceholder(..)
+                    | RegionKind::ReStatic => true,
+                    RegionKind::ReVar(..) => max_universe(infcx, r) < u,
+                    RegionKind::ReError(..) => false,
+                    RegionKind::ReErased | RegionKind::ReBound(..) => unreachable!(),
+                };
+
+                if is_placeholder_like(r) && is_placeholder_like(ub) {
+                    constraints.push(RegionOutlives(ub, r, NoSpan));
                 }
             }
-
-            if is_ambiguous_constraint {
-                RegionConstraint::Ambiguity
-            } else {
-                RegionConstraint::Or(or_constraints.into_boxed_slice())
-            }
         }
+
+        new_ands.push(Or::new([And::new(constraints)]))
     }
+
+    // FIXME(-Zassumptions-on-binders): probably bad for perf!
+    RegionConstraint::new_from_or(
+        new_ands.into_iter().fold(Or::new_false(), |acc, c| Or::build_or(acc, c)),
+    )
 }
 
 /// Handles converting region outlives constraints involving placeholders from `u` into OR constraints
@@ -623,7 +798,7 @@ fn pull_region_outlives_constraints_out_of_universe<
     infcx: &Infcx,
     constraint: RegionConstraint<I>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> RegionConstraint<I> {
     assert!(max_universe(infcx, constraint.clone()) <= u);
 
@@ -634,91 +809,143 @@ fn pull_region_outlives_constraints_out_of_universe<
     // I'm not even sure this would be necessary given we filter out region constraints involving regions#
     // from the current universe and only retain those between placeholders.
 
-    use RegionConstraint::*;
-    match constraint {
-        Ambiguity | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
-            assert!(max_universe(infcx, constraint.clone()) < u);
-            constraint
-        }
-        RegionOutlives(region_1, region_2) => {
-            let region_1_u = max_universe(infcx, region_1);
-            let region_2_u = max_universe(infcx, region_2);
+    use LeafRegionConstraint::*;
 
-            if region_1_u != u && region_2_u != u {
-                return constraint;
-            }
-
-            let assumptions = match assumptions {
-                Some(assumptions) => assumptions,
-                None => return RegionConstraint::Ambiguity,
-            };
-
-            let mut candidates = vec![];
-            for ub in
-                regions_outlived_by(region_1, assumptions).filter(|r| max_universe(infcx, *r) < u)
-            {
-                // FIXME(-Zassumptions-on-binders): if `region_2` is in a smaller universe there'll be both
-                // `'region_2` and `'static` as lower bounds which seems... unfortunate and may cause us to
-                // add a bunch of duplicate `'ub: 'static` candidates the more binders we leave.
-                for lb in regions_outliving(region_2, assumptions, infcx.cx())
-                    .filter(|r| max_universe(infcx, *r) < u)
-                {
-                    // As long as any region outlived by `region_1` outlives any region region which
-                    // `region_2` outlives, we know that `region_1: region_2` holds. In other words,
-                    // there exists some set of 4 regions for which `'r1: 'i1` `'i1: 'i2` `'i2: 'r2`
-                    candidates.push(RegionOutlives(ub, lb));
+    let pull_and = |and: And<I>| {
+        let mut pulled_constraints = Vec::new();
+        for c in and.0 {
+            match c {
+                Ambiguity(NoSpan) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
+                    assert!(max_universe(infcx, c.clone()) < u);
+                    pulled_constraints.push(Or::new_leaf(c.clone()));
                 }
-            }
+                RegionOutlives(region_1, region_2, NoSpan) => {
+                    let region_1_u = max_universe(infcx, region_1);
+                    let region_2_u = max_universe(infcx, region_2);
 
-            RegionConstraint::Or(candidates.into_boxed_slice())
+                    if region_1_u != u && region_2_u != u {
+                        pulled_constraints.push(Or::new_leaf(c));
+                        continue;
+                    }
+
+                    // The constraint may already be entailed by the assumptions of the binder we are
+                    // leaving, e.g. `for<'a, 'b> where 'b: 'a { 'b: 'a }`. There is nothing to lift into
+                    // a smaller universe in that case, and looking for lower universe candidates would
+                    // wrongly result in `Or([])` whenever the placeholders have no lower universe bounds.
+                    if regions_outlived_by(region_1, assumptions).any(|r| r == region_2) {
+                        continue;
+                    }
+
+                    let mut candidates = vec![];
+
+                    for ub in regions_outlived_by(region_1, assumptions)
+                        .filter(|r| max_universe(infcx, *r) < u)
+                    {
+                        // FIXME(-Zassumptions-on-binders): if `region_2` is in a smaller universe there'll be both
+                        // `'region_2` and `'static` as lower bounds which seems... unfortunate and may cause us to
+                        // add a bunch of duplicate `'ub: 'static` candidates the more binders we leave.
+                        for lb in regions_outliving(region_2, assumptions, infcx.cx())
+                            .filter(|r| max_universe(infcx, *r) < u)
+                        {
+                            // As long as any region outlived by `region_1` outlives any region region which
+                            // `region_2` outlives, we know that `region_1: region_2` holds. In other words,
+                            // there exists some set of 4 regions for which `'r1: 'i1` `'i1: 'i2` `'i2: 'r2`
+                            candidates.push(RegionOutlives(ub, lb, NoSpan));
+                        }
+                    }
+
+                    pulled_constraints.push(Or::new(candidates.into_iter().map(|c| And::new([c]))));
+                }
+            };
         }
-        And(constraints) => And(constraints
-            .into_iter()
-            .map(|constraint| {
-                pull_region_outlives_constraints_out_of_universe(infcx, constraint, u, assumptions)
-            })
-            .collect()),
-        Or(_) => unreachable!(),
-    }
+
+        pulled_constraints.into_iter().fold(Or::new_true(), |acc, c| Or::build_and(acc, c))
+    };
+
+    let and_constraint = pull_and(constraint.and_constraint);
+    let or_constraint = constraint
+        .or_constraint
+        .0
+        .into_iter()
+        .fold(Or::new_false(), |acc, c| Or::build_or(acc, pull_and(c)));
+    RegionConstraint::new_from_or(Or::build_and(and_constraint, or_constraint))
+}
+
+#[derive_where(Debug; I: Interner, S)]
+pub struct RootDestructuredConstraints<I: Interner, S: Clone + std::fmt::Debug> {
+    pub constraint: RegionConstraint<I, S>,
+    pub failing_leafs: Vec<LeafRegionConstraint<I, S>>,
 }
 
 /// Converts type outlives constraints into region outlives constraints. This assumes the *complete* set of
 /// assumptions are known. This should not be called until the end of type checking.
 ///
 /// The returned region constraint will not have *any* PlaceholderTyOutlives or AliasTyOutlivesViaEnv constraints.
+#[instrument(level = "debug", skip(infcx), ret)]
 pub fn destructure_type_outlives_constraints_in_root<
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
+    S: ConstraintSpan,
 >(
     infcx: &Infcx,
-    constraint: RegionConstraint<I>,
+    constraint: RegionConstraint<I, S>,
     assumptions: &Assumptions<I>,
-) -> RegionConstraint<I> {
-    use RegionConstraint::*;
+) -> RootDestructuredConstraints<I, S> {
+    use LeafRegionConstraint::*;
 
-    match constraint {
-        Ambiguity | RegionOutlives(..) => constraint,
-        PlaceholderTyOutlives(ty, r) => {
-            Or(regions_outlived_by_placeholder(ty, assumptions, infcx.cx())
-                .map(move |assumption_r| RegionOutlives(assumption_r, r))
-                .collect::<Vec<_>>()
-                .into_boxed_slice())
+    let mut failing_leafs: Vec<LeafRegionConstraint<I, S>> = vec![];
+    let mut destructure_and = |and: &And<I, S>| {
+        debug!("rewriting and: {:?}", and);
+        let mut destructured_constraints = Vec::new();
+        for c in &and.0 {
+            match c {
+                Ambiguity(_) | RegionOutlives(..) => {
+                    destructured_constraints.push(Or::new_leaf(c.clone()))
+                }
+                PlaceholderTyOutlives(ty, r, span) => {
+                    let contents =
+                        Or::new(regions_outlived_by_placeholder(*ty, assumptions, infcx.cx()).map(
+                            move |assumption_r| {
+                                And::new([RegionOutlives(assumption_r, *r, span.clone())])
+                            },
+                        ));
+                    if contents.is_false() {
+                        failing_leafs.push(c.clone());
+                    }
+                    destructured_constraints.push(contents)
+                }
+                AliasTyOutlivesViaEnv(bound_outlives, span) => {
+                    let content = alias_outlives_candidates_from_assumptions(
+                        infcx,
+                        *bound_outlives,
+                        assumptions,
+                    )
+                    .with_spans(span.clone());
+                    if content.is_false() {
+                        failing_leafs.push(c.clone());
+                    }
+                    destructured_constraints.push(content);
+                }
+            }
         }
-        AliasTyOutlivesViaEnv(bound_outlives) => {
-            alias_outlives_candidates_from_assumptions(infcx, bound_outlives, assumptions)
-        }
-        And(constraints) => And(constraints
+        debug!(?destructured_constraints);
+        let merged_constraints = destructured_constraints
             .into_iter()
-            .map(|constraint| {
-                destructure_type_outlives_constraints_in_root(infcx, constraint, assumptions)
-            })
-            .collect()),
-        Or(constraints) => Or(constraints
-            .into_iter()
-            .map(|constraint| {
-                destructure_type_outlives_constraints_in_root(infcx, constraint, assumptions)
-            })
-            .collect()),
+            .fold(Or::new_true(), |acc, c| Or::build_and(acc, c));
+        debug!(?merged_constraints);
+        merged_constraints
+    };
+
+    let and_constraint = destructure_and(&constraint.and_constraint);
+    let or_constraint = constraint
+        .or_constraint
+        .0
+        .into_iter()
+        .fold(Or::new_false(), |acc, c| Or::build_or(acc, destructure_and(&c)));
+
+    RootDestructuredConstraints {
+        constraint: RegionConstraint::new_from_or(Or::build_and(and_constraint, or_constraint)),
+        failing_leafs,
     }
 }
 
@@ -740,8 +967,10 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
     infcx: &Infcx,
     constraint: RegionConstraint<I>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> RegionConstraint<I> {
+    use LeafRegionConstraint::*;
+
     assert!(
         max_universe(infcx, constraint.clone()) <= u,
         "constraint {:?} contains terms from a larger universe than {:?}",
@@ -749,185 +978,180 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
         u
     );
 
-    use RegionConstraint::*;
-    match constraint {
-        Ambiguity | RegionOutlives(..) => constraint,
-        PlaceholderTyOutlives(ty, region) => {
-            let ty_u = max_universe(infcx, ty);
-            let region_u = max_universe(infcx, region);
-
-            if region_u != u && ty_u != u {
-                return constraint;
+    let rewrite_and = |and: And<I>| {
+        let mut rewritten_constraints = Vec::new();
+        for c in and.0 {
+            match c {
+                Ambiguity(NoSpan) | RegionOutlives(..) => {
+                    rewritten_constraints.push(Or::new_leaf(c))
+                }
+                PlaceholderTyOutlives(ty, region, NoSpan) => {
+                    rewritten_constraints.push(rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling(infcx, ty, region, u, assumptions));
+                }
+                AliasTyOutlivesViaEnv(bound_outlives, NoSpan) => {
+                    rewritten_constraints.push(rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handling(infcx, bound_outlives, u, assumptions));
+                }
             }
-
-            let assumptions = match assumptions {
-                Some(assumptions) => assumptions,
-                None => return Ambiguity,
-            };
-
-            let mut candidates = vec![];
-
-            // There could be `!T: 'region` assumptions in the env even if `!T` is in a
-            // smaller universe
-            candidates.extend(
-                regions_outlived_by_placeholder(ty, assumptions, infcx.cx())
-                    .map(move |assumption_r| RegionOutlives(assumption_r, region)),
-            );
-
-            // We can express `!T: 'region` as `!T: 'r` where `'r: 'region`. This is only necessary
-            // if the placeholder type is in a smaller universe as otherwise we know all regions which
-            // the placeholder outlives and can just destructure into an OR of RegionOutlives.
-            if region_u == u && ty_u < u {
-                candidates.extend(
-                    regions_outliving::<I>(region, assumptions, infcx.cx())
-                        .filter(|r| max_universe(infcx, *r) < u)
-                        .map(|r| PlaceholderTyOutlives(ty, r)),
-                );
-            }
-
-            Or(candidates.into_boxed_slice())
         }
-        AliasTyOutlivesViaEnv(bound_outlives) => {
-            let mut candidates = Vec::new();
+        rewritten_constraints.into_iter().fold(Or::new_true(), |acc, c| Or::build_and(acc, c))
+    };
 
-            // given there can be higher ranked assumptions, e.g. `for<'a> <T as Trait<'a>>::Assoc: 'c`, that
-            // means that it's actually *always* possible for an alias outlive to be satisfied in the root universe
-            // which means there should *always* be atleast two candidates when destructuring alias outlives. The
-            // two candidates being component outlives and then a higher ranked alias outlives.
-            //
-            // we dont care about this for region outlives as `for<'a> 'a: 'b` can't exist as we don't elaborate
-            // higher ranked type outlives assumptions into higher ranked region outlives assumptions. similarly,
-            // we don't care about `for<'a> Foo<'a>: 'b` as we always destructure adts into their components and if
-            // we dont equivalently elaborate the assumption into assumptions on the adt's components we just drop the
-            // assumptions
-            //
-            // so actually only `for<'a, 'b> Alias<'a>: 'b` and `for<'a> T: 'a` are assumptions we actually need to
-            // handle.
-            //
-            // we don't care about this when rewriting in the root universe as we know the complete set of assumptions
-            if max_universe(infcx, bound_outlives) == u {
-                let mut replacer = PlaceholderReplacer {
-                    cx: infcx.cx(),
-                    existing_var_count: bound_outlives.bound_vars().len(),
-                    bound_vars: IndexMap::default(),
-                    universe: u,
-                    current_index: DebruijnIndex::ZERO,
-                };
-                let escaping_outlives = bound_outlives.skip_binder().fold_with(&mut replacer);
-                let bound_vars = bound_outlives.bound_vars().iter().chain(
-                    core::mem::take(&mut replacer.bound_vars)
-                        .into_iter()
-                        .map(|(_, bound_region)| BoundVariableKind::Region(bound_region.kind)),
-                );
-                let bound_outlives = Binder::bind_with_vars(
-                    escaping_outlives,
-                    I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
-                );
-                let candidate = RegionConstraint::AliasTyOutlivesViaEnv(bound_outlives);
-                if max_universe(infcx, candidate.clone()) < u {
-                    candidates.push(candidate);
-                } else {
-                    // `PlaceholderReplacer` only folds regions. A non-lifetime binder can leave
-                    // a placeholder type in `u`, so this type-outlives constraint cannot be
-                    // handled by the region-outlives-only eager placeholder machinery.
-                    candidates.push(Ambiguity);
-                }
-            }
+    let and_constraint = rewrite_and(constraint.and_constraint);
+    let or_constraint = constraint
+        .or_constraint
+        .0
+        .into_iter()
+        .fold(Or::new_false(), |acc, c| Or::build_or(acc, rewrite_and(c)));
 
-            let assumptions = match assumptions {
-                Some(assumptions) => assumptions,
-                None => {
-                    candidates.push(Ambiguity);
-                    return Or(candidates.into_boxed_slice());
-                }
-            };
+    RegionConstraint::new_from_or(Or::build_and(and_constraint, or_constraint))
+}
 
-            // Actually look at the assumptions and matching our higher ranked alias outlives goal
-            // against potentially higher ranked type outlives assumptions.
-            candidates.push(alias_outlives_candidates_from_assumptions(
-                infcx,
-                bound_outlives,
-                assumptions,
-            ));
+#[instrument(level = "debug", skip(infcx), ret)]
+fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling<
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+>(
+    infcx: &Infcx,
+    ty: I::Ty,
+    region: Region<I>,
+    u: UniverseIndex,
+    assumptions: &Assumptions<I>,
+) -> Or<I> {
+    use LeafRegionConstraint::*;
 
-            // we can rewrite `Alias_u1: 'u2` into `Or(Alias_u1: 'u1)`
-            // given a list of regions which outlive `'u2`
-            //
-            // we don't care about this when rewriting in the root universe as we know the complete set of assumptions
-            let (escaping_alias, escaping_r) = bound_outlives.skip_binder();
-            if max_universe(infcx, escaping_r) == u {
-                let mut replacer = PlaceholderReplacer {
-                    cx: infcx.cx(),
-                    existing_var_count: bound_outlives.bound_vars().len(),
-                    bound_vars: IndexMap::default(),
-                    universe: u,
-                    current_index: DebruijnIndex::ZERO,
-                };
-                let escaping_alias = escaping_alias.fold_with(&mut replacer);
-                let bound_vars = bound_outlives.bound_vars().iter().chain(
-                    core::mem::take(&mut replacer.bound_vars)
-                        .into_iter()
-                        .map(|(_, bound_region)| BoundVariableKind::Region(bound_region.kind)),
-                );
-                let bound_alias = Binder::bind_with_vars(
-                    escaping_alias,
-                    I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
-                );
+    let ty_u = max_universe(infcx, ty);
+    let region_u = max_universe(infcx, region);
 
-                // while we did skip the binder, bound vars aren't in any universe so
-                // this can't be an escaping bound var
-                for r2 in regions_outliving(escaping_r, assumptions, infcx.cx())
-                    .filter(|r2| max_universe(infcx, *r2) < u)
-                {
-                    let candidate =
-                        AliasTyOutlivesViaEnv(bound_alias.map_bound(|alias| (alias, r2)));
-                    if max_universe(infcx, candidate.clone()) < u {
-                        candidates.push(candidate);
-                    } else {
-                        candidates.push(Ambiguity);
-                    }
-                }
-            }
-
-            // I'm not convinced our handling here is *complete* so for now
-            // let's be conservative and not let alias outlives' cause NoSolution
-            // in coherence
-            match infcx.typing_mode_raw() {
-                TypingMode::Coherence => candidates.push(RegionConstraint::Ambiguity),
-                TypingMode::Typeck { .. }
-                | TypingMode::ErasedNotCoherence { .. }
-                | TypingMode::PostTypeckUntilBorrowck { .. }
-                | TypingMode::PostBorrowck { .. }
-                | TypingMode::Reflection
-                | TypingMode::PostAnalysis
-                | TypingMode::Codegen => (),
-            };
-
-            RegionConstraint::Or(candidates.into_boxed_slice())
-        }
-        And(constraints) => And(constraints
-            .into_iter()
-            .map(|constraint| {
-                rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling(
-                    infcx,
-                    constraint,
-                    u,
-                    assumptions,
-                )
-            })
-            .collect()),
-        Or(constraints) => Or(constraints
-            .into_iter()
-            .map(|constraint| {
-                rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling(
-                    infcx,
-                    constraint,
-                    u,
-                    assumptions,
-                )
-            })
-            .collect()),
+    if region_u != u && ty_u != u {
+        return Or::new_leaf(PlaceholderTyOutlives(ty, region, NoSpan));
     }
+
+    let mut candidates = vec![];
+
+    // There could be `!T: 'region` assumptions in the env even if `!T` is in a
+    // smaller universe
+    candidates.extend(
+        regions_outlived_by_placeholder(ty, assumptions, infcx.cx())
+            .map(move |assumption_r| RegionOutlives(assumption_r, region, NoSpan)),
+    );
+
+    // We can express `!T: 'region` as `!T: 'r` where `'r: 'region`. This is only necessary
+    // if the placeholder type is in a smaller universe as otherwise we know all regions which
+    // the placeholder outlives and can just destructure into an OR of RegionOutlives.
+    if region_u == u && ty_u < u {
+        candidates.extend(
+            regions_outliving::<I>(region, assumptions, infcx.cx())
+                .filter(|r| max_universe(infcx, *r) < u)
+                .map(|r| PlaceholderTyOutlives(ty, r, NoSpan)),
+        );
+    }
+
+    Or::new(candidates.into_iter().map(|c| And::new([c])))
+}
+
+#[instrument(level = "debug", skip(infcx), ret)]
+fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handling<
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+>(
+    infcx: &Infcx,
+    bound_outlives: Binder<I, (AliasTy<I>, Region<I>)>,
+    u: UniverseIndex,
+    assumptions: &Assumptions<I>,
+) -> Or<I> {
+    use LeafRegionConstraint::*;
+
+    if max_universe(infcx, bound_outlives) != u {
+        return Or::new_leaf(AliasTyOutlivesViaEnv(bound_outlives, NoSpan));
+    }
+
+    let mut candidates = Vec::new();
+
+    // given there can be higher ranked assumptions, e.g. `for<'a> <T as Trait<'a>>::Assoc: 'c`, that
+    // means that it's actually *always* possible for an alias outlive to be satisfied in the root universe
+    // which means there should *always* be atleast one candidate when destructuring alias outlives.
+    //
+    // we dont care about this for region outlives as `for<'a> 'a: 'b` can't exist as we don't elaborate
+    // higher ranked type outlives assumptions into higher ranked region outlives assumptions. similarly,
+    // we don't care about `for<'a> Foo<'a>: 'b` as we always destructure adts into their components and if
+    // we dont equivalently elaborate the assumption into assumptions on the adt's components we just drop the
+    // assumptions
+    //
+    // so actually only `for<'a, 'b> Alias<'a>: 'b` and `for<'a> T: 'a` are assumptions we actually need to
+    // handle.
+    let higher_ranked_candidate_for_outlived_region = |region| {
+        let bound_outlives = bound_outlives.map_bound(|(alias, _)| (alias, region));
+
+        let mut replacer = MakeHigherRankederer {
+            cx: infcx,
+            preexisting_var_count: bound_outlives.bound_vars().len(),
+            regions: IndexMap::default(),
+            universe: u,
+            current_index: DebruijnIndex::ZERO,
+        };
+        let escaping_outlives = bound_outlives.skip_binder().fold_with(&mut replacer);
+        let bound_vars = bound_outlives.bound_vars();
+        let bound_vars = bound_vars.iter().chain(
+            core::mem::take(&mut replacer.regions)
+                .into_iter()
+                .map(|(_, bound_region)| BoundVariableKind::Region(bound_region.kind)),
+        );
+        let bound_outlives = Binder::bind_with_vars(
+            escaping_outlives,
+            I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
+        );
+
+        // `MakeHigherRankederer` only folds regions. A non-lifetime binder can leave
+        // a placeholder type in `u`, so this type-outlives constraint cannot be
+        // handled by the region-outlives-only eager placeholder machinery.
+        if max_universe(infcx, bound_outlives) == u {
+            return Or::new_ambig(NoSpan);
+        }
+
+        debug!("higher ranked candidate: {bound_outlives:?}");
+        Or::new_leaf(AliasTyOutlivesViaEnv(bound_outlives, NoSpan))
+    };
+
+    // We elaborate something like `Alias<'a_u2>: 'b_u2` into alias outlives involving each
+    // region which is known to outlive `'b_u2`. So e.g. if `'c_u2: 'b_u2` is known to hold
+    // would wind up looking at `Alias<'a_u2>: 'c_u2` as well as `Alias<'a_u2>: 'b_u2`.
+    //
+    // This is important in two cases. First, if the outliving region is in a lower universe then
+    // we've successfully lowered the universe of one of the terms in our alias outlives constraint.
+    //
+    // Secondly, if it's a region in the current universe *and* it's a region in the components of the
+    // alias then we get a less general constraint after replacing with bound vars compared to if we
+    // had just replaced the initial region. See `assumptions_on_binders/alias_outlives_with_repeated_placeholder.rs`
+    let escaping_r = bound_outlives.skip_binder().1;
+    if max_universe(infcx, escaping_r) < u || escaping_r.has_escaping_bound_vars() {
+        // we don't know anything about lower universe regions, and we also don't bother
+        // looking at the assumptions on the `AliasTyOutlivesViaEnv` binder.
+        candidates.push(higher_ranked_candidate_for_outlived_region(escaping_r))
+    } else {
+        for r in regions_outliving(escaping_r, assumptions, infcx.cx()) {
+            candidates.push(higher_ranked_candidate_for_outlived_region(r));
+        }
+    };
+
+    // Actually look at the assumptions and matching our higher ranked alias outlives goal
+    // against potentially higher ranked type outlives assumptions.
+    candidates.push(alias_outlives_candidates_from_assumptions(infcx, bound_outlives, assumptions));
+
+    // I'm not convinced our handling here is *complete* so for now
+    // let's be conservative and not let alias outlives' cause NoSolution
+    // in coherence
+    match infcx.typing_mode_raw() {
+        TypingMode::Coherence => candidates.push(Or::new_ambig(NoSpan)),
+        TypingMode::Typeck { .. }
+        | TypingMode::Reflection
+        | TypingMode::ErasedNotCoherence { .. }
+        | TypingMode::PostTypeckThroughBorrowck { .. }
+        | TypingMode::PostBorrowck { .. }
+        | TypingMode::PostAnalysis
+        | TypingMode::Codegen => (),
+    };
+
+    candidates.into_iter().fold(Or::new_false(), |acc, c| Or::build_or(acc, c))
 }
 
 /// Returns all regions `r2` for which `r: r2` is known to hold in
@@ -936,7 +1160,6 @@ pub fn regions_outlived_by<I: Interner>(
     r: Region<I>,
     assumptions: &Assumptions<I>,
 ) -> impl Iterator<Item = Region<I>> {
-    // FIXME(-Zassumptions-on-binders): do we need to be adding the reflexive edge here?
     assumptions.region_outlives.reachable_from(r).into_iter().chain([r])
 }
 
@@ -969,35 +1192,57 @@ pub fn regions_outlived_by_placeholder<I: Interner>(
     }
 
     assumptions.type_outlives.iter().flat_map(move |binder| match binder.no_bound_vars() {
-        Some(OutlivesPredicate(ty, r)) => (ty == t).then_some(r),
+        Some(OutlivesClause(ty, r)) => (ty == t).then_some(r),
         None => Some(Region::new_static(cx)),
     })
 }
 
-pub struct PlaceholderReplacer<I: Interner> {
-    cx: I,
-    existing_var_count: usize,
-    bound_vars: IndexMap<BoundVar, BoundRegion<I>>,
+pub struct MakeHigherRankederer<'a, I: Interner, Infcx: InferCtxtLike<Interner = I>> {
+    cx: &'a Infcx,
+    preexisting_var_count: usize,
+    regions: IndexMap<Region<I>, BoundRegion<I>>,
     universe: UniverseIndex,
     current_index: DebruijnIndex,
 }
 
-impl<I: Interner> TypeFolder<I> for PlaceholderReplacer<I> {
+impl<'a, I: Interner, Infcx: InferCtxtLike<Interner = I>> MakeHigherRankederer<'a, I, Infcx> {
+    fn existing_var_count(&self) -> usize {
+        self.preexisting_var_count + self.regions.len()
+    }
+}
+
+impl<'a, I: Interner, Infcx: InferCtxtLike<Interner = I>> TypeFolder<I>
+    for MakeHigherRankederer<'a, I, Infcx>
+{
     fn cx(&self) -> I {
-        self.cx
+        self.cx.cx()
     }
 
     fn fold_region(&mut self, r: Region<I>) -> Region<I> {
+        let cx = self.cx();
+
         match r.kind() {
             RegionKind::RePlaceholder(p) if p.universe == self.universe => {
-                let bound_vars_len = self.bound_vars.len();
-                let mapped_var = self.bound_vars.entry(p.bound.var).or_insert(BoundRegion {
-                    var: BoundVar::from_usize(self.existing_var_count + bound_vars_len),
+                let existing_var_count = self.existing_var_count();
+                let mapped_var = self.regions.entry(r).or_insert(BoundRegion {
+                    var: BoundVar::from_usize(existing_var_count),
                     kind: p.bound.kind,
                 });
-                Region::new_bound(self.cx, self.current_index, *mapped_var)
+                Region::new_bound(cx, self.current_index, *mapped_var)
             }
-            // FIXME(-Zassumptions-on-binders): We should be handling region variables here somehow
+            RegionKind::ReVar(inf) => {
+                let u = self.cx.universe_of_region(inf).unwrap();
+                if u == self.universe {
+                    let existing_var_count = self.existing_var_count();
+                    let mapped_var = self.regions.entry(r).or_insert(BoundRegion {
+                        var: BoundVar::from_usize(existing_var_count),
+                        kind: BoundRegionKind::Anon,
+                    });
+                    Region::new_bound(cx, self.current_index, *mapped_var)
+                } else {
+                    r
+                }
+            }
             _ => r,
         }
     }
@@ -1019,19 +1264,19 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
     infcx: &Infcx,
     bound_outlives: Binder<I, (AliasTy<I>, Region<I>)>,
     assumptions: &Assumptions<I>,
-) -> RegionConstraint<I> {
+) -> Or<I> {
     let mut candidates = Vec::new();
 
     let prev_universe = infcx.universe();
 
     infcx.enter_forall_with_empty_assumptions(bound_outlives, |(alias, r)| {
         for bound_type_outlives in assumptions.type_outlives.iter() {
-            let OutlivesPredicate(alias2, r2) =
+            let OutlivesClause(alias2, r2) =
                 infcx.instantiate_binder_with_infer(*bound_type_outlives);
 
             let mut relation = HigherRankedAliasMatcher {
                 infcx,
-                region_constraints: vec![RegionConstraint::RegionOutlives(r2, r)],
+                region_constraints: vec![LeafRegionConstraint::RegionOutlives(r2, r, NoSpan)],
             };
 
             // FIXME(#155345): Both sides should be rigid in the future.
@@ -1040,28 +1285,29 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
                 alias.to_ty(infcx.cx(), IsRigid::No),
                 set_aliases_to_non_rigid(infcx.cx(), alias2).skip_norm_wip(),
             ) {
-                candidates
-                    .push(RegionConstraint::And(relation.region_constraints.into_boxed_slice()));
+                candidates.push(And::new(relation.region_constraints));
             }
         }
     });
 
-    let constraint = RegionConstraint::Or(candidates.into_boxed_slice());
+    let constraint = RegionConstraint::new_from_or(Or::new(candidates));
 
     let largest_universe = infcx.universe();
     debug!(?prev_universe, ?largest_universe);
 
-    ((prev_universe.index() + 1)..=largest_universe.index())
+    let canonical_constraint = ((prev_universe.index() + 1)..=largest_universe.index())
         .map(|u| UniverseIndex::from_usize(u))
         .rev()
         .fold(constraint, |constraint, u| {
             eagerly_handle_placeholders_in_universe(infcx, constraint, u)
-        })
+        });
+
+    canonical_constraint.splatted_and_constraints()
 }
 
 struct HigherRankedAliasMatcher<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> {
     infcx: &'a Infcx,
-    region_constraints: Vec<RegionConstraint<I>>,
+    region_constraints: Vec<LeafRegionConstraint<I>>,
 }
 
 impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
@@ -1102,13 +1348,13 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
 
     fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
         if a != b {
-            self.region_constraints.push(RegionConstraint::RegionOutlives(a, b));
-            self.region_constraints.push(RegionConstraint::RegionOutlives(b, a));
+            self.region_constraints.push(LeafRegionConstraint::RegionOutlives(a, b, NoSpan));
+            self.region_constraints.push(LeafRegionConstraint::RegionOutlives(b, a, NoSpan));
         }
         Ok(a)
     }
 
-    fn consts(&mut self, a: I::Const, b: I::Const) -> RelateResult<I, I::Const> {
+    fn consts(&mut self, a: Const<I>, b: Const<I>) -> RelateResult<I, Const<I>> {
         rustc_type_ir::relate::structurally_relate_consts(self, a, b)
     }
 
@@ -1118,14 +1364,14 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
     {
         self.infcx.enter_forall_with_empty_assumptions(a, |a| {
             let u = self.infcx.universe();
-            self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
+            self.infcx.insert_placeholder_assumptions(u, Assumptions::empty());
             let b = self.infcx.instantiate_binder_with_infer(b);
             self.relate(a, b)
         })?;
 
         self.infcx.enter_forall_with_empty_assumptions(b, |b| {
             let u = self.infcx.universe();
-            self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
+            self.infcx.insert_placeholder_assumptions(u, Assumptions::empty());
             let a = self.infcx.instantiate_binder_with_infer(a);
             self.relate(a, b)
         })?;

@@ -2,7 +2,7 @@
 use stdarch_test::assert_instr;
 
 #[cfg(target_arch = "riscv32")]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.riscv.orc.b.i32"]
     fn _orc_b_32(rs: i32) -> i32;
 
@@ -17,7 +17,7 @@ unsafe extern "unadjusted" {
 }
 
 #[cfg(target_arch = "riscv64")]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.riscv.orc.b.i64"]
     fn _orc_b_64(rs1: i64) -> i64;
 

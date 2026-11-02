@@ -10,6 +10,8 @@ note: `Foo` defines an item `ID`, perhaps you need to implement it
    |
 LL | trait Foo {
    | ^^^^^^^^^
+LL |     const ID: i32;
+   |
 
 error: aborting due to 1 previous error
 

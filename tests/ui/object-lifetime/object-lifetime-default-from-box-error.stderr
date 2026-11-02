@@ -2,7 +2,9 @@ error: lifetime may not live long enough
   --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
-   |         -- has type `&mut SomeStruct<'1>`
+   |         --       ---------- lifetime `'1` introduced here
+   |         |
+   |         has type `&mut SomeStruct<'1>`
 ...
 LL |     ss.r
    |     ^^^^ returning this value requires that `'1` must outlive `'static`

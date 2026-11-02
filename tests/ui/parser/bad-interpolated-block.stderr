@@ -1,6 +1,8 @@
 error: cannot use a `block` macro fragment here
   --> $DIR/bad-interpolated-block.rs:5:15
    |
+LL | macro_rules! m {
+LL |     ($b:block) => {
 LL |         'lab: $b;
    |         ------^^
    |         |
@@ -9,7 +11,6 @@ LL |         'lab: $b;
 LL |     m!({});
    |     ------ in this macro invocation
    |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: wrap this in another block
    |
 LL |         'lab: { $b };
@@ -18,6 +19,8 @@ LL |         'lab: { $b };
 error: cannot use a `block` macro fragment here
   --> $DIR/bad-interpolated-block.rs:6:16
    |
+LL | macro_rules! m {
+...
 LL |         unsafe $b;
    |         -------^^
    |         |
@@ -26,7 +29,6 @@ LL |         unsafe $b;
 LL |     m!({});
    |     ------ in this macro invocation
    |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: wrap this in another block
    |
 LL |         unsafe { $b };
@@ -35,13 +37,14 @@ LL |         unsafe { $b };
 error: cannot use a `block` macro fragment here
   --> $DIR/bad-interpolated-block.rs:7:23
    |
+LL | macro_rules! m {
+...
 LL |         |x: u8| -> () $b;
    |                       ^^ the `block` fragment is within this context
 ...
 LL |     m!({});
    |     ------ in this macro invocation
    |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: wrap this in another block
    |
 LL |         |x: u8| -> () { $b };

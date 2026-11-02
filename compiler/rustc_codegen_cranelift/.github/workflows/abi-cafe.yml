@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.os }}-${{ matrix.env.TARGET_TRIPLE }}
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.os }}-${{ matrix.env.TARGET_TUPLE }}
       cancel-in-progress: true
 
     defaults:
@@ -24,23 +24,23 @@ jobs:
         include:
           - os: ubuntu-latest
             env:
-              TARGET_TRIPLE: x86_64-unknown-linux-gnu
+              TARGET_TUPLE: x86_64-unknown-linux-gnu
           - os: ubuntu-24.04-arm
             env:
-              TARGET_TRIPLE: aarch64-unknown-linux-gnu
+              TARGET_TUPLE: aarch64-unknown-linux-gnu
           - os: macos-15-intel
             env:
-              TARGET_TRIPLE: x86_64-apple-darwin
+              TARGET_TUPLE: x86_64-apple-darwin
           - os: macos-latest
             env:
-              TARGET_TRIPLE: aarch64-apple-darwin
+              TARGET_TUPLE: aarch64-apple-darwin
           - os: windows-latest
             env:
-              TARGET_TRIPLE: x86_64-pc-windows-msvc
+              TARGET_TUPLE: x86_64-pc-windows-msvc
           # FIXME Currently hangs. Re-enable once this is fixed or abi-cafe adds a timeout.
           #- os: windows-latest
           #  env:
-          #    TARGET_TRIPLE: x86_64-pc-windows-gnu
+          #    TARGET_TUPLE: x86_64-pc-windows-gnu
 
     steps:
     - uses: actions/checkout@v6
@@ -59,10 +59,10 @@ jobs:
       uses: actions/cache@v5
       with:
         path: build/cg_clif
-        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+        key: ${{ runner.os }}-${{ matrix.env.TARGET_TUPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
 
     - name: Set MinGW as the default toolchain
-      if: matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+      if: matrix.env.TARGET_TUPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
 
     - name: Build
@@ -70,5 +70,5 @@ jobs:
 
     - name: Test abi-cafe
       env:
-        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
+        TARGET_TUPLE: ${{ matrix.env.TARGET_TUPLE }}
       run: ./y.sh abi-cafe

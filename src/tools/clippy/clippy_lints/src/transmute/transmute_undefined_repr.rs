@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_c_void;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, GenericArgsRef, IntTy, Ty, UintTy, Unnormalized};
+use rustc_middle::ty::{self, IntTy, Ty, UintTy, Unnormalized};
 
 #[expect(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
@@ -96,7 +96,7 @@ pub(super) fn check<'tcx>(
                     (from_ty.kind(), to_ty.kind())
                     && from_def == to_def
                 {
-                    if same_except_params(from_subs, to_subs) {
+                    if same_except_params(*from_subs, *to_subs) {
                         return false;
                     }
                     Some(from_def.did())
@@ -322,13 +322,19 @@ fn is_size_pair(ty: Ty<'_>) -> bool {
     }
 }
 
-fn same_except_params<'tcx>(subs1: GenericArgsRef<'tcx>, subs2: GenericArgsRef<'tcx>) -> bool {
-    // TODO: check const parameters as well. Currently this will consider `Array<5>` the same as
-    // `Array<6>`
-    for (ty1, ty2) in subs1.types().zip(subs2.types()).filter(|(ty1, ty2)| ty1 != ty2) {
-        match (ty1.kind(), ty2.kind()) {
-            (ty::Param(_), _) | (_, ty::Param(_)) => (),
-            (ty::Adt(adt1, subs1), ty::Adt(adt2, subs2)) if adt1 == adt2 && same_except_params(subs1, subs2) => (),
+fn same_except_params<'tcx>(subs1: ty::GenericArgs<'tcx>, subs2: ty::GenericArgs<'tcx>) -> bool {
+    for (t1, t2) in subs1.terms().zip(subs2.terms()).filter(|(t1, t2)| t1 != t2) {
+        match (t1.kind(), t2.kind()) {
+            (ty::TermKind::Ty(ty1), ty::TermKind::Ty(ty2)) => match (ty1.kind(), ty2.kind()) {
+                (ty::Param(_), _) | (_, ty::Param(_)) => (),
+                (ty::Adt(adt1, subs1), ty::Adt(adt2, subs2)) if adt1 == adt2 && same_except_params(*subs1, *subs2) => {
+                    ()
+                },
+                _ => return false,
+            },
+            // FIXME: check const parameters better as well. Currently this will consider `Array<5>` the same as
+            // `Array<6>`
+            (ty::TermKind::Const(_), ty::TermKind::Const(_)) => {},
             _ => return false,
         }
     }

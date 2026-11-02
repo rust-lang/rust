@@ -120,7 +120,7 @@ pub unsafe fn vld1q_dup_f64(ptr: *const f64) -> float64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld1_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x1_t) -> float64x1_t {
     static_assert!(LANE == 0);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -131,7 +131,7 @@ pub unsafe fn vld1_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x1_t) 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld1q_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert!(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, crate::ptr::read_unaligned(ptr))
 }
 
 /// Bitwise Select instructions. This instruction sets each bit in the destination SIMD&FP register

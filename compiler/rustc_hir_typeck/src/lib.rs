@@ -2,10 +2,8 @@
 #![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
-#![feature(never_type)]
 #![feature(option_into_flat_iter)]
 #![feature(option_reference_flattening)]
-#![feature(trim_prefix_suffix)]
 // tidy-alphabetical-end
 
 mod _match;
@@ -47,16 +45,15 @@ use rustc_errors::{Applicability, Diag, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, HirIdMap, Node};
-use rustc_hir_analysis::check::{check_abi, check_custom_abi};
+use rustc_hir_analysis::check::check_abi;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
+use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, TraitEngine, WellFormedLoc};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, FnSigKind, Ty, TyCtxt, Unnormalized};
-use rustc_middle::{bug, span_bug};
 use rustc_session::config;
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::{Span, bug, span_bug};
 use tracing::{debug, instrument};
 use typeck_root_ctxt::TypeckRootCtxt;
 
@@ -138,7 +135,7 @@ fn typeck_with_inspect<'tcx>(
         // for visit the asm expr of the body.
         let ty = fcx.check_expr(body.value);
         fcx.write_ty(id, ty);
-    } else if let Some(hir::FnSig { header, decl, span: fn_sig_span }) = node.fn_sig() {
+    } else if let Some(hir::FnSig { header, decl, span: _ }) = node.fn_sig() {
         let fn_sig = if decl.output.is_suggestable_infer_ty().is_some() {
             // In the case that we're recovering `fn() -> W<_>` or some other return
             // type that has an infer in it, lower the type directly so that it'll
@@ -150,7 +147,6 @@ fn typeck_with_inspect<'tcx>(
         };
 
         check_abi(tcx, id, span, fn_sig.abi());
-        check_custom_abi(tcx, def_id, fn_sig.skip_binder(), *fn_sig_span);
 
         loops::check(tcx, def_id, body);
 
@@ -197,7 +193,7 @@ fn typeck_with_inspect<'tcx>(
 
         let expected_type = fcx.normalize(body.value.span, Unnormalized::new_wip(expected_type));
 
-        let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
+        let wf_code = ObligationCauseCode::WellFormed(WellFormedLoc::Ty(def_id));
         fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);
 
         if let hir::Node::AnonConst(_) = node {
@@ -325,7 +321,7 @@ fn extend_err_with_const_context(
         {
             // `foo<N>()`, point at the const parameter in the definition of `foo`.
             if let Some(i) =
-                path.segments.iter().last().and_then(|segment| segment.args).and_then(|args| {
+                path.segments.last().and_then(|segment| segment.args).and_then(|args| {
                     args.args.iter().position(|arg| {
                         matches!(arg, hir::GenericArg::Const(arg) if arg.hir_id == parent.hir_id)
                     })
@@ -393,7 +389,8 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
                 impl_def_id,
                 impl_trait_ref.args,
             );
-            tcx.check_args_compatible(trait_item_def_id, args)
+            let alias_kind = ty::AliasTermKind::ProjectionConst { def_id: trait_item_def_id };
+            tcx.check_alias_term_args_compatible(alias_kind, args)
                 .then(|| tcx.type_of(trait_item_def_id).instantiate(tcx, args).skip_norm_wip())
         } else {
             Some(fcx.next_ty_var(span))
@@ -478,134 +475,138 @@ impl<'tcx> EnclosingBreakables<'tcx> {
         }
     }
 }
-
-fn report_unexpected_variant_res(
-    tcx: TyCtxt<'_>,
-    res: Res,
-    expr: Option<&hir::Expr<'_>>,
-    sub_pats: &[hir::Pat<'_>],
-    qpath: &hir::QPath<'_>,
-    span: Span,
-    err_code: ErrCode,
-    expected: &str,
-) -> ErrorGuaranteed {
-    let res_descr = match res {
-        Res::Def(DefKind::Variant, _) => "struct variant",
-        _ => res.descr(),
-    };
-    let path_str = rustc_hir_pretty::qpath_to_string(&tcx, qpath);
-    let mut err = tcx
-        .dcx()
-        .struct_span_err(span, format!("expected {expected}, found {res_descr} `{path_str}`"))
-        .with_code(err_code);
-    match res {
-        Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == E0164 => {
-            let patterns_url = "https://doc.rust-lang.org/book/ch19-00-patterns.html";
-            err.with_span_label(span, "`fn` calls are not allowed in patterns")
-                .with_help(format!("for more information, visit {patterns_url}"))
-        }
-        Res::Def(DefKind::Variant, _) if let Some(expr) = expr => {
-            err.span_label(span, format!("not a {expected}"));
-            let variant = tcx.expect_variant_res(res);
-            let sugg = if variant.fields.is_empty() {
-                " {}".to_string()
-            } else {
-                format!(
-                    " {{ {} }}",
-                    variant
-                        .fields
-                        .iter()
-                        .map(|f| format!("{}: /* value */", f.name))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            };
-            let descr = "you might have meant to create a new value of the struct";
-            let mut suggestion = vec![];
-            match tcx.parent_hir_node(expr.hir_id) {
-                hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Call(..),
-                    span: call_span,
-                    ..
-                }) => {
-                    suggestion.push((span.shrink_to_hi().with_hi(call_span.hi()), sugg));
-                }
-                hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(..), hir_id, .. }) => {
-                    suggestion.push((expr.span.shrink_to_lo(), "(".to_string()));
-                    if let hir::Node::Expr(parent) = tcx.parent_hir_node(*hir_id)
-                        && let hir::ExprKind::If(condition, block, None) = parent.kind
-                        && condition.hir_id == *hir_id
-                        && let hir::ExprKind::Block(block, _) = block.kind
-                        && block.stmts.is_empty()
-                        && let Some(expr) = block.expr
-                        && let hir::ExprKind::Path(..) = expr.kind
-                    {
-                        // Special case: you can incorrectly write an equality condition:
-                        // if foo == Struct { field } { /* if body */ }
-                        // which should have been written
-                        // if foo == (Struct { field }) { /* if body */ }
-                        suggestion.push((block.span.shrink_to_hi(), ")".to_string()));
-                    } else {
-                        suggestion.push((span.shrink_to_hi().with_hi(expr.span.hi()), sugg));
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    fn report_unexpected_variant_res(
+        &self,
+        res: Res,
+        expr: Option<&hir::Expr<'_>>,
+        sub_pats: &[hir::Pat<'_>],
+        qpath: &hir::QPath<'_>,
+        span: Span,
+        err_code: ErrCode,
+        expected: &str,
+    ) -> ErrorGuaranteed {
+        let tcx = self.tcx;
+        let res_descr = match res {
+            Res::Def(DefKind::Variant, _) => "struct variant",
+            _ => res.descr(),
+        };
+        let path_str = rustc_hir_pretty::qpath_to_string(self, qpath);
+        let mut err = tcx
+            .dcx()
+            .struct_span_err(span, format!("expected {expected}, found {res_descr} `{path_str}`"))
+            .with_code(err_code);
+        match res {
+            Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == E0164 => {
+                let patterns_url = "https://doc.rust-lang.org/book/ch19-00-patterns.html";
+                err.with_span_label(span, "`fn` calls are not allowed in patterns")
+                    .with_help(format!("for more information, visit {patterns_url}"))
+            }
+            Res::Def(DefKind::Variant, _) if let Some(expr) = expr => {
+                err.span_label(span, format!("not a {expected}"));
+                let variant = tcx.expect_variant_res(res);
+                let sugg = if variant.fields.is_empty() {
+                    " {}".to_string()
+                } else {
+                    format!(
+                        " {{ {} }}",
+                        variant
+                            .fields
+                            .iter()
+                            .map(|f| format!("{}: /* value */", f.name))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                };
+                let descr = "you might have meant to create a new value of the struct";
+                let mut suggestion = vec![];
+                match tcx.parent_hir_node(expr.hir_id) {
+                    hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Call(..),
+                        span: call_span,
+                        ..
+                    }) => {
+                        suggestion.push((span.shrink_to_hi().with_hi(call_span.hi()), sugg));
+                    }
+                    hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Binary(..), hir_id, ..
+                    }) => {
+                        suggestion.push((expr.span.shrink_to_lo(), "(".to_string()));
+                        if let hir::Node::Expr(parent) = tcx.parent_hir_node(*hir_id)
+                            && let hir::ExprKind::If(condition, block, None) = parent.kind
+                            && condition.hir_id == *hir_id
+                            && let hir::ExprKind::Block(block, _) = block.kind
+                            && block.stmts.is_empty()
+                            && let Some(expr) = block.expr
+                            && let hir::ExprKind::Path(..) = expr.kind
+                        {
+                            // Special case: you can incorrectly write an equality condition:
+                            // if foo == Struct { field } { /* if body */ }
+                            // which should have been written
+                            // if foo == (Struct { field }) { /* if body */ }
+                            suggestion.push((block.span.shrink_to_hi(), ")".to_string()));
+                        } else {
+                            suggestion.push((span.shrink_to_hi().with_hi(expr.span.hi()), sugg));
+                        }
+                    }
+                    _ => {
+                        suggestion.push((span.shrink_to_hi(), sugg));
                     }
                 }
-                _ => {
-                    suggestion.push((span.shrink_to_hi(), sugg));
-                }
+
+                err.multipart_suggestion(descr, suggestion, Applicability::HasPlaceholders);
+                err
             }
+            Res::Def(DefKind::Variant, _) if expr.is_none() => {
+                err.span_label(span, format!("not a {expected}"));
 
-            err.multipart_suggestion(descr, suggestion, Applicability::HasPlaceholders);
-            err
-        }
-        Res::Def(DefKind::Variant, _) if expr.is_none() => {
-            err.span_label(span, format!("not a {expected}"));
-
-            let fields = &tcx.expect_variant_res(res).fields.raw;
-            let span = qpath.span().shrink_to_hi().to(span.shrink_to_hi());
-            let (msg, sugg) = if fields.is_empty() {
-                ("use the struct variant pattern syntax", " {}".to_string())
-            } else {
-                let msg = if fields.is_empty() {
-                    "use struct variant pattern syntax"
+                let fields = &tcx.expect_variant_res(res).fields.raw;
+                let span = qpath.span().shrink_to_hi().to(span.shrink_to_hi());
+                let (msg, sugg) = if fields.is_empty() {
+                    ("use the struct variant pattern syntax", " {}".to_string())
                 } else {
-                    "add the names to match a struct variant's fields"
+                    let msg = if fields.is_empty() {
+                        "use struct variant pattern syntax"
+                    } else {
+                        "add the names to match a struct variant's fields"
+                    };
+                    let fields_sugg = fields
+                        .iter()
+                        .enumerate()
+                        .map(|(i, field)| {
+                            let field_name = field.ident(tcx).to_string();
+
+                            let pat_snippet = sub_pats
+                                .get(i)
+                                .and_then(|sub_pat| {
+                                    tcx.sess.source_map().span_to_snippet(sub_pat.span).ok()
+                                })
+                                .unwrap_or_else(|| "_".to_string());
+
+                            if field_name == pat_snippet {
+                                field_name
+                            } else {
+                                format!("{field_name}: {pat_snippet}")
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    let sugg = format!(" {{ {} }}", fields_sugg);
+                    (msg, sugg)
                 };
-                let fields_sugg = fields
-                    .iter()
-                    .enumerate()
-                    .map(|(i, field)| {
-                        let field_name = field.ident(tcx).to_string();
 
-                        let pat_snippet = sub_pats
-                            .get(i)
-                            .and_then(|sub_pat| {
-                                tcx.sess.source_map().span_to_snippet(sub_pat.span).ok()
-                            })
-                            .unwrap_or_else(|| "_".to_string());
-
-                        if field_name == pat_snippet {
-                            field_name
-                        } else {
-                            format!("{field_name}: {pat_snippet}")
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let sugg = format!(" {{ {} }}", fields_sugg);
-                (msg, sugg)
-            };
-
-            err.span_suggestion_verbose(
-                qpath.span().shrink_to_hi().to(span.shrink_to_hi()),
-                msg,
-                sugg,
-                Applicability::HasPlaceholders,
-            );
-            err
+                err.span_suggestion_verbose(
+                    qpath.span().shrink_to_hi().to(span.shrink_to_hi()),
+                    msg,
+                    sugg,
+                    Applicability::HasPlaceholders,
+                );
+                err
+            }
+            _ => err.with_span_label(span, format!("not a {expected}")),
         }
-        _ => err.with_span_label(span, format!("not a {expected}")),
+        .emit_err()
     }
-    .emit()
 }
 
 /// Controls whether all arguments are tupled. This is used for the call operator only.
@@ -711,7 +712,7 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
             diag.note("some of the compiler flags provided by cargo are hidden");
         }
     }
-    diag.emit()
+    diag.emit_bug()
 }
 
 /// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]

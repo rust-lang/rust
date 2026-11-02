@@ -2,6 +2,7 @@
 //@compile-flags: -Zmiri-deterministic-concurrency -Zmiri-disable-stacked-borrows
 
 #![feature(rustc_attrs)]
+#![feature(ptr_alignment_type)]
 
 use std::thread::spawn;
 
@@ -13,7 +14,7 @@ unsafe impl<T> Sync for EvilSend<T> {}
 
 extern "Rust" {
     #[rustc_std_internal_symbol]
-    fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
+    fn __rust_dealloc(ptr: *mut u8, size: usize, align: core::mem::Alignment);
 }
 
 fn main() {
@@ -27,7 +28,7 @@ fn main() {
             __rust_dealloc(
                 ptr.0 as *mut _,
                 std::mem::size_of::<usize>(),
-                std::mem::align_of::<usize>(),
+                std::mem::align_of::<usize>().try_into().unwrap(),
             )
         });
 

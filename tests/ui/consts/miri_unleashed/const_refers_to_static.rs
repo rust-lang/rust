@@ -8,7 +8,7 @@ use std::sync::atomic::Ordering;
 
 const MUTATE_INTERIOR_MUT: usize = {
     static FOO: AtomicUsize = AtomicUsize::new(0);
-    FOO.fetch_add(1, Ordering::Relaxed) //~ERROR calling non-const function `Atomic::<usize>::fetch_add`
+    FOO.fetch_add(1, Ordering::Relaxed) //~ERROR constant accesses mutable global memory
 };
 
 const READ_INTERIOR_MUT: usize = {

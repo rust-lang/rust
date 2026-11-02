@@ -34,7 +34,13 @@ LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    = note: the struct `Indirect2<'a>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-help: `'b` and `'a` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/regions-infer-not-param.rs:20:4
+   |
+LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
+   |    ^^^^^^^^^^^^^^
+   |
+   = help: `'b` and `'a` must be the same: replace one with the other
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

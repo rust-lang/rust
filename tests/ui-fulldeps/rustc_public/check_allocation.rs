@@ -250,7 +250,7 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         r#"
     #![feature(core_intrinsics)]
     #![expect(internal_features)]
-    use std::intrinsics::type_id;
+    use std::intrinsics::reflection::type_id;
 
     static LEN: usize = 2;
     static FOO: [&str; 2] = ["hi", "there"];

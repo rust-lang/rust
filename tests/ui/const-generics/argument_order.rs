@@ -1,4 +1,4 @@
-//@ reference: items.generics.syntax.decl-order
+//@ reference: items.generics.decl-order
 
 struct Good<const N: usize, T> {
     arr: [u8; { N }],

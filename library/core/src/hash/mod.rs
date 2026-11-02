@@ -436,7 +436,7 @@ pub trait Hasher {
     /// writing its contents to this `Hasher`.  That way
     /// `(collection![1, 2, 3], collection![4, 5])` and
     /// `(collection![1, 2], collection![3, 4, 5])` will provide different
-    /// sequences of values to the `Hasher`
+    /// sequences of values to the `Hasher`.
     ///
     /// The `impl<T> Hash for [T]` includes a call to this method, so if you're
     /// hashing a slice (or array or vector) via its `Hash::hash` method,
@@ -691,6 +691,7 @@ pub trait BuildHasher {
     /// );
     /// ```
     #[stable(feature = "build_hasher_simple_hash_one", since = "1.71.0")]
+    #[expect(clippy::manual_hash_one, reason = "implements hash_one")]
     fn hash_one<T: Hash>(&self, x: T) -> u64
     where
         Self: Sized,

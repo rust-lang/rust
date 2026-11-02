@@ -60,7 +60,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
         _43 = std::future::ResumeTy(move _44);
         _42 = copy (_1.0: &mut {async fn body of double()});
         _41 = discriminant((*_42));
-        switchInt(move _41) -> [0: bb29, 2: bb36, 3: bb32, 4: bb33, 5: bb34, 6: bb35, otherwise: bb37];
+        switchInt(move _41) -> [0: bb29, 2: bb35, 3: bb31, 4: bb32, 5: bb33, 6: bb34, otherwise: bb36];
     }
 
     bb1: {
@@ -99,7 +99,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb8 (cleanup): {
-        goto -> bb31;
+        goto -> bb30;
     }
 
     bb9: {
@@ -212,47 +212,43 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
     }
 
     bb29: {
-        goto -> bb30;
-    }
-
-    bb30: {
         goto -> bb28;
     }
 
-    bb31 (cleanup): {
+    bb30 (cleanup): {
         discriminant((*_42)) = 2;
         resume;
     }
 
-    bb32: {
+    bb31: {
         StorageLive(_7);
         _7 = move _43;
         goto -> bb11;
     }
 
-    bb33: {
+    bb32: {
         StorageLive(_14);
         _14 = move _43;
         goto -> bb18;
     }
 
-    bb34: {
+    bb33: {
         StorageLive(_24);
         _24 = move _43;
         goto -> bb21;
     }
 
-    bb35: {
+    bb34: {
         StorageLive(_31);
         _31 = move _43;
         goto -> bb27;
     }
 
-    bb36: {
-        assert(const false, "`async fn` resumed after panicking") -> [success: bb36, unwind continue];
+    bb35: {
+        assert(const false, "`async fn` resumed after panicking") -> [success: bb35, unwind continue];
     }
 
-    bb37: {
+    bb36: {
         _0 = Poll::<()>::Ready(const ());
         return;
     }

@@ -2,7 +2,7 @@ use std::io::Error;
 use std::path::{Path, PathBuf};
 
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, msg};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, msg};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
@@ -254,46 +254,6 @@ pub(crate) struct FailedCopyToStdout {
 pub(crate) struct BinaryOutputToTty;
 
 #[derive(Diagnostic)]
-#[diag("could not find native static library `{$libname}`, perhaps an -L flag is missing?")]
-pub(crate) struct MissingNativeLibrary<'a> {
-    libname: &'a str,
-    #[subdiagnostic]
-    suggest_name: Option<SuggestLibraryName<'a>>,
-}
-
-impl<'a> MissingNativeLibrary<'a> {
-    pub(crate) fn new(libname: &'a str, verbatim: bool) -> Self {
-        // if it looks like the user has provided a complete filename rather just the bare lib name,
-        // then provide a note that they might want to try trimming the name
-        let suggested_name = if !verbatim {
-            if let Some(libname) = libname.strip_circumfix("lib", ".a") {
-                // this is a unix style filename so trim prefix & suffix
-                Some(libname)
-            } else if let Some(libname) = libname.strip_suffix(".lib") {
-                // this is a Windows style filename so just trim the suffix
-                Some(libname)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        Self {
-            libname,
-            suggest_name: suggested_name
-                .map(|suggested_name| SuggestLibraryName { suggested_name }),
-        }
-    }
-}
-
-#[derive(Subdiagnostic)]
-#[help("only provide the library name `{$suggested_name}`, not the full filename")]
-pub(crate) struct SuggestLibraryName<'a> {
-    suggested_name: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag("couldn't create a temp dir: {$err}")]
 pub(crate) struct FailedCreateTempdir {
     pub err: Error,
@@ -345,8 +305,8 @@ pub(crate) struct MultipleCandidates {
     pub candidates: Vec<PathBuf>,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for MultipleCandidates {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for MultipleCandidates {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(
             dcx,
             level,
@@ -365,7 +325,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for MultipleCandidates {
 
 #[derive(Diagnostic)]
 #[diag(
-    "only metadata stub found for `{$flavor}` dependency `{$crate_name}` please provide path to the corresponding .rmeta file with full metadata"
+    "only metadata stub found for `{$flavor}` dependency `{$crate_name}`. Please provide path to the corresponding .rmeta file with full metadata"
 )]
 pub(crate) struct FullMetadataNotFound {
     #[primary_span]
@@ -458,9 +418,9 @@ pub(crate) struct InvalidMetadataFiles {
     pub crate_rejections: Vec<String>,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for InvalidMetadataFiles {
+impl Diagnostic<'_> for InvalidMetadataFiles {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(
             dcx,
             level,
@@ -490,9 +450,9 @@ pub(crate) struct CannotFindCrate {
     pub is_tier_3: bool,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
+impl Diagnostic<'_> for CannotFindCrate {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag =
             Diag::new(dcx, level, msg!("can't find crate for `{$crate_name}`{$add_info}"));
         diag.arg("crate_name", self.crate_name);
@@ -590,8 +550,6 @@ pub(crate) struct WasmCAbi {
     "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
 )]
 pub(crate) struct IncompatibleTargetModifiers {
-    #[primary_span]
-    pub span: Span,
     pub extern_crate: Symbol,
     pub local_crate: Symbol,
     pub flag_name: String,
@@ -621,8 +579,6 @@ pub(crate) struct IncompatibleTargetModifiers {
     "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
 )]
 pub(crate) struct IncompatibleTargetModifiersLMissed {
-    #[primary_span]
-    pub span: Span,
     pub extern_crate: Symbol,
     pub local_crate: Symbol,
     pub flag_name: String,
@@ -652,8 +608,6 @@ pub(crate) struct IncompatibleTargetModifiersLMissed {
     "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
 )]
 pub(crate) struct IncompatibleTargetModifiersRMissed {
-    #[primary_span]
-    pub span: Span,
     pub extern_crate: Symbol,
     pub local_crate: Symbol,
     pub flag_name: String,
@@ -667,8 +621,6 @@ pub(crate) struct IncompatibleTargetModifiersRMissed {
     "unknown target modifier `{$flag_name}`, requested by `-Cunsafe-allow-abi-mismatch={$flag_name}`"
 )]
 pub(crate) struct UnknownTargetModifierUnsafeAllowed {
-    #[primary_span]
-    pub span: Span,
     pub flag_name: String,
 }
 
@@ -712,8 +664,6 @@ pub(crate) struct UnusedCrateDependency {
     "it is possible to disable `-Z allow-partial-mitigations={$mitigation_name}` via `-Z deny-partial-mitigations={$mitigation_name}`"
 )]
 pub(crate) struct MitigationLessStrictInDependency {
-    #[primary_span]
-    pub span: Span,
     pub mitigation_name: String,
     pub mitigation_level: String,
     pub extern_crate: Symbol,

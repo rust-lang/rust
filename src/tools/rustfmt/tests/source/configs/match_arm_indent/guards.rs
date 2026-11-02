@@ -1,4 +1,4 @@
-// rustfmt-match_arm_indent: false
+//@ rustfmt-match_arm_indent: false
 
 // Guards are indented if the pattern is longer than 6 characters
 fn test() {

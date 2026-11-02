@@ -3,15 +3,15 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::indent_of;
 use clippy_utils::{is_default_equivalent, peel_blocks};
+use rustc_ast::attr::AttributeExt as _;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::{
     self as hir, Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
-use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty, TypeckResults, VariantDef};
-use rustc_session::impl_lint_pass;
+use rustc_middle::ty::{self, AdtDef, GenericArgs, Ty, TypeckResults, VariantDef};
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -64,7 +64,7 @@ pub struct DerivableImpls {
 
 impl DerivableImpls {
     pub fn new(conf: &'static Conf) -> Self {
-        DerivableImpls { msrv: conf.msrv }
+        DerivableImpls { msrv: conf.msrv.into() }
     }
 }
 
@@ -98,14 +98,14 @@ fn check_struct<'tcx>(
     self_ty: &hir::Ty<'_>,
     func_expr: &Expr<'_>,
     adt_def: AdtDef<'_>,
-    ty_args: GenericArgsRef<'_>,
+    ty_args: GenericArgs<'_>,
     typeck_results: &'tcx TypeckResults<'tcx>,
     is_const: bool,
 ) {
     if let TyKind::Path(QPath::Resolved(_, p)) = self_ty.kind
         && let Some(PathSegment { args, .. }) = p.segments.last()
     {
-        let args = args.map(|a| a.args).unwrap_or_default();
+        let args = args.map_or_default(|a| a.args);
 
         // ty_args contains the generic parameters of the type declaration, while args contains the
         // arguments used at instantiation time. If both len are not equal, it means that some

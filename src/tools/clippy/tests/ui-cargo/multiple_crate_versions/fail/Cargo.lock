@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "multiple_crate_versions"
+name = "multiple-crate-versions"
 version = "0.1.0"
 dependencies = [
  "ansi_term",

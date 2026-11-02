@@ -10,20 +10,20 @@ LL |     Thunk::new(|cont| cont)
    = note: expected struct `Thunk<_>`
            found unit type `()`
 
-error[E0277]: expected an `FnOnce()` closure, found `()`
+error[E0277]: expected `FnOnce()` signature, found `()`
   --> $DIR/lazy_subtyping_of_opaques.rs:12:23
    |
 LL |     Thunk::new(|cont| cont)
-   |                       ^^^^ expected an `FnOnce()` closure, found `()`
+   |                       ^^^^ expected `FnOnce()` signature, found `()`
    |
    = help: the trait `FnOnce()` is not implemented for `()`
    = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
 
-error[E0277]: expected an `FnOnce()` closure, found `()`
+error[E0277]: expected `FnOnce()` signature, found `()`
   --> $DIR/lazy_subtyping_of_opaques.rs:10:23
    |
 LL | fn reify_as_tait() -> Thunk<Tait> {
-   |                       ^^^^^^^^^^^ expected an `FnOnce()` closure, found `()`
+   |                       ^^^^^^^^^^^ expected `FnOnce()` signature, found `()`
 LL |
 LL |     Thunk::new(|cont| cont)
    |     ----------------------- return type was inferred to be `{type error}` here

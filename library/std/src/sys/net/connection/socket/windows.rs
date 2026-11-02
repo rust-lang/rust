@@ -29,10 +29,11 @@ pub(super) mod netc {
     pub use crate::sys::c::{
         ADDRESS_FAMILY as sa_family_t, ADDRINFOA as addrinfo, IP_ADD_MEMBERSHIP,
         IP_DROP_MEMBERSHIP, IP_MULTICAST_LOOP, IP_MULTICAST_TTL, IP_TTL, IPPROTO_IP, IPPROTO_IPV6,
-        IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP, IPV6_MULTICAST_LOOP, IPV6_V6ONLY, SO_BROADCAST,
-        SO_RCVTIMEO, SO_SNDTIMEO, SOCK_DGRAM, SOCK_STREAM, SOCKADDR as sockaddr,
-        SOCKADDR_STORAGE as sockaddr_storage, SOL_SOCKET, bind, connect, freeaddrinfo, getpeername,
-        getsockname, getsockopt, listen, setsockopt,
+        IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP, IPV6_MULTICAST_HOPS, IPV6_MULTICAST_LOOP,
+        IPV6_UNICAST_HOPS, IPV6_V6ONLY, SO_BROADCAST, SO_RCVTIMEO, SO_SNDTIMEO, SOCK_DGRAM,
+        SOCK_STREAM, SOCKADDR as sockaddr, SOCKADDR_STORAGE as sockaddr_storage, SOL_SOCKET,
+        WSAEMSGSIZE as EMSGSIZE, bind, connect, freeaddrinfo, getpeername, getsockname, getsockopt,
+        listen, setsockopt,
     };
 
     #[allow(non_camel_case_types)]
@@ -88,7 +89,7 @@ pub(super) mod netc {
     }
 
     pub unsafe fn send(socket: SOCKET, buf: *const c_void, len: c_int, flags: c_int) -> c_int {
-        unsafe { c::send(socket, buf.cast::<u8>(), len, flags) }
+        unsafe { c::send(socket, buf.cast::<i8>(), len, flags) }
     }
     pub unsafe fn sendto(
         socket: SOCKET,
@@ -98,7 +99,7 @@ pub(super) mod netc {
         addr: *const SOCKADDR,
         addrlen: c_int,
     ) -> c_int {
-        unsafe { c::sendto(socket, buf.cast::<u8>(), len, flags, addr, addrlen) }
+        unsafe { c::sendto(socket, buf.cast::<i8>(), len, flags, addr, addrlen) }
     }
     pub unsafe fn getaddrinfo(
         node: *const c_char,
@@ -158,57 +159,47 @@ impl Socket {
         cvt(result).map(drop)
     }
 
-    pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
-        self.set_nonblocking(true)?;
-        let result = self.connect(addr);
-        self.set_nonblocking(false)?;
+    pub fn poll_connected(&self, timeout: Duration) -> io::Result<()> {
+        if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
+            return Err(io::Error::ZERO_TIMEOUT);
+        }
 
-        match result {
-            Err(ref error) if error.kind() == io::ErrorKind::WouldBlock => {
-                if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-                    return Err(io::Error::ZERO_TIMEOUT);
-                }
+        let mut timeout = c::TIMEVAL {
+            tv_sec: cmp::min(timeout.as_secs(), c_long::MAX as u64) as c_long,
+            tv_usec: timeout.subsec_micros() as c_long,
+        };
 
-                let mut timeout = c::TIMEVAL {
-                    tv_sec: cmp::min(timeout.as_secs(), c_long::MAX as u64) as c_long,
-                    tv_usec: timeout.subsec_micros() as c_long,
-                };
+        if timeout.tv_sec == 0 && timeout.tv_usec == 0 {
+            timeout.tv_usec = 1;
+        }
 
-                if timeout.tv_sec == 0 && timeout.tv_usec == 0 {
-                    timeout.tv_usec = 1;
-                }
+        let fds = {
+            let mut fds = unsafe { mem::zeroed::<c::FD_SET>() };
+            fds.fd_count = 1;
+            fds.fd_array[0] = self.as_raw();
+            fds
+        };
 
-                let fds = {
-                    let mut fds = unsafe { mem::zeroed::<c::FD_SET>() };
-                    fds.fd_count = 1;
-                    fds.fd_array[0] = self.as_raw();
-                    fds
-                };
+        let mut writefds = fds;
+        let mut errorfds = fds;
 
-                let mut writefds = fds;
-                let mut errorfds = fds;
+        let count = {
+            let result =
+                unsafe { c::select(1, ptr::null_mut(), &mut writefds, &mut errorfds, &timeout) };
+            cvt(result)?
+        };
 
-                let count = {
-                    let result = unsafe {
-                        c::select(1, ptr::null_mut(), &mut writefds, &mut errorfds, &timeout)
-                    };
-                    cvt(result)?
-                };
-
-                match count {
-                    0 => Err(io::const_error!(io::ErrorKind::TimedOut, "connection timed out")),
-                    _ => {
-                        if writefds.fd_count != 1 {
-                            if let Some(e) = self.take_error()? {
-                                return Err(e);
-                            }
-                        }
-
-                        Ok(())
+        match count {
+            0 => Err(io::const_error!(io::ErrorKind::TimedOut, "connection timed out")),
+            _ => {
+                if writefds.fd_count != 1 {
+                    if let Some(e) = self.take_error()? {
+                        return Err(e);
                     }
                 }
+
+                Ok(())
             }
-            _ => result,
         }
     }
 
@@ -309,7 +300,7 @@ impl Socket {
     ) -> io::Result<(usize, SocketAddr)> {
         let mut storage = unsafe { mem::zeroed::<c::SOCKADDR_STORAGE>() };
         let mut addrlen = size_of_val(&storage) as netc::socklen_t;
-        let length = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        let length = cmp::min(buf.len(), super::MAX_SEND_LEN) as wrlen_t;
 
         // On unix when a socket is shut down all further reads return 0, so we
         // do the same on windows to map a shut down socket to returning EOF.

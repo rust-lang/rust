@@ -17,6 +17,7 @@ LL | impl<'a, T: MyDisplay> MyDisplay for &'a mut T { }
 note: required by a bound in `MPU::MpuConfig`
   --> $DIR/issue-65774-1.rs:10:21
    |
+LL | trait MPU {
 LL |     type MpuConfig: MyDisplay = T;
    |                     ^^^^^^^^^ required by this bound in `MPU::MpuConfig`
 

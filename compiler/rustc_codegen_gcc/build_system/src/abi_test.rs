@@ -34,7 +34,7 @@ pub fn run() -> Result<(), String> {
     .map_err(|err| format!("Git clone failed with message: {err:?}!"))?;
     // Configure abi-cafe to use the exact same rustc version we use - this is crucial.
     // Otherwise, the concept of ABI compatibility becomes meanignless.
-    std::fs::copy("rust-toolchain", "clones/abi-cafe/rust-toolchain")
+    std::fs::copy("rust-toolchain.toml", "clones/abi-cafe/rust-toolchain.toml")
         .expect("Could not copy toolchain configs!");
     // Get the backend path.
     // We will use the *debug* build of the backend - it has more checks enabled.

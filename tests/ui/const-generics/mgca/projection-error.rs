@@ -1,4 +1,4 @@
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 
 // Regression test for #140642. Test that normalizing const aliases
@@ -6,7 +6,8 @@
 // a type error.
 
 pub trait Tr<A> {
-    type const SIZE: usize;
+    #[rustc_always_gca]
+    const SIZE: usize;
 }
 
 fn mk_array(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}

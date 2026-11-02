@@ -164,10 +164,12 @@
 #[stable(feature = "c_str_module", since = "1.88.0")]
 pub mod c_str;
 
+#[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+pub use core::ffi::VaArgSafe;
+#[stable(feature = "c_variadic", since = "1.99.0")]
+pub use core::ffi::VaList;
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub use core::ffi::c_void;
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
-pub use core::ffi::{VaArgSafe, VaList};
 #[stable(feature = "core_ffi_c", since = "1.64.0")]
 pub use core::ffi::{
     c_char, c_double, c_float, c_int, c_long, c_longlong, c_schar, c_short, c_uchar, c_uint,

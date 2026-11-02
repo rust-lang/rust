@@ -5,7 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, ClauseKind, GenericParamDefKind, ParamEnv, TraitPredicate, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{self, ClauseKind, GenericParamDefKind, ParamEnv, TraitClause, Ty, TyCtxt, Upcast as _};
 use rustc_span::{Span, sym};
 
 use super::DERIVE_PARTIAL_EQ_WITHOUT_EQ;
@@ -29,7 +29,7 @@ pub(super) fn check<'tcx>(
         // If all of our fields implement `Eq`, we can implement `Eq` too
         && adt
             .all_fields()
-            .map(|f| f.ty(cx.tcx, args))
+            .map(|f| f.ty(cx.tcx, *args))
             .all(|ty| implements_trait_with_env(cx.tcx, typing_env, ty.skip_norm_wip(), eq_trait_def_id, None, &[]))
     {
         span_lint_hir_and_then(
@@ -76,14 +76,18 @@ fn typing_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) ->
         }
     }
 
-    let param_env = ParamEnv::new(tcx.mk_clauses_from_iter(ty_clauses.iter().map(|&(c, _)| c).chain(
-        params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
-            ClauseKind::Trait(TraitPredicate {
-                trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
-                polarity: ty::PredicatePolarity::Positive,
-            })
-            .upcast(tcx)
-        }),
-    )));
+    let param_env = ParamEnv::new(
+        tcx,
+        ty_clauses
+            .iter()
+            .map(|&(c, _)| c)
+            .chain(params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
+                ClauseKind::Trait(TraitClause {
+                    trait_ref: ty::TraitRef::new(tcx, eq_trait_id, [tcx.mk_param_from_def(param)]),
+                    polarity: ty::ClausePolarity::Positive,
+                })
+                .upcast(tcx)
+            })),
+    );
     ty::TypingEnv::new(param_env, ty::TypingMode::non_body_analysis())
 }

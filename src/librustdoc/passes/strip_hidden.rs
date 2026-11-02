@@ -1,4 +1,4 @@
-//! Strip all doc(hidden) items from the output.
+//! Strip all `#[doc(hidden)]` items from the output.
 
 use std::mem;
 
@@ -10,16 +10,13 @@ use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::{self, Item, ItemIdSet, reexport_chain};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, strip_item};
-use crate::passes::{ImplStripper, Pass};
+use crate::passes::ImplStripper;
 
-pub(crate) const STRIP_HIDDEN: Pass = Pass {
-    name: "strip-hidden",
-    run: Some(strip_hidden),
-    description: "strips all `#[doc(hidden)]` items from the output",
-};
+pub(super) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
+    if cx.document_hidden() {
+        return krate;
+    }
 
-/// Strip items marked `#[doc(hidden)]`
-pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
     let mut retained = ItemIdSet::default();
     let is_json_output = cx.is_json_output();
 
@@ -91,20 +88,29 @@ impl DocFolder for Stripper<'_, '_> {
         if let clean::ImportItem(clean::Import { source, .. }) = &i.kind
             && let Some(source_did) = source.did
         {
-            if self.tcx.is_doc_hidden(source_did) {
-                return None;
-            } else if let Some(import_def_id) = i.def_id().and_then(|def_id| def_id.as_local()) {
-                let reexports = reexport_chain(self.tcx, import_def_id, source_did);
+            if let Some(import_def_id) = i.def_id().and_then(|def_id| def_id.as_local()) {
+                // check the chain has inline?
+                if !clean::macro_reexport_is_inline(self.tcx, import_def_id, source_did) {
+                    // no inline, if there is hidden, hide it
+                    if self.tcx.is_doc_hidden(source_did) {
+                        return None;
+                    }
 
-                // Check if any reexport in the chain has a hidden source
-                let has_hidden_source = reexports
-                    .iter()
-                    .filter_map(|reexport| reexport.id())
-                    .any(|reexport_did| self.tcx.is_doc_hidden(reexport_did));
+                    let reexports = reexport_chain(self.tcx, import_def_id, source_did);
 
-                if has_hidden_source {
-                    return None;
+                    // Check if any reexport in the chain has a hidden source
+                    let has_hidden_source = reexports
+                        .iter()
+                        .filter_map(|reexport| reexport.id())
+                        .any(|reexport_did| self.tcx.is_doc_hidden(reexport_did));
+
+                    if has_hidden_source {
+                        return None;
+                    }
                 }
+            } else if self.tcx.is_doc_hidden(source_did) {
+                // fallback
+                return None;
             }
         }
 

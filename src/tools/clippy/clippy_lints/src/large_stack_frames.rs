@@ -2,15 +2,14 @@ use std::{fmt, ops};
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::SpanExt;
+use clippy_utils::source::SpanExt as _;
 use clippy_utils::{fn_has_unsatisfiable_clauses, is_entrypoint_fn, is_in_test};
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
 use rustc_lexer::is_ident;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
@@ -20,7 +19,7 @@ declare_clippy_lint! {
     /// This often happens when constructing a large type, such as an array with a lot of elements,
     /// or constructing *many* smaller-but-still-large structs, or copying around a lot of large types.
     ///
-    /// This lint is a more general version of [`large_stack_arrays`](https://rust-lang.github.io/rust-clippy/master/#large_stack_arrays)
+    /// This lint is a more general version of [`large_stack_arrays`](https://rust-lang.github.io/rust-clippy/main/#large_stack_arrays)
     /// that is intended to look at functions as a whole instead of only individual array expressions inside of a function.
     ///
     /// ### Why is this bad?
@@ -147,7 +146,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
         local_def_id: LocalDefId,
     ) {
         let def_id = local_def_id.to_def_id();
-        // Building MIR for `fn`s with unsatisfiable clauses results in ICE.
+        // Building MIR for `fn`s with unsatisfiable preds results in ICE.
         if fn_has_unsatisfiable_clauses(cx, def_id) {
             return;
         }
@@ -184,7 +183,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
                 return;
             }
 
-            let explain_lint = |diag: &mut Diag<'_, ()>, ctxt: SyntaxContext| {
+            let explain_lint = |diag: &mut Diag<'_>, ctxt: SyntaxContext| {
                 // Point out the largest individual contribution to this size, because
                 // it is the most likely to be unintentionally large.
                 if let Some((local, size)) = sizes_of_locals.iter().max_by_key(|&(_, size)| size)

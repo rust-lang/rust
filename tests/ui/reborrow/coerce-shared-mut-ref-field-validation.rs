@@ -1,4 +1,4 @@
-//@ check-pass
+//! Test that reference shared coercing does not allow changing lifetime relations.
 
 #![feature(reborrow)]
 
@@ -40,5 +40,19 @@ struct InnerLifetimeRef<'a> {
 }
 
 impl<'a> CoerceShared<InnerLifetimeRef<'a>> for InnerLifetimeMut<'a> {}
+
+struct RejectedInnerLifetimeMut<'a> {
+    value: &'a mut &'a (),
+}
+
+impl Reborrow for RejectedInnerLifetimeMut<'_> {}
+
+#[derive(Copy, Clone)]
+struct RejectedInnerLifetimeRef<'a> {
+    value: &'a &'static (),
+    //~^ ERROR
+}
+
+impl<'a> CoerceShared<RejectedInnerLifetimeRef<'a>> for RejectedInnerLifetimeMut<'a> {}
 
 fn main() {}

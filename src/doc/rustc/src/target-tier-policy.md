@@ -4,6 +4,7 @@
 
 * [General](#general)
 * [Adding a new target](#adding-a-new-target)
+* [Promoting or demoting a target](#promoting-or-demoting-a-target)
 * [Tier 3 target policy](#tier-3-target-policy)
 * [Tier 2 target policy](#tier-2-target-policy)
   * [Tier 2 with host tools](#tier-2-with-host-tools)
@@ -140,6 +141,14 @@ support for the target in `cc` and `libc`.
 [`rust-lang/rust`]: https://github.com/rust-lang/rust
 [rustc_dev_guide_add_target]: https://rustc-dev-guide.rust-lang.org/building/new-target.html
 
+## Promoting or demoting a target
+
+Support for targets can vary during their lifespan (a target con be promoted because the support
+improves or can be demoted because lack of resources). Procedures for promoting and demoting targets
+are documented at our [Forge documentation site][forge].
+
+[forge]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#targets
+
 ## Tier 3 target policy
 
 At this tier, the Rust project provides no official support for a target, so we
@@ -258,8 +267,10 @@ approved by the appropriate team for that shared code before acceptance.
     target may not have; use conditional compilation or runtime detection, as
     appropriate, to let each target run code supported by that target.
 - Tier 3 targets must be able to produce assembly using at least one of
-  rustc's supported backends from any host target. (Having support in a fork
-  of the backend is not sufficient, it must be upstream.)
+  rustc's supported backends from any host target. The default target CPU (if any) and
+  target features must be supported by that backend. Having support in a fork
+  of the backend is not sufficient, it must be upstream in the version of the
+  backend that ships with rustc.
 
 If a tier 3 target stops meeting these requirements, or the target maintainers
 no longer have interest or time, or the target shows no signs of activity and

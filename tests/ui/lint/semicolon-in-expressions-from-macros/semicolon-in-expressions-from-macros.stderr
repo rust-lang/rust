@@ -1,6 +1,8 @@
 warning: trailing semicolon in macro used in expression position
   --> $DIR/semicolon-in-expressions-from-macros.rs:9:13
    |
+LL | macro_rules! foo {
+LL |     ($val:ident) => {
 LL |         true;
    |             ^
 ...
@@ -16,11 +18,12 @@ note: the lint level is defined here
    |
 LL | #![warn(semicolon_in_expressions_from_macros)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: trailing semicolon in macro used in expression position
   --> $DIR/semicolon-in-expressions-from-macros.rs:9:13
    |
+LL | macro_rules! foo {
+LL |     ($val:ident) => {
 LL |         true;
    |             ^
 ...
@@ -29,24 +32,23 @@ LL |     let _ = foo!(warn_in_expr);
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
-   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: unused attribute `allow`
-  --> $DIR/semicolon-in-expressions-from-macros.rs:50:13
+warning: the `allow` attribute cannot be used on macro calls
+  --> $DIR/semicolon-in-expressions-from-macros.rs:50:15
    |
 LL |     let _ = #[allow(semicolon_in_expressions_from_macros)] foo!(allow_does_not_work);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^
    |
-note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `foo`
-  --> $DIR/semicolon-in-expressions-from-macros.rs:50:60
-   |
-LL |     let _ = #[allow(semicolon_in_expressions_from_macros)] foo!(allow_does_not_work);
-   |                                                            ^^^
+   = help: the `allow` attribute can be applied to associated consts, associated types, break expressions, const parameters, constants, crates, data types, enum variants, expressions, extern crates, for loops, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, loops, macro defs, match arms, modules, pattern fields, statements, statics, struct fields, trait aliases, traits, type aliases, type parameters, use statements, and while loops
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
    = note: requested on the command line with `-W unused-attributes`
 
 warning: trailing semicolon in macro used in expression position
   --> $DIR/semicolon-in-expressions-from-macros.rs:9:13
    |
+LL | macro_rules! foo {
+LL |     ($val:ident) => {
 LL |         true;
    |             ^
 ...
@@ -55,7 +57,6 @@ LL |     let _ = #[allow(semicolon_in_expressions_from_macros)] foo!(allow_does_
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
-   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 4 warnings emitted
 
@@ -63,6 +64,8 @@ Future incompatibility report: Future breakage diagnostic:
 warning: trailing semicolon in macro used in expression position
   --> $DIR/semicolon-in-expressions-from-macros.rs:9:13
    |
+LL | macro_rules! foo {
+LL |     ($val:ident) => {
 LL |         true;
    |             ^
 ...
@@ -73,12 +76,13 @@ LL |         foo!(first)
    = note: to ignore the value produced by the macro, add a semicolon after the invocation of `foo`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
-   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
 warning: trailing semicolon in macro used in expression position
   --> $DIR/semicolon-in-expressions-from-macros.rs:9:13
    |
+LL | macro_rules! foo {
+LL |     ($val:ident) => {
 LL |         true;
    |             ^
 ...
@@ -87,12 +91,13 @@ LL |     let _ = foo!(second);
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
-   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
 warning: trailing semicolon in macro used in expression position
   --> $DIR/semicolon-in-expressions-from-macros.rs:9:13
    |
+LL | macro_rules! foo {
+LL |     ($val:ident) => {
 LL |         true;
    |             ^
 ...
@@ -101,12 +106,13 @@ LL |         let _ = foo!(third);
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
-   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
 warning: trailing semicolon in macro used in expression position
   --> $DIR/semicolon-in-expressions-from-macros.rs:9:13
    |
+LL | macro_rules! foo {
+LL |     ($val:ident) => {
 LL |         true;
    |             ^
 ...
@@ -115,12 +121,13 @@ LL |         let _ = foo!(fourth);
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
-   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
 warning: trailing semicolon in macro used in expression position
   --> $DIR/semicolon-in-expressions-from-macros.rs:9:13
    |
+LL | macro_rules! foo {
+LL |     ($val:ident) => {
 LL |         true;
    |             ^
 ...
@@ -136,12 +143,13 @@ note: the lint level is defined here
    |
 LL | #![warn(semicolon_in_expressions_from_macros)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
 warning: trailing semicolon in macro used in expression position
   --> $DIR/semicolon-in-expressions-from-macros.rs:9:13
    |
+LL | macro_rules! foo {
+LL |     ($val:ident) => {
 LL |         true;
    |             ^
 ...
@@ -155,12 +163,13 @@ note: the lint level is defined here
    |
 LL | #![warn(semicolon_in_expressions_from_macros)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
 warning: trailing semicolon in macro used in expression position
   --> $DIR/semicolon-in-expressions-from-macros.rs:9:13
    |
+LL | macro_rules! foo {
+LL |     ($val:ident) => {
 LL |         true;
    |             ^
 ...
@@ -174,5 +183,4 @@ note: the lint level is defined here
    |
 LL | #![warn(semicolon_in_expressions_from_macros)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 

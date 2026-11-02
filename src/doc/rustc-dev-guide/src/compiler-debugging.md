@@ -4,8 +4,7 @@ This chapter contains a few tips to debug the compiler.
 These tips aim to be useful no matter what you are working on.
 Some of the other chapters have
 advice about specific parts of the compiler (e.g. the [Queries Debugging and
-Testing chapter](./incrcomp-debugging.html) or the [LLVM Debugging
-chapter](./backend/debugging.md)).
+Testing chapter](./incrcomp-debugging.md) or the [LLVM Debugging chapter](./backend/debugging.md)).
 
 ## Configuring the compiler
 
@@ -53,14 +52,14 @@ If this is not desirable, you can prevent the ICE file from being created with `
 ## Getting a backtrace
 [getting-a-backtrace]: #getting-a-backtrace
 
-When you have an ICE (panic in the compiler), you can set
-`RUST_BACKTRACE=1` to get the stack trace of the `panic!` like in normal Rust programs.
+When you have an ICE (panic in the compiler),
+you can set `RUST_BACKTRACE=1` to get the stack trace of the `panic!` like in normal Rust programs.
 IIRC backtraces **don't work** on MinGW, sorry.
 If you have trouble or the backtraces are full of `unknown`,
 you might want to find some way to use Linux, Mac, or MSVC on Windows.
 
-In the default configuration (without `debug` set to `true`), you don't have line numbers
-enabled, so the backtrace looks like this:
+In the default configuration (without `debug` set to `true`), you don't have line numbers enabled,
+so the backtrace looks like this:
 
 ```text
 stack backtrace:
@@ -76,7 +75,7 @@ stack backtrace:
   34: <std::thread::local::LocalKey<T>>::with
   35: rustc::ty::context::TyCtxt::create_and_enter
   36: rustc_driver::driver::compile_input
-  37: rustc_driver::run_compiler
+  37: rustc_driver::compiler_entrypoint
 ```
 
 If you set `debug = true`, you will get line numbers for the stack trace.
@@ -94,7 +93,7 @@ stack backtrace:
   33: rustc_driver::driver::compile_input
              at /home/user/rust/compiler/rustc_driver/src/driver.rs:1010
              at /home/user/rust/compiler/rustc_driver/src/driver.rs:212
-  34: rustc_driver::run_compiler
+  34: rustc_driver::compiler_entrypoint
              at /home/user/rust/compiler/rustc_driver/src/lib.rs:253
 ```
 
@@ -105,19 +104,18 @@ These are unstable flags that are only enabled on nightly.
 Many of them are useful for debugging.
 To get a full listing of `-Z` flags, use `-Z help`.
 
-One useful flag is `-Z verbose-internals`, which generally enables printing more
-info that could be useful for debugging.
+One useful flag is `-Z verbose-internals`,
+which generally enables printing more info that could be useful for debugging.
 
 Right below you can find elaborate explainers on a selected few.
 
 ### Getting a backtrace for errors
 [getting-a-backtrace-for-errors]: #getting-a-backtrace-for-errors
 
-If you want to get a backtrace to the point where the compiler emits an
-error message, you can pass the `-Z treat-err-as-bug=n`, which will make
-the compiler panic on the `nth` error.
-If you leave off `=n`, the compiler will
-assume `1` for `n` and thus panic on the first error it encounters.
+If you want to get a backtrace to the point where the compiler emits an error message,
+you can pass the `-Z treat-err-as-bug=n`, which will make the compiler panic on the `nth` error.
+If you leave off `=n`,
+the compiler will assume `1` for `n` and thus panic on the first error it encounters.
 
 For example:
 
@@ -182,7 +180,7 @@ stack backtrace:
    9: rustc_typeck::check::FnCtxt::select_obligations_where_possible
              at /home/user/rust/compiler/rustc_typeck/src/check/mod.rs:2192
   (~~~ IRRELEVANT PART OF BACKTRACE REMOVED BY ME ~~~)
-  36: rustc_driver::run_compiler
+  36: rustc_driver::compiler_entrypoint
              at /home/user/rust/compiler/rustc_driver/src/lib.rs:253
 ```
 
@@ -281,7 +279,7 @@ Here are some notable ones:
 | `rustc_dump_item_bounds` | Dumps the [`item_bounds`] of an item. |
 | `rustc_dump_layout` | [See this section](#debugging-type-layouts). |
 | `rustc_dump_object_lifetime_defaults` | Dumps the [object lifetime defaults] of an item. |
-| `rustc_dump_predicates` | Dumps the [`clauses_of`] an item. |
+| `rustc_dump_clauses` | Dumps the [`clauses_of`] an item. |
 | `rustc_dump_symbol_name` | Dumps the mangled & demangled [`symbol_name`] of an item. |
 | `rustc_dump_variances` | Dumps the [variances] of an item. |
 | `rustc_dump_vtable` | Dumps the vtable layout of an impl, or a type alias of a dyn type. |
@@ -315,7 +313,23 @@ $ dot -T pdf maybe_init_suffix.dot > maybe_init_suffix.pdf
 $ firefox maybe_init_suffix.pdf # Or your favorite pdf viewer
 ```
 
-### Debugging type layouts
+Graphviz also comes with a preprocessor program,
+[`unflatten`](https://graphviz.org/docs/cli/unflatten/),
+that sometimes helps making the outputs look less oddly spread out.
+It reads a dot file and outputs another dot file, so you can use it in a pipe,
+e.g:
+```
+$ unflatten mir_dump/*.foo.-------.nll.0.regioncx.all.dot | dot -Tpdf  -o foo-outlives.pdf
+```
+
+This is particularly useful for complicated region outlives graphs from 
+[the borrow checker](borrow-check/debugging.md).
+
+[An online Graphviz editor and visualiser is
+also available](https://dreampuf.github.io/GraphvizOnline).
+
+
+## Narrowing (Bisecting) Regressions
 
 The internal attribute `#[rustc_dump_layout(...)]` can be used to dump the
 [`Layout`] of the type it is attached to.
@@ -376,12 +390,15 @@ error: aborting due to previous error
 
 [`Layout`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_public/abi/struct.Layout.html
 
+## Debugging borrowcheck
+
+Debugging the borrow checker has [its own chapter](borrow-check/debugging.md).
 
 ## Configuring CodeLLDB for debugging `rustc`
 
 If you are using VSCode, and have edited your `bootstrap.toml` to request debugging
-level 1 or 2 for the parts of the code you're interested in, then you should be
-able to use the [CodeLLDB] extension in VSCode to debug it.
+level 1 or 2 for the parts of the code you're interested in,
+then you should be able to use the [CodeLLDB] extension in VSCode to debug it.
 
 Here is a sample `launch.json` file, being used to run a stage 1 compiler direct
 from the directory where it is built (does not have to be "installed"):

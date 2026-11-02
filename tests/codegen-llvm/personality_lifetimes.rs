@@ -1,4 +1,5 @@
 //@ ignore-msvc
+//@ ignore-wasm
 //@ needs-unwind
 
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes

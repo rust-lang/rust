@@ -4,6 +4,16 @@ error: `#[eii_declaration(...)]` is only valid on macros
 LL | #[eii_declaration(bar)]
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0658]: macro attributes on statements are unstable
+  --> $DIR/errors.rs:10:5
+   |
+LL |     #[eii_declaration(bar)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error: `#[eii_declaration(...)]` is only valid on macros
   --> $DIR/errors.rs:10:5
    |
@@ -88,5 +98,6 @@ error: `#[foo]` expected no arguments or a single argument: `#[foo(default)]`
 LL | #[foo = "default"]
    | ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

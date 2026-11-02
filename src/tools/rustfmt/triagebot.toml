@@ -13,11 +13,16 @@ allow-unauthenticated = [
     "E-*",
     "F-*",
     "I-*",
-    "S-*",
-    "SO-*",
-    "UO-*",
+    "needs-rfc",
     "needs-triage",
     "regression-*",
+    "S-*",
+    "SO-*",
+    "T-*",
+    "UO-*",
+    "unstable-language-feature",
+    "unstable-option",
+    "X-*",
 ]
 
 # ------------------------------------------------------------------------------
@@ -102,3 +107,15 @@ add_labels = ["S-waiting-on-review"]
 # ------------------------------------------------------------------------------
 
 [assign]
+
+# ------------------------------------------------------------------------------
+# Misc
+# ------------------------------------------------------------------------------
+
+# Canonicalize issue numbers to avoid closing the wrong issue
+# when commits are included in subtrees, as well as warning links in commits.
+# Documentation at: https://forge.rust-lang.org/triagebot/issue-links.html
+[issue-links]
+# This prevents links from resolving to the wrong repository when the subtree is
+# merged upstream while still allowing issue links in commits.
+check-commits = "uncanonicalized"

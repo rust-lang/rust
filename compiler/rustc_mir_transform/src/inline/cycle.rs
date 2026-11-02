@@ -1,11 +1,10 @@
-use rustc_data_structures::Limit;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::TerminatorKind;
-use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, ShimKind, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgs, InstanceKind, ShimKind, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
+use rustc_structures::Limit;
 use tracing::{instrument, trace};
 
 #[instrument(level = "debug", skip(tcx), ret)]
@@ -37,7 +36,7 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
         | InstanceKind::Shim(ShimKind::Clone(..)) => {}
 
         // This shim does not call any other functions, thus there can be no recursion.
-        InstanceKind::Shim(ShimKind::FnPtrAddr(..)) => return false,
+        InstanceKind::Shim(ShimKind::FnPtrAsPtr(..) | ShimKind::FnPtrFromPtr(..)) => return false,
 
         // FIXME: A not fully instantiated drop shim can cause ICEs if one attempts to
         // have its MIR built. Likely oli-obk just screwed up the `ParamEnv`s, so this
@@ -52,8 +51,10 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
         }
     }
 
-    crate::pm::should_run_pass(tcx, &crate::inline::Inline, crate::pm::Optimizations::Allowed)
-        || crate::inline::ForceInline::should_run_pass_for_callee(tcx, callee.def.def_id())
+    crate::pm::should_run_pass(
+        &crate::inline::Inline,
+        &crate::pm::PassCtx::for_body(tcx, callee.def_id()),
+    ) || crate::inline::ForceInline::should_run_pass_for_callee(tcx, callee.def.def_id())
 }
 
 #[instrument(
@@ -118,18 +119,17 @@ fn process<'tcx>(
             trace!(?callee, recursion = *recursion);
             let callee_reaches_root = if recursion_limit.value_within_limit(*recursion) {
                 *recursion += 1;
-                ensure_sufficient_stack(|| {
-                    process(
-                        tcx,
-                        typing_env,
-                        callee,
-                        target,
-                        seen,
-                        involved,
-                        recursion_limiter,
-                        recursion_limit,
-                    )
-                })?
+
+                process(
+                    tcx,
+                    typing_env,
+                    callee,
+                    target,
+                    seen,
+                    involved,
+                    recursion_limiter,
+                    recursion_limit,
+                )?
             } else {
                 return None;
             };
@@ -152,7 +152,7 @@ fn process<'tcx>(
 pub(crate) fn mir_callgraph_cyclic<'tcx>(
     tcx: TyCtxt<'tcx>,
     root: LocalDefId,
-) -> Option<UnordSet<LocalDefId>> {
+) -> Option<&'tcx UnordSet<LocalDefId>> {
     assert!(
         !tcx.is_constructor(root.to_def_id()),
         "you should not call `mir_callgraph_reachable` on enum/struct constructor functions"
@@ -172,7 +172,7 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
         ty::Instance::new_raw(root.to_def_id(), ty::GenericArgs::identity_for_item(tcx, root));
     if !should_recurse(tcx, root_instance) {
         trace!("cannot walk, skipping");
-        return Some(involved.into());
+        return Some(tcx.arena.alloc(involved.into()));
     }
     match process(
         tcx,
@@ -184,7 +184,7 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
         &mut FxHashMap::default(),
         recursion_limit,
     ) {
-        Some(_) => Some(involved.into()),
+        Some(_) => Some(tcx.arena.alloc(involved.into())),
         _ => None,
     }
 }
@@ -192,7 +192,7 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
 pub(crate) fn mir_inliner_callees<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceKind<'tcx>,
-) -> &'tcx [(DefId, GenericArgsRef<'tcx>)] {
+) -> &'tcx [(DefId, GenericArgs<'tcx>)] {
     let steal;
     let guard;
     let body = match (instance, instance.def_id().as_local()) {

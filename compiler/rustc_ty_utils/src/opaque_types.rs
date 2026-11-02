@@ -8,8 +8,7 @@ use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Unnormalized,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
+use rustc_span::{Span, bug, span_bug};
 use tracing::{instrument, trace};
 
 use crate::diagnostics::{DuplicateArg, NotParam};
@@ -34,15 +33,14 @@ enum CollectionMode {
     ImplTraitInAssocTypes,
     /// When collecting for an explicit `#[define_opaque]` attribute, find all TAITs
     Taits,
-    /// The default case, only collect RPITs and AsyncFn return types, as these are
-    /// always defined by the current item.
+    /// By default collect RPITs and async function return types defined by this item
     RpitAndAsyncFnOnly,
 }
 
 impl<'tcx> OpaqueTypeCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, item: LocalDefId) -> Self {
         let mode = match tcx.def_kind(item) {
-            DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy => {
+            DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => {
                 CollectionMode::ImplTraitInAssocTypes
             }
             DefKind::TyAlias => CollectionMode::Taits,
@@ -132,10 +130,10 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         // Only check that the parent generics of the TAIT/RPIT are unique.
         // the args owned by the opaque are going to always be duplicate
         // lifetime params for RPITs, and empty for TAITs.
-        match self
-            .tcx
-            .uses_unique_generic_params(&alias_ty.args[..parent_count], CheckRegions::FromFunction)
-        {
+        match self.tcx.uses_unique_generic_params(
+            &alias_ty.args.as_slice()[..parent_count],
+            CheckRegions::FromFunction,
+        ) {
             Ok(()) => {
                 // FIXME: implement higher kinded lifetime bounds on nested opaque types. They are not
                 // supported at all, so this is sound to do, but once we want to support them, you'll
@@ -186,7 +184,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
             trace!(?define);
             let mode = std::mem::replace(&mut self.mode, CollectionMode::Taits);
             let n = self.opaques.len();
-            super::sig_types::walk_types(self.tcx, define, self);
+            rustc_ty_walk::walk_types(self.tcx, define, self);
             if n == self.opaques.len() {
                 self.tcx.dcx().span_err(span, "item does not contain any opaque types");
             }
@@ -198,7 +196,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
     }
 }
 
-impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
+impl<'tcx> rustc_ty_walk::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
     fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) {
         self.visit_spanned(span, value);
@@ -324,18 +322,24 @@ fn opaque_types_defined_by<'tcx>(
     if tcx.is_typeck_child(item.to_def_id()) {
         return tcx.opaque_types_defined_by(tcx.local_parent(item));
     }
+
+    // delegation inherits its signature without defining its opaque types
+    if tcx.hir_opt_delegation_sig_id(item).is_some() {
+        return tcx.mk_local_def_ids(&[]);
+    }
+
     let kind = tcx.def_kind(item);
     trace!(?kind);
     let mut collector = OpaqueTypeCollector::new(tcx, item);
     collector.collect_taits_from_defines_attr();
-    super::sig_types::walk_types(tcx, item, &mut collector);
+    rustc_ty_walk::walk_types(tcx, item, &mut collector);
 
     match kind {
         DefKind::AssocFn
         | DefKind::Fn
         | DefKind::Static { .. }
-        | DefKind::Const { .. }
-        | DefKind::AssocConst { .. }
+        | DefKind::Const
+        | DefKind::AssocConst
         | DefKind::AnonConst => {
             // Non-type-system inline consts should be caught by `if tcx.is_typeck_child` above
             debug_assert!(
@@ -366,7 +370,8 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::ForeignMod
         | DefKind::Field
         | DefKind::LifetimeParam
-        | DefKind::Impl { .. } => {
+        | DefKind::Impl { .. }
+        | DefKind::TestBinderConstraints => {
             span_bug!(
                 tcx.def_span(item),
                 "`opaque_types_defined_by` not defined for {} `{item:?}`",

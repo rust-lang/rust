@@ -13,5 +13,5 @@ const _: () = {
 
 fn main() {
     Bar.boo();
-    //~^ ERROR: comptime fns can only be called at compile time
+    //~^ ERROR: comptime functions can only be called at compile time
 }

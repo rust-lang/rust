@@ -29,16 +29,16 @@ use rustc_attr_parsing::validate_attr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{DiagCtxtHandle, Diagnostic, LintBuffer};
 use rustc_feature::Features;
-use rustc_session::Session;
-use rustc_session::diagnostics::feature_err;
-use rustc_session::lint::builtin::{
+use rustc_lint_defs::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
     PATTERNS_IN_FNS_WITHOUT_BODY, UNUSED_VISIBILITIES,
 };
+use rustc_session::Session;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{Ident, Span, Symbol, kw, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 
-use crate::diagnostics::{self, TildeConstReason};
+use crate::diagnostics::{self, AbiCustomCannotBeCold, AbiCustomMustBeNaked, TildeConstReason};
 
 /// Is `self` allowed semantically as the first parameter in an `FnDecl`?
 enum SelfSemantic {
@@ -291,8 +291,11 @@ impl<'a> AstValidator<'a> {
         });
     }
 
-    fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, Option<Ident>, bool)) {
-        for Param { pat, .. } in &decl.inputs {
+    fn check_decl_no_pat(
+        fn_inputs: &[Param],
+        mut report_err: impl FnMut(Span, Option<Ident>, bool),
+    ) {
+        for Param { pat, .. } in fn_inputs {
             match pat.kind {
                 PatKind::Missing | PatKind::Ident(BindingMode::NONE, _, None) | PatKind::Wild => {}
                 PatKind::Ident(BindingMode::MUT, ident, None) => {
@@ -368,7 +371,8 @@ impl<'a> AstValidator<'a> {
     fn check_async_fn_in_const_trait_or_impl(&self, sig: &FnSig, parent: &TraitOrImpl) {
         let Some(const_keyword) = parent.constness() else { return };
 
-        let Some(CoroutineKind::Async { span: async_keyword, .. }) = sig.header.coroutine_kind
+        let Some(CoroutineMarker { kind: CoroutineKind::Async, span: async_keyword, .. }) =
+            sig.header.coroutine_marker
         else {
             return;
         };
@@ -395,8 +399,9 @@ impl<'a> AstValidator<'a> {
         self.check_decl_num_args(fn_decl);
         let c_variadic_span = self.check_decl_cvariadic_pos(fn_decl);
         self.check_decl_splatting(fn_decl, c_variadic_span, splat_semantic);
-        self.check_decl_attrs(fn_decl);
-        self.check_decl_self_param(fn_decl, self_semantic);
+        self.check_decl_attrs(&fn_decl.inputs);
+        self.check_decl_self_param(&fn_decl.inputs, self_semantic);
+        self.check_decl_const_param(&fn_decl.inputs);
     }
 
     /// Emits fatal error if function declaration has more than `u16::MAX` arguments
@@ -513,10 +518,9 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_decl_attrs(&self, fn_decl: &FnDecl) {
+    fn check_decl_attrs(&self, fn_inputs: &[Param]) {
         use SyntheticAttr::*;
-        fn_decl
-            .inputs
+        fn_inputs
             .iter()
             .flat_map(|i| i.attrs.as_ref())
             .filter(|attr| match &attr.kind {
@@ -531,7 +535,9 @@ impl<'a> AstValidator<'a> {
                     ];
                     !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
                 }
-                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => false,
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) | AttrKind::Generated(..) => {
+                    false
+                }
                 AttrKind::DocComment(..) => true,
             })
             .for_each(|attr| {
@@ -543,10 +549,24 @@ impl<'a> AstValidator<'a> {
             });
     }
 
-    fn check_decl_self_param(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
-        if let (SelfSemantic::No, [param, ..]) = (self_semantic, &*fn_decl.inputs) {
+    fn check_decl_self_param(&self, fn_inputs: &[Param], self_semantic: SelfSemantic) {
+        if let (SelfSemantic::No, [param, ..]) = (self_semantic, fn_inputs) {
             if param.is_self() {
                 self.dcx().emit_err(diagnostics::FnParamForbiddenSelf { span: param.span });
+            }
+        }
+    }
+
+    fn check_decl_const_param(&self, fn_inputs: &[Param]) {
+        for param in fn_inputs {
+            if param.has_const_keyword && !param.is_const_param() {
+                let span = if matches!(param.pat.kind, PatKind::Missing) {
+                    param.span
+                } else {
+                    param.pat.span
+                };
+
+                self.dcx().emit_err(diagnostics::InvalidConstParam { span });
             }
         }
     }
@@ -657,18 +677,18 @@ impl<'a> AstValidator<'a> {
     }
 
     fn reject_coroutine(&self, abi: ExternAbi, sig: &BorrowedFnSig<'_>) {
-        if let Some(coroutine_kind) = sig.header.coroutine_kind {
+        if let Some(coroutine_marker) = sig.header.coroutine_marker {
             let coroutine_kind_span = self
                 .sess
                 .psess
                 .source_map()
-                .span_until_non_whitespace(coroutine_kind.span().to(sig.span));
+                .span_until_non_whitespace(coroutine_marker.span.to(sig.span));
 
             self.dcx().emit_err(diagnostics::AbiCannotBeCoroutine {
                 span: sig.span,
                 abi,
                 coroutine_kind_span,
-                coroutine_kind_str: coroutine_kind.as_str(),
+                coroutine_kind_str: coroutine_marker.kind.as_str(),
             });
         }
     }
@@ -866,7 +886,7 @@ impl<'a> AstValidator<'a> {
     fn check_foreign_fn_headerless(
         &self,
         // Deconstruct to ensure exhaustiveness
-        FnHeader { safety: _, coroutine_kind, constness, ext }: FnHeader,
+        FnHeader { safety: _, coroutine_marker, constness, ext }: FnHeader,
     ) {
         let report_err = |span, kw| {
             self.dcx().emit_err(diagnostics::FnQualifierInExtern {
@@ -875,8 +895,8 @@ impl<'a> AstValidator<'a> {
                 block: self.current_extern_span(),
             });
         };
-        match coroutine_kind {
-            Some(kind) => report_err(kind.span(), kind.as_str()),
+        match coroutine_marker {
+            Some(marker) => report_err(marker.span, marker.kind.as_str()),
             None => (),
         }
         match constness {
@@ -895,6 +915,44 @@ impl<'a> AstValidator<'a> {
             self.dcx().emit_err(diagnostics::ExternItemAscii {
                 span: ident.span,
                 block: self.current_extern_span(),
+            });
+        }
+    }
+
+    /// Check the attributes on an `extern "custom"` function:
+    ///
+    /// - require `#[naked]`
+    /// - reject `#[cold]` (these functions cannot be called so `#[cold]` is meaningless)
+    fn check_extern_custom(&self, fk: FnKind<'_>, attrs: &AttrVec) {
+        let FnKind::Fn(fn_ctxt, _, Fn { sig, body: Some(_), .. }) = fk else {
+            return;
+        };
+
+        match fn_ctxt {
+            FnCtxt::Foreign => return,
+            FnCtxt::Free | FnCtxt::Assoc(_) => { /* fall through */ }
+        }
+
+        let Extern::Explicit(StrLit { symbol_unescaped, .. }, ext_span) = sig.header.ext else {
+            return;
+        };
+
+        let Ok(ExternAbi::Custom) = ExternAbi::from_str(symbol_unescaped.as_str()) else {
+            return;
+        };
+
+        if !attr::contains_name(attrs, sym::naked) {
+            self.dcx().emit_err(AbiCustomMustBeNaked {
+                span: sig.span,
+                naked_span: sig.span.shrink_to_lo(),
+            });
+        }
+
+        if let Some(cold) = attr::find_by_name(attrs, sym::cold) {
+            self.dcx().emit_err(AbiCustomCannotBeCold {
+                span: sig.span,
+                abi_span: ext_span,
+                cold_span: cold.span,
             });
         }
     }
@@ -923,11 +981,11 @@ impl<'a> AstValidator<'a> {
             feature_err(&self.sess, sym::const_c_variadic, sig.span, msg).emit();
         }
 
-        if let Some(coroutine_kind) = sig.header.coroutine_kind {
+        if let Some(coroutine_marker) = sig.header.coroutine_marker {
             self.dcx().emit_err(diagnostics::CoroutineAndCVariadic {
-                spans: vec![coroutine_kind.span(), variadic_param.span],
-                coroutine_kind: coroutine_kind.as_str(),
-                coroutine_span: coroutine_kind.span(),
+                spans: vec![coroutine_marker.span, variadic_param.span],
+                coroutine_kind: coroutine_marker.kind.as_str(),
+                coroutine_span: coroutine_marker.span,
                 variadic_span: variadic_param.span,
             });
         }
@@ -935,6 +993,13 @@ impl<'a> AstValidator<'a> {
         match fn_ctxt {
             FnCtxt::Foreign => return,
             FnCtxt::Free | FnCtxt::Assoc(_) => {
+                // Reject `...` without a pattern post-expansion. The varargs_without_pattern
+                // FCW is already triggered pre-expansion.
+                if let PatKind::Missing = variadic_param.pat.kind {
+                    self.dcx()
+                        .emit_err(diagnostics::VarargsWithoutPattern { span: variadic_param.span });
+                }
+
                 match self.sess.target.supports_c_variadic_definitions() {
                     CVariadicStatus::NotSupported => {
                         self.dcx().emit_err(diagnostics::CVariadicNotSupported {
@@ -994,29 +1059,14 @@ impl<'a> AstValidator<'a> {
         dotdotdot_span: Span,
         sig: &FnSig,
     ) {
-        // For naked functions we accept any ABI that is accepted on c-variadic
-        // foreign functions, if the c_variadic_naked_functions feature is enabled.
         if attr::contains_name(attrs, sym::naked) {
             match abi.supports_c_variadic() {
-                CVariadicStatus::Stable if let ExternAbi::C { .. } = abi => {
-                    // With `c_variadic` naked c-variadic `extern "C"` functions are allowed.
-                }
                 CVariadicStatus::Stable => {
-                    // For e.g. aapcs or sysv64 `c_variadic_naked_functions` must also be enabled.
-                    if !self.features.enabled(sym::c_variadic_naked_functions) {
-                        let msg = format!("Naked c-variadic `extern {abi}` functions are unstable");
-                        feature_err(&self.sess, sym::c_variadic_naked_functions, sig.span, msg)
-                            .emit();
-                    }
+                    // For naked functions we accept any ABI that is accepted
+                    // on c-variadic foreign functions.
                 }
                 CVariadicStatus::Unstable { feature } => {
-                    // Some ABIs need additional features.
-                    if !self.features.enabled(sym::c_variadic_naked_functions) {
-                        let msg = format!("Naked c-variadic `extern {abi}` functions are unstable");
-                        feature_err(&self.sess, sym::c_variadic_naked_functions, sig.span, msg)
-                            .emit();
-                    }
-
+                    // Some ABIs need additional features to be enabled.
                     if !self.features.enabled(feature) {
                         let msg = format!(
                             "C-variadic functions with the {abi} calling convention are unstable"
@@ -1150,7 +1200,7 @@ impl<'a> AstValidator<'a> {
         self.dcx().emit_err(diagnostics::ArgsBeforeConstraint {
             arg_spans: arg_spans.clone(),
             constraints: constraint_spans[0],
-            args: *arg_spans.iter().last().unwrap(),
+            args: *arg_spans.last().unwrap(),
             data: data.span,
             constraint_spans: diagnostics::EmptyLabelManySpans(constraint_spans),
             arg_spans2: diagnostics::EmptyLabelManySpans(arg_spans),
@@ -1169,7 +1219,7 @@ impl<'a> AstValidator<'a> {
                     SelfSemantic::No,
                     SplatSemantic::from_extern(bfty.ext),
                 );
-                Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
+                Self::check_decl_no_pat(&bfty.decl.inputs, |span, _, _| {
                     self.dcx().emit_err(diagnostics::PatternFnPointer { span });
                 });
                 if let Extern::Implicit(extern_span) = bfty.ext {
@@ -1259,10 +1309,10 @@ impl<'a> AstValidator<'a> {
     }
 
     // Check EII implementation attributes against an allowlist.
-    fn check_eii_impl_attrs(&self, attrs: &[Attribute], eii_impls: &[EiiImpl]) {
-        if eii_impls.is_empty() {
+    fn check_eii_impl_attrs(&self, attrs: &[Attribute], eii_impl: &Option<Box<EiiImpl>>) {
+        let Some(eii_impl) = eii_impl else {
             return;
-        }
+        };
 
         let allowed_attrs: &[Symbol] = &[
             sym::allow,
@@ -1289,14 +1339,12 @@ impl<'a> AstValidator<'a> {
             }
 
             let attr_name = pprust::path_to_string(&normal.item.path);
-            for eii_impl in eii_impls {
-                self.dcx().emit_err(diagnostics::EiiImplAttributeNotSupported {
-                    attr_span: attr.span,
-                    attr_name: &attr_name,
-                    eii_span: eii_impl.span,
-                    eii_name: pprust::path_to_string(&eii_impl.eii_macro_path),
-                });
-            }
+            self.dcx().emit_err(diagnostics::EiiImplAttributeNotSupported {
+                attr_span: attr.span,
+                attr_name: &attr_name,
+                eii_span: eii_impl.span,
+                eii_name: pprust::path_to_string(&eii_impl.eii_macro_path),
+            });
         }
     }
 }
@@ -1479,16 +1527,16 @@ impl Visitor<'_> for AstValidator<'_> {
                     contract: _,
                     body,
                     define_opaque: _,
-                    eii_impls,
+                    eii_impl,
                 },
             ) => {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                 self.check_defaultness(item.span, *defaultness, AllowDefault::No, AllowFinal::No);
 
-                for EiiImpl { eii_macro_path, .. } in eii_impls {
+                if let Some(EiiImpl { eii_macro_path, .. }) = eii_impl {
                     self.visit_path(eii_macro_path);
                 }
-                self.check_eii_impl_attrs(&item.attrs, eii_impls);
+                self.check_eii_impl_attrs(&item.attrs, eii_impl);
 
                 let is_intrinsic = item.attrs.iter().any(|a| a.has_name(sym::rustc_intrinsic));
                 if body.is_none() && !is_intrinsic && !self.is_sdylib_interface {
@@ -1526,7 +1574,10 @@ impl Visitor<'_> for AstValidator<'_> {
 
                 if &Safety::Default == safety {
                     if item.span.at_least_rust_2024() {
-                        self.dcx().emit_err(diagnostics::MissingUnsafeOnExtern { span: item.span });
+                        self.dcx().emit_err(diagnostics::MissingUnsafeOnExtern {
+                            span: item.span,
+                            unsafe_span: item.span.shrink_to_lo(),
+                        });
                     } else {
                         self.lint_buffer.buffer_lint(
                             MISSING_UNSAFE_ON_EXTERN,
@@ -1652,7 +1703,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 }
                 if ident.name == kw::Underscore
                     && !matches!(item.vis.kind, VisibilityKind::Inherited)
-                    && ident.span.eq_ctxt(item.vis.span)
+                    && ident.span.ctxt() == item.vis.span.ctxt()
                 {
                     self.lint_buffer.buffer_lint(
                         UNUSED_VISIBILITIES,
@@ -1664,9 +1715,9 @@ impl Visitor<'_> for AstValidator<'_> {
 
                 visit::walk_item(self, item);
             }
-            ItemKind::Static(StaticItem { expr, safety, eii_impls, .. }) => {
+            ItemKind::Static(StaticItem { expr, safety, eii_impl, .. }) => {
                 self.check_item_safety(item.span, *safety);
-                self.check_eii_impl_attrs(&item.attrs, eii_impls);
+                self.check_eii_impl_attrs(&item.attrs, eii_impl);
                 if matches!(safety, Safety::Unsafe(_)) {
                     self.dcx().emit_err(diagnostics::UnsafeStatic { span: item.span });
                 }
@@ -1778,7 +1829,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 }
             }
             GenericArgs::Parenthesized(data) => {
-                walk_list!(self, visit_ty, &data.inputs);
+                walk_list!(self, visit_param, &data.inputs);
                 if let FnRetTy::Ty(ty) = &data.output {
                     // `-> Foo` syntax is essentially an associated type binding,
                     // so it is also allowed to contain nested `impl Trait`.
@@ -1944,20 +1995,21 @@ impl Visitor<'_> for AstValidator<'_> {
             }
         }
 
+        self.check_extern_custom(fk, attrs);
         self.check_c_variadic_type(fk, attrs);
 
         // Functions cannot both be `const async` or `const gen`
         if let Some(&FnHeader {
             constness: Const::Yes(const_span),
-            coroutine_kind: Some(coroutine_kind),
+            coroutine_marker: Some(coroutine_marker),
             ..
         }) = fk.header()
         {
             self.dcx().emit_err(diagnostics::ConstAndCoroutine {
-                spans: vec![coroutine_kind.span(), const_span],
+                spans: vec![coroutine_marker.span, const_span],
                 const_span,
-                coroutine_span: coroutine_kind.span(),
-                coroutine_kind: coroutine_kind.as_str(),
+                coroutine_span: coroutine_marker.span,
+                coroutine_kind: coroutine_marker.kind.as_str(),
                 span,
             });
         }
@@ -1976,7 +2028,7 @@ impl Visitor<'_> for AstValidator<'_> {
 
         // Functions without bodies cannot have patterns.
         if let FnKind::Fn(ctxt, _, Fn { body: None, sig, .. }) = fk {
-            Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
+            Self::check_decl_no_pat(&sig.decl.inputs, |span, ident, mut_ident| {
                 if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
                     if let Some(ident) = ident {
                         let is_foreign = matches!(ctxt, FnCtxt::Foreign);
@@ -2174,6 +2226,30 @@ impl Visitor<'_> for AstValidator<'_> {
             Some(TildeConstReason::AnonConst { span: anon_const.value.span }),
             |this| visit::walk_anon_const(this, anon_const),
         )
+    }
+
+    fn visit_path_segment(&mut self, seg: &PathSegment) -> Self::Result {
+        if let Some(Parenthesized(args)) = &seg.args {
+            self.check_decl_self_param(&args.inputs, SelfSemantic::No);
+            self.check_decl_attrs(&args.inputs);
+            Self::check_decl_no_pat(&args.inputs, |span, _, _| {
+                self.dcx().emit_err(diagnostics::PatternParenthesizedArgList { span });
+            });
+
+            let mut args = args.inputs.iter().peekable();
+            while let Some(arg) = args.next() {
+                if matches!(arg.ty.kind, TyKind::CVarArgs) {
+                    let sugg_span = arg
+                        .span
+                        .until(args.peek().map(|a| a.span).unwrap_or(arg.span.shrink_to_hi()));
+                    self.dcx().emit_err(diagnostics::PathFoundCVariadicParams {
+                        span: arg.ty.span,
+                        sugg_span,
+                    });
+                }
+            }
+        }
+        visit::walk_path_segment(self, seg);
     }
 }
 

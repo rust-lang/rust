@@ -5,7 +5,7 @@ use crate::data_structures::DelayedSet;
 use crate::relate::combine::combine_ty_args;
 pub use crate::relate::*;
 use crate::solve::{Goal, VisibleForLeakCheck};
-use crate::{self as ty, InferCtxtLike, Interner, Region};
+use crate::{self as ty, Const, InferCtxtLike, Interner, Region};
 
 pub trait RelateExt: InferCtxtLike {
     fn relate<T: Relate<Self::Interner>>(
@@ -84,6 +84,7 @@ where
         param_env: I::ParamEnv,
         span: I::Span,
     ) -> Self {
+        debug_assert!(infcx.next_trait_solver());
         SolverRelating {
             infcx,
             span,
@@ -124,6 +125,7 @@ where
             combine_ty_args(self.infcx, self, a_ty, b_ty, variances, a_args, b_args, |_| a_ty)
         }
     }
+
     fn relate_with_variance<T: Relate<I>>(
         &mut self,
         variance: ty::Variance,
@@ -193,6 +195,25 @@ where
                 }
             }
 
+            (ty::Alias(ty::IsRigid::No, alias), _) if infcx.next_trait_solver() => {
+                let new_var = infcx.next_ty_infer();
+                self.goals.push(Goal::new(
+                    self.cx(),
+                    self.param_env,
+                    ty::ProjectionClause { projection_term: alias.into(), term: new_var.into() },
+                ));
+                self.tys(new_var, b)?;
+            }
+            (_, ty::Alias(ty::IsRigid::No, alias)) if infcx.next_trait_solver() => {
+                let new_var = infcx.next_ty_infer();
+                self.goals.push(Goal::new(
+                    self.cx(),
+                    self.param_env,
+                    ty::ProjectionClause { projection_term: alias.into(), term: new_var.into() },
+                ));
+                self.tys(a, new_var)?;
+            }
+
             (ty::Infer(ty::TyVar(a_vid)), _) => {
                 infcx.instantiate_ty_var(self, true, a_vid, self.ambient_variance, b)?;
             }
@@ -233,7 +254,7 @@ where
     }
 
     #[instrument(skip(self), level = "trace")]
-    fn consts(&mut self, a: I::Const, b: I::Const) -> RelateResult<I, I::Const> {
+    fn consts(&mut self, a: Const<I>, b: Const<I>) -> RelateResult<I, Const<I>> {
         super_combine_consts(self.infcx, self, a, b)
     }
 
@@ -341,9 +362,5 @@ where
 
     fn register_goals(&mut self, obligations: impl IntoIterator<Item = Goal<I, I::Predicate>>) {
         self.goals.extend(obligations);
-    }
-
-    fn ambient_variance(&self) -> ty::Variance {
-        self.ambient_variance
     }
 }

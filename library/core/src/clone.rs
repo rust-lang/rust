@@ -275,7 +275,7 @@ pub const trait Clone: Sized {
 // lifetime-dependent. Therefore, if `TrivialClone` is implemented for any lifetime,
 // its invariant holds whenever `Clone` is implemented, even if the actual
 // `TrivialClone` bound would not be satisfied because of lifetime bounds.
-#[rustc_unsafe_specialization_marker]
+#[unsafe(rustc_allow_lifetime_dependent_specialization)]
 // If `#[derive(Clone, Clone, Copy)]` is written, there will be multiple
 // implementations of `TrivialClone`. To keep it from appearing in error
 // messages, make it a `#[marker]` trait.
@@ -686,8 +686,8 @@ unsafe impl CloneToUninit for crate::ffi::CStr {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
-unsafe impl CloneToUninit for crate::bstr::ByteStr {
+#[unstable(feature = "byte_str", issue = "134915")]
+unsafe impl CloneToUninit for crate::byte_str::ByteStr {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dst: *mut u8) {
@@ -732,7 +732,7 @@ mod impls {
         bool char
     }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "1.100.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
     const impl Clone for ! {
         #[inline]
@@ -781,7 +781,7 @@ mod impls {
         #[inline(always)]
         #[rustc_diagnostic_item = "noop_method_clone"]
         fn clone(&self) -> Self {
-            *self
+            self
         }
     }
 

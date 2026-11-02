@@ -488,6 +488,7 @@ fn i256_shifts() {
     }
 }
 #[test]
+#[cfg_attr(miri, ignore)] // This test is very slow when using Miri
 fn div_u256_by_u128() {
     for j in i8::MIN..=i8::MAX {
         let y: u128 = (j as i128).rotate_right(4).unsigned();

@@ -1,31 +1,28 @@
 #![feature(rustc_private)]
-#![allow(
-    clippy::missing_docs_in_private_items,
-    clippy::must_use_candidate,
+#![feature(default_field_values)]
+#![expect(
+    clippy::missing_clippy_version_attribute, // None of these lints need a version.
     clippy::symbol_as_str
 )]
 #![warn(
+    rust_2018_idioms,
     trivial_casts,
     trivial_numeric_casts,
-    rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications,
     rustc::internal
 )]
 // Disable this rustc lint for now, as it was also done in rustc
 #![allow(rustc::potential_query_instability)]
-// None of these lints need a version.
-#![allow(clippy::missing_clippy_version_attribute)]
 
 extern crate rustc_ast;
+extern crate rustc_attr_ir;
 extern crate rustc_attr_parsing;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_lint;
-extern crate rustc_lint_defs;
 extern crate rustc_middle;
-extern crate rustc_session;
 extern crate rustc_span;
 
 mod almost_standard_lint_formulation;
@@ -34,7 +31,6 @@ mod internal_paths;
 mod lint_without_lint_pass;
 mod msrv_attr_impl;
 mod outer_expn_data_pass;
-mod produce_ice;
 mod repeated_is_diagnostic_item;
 mod symbols;
 mod unnecessary_def_path;
@@ -52,12 +48,12 @@ static LINTS: &[&Lint] = &[
     lint_without_lint_pass::MISSING_CLIPPY_VERSION_ATTRIBUTE,
     msrv_attr_impl::MISSING_MSRV_ATTR_IMPL,
     outer_expn_data_pass::OUTER_EXPN_EXPN_DATA,
-    produce_ice::PRODUCE_ICE,
     symbols::INTERNING_LITERALS,
     symbols::SYMBOL_AS_STR,
     unnecessary_def_path::UNNECESSARY_DEF_PATH,
     unsorted_clippy_utils_paths::UNSORTED_CLIPPY_UTILS_PATHS,
     unusual_names::UNUSUAL_NAMES,
+    repeated_is_diagnostic_item::REPEATED_IS_DIAGNOSTIC_ITEM,
 ];
 
 pub fn register_lints(store: &mut LintStore) {
@@ -66,7 +62,6 @@ pub fn register_lints(store: &mut LintStore) {
     store.register_early_lint_pass(Box::new(|| {
         Box::new(unsorted_clippy_utils_paths::UnsortedClippyUtilsPaths)
     }));
-    store.register_early_lint_pass(Box::new(|| Box::new(produce_ice::ProduceIce)));
     store.register_late_lint_pass(Box::new(|_| Box::new(collapsible_span_lint_calls::CollapsibleCalls)));
     store.register_late_lint_pass(Box::new(|_| Box::<symbols::Symbols>::default()));
     store.register_late_lint_pass(Box::new(|_| {

@@ -1,5 +1,5 @@
 error: the constant `Bar` is not of type `Foo`
-  --> $DIR/array-const-arg-type-mismatch.rs:13:14
+  --> $DIR/array-const-arg-type-mismatch.rs:12:14
    |
 LL |     test::<{ [Bar] }>();
    |              ^^^^^ expected `Foo`, found `Bar`

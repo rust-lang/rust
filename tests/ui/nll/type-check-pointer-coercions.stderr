@@ -54,7 +54,13 @@ LL |     x
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-help: `'b` and `'a` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/type-check-pointer-coercions.rs:9:4
+   |
+LL | fn unique_to_mut<'a, 'b>(x: &mut &'a i32) -> *mut &'b i32 {
+   |    ^^^^^^^^^^^^^
+   |
+   = help: `'b` and `'a` must be the same: replace one with the other
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-coercions.rs:16:5
@@ -107,5 +113,5 @@ LL |     y
    |
    = help: consider adding the following bound: `'a: 'b`
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

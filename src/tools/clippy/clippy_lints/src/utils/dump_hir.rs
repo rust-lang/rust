@@ -1,8 +1,7 @@
-use clippy_utils::{get_builtin_attr, sym};
+use clippy_utils::sym;
 use hir::TraitItem;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_lint_pass!(
     /// ### What it does
@@ -59,6 +58,8 @@ impl<'tcx> LateLintPass<'tcx> for DumpHir {
 }
 
 fn has_attr(cx: &LateContext<'_>, hir_id: hir::HirId) -> bool {
-    let attrs = cx.tcx.hir_attrs(hir_id);
-    get_builtin_attr(attrs, sym::dump).count() > 0
+    cx.tcx
+        .hir_tool_attrs(hir_id, &[sym::clippy, sym::dump])
+        .next()
+        .is_some()
 }

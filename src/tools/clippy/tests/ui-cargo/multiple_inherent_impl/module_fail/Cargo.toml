@@ -1,5 +1,5 @@
 [package]
-name = "module_fail"
+name = "module-fail"
 version = "0.1.0"
 edition = "2024"
 publish = false

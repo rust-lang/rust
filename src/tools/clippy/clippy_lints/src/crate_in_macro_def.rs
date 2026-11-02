@@ -3,8 +3,7 @@ use rustc_ast::ast::{AttrKind, Attribute, Item, ItemKind};
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, declare_lint_pass};
 use rustc_span::symbol::sym;
 use rustc_span::{Span, kw};
 
@@ -15,7 +14,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// `crate` refers to the macro call's crate, whereas `$crate` refers to the macro definition's
     /// crate. Rarely is the former intended. See:
-    /// https://doc.rust-lang.org/reference/macros-by-example.html#hygiene
+    /// <https://doc.rust-lang.org/reference/macros-by-example.html#hygiene>
     ///
     /// ### Example
     /// ```no_run

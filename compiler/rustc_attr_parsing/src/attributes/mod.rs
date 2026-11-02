@@ -20,15 +20,15 @@
 
 use std::marker::PhantomData;
 
+use rustc_attr_ir::AttributeKind;
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::AttributeKind;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
 use crate::context::{AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext};
+use crate::diagnostics::UnusedMultiple;
 use crate::parser::ArgParser;
-use crate::session_diagnostics::UnusedMultiple;
 use crate::target_checking::AllowedTargets;
 use crate::{AttributeTemplate, template};
 
@@ -52,6 +52,7 @@ pub(crate) mod dummy;
 pub(crate) mod inline;
 pub(crate) mod instruction_set;
 pub(crate) mod link_attrs;
+pub(crate) mod lint;
 pub(crate) mod lint_helpers;
 pub(crate) mod loop_match;
 pub(crate) mod macro_attrs;
@@ -169,7 +170,7 @@ pub(crate) trait SingleAttributeParser: 'static {
     /// combinations. `attr_span` is the span of this attribute.
     ///
     /// Defaults to a no-op.
-    fn finalize_check(_cx: &FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
+    fn finalize_check(_cx: &mut FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
 }
 
 /// Use in combination with [`SingleAttributeParser`].
@@ -223,13 +224,6 @@ pub(crate) enum OnDuplicate {
 
     /// Ignore duplicates
     Ignore,
-
-    /// Custom function called when a duplicate attribute is found.
-    ///
-    /// - `unused` is the span of the attribute that was unused or bad because of some
-    ///   duplicate reason
-    /// - `used` is the span of the attribute that was used in favor of the unused attribute
-    Custom(fn(cx: &AcceptContext<'_, '_>, used: Span, unused: Span)),
 }
 
 impl OnDuplicate {
@@ -252,7 +246,6 @@ impl OnDuplicate {
                 });
             }
             OnDuplicate::Ignore => {}
-            OnDuplicate::Custom(f) => f(cx, used, unused),
         }
     }
 }
@@ -295,7 +288,7 @@ pub(crate) trait NoArgsAttributeParser: 'static {
     /// `attr_span` is the span of this attribute.
     ///
     /// Defaults to a no-op.
-    fn finalize_check(_cx: &FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
+    fn finalize_check(_cx: &mut FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
 }
 
 pub(crate) struct WithoutArgs<T: NoArgsAttributeParser>(PhantomData<T>);
@@ -319,7 +312,7 @@ impl<T: NoArgsAttributeParser> SingleAttributeParser for WithoutArgs<T> {
         Some(T::CREATE(cx.attr_span))
     }
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         T::finalize_check(cx, attr_span)
     }
 }
@@ -363,7 +356,7 @@ pub(crate) trait CombineAttributeParser: 'static {
     /// `attr_span` is the span of the first attribute that was encountered.
     ///
     /// Defaults to a no-op.
-    fn finalize_check(_cx: &FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
+    fn finalize_check(_cx: &mut FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
 }
 
 /// Use in combination with [`CombineAttributeParser`].

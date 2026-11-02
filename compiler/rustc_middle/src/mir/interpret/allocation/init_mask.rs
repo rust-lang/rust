@@ -7,6 +7,7 @@ use std::{hash, iter};
 use rustc_abi::Size;
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_span::bug;
 
 use super::AllocRange;
 
@@ -526,7 +527,6 @@ impl InitMaskMaterialized {
             None
         }
 
-        #[cfg_attr(not(debug_assertions), allow(dead_code))]
         fn find_bit_slow(
             init_mask: &InitMaskMaterialized,
             start: Size,

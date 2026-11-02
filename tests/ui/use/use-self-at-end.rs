@@ -65,7 +65,7 @@ pub mod x {
         pub use z::{self::{self}}; //~ ERROR `self` in paths can only be used in start position or last position
         pub use z::{self::{self as z2}}; //~ ERROR `self` in paths can only be used in start position
 
-        type H = super::Struct::self; //~ ERROR ambiguous associated type
+        type H = super::Struct::self; // silenced due to duplicate imports
         pub use super::Struct::self; //~ ERROR unresolved import `super::Struct`
         pub use super::Struct::self as Struct1; //~ ERROR unresolved import `super::Struct`
         pub use super::Struct::{self}; //~ ERROR unresolved import `super::Struct`
@@ -77,12 +77,7 @@ pub mod x {
         pub use super::Enum::{self}; //~ ERROR the name `Enum` is defined multiple times
         pub use super::Enum::{self as Enum2};
 
-        type J = super::Trait::self;
-        //[e2015]~^ WARN trait objects without an explicit `dyn` are deprecated
-        //[e2015]~^^ WARN this is accepted in the current edition
-        //[e2018]~^^^ WARN trait objects without an explicit `dyn` are deprecated
-        //[e2018]~^^^^ WARN this is accepted in the current edition
-        //[e2021]~^^^^^ ERROR expected a type, found a trait
+        type J = super::Trait::self; // silenced due to duplicate imports
         pub use super::Trait::self;
         pub use super::Trait::self as Trait1;
         pub use super::Trait::{self}; //~ ERROR the name `Trait` is defined multiple times

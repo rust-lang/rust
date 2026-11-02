@@ -12,7 +12,7 @@ use crate::path::Path;
 use crate::process::StdioPipes;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
-#[cfg(not(target_os = "fuchsia"))]
+#[cfg(not(any(target_os = "fuchsia", target_os = "l4re")))]
 use crate::sys::fs::OpenOptions;
 use crate::sys::pipe::pipe;
 use crate::sys::process::env::{CommandEnv, CommandEnvs, CommandResolvedEnvs};
@@ -24,6 +24,9 @@ mod cstring_array;
 cfg_select! {
     target_os = "fuchsia" => {
         // fuchsia doesn't have /dev/null
+    }
+    target_os = "l4re" => {
+        // l4re doesn't have /dev/null
     }
     target_os = "vxworks" => {
         const DEV_NULL: &CStr = c"/null";
@@ -48,8 +51,9 @@ cfg_select! {
 
         #[allow(dead_code)]
         pub unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
-            use crate::slice;
             use libc::{c_ulong, sigset_t};
+
+            use crate::slice;
 
             // The implementations from bionic (android libc) type pun `sigset_t` as an
             // array of `c_ulong`. This works, but lets add a smoke check to make sure
@@ -75,7 +79,7 @@ cfg_select! {
     }
     _ => {
         #[allow(unused_imports)]
-        pub use libc::{sigemptyset, sigaddset};
+        pub use libc::{sigaddset, sigemptyset};
     }
 }
 
@@ -119,9 +123,9 @@ pub enum ChildStdio {
     Explicit(c_int),
     Owned(FileDesc),
 
-    // On Fuchsia, null stdio is the default, so we simply don't specify
-    // any actions at the time of spawning.
-    #[cfg(target_os = "fuchsia")]
+    // On Fuchsia and L4Re, null stdio is the default, so we simply don't
+    // specify any actions at the time of spawning.
+    #[cfg(any(target_os = "fuchsia", target_os = "l4re"))]
     Null,
 }
 
@@ -215,7 +219,7 @@ impl Command {
     pub fn chroot(&mut self, dir: &Path) {
         self.chroot = Some(os2c(dir.as_os_str(), &mut self.saw_nul));
         if self.cwd.is_none() {
-            self.cwd(&OsStr::new("/"));
+            self.cwd(OsStr::new("/"));
         }
     }
     pub fn setsid(&mut self, setsid: bool) {
@@ -427,7 +431,7 @@ impl Stdio {
                 Ok((ChildStdio::Owned(theirs), Some(ours)))
             }
 
-            #[cfg(not(target_os = "fuchsia"))]
+            #[cfg(not(any(target_os = "fuchsia", target_os = "l4re")))]
             Stdio::Null => {
                 let mut opts = OpenOptions::new();
                 opts.read(readable);
@@ -436,7 +440,7 @@ impl Stdio {
                 Ok((ChildStdio::Owned(fd.into_inner()), None))
             }
 
-            #[cfg(target_os = "fuchsia")]
+            #[cfg(any(target_os = "fuchsia", target_os = "l4re"))]
             Stdio::Null => Ok((ChildStdio::Null, None)),
         }
     }
@@ -483,7 +487,7 @@ impl ChildStdio {
             ChildStdio::Explicit(fd) => Some(fd),
             ChildStdio::Owned(ref fd) => Some(fd.as_raw_fd()),
 
-            #[cfg(target_os = "fuchsia")]
+            #[cfg(any(target_os = "fuchsia", target_os = "l4re"))]
             ChildStdio::Null => None,
         }
     }

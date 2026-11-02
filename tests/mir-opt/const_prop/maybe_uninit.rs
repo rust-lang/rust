@@ -8,3 +8,10 @@ pub fn u8_array() -> [MaybeUninit<u8>; 8] {
     // CHECK: _0 = const <uninit>;
     [MaybeUninit::uninit(); 8]
 }
+
+// EMIT_MIR maybe_uninit.u8_array_assume_init.GVN.diff
+pub fn u8_array_assume_init() -> [MaybeUninit<u8>; 8] {
+    // CHECK: fn u8_array_assume_init(
+    // CHECK: _0 = const <uninit>;
+    unsafe { MaybeUninit::uninit().assume_init() }
+}

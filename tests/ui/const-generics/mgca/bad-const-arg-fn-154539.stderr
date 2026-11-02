@@ -1,8 +1,8 @@
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/bad-const-arg-fn-154539.rs:5:33
+  --> $DIR/bad-const-arg-fn-154539.rs:7:14
    |
-LL |           core::direct_const_arg!(|| {
-   |  _________________________________^
+LL |           gca!(|| {
+   |  ______________^
 LL | |
 LL | |             use std::io::*;
 LL | |             write!(_, "")

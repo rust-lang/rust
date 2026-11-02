@@ -1,15 +1,20 @@
-//! See also <https://github.com/rust-lang/rust/issues/153831>
 //@ check-fail
-//@compile-flags: -Znext-solver=globally --emit=obj
-#![feature(min_generic_const_args)]
+//@ compile-flags: -Znext-solver=globally
+
+// Regression test for <https://github.com/rust-lang/rust/issues/153831>
+
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 
+use std::gca;
+
 trait Trait {
-    type const A: ();
+    #[rustc_always_gca]
+    const A: ();
 }
 
 impl Trait for () {
-    type const A: () = <() as Trait>::A;
+    const A: () = gca!(<() as Trait>::A);
     //~^ ERROR: overflow evaluating the requirement `<() as Trait>::A == _`
     //~| ERROR: overflow evaluating the requirement `the constant `<() as Trait>::A` has type `()``
 }

@@ -1,9 +1,7 @@
 // Regression test for #153391.
-//
+
 //@ edition:2024
-//@ compile-flags: -Z threads=16
-//@ compare-output-by-lines
-//@ ignore-test (#142063)
+//@ ignore-parallel-frontend query cycle
 
 trait A {
     fn g() -> B;

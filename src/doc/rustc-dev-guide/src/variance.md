@@ -2,7 +2,7 @@
 
 For a more general background on variance, see the [background] appendix.
 
-[background]: ./appendix/background.html
+[background]: ./appendix/background.md
 
 During type checking, we must infer the variance of type and lifetime parameters.
 The algorithm is taken from Section 4 of the paper ["Taming the
@@ -139,7 +139,7 @@ crate (through `crate_variances`), but since most changes will not result in a
 change to the actual results from variance inference, the `variances_of` query
 will wind up being considered green after it is re-evaluated.
 
-[rga]: ./queries/incremental-compilation.html
+[rga]: ./queries/incremental-compilation.md
 
 <a id="addendum"></a>
 

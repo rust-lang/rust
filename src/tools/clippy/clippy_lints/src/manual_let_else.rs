@@ -2,7 +2,7 @@ use crate::question_mark::{QUESTION_MARK, QuestionMark};
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{is_lint_allowed, is_never_expr, is_wild, msrvs, pat_and_expr_can_be_question_mark, peel_blocks};
 use rustc_ast::BindingMode;
@@ -12,7 +12,7 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::{
     Arm, BlockCheckMode, Expr, ExprKind, MatchSource, Pat, PatExpr, PatExprKind, PatKind, QPath, Stmt, StmtKind,
 };
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
 use std::slice;
@@ -54,7 +54,7 @@ impl<'tcx> QuestionMark {
             && let Some(init) = local.init
             && local.els.is_none()
             && local.ty.is_none()
-            && init.span.eq_ctxt(stmt.span)
+            && init.span.ctxt() == stmt.span.ctxt()
             && let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init)
             && !stmt.span.in_external_macro(cx.sess().source_map())
             && self.msrv.meets(cx, msrvs::LET_ELSE)
@@ -122,11 +122,7 @@ fn is_arms_disjointed(cx: &LateContext<'_>, arm1: &Arm<'_>, arm2: &Arm<'_>) -> b
         return false;
     }
 
-    if !is_enum_variant(cx, arm1.pat) || !is_enum_variant(cx, arm2.pat) {
-        return false;
-    }
-
-    true
+    is_enum_variant(cx, arm1.pat) && is_enum_variant(cx, arm2.pat)
 }
 
 /// Returns `true` if the given pattern is a variant of an enum.

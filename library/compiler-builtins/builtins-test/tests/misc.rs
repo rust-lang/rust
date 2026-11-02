@@ -65,7 +65,7 @@ fn fuzz_values() {
 
 #[test]
 fn leading_zeros() {
-    use compiler_builtins::int::leading_zeros::{leading_zeros_default, leading_zeros_riscv};
+    use compiler_builtins::int::leading_zeros::{leading_zeros_condset, leading_zeros_default};
     {
         use compiler_builtins::int::leading_zeros::__clzsi2;
         fuzz(N, |x: u32| {
@@ -75,7 +75,7 @@ fn leading_zeros() {
             let lz = x.leading_zeros() as usize;
             let lz0 = __clzsi2(x);
             let lz1 = leading_zeros_default(x);
-            let lz2 = leading_zeros_riscv(x);
+            let lz2 = leading_zeros_condset(x);
             if lz0 != lz {
                 panic!("__clzsi2({x}): std: {lz}, builtins: {lz0}");
             }
@@ -83,7 +83,7 @@ fn leading_zeros() {
                 panic!("leading_zeros_default({x}): std: {lz}, builtins: {lz1}");
             }
             if lz2 != lz {
-                panic!("leading_zeros_riscv({x}): std: {lz}, builtins: {lz2}");
+                panic!("leading_zeros_condset({x}): std: {lz}, builtins: {lz2}");
             }
         });
     }
@@ -97,7 +97,7 @@ fn leading_zeros() {
             let lz = x.leading_zeros() as usize;
             let lz0 = __clzdi2(x);
             let lz1 = leading_zeros_default(x);
-            let lz2 = leading_zeros_riscv(x);
+            let lz2 = leading_zeros_condset(x);
             if lz0 != lz {
                 panic!("__clzdi2({x}): std: {lz}, builtins: {lz0}");
             }
@@ -105,7 +105,7 @@ fn leading_zeros() {
                 panic!("leading_zeros_default({x}): std: {lz}, builtins: {lz1}");
             }
             if lz2 != lz {
-                panic!("leading_zeros_riscv({x}): std: {lz}, builtins: {lz2}");
+                panic!("leading_zeros_condset({x}): std: {lz}, builtins: {lz2}");
             }
         });
     }

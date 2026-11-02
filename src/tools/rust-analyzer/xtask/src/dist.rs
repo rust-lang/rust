@@ -43,7 +43,6 @@ impl flags::Dist {
                 &format!("{version}-standalone"),
                 &target,
                 allocator,
-                self.zig,
                 self.pgo,
                 // Profiling requires debug information.
                 self.enable_profiling,
@@ -56,7 +55,6 @@ impl flags::Dist {
                 "0.0.0-standalone",
                 &target,
                 allocator,
-                self.zig,
                 self.pgo,
                 // Profiling requires debug information.
                 self.enable_profiling,
@@ -101,7 +99,6 @@ fn dist_server(
     release: &str,
     target: &Target,
     allocator: Malloc,
-    zig: bool,
     pgo: Option<PgoTrainingCrate>,
     dev_rel: bool,
 ) -> anyhow::Result<()> {
@@ -116,33 +113,23 @@ fn dist_server(
     //   * on Linux, this blows up the binary size from 8MB to 43MB, which is unreasonable.
     // let _e = sh.push_env("CARGO_PROFILE_RELEASE_DEBUG", "1");
 
-    let linux_target = target.is_linux();
-    let target_name = match &target.libc_suffix {
-        Some(libc_suffix) if zig => format!("{}.{libc_suffix}", target.name),
-        _ => target.name.to_owned(),
-    };
     let features = allocator.to_features();
-    let command = if linux_target && zig { "zigbuild" } else { "build" };
 
+    let cmd = build_command(sh, &target.name, features, dev_rel);
     let pgo_profile = if let Some(train_crate) = pgo {
-        Some(crate::pgo::gather_pgo_profile(
-            sh,
-            crate::pgo::build_command(sh, command, &target_name, features),
-            &target_name,
-            train_crate,
-        )?)
+        Some(crate::pgo::gather_pgo_profile(sh, cmd, &target.name, train_crate)?)
     } else {
         None
     };
 
-    let mut cmd = build_command(sh, command, &target_name, features, dev_rel);
+    let mut cmd = build_command(sh, &target.name, features, dev_rel);
     let mut rustflags = Vec::new();
 
     if let Some(profile) = pgo_profile {
         rustflags.push(format!("-Cprofile-use={}", profile.to_str().unwrap()));
     }
 
-    if target_name.ends_with("-windows-msvc") {
+    if target.name.ends_with("-windows-msvc") {
         // https://github.com/rust-lang/rust-analyzer/issues/20970
         rustflags.push("-Ctarget-feature=+crt-static".to_owned());
     }
@@ -153,7 +140,7 @@ fn dist_server(
     cmd.run().context("cannot build Rust Analyzer")?;
 
     let dst = Path::new("dist").join(&target.artifact_name);
-    if target_name.contains("-windows-") {
+    if target.name.contains("-windows-") {
         zip(&target.server_path, target.symbols_path.as_ref(), &dst.with_extension("zip"))?;
     } else {
         gzip(&target.server_path, &dst.with_extension("gz"))?;
@@ -164,7 +151,6 @@ fn dist_server(
 
 fn build_command<'a>(
     sh: &'a Shell,
-    command: &str,
     target_name: &str,
     features: &[&str],
     dev_rel: bool,
@@ -172,7 +158,7 @@ fn build_command<'a>(
     let profile = if dev_rel { "dev-rel" } else { "release" };
     cmd!(
         sh,
-        "cargo {command} --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} {features...} --profile {profile}"
+        "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} {features...} --profile {profile}"
     )
 }
 
@@ -222,7 +208,6 @@ fn zip(src_path: &Path, symbols_path: Option<&PathBuf>, dest_path: &Path) -> any
 
 struct Target {
     name: String,
-    libc_suffix: Option<String>,
     server_path: PathBuf,
     symbols_path: Option<PathBuf>,
     artifact_name: String,
@@ -231,10 +216,6 @@ struct Target {
 impl Target {
     fn get(project_root: &Path, sh: &Shell) -> Self {
         let name = detect_target(sh);
-        let (name, libc_suffix) = match name.split_once('.') {
-            Some((l, r)) => (l.to_owned(), Some(r.to_owned())),
-            None => (name, None),
-        };
         let out_path = project_root.join("target").join(&name).join("release");
         let (exe_suffix, symbols_path) = if name.contains("-windows-") {
             (".exe".into(), Some(out_path.join("rust_analyzer.pdb")))
@@ -243,11 +224,7 @@ impl Target {
         };
         let server_path = out_path.join(format!("rust-analyzer{exe_suffix}"));
         let artifact_name = format!("rust-analyzer-{name}{exe_suffix}");
-        Self { name, libc_suffix, server_path, symbols_path, artifact_name }
-    }
-
-    fn is_linux(&self) -> bool {
-        self.name.contains("-linux-")
+        Self { name, server_path, symbols_path, artifact_name }
     }
 }
 

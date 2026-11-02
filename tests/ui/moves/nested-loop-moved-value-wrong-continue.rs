@@ -7,8 +7,6 @@ fn foo() {
     //~^ NOTE this reinitialization might get skipped
     //~| NOTE move occurs because `foo` has type `String`
     //~| NOTE inside of this loop
-    //~| NOTE
-    //~| NOTE
         baz.push(foo);
         //~^ NOTE value moved here
         //~| HELP consider cloning the value
@@ -30,17 +28,15 @@ fn main() {
     for foo in foos {
     //~^ NOTE this reinitialization might get skipped
     //~| NOTE move occurs because `foo` has type `String`
-    //~| NOTE
         for bar in &bars {
         //~^ NOTE inside of this loop
-        //~| NOTE
             if foo == *bar {
                 baz.push(foo);
                 //~^ NOTE value moved here
                 //~| HELP consider cloning the value
                 continue;
                 //~^ NOTE verify that your loop breaking logic is correct
-                //~| NOTE this `continue` advances the loop at line 34
+                //~| NOTE this `continue` advances the loop at line 31
             }
         }
         qux.push(foo);

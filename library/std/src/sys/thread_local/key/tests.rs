@@ -1,3 +1,13 @@
+#![allow(
+    clippy::arithmetic_side_effects,
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unreachable,
+    clippy::unimplemented
+)]
+
 use super::{LazyKey, get, set};
 use crate::ptr;
 

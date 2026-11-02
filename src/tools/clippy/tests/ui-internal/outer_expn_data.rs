@@ -1,12 +1,12 @@
 #![deny(clippy::outer_expn_expn_data)]
 #![allow(clippy::missing_clippy_version_attribute)]
 #![feature(rustc_private)]
+#![feature(default_field_values)]
 
 extern crate rustc_hir;
+#[macro_use]
 extern crate rustc_lint;
 extern crate rustc_middle;
-#[macro_use]
-extern crate rustc_session;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 

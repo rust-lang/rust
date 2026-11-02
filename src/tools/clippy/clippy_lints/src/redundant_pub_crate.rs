@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Item, ItemKind, UseKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::{Item, ItemKind};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty;
-use rustc_session::impl_lint_pass;
 use rustc_span::def_id::CRATE_MOD_ID;
 
 declare_clippy_lint! {
@@ -84,10 +83,12 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
     }
 }
 
-// We ignore macro exports. And `ListStem` uses, which aren't interesting.
+// We ignore macro exports.
 fn is_ignorable_export<'tcx>(item: &'tcx Item<'tcx>) -> bool {
-    if let ItemKind::Use(path, kind) = item.kind {
-        let ignore = matches!(path.res.macro_ns, Some(Res::Def(DefKind::Macro(_), _))) || kind == UseKind::ListStem;
+    if let ItemKind::Use(tree) = item.kind {
+        let ignore = tree
+            .resolutions()
+            .any(|res| matches!(res.macro_ns, Some(Res::Def(DefKind::Macro(_), _))));
         if ignore {
             return true;
         }

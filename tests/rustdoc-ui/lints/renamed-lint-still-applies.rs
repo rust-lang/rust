@@ -1,4 +1,3 @@
-// compile-args: --crate-type lib
 #![deny(broken_intra_doc_links)]
 //~^ WARNING renamed to `rustdoc::broken_intra_doc_links`
 //! [x]

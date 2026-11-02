@@ -106,7 +106,7 @@ use crate::sync::Once;
 ///
 /// ```
 #[stable(feature = "once_cell", since = "1.70.0")]
-pub struct OnceLock<T> {
+pub struct OnceLock<#[rustc_assert_variance(invariant)] T> {
     // FIXME(nonpoison_once): switch to nonpoison version once it is available
     once: Once,
     // Whether or not the value is initialized is tracked by `once.is_completed()`.
@@ -141,6 +141,35 @@ impl<T> OnceLock<T> {
         OnceLock {
             once: Once::new(),
             value: UnsafeCell::new(MaybeUninit::uninit()),
+            _marker: PhantomData,
+        }
+    }
+
+    /// Creates a new initialized cell.
+    ///
+    /// This is equivalent to `OnceLock::from(value)`, but can be used in
+    /// const contexts, unlike the `From` implementation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_lock_new_init)]
+    /// use std::sync::OnceLock;
+    ///
+    /// static CELL: OnceLock<i32> = OnceLock::new_init(1);
+    ///
+    /// assert_eq!(CELL.get(), Some(&1));
+    ///
+    /// // Already initialized, so this closure never runs.
+    /// assert_eq!(CELL.get_or_init(|| panic!("Kaboom!")), &1);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "once_lock_new_init", issue = "159860")]
+    pub const fn new_init(init_value: T) -> OnceLock<T> {
+        OnceLock {
+            once: Once::new_complete(),
+            value: UnsafeCell::new(MaybeUninit::new(init_value)),
             _marker: PhantomData,
         }
     }
@@ -556,20 +585,58 @@ impl<T> OnceLock<T> {
         res
     }
 
+    /// Returns a reference to the value in the `OnceLock` without checking
+    /// whether it has been initialized.
+    ///
     /// # Safety
     ///
-    /// The cell must be initialized
+    /// The `OnceLock` must be initialized before calling this function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_lazy_lock_get_unchecked)]
+    ///
+    /// use std::sync::OnceLock;
+    ///
+    /// let cell = OnceLock::new();
+    /// cell.set(42).unwrap();
+    ///
+    /// let value = unsafe { cell.get_unchecked() };
+    /// assert_eq!(*value, 42);
+    /// ```
     #[inline]
-    unsafe fn get_unchecked(&self) -> &T {
+    #[unstable(feature = "once_lazy_lock_get_unchecked", issue = "162716")]
+    pub unsafe fn get_unchecked(&self) -> &T {
         debug_assert!(self.initialized());
         unsafe { (&*self.value.get()).assume_init_ref() }
     }
 
+    /// Returns a mutable reference to the value in the `OnceLock` without
+    /// checking whether it has been initialized.
+    ///
     /// # Safety
     ///
-    /// The cell must be initialized
+    /// The `OnceLock` must be initialized before calling this function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_lazy_lock_get_unchecked)]
+    ///
+    /// use std::sync::OnceLock;
+    ///
+    /// let mut cell = OnceLock::new();
+    /// cell.set(42).unwrap();
+    ///
+    /// let value = unsafe { cell.get_unchecked_mut() };
+    /// *value = 100;
+    ///
+    /// assert_eq!(*cell.get().unwrap(), 100);
+    /// ```
     #[inline]
-    unsafe fn get_unchecked_mut(&mut self) -> &mut T {
+    #[unstable(feature = "once_lazy_lock_get_unchecked", issue = "162716")]
+    pub unsafe fn get_unchecked_mut(&mut self) -> &mut T {
         debug_assert!(self.initialized_mut());
         unsafe { self.value.get_mut().assume_init_mut() }
     }

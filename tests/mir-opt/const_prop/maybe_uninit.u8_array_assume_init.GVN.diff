@@ -1,0 +1,36 @@
+- // MIR for `u8_array_assume_init` before GVN
++ // MIR for `u8_array_assume_init` after GVN
+  
+  fn u8_array_assume_init() -> [MaybeUninit<u8>; 8] {
+      let mut _0: [std::mem::MaybeUninit<u8>; 8];
+      let mut _1: std::mem::MaybeUninit<[std::mem::MaybeUninit<u8>; 8]>;
+      scope 1 (inlined MaybeUninit::<[MaybeUninit<u8>; 8]>::uninit) {
+      }
+      scope 2 (inlined #[track_caller] MaybeUninit::<[MaybeUninit<u8>; 8]>::assume_init) {
+          scope 3 (inlined transmute_neo::<MaybeUninit<[MaybeUninit<u8>; 8]>, [MaybeUninit<u8>; 8]>) {
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = MaybeUninit::<[MaybeUninit<u8>; 8]> { uninit: const () };
++         _1 = const <uninit>;
+          goto -> bb1;
+      }
+  
+      bb1: {
+-         _0 = copy _1 as [std::mem::MaybeUninit<u8>; 8] (Transmute);
++         _0 = const <uninit>;
+          StorageDead(_1);
+          return;
+      }
++ }
++ 
++ ALLOC0 (size: 8, align: 1) {
++     __ __ __ __ __ __ __ __                         │ ░░░░░░░░
++ }
++ 
++ ALLOC1 (size: 8, align: 1) {
++     __ __ __ __ __ __ __ __                         │ ░░░░░░░░
+  }
+  

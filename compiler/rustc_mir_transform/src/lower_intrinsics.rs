@@ -2,8 +2,7 @@
 
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_middle::{bug, span_bug};
-use rustc_span::sym;
+use rustc_span::{bug, span_bug, sym};
 
 use crate::{PassPolicy, take_array};
 
@@ -39,7 +38,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                                 Rvalue::Use(Operand::RuntimeChecks(op), WithRetag::Yes),
                             ))),
                         ));
-                        terminator.kind = TerminatorKind::Goto { target };
+                        terminator.kind = TerminatorKind::goto(target);
                     }
                     sym::forget => {
                         let target = target.unwrap();
@@ -48,35 +47,45 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             StatementKind::Assign(Box::new((
                                 *destination,
                                 Rvalue::Use(
-                                    Operand::Constant(Box::new(ConstOperand {
-                                        span: terminator.source_info.span,
-                                        user_ty: None,
-                                        const_: Const::zero_sized(tcx.types.unit),
-                                    })),
+                                    Operand::zero_sized_constant(
+                                        tcx.types.unit,
+                                        terminator.source_info.span,
+                                    ),
                                     WithRetag::Yes,
                                 ),
                             ))),
                         ));
-                        terminator.kind = TerminatorKind::Goto { target };
+                        terminator.kind = TerminatorKind::goto(target);
                     }
                     sym::copy_nonoverlapping => {
                         let target = target.unwrap();
                         let Ok([src, dst, count]) = take_array(args) else {
-                            bug!("Wrong arguments for copy_non_overlapping intrinsic");
+                            bug!("Wrong arguments for copy_nonoverlapping intrinsic");
                         };
                         block.statements.push(Statement::new(
                             terminator.source_info,
                             StatementKind::Intrinsic(Box::new(
-                                NonDivergingIntrinsic::CopyNonOverlapping(
-                                    rustc_middle::mir::CopyNonOverlapping {
-                                        src: src.node,
-                                        dst: dst.node,
-                                        count: count.node,
-                                    },
-                                ),
+                                NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
+                                    src: src.node,
+                                    dst: dst.node,
+                                    count: count.node,
+                                }),
                             )),
                         ));
-                        terminator.kind = TerminatorKind::Goto { target };
+                        block.statements.push(Statement::new(
+                            terminator.source_info,
+                            StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::Use(
+                                    Operand::zero_sized_constant(
+                                        tcx.types.unit,
+                                        terminator.source_info.span,
+                                    ),
+                                    WithRetag::Yes,
+                                ),
+                            ))),
+                        ));
+                        terminator.kind = TerminatorKind::goto(target);
                     }
                     sym::assume => {
                         let target = target.unwrap();
@@ -89,7 +98,20 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                                 arg.node,
                             ))),
                         ));
-                        terminator.kind = TerminatorKind::Goto { target };
+                        block.statements.push(Statement::new(
+                            terminator.source_info,
+                            StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::Use(
+                                    Operand::zero_sized_constant(
+                                        tcx.types.unit,
+                                        terminator.source_info.span,
+                                    ),
+                                    WithRetag::Yes,
+                                ),
+                            ))),
+                        ));
+                        terminator.kind = TerminatorKind::goto(target);
                     }
                     sym::wrapping_add
                     | sym::wrapping_sub
@@ -127,7 +149,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                                 Rvalue::BinaryOp(bin_op, Box::new((lhs.node, rhs.node))),
                             ))),
                         ));
-                        terminator.kind = TerminatorKind::Goto { target };
+                        terminator.kind = TerminatorKind::goto(target);
                     }
                     sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
                         let target = target.unwrap();
@@ -147,7 +169,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                                 Rvalue::BinaryOp(bin_op, Box::new((lhs.node, rhs.node))),
                             ))),
                         ));
-                        terminator.kind = TerminatorKind::Goto { target };
+                        terminator.kind = TerminatorKind::goto(target);
                     }
                     sym::read_via_copy => {
                         let Ok([arg]) = take_array(args) else {
@@ -178,7 +200,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                                 // so it must be unreachable.
                                 TerminatorKind::Unreachable
                             }
-                            Some(target) => TerminatorKind::Goto { target },
+                            Some(target) => TerminatorKind::goto(target),
                         }
                     }
                     // `write_via_move` is already lowered during MIR building.
@@ -199,7 +221,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                                 Rvalue::Discriminant(arg),
                             ))),
                         ));
-                        terminator.kind = TerminatorKind::Goto { target };
+                        terminator.kind = TerminatorKind::goto(target);
                     }
                     sym::offset => {
                         let target = target.unwrap();
@@ -216,7 +238,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                                 Rvalue::BinaryOp(BinOp::Offset, Box::new((ptr.node, delta.node))),
                             ))),
                         ));
-                        terminator.kind = TerminatorKind::Goto { target };
+                        terminator.kind = TerminatorKind::goto(target);
                     }
                     sym::slice_get_unchecked => {
                         let target = target.unwrap();
@@ -262,7 +284,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             terminator.source_info,
                             StatementKind::Assign(Box::new((*destination, rvalue))),
                         ));
-                        terminator.kind = TerminatorKind::Goto { target };
+                        terminator.kind = TerminatorKind::goto(target);
                     }
                     sym::transmute | sym::transmute_unchecked => {
                         let dst_ty = destination.ty(local_decls, tcx).ty;
@@ -284,7 +306,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             ))),
                         ));
                         if let Some(target) = *target {
-                            terminator.kind = TerminatorKind::Goto { target };
+                            terminator.kind = TerminatorKind::goto(target);
                         } else {
                             terminator.kind = TerminatorKind::Unreachable;
                         }
@@ -314,7 +336,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                                 Rvalue::Aggregate(Box::new(kind), fields.into()),
                             ))),
                         ));
-                        terminator.kind = TerminatorKind::Goto { target };
+                        terminator.kind = TerminatorKind::goto(target);
                     }
                     sym::ptr_metadata => {
                         let Ok([ptr]) = take_array(args) else {
@@ -331,7 +353,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                                 Rvalue::UnaryOp(UnOp::PtrMetadata, ptr.node),
                             ))),
                         ));
-                        terminator.kind = TerminatorKind::Goto { target };
+                        terminator.kind = TerminatorKind::goto(target);
                     }
                     _ => {}
                 }
@@ -339,7 +361,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
         }
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Implements intrinsic semantics by lowering intrinsic calls to ordinary MIR operations.
         PassPolicy::Required
     }

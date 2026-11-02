@@ -1,0 +1,49 @@
+- // MIR for `packed_fields_not_projected` before MoveElimination
++ // MIR for `packed_fields_not_projected` after MoveElimination
+  
+  fn packed_fields_not_projected() -> Packed {
+      let mut _0: Packed;
+      let _1: [u8; 8];
+      let mut _3: [u8; 8];
+      let mut _4: [u8; 8];
+      scope 1 {
+-         debug a => _1;
++         debug a => _3;
+          let _2: [u8; 8];
+          scope 2 {
+-             debug b => _2;
++             debug b => _4;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
+-         _1 = [const 1_u8; 8];
+-         StorageLive(_2);
+-         _2 = [const 2_u8; 8];
++         nop;
+          StorageLive(_3);
+-         _3 = copy _1;
++         _3 = [const 1_u8; 8];
++         nop;
+          StorageLive(_4);
+-         _4 = copy _2;
++         _4 = [const 2_u8; 8];
++         nop;
++         nop;
++         nop;
++         nop;
+          _0 = Packed { a: move _3, b: move _4 };
+-         StorageDead(_4);
+          StorageDead(_3);
+-         StorageDead(_2);
+-         StorageDead(_1);
++         StorageDead(_4);
++         nop;
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  

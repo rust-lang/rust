@@ -1,8 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::sym;
 use rustc_ast::ast::{Crate, ItemKind, ModKind};
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_lint::{EarlyContext, EarlyLintPass, declare_lint_pass, declare_tool_lint};
 
 declare_tool_lint! {
     /// ### What it does
@@ -12,7 +11,7 @@ declare_tool_lint! {
     /// We like to pretend we're an example of tidy code.
     ///
     /// ### Example
-    /// Wrong ordering of the util::paths constants.
+    /// Wrong ordering of the `util::paths` constants.
     pub clippy::UNSORTED_CLIPPY_UTILS_PATHS,
     Warn,
     "various things that will negatively affect your clippy experience",

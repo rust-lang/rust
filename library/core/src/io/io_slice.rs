@@ -3,7 +3,13 @@ use crate::mem::take;
 use crate::ops::{Deref, DerefMut};
 
 cfg_select! {
-    any(target_family = "unix", target_os = "hermit", target_os = "solid_asp3", target_os = "trusty", target_os = "wasi") => {
+    any(
+        target_family = "unix",
+        target_os = "hermit",
+        target_os = "solid_asp3",
+        target_os = "trusty",
+        target_os = "wasi"
+    ) => {
         #[path = "io_slice/repr_iovec.rs"]
         mod repr;
     }
@@ -50,8 +56,9 @@ impl<'a> IoSliceMut<'a> {
     ///
     /// Panics on Windows if the slice is larger than 4GB.
     #[stable(feature = "iovec", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "io_slice_const", issue = "146459")]
     #[inline]
-    pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
+    pub const fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
         IoSliceMut(repr::IoSliceMut::new(buf))
     }
 
@@ -78,8 +85,9 @@ impl<'a> IoSliceMut<'a> {
     /// assert_eq!(buf.deref(), [1; 5].as_ref());
     /// ```
     #[stable(feature = "io_slice_advance", since = "1.81.0")]
+    #[rustc_const_unstable(feature = "io_slice_const", issue = "146459")]
     #[inline]
-    pub fn advance(&mut self, n: usize) {
+    pub const fn advance(&mut self, n: usize) {
         self.0.advance(n)
     }
 
@@ -208,9 +216,10 @@ impl<'a> IoSlice<'a> {
     ///
     /// Panics on Windows if the slice is larger than 4GB.
     #[stable(feature = "iovec", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "io_slice_const", issue = "146459")]
     #[must_use]
     #[inline]
-    pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
+    pub const fn new(buf: &'a [u8]) -> IoSlice<'a> {
         IoSlice(repr::IoSlice::new(buf))
     }
 
@@ -237,8 +246,9 @@ impl<'a> IoSlice<'a> {
     /// assert_eq!(buf.deref(), [1; 5].as_ref());
     /// ```
     #[stable(feature = "io_slice_advance", since = "1.81.0")]
+    #[rustc_const_unstable(feature = "io_slice_const", issue = "146459")]
     #[inline]
-    pub fn advance(&mut self, n: usize) {
+    pub const fn advance(&mut self, n: usize) {
         self.0.advance(n)
     }
 

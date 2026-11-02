@@ -66,6 +66,7 @@ fn issue3847(a: u32, b: u32) -> bool {
         return false;
     }
     true
+    //~^^^^ needless_bool
 }
 
 fn issue4548() {

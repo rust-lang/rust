@@ -398,5 +398,59 @@ LL | |     };
    |
    = note: clamp will panic if max < min
 
-error: aborting due to 35 previous errors
+error: clamp-like pattern without using clamp function
+  --> tests/ui/manual_clamp.rs:553:5
+   |
+LL | /     if x2 == 0 {
+LL | |
+LL | |         x2 = 1;
+...  |
+LL | |         x2 = CONST_U32_MAX;
+LL | |     }
+   | |_____^ help: replace with clamp: `x2 = x2.clamp(1, CONST_U32_MAX);`
+   |
+   = note: clamp will panic if max < min
+
+error: clamp-like pattern without using clamp function
+  --> tests/ui/manual_clamp.rs:535:5
+   |
+LL | /     if x0 == 0 {
+LL | |
+LL | |         x0 = 1;
+LL | |     } else if x0 > CONST_U32_MAX {
+LL | |         x0 = CONST_U32_MAX;
+LL | |     }
+   | |_____^ help: replace with clamp: `x0 = x0.clamp(1, CONST_U32_MAX);`
+   |
+   = note: clamp will panic if max < min
+
+error: clamp-like pattern without using clamp function
+  --> tests/ui/manual_clamp.rs:544:5
+   |
+LL | /     if 0 == x1 {
+LL | |
+LL | |         x1 = 1;
+LL | |     } else if x1 > CONST_U32_MAX {
+LL | |         x1 = CONST_U32_MAX;
+LL | |     }
+   | |_____^ help: replace with clamp: `x1 = x1.clamp(1, CONST_U32_MAX);`
+   |
+   = note: clamp will panic if max < min
+
+error: clamp-like pattern without using clamp function
+  --> tests/ui/manual_clamp.rs:563:14
+   |
+LL |       let x3 = if input == 0 {
+   |  ______________^
+LL | |
+LL | |         1
+LL | |     } else if input > CONST_U32_MAX {
+...  |
+LL | |         input
+LL | |     };
+   | |_____^ help: replace with clamp: `input.clamp(1, CONST_U32_MAX)`
+   |
+   = note: clamp will panic if max < min
+
+error: aborting due to 39 previous errors
 

@@ -1,10 +1,10 @@
 use std::ops::ControlFlow;
 
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::bug;
 use tracing::debug;
 
 use super::{PoloniusFacts, PoloniusLocationTable};
@@ -195,7 +195,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Goto { target: _ }
+            TerminatorKind::Goto { target: _, loop_hint_attrs: _ }
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Unreachable
             | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }

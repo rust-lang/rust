@@ -21,6 +21,26 @@ fn main() {
 
     let ref reference3 = SomeStruct;
     drop(reference3); //~ WARN calls to `std::mem::drop`
+
+    unsafe {
+        let mut reference1 = &SomeStruct;
+        std::ptr::drop_in_place(&raw mut reference1); //~ WARN calls to `std::ptr::drop_in_place`
+
+        let mut reference2 = &mut SomeStruct;
+        std::ptr::drop_in_place(&raw mut reference2); //~ WARN calls to `std::ptr::drop_in_place`
+
+        std::ptr::drop_in_place(&mut &SomeStruct as *mut _); //~ WARN calls to `std::ptr::drop_in_place`
+    }
+
+    unsafe {
+        let mut reference1 = &SomeStruct;
+        (&raw mut reference1).drop_in_place(); //~ WARN calls to `drop_in_place`
+
+        let mut reference2 = &mut SomeStruct;
+        (&raw mut reference2).drop_in_place(); //~ WARN calls to `drop_in_place`
+
+        (&mut &SomeStruct as *mut &SomeStruct).drop_in_place(); //~ WARN calls to `drop_in_place`
+    }
 }
 
 #[allow(dead_code)]

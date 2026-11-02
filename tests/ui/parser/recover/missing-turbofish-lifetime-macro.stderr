@@ -1,0 +1,20 @@
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/missing-turbofish-lifetime-macro.rs:9:23
+   |
+LL |     let _ = m!(a < 'x >);
+   |                       ^ expected `while`, `for`, `loop` or `{` after a label
+
+error: comparison operators cannot be chained
+  --> $DIR/missing-turbofish-lifetime-macro.rs:9:18
+   |
+LL |     ($e:expr) => { "expr" };
+   |      ------- while parsing argument for this `expr` macro fragment
+...
+LL |     let _ = m!(a < 'x >);
+   |                  ^    ^
+   |
+   = help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   = help: or use `(...)` if you meant to specify fn arguments
+
+error: aborting due to 2 previous errors
+

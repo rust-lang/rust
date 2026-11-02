@@ -1,11 +1,11 @@
 use rustc_abi::FieldIdx;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::find_attr;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::bug;
+use rustc_lint_defs::builtin::{UNUSED_ASSIGNMENTS, UNUSED_VARIABLES};
 use rustc_middle::mir::visit::{
     MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
 };
@@ -14,10 +14,9 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::{Analysis, Backward, ResultsCursor};
-use rustc_session::lint;
-use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, bug};
 
 use crate::diagnostics;
 
@@ -98,7 +97,7 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
 
         let (capture_kind, args) = match self_ty.kind() {
             ty::Closure(_, args) => {
-                (CaptureKind::Closure(args.as_closure().kind()), ty::UpvarArgs::Closure(args))
+                (CaptureKind::Closure(args.as_closure().kind()), ty::UpvarArgs::Closure(*args))
             }
             &ty::Coroutine(_, args) => (CaptureKind::Coroutine, ty::UpvarArgs::Coroutine(args)),
             &ty::CoroutineClosure(_, args) => {
@@ -121,7 +120,7 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
                 if let TerminatorKind::Return | TerminatorKind::UnwindResume =
                     bbdata.terminator().kind
                 {
-                    bbdata.terminator_mut().kind = TerminatorKind::Goto { target: START_BLOCK };
+                    bbdata.terminator_mut().kind = TerminatorKind::goto(START_BLOCK);
                 }
             }
             body = &body_mem;
@@ -203,7 +202,7 @@ fn maybe_suggest_unit_pattern_typo<'tcx>(
     let constants = tcx
         .hir_body_owners()
         .filter(|&def_id| {
-            matches!(tcx.def_kind(def_id), DefKind::Const { .. })
+            tcx.def_kind(def_id) == DefKind::Const
                 && tcx.type_of(def_id).instantiate_identity().skip_norm_wip() == ty
                 && tcx.visibility(def_id).is_accessible_from(body_def_id, tcx)
         })
@@ -294,7 +293,7 @@ fn annotate_mut_binding_to_immutable_binding<'tcx>(
         local.as_usize() - if tcx.is_closure_like(body_def_id.to_def_id()) { 2 } else { 1 };
     let fn_decl = tcx.hir_node_by_def_id(body_def_id).fn_decl()?;
     let ty = fn_decl.inputs[hir_param_index];
-    let hir::TyKind::Ref(lt, mut_ty) = ty.kind else { return None };
+    let hir::TyKind::Ref(lt, inner_ty, mutbl) = ty.kind else { return None };
 
     // ... as a binding pattern.
     let hir_body = tcx.hir_maybe_body_owned_by(body_def_id)?;
@@ -313,12 +312,12 @@ fn annotate_mut_binding_to_immutable_binding<'tcx>(
 
     // Changes to the parameter's type.
     let pre = if lt.ident.span.is_empty() { "" } else { " " };
-    let ty_span = if mut_ty.mutbl.is_mut() {
+    let ty_span = if mutbl.is_mut() {
         // Leave `&'name mut Ty` and `&mut Ty` as they are (#136028).
         None
     } else {
         // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
-        Some(mut_ty.ty.span.shrink_to_lo())
+        Some(inner_ty.span.shrink_to_lo())
     };
 
     return Some(diagnostics::UnusedAssignSuggestion {
@@ -416,7 +415,7 @@ fn find_self_assignments<'tcx>(
                     // We ignore indirect self-assignment, because both occurrences of `dest` are uses.
                     let is_indirect = checked_places
                         .get(dest.as_ref())
-                        .map_or(false, |(_, projections)| is_indirect(projections));
+                        .is_some_and(|(_, projections)| is_indirect(projections));
                     if is_indirect {
                         continue;
                     }
@@ -435,7 +434,7 @@ fn find_self_assignments<'tcx>(
                             statement_index: bb_data.statements.len(),
                         });
                         // Target block
-                        self_assign.insert(Location { block: *target, statement_index: 0 });
+                        self_assign.insert(target.start_location());
                     }
                 }
                 // Straight self-assignment.
@@ -1031,7 +1030,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
             // #117284, when `ident_span` and `def_span` have different contexts
             // we can't provide a good suggestion, instead we pointed out the spans from macro
             let from_macro = def_span.from_expansion()
-                && introductions.iter().any(|intro| intro.span.eq_ctxt(def_span));
+                && introductions.iter().any(|intro| intro.span.ctxt() == def_span.ctxt());
 
             let maybe_suggest_typo = || {
                 if let LocalKind::Arg = self.body.local_kind(local) {
@@ -1074,7 +1073,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     diagnostics::UnusedVariableSugg::TryPrefix { spans: vec![def_span], name, typo }
                 };
                 tcx.emit_node_span_lint(
-                    lint::builtin::UNUSED_VARIABLES,
+                    UNUSED_VARIABLES,
                     hir_id,
                     def_span,
                     diagnostics::UnusedVariable {
@@ -1101,7 +1100,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     let outer_initializer_span =
                         initializer_span.find_ancestor_in_same_ctxt(source_info.span);
                     within.is_none()
-                        && outer_initializer_span.map_or(true, |s| !s.contains(source_info.span))
+                        && outer_initializer_span.is_none_or(|s| !s.contains(source_info.span))
                 });
             }
 
@@ -1124,7 +1123,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
 
                 let typo = maybe_suggest_typo();
                 tcx.emit_node_span_lint(
-                    lint::builtin::UNUSED_VARIABLES,
+                    UNUSED_VARIABLES,
                     hir_id,
                     def_span,
                     diagnostics::UnusedVarAssignedOnly { name, typo },
@@ -1166,7 +1165,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
             };
 
             tcx.emit_node_span_lint(
-                lint::builtin::UNUSED_VARIABLES,
+                UNUSED_VARIABLES,
                 hir_id,
                 spans,
                 diagnostics::UnusedVariable {
@@ -1258,20 +1257,20 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                             if suggestion.is_none() && is_direct { overwrite } else { None };
                         let help = suggestion.is_none() && overwrite.is_none();
                         tcx.emit_node_span_lint(
-                            lint::builtin::UNUSED_ASSIGNMENTS,
+                            UNUSED_ASSIGNMENTS,
                             hir_id,
                             source_info.span,
                             diagnostics::UnusedAssign { name, overwrite, help, suggestion },
                         )
                     }
                     AccessKind::Param => tcx.emit_node_span_lint(
-                        lint::builtin::UNUSED_ASSIGNMENTS,
+                        UNUSED_ASSIGNMENTS,
                         hir_id,
                         source_info.span,
                         diagnostics::UnusedAssignPassed { name },
                     ),
                     AccessKind::Capture => tcx.emit_node_span_lint(
-                        lint::builtin::UNUSED_ASSIGNMENTS,
+                        UNUSED_ASSIGNMENTS,
                         hir_id,
                         decl_span,
                         diagnostics::UnusedCaptureMaybeCaptureRef { name },
@@ -1342,14 +1341,13 @@ impl<'tcx> Analysis<'tcx> for MaybeLivePlaces<'_, 'tcx> {
         self.transfer_function(trans).visit_statement(statement, location);
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         trans: &mut Self::Domain,
-        terminator: &'mir Terminator<'tcx>,
+        terminator: &Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
+    ) {
         self.transfer_function(trans).visit_terminator(terminator, location);
-        terminator.edges()
     }
 
     fn apply_call_return_effect(
@@ -1420,7 +1418,7 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, 'tcx> {
         match terminator.kind {
             TerminatorKind::Return
             | TerminatorKind::Yield { .. }
-            | TerminatorKind::Goto { target: START_BLOCK } // Inserted for the `FnMut` case.
+            | TerminatorKind::Goto { target: START_BLOCK, .. } // Inserted for the `FnMut` case.
             | TerminatorKind::Call { target: None, .. } // unwinding could be caught
                 if self.capture_kind != CaptureKind::None =>
             {
@@ -1549,8 +1547,7 @@ impl DefUse {
             PlaceContext::MutatingUse(
                 MutatingUseContext::RawBorrow
                 | MutatingUseContext::Borrow
-                | MutatingUseContext::Drop
-                | MutatingUseContext::Retag,
+                | MutatingUseContext::Drop,
             )
             | PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::RawBorrow

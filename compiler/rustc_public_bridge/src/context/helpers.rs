@@ -4,16 +4,11 @@
 //! interface regardless of internal compiler changes.
 
 use rustc_middle::mir::interpret::AllocRange;
-use rustc_middle::ty;
 use rustc_middle::ty::Ty;
 use rustc_span::def_id::DefId;
 
 pub trait TyHelpers<'tcx> {
     fn new_foreign(&self, def_id: DefId) -> Ty<'tcx>;
-}
-
-pub trait TypingEnvHelpers<'tcx> {
-    fn fully_monomorphized(&self) -> ty::TypingEnv<'tcx>;
 }
 
 pub trait AllocRangeHelpers<'tcx> {

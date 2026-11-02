@@ -87,6 +87,7 @@ mod tests {
         );
 
         let refs = super::find_all_methods(&analysis.db, pos.file_id);
+        #[expect(clippy::single_range_in_vec_init, reason = "this is not a mistake")]
         check_result(&refs, &[28..=34]);
     }
 

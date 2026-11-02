@@ -1,4 +1,5 @@
 //@only-target: linux # We only support tokio on Linux
+//@run-native
 
 use tokio::time::{Duration, Instant, sleep};
 

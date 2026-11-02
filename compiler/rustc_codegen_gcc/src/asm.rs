@@ -1,5 +1,3 @@
-// cSpell:ignoreRegExp [afkspqvwy]reg
-
 use std::borrow::Cow;
 use std::fmt::Write;
 
@@ -12,11 +10,11 @@ use rustc_codegen_ssa::traits::{
     AsmBuilderMethods, AsmCodegenMethods, BaseTypeCodegenMethods, BuilderMethods,
     GlobalAsmOperandRef, InlineAsmOperandRef,
 };
-use rustc_middle::bug;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, bug};
 use rustc_target::asm::*;
 
 use crate::builder::Builder;
@@ -147,8 +145,8 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // Clobbers collected from `out("explicit register") _` and `inout("explicit_reg") var => _`
         let mut clobbers = vec![];
 
-        // Symbols name that needs to be inserted to asm const ptr template string.
-        let mut const_syms = vec![];
+        // Symbol names to insert in the template for the const ptr operands, by operand index.
+        let mut const_syms = FxHashMap::default();
 
         // We're trying to preallocate space for the template
         let mut constants_len = 0;
@@ -298,7 +296,9 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         out_place,
                     });
 
-                    if !readwrite {
+                    if readwrite {
+                        self.llbb().add_assignment(None, tmp_var, in_value.immediate());
+                    } else {
                         let out_gcc_idx = outputs.len() - 1;
                         let constraint = Cow::Owned(out_gcc_idx.to_string());
 
@@ -364,7 +364,14 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         let ty = value.layout.gcc_type(self.cx);
                         let reg_var = self.current_func().new_local(None, ty, "input_register");
                         reg_var.set_register_name(reg_name);
-                        self.llbb().add_assignment(None, reg_var, value.immediate());
+                        // FIXME: We should remove this when switching to "untyped" pointers
+                        let value = value.immediate();
+                        let value = if value.get_type() != ty {
+                            self.context.new_cast(None, value, ty)
+                        } else {
+                            value
+                        };
+                        self.llbb().add_assignment(None, reg_var, value);
 
                         inputs.push(AsmInOperand {
                             constraint: "r".into(),
@@ -410,7 +417,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         let (prov, _) = ptr.prov_and_relative_offset();
                         let global_alloc = self.tcx.global_alloc(prov.alloc_id());
                         let (val, sym) = self.cx.alloc_to_backend(global_alloc, true).unwrap();
-                        const_syms.push(sym.unwrap());
+                        const_syms.insert(rust_idx, sym.unwrap());
                         inputs.push(AsmInOperand { constraint: "X".into(), rust_idx, val });
                     }
                 },
@@ -510,7 +517,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                                 Scalar::Ptr(ptr, _) => {
                                     let (_, offset) = ptr.prov_and_relative_offset();
-                                    let sym = const_syms.remove(0);
+                                    let sym = const_syms[&operand_idx];
                                     // FIXME(@Amanieu): Additional mangling is needed on
                                     // some targets to add a leading underscore (Mach-O)
                                     // or byte count suffixes (x86 Windows).
@@ -603,6 +610,12 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             self.llbb().add_eval(None, self.context.new_call(None, builtin_unreachable, &[]));
         }
 
+        if !options.contains(InlineAsmOptions::NORETURN)
+            && let Some(dest) = dest
+        {
+            self.switch_to_block(dest);
+        }
+
         // Write results to outputs.
         //
         // We need to do this because:
@@ -682,6 +695,7 @@ fn explicit_reg_to_gcc(reg: InlineAsmReg) -> &'static str {
         }
         InlineAsmReg::Arm(reg) => reg.name(),
         InlineAsmReg::AArch64(reg) => reg.name(),
+        InlineAsmReg::M68k(reg) => reg.name(),
         _ => unimplemented!(),
     }
 }
@@ -692,7 +706,9 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg) => "w",
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => "x",
-        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
+        InlineAsmRegClass::AArch64(
+            AArch64InlineAsmRegClass::preg | AArch64InlineAsmRegClass::ffr,
+        ) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::Sgpr(_)) => "Sg",
@@ -733,7 +749,7 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) => "f",
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => "d", // more specific than "r"
-        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg | MipsInlineAsmRegClass::wreg) => "f",
         InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => "r",
         // https://github.com/gcc-mirror/gcc/blob/master/gcc/config/nvptx/nvptx.md -> look for
         // "define_constraint".
@@ -790,6 +806,9 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::freg) => "f",
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::dreg) => "e",
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::qreg) => "e",
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
         InlineAsmRegClass::Err => unreachable!(),
     }
@@ -804,7 +823,9 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         | InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => {
             cx.type_vector(cx.type_i64(), 2)
         }
-        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
+        InlineAsmRegClass::AArch64(
+            AArch64InlineAsmRegClass::preg | AArch64InlineAsmRegClass::ffr,
+        ) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Amdgpu(_) => cx.type_i32(),
@@ -843,6 +864,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         }
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => cx.type_f32(),
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::wreg) => cx.type_vector(cx.type_i32(), 4),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => cx.type_i16(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => cx.type_i32(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => cx.type_i64(),
@@ -896,6 +918,9 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::freg) => cx.type_f32(),
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::dreg) => cx.type_f64(),
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::qreg) => cx.type_f128(),
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
         InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => cx.type_i16(),
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) => cx.type_i32(),
@@ -922,6 +947,7 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         line_spans: &[Span],
+        _extra_rust_target_features: &[String],
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
@@ -1048,7 +1074,9 @@ fn modifier_to_gcc(
         | InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => {
             if modifier == Some('v') { None } else { modifier }
         }
-        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
+        InlineAsmRegClass::AArch64(
+            AArch64InlineAsmRegClass::preg | AArch64InlineAsmRegClass::ffr,
+        ) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Amdgpu(_) => None,
@@ -1084,7 +1112,9 @@ fn modifier_to_gcc(
                 modifier
             }
         }
-        InlineAsmRegClass::Mips(_) => None,
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => None,
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => modifier,
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::wreg) => Some('w'),
         InlineAsmRegClass::Nvptx(_) => None,
         InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::vsreg) => {
             if modifier.is_none() {

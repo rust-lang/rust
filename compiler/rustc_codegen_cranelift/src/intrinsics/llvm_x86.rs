@@ -855,42 +855,59 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             );
         }
 
-        "llvm.x86.pclmulqdq" => {
+        "llvm.x86.pclmulqdq" | "llvm.x86.pclmulqdq.256" | "llvm.x86.pclmulqdq.512" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_clmulepi64_si128&ig_expand=772
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_clmulepi64_epi128&ig_expand=752
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_clmulepi64_epi128&ig_expand=753
             intrinsic_args!(fx, args => (a, b, _imm8); intrinsic);
 
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
+            let (lane_count, intrinsic_name) = match intrinsic {
+                "llvm.x86.pclmulqdq" => (1, "_mm_clmulepi64_si128"),
+                "llvm.x86.pclmulqdq.256" => (2, "_mm256_clmulepi64_epi128"),
+                "llvm.x86.pclmulqdq.512" => (4, "_mm512_clmulepi64_epi128"),
+                _ => unreachable!(),
+            };
 
-            let imm8 =
-                if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[2].node) {
-                    imm8
-                } else {
-                    fx.tcx.dcx().span_fatal(
-                        span,
-                        "Index argument for `_mm_clmulepi64_si128` is not a constant",
-                    );
-                };
+            let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[2].node) else {
+                fx.tcx.dcx().span_fatal(
+                    span,
+                    format!("Index argument for `{intrinsic_name}` is not a constant"),
+                )
+            };
 
             let imm8 = imm8.to_u8();
 
-            codegen_inline_asm_inner(
-                fx,
-                &[InlineAsmTemplatePiece::String(format!("pclmulqdq xmm0, xmm1, {imm8}").into())],
-                &[
-                    CInlineAsmOperand::InOut {
-                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
-                        _late: true,
-                        in_value: a,
-                        out_place: Some(ret),
-                    },
-                    CInlineAsmOperand::In {
-                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
-                        value: b,
-                    },
-                ],
-                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
-            );
+            // Cranelift does not currently support 256-bit or 512-bit SSA values, so we use the
+            // 128-bit instruction on each 128-bit lane.
+            for lane in 0..lane_count {
+                let a = a.value_typed_lane(fx, fx.tcx.types.u128, lane).load_scalar(fx);
+                let b = b.value_typed_lane(fx, fx.tcx.types.u128, lane).load_scalar(fx);
+                let ret_lane = ret.place_typed_lane(fx, fx.tcx.types.u128, lane);
+
+                codegen_inline_asm_inner(
+                    fx,
+                    &[InlineAsmTemplatePiece::String(
+                        format!("pclmulqdq xmm0, xmm1, {imm8}").into(),
+                    )],
+                    &[
+                        CInlineAsmOperand::InOut {
+                            reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(
+                                X86InlineAsmReg::xmm0,
+                            )),
+                            _late: true,
+                            in_value: a,
+                            out_place: Some(ret_lane),
+                        },
+                        CInlineAsmOperand::In {
+                            reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(
+                                X86InlineAsmReg::xmm1,
+                            )),
+                            value: b,
+                        },
+                    ],
+                    InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+                );
+            }
         }
 
         "llvm.x86.aesni.aeskeygenassist" => {

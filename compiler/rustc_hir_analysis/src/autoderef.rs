@@ -1,9 +1,9 @@
-use rustc_data_structures::Limit;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
+use rustc_structures::Limit;
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 
@@ -86,7 +86,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
         // and Deref, and this has benefits for const and the emitted MIR.
         let (kind, new_ty) =
             if let Some(ty) = self.state.cur_ty.builtin_deref(self.include_raw_pointers) {
-                debug_assert_eq!(ty, self.infcx.resolve_vars_if_possible(ty));
+                debug_assert_eq!(ty, self.infcx.deeply_resolve_ignoring_regions(ty));
                 (AutoderefKind::Builtin, ty)
             } else if let Some(ty) = self.overloaded_deref_ty(self.state.cur_ty) {
                 // The overloaded deref check already normalizes the pointee type.
@@ -123,7 +123,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             param_env,
             state: AutoderefSnapshot {
                 steps: vec![],
-                cur_ty: infcx.resolve_vars_if_possible(base_ty),
+                cur_ty: infcx.deeply_resolve_ignoring_regions(base_ty),
                 obligations: PredicateObligations::new(),
                 at_start: true,
                 reached_recursion_limit: false,
@@ -171,7 +171,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
         self.state.obligations.extend(obligations);
 
-        Some(self.infcx.resolve_vars_if_possible(normalized_ty))
+        Some(self.infcx.deeply_resolve_ignoring_regions(normalized_ty))
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -186,7 +186,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             ty,
         );
         let errors = ocx.try_evaluate_obligations();
-        if !errors.is_empty() {
+        if !errors.no_errors() {
             // We shouldn't have errors here in the old solver, except for
             // evaluate/fulfill mismatches, but that's not a reason for an ICE.
             debug!(?errors, "encountered errors while fulfilling");

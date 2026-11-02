@@ -1,8 +1,8 @@
+use rustc_attr_ir::InstructionSetAttr;
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::InstructionSetAttr;
 
 use super::prelude::*;
-use crate::session_diagnostics;
+use crate::diagnostics;
 
 pub(crate) struct InstructionSetParser;
 
@@ -43,7 +43,7 @@ impl SingleAttributeParser for InstructionSetParser {
         let instruction_set = match architecture.name {
             sym::arm => {
                 if !cx.sess.target.has_thumb_interworking {
-                    cx.dcx().emit_err(session_diagnostics::UnsupportedInstructionSet {
+                    cx.dcx().emit_err(diagnostics::UnsupportedInstructionSet {
                         span: cx.attr_span,
                         instruction_set: sym::arm,
                         current_target: &cx.sess.opts.target_triple,

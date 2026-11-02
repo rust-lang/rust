@@ -1,6 +1,5 @@
-//@ revisions: eager lazy
-#![cfg_attr(lazy, feature(checked_type_aliases))]
-#![cfg_attr(lazy, expect(incomplete_features))]
+//@ revisions: unchecked checked
+#![cfg_attr(checked, feature(checked_type_aliases))]
 
 // We currently do not check free type aliases for well formedness.
 // However, previously we desugared all const arguments to anon
@@ -49,7 +48,7 @@ type AnonUseFree = Free<true>;
 // parameters so this shouldn't be able to cause code to
 // pass that should error.
 type UseFreeIndirectlyCorrect<const N: usize> = UseFree<N>;
-//[lazy]~^ ERROR: the constant `N` is not of type
+//[checked]~^ ERROR: the constant `N` is not of type
 type AnonUseFreeIndirectlyCorrect = UseFree<1_usize>;
 //~^ ERROR: mismatched types
 

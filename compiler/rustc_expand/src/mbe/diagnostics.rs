@@ -2,11 +2,10 @@ use std::borrow::Cow;
 
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
+use rustc_attr_ir::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, pluralize};
-use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_macros::Subdiagnostic;
-use rustc_middle::bug;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
@@ -49,11 +48,11 @@ pub(super) fn failed_to_match_macro(
     let mut tracker = CollectTrackerAndEmitter::new(name, psess.dcx(), sp);
 
     let try_success_result = match args {
-        FailedMacro::Func => try_match_macro(psess, name, body, rules, &mut tracker),
+        FailedMacro::Func => try_match_macro(psess, body, rules, &mut tracker),
         FailedMacro::Attr(attr_args) => {
-            try_match_macro_attr(psess, name, attr_args, body, rules, &mut tracker)
+            try_match_macro_attr(psess, attr_args, body, rules, &mut tracker)
         }
-        FailedMacro::Derive => try_match_macro_derive(psess, name, body, rules, &mut tracker),
+        FailedMacro::Derive => try_match_macro_derive(psess, body, rules, &mut tracker),
     };
 
     if try_success_result.is_ok() {
@@ -141,7 +140,7 @@ pub(super) fn failed_to_match_macro(
             }
         }
     }
-    let guar = err.emit();
+    let guar = err.emit_err();
     (sp, guar)
 }
 
@@ -203,7 +202,7 @@ impl BestFailure {
 impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'matcher> {
     fn prepare(&mut self, which_matcher: WhichMatcher, matcher: &'matcher [MatcherLoc]) {
         if self.current.is_some() {
-            bug!("`Self::after_arm()` was not called to clean up context");
+            panic!("`Self::after_arm()` was not called to clean up context");
         }
 
         self.current = Some((which_matcher, matcher));
@@ -236,12 +235,12 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             }
             Failure => {
                 if self.best_failure.is_none() {
-                    bug!("A matching failure occurred but `Self::failure()` was not called");
+                    panic!("A matching failure occurred but `Self::failure()` was not called");
                 }
             }
             Ambiguity => {
                 if self.result.is_none() {
-                    bug!("An ambiguity error occurred but `Self::ambiguity()` was not called");
+                    panic!("An ambiguity error occurred but `Self::ambiguity()` was not called");
                 }
             }
             ErrorReported(guar) => self.result = Some((self.root_span, guar)),
@@ -253,7 +252,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 
     fn failure(&mut self, parser: &Parser<'_>) {
         let Some((which_matcher, _)) = self.current else {
-            bug!("`Self::prepare()` was not called to initialize context");
+            panic!("`Self::prepare()` was not called to initialize context");
         };
 
         let mut token = parser.token;
@@ -290,7 +289,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 
     fn ambiguity(&mut self, parser: &Parser<'_>) {
         let Some((_, matcher)) = self.current else {
-            bug!("`Self::prepare()` was not called to initialize context");
+            panic!("`Self::prepare()` was not called to initialize context");
         };
 
         #[expect(
@@ -498,7 +497,7 @@ pub(super) fn emit_frag_parse_err(
             }
         }
     }
-    e.emit()
+    e.emit_err()
 }
 
 pub(crate) fn annotate_err_with_kind(err: &mut Diag<'_>, kind: AstFragmentKind, span: Span) {

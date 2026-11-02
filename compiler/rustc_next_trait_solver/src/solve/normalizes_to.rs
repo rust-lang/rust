@@ -8,7 +8,8 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt,
 };
 use rustc_type_ir::{
-    self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Region, Unnormalized, Upcast as _,
+    self as ty, Const, FieldInfo, Interner, NormalizesTo, PredicateKind, Region, Unnormalized,
+    Upcast as _,
 };
 use tracing::instrument;
 
@@ -41,7 +42,7 @@ where
 
         let trait_ref = goal.predicate.alias.trait_ref(cx);
         let (_, proven_via) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
-            let trait_goal: Goal<I, ty::TraitPredicate<I>> = goal.with(cx, trait_ref);
+            let trait_goal: Goal<I, ty::TraitClause<I>> = goal.with(cx, trait_ref);
             ecx.compute_trait_goal(trait_goal)
         })?;
         self.assemble_and_merge_candidates(
@@ -182,6 +183,7 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        _goal_lang_item: Option<SolverTraitLangItem>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
         let alias_def_id = match goal.predicate.alias.kind {
@@ -253,18 +255,24 @@ where
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, NormalizesTo<I>>,
+        goal_trait_ref: ty::TraitRef<I>,
         impl_def_id: I::ImplId,
-        then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResultOrRerunNonErased<I>,
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
 
         let alias_def_id = goal.predicate.alias.expect_projection_def_id();
-        let goal_trait_ref = goal.predicate.alias.trait_ref(cx);
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
-        if !DeepRejectCtxt::relate_rigid_infer(ecx.cx()).args_may_unify(
-            goal.predicate.alias.trait_ref(cx).args,
-            impl_trait_ref.skip_binder().args,
-        ) {
+        if !DeepRejectCtxt::relate_rigid_infer(ecx.cx())
+            .args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args)
+        {
+            return Err(NoSolution.into());
+        }
+
+        // For every `default impl`, there's always a non-default `impl` that will *also* apply.
+        // There's no reason to register a candidate for this impl, since it is *not* proof that
+        // the trait goal holds.
+        if cx.impl_is_default(impl_def_id) {
             return Err(NoSolution.into());
         }
 
@@ -272,9 +280,6 @@ where
         let impl_polarity = cx.impl_polarity(impl_def_id);
         match impl_polarity {
             ty::ImplPolarity::Negative => return Err(NoSolution.into()),
-            ty::ImplPolarity::Reservation => {
-                unimplemented!("reservation impl for trait with assoc item: {:?}", goal)
-            }
             ty::ImplPolarity::Positive => {}
         };
 
@@ -345,7 +350,7 @@ where
                             }
                             // Outside of coherence, we treat the associated item as rigid instead.
                             ty::TypingMode::Typeck { .. }
-                            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                            | ty::TypingMode::PostTypeckThroughBorrowck { .. }
                             | ty::TypingMode::PostBorrowck { .. }
                             | ty::TypingMode::PostAnalysis
                             | ty::TypingMode::Reflection
@@ -359,8 +364,9 @@ where
                     }
                     FetchEligibleAssocItemResponse::Err(guar) => return error_response(ecx, guar),
                     FetchEligibleAssocItemResponse::NotFoundBecauseErased => {
-                        ecx.opaque_accesses.rerun_always(RerunReason::FetchEligibleAssocItem)?;
-                        return Err(NoSolution.into());
+                        match ecx
+                            .opaque_accesses
+                            .rerun_always(RerunReason::FetchEligibleAssocItem)? {}
                     }
                 };
 
@@ -383,10 +389,10 @@ where
                         // This is not the case here and we only prefer adding an ambiguous
                         // nested goal for consistency.
                         ecx.add_goal(GoalSource::Misc, goal.with(cx, PredicateKind::Ambiguous))?;
-                        return then(ecx, Certainty::Yes);
+                        return then(ecx);
                     } else {
                         ecx.instantiate_normalizes_to_as_rigid(goal)?;
-                        return then(ecx, Certainty::Yes);
+                        return then(ecx);
                     }
                 } else {
                     return error_response(ecx, cx.delay_bug("missing item"));
@@ -413,7 +419,17 @@ where
                 target_container_def_id,
             )?;
 
-            if !cx.check_args_compatible(target_item_def_id.into(), target_args) {
+            let target_item_def_id: I::DefId = target_item_def_id.into();
+
+            let target_item_kind = if goal.predicate.alias.kind.is_type() {
+                ty::AliasTermKind::ProjectionTy { def_id: target_item_def_id.try_into().unwrap() }
+            } else {
+                ty::AliasTermKind::ProjectionConst {
+                    def_id: target_item_def_id.try_into().unwrap(),
+                }
+            };
+
+            if !cx.check_alias_term_args_compatible(target_item_kind, target_args) {
                 return error_response(
                     ecx,
                     cx.delay_bug("associated item has mismatched arguments"),
@@ -421,29 +437,29 @@ where
             }
 
             // Finally we construct the actual value of the associated type.
-            let term = match goal.predicate.alias.kind {
+            let term = match target_item_kind {
                 ty::AliasTermKind::ProjectionTy { .. } => {
-                    let t = cx.type_of(target_item_def_id.into()).instantiate(cx, target_args);
-                    let t = ecx.normalize(GoalSource::Misc, goal.param_env, t)?;
+                    let t = cx.type_of(target_item_def_id).instantiate(cx, target_args);
+                    let t = ecx.normalize(goal.param_env, t)?;
                     t.into()
                 }
-                ty::AliasTermKind::ProjectionConst { .. }
-                    if cx.is_type_const(target_item_def_id.into()) =>
+                ty::AliasTermKind::ProjectionConst { def_id }
+                    if let Some(c) =
+                        cx.const_of_item(ty::AliasConstKind::Projection { def_id }) =>
                 {
-                    let c =
-                        cx.const_of_item(target_item_def_id.into()).instantiate(cx, target_args);
-                    let c = ecx.normalize(GoalSource::Misc, goal.param_env, c)?;
+                    let c = c.instantiate(cx, target_args);
+                    let c = ecx.normalize(goal.param_env, c)?;
                     c.into()
                 }
                 ty::AliasTermKind::ProjectionConst { .. } => {
                     let alias_const = ty::AliasConst::new(
                         cx,
                         ty::AliasConstKind::Projection {
-                            def_id: target_item_def_id.into().try_into().unwrap(),
+                            def_id: target_item_def_id.try_into().unwrap(),
                         },
                         target_args,
                     );
-                    return ecx.evaluate_const_and_instantiate_projection_term(
+                    return ecx.evaluate_const(
                         goal.param_env,
                         goal.predicate.alias,
                         goal.predicate.term,
@@ -537,7 +553,7 @@ where
         let output_is_sized_pred =
             ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output]);
 
-        let pred = ty::ProjectionPredicate {
+        let pred = ty::ProjectionClause {
             projection_term: ty::AliasTerm::new(
                 cx,
                 goal.predicate.alias.kind,
@@ -626,7 +642,7 @@ where
         } else {
             panic!("no such associated type in `AsyncFn*`: {:?}", def_id)
         };
-        let pred = ty::ProjectionPredicate { projection_term, term }.upcast(cx);
+        let pred = ty::ProjectionClause { projection_term, term }.upcast(cx);
 
         Self::probe_and_consider_implied_clause(
             ecx,
@@ -822,14 +838,8 @@ where
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
-            ty::ProjectionPredicate {
-                projection_term: ty::AliasTerm::new(
-                    ecx.cx(),
-                    cx.alias_term_kind_from_def_id(
-                        goal.predicate.alias.expect_projection_def_id().into(),
-                    ),
-                    [self_ty],
-                ),
+            ty::ProjectionClause {
+                projection_term: ty::AliasTerm::new(ecx.cx(), goal.predicate.alias.kind, [self_ty]),
                 term,
             }
             .upcast(cx),
@@ -860,14 +870,8 @@ where
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
-            ty::ProjectionPredicate {
-                projection_term: ty::AliasTerm::new(
-                    ecx.cx(),
-                    cx.alias_term_kind_from_def_id(
-                        goal.predicate.alias.expect_projection_def_id().into(),
-                    ),
-                    [self_ty],
-                ),
+            ty::ProjectionClause {
+                projection_term: ty::AliasTerm::new(ecx.cx(), goal.predicate.alias.kind, [self_ty]),
                 term,
             }
             .upcast(cx),
@@ -951,7 +955,7 @@ where
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
-            ty::ProjectionPredicate {
+            ty::ProjectionClause {
                 projection_term: ty::AliasTerm::new(
                     ecx.cx(),
                     goal.predicate.alias.kind,

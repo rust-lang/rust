@@ -1,0 +1,23 @@
+error[E0308]: mismatched types
+  --> $DIR/nested-binder-cmp-fn-sig-print.rs:23:5
+   |
+LL | fn issue_111365(x: One) -> Two {
+   |                            --- expected `for<'o> fn(for<'a> fn(&'a (), &'o ()))` because of return type
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'o> fn(for<'a> fn(&'a (), &'o ()))`
+              found fn pointer `fn(for<'a> fn(&'a (), &'a ()))`
+
+error[E0308]: mismatched types
+  --> $DIR/nested-binder-cmp-fn-sig-print.rs:13:22
+   |
+LL |     let _: &mut F2 = a;
+   |                      ^ one type is more general than the other
+   |
+   = note: expected mutable reference `&mut for<'a> fn(fn(&'a ()))`
+              found mutable reference `&mut fn(fn(&()))`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

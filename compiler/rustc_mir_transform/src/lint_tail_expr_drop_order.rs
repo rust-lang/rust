@@ -11,8 +11,9 @@ use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::MixedBitSet;
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_lint_defs::LintId;
+use rustc_lint_defs::builtin::TAIL_EXPR_DROP_ORDER;
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::bug;
 use rustc_middle::mir::{
     self, BasicBlock, Body, ClearCrossCrate, Local, Location, MirDumper, Place, StatementKind,
     TerminatorKind,
@@ -24,9 +25,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{Analysis, MaybeReachable, ResultsCursor};
-use rustc_session::lint;
-use rustc_session::lint::builtin::TAIL_EXPR_DROP_ORDER;
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Span, Symbol, bug};
 use tracing::debug;
 
 fn place_has_common_prefix<'tcx>(left: &Place<'tcx>, right: &Place<'tcx>) -> bool {
@@ -187,7 +186,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
         return;
     }
     if body.span.edition().at_least_rust_2024()
-        || tcx.skippable_lints(()).contains(&lint::LintId::of(TAIL_EXPR_DROP_ORDER))
+        || tcx.skippable_lints(()).contains(&LintId::of(TAIL_EXPR_DROP_ORDER))
     {
         return;
     }
@@ -452,7 +451,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
 
         let span = local_labels[0].span;
         tcx.emit_node_span_lint(
-            lint::builtin::TAIL_EXPR_DROP_ORDER,
+            TAIL_EXPR_DROP_ORDER,
             lint_root.unwrap_or(CRATE_HIR_ID),
             span,
             TailExprDropOrderLint { local_labels, drop_span, _epilogue: () },
@@ -524,7 +523,7 @@ struct LocalLabel<'a> {
 
 /// A custom `Subdiagnostic` implementation so that the notes are delivered in a specific order
 impl Subdiagnostic for LocalLabel<'_> {
-    fn add_to_diag<G: rustc_errors::EmissionGuarantee>(self, diag: &mut rustc_errors::Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut rustc_errors::Diag<'_>) {
         diag.span_label(
             self.span,
             msg!(

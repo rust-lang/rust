@@ -450,13 +450,12 @@ where
         // have to grab the backtrace on the first error directly since that error may not be
         // 'static
         let backtrace = request_ref(&self.error);
-        let backtrace = backtrace.or_else(|| {
+        backtrace.or_else(|| {
             self.error
                 .source()
                 .map(|source| source.sources().find_map(|source| request_ref(source)))
                 .flatten()
-        });
-        backtrace
+        })
     }
 
     /// Format the report as a single line.

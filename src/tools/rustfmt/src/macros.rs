@@ -9,6 +9,7 @@
 // List-like invocations with parentheses will be formatted as function calls,
 // and those with brackets will be formatted as array literals.
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
@@ -16,7 +17,7 @@ use rustc_ast::ast;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenStreamIter, TokenTree};
 use rustc_ast_pretty::pprust;
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Pos, Span, Symbol};
 use tracing::debug;
 
 use crate::comment::{
@@ -26,8 +27,10 @@ use crate::config::StyleEdition;
 use crate::config::lists::*;
 use crate::expr::{RhsAssignKind, rewrite_array, rewrite_assign_rhs};
 use crate::header::{HeaderPart, format_header};
+use crate::is_nightly_channel;
 use crate::lists::{ListFormatting, itemize_list, write_list};
 use crate::overflow;
+use crate::parse::macros::cfg_select::{CfgSelectFormatPredicate, parse_cfg_select_arms};
 use crate::parse::macros::lazy_static::parse_lazy_static;
 use crate::parse::macros::{ParsedMacroArgs, parse_expr, parse_macro_args};
 use crate::rewrite::{
@@ -37,7 +40,7 @@ use crate::shape::{Indent, Shape};
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{
-    NodeIdExt, filtered_str_fits, indent_next_line, is_empty_line, mk_sp,
+    NodeIdExt, extra_offset, filtered_str_fits, indent_next_line, is_empty_line, mk_sp,
     remove_trailing_white_spaces, rewrite_ident, trim_left_preserve_layout,
 };
 use crate::visitor::FmtVisitor;
@@ -245,6 +248,26 @@ fn rewrite_macro_inner(
         }
     }
 
+    if is_nightly_channel!() && macro_name.ends_with("cfg_select!") {
+        match format_cfg_select(context, shape, mac.span(), &macro_name, style, ts.clone()) {
+            Ok(rw) => return Ok(rw),
+            Err(err) => match err {
+                // We will move on to parsing macro args just like other macros
+                // if we could not parse cfg_select! with known syntax
+                RewriteError::MacroFailure { kind, span: _ }
+                    if kind == MacroErrorKind::ParseFailure => {}
+                // If formatting fails even though parsing succeeds, return the err early
+                other => return Err(other),
+            },
+        }
+    }
+
+    // If we're falling through to default macro handling check that the context is correct
+    debug_assert!(
+        context.inside_macro(),
+        "expect `context.inside_macro() == true`"
+    );
+
     let ParsedMacroArgs {
         args: arg_vec,
         vec_with_semi,
@@ -431,7 +454,7 @@ pub(crate) fn rewrite_macro_def(
     };
 
     let mut header = if def.macro_rules {
-        let pos = context.snippet_provider.span_after(span, "macro_rules!");
+        let pos = context.snippet_provider.span_after(span, "!");
         vec![HeaderPart::new("macro_rules!", span.with_hi(pos))]
     } else {
         let macro_lo = context.snippet_provider.span_before(span, "macro");
@@ -1338,15 +1361,13 @@ impl MacroBranch {
         } else {
             shape.indent.block_indent(&config)
         };
-        let new_width = config.max_width() - body_indent.width();
-        config.set().max_width(new_width);
+        config.reduce_max_width(body_indent.width());
 
         // First try to format as items, then as statements.
         let new_body_snippet = match crate::format_snippet(&body_str, &config, true) {
             Some(new_body) => new_body,
             None => {
-                let new_width = new_width + config.tab_spaces();
-                config.set().max_width(new_width);
+                config.increase_max_width(config.tab_spaces());
                 match crate::format_code_block(&body_str, &config, true) {
                     Some(new_body) => new_body,
                     None => {
@@ -1359,7 +1380,12 @@ impl MacroBranch {
             }
         };
 
-        if !filtered_str_fits(&new_body_snippet.snippet, config.max_width(), shape) {
+        if !filtered_str_fits(
+            &new_body_snippet.snippet,
+            config.max_width(),
+            context.config.tab_spaces(),
+            shape,
+        ) {
             return Err(RewriteError::ExceedsMaxWidth {
                 configured_width: shape.width,
                 span: self.span,
@@ -1529,4 +1555,142 @@ fn rewrite_macro_with_items(
     result.push_str(closer);
     result.push_str(trailing_semicolon);
     Ok(result)
+}
+
+fn format_cfg_select(
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    span: Span,
+    name: &str,
+    delim_token: Delimiter,
+    ts: TokenStream,
+) -> RewriteResult {
+    let mut rewrite = String::with_capacity((span.hi() - span.lo()).to_usize() * 2);
+    rewrite.push_str(name);
+
+    let (opening_delim, closing_delim) = match delim_token {
+        Delimiter::Brace => ("{", "}"),
+        Delimiter::Bracket => ("[", "]"),
+        Delimiter::Parenthesis => ("(", ")"),
+        Delimiter::Invisible(_) => {
+            unreachable!("cfg_select! macro will always have outer delimiters");
+        }
+    };
+
+    if matches!(delim_token, Delimiter::Brace) {
+        rewrite.push(' ');
+    };
+
+    let arms =
+        parse_cfg_select_arms(context.psess, ts).macro_error(MacroErrorKind::ParseFailure, span)?;
+
+    if arms.is_empty() {
+        let lo = context.snippet_provider.span_after(span, opening_delim);
+        let hi = context.snippet_provider.span_before(span, closing_delim);
+
+        // NOTE(ytmimi) reusing `format_empty_struct_or_tuple` since
+        // it handles proper indentation and recovering comments
+        crate::items::format_empty_struct_or_tuple(
+            context,
+            mk_sp(lo, hi),
+            shape.indent,
+            &mut rewrite,
+            opening_delim,
+            closing_delim,
+        );
+        return Ok(rewrite);
+    } else {
+        rewrite.push_str(opening_delim);
+    }
+
+    let nested_indent = shape.indent.block_indent(context.config);
+    let nested_shape = Shape::indented(nested_indent, context.config);
+    rewrite.push_str(&nested_shape.indent.to_string_with_newline(context.config));
+
+    let last_arm = arms.last();
+
+    // We have to fib a little here and update the context to remove the `inside_macro` state.
+    // The code that flattens match arms will refuse to do so if it's inside a macro. Mostly
+    // this is done to prevent rustfmt from removing tokens in the context of a macro, but in
+    // this case it should be fine since we know that each `cfg_select!` arm must be a valid expr.
+    context.leave_macro();
+
+    let items = itemize_list(
+        context.snippet_provider,
+        arms.iter(),
+        closing_delim,
+        "}",
+        |arm| arm.span().lo(),
+        |arm| arm.span().hi(),
+        |arm| {
+            let predicate_str = match &arm.predicate {
+                CfgSelectFormatPredicate::Wildcard(_t) => Cow::Borrowed("_"),
+                CfgSelectFormatPredicate::Cfg(meta_item_inner) => {
+                    Cow::Owned(meta_item_inner.rewrite_result(context, nested_shape)?)
+                }
+            };
+
+            match arm.double_block_inner(context) {
+                // FIXME(ytmimi) The formatting for the `$predicate => {{}}` case isn't very robust.
+                // There's the potential that we'll lose comments in between the predicate, the `=>`
+                // and the body. We also don't handle comments like `{/*comment*/{}/*comment*/}`.
+                // The `rewrite_match_body` branch also handles `control_brace_style` better.
+                // That said, it helps fix <https://github.com/rust-lang/rustfmt/issues/7045>.
+                Some(expr) => {
+                    let trailing_comma = if arm.trailing_comma.is_some() {
+                        ","
+                    } else {
+                        ""
+                    };
+                    let offset = extra_offset(&predicate_str, nested_shape) + " => {".len();
+                    let nested_shape = nested_shape
+                        .offset_left(offset, arm.span())?
+                        .sub_width("}".len() + trailing_comma.len(), arm.span())?;
+                    let body = expr
+                        .rewrite_result(context, nested_shape)
+                        .map(|rw| format!("{{{rw}}}"))?;
+
+                    Ok(format!("{predicate_str} => {body}{trailing_comma}"))
+                }
+                None => crate::matches::rewrite_match_body(
+                    context,
+                    &arm.expr,
+                    &predicate_str,
+                    nested_shape,
+                    false,
+                    arm.arrow.span,
+                    last_arm.is_some_and(|la| la == arm),
+                ),
+            }
+        },
+        // Start Span after the opening delimiter. For example,
+        // ```
+        // cfg_select! {
+        //              ^ start here
+        // }
+        // ```
+        context.snippet_provider.span_after(span, opening_delim),
+        // End on closing delimiter. For example,
+        // ```
+        // cfg_select! {
+        // }
+        // ^ end here
+        // ```
+        span.hi(),
+        false,
+    );
+    let arms_vec: Vec<_> = items.collect();
+
+    // We will add/remove commas inside `arm.rewrite()`, and hence no separator here.
+    let fmt = ListFormatting::new(nested_shape, context.config)
+        .separator("")
+        .align_comments(false)
+        .preserve_newline(true);
+
+    rewrite.push_str(&write_list(&arms_vec, &fmt)?);
+    rewrite.push('\n');
+    rewrite.push_str(&shape.indent.to_string(context.config));
+    rewrite.push_str(closing_delim);
+
+    Ok(rewrite)
 }

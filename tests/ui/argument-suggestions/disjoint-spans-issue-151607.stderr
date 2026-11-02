@@ -1,12 +1,14 @@
 error[E0425]: cannot find type `E` in this scope
   --> $DIR/disjoint-spans-issue-151607.rs:8:24
    |
-LL | struct B;
-   | --------- similarly named struct `B` defined here
-...
 LL | fn foo(g: F, y: F, e: &E) {
-   |                        ^
+   |                        ^ not found in this scope
    |
+note: similarly named struct `B` defined here
+  --> $DIR/disjoint-spans-issue-151607.rs:5:1
+   |
+LL | struct B;
+   | ^^^^^^^^^
 help: a struct with a similar name exists
    |
 LL - fn foo(g: F, y: F, e: &E) {
@@ -21,7 +23,7 @@ error[E0425]: cannot find value `E` in this scope
   --> $DIR/disjoint-spans-issue-151607.rs:10:18
    |
 LL |     foo(B, g, D, E, F, G)
-   |                  ^
+   |                  ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |
@@ -43,7 +45,7 @@ error[E0425]: cannot find value `G` in this scope
   --> $DIR/disjoint-spans-issue-151607.rs:10:24
    |
 LL |     foo(B, g, D, E, F, G)
-   |                        ^
+   |                        ^ not found in this scope
    |
 help: a local variable with a similar name exists
    |

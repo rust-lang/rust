@@ -55,7 +55,7 @@
 //! `specialization` or `min_specialization` is enabled to implement these
 //! traits.
 //!
-//! ### rustc_unsafe_specialization_marker
+//! ### rustc_allow_lifetime_dependent_specialization
 //!
 //! There are also some specialization on traits with no methods, including the
 //! stable `FusedIterator` trait. We allow marking marker traits with an
@@ -68,13 +68,10 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::specialization_graph::Node;
+use rustc_infer::traits::{ObligationCause, TraitErrors};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
-use rustc_middle::ty::{
-    self, GenericArg, GenericArgs, GenericArgsRef, RegionUtilitiesExt, TyCtxt, TypeVisitableExt,
-    TypingMode,
-};
+use rustc_middle::ty::{self, GenericArg, GenericArgs, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt, translate_args_with_cause, wf};
@@ -126,7 +123,7 @@ fn check_always_applicable(
     debug!(?impl2_def_id, ?impl2_args);
 
     let parent_args = if impl2_node.is_from_trait() {
-        impl2_args.to_vec()
+        impl2_args.as_slice().to_vec()
     } else {
         unconstrained_parent_impl_args(tcx, impl2_def_id, impl2_args)
     };
@@ -168,7 +165,7 @@ fn get_impl_args(
     tcx: TyCtxt<'_>,
     impl1_def_id: LocalDefId,
     impl2_node: Node,
-) -> Result<(GenericArgsRef<'_>, GenericArgsRef<'_>), ErrorGuaranteed> {
+) -> Result<(GenericArgs<'_>, GenericArgs<'_>), ErrorGuaranteed> {
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
     let param_env = tcx.param_env(impl1_def_id);
@@ -185,14 +182,14 @@ fn get_impl_args(
     );
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         let guar = ocx.infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(guar);
     }
 
     let assumed_wf_types = ocx.assumed_wf_types_and_report_errors(param_env, impl1_def_id)?;
     ocx.resolve_regions_and_report_errors(impl1_def_id, param_env, assumed_wf_types)?;
-    let Ok(impl2_args) = infcx.fully_resolve(impl2_args) else {
+    let Ok(impl2_args) = infcx.deeply_resolve_via_region_graph(impl2_args) else {
         let span = tcx.def_span(impl1_def_id);
         let guar = tcx.dcx().emit_err(GenericArgsOnOverriddenImpl { span });
         return Err(guar);
@@ -211,7 +208,7 @@ fn get_impl_args(
 fn unconstrained_parent_impl_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_def_id: DefId,
-    impl_args: GenericArgsRef<'tcx>,
+    impl_args: GenericArgs<'tcx>,
 ) -> Vec<GenericArg<'tcx>> {
     let impl_generic_clauses = tcx.clauses_of(impl_def_id);
     let mut unconstrained_parameters = FxHashSet::default();
@@ -271,7 +268,7 @@ fn unconstrained_parent_impl_args<'tcx>(
 /// `[Vec<T>]`. This means we allow this impl.
 fn check_duplicate_params<'tcx>(
     tcx: TyCtxt<'tcx>,
-    impl1_args: GenericArgsRef<'tcx>,
+    impl1_args: GenericArgs<'tcx>,
     parent_args: Vec<GenericArg<'tcx>>,
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
@@ -282,7 +279,7 @@ fn check_duplicate_params<'tcx>(
         return Err(tcx
             .dcx()
             .struct_span_err(span, format!("specializing impl repeats parameter `{param}`"))
-            .emit());
+            .emit_err());
     }
     Ok(())
 }
@@ -320,9 +317,9 @@ fn check_static_lifetimes<'tcx>(
 fn check_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl1_def_id: LocalDefId,
-    impl1_args: GenericArgsRef<'tcx>,
+    impl1_args: GenericArgs<'tcx>,
     impl2_node: Node,
-    impl2_args: GenericArgsRef<'tcx>,
+    impl2_args: GenericArgs<'tcx>,
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
     let impl1_clauses: Vec<(ty::Clause<'_>, _)> = traits::elaborate(
@@ -415,7 +412,7 @@ fn check_specialization_on<'tcx>(
         _ if clause.is_global() => Ok(()),
         // We allow specializing on explicitly marked traits with no associated
         // items.
-        ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
+        ty::ClauseKind::Trait(ty::TraitClause { trait_ref, polarity: _ }) => {
             if matches!(
                 trait_specialization_kind(tcx, clause),
                 Some(TraitSpecializationKind::Marker)
@@ -431,16 +428,16 @@ fn check_specialization_on<'tcx>(
                             tcx.def_path_str(trait_ref.def_id),
                         ),
                     )
-                    .emit())
+                    .emit_err())
             }
         }
-        ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_term, term }) => Err(tcx
+        ty::ClauseKind::Projection(ty::ProjectionClause { projection_term, term }) => Err(tcx
             .dcx()
             .struct_span_err(
                 span,
                 format!("cannot specialize on associated type `{projection_term} == {term}`",),
             )
-            .emit()),
+            .emit_err()),
         ty::ClauseKind::ConstArgHasType(..) => {
             // FIXME(min_specialization), FIXME(const_generics):
             // It probably isn't right to allow _every_ `ConstArgHasType` but I am somewhat unsure
@@ -455,7 +452,7 @@ fn check_specialization_on<'tcx>(
         _ => Err(tcx
             .dcx()
             .struct_span_err(span, format!("cannot specialize on predicate `{clause}`"))
-            .emit()),
+            .emit_err()),
     }
 }
 
@@ -464,7 +461,7 @@ fn trait_specialization_kind<'tcx>(
     clause: ty::Clause<'tcx>,
 ) -> Option<TraitSpecializationKind> {
     match clause.kind().skip_binder() {
-        ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
+        ty::ClauseKind::Trait(ty::TraitClause { trait_ref, polarity: _ }) => {
             Some(tcx.trait_def(trait_ref.def_id).specialization_kind)
         }
         ty::ClauseKind::RegionOutlives(_)

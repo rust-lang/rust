@@ -1,9 +1,10 @@
 use std::assert_matches;
 
 use rustc_abi::{BackendRepr, FieldsShape, Scalar, Size, TagEncoding, Variants};
+use rustc_middle::ty;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
-use rustc_middle::{bug, ty};
+use rustc_span::bug;
 
 /// Enforce some basic invariants on layouts.
 pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
@@ -98,7 +99,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
         let size = layout.backend_repr.scalar_size(cx);
         if let Some(align) = align {
             assert_eq!(
-                layout.layout.align().abi,
+                layout.layout.align(),
                 align,
                 "alignment mismatch between ABI and layout in {layout:#?}"
             );
@@ -224,9 +225,9 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 };
                 // The fields should be at the right offset, and match the `scalar` layout.
                 let size1 = scalar1.size(cx);
-                let align1 = scalar1.default_align(cx).abi;
+                let align1 = scalar1.default_align(cx);
                 let size2 = scalar2.size(cx);
-                let align2 = scalar2.default_align(cx).abi;
+                let align2 = scalar2.default_align(cx);
                 assert_eq!(
                     offset1,
                     Size::ZERO,
@@ -271,12 +272,12 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
             BackendRepr::SimdVector { element, count } => {
                 let align = layout.align.abi;
                 let size = layout.size;
-                let element_align = element.default_align(cx).abi;
+                let element_align = element.default_align(cx);
                 let element_size = element.size(cx);
                 // Currently, vectors must always be aligned to at least their elements:
                 assert!(align >= element_align);
                 // And the size has to be element * count plus alignment padding, of course
-                assert!(size == (element_size * count).align_to(align));
+                assert!(size == (element_size * count.as_u64()).align_to(align));
             }
             BackendRepr::Memory { .. } | BackendRepr::SimdScalableVector { .. } => {} // Nothing to check.
         }
@@ -309,16 +310,10 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     }
 
                     // Ensure that for niche encoded tags the discriminant coincides with the variant index.
-                    let val = layout.ty.discriminant_for_variant(tcx, idx).unwrap().val;
-                    if val != u128::from(idx.as_u32()) {
-                        let adt_def = layout.ty.ty_adt_def().unwrap();
-                        cx.tcx().dcx().span_delayed_bug(
-                            cx.tcx().def_span(adt_def.did()),
-                            format!(
-                                "variant {idx:?} has discriminant {val:?} in niche-encoded type"
-                            ),
-                        );
-                    }
+                    assert_eq!(
+                        layout.ty.discriminant_for_variant(tcx, idx).unwrap().val,
+                        u128::from(idx.as_u32()),
+                    );
                 }
             }
             for variant in variants.iter() {

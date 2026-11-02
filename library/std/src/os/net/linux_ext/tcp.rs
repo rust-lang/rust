@@ -2,6 +2,7 @@
 //!
 //! [`std::net`]: crate::net
 
+use crate::macros::rustdoc_skip_body;
 use crate::sys::AsInner;
 #[cfg(target_os = "linux")]
 use crate::time::Duration;
@@ -23,7 +24,14 @@ pub impl(self) trait TcpStreamExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "android", target_os = "cygwin")),
+        doc = "```ignore (needs linux)"
+    )]
     /// use std::net::TcpStream;
     /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::TcpStreamExt;
@@ -43,7 +51,14 @@ pub impl(self) trait TcpStreamExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "android", target_os = "cygwin")),
+        doc = "```ignore (needs linux)"
+    )]
     /// use std::net::TcpStream;
     /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::TcpStreamExt;
@@ -92,7 +107,14 @@ pub impl(self) trait TcpStreamExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "android", target_os = "cygwin")),
+        doc = "```ignore (needs linux)"
+    )]
     /// #![feature(tcp_deferaccept)]
     /// use std::net::TcpStream;
     /// use std::os::linux::net::TcpStreamExt;
@@ -110,10 +132,12 @@ pub impl(self) trait TcpStreamExt {
 
 #[stable(feature = "tcp_quickack", since = "1.89.0")]
 impl TcpStreamExt for net::TcpStream {
+    #[rustdoc_skip_body]
     fn set_quickack(&self, quickack: bool) -> io::Result<()> {
         self.as_inner().as_inner().set_quickack(quickack)
     }
 
+    #[rustdoc_skip_body]
     fn quickack(&self) -> io::Result<bool> {
         self.as_inner().as_inner().quickack()
     }

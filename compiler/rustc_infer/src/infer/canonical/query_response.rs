@@ -12,11 +12,9 @@ use std::iter;
 
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
-use rustc_middle::bug;
 use rustc_middle::infer::canonical::{CanonicalVarKind, QueryRegionConstraint};
-use rustc_middle::ty::{
-    self, BoundVar, GenericArg, GenericArgKind, RegionUtilitiesExt, Ty, TyCtxt, TypeFoldable,
-};
+use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
 use crate::infer::canonical::instantiate::{CanonicalExt, instantiate_value};
@@ -30,7 +28,9 @@ use crate::infer::{
     TypeOutlivesConstraint,
 };
 use crate::traits::query::NoSolution;
-use crate::traits::{ObligationCause, PredicateObligations, ScrubbedTraitError, TraitEngine};
+use crate::traits::{
+    ObligationCause, PredicateObligations, ScrubbedTraitError, TraitEngine, TraitErrors,
+};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
@@ -108,7 +108,7 @@ impl<'tcx> InferCtxt<'tcx> {
         };
 
         self.canonicalize_response(QueryResponse {
-            var_values: inference_vars,
+            var_values: inference_vars.var_values,
             region_constraints: QueryRegionConstraints::default(),
             certainty: Certainty::Proven, // Ambiguities are OK!
             opaque_types,
@@ -131,10 +131,17 @@ impl<'tcx> InferCtxt<'tcx> {
         // Select everything, returning errors.
         let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self);
 
-        // True error!
-        if errors.iter().any(|e| e.is_true_error()) {
-            return Err(NoSolution);
-        }
+        let certainty = match errors {
+            TraitErrors::HasErrors(errors) => {
+                if errors.iter().any(|e| e.is_true_error()) {
+                    // True error!
+                    return Err(NoSolution);
+                } else {
+                    Certainty::Ambiguous
+                }
+            }
+            TraitErrors::NoErrors => Certainty::Proven,
+        };
 
         let region_obligations = self.take_registered_region_obligations();
         let region_assumptions = self.take_registered_region_assumptions();
@@ -148,8 +155,6 @@ impl<'tcx> InferCtxt<'tcx> {
         });
         debug!(?region_constraints);
 
-        let certainty = if errors.is_empty() { Certainty::Proven } else { Certainty::Ambiguous };
-
         let opaque_types = self
             .inner
             .borrow_mut()
@@ -159,7 +164,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .collect();
 
         Ok(QueryResponse {
-            var_values: inference_vars,
+            var_values: inference_vars.var_values,
             region_constraints,
             certainty,
             value: answer,
@@ -195,11 +200,11 @@ impl<'tcx> InferCtxt<'tcx> {
         {
             let constraint = instantiate_value(self.tcx, &result_args, *constraint);
             match constraint {
-                ty::RegionConstraint::Outlives(predicate) => {
-                    self.register_outlives_constraint(predicate, *vis, cause);
+                ty::RegionConstraint::Outlives(clause) => {
+                    self.register_outlives_constraint(clause, *vis, cause);
                 }
-                ty::RegionConstraint::Eq(predicate) => {
-                    self.register_region_eq_constraint(predicate, *vis, cause);
+                ty::RegionConstraint::Eq(clause) => {
+                    self.register_region_eq_constraint(clause, *vis, cause);
                 }
             }
         }
@@ -277,9 +282,8 @@ impl<'tcx> InferCtxt<'tcx> {
 
         for (index, original_value) in original_values.var_values.iter().enumerate() {
             // ...with the value `v_r` of that variable from the query.
-            let result_value = query_response.instantiate_projected(self.tcx, &result_args, |v| {
-                v.var_values[BoundVar::new(index)]
-            });
+            let result_value = query_response
+                .instantiate_projected(self.tcx, &result_args, |v| v.var_values[index]);
             match (original_value.kind(), result_value.kind()) {
                 (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
                     if re1.is_erased() && re2.is_erased() =>
@@ -430,7 +434,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // the inputs to the query. Therefore, we begin by unifying
         // these values with the original inputs that were
         // canonicalized.
-        let result_values = &query_response.value.var_values;
+        let result_values = query_response.value.var_values;
         assert_eq!(original_values.var_values.len(), result_values.len());
 
         // Quickly try to find initial values for the canonical
@@ -552,7 +556,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // canonical variable; this is taken from
         // `query_response.var_values` after applying the instantiation
         // by `result_args`.
-        let instantiated_query_response = |index: BoundVar| -> GenericArg<'tcx> {
+        let instantiated_query_response = |index: usize| -> GenericArg<'tcx> {
             query_response.instantiate_projected(self.tcx, result_args, |v| v.var_values[index])
         };
 
@@ -568,11 +572,11 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         variables1: &OriginalQueryValues<'tcx>,
-        variables2: impl Fn(BoundVar) -> GenericArg<'tcx>,
+        variables2: impl Fn(usize) -> GenericArg<'tcx>,
     ) -> InferResult<'tcx, ()> {
         let mut obligations = PredicateObligations::new();
         for (index, value1) in variables1.var_values.iter().enumerate() {
-            let value2 = variables2(BoundVar::new(index));
+            let value2 = variables2(index);
 
             match (value1.kind(), value2.kind()) {
                 (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
@@ -613,7 +617,7 @@ impl<'tcx> InferCtxt<'tcx> {
 pub fn make_query_region_constraints<'tcx>(
     outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
-    assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
+    assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
 ) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData { constraints, verifys } = region_constraints;
 
@@ -629,7 +633,7 @@ pub fn make_query_region_constraints<'tcx>(
             | ConstraintKind::VarSubReg
             | ConstraintKind::RegSubReg => {
                 // Swap regions because we are going from sub (<=) to outlives (>=).
-                let constraint = ty::OutlivesPredicate(c.sup.into(), c.sub).into();
+                let constraint = ty::OutlivesClause(c.sup.into(), c.sub).into();
                 QueryRegionConstraint {
                     constraint,
                     category: origin.to_constraint_category(),
@@ -638,7 +642,7 @@ pub fn make_query_region_constraints<'tcx>(
             }
 
             ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
-                let constraint = ty::RegionEqPredicate(c.sup, c.sub).into();
+                let constraint = ty::RegionEqPredicate(c.sub, c.sup).into();
                 QueryRegionConstraint {
                     constraint,
                     category: origin.to_constraint_category(),
@@ -649,7 +653,7 @@ pub fn make_query_region_constraints<'tcx>(
         .chain(outlives_obligations.into_iter().map(
             |TypeOutlivesConstraint { sub_region, sup_type, origin }| {
                 QueryRegionConstraint {
-                    constraint: ty::OutlivesPredicate(sup_type.into(), sub_region).into(),
+                    constraint: ty::OutlivesClause(sup_type.into(), sub_region).into(),
                     category: origin.to_constraint_category(),
                     // We don't do leak checks for type outlives
                     visible_for_leak_check: ty::VisibleForLeakCheck::Unreachable,

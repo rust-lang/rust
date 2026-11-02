@@ -49,7 +49,7 @@ impl<'a, T> Iter<'a, T> {
     ///
     /// assert_eq!(iter.as_slices(), (&[9, 10][..], &[0, 1][..]));
     /// ```
-    #[unstable(feature = "vec_deque_iter_as_slices", issue = "123947")]
+    #[unstable(feature = "vec_deque_iter_as_slices", issue = "133253")]
     pub fn as_slices(&self) -> (&'a [T], &'a [T]) {
         (self.i1.as_slice(), self.i2.as_slice())
     }
@@ -145,7 +145,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
 
     #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
-        // Safety: The TrustedRandomAccess contract requires that callers only pass an index
+        // SAFETY: The TrustedRandomAccess contract requires that callers only pass an index
         // that is in bounds.
         unsafe {
             let i1_len = self.i1.len();

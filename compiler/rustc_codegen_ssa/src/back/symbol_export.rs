@@ -1,24 +1,26 @@
 use std::collections::hash_map::Entry::*;
 
+use object::pe;
 use rustc_abi::{CanonAbi, X86Call};
 use rustc_ast::expand::allocator::{AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name};
+use rustc_crate_store::CrateDepKind;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgsRef, Instance, ShimKind, SymbolName, Ty, TyCtxt,
+    self, GenericArgKind, GenericArgs, Instance, ShimKind, SymbolName, Ty, TyCtxt,
 };
 use rustc_middle::util::Providers;
-use rustc_session::config::CrateType;
-use rustc_span::Span;
-use rustc_symbol_mangling::mangle_internal_symbol;
+use rustc_span::{Span, bug};
+use rustc_structures::CrateType;
+use rustc_symbol_mangling::{is_offload_kernel, mangle_internal_symbol};
 use rustc_target::spec::{Arch, Os, TlsModel};
 use tracing::debug;
 
@@ -103,11 +105,21 @@ pub fn reachable_non_generics_helper(tcx: TyCtxt<'_>) -> DefIdMap<SymbolExportIn
                 return None;
             }
 
-            if Instance::mono(tcx, def_id.into()).def.requires_inline(tcx) {
+            let instance = Instance::mono(tcx, def_id.into());
+
+            if instance.def.requires_inline(tcx) {
                 return None;
             }
 
-            if tcx.cross_crate_inlinable(def_id) { None } else { Some(def_id) }
+            if tcx.cross_crate_inlinable(def_id) {
+                return None;
+            }
+
+            if tcx.instantiate_and_check_impossible_clauses((instance.def_id(), instance.args)) {
+                return None;
+            }
+
+            Some(def_id)
         })
         .map(|def_id| {
             let export_level = if is_compiler_builtins {
@@ -243,6 +255,51 @@ pub fn exported_non_generic_symbols_helper<'tcx>(
         ));
     }
 
+    let is_device_offload = tcx
+        .sess
+        .opts
+        .unstable_opts
+        .offload
+        .iter()
+        .any(|o| matches!(o, rustc_session::config::Offload::Device(_)));
+    if is_device_offload {
+        let crate_items = tcx.hir_crate_items(());
+        let mut seen: rustc_data_structures::fx::FxHashSet<DefId> = symbols
+            .iter()
+            .filter_map(|(s, _)| match s {
+                ExportedSymbol::NonGeneric(d) => Some(*d),
+                _ => None,
+            })
+            .collect();
+
+        let mut try_emit_offload_kernel = |def_id: DefId, seen: &mut FxHashSet<DefId>| {
+            if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
+                return;
+            }
+            if !tcx.generics_of(def_id).requires_monomorphization(tcx)
+                && is_offload_kernel(tcx.codegen_fn_attrs(def_id))
+                && seen.insert(def_id)
+            {
+                symbols.push((
+                    ExportedSymbol::NonGeneric(def_id),
+                    SymbolExportInfo {
+                        level: SymbolExportLevel::C,
+                        kind: SymbolExportKind::Text,
+                        used: false,
+                        rustc_std_internal_symbol: false,
+                    },
+                ));
+            }
+        };
+
+        for id in crate_items.free_items() {
+            try_emit_offload_kernel(id.owner_id.to_def_id(), &mut seen);
+        }
+        for id in crate_items.impl_items() {
+            try_emit_offload_kernel(id.owner_id.to_def_id(), &mut seen);
+        }
+    }
+
     // Sort so we get a stable incr. comp. hash.
     symbols.sort_by_cached_key(|s| s.0.symbol_name_for_local_instance(tcx));
 
@@ -259,8 +316,17 @@ fn exported_generic_symbols_provider_local<'tcx>(
 
     let mut symbols: Vec<_> = vec![];
 
-    if tcx.local_crate_exports_generics() {
-        use rustc_hir::attrs::Linkage;
+    let export_generics = tcx.local_crate_exports_generics();
+    let is_device_offload = tcx
+        .sess
+        .opts
+        .unstable_opts
+        .offload
+        .iter()
+        .any(|o| matches!(o, rustc_session::config::Offload::Device(_)));
+
+    if export_generics || is_device_offload {
+        use rustc_attr_ir::{InlineAttr, Linkage};
         use rustc_middle::mono::{MonoItem, Visibility};
         use rustc_middle::ty::InstanceKind;
 
@@ -293,17 +359,23 @@ fn exported_generic_symbols_provider_local<'tcx>(
             is_local
         };
 
-        let is_instantiable_downstream =
-            |did: Option<DefId>, generic_args: GenericArgsRef<'tcx>| {
-                generic_args
-                    .types()
-                    .chain(did.into_iter().map(move |did| tcx.type_of(did).skip_binder()))
-                    .all(move |arg| {
-                        arg.walk().all(|ty| {
-                            ty.as_type().map_or(true, |ty| !is_local_to_current_crate(ty))
-                        })
-                    })
-            };
+        let is_instantiable_downstream = |did: Option<DefId>, generic_args: GenericArgs<'tcx>| {
+            generic_args
+                .types()
+                .chain(did.into_iter().map(move |did| tcx.type_of(did).skip_binder()))
+                .all(move |arg| {
+                    arg.walk()
+                        .all(|ty| ty.as_type().is_none_or(|ty| !is_local_to_current_crate(ty)))
+                })
+        };
+
+        let is_offload_instance = |mono_item: &MonoItem<'tcx>| {
+            if let MonoItem::Fn(instance) = mono_item {
+                is_offload_kernel(tcx.codegen_fn_attrs(instance.def_id()))
+            } else {
+                false
+            }
+        };
 
         // The symbols created in this loop are sorted below it
         #[allow(rustc::potential_query_instability)]
@@ -320,10 +392,10 @@ fn exported_generic_symbols_provider_local<'tcx>(
                 continue;
             }
 
-            if !tcx.sess.opts.share_generics() {
-                if tcx.codegen_fn_attrs(mono_item.def_id()).inline
-                    == rustc_hir::attrs::InlineAttr::Never
-                {
+            let item_is_offload = is_offload_instance(mono_item);
+
+            if !item_is_offload && !tcx.sess.opts.share_generics() {
+                if tcx.codegen_fn_attrs(mono_item.def_id()).inline == InlineAttr::Never {
                     // this is OK, we explicitly allow sharing inline(never) across crates even
                     // without share-generics.
                 } else {
@@ -337,15 +409,22 @@ fn exported_generic_symbols_provider_local<'tcx>(
                 MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
                     let has_generics = args.non_erasable_generics().next().is_some();
 
-                    let should_export =
-                        has_generics && is_instantiable_downstream(Some(def), &args);
+                    let should_export = if item_is_offload {
+                        has_generics
+                    } else {
+                        has_generics && is_instantiable_downstream(Some(def), args)
+                    };
 
                     if should_export {
                         let symbol = ExportedSymbol::Generic(def, args);
                         symbols.push((
                             symbol,
                             SymbolExportInfo {
-                                level: SymbolExportLevel::Rust,
+                                level: if item_is_offload {
+                                    SymbolExportLevel::C
+                                } else {
+                                    SymbolExportLevel::Rust
+                                },
                                 kind: SymbolExportKind::Text,
                                 used: false,
                                 rustc_std_internal_symbol: false,
@@ -362,8 +441,8 @@ fn exported_generic_symbols_provider_local<'tcx>(
 
                     // Drop glue did is always going to be non-local outside of libcore, thus we don't need to check it's locality (which includes invoking `type_of` query).
                     let should_export = match ty.kind() {
-                        ty::Adt(_, args) => is_instantiable_downstream(None, args),
-                        ty::Closure(_, args) => is_instantiable_downstream(None, args),
+                        ty::Adt(_, args) => is_instantiable_downstream(None, *args),
+                        ty::Closure(_, args) => is_instantiable_downstream(None, *args),
                         _ => true,
                     };
 
@@ -425,7 +504,7 @@ fn exported_generic_symbols_provider_local<'tcx>(
 fn upstream_monomorphizations_provider(
     tcx: TyCtxt<'_>,
     (): (),
-) -> DefIdMap<UnordMap<GenericArgsRef<'_>, CrateNum>> {
+) -> DefIdMap<UnordMap<GenericArgs<'_>, CrateNum>> {
     let cnums = tcx.crates(());
 
     let mut instances: DefIdMap<UnordMap<_, _>> = Default::default();
@@ -434,6 +513,14 @@ fn upstream_monomorphizations_provider(
     let async_drop_in_place_fn_def_id = tcx.lang_items().async_drop_in_place_fn();
 
     for &cnum in cnums.iter() {
+        // It should be possible to compile to build a crate against a conditional dependency then
+        // later link that crate without the conditional dependency, so we cannot use exported
+        // generics from conditional dependencies.
+        // https://github.com/rust-lang/rust/issues/159682
+        if tcx.crate_dep_kind(cnum) == CrateDepKind::Conditional {
+            continue;
+        }
+
         for (exported_symbol, _) in tcx.exported_generic_symbols(cnum).iter() {
             let (def_id, args) = match *exported_symbol {
                 ExportedSymbol::Generic(def_id, args) => (def_id, args),
@@ -482,14 +569,14 @@ fn upstream_monomorphizations_provider(
 fn upstream_monomorphizations_for_provider(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Option<&UnordMap<GenericArgsRef<'_>, CrateNum>> {
+) -> Option<&UnordMap<GenericArgs<'_>, CrateNum>> {
     assert!(!def_id.is_local());
     tcx.upstream_monomorphizations(()).get(&def_id)
 }
 
 fn upstream_drop_glue_for_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
+    args: GenericArgs<'tcx>,
 ) -> Option<CrateNum> {
     let def_id = tcx.lang_items().drop_glue_fn()?;
     tcx.upstream_monomorphizations_for(def_id)?.get(&args).cloned()
@@ -497,7 +584,7 @@ fn upstream_drop_glue_for_provider<'tcx>(
 
 fn upstream_async_drop_glue_for_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
+    args: GenericArgs<'tcx>,
 ) -> Option<CrateNum> {
     let def_id = tcx.lang_items().async_drop_in_place_fn()?;
     tcx.upstream_monomorphizations_for(def_id)?.get(&args).cloned()
@@ -734,6 +821,68 @@ pub(crate) fn exporting_symbol_name_for_instance_in_crate<'tcx>(
 ) -> String {
     let undecorated = symbol_name_for_instance_in_crate(tcx, symbol, cnum);
     maybe_emutls_symbol_name(tcx, symbol, &undecorated).unwrap_or(undecorated)
+}
+
+fn strip_numeric_suffix<'a>(base: &'a str, suffix: impl AsRef<str>, fallback: &'a str) -> &'a str {
+    if suffix.as_ref().parse::<u32>().is_ok() { base } else { fallback }
+}
+
+/// COFF `IMAGE_FILE_MACHINE_*` for an arch with decorated symbols, or `None`.
+pub(super) fn coff_machine_for_arch(arch: &Arch) -> Option<u16> {
+    match *arch {
+        Arch::X86 => Some(pe::IMAGE_FILE_MACHINE_I386),
+        Arch::X86_64 => Some(pe::IMAGE_FILE_MACHINE_AMD64),
+        Arch::Arm64EC => Some(pe::IMAGE_FILE_MACHINE_ARM64EC),
+        _ => None,
+    }
+}
+
+/// Undecorated counterpart of [`linking_symbol_name_for_instance_in_crate`].
+pub(super) fn undecorate_coff_symbol<'a>(
+    name: &'a str,
+    machine: u16,
+    kind: SymbolExportKind,
+) -> &'a str {
+    // MSVC C++ mangled names start with '?' and use a completely different
+    // decorating scheme that includes '@@' as structural delimiters.
+    // They must not be subjected to C calling-convention undecoration.
+    if name.starts_with('?') {
+        return name;
+    }
+    match machine {
+        pe::IMAGE_FILE_MACHINE_I386 => {
+            if let Some(rest) = name.strip_prefix('@') {
+                // fastcall: @foo@N -> foo
+                rest.rsplit_once('@')
+                    .map(|(base, suffix)| strip_numeric_suffix(base, suffix, name))
+                    .unwrap_or(name)
+            } else if let Some(stripped) = name.strip_prefix('_') {
+                if let Some((base, suffix)) = stripped.rsplit_once('@') {
+                    // stdcall: _foo@N -> foo
+                    strip_numeric_suffix(base, suffix, stripped)
+                } else {
+                    // cdecl: _foo -> foo
+                    stripped
+                }
+            } else {
+                // vectorcall: foo@@N -> foo
+                name.rsplit_once("@@")
+                    .map(|(base, suffix)| strip_numeric_suffix(base, suffix, name))
+                    .unwrap_or(name)
+            }
+        }
+        pe::IMAGE_FILE_MACHINE_AMD64 => {
+            // vectorcall: foo@@N -> foo
+            name.rsplit_once("@@")
+                .map(|(base, suffix)| strip_numeric_suffix(base, suffix, name))
+                .unwrap_or(name)
+        }
+        pe::IMAGE_FILE_MACHINE_ARM64EC if kind == SymbolExportKind::Text => {
+            // `#` prefix distinguishes ARM64EC text symbols from x64 thunks.
+            name.strip_prefix('#').unwrap_or(name)
+        }
+        _ => name,
+    }
 }
 
 /// On amdhsa, `gpu-kernel` functions have an associated metadata object with a `.kd` suffix.

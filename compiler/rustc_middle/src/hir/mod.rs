@@ -6,6 +6,8 @@ pub mod map;
 pub mod nested_filter;
 pub mod place;
 
+use rustc_attr_ir::Attribute;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
@@ -16,7 +18,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalModId};
 use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
 use rustc_macros::{Decodable, Encodable, StableHash};
-use rustc_span::{ErrorGuaranteed, ExpnId, Span};
+use rustc_span::{ErrorGuaranteed, ExpnId, Span, bug, span_bug};
 
 use crate::query::Providers;
 use crate::ty::TyCtxt;
@@ -106,42 +108,42 @@ impl ModuleItems {
         &self,
         f: impl Fn(LocalDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.nested_bodies[..], |&&id| f(id))
+        try_par_for_each_in(&self.nested_bodies[..], |&id| f(id))
     }
 
     pub fn par_items(
         &self,
         f: impl Fn(ItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.free_items[..], |&&id| f(id))
+        try_par_for_each_in(&self.free_items[..], |&id| f(id))
     }
 
     pub fn par_trait_items(
         &self,
         f: impl Fn(TraitItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.trait_items[..], |&&id| f(id))
+        try_par_for_each_in(&self.trait_items[..], |&id| f(id))
     }
 
     pub fn par_impl_items(
         &self,
         f: impl Fn(ImplItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.impl_items[..], |&&id| f(id))
+        try_par_for_each_in(&self.impl_items[..], |&id| f(id))
     }
 
     pub fn par_foreign_items(
         &self,
         f: impl Fn(ForeignItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.foreign_items[..], |&&id| f(id))
+        try_par_for_each_in(&self.foreign_items[..], |&id| f(id))
     }
 
     pub fn par_opaques(
         &self,
         f: impl Fn(LocalDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.opaques[..], |&&id| f(id))
+        try_par_for_each_in(&self.opaques[..], |&id| f(id))
     }
 }
 
@@ -342,6 +344,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | Node::Synthetic
             | Node::Err(_)
             | Node::Ctor(_)
+            | Node::NestedUseTree(_)
             | Node::Lifetime(_)
             | Node::GenericParam(_)
             | Node::Crate(_)
@@ -349,7 +352,10 @@ impl<'tcx> TyCtxt<'tcx> {
             | Node::WherePredicate(_)
             | Node::PreciseCapturingNonLifetimeArg(_)
             | Node::ConstArgExprField(_)
-            | Node::OpaqueTy(_) => {
+            | Node::OpaqueTy(_)
+            | Node::TestBinderForall(_)
+            | Node::TestBinderExists(_)
+            | Node::TestBinderBoundTypeConstraint(_) => {
                 unreachable!("no sub-expr expected for {parent_node:?}")
             }
         }

@@ -1,10 +1,9 @@
-//@ known-bug: unknown
 // This used to ensure that the next solver prints unsatisfied always-const trait bounds as
 // `const Trait`, but no longer does because GCE is incompatible with the next solver.
 //@ compile-flags: -Znext-solver
 
 #![feature(const_trait_impl, generic_const_exprs)]
-#![allow(incomplete_features)]
+//~^ WARN: `feature(generic_const_exprs)` is not supported with the next-generation trait solver
 
 fn require<T: const Trait>() {}
 
@@ -15,11 +14,14 @@ const trait Trait {
 struct Ty;
 
 impl Trait for Ty {
-    fn make() -> u32 { 0 }
+    fn make() -> u32 {
+        0
+    }
 }
 
 fn main() {
     require::<Ty>();
+    //~^ ERROR: the trait bound `Ty: const Trait` is not satisfied
 }
 
 struct Container<const N: u32>;
@@ -27,7 +29,9 @@ struct Container<const N: u32>;
 // FIXME(const_trait_impl): Somehow emit `the trait bound `T: const Trait`
 // is not satisfied` here instead and suggest changing `Trait` to `const Trait`.
 fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
+//~^ ERROR: the trait bound `T: const Trait` is not satisfied
 
 // FIXME(const_trait_impl): Instead of suggesting `+ const Trait`, suggest
 //                 changing `[const] Trait` to `const Trait`.
 const fn accept1<T: [const] Trait>(_: Container<{ T::make() }>) {}
+//~^ ERROR: the trait bound `T: const Trait` is not satisfied

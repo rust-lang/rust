@@ -1,4 +1,5 @@
 //@ run-pass
+//@ reference: items.union.drop
 #![allow(unused_assignments)]
 
 // Drop works for union itself.

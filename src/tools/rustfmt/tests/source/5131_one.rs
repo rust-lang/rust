@@ -1,4 +1,4 @@
-// rustfmt-imports_granularity: One
+//@ rustfmt-imports_granularity: One
 
 pub use foo::x;
 pub use foo::x as x2;

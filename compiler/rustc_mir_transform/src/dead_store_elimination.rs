@@ -12,7 +12,6 @@
 //!     will still not cause any further changes.
 //!
 
-use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -21,6 +20,7 @@ use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_mir_dataflow::impls::{
     LivenessTransferFunction, MaybeTransitiveLiveLocals, borrowed_locals,
 };
+use rustc_span::bug;
 
 use crate::PassPolicy;
 use crate::simplify::UsedInStmtLocals;
@@ -62,6 +62,13 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
                 visit::PlaceContext::MutatingUse(visit::MutatingUseContext::Call),
                 loc,
             );
+
+            // The logic in LivenessTransferFunction isn't quite what we need; it ignores call
+            // destinations that are just locals because they are killed by the call, which makes
+            // it eligible to be moved-from in the argument list. That's backwards.
+            if !destination.is_indirect() {
+                state.insert(destination.local);
+            }
 
             for (index, arg) in args.iter().map(|a| &a.node).enumerate().rev() {
                 if let Operand::Copy(place) = *arg
@@ -141,8 +148,8 @@ impl<'tcx> crate::MirPass<'tcx> for DeadStoreElimination {
         }
     }
 
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() >= 2)
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 2)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

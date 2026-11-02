@@ -15,7 +15,7 @@ use rustc_hir::{
 use rustc_index::IndexVec;
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::Session;
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::Canonical;
@@ -23,8 +23,8 @@ use crate::mir::FakeReadCause;
 use crate::thir::DerefPatBorrowMode;
 use crate::traits::ObligationCause;
 use crate::ty::{
-    self, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind, GenericArgs,
-    GenericArgsRef, Ty, UserArgs, tls,
+    self, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind, GenericArgs, Ty,
+    UserArgs, tls,
 };
 
 #[derive(TyEncodable, TyDecodable, Debug, StableHash)]
@@ -37,7 +37,7 @@ pub struct TypeckResults<'tcx> {
     type_dependent_defs: ItemLocalMap<Result<(DefKind, DefId), ErrorGuaranteed>>,
 
     /// Resolved definitions for splatted function calls.
-    splatted_defs: ItemLocalMap<Result<SplattedDef, ErrorGuaranteed>>,
+    splatted_defs: ItemLocalMap<Result<SplattedDef<'tcx>, ErrorGuaranteed>>,
 
     /// Resolved field indices for field accesses in expressions (`S { field }`, `obj.field`)
     /// or patterns (`S { field }`). The index is often useful by itself, but to learn more
@@ -54,7 +54,7 @@ pub struct TypeckResults<'tcx> {
     /// of this node. This only applies to nodes that refer to entities
     /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
-    node_args: ItemLocalMap<GenericArgsRef<'tcx>>,
+    node_args: ItemLocalMap<GenericArgs<'tcx>>,
 
     /// This will either store the canonicalized types provided by the user
     /// or the generic parameters that the user explicitly gave (if any) attached
@@ -101,7 +101,7 @@ pub struct TypeckResults<'tcx> {
     /// leads to a `vec![&Box<Option<i32>>, Box<Option<i32>>]`. Empty vectors are not stored.
     ///
     /// See:
-    /// <https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md#definitions>
+    /// <https://rust-lang.github.io/rfcs/2005-match-ergonomics.html#definitions>
     pat_adjustments: ItemLocalMap<Vec<ty::adjustment::PatAdjustment<'tcx>>>,
 
     /// Set of reference patterns that match against a match-ergonomics inserted reference
@@ -295,18 +295,20 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.type_dependent_defs }
     }
 
-    pub fn splatted_defs(&self) -> LocalTableInContext<'_, Result<SplattedDef, ErrorGuaranteed>> {
+    pub fn splatted_defs(
+        &self,
+    ) -> LocalTableInContext<'_, Result<SplattedDef<'tcx>, ErrorGuaranteed>> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.splatted_defs }
     }
 
-    pub fn splatted_def(&self, id: HirId) -> Option<SplattedDef> {
+    pub fn splatted_def(&self, id: HirId) -> Option<SplattedDef<'tcx>> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.splatted_defs.get(&id.local_id).cloned().and_then(|r| r.ok())
     }
 
     pub fn splatted_defs_mut(
         &mut self,
-    ) -> LocalTableInContextMut<'_, Result<SplattedDef, ErrorGuaranteed>> {
+    ) -> LocalTableInContextMut<'_, Result<SplattedDef<'tcx>, ErrorGuaranteed>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.splatted_defs }
     }
 
@@ -355,16 +357,16 @@ impl<'tcx> TypeckResults<'tcx> {
         self.node_types.get(&id.local_id).cloned()
     }
 
-    pub fn node_args_mut(&mut self) -> LocalTableInContextMut<'_, GenericArgsRef<'tcx>> {
+    pub fn node_args_mut(&mut self) -> LocalTableInContextMut<'_, GenericArgs<'tcx>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.node_args }
     }
 
-    pub fn node_args(&self, id: HirId) -> GenericArgsRef<'tcx> {
+    pub fn node_args(&self, id: HirId) -> GenericArgs<'tcx> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.node_args.get(&id.local_id).cloned().unwrap_or_else(|| GenericArgs::empty())
     }
 
-    pub fn node_args_opt(&self, id: HirId) -> Option<GenericArgsRef<'tcx>> {
+    pub fn node_args_opt(&self, id: HirId) -> Option<GenericArgs<'tcx>> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.node_args.get(&id.local_id).cloned()
     }
@@ -431,7 +433,7 @@ impl<'tcx> TypeckResults<'tcx> {
     }
 
     pub fn is_splatted_call(&self, expr: &hir::Expr<'_>) -> bool {
-        matches!(self.splatted_defs().get(expr.hir_id), Some(Ok(SplattedDef { .. })))
+        matches!(self.splatted_defs().get(expr.hir_id), Some(Ok(_)))
     }
 
     /// Returns the computed binding mode for a `PatKind::Binding` pattern
@@ -598,14 +600,62 @@ impl<'tcx> TypeckResults<'tcx> {
 
 /// A resolved splatted function call.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
-pub struct SplattedDef {
-    /// The function DefId, if available (FnPtrs don't have DefIds)
-    pub def_id: Option<DefId>,
-    /// The index of the first argument in the callee's splatted tuple, and the index of the
-    /// splatted tuple argument in the caller.
-    pub arg_index: u16,
-    /// The number of arguments in the splatted tuple.
-    pub arg_count: u16,
+pub enum SplattedDef<'tcx> {
+    /// A resolved FnDef call.
+    FnDef {
+        /// The DefId of the FnDef (used to look up its type).
+        def_id: DefId,
+
+        /// The index of the first argument in the callee's splatted tuple, and the index of the
+        /// splatted tuple argument in the caller.
+        arg_index: u16,
+
+        /// The number of arguments in the splatted tuple.
+        arg_count: u16,
+    },
+
+    /// A resolved FnPtr Call.
+    FnPtr {
+        /// The resolved type of the FnPtr.
+        fn_ptr_type: Ty<'tcx>,
+
+        /// The index of the first argument in the callee's splatted tuple, and the index of the
+        /// splatted tuple argument in the caller.
+        arg_index: u16,
+
+        /// The number of arguments in the splatted tuple.
+        arg_count: u16,
+    },
+}
+
+impl<'tcx> SplattedDef<'tcx> {
+    pub fn def_id(&self) -> Option<DefId> {
+        match self {
+            SplattedDef::FnDef { def_id, .. } => Some(*def_id),
+            SplattedDef::FnPtr { .. } => None,
+        }
+    }
+
+    pub fn fn_ptr_type(&self) -> Option<Ty<'tcx>> {
+        match self {
+            SplattedDef::FnDef { .. } => None,
+            SplattedDef::FnPtr { fn_ptr_type, .. } => Some(*fn_ptr_type),
+        }
+    }
+
+    pub fn arg_index(&self) -> u16 {
+        match self {
+            SplattedDef::FnDef { arg_index, .. } => *arg_index,
+            SplattedDef::FnPtr { arg_index, .. } => *arg_index,
+        }
+    }
+
+    pub fn arg_count(&self) -> u16 {
+        match self {
+            SplattedDef::FnDef { arg_count, .. } => *arg_count,
+            SplattedDef::FnPtr { arg_count, .. } => *arg_count,
+        }
+    }
 }
 
 /// Validate that the given HirId (respectively its `local_id` part) can be
@@ -830,7 +880,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                     return false;
                 }
 
-                iter::zip(user_args.args, BoundVar::ZERO..).all(|(arg, cvar)| {
+                iter::zip(user_args.args.as_slice(), BoundVar::ZERO..).all(|(arg, cvar)| {
                     match arg.kind() {
                         GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Bound(debruijn, b) => {

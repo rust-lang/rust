@@ -8,7 +8,8 @@
 //!
 //! # Examples
 //!
-//! ```no_run
+#![cfg_attr(windows, doc = "```no_run")]
+#![cfg_attr(not(windows), doc = "```ignore (needs windows)")]
 //! use std::fs::File;
 //! use std::os::windows::prelude::*;
 //!
@@ -34,6 +35,10 @@ pub mod net;
 pub mod process;
 pub mod raw;
 pub mod thread;
+
+#[unstable(feature = "codeview_annotation", issue = "163964")]
+#[cfg(windows)]
+pub use core::os::windows::{CodeViewAnnotationArgs, codeview_annotation};
 
 /// A prelude for conveniently writing platform-specific code.
 ///

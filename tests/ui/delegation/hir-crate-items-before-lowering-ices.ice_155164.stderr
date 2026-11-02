@@ -1,8 +1,8 @@
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/hir-crate-items-before-lowering-ices.rs:48:37
+  --> $DIR/hir-crate-items-before-lowering-ices.rs:50:18
    |
-LL |               core::direct_const_arg!({
-   |  _____________________________________^
+LL |               gca!({
+   |  __________________^
 LL | |
 LL | |                 struct W<I>;
 LL | |                 impl<I> W<I> {

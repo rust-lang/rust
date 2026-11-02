@@ -4,12 +4,13 @@
 //! has interior mutability or needs to be dropped, as well as the visitor that emits errors when
 //! it finds operations that are invalid in a certain context.
 
+use rustc_attr_ir::find_attr;
 use rustc_errors::DiagCtxtHandle;
+use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, find_attr};
+use rustc_middle::mir;
 use rustc_middle::ty::{self, PolyFnSig, TyCtxt};
-use rustc_middle::{bug, mir};
-use rustc_span::Symbol;
+use rustc_span::{Symbol, bug};
 
 pub use self::qualifs::Qualif;
 
@@ -107,8 +108,10 @@ pub fn is_fn_or_trait_safe_to_expose_on_stable(tcx: TyCtxt<'_>, def_id: DefId) -
         }
         Some(stab) => {
             // We consider things safe-to-expose if they are stable or if they are marked as
-            // `const_stable_indirect`.
-            stab.is_const_stable() || stab.const_stable_indirect
+            // `const_stable_indirect`. Intrinsics are special so we need to check for those too.
+            stab.is_const_stable()
+                || stab.const_stable_indirect
+                || tcx.intrinsic(def_id).is_some_and(|i| i.const_stable_indirect)
         }
     }
 }

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 fn run_tests_in_dir(env: &HashMap<&str, &str>, dir: &str) -> Result<(), String> {
     run_command_with_env("cargo", &["build", "--locked"], dir, &env)?;
-    run_command_with_env("cargo", &["test"], dir, &env)
+    run_command_with_env("cargo", &["test", "--locked"], dir, &env)
 }
 
 pub fn runner() -> Result<(), String> {
@@ -39,7 +39,7 @@ pub fn runner() -> Result<(), String> {
             &["build", "--locked"]
         };
     run_command_with_env("cargo", options, ".", &env)?;
-    run_command_with_env("cargo", &["test"], ".", &env)?;
+    run_command_with_env("cargo", &["test", "--locked"], ".", &env)?;
 
     // Build and test config_proc_macro
     run_tests_in_dir(&env, "config_proc_macro")?;

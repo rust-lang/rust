@@ -7,7 +7,7 @@
 
 use rustc_abi::{BackendRepr, HasDataLayout, Size, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
+use crate::callconv::{ArgAbi, FnAbi, IndirectMode, Reg, Uniform};
 use crate::spec::HasTargetSpec;
 
 const NUM_ARG_GPRS: u64 = 6;
@@ -29,9 +29,10 @@ where
     classify_arg_ty(cx, arg, &mut arg_gprs_left, true);
     // Ret args cannot be passed via stack, we lower to indirect and let the backend handle the invisible reference
     match arg.mode {
-        super::PassMode::Indirect { attrs: _, meta_attrs: _, ref mut on_stack } => {
-            *on_stack = false;
+        super::PassMode::Indirect { attrs: _, address_space: _, ref mut mode } => {
+            *mode = IndirectMode::Pointer;
         }
+        super::PassMode::IndirectUnsized { .. } => panic!("unsized returns are not supported"),
         _ => {}
     }
 }

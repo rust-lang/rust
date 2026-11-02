@@ -3,15 +3,14 @@ use std::ops::ControlFlow;
 
 use crate::internal_paths::MAYBE_DEF;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::source::{snippet_indent, snippet_with_applicability};
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{eq_expr_value, if_sequence, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Node, StmtKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass, declare_tool_lint};
 use rustc_middle::ty::print::with_forced_trimmed_paths;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
 declare_tool_lint! {

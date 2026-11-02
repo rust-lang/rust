@@ -37,6 +37,7 @@
         target_env = "sgx",
         target_os = "xous",
         target_os = "trusty",
+        target_os = "l4re",
     ))
 ))]
 mod tests;
@@ -47,6 +48,13 @@ use crate::path::{Path, PathBuf};
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, fs as fs_imp};
 use crate::time::SystemTime;
 use crate::{error, fmt};
+
+pub(crate) mod dirs;
+
+#[unstable(feature = "fs_home_dirs", issue = "162082")]
+pub use self::dirs::HomeDirs;
+#[unstable(feature = "fs_media_dirs", issue = "162083")]
+pub use self::dirs::MediaDirs;
 
 /// An object providing access to an open file on the filesystem.
 ///
@@ -184,6 +192,7 @@ pub enum TryLockError {
 ///
 /// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
 #[unstable(feature = "dirfd", issue = "120426")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "FsDir")]
 pub struct Dir {
     inner: fs_imp::Dir,
 }
@@ -196,6 +205,7 @@ pub struct Dir {
 /// times, etc.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "FsMetadata")]
 pub struct Metadata(fs_imp::FileAttr);
 
 /// Iterator over the entries in a directory.
@@ -213,6 +223,7 @@ pub struct Metadata(fs_imp::FileAttr);
 /// the next entry from the OS.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "FsReadDir")]
 pub struct ReadDir(fs_imp::ReadDir);
 
 /// Entries returned by the [`ReadDir`] iterator.
@@ -231,6 +242,7 @@ pub struct ReadDir(fs_imp::ReadDir);
 ///
 /// [changes]: io#platform-specific-behavior
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "FsDirEntry")]
 pub struct DirEntry(fs_imp::DirEntry);
 
 /// Options and flags which can be used to configure how a file is opened.
@@ -337,6 +349,7 @@ pub struct DirBuilder {
 /// }
 /// ```
 #[stable(feature = "fs_read_write_bytes", since = "1.26.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_read")]
 pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
     fn inner(path: &Path) -> io::Result<Vec<u8>> {
         let mut file = File::open(path)?;
@@ -379,6 +392,7 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// }
 /// ```
 #[stable(feature = "fs_read_write", since = "1.26.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_read_to_string")]
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
     fn inner(path: &Path) -> io::Result<String> {
         let mut file = File::open(path)?;
@@ -416,6 +430,7 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 /// }
 /// ```
 #[stable(feature = "fs_read_write_bytes", since = "1.26.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_write")]
 pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
     fn inner(path: &Path, contents: &[u8]) -> io::Result<()> {
         File::create(path)?.write_all(contents)
@@ -442,7 +457,6 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(fs_set_times)]
 /// use std::fs::{self, FileTimes};
 /// use std::time::SystemTime;
 ///
@@ -455,10 +469,11 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
 ///     Ok(())
 /// }
 /// ```
-#[unstable(feature = "fs_set_times", issue = "147455")]
+#[stable(feature = "fs_set_times", since = "1.99.0")]
 #[doc(alias = "utimens")]
 #[doc(alias = "utimes")]
 #[doc(alias = "utime")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_set_times")]
 pub fn set_times<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
     fs_imp::set_times(path.as_ref(), times.0)
 }
@@ -483,7 +498,6 @@ pub fn set_times<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(fs_set_times)]
 /// use std::fs::{self, FileTimes};
 /// use std::time::SystemTime;
 ///
@@ -496,10 +510,11 @@ pub fn set_times<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
-#[unstable(feature = "fs_set_times", issue = "147455")]
+#[stable(feature = "fs_set_times", since = "1.99.0")]
 #[doc(alias = "utimensat")]
 #[doc(alias = "lutimens")]
 #[doc(alias = "lutimes")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_set_times_nofollow")]
 pub fn set_times_nofollow<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
     fs_imp::set_times_nofollow(path.as_ref(), times.0)
 }
@@ -1498,7 +1513,7 @@ impl Read for File {
     }
     #[inline]
     fn is_read_vectored(&self) -> bool {
-        (&&*self).is_read_vectored()
+        (&self).is_read_vectored()
     }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         (&*self).read_to_end(buf)
@@ -1517,7 +1532,7 @@ impl Write for File {
     }
     #[inline]
     fn is_write_vectored(&self) -> bool {
-        (&&*self).is_write_vectored()
+        (&self).is_write_vectored()
     }
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
@@ -1570,7 +1585,66 @@ impl Dir {
             .map(|inner| Self { inner })
     }
 
+    /// Attempts to open a directory at `path` according to `opts`.
+    ///
+    /// This function opens a directory. To open a file instead, see [`File::open`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::{Dir, OpenOptions}, io};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open_with("foo", &OpenOptions::new().read(true))?;
+    ///     let mut f = dir.open_file("bar.txt")?;
+    ///     let contents = io::read_to_string(f)?;
+    ///     assert_eq!(contents, "Hello, world!");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_with<P: AsRef<Path>>(path: P, opts: &OpenOptions) -> io::Result<Self> {
+        fs_imp::Dir::open(path.as_ref(), &opts.0).map(|inner| Self { inner })
+    }
+
+    /// Attempts to open a directory at `path` with the minimum permissions for traversal.
+    ///
+    /// The permissions requested by this function are guaranteed to be sufficient to open a child
+    /// file or folder, but not necessarily to list all children.
+    ///
+    /// # Errors
+    ///
+    /// This function may return an error according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir, io};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let foo = Dir::open_for_traversal("foo")?;
+    ///     let foobar = foo.open_dir("bar")?;
+    ///     let mut foobarbaz = foobar.open_file("baz")?;
+    ///     let contents = io::read_to_string(foobarbaz)?;
+    ///     assert_eq!(contents, "Hello, world!");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_for_traversal<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        fs_imp::Dir::open_for_traversal(path.as_ref()).map(|inner| Self { inner })
+    }
+
     /// Queries metadata about the underlying directory.
+    ///
+    /// This is equivalent to `dir.metadata(".")` but can be more efficient.
     ///
     /// # Examples
     ///
@@ -1580,13 +1654,13 @@ impl Dir {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let dir = Dir::open("foo")?;
-    ///     let metadata = dir.metadata()?;
+    ///     let metadata = dir.self_metadata()?;
     ///     Ok(())
     /// }
     /// ```
     #[unstable(feature = "dirfd", issue = "120426")]
-    pub fn metadata(&self) -> io::Result<Metadata> {
-        self.inner.metadata().map(Metadata)
+    pub fn self_metadata(&self) -> io::Result<Metadata> {
+        self.inner.self_metadata().map(Metadata)
     }
 
     /// Attempts to open a file in read-only mode relative to this directory.
@@ -1710,6 +1784,169 @@ impl Dir {
         to: Q,
     ) -> io::Result<()> {
         self.inner.rename(from.as_ref(), &to_dir.inner, to.as_ref())
+    }
+
+    /// Attempts to create a directory relative to this directory.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To create a directory
+    /// relative to the current working directory, or at an absolute path, see
+    /// [`fs::create_dir`][crate::fs::create_dir].
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.inner.create_dir(path.as_ref())
+    }
+
+    /// Attempts to open a directory in read-only mode relative to this directory.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To open a directory
+    /// relative to the current working directory, or at an absolute path, see [`Dir::open`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let foobar = dir.open_dir("bar")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<Self> {
+        self.inner
+            .open_dir(path.as_ref(), &OpenOptions::new().read(true).0)
+            .map(|inner| Self { inner })
+    }
+
+    /// Attempts to open a directory relative to this directory according to `opts`.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To open a directory
+    /// relative to the current working directory, or at an absolute path, see [`Dir::open`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return errors according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::{Dir, OpenOptions};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let foobar_w = dir.open_dir_with("bar", &OpenOptions::new().write(true))?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_dir_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<Self> {
+        self.inner.open_dir(path.as_ref(), &opts.0).map(|inner| Self { inner })
+    }
+
+    /// Attempts to remove a directory relative to this directory.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To remove a directory
+    /// relative to the current working directory, or at an absolute path, see
+    /// [`fs::remove_dir`][crate::fs::remove_dir].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::Dir};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     dir.remove_dir("bar")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn remove_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.inner.remove_dir(path.as_ref())
+    }
+
+    /// Creates a new `Dir` instance that shares the same underlying directory handle
+    /// as the existing `Dir` instance.
+    ///
+    /// # Examples
+    ///
+    /// Creates two handles for a directory named `foo`:
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let dir_copy = dir.try_clone()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn try_clone(&self) -> io::Result<Self> {
+        Ok(Dir { inner: self.inner.duplicate()? })
+    }
+
+    /// Queries the file system to get information about a file, directory, etc. relative to this
+    /// directory.
+    ///
+    /// This function will traverse symbolic links to query information about the destination file.
+    /// To query metadata about the path itself without following symbolic links, use
+    /// [`symlink_metadata`][Self::symlink_metadata].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let metadata = dir.metadata("subdir/file.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn metadata<P: AsRef<Path>>(&self, path: P) -> io::Result<Metadata> {
+        self.inner.metadata(path.as_ref()).map(Metadata)
+    }
+
+    /// Queries the file system to get information about a file, directory, etc. relative to this
+    /// directory.
+    ///
+    /// This function will return the [`Metadata`] of the exact path without traversing symbolic
+    /// links to a resolved destination file. Using this function on a path that is a file or
+    /// directory (not a symbolic link) will behave the same as [`metadata`][Self::metadata].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let metadata = dir.symlink_metadata("subdir/file.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn symlink_metadata<P: AsRef<Path>>(&self, path: P) -> io::Result<Metadata> {
+        self.inner.symlink_metadata(path.as_ref()).map(Metadata)
     }
 }
 
@@ -2020,10 +2257,9 @@ impl Metadata {
         FileType(self.0.file_type())
     }
 
-    /// Returns `true` if this metadata is for a directory. The
-    /// result is mutually exclusive to the result of
-    /// [`Metadata::is_file`], and will be false for symlink metadata
-    /// obtained from [`symlink_metadata`].
+    /// Returns `true` if this metadata is for a directory. The result is mutually exclusive to the
+    /// result of [`Metadata::is_file`] and [`Metadata::is_symlink`] (i.e., at most one of these
+    /// three methods returns `true`).
     ///
     /// # Examples
     ///
@@ -2043,10 +2279,9 @@ impl Metadata {
         self.file_type().is_dir()
     }
 
-    /// Returns `true` if this metadata is for a regular file. The
-    /// result is mutually exclusive to the result of
-    /// [`Metadata::is_dir`], and will be false for symlink metadata
-    /// obtained from [`symlink_metadata`].
+    /// Returns `true` if this metadata is for a regular file. The result is mutually exclusive to
+    /// the result of [`Metadata::is_dir`] and [`Metadata::is_symlink`] (i.e., at most one of these
+    /// three methods returns `true`).
     ///
     /// When the goal is simply to read from (or write to) the source, the most
     /// reliable way to test the source can be read (or written to) is to open
@@ -2560,6 +2795,20 @@ impl AsInner<fs_imp::FilePermissions> for Permissions {
     }
 }
 
+impl ReadDir {
+    /// Returns a handle for the directory this `ReadDir` is reading.
+    ///
+    /// Whenever possible, the new handle will be created in a race-free manner from the underlying
+    /// handle used by `ReadDir`. However, this may fall back to opening a new handle based on the
+    /// path, which is subject to race conditions if the file system has changed since the `ReadDir`
+    /// was created.
+    // FIXME: before stabilization, ensure that we have a race-free implementation on Windows!
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn dir(&self) -> io::Result<Dir> {
+        self.0.dir().map(|d| Dir { inner: d })
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
@@ -2616,7 +2865,9 @@ impl DirEntry {
     ///
     /// On Windows this function is cheap to call (no extra system calls
     /// needed), but on Unix platforms this function is the equivalent of
-    /// calling `symlink_metadata` on the path.
+    /// calling `symlink_metadata` on the path. In that case, if the file has been renamed or
+    /// replaced since the `DirEntry` was created, this can fail or return the metadata of a
+    /// different file!
     ///
     /// # Examples
     ///
@@ -2649,9 +2900,11 @@ impl DirEntry {
     ///
     /// # Platform-specific behavior
     ///
-    /// On Windows and most Unix platforms this function is free (no extra
-    /// system calls needed), but some Unix platforms may require the equivalent
-    /// call to `symlink_metadata` to learn about the target file type.
+    /// On Windows and most Unix platforms and file systems this function is free (no extra
+    /// system calls needed), but some Unix platforms or file systems may require the equivalent of
+    /// calling `symlink_metadata` to learn about the target file type. In that case, if the file
+    /// has been renamed or replaced since the `DirEntry` was created, this can fail or return the
+    /// file type of a different file!
     ///
     /// # Examples
     ///
@@ -2733,6 +2986,9 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// On Windows, `DeleteFile` is used or `CreateFileW` and `SetInformationByHandle` for readonly files.
 /// Note that, this [may change in the future][changes].
 ///
+/// On Windows, symbolic links to directories cannot currently be removed with this function.
+/// Use [`remove_dir`] for that purpose.
+///
 /// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
@@ -2761,6 +3017,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// ```
 #[doc(alias = "rm", alias = "unlink", alias = "DeleteFile")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_remove_file")]
 pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
     fs_imp::remove_file(path.as_ref())
 }
@@ -2800,8 +3057,9 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
-#[doc(alias = "stat")]
+#[doc(alias = "stat", alias = "GetFileAttributes", alias = "GetFileAttributesEx")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_metadata")]
 pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::metadata(path.as_ref()).map(Metadata)
 }
@@ -2840,8 +3098,9 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///     Ok(())
 /// }
 /// ```
-#[doc(alias = "lstat")]
+#[doc(alias = "lstat", alias = "GetFileAttributes", alias = "GetFileAttributesEx")]
 #[stable(feature = "symlink_metadata", since = "1.1.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_symlink_metadata")]
 pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::symlink_metadata(path.as_ref()).map(Metadata)
 }
@@ -2890,8 +3149,79 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// ```
 #[doc(alias = "mv", alias = "MoveFile", alias = "MoveFileEx")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_rename")]
 pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> {
     fs_imp::rename(from.as_ref(), to.as_ref())
+}
+
+/// Renames a file or directory to a new name, returning [`AlreadyExists`] if `to` already
+/// exists.
+///
+/// Unlike [`fs::rename`], the destination is never overwritten. The check happens as part of the
+/// same operation, which avoids check-then-rename races.
+///
+/// If the system crashes in the middle, it may be possible to end up with both copies of the file
+/// existing, but it should not be possible to end up with zero copies, or with a half-written file.
+///
+/// This will not work if the new name is on a different mount point.
+///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to:
+///
+/// * [renameat2] with `RENAME_NOREPLACE` on Linux and Android
+/// * `renamex_np` with `RENAME_EXCL` on Apple platforms
+/// * [MoveFileExW] without the `MOVEFILE_REPLACE_EXISTING` flag, with a fallback to
+///   `SetFileInformationByHandle`, on Windows
+/// * `link` followed by `unlink` on other Unix platforms and on WASI
+/// * Otherwise, this function returns [`Unsupported`]
+///
+/// The `link` and `unlink` fallback is also used at runtime on Linux, Android and Apple platforms
+/// when the kernel or the filesystem does not support the flag, so which of these applies can
+/// differ between filesystems on the same machine.
+///
+/// Note that, this [may change in the future][changes].
+///
+/// [changes]: io#platform-specific-behavior
+/// [renameat2]: https://man7.org/linux/man-pages/man2/renameat2.2.html
+/// [MoveFileExW]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw
+/// [`AlreadyExists`]: crate::io::ErrorKind::AlreadyExists
+/// [`Unsupported`]: crate::io::ErrorKind::Unsupported
+/// [`fs::rename`]: crate::fs::rename
+///
+/// # Errors
+///
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * `from` does not exist.
+/// * The user lacks permissions to view contents.
+/// * `from` and `to` are on separate filesystems.
+/// * `to` already exists.
+/// * The platform does not support this operation.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(rename_noreplace)]
+/// use std::fs;
+/// use std::io::ErrorKind;
+///
+/// fn main() -> std::io::Result<()> {
+///     // Renames a.txt to b.txt, b.txt does not exist yet.
+///     fs::rename_noreplace("a.txt", "b.txt")?;
+///
+///     // b.txt exists now, so this fails instead of silently overwriting it.
+///     let err = fs::rename_noreplace("c.txt", "b.txt").unwrap_err();
+///     assert_eq!(err.kind(), ErrorKind::AlreadyExists);
+///     Ok(())
+/// }
+/// ```
+#[doc(alias = "renameat2", alias = "renamex_np", alias = "MoveFileEx", alias = "RENAME_NOREPLACE")]
+#[unstable(feature = "rename_noreplace", issue = "161427")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_rename_noreplace")]
+pub fn rename_noreplace<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> {
+    fs_imp::rename_noreplace(from.as_ref(), to.as_ref())
 }
 
 /// Copies the contents of one file to another. This function will also
@@ -2950,9 +3280,11 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// }
 /// ```
 #[doc(alias = "cp")]
+#[doc(alias = "copy_file_range")]
 #[doc(alias = "CopyFile", alias = "CopyFileEx")]
 #[doc(alias = "fclonefileat", alias = "fcopyfile")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_copy")]
 pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
     fs_imp::copy(from.as_ref(), to.as_ref())
 }
@@ -2999,6 +3331,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// ```
 #[doc(alias = "CreateHardLink", alias = "linkat")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_hard_link")]
 pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     fs_imp::hard_link(original.as_ref(), link.as_ref())
 }
@@ -3065,6 +3398,7 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Re
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_read_link")]
 pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     fs_imp::read_link(path.as_ref())
 }
@@ -3108,6 +3442,7 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 #[doc(alias = "realpath")]
 #[doc(alias = "GetFinalPathNameByHandle")]
 #[stable(feature = "fs_canonicalize", since = "1.5.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_canonicalize")]
 pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     fs_imp::canonicalize(path.as_ref())
 }
@@ -3195,7 +3530,9 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
+#[doc(alias = "mkdir", alias = "CreateDirectory")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_create_dir_all")]
 pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     DirBuilder::new().recursive(true).create(path.as_ref())
 }
@@ -3211,6 +3548,9 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function currently corresponds to the `rmdir` function on Unix
 /// and the `RemoveDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
+///
+/// On Windows, this can also be used to remove symbolic links to directories.
+/// On Unix, [`remove_file`] must be used for that purpose.
 ///
 /// [changes]: io#platform-specific-behavior
 ///
@@ -3241,6 +3581,7 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// ```
 #[doc(alias = "rmdir", alias = "RemoveDirectory")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_remove_dir")]
 pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
     fs_imp::remove_dir(path.as_ref())
 }
@@ -3249,7 +3590,9 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// carefully!
 ///
 /// This function does **not** follow symbolic links and it will simply remove the
-/// symbolic link itself.
+/// symbolic link itself. If `path` itself is a symbolic link to a directory, it will get
+/// removed. If it is a symbolic link to a file, behavior is platform-specific:
+/// currently, it will get removed on Unix-like systems but not on Windows.
 ///
 /// # Platform-specific behavior
 ///
@@ -3269,8 +3612,9 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// not be used in security-sensitive contexts:
 /// - **Miri**: Even when emulating targets where the underlying implementation will protect against
 ///   TOCTOU races, Miri will not do so.
-/// - **QNX**, **Redox OS**, **VxWorks**: This function does not protect against TOCTOU races, as
-///   the underlying platform does not implement the required platform support to do so.
+/// - **ESP-IDF**, **Horizon**, **PS Vita**, **QNX**, **Redox OS**, **VxWorks**: This function does
+///   not protect against TOCTOU races, as the underlying platform does not implement the required
+///   platform support to do so.
 ///
 /// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
 /// [changes]: io#platform-specific-behavior
@@ -3304,7 +3648,9 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
+#[doc(alias = "rm")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_remove_dir_all")]
 pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     fs_imp::remove_dir_all(path.as_ref())
 }
@@ -3384,6 +3730,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// ```
 #[doc(alias = "ls", alias = "opendir", alias = "FindFirstFile", alias = "FindNextFile")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_read_dir")]
 pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
     fs_imp::read_dir(path.as_ref()).map(ReadDir)
 }
@@ -3435,6 +3782,7 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 /// ```
 #[doc(alias = "chmod", alias = "SetFileAttributes")]
 #[stable(feature = "set_permissions", since = "1.1.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_set_permissions")]
 pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result<()> {
     fs_imp::set_permissions(path.as_ref(), perm.0)
 }
@@ -3448,21 +3796,21 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to:
-/// * `open` with `O_NOFOLLOW` flag enabled + `fchmod` on WASI
-/// * `fchmodat` function with the flag `AT_SYMLINK_NOFOLLOW` enabled
-///   on Unix platforms
-/// * The flag `FILE_FLAG_OPEN_REPARSE_POINT` is enabled and then the
-///   permissions of the file is set through `SetFileInformationByHandle`
-///   on Windows.
-/// * On all other platforms, the behavior remains the same with
-/// [`fs::set_permissions`].
-///
-/// [`fs::set_permissions`]: crate::fs::set_permissions
+/// This function currently corresponds to the following underlying operations:
+/// * Android: returns [`Unsupported`] on all files.
+/// * Linux, BSD-based platforms, QNX, NTO: `fchmodat` with `AT_SYMLINK_NOFOLLOW`.
+///   If that is not supported, we fall back to:
+///   * Unix-based platforms with symlinks: `open` with `O_NOFOLLOW` followed by
+///   [`fs::set_permissions`].
+///   * Unix-based platforms without symlinks: `open` followed by [`fs::set_permissions`].
+/// * Windows: `CreateFileW` with `FILE_FLAG_OPEN_REPARSE_POINT` followed
+///   by `SetFileInformationByHandle`.
 ///
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
+///
+/// [`fs::set_permissions`]: crate::fs::set_permissions
 ///
 /// # Errors
 ///
@@ -3472,10 +3820,8 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 /// * `path` does not exist.
 /// * The user lacks the permission to change attributes of the file.
 ///
-/// Note: On Linux, this will result in a [`Unsupported`] error
-/// if the final element is a symlink. On BSD-based systems, the
-/// behavior can vary from symlink permission bits changing or
-/// there being no effects on symlinks
+/// Note: On Linux and other Unix-based platforms with symlinks (non-BSD-based),
+/// this will result in an [`Unsupported`] error if the final element is a symlink.
 ///
 /// [`Unsupported`]: crate::io::ErrorKind::Unsupported
 ///
@@ -3488,14 +3834,15 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 /// fn main() -> std::io::Result<()> {
 ///     let mut perms = fs::symlink_metadata("foo.txt")?.permissions();
 ///     perms.set_readonly(true);
-///     // This should result in an error on certain platforms
-///     // or succeed in modifying the permissions of a symlink
+///     // This should result in an error on certain platforms or
+///     // succeed in modifying the permissions of a symlink
 ///     fs::set_permissions_nofollow("foo.txt", perms)?;
 ///     Ok(())
 /// }
 /// ```
 #[doc(alias = "fchmodat", alias = "SetFileInformationByHandle")]
 #[unstable(feature = "set_permissions_nofollow", issue = "141607")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_set_permissions_nofollow")]
 pub fn set_permissions_nofollow<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result<()> {
     fs_imp::set_permissions_nofollow(path.as_ref(), perm.0)
 }
@@ -3567,7 +3914,7 @@ impl DirBuilder {
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
         // if path's parent is None, it is "/" path, which should
         // return Ok immediately
-        if path == Path::new("") || path.parent() == None {
+        if path.is_empty() || path.parent().is_none() {
             return Ok(());
         }
 
@@ -3578,7 +3925,7 @@ impl DirBuilder {
             // for relative paths like "foo/bar", the parent of
             // "foo" will be "" which there's no need to invoke
             // a mkdir syscall on
-            if ancestor == Path::new("") || ancestor.parent() == None {
+            if ancestor.is_empty() || ancestor.parent().is_none() {
                 break;
             }
 
@@ -3643,6 +3990,7 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// [`Path::exists`]: crate::path::Path::exists
 /// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
 #[stable(feature = "fs_try_exists", since = "1.81.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_exists")]
 #[inline]
 pub fn exists<P: AsRef<Path>>(path: P) -> io::Result<bool> {
     fs_imp::exists(path.as_ref())

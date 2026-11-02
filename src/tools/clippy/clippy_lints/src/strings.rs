@@ -1,14 +1,13 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _};
 use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_context};
-use clippy_utils::{SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, sym};
+use clippy_utils::{SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, sym};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_hir::{BinOpKind, Expr, ExprKind, Node};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -93,28 +92,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Check if the string is transformed to byte array and cast back to string.
-    ///
-    /// ### Why is this bad?
-    /// It's unnecessary, the string can be used directly.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// &"Hello World!"[6..11];
-    /// ```
-    #[clippy::version = "1.50.0"]
-    pub STRING_FROM_UTF8_AS_BYTES,
-    complexity,
-    "casting string slices to byte slices and back"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for the `as_bytes` method called on string literals
     /// that contain only ASCII characters.
     ///
@@ -183,37 +160,11 @@ declare_clippy_lint! {
     "slicing a string"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Warns about calling `str::trim` (or variants) before `str::split_whitespace`.
-    ///
-    /// ### Why is this bad?
-    /// `split_whitespace` already ignores leading and trailing whitespace.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// " A B C ".trim().split_whitespace();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// " A B C ".split_whitespace();
-    /// ```
-    #[clippy::version = "1.62.0"]
-    pub TRIM_SPLIT_WHITESPACE,
-    style,
-    "using `str::trim()` or alike before `str::split_whitespace`"
-}
-
 declare_lint_pass!(StrToString => [STR_TO_STRING]);
 
 declare_lint_pass!(StringAdd => [STRING_ADD, STRING_ADD_ASSIGN, STRING_SLICE]);
 
-declare_lint_pass!(StringLitAsBytes => [
-    STRING_FROM_UTF8_AS_BYTES,
-    STRING_LIT_AS_BYTES,
-]);
-
-declare_lint_pass!(TrimSplitWhitespace => [TRIM_SPLIT_WHITESPACE]);
+declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES]);
 
 impl<'tcx> LateLintPass<'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
@@ -286,45 +237,11 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use rustc_ast::LitKind;
 
-        if let ExprKind::Call(fun, [bytes_arg]) = e.kind
-            // Find `std::str::converts::from_utf8` or `std::primitive::str::from_utf8`
-            && let Some(sym::str_from_utf8 | sym::str_inherent_from_utf8) =
-                fun.res(cx).opt_diag_name(cx)
-
-            // Find string::as_bytes
-            && let ExprKind::AddrOf(BorrowKind::Ref, _, args) = bytes_arg.kind
-            && let ExprKind::Index(left, right, _) = args.kind
-            && let (method_names, expressions, _) = method_calls(left, 1)
-            && method_names == [sym::as_bytes]
-            && expressions.len() == 1
-            && expressions[0].1.is_empty()
-
-            // Check for slicer
-            && let ExprKind::Struct(&qpath, _, _) = right.kind
-            && cx.tcx.qpath_is_lang_item(qpath, LangItem::Range)
-        {
-            let mut applicability = Applicability::MachineApplicable;
-            let string_expression = &expressions[0].0;
-
-            let snippet_app = snippet_with_applicability(cx, string_expression.span, "..", &mut applicability);
-            let (right_snip, _) = snippet_with_context(cx, right.span, e.span.ctxt(), "..", &mut applicability);
-
-            span_lint_and_sugg(
-                cx,
-                STRING_FROM_UTF8_AS_BYTES,
-                e.span,
-                "calling a slice of `as_bytes()` with `from_utf8` should be not necessary",
-                "try",
-                format!("Some(&{snippet_app}[{right_snip}])"),
-                applicability,
-            );
-        }
-
-        if !e.span.in_external_macro(cx.sess().source_map())
-            && let ExprKind::MethodCall(path, receiver, ..) = &e.kind
+        if let ExprKind::MethodCall(path, receiver, ..) = &e.kind
             && path.ident.name == sym::as_bytes
             && let ExprKind::Lit(lit) = &receiver.kind
             && let LitKind::Str(lit_content, _) = &lit.node
+            && !e.span.in_external_macro(cx.sess().source_map())
         {
             let callsite = snippet(cx, receiver.span.source_callsite(), r#""foo""#);
             let mut applicability = Applicability::MachineApplicable;
@@ -440,36 +357,4 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
             );
         }
     }
-}
-
-impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
-        let tyckres = cx.typeck_results();
-        if let ExprKind::MethodCall(path, split_recv, [], split_ws_span) = expr.kind
-            && path.ident.name == sym::split_whitespace
-            && let Some(split_ws_def_id) = tyckres.type_dependent_def_id(expr.hir_id)
-            && cx.tcx.is_diagnostic_item(sym::str_split_whitespace, split_ws_def_id)
-            && let ExprKind::MethodCall(path, _trim_recv, [], trim_span) = split_recv.kind
-            && let trim_fn_name @ (sym::trim | sym::trim_start | sym::trim_end) = path.ident.name
-            && let Some(trim_def_id) = tyckres.type_dependent_def_id(split_recv.hir_id)
-            && is_one_of_trim_diagnostic_items(cx, trim_def_id)
-        {
-            span_lint_and_sugg(
-                cx,
-                TRIM_SPLIT_WHITESPACE,
-                trim_span.with_hi(split_ws_span.lo()),
-                format!("found call to `str::{trim_fn_name}` before `str::split_whitespace`"),
-                format!("remove `{trim_fn_name}()`"),
-                String::new(),
-                Applicability::MachineApplicable,
-            );
-        }
-    }
-}
-
-fn is_one_of_trim_diagnostic_items(cx: &LateContext<'_>, trim_def_id: DefId) -> bool {
-    matches!(
-        cx.tcx.get_diagnostic_name(trim_def_id),
-        Some(sym::str_trim | sym::str_trim_start | sym::str_trim_end)
-    )
 }

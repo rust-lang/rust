@@ -9,6 +9,8 @@
 
 //@ needs-profiler-runtime
 //@ ignore-cross-compile
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use std::path::Path;
 

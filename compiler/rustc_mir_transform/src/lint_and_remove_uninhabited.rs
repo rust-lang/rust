@@ -1,7 +1,7 @@
 use rustc_hir::def::DefKind;
+use rustc_lint_defs::builtin::UNREACHABLE_CODE;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::builtin::UNREACHABLE_CODE;
 
 use crate::PassPolicy;
 use crate::diagnostics::UnreachableDueToUninhabited;
@@ -83,7 +83,7 @@ impl<'tcx> crate::MirPass<'tcx> for LintAndRemoveUninhabited {
         }
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Removing visibly uninhabited return edges determines the control flow seen by MIR checks.
         // Cannot remove UB: removing the return edge would *introduce* UB if the call actually returned.
         PassPolicy::Required
@@ -126,7 +126,7 @@ fn find_unreachable_code_from<'tcx>(
     match term.kind {
         // The user does not care for `goto` and compiler-generated drops. If the target block is
         // only reachable through those terminators, continue searching there.
-        TerminatorKind::Goto { target } | TerminatorKind::Drop { target, .. } => {
+        TerminatorKind::Goto { target, .. } | TerminatorKind::Drop { target, .. } => {
             if &body.basic_blocks.predecessors()[target][..] == &[bb] {
                 find_unreachable_code_from(target, body)
             } else {

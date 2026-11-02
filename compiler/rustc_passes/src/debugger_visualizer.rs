@@ -1,10 +1,8 @@
 //! Detecting usage of the `#[debugger_visualizer]` attribute.
 
 use rustc_ast::{ItemKind, ast};
+use rustc_attr_ir::{Attribute, AttributeKind, DebugVisualizer};
 use rustc_attr_parsing::AttributeParser;
-use rustc_expand::base::resolve_path;
-use rustc_hir::Attribute;
-use rustc_hir::attrs::{AttributeKind, DebugVisualizer};
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
@@ -19,7 +17,7 @@ impl DebuggerVisualizerCollector<'_> {
             AttributeParser::parse_limited_sym(&self.sess, attrs, &[sym::debugger_visualizer])
         {
             for DebugVisualizer { span, visualizer_type, path } in visualizers {
-                let file = match resolve_path(&self.sess, path.as_str(), span) {
+                let file = match self.sess.resolve_path(path.as_str(), span) {
                     Ok(file) => file,
                     Err(err) => {
                         err.emit();

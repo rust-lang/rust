@@ -8,12 +8,12 @@ use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{self, Mutability};
 use rustc_middle::ty::{self, TyCtxt, TypeVisitor};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
-use rustc_mir_dataflow::{Analysis, ResultsCursor};
+use rustc_mir_dataflow::{Analysis as _, ResultsCursor};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
 
 /// Collects the possible borrowers of each local.
-/// For example, `b = &a; c = &a;` will make `b` and (transitively) `c`
+/// For example, `b = &a; c = &b;` will make `b` and (transitively) `c`
 /// possible borrowers of `a`.
 struct PossibleBorrowerVisitor<'a, 'b, 'tcx> {
     possible_borrower: TransitiveRelation,
@@ -157,7 +157,7 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
     match rvalue {
         Use(op, _) | Repeat(op, _) | Cast(_, op, _) | UnaryOp(_, op) => visit_op(op),
         Aggregate(_, ops) => ops.iter().for_each(visit_op),
-        BinaryOp(_, box (lhs, rhs)) => {
+        BinaryOp(_, (lhs, rhs)) => {
             visit_op(lhs);
             visit_op(rhs);
         },
@@ -170,7 +170,7 @@ pub struct PossibleBorrowerMap<'b, 'tcx> {
     /// Mapping `Local -> its possible borrowers`
     pub map: FxHashMap<mir::Local, DenseBitSet<mir::Local>>,
     maybe_live: ResultsCursor<'b, 'tcx, MaybeStorageLive<'tcx>>,
-    // Caches to avoid allocation of `DenseBitSet` on every query
+    /// Caches to avoid allocation of `DenseBitSet` on every query
     pub bitset: (DenseBitSet<mir::Local>, DenseBitSet<mir::Local>),
 }
 
@@ -232,6 +232,7 @@ impl<'b, 'tcx> PossibleBorrowerMap<'b, 'tcx> {
         self.bitset.0.is_empty()
     }
 
+    /// Returns `true` if the storage for `local` may be live at `at`
     pub fn local_is_alive_at(&mut self, local: mir::Local, at: mir::Location) -> bool {
         self.maybe_live.seek_after_primary_effect(at);
         self.maybe_live.get().contains(local)

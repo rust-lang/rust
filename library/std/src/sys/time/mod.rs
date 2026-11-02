@@ -1,8 +1,4 @@
 cfg_select! {
-    target_os = "hermit" => {
-        mod hermit;
-        use hermit as imp;
-    }
     target_os = "motor" => {
         use moto_rt::time as imp;
     }
@@ -18,11 +14,7 @@ cfg_select! {
         mod uefi;
         use uefi as imp;
     }
-    any(
-        target_os = "teeos",
-        target_family = "unix",
-        target_os = "wasi",
-    ) => {
+    any(target_os = "hermit", target_os = "teeos", target_family = "unix", target_os = "wasi") => {
         mod unix;
         use unix as imp;
     }
@@ -32,8 +24,8 @@ cfg_select! {
         mod unsupported;
 
         mod imp {
-            pub use super::vexos::Instant;
             pub use super::unsupported::{SystemTime, UNIX_EPOCH};
+            pub use super::vexos::Instant;
         }
     }
     target_os = "windows" => {

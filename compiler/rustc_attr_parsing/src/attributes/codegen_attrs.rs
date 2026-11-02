@@ -1,16 +1,19 @@
-use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{
-    CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy,
+use rustc_attr_ir::{
+    CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, UsedBy, find_attr,
 };
+use rustc_feature::AttributeStability;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition::Edition2024;
+use rustc_structures::SanitizerSet;
 
 use super::prelude::*;
 use crate::attributes::AttributeSafety;
-use crate::session_diagnostics::{
+use crate::context::FinalizeCheckFn;
+use crate::diagnostics::{
     EmptyExportName, EmptySection, NakedFunctionIncompatibleAttribute, NullOnExport,
     NullOnObjcClass, NullOnObjcSelector, NullOnSection, ObjcClassExpectedStringLiteral,
     ObjcSelectorExpectedStringLiteral, SanitizeInvalidStatic, TargetFeatureOnLangItem,
+    TrackCallerOnLangItem,
 };
 use crate::target_checking::Policy::AllowSilent;
 
@@ -26,7 +29,7 @@ impl SingleAttributeParser for OptimizeParser {
         Allow(Target::Method(MethodKind::Inherent)),
     ]);
     const TEMPLATE: AttributeTemplate = template!(List: &["size", "speed", "none"]);
-    const STABILITY: AttributeStability = unstable!(optimize_attribute);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let single = cx.expect_single_element_list(args, cx.attr_span)?;
@@ -325,6 +328,40 @@ impl AttributeParser for NakedParser {
 
         Some(AttributeKind::Naked(span))
     }
+
+    fn deferred_finalize_check(&self) -> Option<(FinalizeCheckFn, Span)> {
+        // FIXME(rtjkro): Currently, we're enum matching on `cx.target` instead of `cx.ast_target`
+        // because `AstTarget::Method` doesn't contain `MethodKind` yet. In the future, when this field is available to `AstTarget::Method`,
+        // update this check to use `cx.ast_target` instead of `cx.target`.
+        Some((
+            |cx, _| match cx.target {
+                Target::Fn
+                | Target::Method(
+                    MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
+                ) => {
+                    let fn_sig =
+                        cx.ast_target.get_fn_sig().expect("missing fn signature for AST target");
+                    let Some(abi) = cx.ast_target.get_abi() else {
+                        return;
+                    };
+
+                    if abi.is_rustic_abi() && !cx.features().naked_functions_rustic_abi() {
+                        feature_err(
+                            cx.sess(),
+                            sym::naked_functions_rustic_abi,
+                            fn_sig.span,
+                            format!(
+                                "`#[naked]` is currently unstable on `extern {abi}` functions",
+                            ),
+                        )
+                        .emit();
+                    }
+                }
+                _ => {}
+            },
+            self.span?,
+        ))
+    }
 }
 
 pub(crate) struct TrackCallerParser;
@@ -346,6 +383,34 @@ impl NoArgsAttributeParser for TrackCallerParser {
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::TrackCaller;
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        match cx.target {
+            Target::Fn => {
+                // `#[track_caller]` is not valid on weak lang items because they are called via
+                // `extern` declarations and `#[track_caller]` would alter their ABI.
+                if let Some(item) = find_attr!(cx.parsed_attrs, Lang(item) => item)
+                    && item.is_weak()
+                {
+                    cx.emit_err(TrackCallerOnLangItem {
+                        attr_span,
+                        name: item.name(),
+                        sig_span: cx.target_span,
+                    });
+                }
+            }
+            Target::Closure if !cx.features().closure_track_caller() => {
+                feature_err(
+                    cx.sess(),
+                    sym::closure_track_caller,
+                    attr_span,
+                    "`#[track_caller]` on closures is currently unstable",
+                )
+                .emit();
+            }
+            _ => {}
+        }
+    }
 }
 
 pub(crate) struct NoMangleParser;
@@ -541,7 +606,7 @@ impl CombineAttributeParser for TargetFeatureParser {
         parse_tf_attribute(cx, args)
     }
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         // `#[target_feature]` is incompatible with lang item functions,
         // except on WASM where calling target-feature functions is safe (see #84988).
         if !cx.sess().target.is_like_wasm && !cx.sess().opts.actually_rustdoc {
@@ -650,6 +715,7 @@ impl SingleAttributeParser for SanitizeParser {
         r#"kcfi = "on|off""#,
         r#"memory = "on|off""#,
         r#"memtag = "on|off""#,
+        r#"safestack = "on|off""#,
         r#"shadow_call_stack = "on|off""#,
         r#"thread = "on|off""#,
         r#"realtime = "nonblocking|blocking|caller""#,
@@ -696,6 +762,7 @@ impl SingleAttributeParser for SanitizeParser {
                 sym::kcfi => apply(SanitizerSet::KCFI),
                 sym::memory => apply(SanitizerSet::MEMORY),
                 sym::memtag => apply(SanitizerSet::MEMTAG),
+                sym::safestack => apply(SanitizerSet::SAFESTACK),
                 sym::shadow_call_stack => apply(SanitizerSet::SHADOWCALLSTACK),
                 sym::thread => apply(SanitizerSet::THREAD),
                 sym::hwaddress | sym::kernel_hwaddress => {
@@ -722,6 +789,7 @@ impl SingleAttributeParser for SanitizeParser {
                             sym::kcfi,
                             sym::memory,
                             sym::memtag,
+                            sym::safestack,
                             sym::shadow_call_stack,
                             sym::thread,
                             sym::hwaddress,

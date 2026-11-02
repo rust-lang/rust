@@ -1,4 +1,4 @@
-Per ]8;;https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md\RFC 401]8;;\, if you have a function declaration [2mfoo[0m:
+Per ]8;;https://rust-lang.github.io/rfcs/0401-coercions.html\RFC 401]8;;\, if you have a function declaration [2mfoo[0m:
 
 [95mstruct[0m[2m[97m [0m[33mS[0m[2m[97m;[0m[2m[97m
 

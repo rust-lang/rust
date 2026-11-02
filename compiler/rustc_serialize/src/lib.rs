@@ -3,10 +3,10 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::internal)]
-#![doc(test(attr(allow(unused_variables), deny(warnings), allow(internal_features))))]
+#![doc(test(attr(allow(unused_variables), deny(warnings))))]
 #![feature(core_intrinsics)]
 #![feature(min_specialization)]
-#![feature(never_type)]
+#![feature(nonzero_internals)]
 #![feature(sized_hierarchy)]
 // tidy-alphabetical-end
 
@@ -14,7 +14,7 @@
 #[cfg(test)]
 extern crate self as rustc_serialize;
 
-pub use self::serialize::{Decodable, Decoder, Encodable, Encoder};
+pub use self::serialize::{ContextOrd, Decodable, Decoder, Encodable, Encoder};
 
 mod serialize;
 

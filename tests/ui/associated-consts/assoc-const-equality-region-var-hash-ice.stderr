@@ -21,7 +21,7 @@ LL | fn foo() -> dyn Trait<'r, K = {}> {
    |                           ^^^^^^
    |
    = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
-   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = help: add `#![feature(gca_min_const_items)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0308]: mismatched types

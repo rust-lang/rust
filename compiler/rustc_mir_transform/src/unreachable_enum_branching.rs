@@ -2,12 +2,12 @@
 
 use rustc_abi::Variants;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_middle::bug;
 use rustc_middle::mir::{
     BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_span::bug;
 use tracing::trace;
 
 use crate::PassPolicy;
@@ -78,8 +78,8 @@ fn variant_discriminants<'tcx>(
 }
 
 impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() > 0)
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 1)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

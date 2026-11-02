@@ -1,7 +1,7 @@
-use rustc_middle::bug;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::bug;
 
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;
@@ -88,6 +88,11 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     NonDivergingIntrinsic::Assume(..) => INSTR_COST,
                     NonDivergingIntrinsic::CopyNonOverlapping(..) => CALL_PENALTY,
                 };
+            }
+            StatementKind::Assign((_, Rvalue::Use(Operand::Constant(ref constant), _)))
+                if matches!(constant.const_, Const::Val(ConstValue::ZeroSized, _)) =>
+            {
+                // Assigning a ZST constant emits no code.
             }
             StatementKind::Assign(..) => self.penalty += INSTR_COST,
             _ => {}

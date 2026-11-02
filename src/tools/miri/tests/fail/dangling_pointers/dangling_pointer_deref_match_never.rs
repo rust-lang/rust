@@ -2,7 +2,6 @@
 //@compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
 
 #![allow(unreachable_code)]
-#![feature(never_type)]
 
 fn main() {
     let p = {

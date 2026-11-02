@@ -11,7 +11,7 @@ use ide_db::{
 };
 use span::Edition;
 use syntax::{
-    AstNode, AstPtr, AstToken, NodeOrToken,
+    AstNode, AstPtr, NodeOrToken,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxNodePtr, SyntaxToken, T, ast, match_ast,
 };
@@ -28,15 +28,9 @@ pub(super) fn token(
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
     in_tt: bool,
 ) -> Option<Highlight> {
-    if let Some(comment) = ast::Comment::cast(token.clone()) {
-        let h = HlTag::Comment;
-        return Some(match comment.kind().doc {
-            Some(_) => h | HlMod::Documentation,
-            None => h.into(),
-        });
-    }
-
     let h = match token.kind() {
+        COMMENT => HlTag::Comment.into(),
+        INNER_DOC_COMMENT | OUTER_DOC_COMMENT => HlTag::Comment | HlMod::Documentation,
         STRING | BYTE_STRING | C_STRING => HlTag::StringLiteral.into(),
         INT_NUMBER | FLOAT_NUMBER => HlTag::NumericLiteral.into(),
         BYTE => HlTag::ByteLiteral.into(),

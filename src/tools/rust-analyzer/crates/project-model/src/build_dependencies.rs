@@ -211,7 +211,10 @@ impl WorkspaceBuildScripts {
             let proc_macro_dylibs: Vec<(String, AbsPathBuf)> = std::fs::read_dir(target_libdir)?
                 .filter_map(|entry| {
                     let dir_entry = entry.ok()?;
-                    if dir_entry.file_type().ok()?.is_file() {
+                    // Use `fs::metadata` rather than `DirEntry::file_type` so that symlinks
+                    // are followed; sysroots assembled out of symlinks (e.g. by nix) link
+                    // the proc-macro dylibs into the target libdir.
+                    if std::fs::metadata(dir_entry.path()).ok()?.is_file() {
                         let path = dir_entry.path();
                         let extension = path.extension()?;
                         if extension == std::env::consts::DLL_EXTENSION {
@@ -462,9 +465,7 @@ impl WorkspaceBuildScripts {
                     cmd.arg(target_dir.as_ref());
                 }
 
-                if let Some(target) = &config.target {
-                    cmd.args(["--target", target]);
-                }
+                toolchain::cargo_use_targets(toolchain, &mut cmd, config.target.as_slice());
                 let mut lockfile_copy = None;
                 if let Some(toolchain) = toolchain {
                     let lockfile_path =
@@ -473,6 +474,10 @@ impl WorkspaceBuildScripts {
                     if let Some(lockfile_copy) = &lockfile_copy {
                         requires_unstable_options = true;
                         match lockfile_copy.usage {
+                            LockfileUsage::WithFlag => {
+                                cmd.arg("--lockfile-path");
+                                cmd.arg(lockfile_copy.path.as_str());
+                            }
                             LockfileUsage::WithEnvVarUnstable => {
                                 cmd.arg("-Zlockfile-path");
                                 cmd.env(

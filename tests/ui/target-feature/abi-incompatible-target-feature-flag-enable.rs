@@ -19,5 +19,4 @@ extern crate minicore;
 use minicore::*;
 
 //~? WARN must be disabled to ensure that the ABI of the current target can be implemented correctly
-//[riscv]~? WARN unstable feature specified for `-Ctarget-feature`
 //[x86]~? WARN use a soft-float target instead

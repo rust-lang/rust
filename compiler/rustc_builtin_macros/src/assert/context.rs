@@ -1,8 +1,8 @@
-use rustc_ast::token::{self, Delimiter, IdentIsRaw};
+use rustc_ast::token::{self, Delimiter, IdentKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{
-    BinOpKind, BorrowKind, DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MethodCall,
-    Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind,
+    BinOpKind, BorrowKind, DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, ItemKind, MacCall, Mutability,
+    Path, Stmt, StructRest, UnOp, UseTree, UseTreeAndId, UseTreeKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -97,14 +97,12 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///
     /// use ::core::asserting::{ ... };
     fn build_initial_imports(&self) -> Stmt {
-        let nested_tree = |this: &Self, sym| {
-            (
-                UseTree {
-                    prefix: this.cx.path(this.span, vec![Ident::with_dummy_span(sym)]),
-                    kind: UseTreeKind::Simple(None),
-                },
-                DUMMY_NODE_ID,
-            )
+        let nested_tree = |this: &Self, sym| UseTreeAndId {
+            inner: UseTree {
+                prefix: this.cx.path_name(this.span, sym),
+                kind: UseTreeKind::Simple(None),
+            },
+            id: DUMMY_NODE_ID,
         };
         self.cx.stmt_item(
             self.span,
@@ -112,7 +110,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 self.span,
                 thin_vec![self.cx.attr_nested_word(sym::allow, sym::unused_imports, self.span)],
                 ItemKind::Use(UseTree {
-                    prefix: self.cx.path(self.span, self.cx.std_path(&[sym::asserting])),
+                    prefix: self.cx.std_path(self.span, &[sym::asserting]),
                     kind: UseTreeKind::Nested {
                         items: thin_vec![
                             nested_tree(self, sym::TryCaptureGeneric),
@@ -127,10 +125,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
 
     /// Takes the conditional expression of `assert!` and then wraps it inside `unlikely`
     fn build_unlikely(&self, cond_expr: Box<Expr>) -> Box<Expr> {
-        let unlikely_path = self.cx.std_path(&[sym::intrinsics, sym::unlikely]);
-        self.cx.expr_call(
+        self.cx.expr_call_intrinsic(
             self.span,
-            self.cx.expr_path(self.cx.path(self.span, unlikely_path)),
+            sym::unlikely,
             thin_vec![self.cx.expr(self.span, ExprKind::Unary(UnOp::Not, cond_expr))],
         )
     }
@@ -153,7 +150,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     } else {
                         format!(
                             "Assertion failed: {escaped_expr_str}\nWith captures:\n{}",
-                            &self.fmt_string
+                            self.fmt_string
                         )
                     }),
                     suffix: None,
@@ -165,7 +162,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         let captures = self.capture_decls.iter().flat_map(|cap| {
             [
                 TokenTree::token_joint(
-                    token::Ident(cap.ident.name, IdentIsRaw::No),
+                    token::Ident(cap.ident.name, IdentKind::Normal),
                     cap.ident.span,
                 ),
                 TokenTree::token_alone(token::Comma, self.span),
@@ -323,7 +320,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Yeet(_)
             | ExprKind::Become(_)
             | ExprKind::Yield(_)
-            | ExprKind::DirectConstArg(_)
+            | ExprKind::GcaMacro(_)
             | ExprKind::UnsafeBinderCast(..) => {}
         }
     }
@@ -344,13 +341,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
         let curr_capture_idx = self.capture_decls.len();
         let capture_string = format!("__capture{curr_capture_idx}");
         let ident = Ident::new(Symbol::intern(&capture_string), self.span);
-        let init_std_path = self.cx.std_path(&[sym::asserting, sym::Capture, sym::new]);
-        let init = self.cx.expr_call(
-            self.span,
-            self.cx.expr_path(self.cx.path(self.span, init_std_path)),
-            ThinVec::new(),
-        );
-        let capture = Capture { decl: self.cx.stmt_let(self.span, true, ident, init), ident };
+        let init_std_path = self.cx.std_path(self.span, &[sym::asserting, sym::Capture, sym::new]);
+        let init = self.cx.expr_call(self.span, self.cx.expr_path(init_std_path), ThinVec::new());
+        let capture = Capture { decl: self.cx.stmt_let(self.span, true, ident.name, init), ident };
         self.capture_decls.push(capture);
         self.manage_try_capture(ident, curr_capture_idx, expr);
     }
@@ -368,7 +361,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         expr: &mut Box<Expr>,
     ) {
         let local_bind_string = format!("__local_bind{curr_capture_idx}");
-        let local_bind = Ident::new(Symbol::intern(&local_bind_string), self.span);
+        let local_bind = Symbol::intern(&local_bind_string);
         self.local_bind_decls.push(self.cx.stmt_let(
             self.span,
             false,
@@ -377,30 +370,23 @@ impl<'cx, 'a> Context<'cx, 'a> {
         ));
         let wrapper = self.cx.expr_call(
             self.span,
-            self.cx.expr_path(
-                self.cx.path(self.span, self.cx.std_path(&[sym::asserting, sym::Wrapper])),
-            ),
-            thin_vec![self.cx.expr_path(Path::from_ident(local_bind))],
+            self.cx.expr_path(self.cx.std_path(self.span, &[sym::asserting, sym::Wrapper])),
+            thin_vec![self.cx.expr_path(self.cx.path_name(self.span, local_bind))],
         );
         let try_capture_call = self
             .cx
-            .stmt_expr(expr_method_call(
-                self.cx,
-                PathSegment {
-                    args: None,
-                    id: DUMMY_NODE_ID,
-                    ident: Ident::new(sym::try_capture, self.span),
-                },
-                expr_paren(self.cx, self.span, self.cx.expr_addr_of(self.span, wrapper)),
+            .stmt_expr(self.cx.expr_method_call(
+                self.span,
+                self.cx.expr_paren(self.span, self.cx.expr_addr_of(self.span, wrapper)),
+                Ident::new(sym::try_capture, self.span),
                 thin_vec![expr_addr_of_mut(
                     self.cx,
                     self.span,
                     self.cx.expr_path(Path::from_ident(capture)),
                 )],
-                self.span,
             ))
             .add_trailing_semicolon();
-        let local_bind_path = self.cx.expr_path(Path::from_ident(local_bind));
+        let local_bind_path = self.cx.expr_path(self.cx.path_name(self.span, local_bind));
         let rslt = if self.is_consumed {
             let ret = self.cx.stmt_expr(local_bind_path);
             self.cx.expr_block(self.cx.block(self.span, thin_vec![try_capture_call, ret]))
@@ -449,18 +435,4 @@ fn escape_to_fmt(s: &str) -> String {
 
 fn expr_addr_of_mut(cx: &ExtCtxt<'_>, sp: Span, e: Box<Expr>) -> Box<Expr> {
     cx.expr(sp, ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, e))
-}
-
-fn expr_method_call(
-    cx: &ExtCtxt<'_>,
-    seg: PathSegment,
-    receiver: Box<Expr>,
-    args: ThinVec<Box<Expr>>,
-    span: Span,
-) -> Box<Expr> {
-    cx.expr(span, ExprKind::MethodCall(Box::new(MethodCall { seg, receiver, args, span })))
-}
-
-fn expr_paren(cx: &ExtCtxt<'_>, sp: Span, e: Box<Expr>) -> Box<Expr> {
-    cx.expr(sp, ExprKind::Paren(e))
 }

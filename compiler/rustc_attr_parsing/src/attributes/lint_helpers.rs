@@ -1,9 +1,8 @@
+use rustc_attr_ir::{ReprAttr, find_attr};
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::ReprAttr;
-use rustc_hir::find_attr;
 
 use super::prelude::*;
-use crate::session_diagnostics::RustcPubTransparent;
+use crate::diagnostics::RustcPubTransparent;
 
 pub(crate) struct RustcAsPtrParser;
 impl NoArgsAttributeParser for RustcAsPtrParser {
@@ -30,7 +29,7 @@ impl NoArgsAttributeParser for RustcPubTransparentParser {
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPubTransparent;
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         // `#[rustc_pub_transparent]` may only be applied to `#[repr(transparent)]` types.
         let is_transparent = find_attr!(
             cx.parsed_attrs,

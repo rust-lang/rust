@@ -1,5 +1,3 @@
-//@ revisions: old next
-//@[next] compile-flags: -Znext-solver=coherence
 //@ check-pass
 
 // Regression test for issue #90662

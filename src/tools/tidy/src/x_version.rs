@@ -6,7 +6,7 @@ use semver::Version;
 use crate::diagnostics::{CheckId, TidyCtx};
 
 pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("x_version").path(root));
+    let check = tidy_ctx.start_check(CheckId::new("x_version").path(root));
     let cargo_list = Command::new(cargo).args(["install", "--list"]).stdout(Stdio::piped()).spawn();
 
     let child = match cargo_list {
@@ -49,7 +49,7 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
         if let Some(expected) = get_x_wrapper_version(root, cargo) {
             if installed < expected {
                 println!(
-                    "Current version of x is {installed}, but the latest version is {expected}\nConsider updating to the newer version of x by running `cargo install --path src/tools/x`"
+                    "Current version of x is {installed}, but the latest version is {expected}\nConsider updating to the newer version of x by running `cargo install --locked --path src/tools/x`"
                 )
             }
         } else {

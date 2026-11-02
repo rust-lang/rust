@@ -9,10 +9,13 @@
 //@[arm] compile-flags: --target=armv8r-none-eabihf -Ctarget-cpu=cortex-r4
 //@[arm] needs-llvm-components: arm
 
-// For now this is just a warning.
-//@ build-pass
+// check-fail
+
 //@ ignore-backends: gcc
 //@ add-minicore
+// Don't inherit the target-cpu above for minicore, to avoid errors when building that.
+//@ minicore-compile-flags: -Ctarget-cpu=generic
+//@[x86] minicore-compile-flags: -Ctarget-feature=+sse2
 
 #![feature(no_core)]
 #![no_core]
@@ -20,4 +23,4 @@
 extern crate minicore;
 use minicore::*;
 
-//~? WARN must be enabled to ensure that the ABI of the current target can be implemented correctly
+//[x86,arm]~? ERROR must be enabled to ensure that the ABI of the current target can be implemented correctly

@@ -9,8 +9,7 @@ use std::process::ExitStatus;
 use rustc_abi::NumScalableVectors;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, IntoDiagArg,
-    Level, msg,
+    Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic, IntoDiagArg, Level, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -96,10 +95,6 @@ pub(crate) struct Ld64UnimplementedModifier;
 #[derive(Diagnostic)]
 #[diag("`as-needed` modifier not supported for current linker")]
 pub(crate) struct LinkerUnsupportedModifier;
-
-#[derive(Diagnostic)]
-#[diag("exporting symbols not implemented yet for L4Bender")]
-pub(crate) struct L4BenderExportingSymbolsUnimplemented;
 
 #[derive(Diagnostic)]
 #[diag("error enumerating natvis directory: {$error}")]
@@ -207,8 +202,8 @@ pub enum LinkRlibError {
 
 pub(crate) struct ThorinErrorWrapper(pub thorin::Error);
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for ThorinErrorWrapper {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for ThorinErrorWrapper {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let build = |msg| Diag::new(dcx, level, msg);
         match self.0 {
             thorin::Error::ReadInput(_) => build(msg!("failed to read input file")),
@@ -260,9 +255,6 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ThorinErrorWrapper {
             }
             thorin::Error::ParseUnitAbbreviations(_) => {
                 build(msg!("failed to parse unit abbreviations"))
-            }
-            thorin::Error::ParseUnitAttribute(_) => {
-                build(msg!("failed to parse unit attribute"))
             }
             thorin::Error::ParseUnitHeader(_) => {
                 build(msg!("failed to parse unit header"))
@@ -342,8 +334,8 @@ pub(crate) struct LinkingFailed<'a> {
     pub sysroot_dir: PathBuf,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
-    fn into_diag(mut self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for LinkingFailed<'_> {
+    fn into_diag(mut self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag =
             Diag::new(dcx, level, msg!("linking with `{$linker_path}` failed: {$exit_status}"));
         diag.arg("linker_path", format!("{}", self.linker_path.display()));
@@ -471,8 +463,8 @@ pub(crate) struct LinkExeUnexpectedError;
 
 pub(crate) struct LinkExeStatusStackBufferOverrun;
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for LinkExeStatusStackBufferOverrun {
-    fn into_diag(self, dcx: rustc_errors::DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+impl<'a> Diagnostic<'a> for LinkExeStatusStackBufferOverrun {
+    fn into_diag(self, dcx: rustc_errors::DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(dcx, level, msg!("0xc0000409 is `STATUS_STACK_BUFFER_OVERRUN`"));
         diag.note(msg!(
             "this may have been caused by a program abort and not a stack buffer overrun"
@@ -703,7 +695,7 @@ pub(crate) struct StaticlibHideInternalSymbolsUnsupported {
 
 #[derive(Diagnostic)]
 #[diag(
-    "-Zstaticlib-rename-internal-symbols only supports ELF and Mach-O targets, but the target uses `{$binary_format}`"
+    "-Zstaticlib-rename-internal-symbols only supports ELF, Mach-O, and COFF targets, but the target uses `{$binary_format}`"
 )]
 pub(crate) struct StaticlibRenameInternalSymbolsUnsupported {
     pub binary_format: String,
@@ -1103,7 +1095,7 @@ pub(crate) struct TargetFeatureSafeTrait {
 
 #[derive(Diagnostic)]
 #[diag("target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}")]
-pub(crate) struct ForbiddenTargetFeatureAttr<'a> {
+pub(crate) struct InternalOnlyTargetFeatureAttr<'a> {
     #[primary_span]
     pub span: Span,
     pub feature: &'a str,
@@ -1201,7 +1193,13 @@ pub(crate) struct XcrunSdkPathWarning {
 pub(crate) struct Aarch64SoftfloatNeon;
 
 #[derive(Diagnostic)]
-#[diag("unknown feature specified for `-Ctarget-feature`: `{$feature}`")]
+#[diag(
+    "enabling the `sse` target feature on the current target is unsupported due to LLVM backend issues"
+)]
+pub(crate) struct X86SoftfloatSse;
+
+#[derive(Diagnostic)]
+#[diag("ignoring feature with missing prefix in `-Ctarget-feature`: `{$feature}`")]
 #[note("features must begin with a `+` to enable or `-` to disable it")]
 pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
     pub feature: &'a str,
@@ -1220,6 +1218,10 @@ pub(crate) enum PossibleFeature<'a> {
 #[note(
     "it is still passed through to the codegen backend, but use of this feature might be unsound and the behavior of this feature can change in the future"
 )]
+#[note(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+#[note("for more information, see issue #162235 <https://github.com/rust-lang/rust/issues/162235>")]
 pub(crate) struct UnknownCTargetFeature<'a> {
     pub feature: &'a str,
     #[subdiagnostic]
@@ -1229,6 +1231,10 @@ pub(crate) struct UnknownCTargetFeature<'a> {
 #[derive(Diagnostic)]
 #[diag("unstable feature specified for `-Ctarget-feature`: `{$feature}`")]
 #[note("{$note}; its behavior can change in the future")]
+#[note(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+#[note("for more information, see issue #162235 <https://github.com/rust-lang/rust/issues/162235>")]
 pub(crate) struct UnstableCTargetFeature<'a> {
     pub feature: &'a str,
     pub note: &'a str,
@@ -1236,7 +1242,7 @@ pub(crate) struct UnstableCTargetFeature<'a> {
 
 #[derive(Diagnostic)]
 #[diag("target feature `{$feature}` cannot be {$enabled} with `-Ctarget-feature`: {$reason}")]
-pub(crate) struct ForbiddenCTargetFeature<'a> {
+pub(crate) struct InternalOnlyCTargetFeature<'a> {
     pub feature: &'a str,
     pub enabled: &'a str,
     pub reason: &'a str,
@@ -1244,7 +1250,7 @@ pub(crate) struct ForbiddenCTargetFeature<'a> {
         "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
     )]
     #[note(
-        "for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>"
+        "for more information, see issue #162235 <https://github.com/rust-lang/rust/issues/162235>"
     )]
     pub future_compat_note: bool,
 }
@@ -1259,8 +1265,8 @@ pub(crate) struct TargetFeatureDisableOrEnable<'a> {
 #[help("add the missing features in a `target_feature` attribute")]
 pub(crate) struct MissingFeatures;
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for TargetFeatureDisableOrEnable<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(
             dcx,
             level,
@@ -1340,3 +1346,43 @@ pub(crate) struct LtoProcMacro;
 #[diag("cannot prefer dynamic linking when performing LTO")]
 #[note("only 'staticlib', 'bin', and 'cdylib' outputs are supported with LTO")]
 pub(crate) struct DynamicLinkingWithLTO;
+
+#[derive(Diagnostic)]
+#[diag("could not find native static library `{$libname}`, perhaps an -L flag is missing?")]
+pub(crate) struct MissingNativeLibrary<'a> {
+    libname: &'a str,
+    #[subdiagnostic]
+    suggest_name: Option<SuggestLibraryName<'a>>,
+}
+
+impl<'a> MissingNativeLibrary<'a> {
+    pub(crate) fn new(libname: &'a str, verbatim: bool) -> Self {
+        // if it looks like the user has provided a complete filename rather just the bare lib name,
+        // then provide a note that they might want to try trimming the name
+        let suggested_name = if !verbatim {
+            if let Some(libname) = libname.strip_circumfix("lib", ".a") {
+                // this is a unix style filename so trim prefix & suffix
+                Some(libname)
+            } else if let Some(libname) = libname.strip_suffix(".lib") {
+                // this is a Windows style filename so just trim the suffix
+                Some(libname)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Self {
+            libname,
+            suggest_name: suggested_name
+                .map(|suggested_name| SuggestLibraryName { suggested_name }),
+        }
+    }
+}
+
+#[derive(Subdiagnostic)]
+#[help("only provide the library name `{$suggested_name}`, not the full filename")]
+pub(crate) struct SuggestLibraryName<'a> {
+    suggested_name: &'a str,
+}

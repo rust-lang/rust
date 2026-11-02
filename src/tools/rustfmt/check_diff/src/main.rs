@@ -2,7 +2,8 @@ use std::io::Error;
 use std::process::ExitCode;
 
 use check_diff::{
-    Edition, StyleEdition, check_diff, clone_repositories_for_diff_check, compile_rustfmt,
+    Edition, ReleaseChannel, StyleEdition, check_diff, clone_repositories_for_diff_check,
+    compile_rustfmt,
 };
 use clap::Parser;
 use tempfile::tempdir;
@@ -67,6 +68,8 @@ struct CliInputs {
     // Choosing 16 as the default since that's a common multiple of available CPU cores.
     #[arg(short, long, default_value_t = std::num::NonZeroU8::new(16).unwrap())]
     worker_threads: std::num::NonZeroU8,
+    #[arg(long, default_value = "stable")]
+    release_channel: ReleaseChannel,
 }
 
 fn main() -> Result<ExitCode, Error> {
@@ -85,9 +88,10 @@ fn main() -> Result<ExitCode, Error> {
         args.style_edition,
         args.commit_hash,
         args.rustfmt_config.as_deref(),
+        args.release_channel,
     );
 
-    let check_diff_runners = match compilation_result {
+    let diff_checker = match compilation_result {
         Ok(runner) => runner,
         Err(e) => {
             error!("Failed to compile rustfmt:\n{e:?}");
@@ -99,7 +103,7 @@ fn main() -> Result<ExitCode, Error> {
     let repositories = clone_repositories_for_diff_check(REPOS);
 
     info!("Starting the Diff Check");
-    let errors = check_diff(&check_diff_runners, &repositories, args.worker_threads);
+    let errors = check_diff(&diff_checker, &repositories, args.worker_threads);
 
     if errors.is_empty() {
         info!("No diff found 😊");

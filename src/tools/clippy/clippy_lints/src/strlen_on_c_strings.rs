@@ -1,14 +1,14 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::visitors::is_expr_unsafe;
 use clippy_utils::{match_libc_symbol, sym};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, LangItem, Node, UnsafeSource};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, Node, UnsafeSource};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// and suggest calling `count_bytes()` instead.
     ///
     /// ### Why is this bad?
-    /// libc::strlen is an unsafe function, which we don't need to call
+    /// `libc::strlen` is an unsafe function, which we don't need to call
     /// if all we want to know is the length of the c-string.
     ///
     /// ### Example
@@ -45,7 +45,7 @@ pub struct StrlenOnCStrings {
 
 impl StrlenOnCStrings {
     pub fn new(conf: &Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 

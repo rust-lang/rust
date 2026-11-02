@@ -1,4 +1,4 @@
-break tests/ui/locals_value_shapes.rs:29
+break tests/ui/locals_value_shapes.rs:49
 continue
 locals
 print 0
@@ -8,5 +8,12 @@ print 7
 print 8
 print 13
 print 15
+print 17
+print 18
+print 19
+print 20
+print 23
+print 24
+print 25
 print 999
 quit

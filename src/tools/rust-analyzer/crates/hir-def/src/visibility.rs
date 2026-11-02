@@ -278,6 +278,11 @@ impl Visibility {
             }
         }
     }
+
+    #[inline]
+    pub fn is_public(&self) -> bool {
+        matches!(self, Visibility::Public)
+    }
 }
 
 #[salsa::tracked]
@@ -324,7 +329,7 @@ pub fn visibility_from_ast(
 #[salsa::tracked]
 impl AssocItemId {
     /// Resolve visibility of an assoc item.
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn assoc_visibility(self, db: &dyn SourceDatabase) -> Visibility {
         match self {
             AssocItemId::FunctionId(function_id) => {

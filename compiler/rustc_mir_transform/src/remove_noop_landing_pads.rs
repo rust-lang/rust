@@ -12,14 +12,14 @@ use crate::patch::MirPatch;
 pub(super) struct RemoveNoopLandingPads;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        // FIXME: isn't this an optimization? Or is the LLVM code so terrible we want this even with
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // FIXME: Should this really run on opt-level 0? Or is the LLVM code so terrible we want this even with
         // "no" optimizations?
-        PassPolicy::optional_non_optimization(sess.panic_strategy().unwinds())
+        PassPolicy::optional(ctx.panic_strategy().unwinds())
     }
 
-    #[instrument(level = "debug", skip(self, _tcx, body))]
-    fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    #[instrument(level = "debug", skip(self, tcx, body))]
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
         debug!(?def_id);
 
@@ -33,7 +33,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
             return;
         }
 
-        let nop_landing_pads = find_noop_landing_pads(body, None);
+        let nop_landing_pads = find_noop_landing_pads(tcx, body, None);
 
         if nop_landing_pads.is_empty() {
             debug!("no nop landing pads in MIR");
@@ -74,10 +74,12 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
 impl RemoveNoopLandingPads {
     fn is_nop_landing_pad<'tcx>(
         &self,
+        tcx: TyCtxt<'tcx>,
         bbdata: &BasicBlockData<'tcx>,
         body: &Body<'tcx>,
         nop_landing_pads: &DenseBitSet<BasicBlock>,
-        extra: Option<&ExtraInfo<'tcx>>,
+        // Extra post-monomorphization info that allows more cases to be identified.
+        extra: Option<(Instance<'tcx>, ty::TypingEnv<'tcx>)>,
     ) -> bool {
         for stmt in &bbdata.statements {
             match &stmt.kind {
@@ -120,15 +122,15 @@ impl RemoveNoopLandingPads {
                 terminator.successors().all(|succ| nop_landing_pads.contains(succ))
             }
             TerminatorKind::Drop { place, .. } => {
-                if let Some(extra) = extra {
-                    let ty = place.ty(body, extra.tcx).ty;
-                    debug!("monomorphize: instance={:?}", extra.instance);
-                    let ty = extra.instance.instantiate_mir_and_normalize_erasing_regions(
-                        extra.tcx,
-                        extra.typing_env,
-                        ty::EarlyBinder::bind(extra.tcx, ty),
+                if let Some((instance, typing_env)) = extra {
+                    let ty = place.ty(body, tcx).ty;
+                    debug!("monomorphize: instance={instance:?}");
+                    let ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                        tcx,
+                        typing_env,
+                        ty::EarlyBinder::bind(tcx, ty),
                     );
-                    let drop_fn = Instance::resolve_drop_glue(extra.tcx, ty);
+                    let drop_fn = Instance::resolve_drop_glue(tcx, ty);
                     if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) = drop_fn.def {
                         // no need to drop anything, if all of our successors are also no-op then we
                         // can be skipped.
@@ -151,31 +153,28 @@ impl RemoveNoopLandingPads {
     }
 }
 
-/// This provides extra information that allows further analysis.
-///
-/// Used by rustc_codegen_ssa.
-pub struct ExtraInfo<'tcx> {
-    pub tcx: TyCtxt<'tcx>,
-    pub instance: Instance<'tcx>,
-    pub typing_env: ty::TypingEnv<'tcx>,
+/// Hook impl for [`TyCtxt::find_noop_landing_pads_for_instance`].
+pub(crate) fn find_noop_landing_pads_for_instance<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    instance: Instance<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+) -> DenseBitSet<BasicBlock> {
+    find_noop_landing_pads(tcx, body, Some((instance, typing_env)))
 }
 
-pub fn find_noop_landing_pads<'tcx>(
+fn find_noop_landing_pads<'tcx>(
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    extra: Option<ExtraInfo<'tcx>>,
+    extra: Option<(Instance<'tcx>, ty::TypingEnv<'tcx>)>,
 ) -> DenseBitSet<BasicBlock> {
     let mut nop_landing_pads = DenseBitSet::new_empty(body.basic_blocks.len());
 
     // This is a post-order traversal, so that if A post-dominates B
     // then A will be visited before B.
-    let postorder: Vec<_> = traversal::postorder(body).map(|(bb, _)| bb).collect();
-    for bb in postorder {
-        let is_nop_landing_pad = RemoveNoopLandingPads.is_nop_landing_pad(
-            &body.basic_blocks[bb],
-            body,
-            &nop_landing_pads,
-            extra.as_ref(),
-        );
+    for (bb, bb_data) in traversal::postorder(body) {
+        let is_nop_landing_pad =
+            RemoveNoopLandingPads.is_nop_landing_pad(tcx, bb_data, body, &nop_landing_pads, extra);
         if is_nop_landing_pad {
             nop_landing_pads.insert(bb);
         }

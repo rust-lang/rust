@@ -1,15 +1,14 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/150354>
 //@ edition: 2024
 
-#![allow(incomplete_features)]
-#![feature(min_generic_const_args, macroless_generic_const_args, adt_const_params)]
+#![feature(gca_adts, gca_min_const_items, gca_macroless_args, adt_const_params)]
 
 #[derive(Eq, PartialEq, core::marker::ConstParamTy)]
 struct Foo;
 
 trait Trait {
-
-    type const ASSOC: u32;
+    #[rustc_always_gca]
+    const ASSOC: u32;
 }
 
 fn foo<const N: Foo>() {}

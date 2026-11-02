@@ -7,8 +7,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::{fn_has_unsatisfiable_clauses, peel_blocks, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, intravisit};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -22,7 +21,7 @@ declare_clippy_lint! {
     /// need to be dropped, this can enable an even more efficient implementation that
     /// does not need to track any additional state.
     ///
-    /// https://doc.rust-lang.org/std/macro.thread_local.html
+    /// <https://doc.rust-lang.org/std/macro.thread_local.html>
     ///
     /// ### Example
     /// ```no_run
@@ -50,7 +49,7 @@ pub struct MissingConstForThreadLocal {
 
 impl MissingConstForThreadLocal {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -60,10 +59,11 @@ fn is_thread_local_initializer(
     fn_kind: intravisit::FnKind<'_>,
     span: rustc_span::Span,
 ) -> Option<bool> {
-    let macro_def_id = span.source_callee()?.macro_def_id?;
     Some(
-        cx.tcx.is_diagnostic_item(sym::thread_local_macro, macro_def_id)
-            && matches!(fn_kind, intravisit::FnKind::ItemFn(..)),
+        matches!(fn_kind, intravisit::FnKind::ItemFn(..))
+            && cx
+                .tcx
+                .is_diagnostic_item(sym::thread_local_macro, span.source_callee()?.macro_def_id?),
     )
 }
 

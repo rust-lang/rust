@@ -1,18 +1,19 @@
+use std::ops::ControlFlow;
+
 use itertools::Itertools as _;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint_defs::builtin::{REFINING_IMPL_TRAIT_INTERNAL, REFINING_IMPL_TRAIT_REACHABLE};
-use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_signature};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
 };
-use rustc_span::Span;
 use rustc_span::def_id::ModId;
+use rustc_span::{Span, span_bug};
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{ObligationCtxt, elaborate, normalize_param_env_or_error};
 
@@ -72,8 +73,10 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         return;
     }
 
-    let mut collector = ImplTraitInTraitCollector { tcx, types: FxIndexSet::default() };
-    trait_m_sig.visit_with(&mut collector);
+    let mut collector = ImplTraitInTraitCollector { tcx, depth: 0, types: FxIndexSet::default() };
+    if trait_m_sig.visit_with(&mut collector).is_break() {
+        return;
+    }
 
     // Bound that we find on RPITITs in the trait signature.
     let mut trait_bounds = vec![];
@@ -145,7 +148,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         .into_iter()
         .chain(tcx.clauses_of(trait_m.def_id).instantiate_own(tcx, trait_m_to_impl_m_args))
         .map(|(clause, _)| clause.skip_norm_wip());
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
+    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
     let param_env = normalize_param_env_or_error(tcx, param_env, ObligationCause::dummy());
 
     let ref infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
@@ -179,7 +182,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         param_env,
         Unnormalized::new_wip(trait_m_sig.inputs_and_output),
     ));
-    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+    if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
         tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (selection)");
         return;
     }
@@ -189,7 +192,9 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         return;
     }
     // Resolve any lifetime variables that may have been introduced during normalization.
-    let Ok((trait_bounds, impl_bounds)) = infcx.fully_resolve((trait_bounds, impl_bounds)) else {
+    let Ok((trait_bounds, impl_bounds)) =
+        infcx.deeply_resolve_via_region_graph((trait_bounds, impl_bounds))
+    else {
         // If resolution didn't fully complete, we cannot continue checking RPITIT refinement, and
         // delay a bug as the original code contains load-bearing errors.
         tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (resolution)");
@@ -263,28 +268,43 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
 
 struct ImplTraitInTraitCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
+    depth: usize,
     types: FxIndexSet<ty::ProjectionAliasTy<'tcx>>,
 }
 
+/// Once depth exceeds `tcx.recursion_limit()`, the visitor immediately breaks
+/// the entire traversal using `ControlFlow::Break(())`.
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
-    fn visit_ty(&mut self, ty: Ty<'tcx>) {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         if let ty::Alias(_, alias) = *ty.kind()
             && let Some(proj) = alias.try_to_projection()
             && self.tcx.is_impl_trait_in_trait(proj.kind)
         {
+            if !self.tcx.recursion_limit().value_within_limit(self.depth) {
+                self.tcx.dcx().span_delayed_bug(
+                    self.tcx.def_span(proj.kind),
+                    "recursion limit exceeded while collecting implied RPITIT bounds",
+                );
+                return ControlFlow::Break(());
+            }
             if self.types.insert(proj) {
+                self.depth += 1;
                 for (pred, _) in self
                     .tcx
                     .explicit_item_bounds(proj.kind)
                     .iter_instantiated_copied(self.tcx, proj.args)
                     .map(Unnormalized::skip_norm_wip)
                 {
-                    pred.visit_with(self);
+                    pred.visit_with(self)?;
                 }
+                self.depth -= 1;
             }
         } else {
-            ty.super_visit_with(self);
+            ty.super_visit_with(self)?;
         }
+        ControlFlow::Continue(())
     }
 }
 

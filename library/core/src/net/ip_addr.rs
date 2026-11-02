@@ -305,6 +305,35 @@ impl IpAddr {
         }
     }
 
+    /// Returns the unspecified IP address for the same IP version.
+    ///
+    /// Returns `0.0.0.0` for IPv4 and `::` for IPv6.
+    ///
+    /// Use this method when you must bind a socket to an unspecified local
+    /// address that uses the same IP version as a remote address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(addr_unspecified_from)]
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// let ipv4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// assert_eq!(IpAddr::unspecified_from(ipv4), IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+    ///
+    /// let ipv6 = IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1));
+    /// assert_eq!(IpAddr::unspecified_from(ipv6), IpAddr::V6(Ipv6Addr::UNSPECIFIED));
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "addr_unspecified_from", issue = "158975")]
+    pub const fn unspecified_from(this: Self) -> Self {
+        match this {
+            Self::V4(_) => Self::V4(Ipv4Addr::UNSPECIFIED),
+            Self::V6(_) => Self::V6(Ipv6Addr::UNSPECIFIED),
+        }
+    }
+
     /// Returns [`true`] if this is a loopback address.
     ///
     /// See the documentation for [`Ipv4Addr::is_loopback()`] and
@@ -896,6 +925,8 @@ impl Ipv4Addr {
                 self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
                 && self.octets()[3] != 9 && self.octets()[3] != 10
             )
+            // 6a44-relay anycast address (`192.88.99.2/32`)
+            || matches!(self.octets(), [192, 88, 99, 2])
             || self.is_documentation()
             || self.is_benchmarking()
             || self.is_reserved()
@@ -1661,6 +1692,8 @@ impl Ipv6Addr {
             || matches!(self.segments(), [0x64, 0xff9b, 1, _, _, _, _, _])
             // Discard-Only Address Block (`100::/64`)
             || matches!(self.segments(), [0x100, 0, 0, 0, _, _, _, _])
+            // Dummy IPv6 Prefix (100:0:0:1::/64)
+            || matches!(self.segments(), [0x100, 0, 0, 1, _, _, _, _])
             // IETF Protocol Assignments (`2001::/23`)
             || (matches!(self.segments(), [0x2001, b, _, _, _, _, _, _] if b < 0x200)
                 && !(
@@ -1668,6 +1701,8 @@ impl Ipv6Addr {
                     u128::from_be_bytes(self.octets()) == 0x2001_0001_0000_0000_0000_0000_0000_0001
                     // Traversal Using Relays around NAT Anycast (`2001:1::2`)
                     || u128::from_be_bytes(self.octets()) == 0x2001_0001_0000_0000_0000_0000_0000_0002
+                    // DNS-SD Service Registration Protocol Anycast (`2001:1::3`)
+                    || u128::from_be_bytes(self.octets()) == 0x2001_0001_0000_0000_0000_0000_0000_0003
                     // AMT (`2001:3::/32`)
                     || matches!(self.segments(), [0x2001, 3, _, _, _, _, _, _])
                     // AS112-v6 (`2001:4:112::/48`)

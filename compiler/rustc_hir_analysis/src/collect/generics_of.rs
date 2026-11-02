@@ -4,12 +4,11 @@ use std::ops::ControlFlow;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, HirId, Node};
-use rustc_middle::span_bug;
+use rustc_lint_defs::builtin::INVALID_TYPE_PARAM_DEFAULT;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::lint;
-use rustc_span::{Span, kw, sym};
+use rustc_span::{Span, kw, span_bug, sym};
 use tracing::{debug, instrument};
 
 use crate::middle::resolve_bound_vars as rbv;
@@ -22,8 +21,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         msg: &'static str,
     }
 
-    impl<'a> Diagnostic<'a, ()> for GenericParametersForbiddenHere {
-        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+    impl<'a> Diagnostic<'a> for GenericParametersForbiddenHere {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
             let Self { msg } = self;
             Diag::new(dcx, level, msg)
         }
@@ -43,7 +42,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         let parent_generics = tcx.generics_of(trait_def_id);
         let parent_count = parent_generics.parent_count + parent_generics.own_params.len();
 
-        let mut trait_fn_params = tcx.generics_of(fn_def_id).own_params.clone();
+        let trait_fn_generics = tcx.generics_of(fn_def_id);
+
+        let mut trait_fn_params = trait_fn_generics.own_params.clone();
 
         for param in &mut own_params {
             param.index = param.index + parent_count as u32 + trait_fn_params.len() as u32
@@ -62,6 +63,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             own_params,
             param_def_id_to_index,
             has_self: opaque_ty_generics.has_self,
+            has_arg_pos_consts: opaque_ty_generics.has_arg_pos_consts
+                || trait_fn_generics.has_arg_pos_consts,
             has_late_bound_regions: opaque_ty_generics.has_late_bound_regions,
         };
     }
@@ -140,7 +143,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     //
                     // This has some implications for how we get the clauses available to the anon const
                     // see `explicit_clauses_of` for more information on this
-                    let generics = tcx.generics_of(parent_did);
+                    let parent_def_id = tcx.local_parent(param_id);
+                    let generics = tcx.generics_of(parent_def_id);
                     let param_def_idx = generics.param_def_id_to_index[&param_id.to_def_id()];
                     // In the above example this would be .params[..N#0]
                     let own_params = generics.params_to(param_def_idx as usize, tcx).to_owned();
@@ -156,6 +160,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         own_params,
                         param_def_id_to_index,
                         has_self: generics.has_self,
+                        has_arg_pos_consts: generics.has_arg_pos_consts,
                         has_late_bound_regions: generics.has_late_bound_regions,
                     };
                 }
@@ -211,6 +216,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         Node::Item(_) | Node::ForeignItem(_) => None,
 
         // Params don't really have generics, but we use it when instantiating their value paths.
+        // FIXME: Use the HIR parent here similar to `Node::Field`. Blocked on the removal of GCE,
+        //        see comment in `type_of.rs` for details (Ctrl+F for `generics_of`).
         Node::GenericParam(_) => None,
 
         Node::Synthetic => span_bug!(
@@ -218,13 +225,13 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             "synthetic HIR should have its `generics_of` explicitly fed"
         ),
 
-        Node::ConstArg(..) => {
+        Node::ConstArg(..) | Node::Infer(hir::InferArg { kind: hir::InferArgKind::Const, .. }) => {
             // These can show up in mGCA when representing "direct" const arguments. The
             // DefCollector cannot know whether an anon const will be represented by an actual HIR
             // Node::AnonConst, or whether it will be represented directly, so it must generate a
             // DefId. If it ends up being direct, this DefId is then attached to the top-level
             // ConstArg, which is what we are seeing here.
-            debug_assert!(tcx.features().min_generic_const_args());
+            debug_assert!(tcx.features().gca());
             // Forward to the real parent.
             Some(tcx.local_parent(def_id))
         }
@@ -236,7 +243,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     let opt_self = if let Node::Item(item) = node
         && let ItemKind::Trait { .. } | ItemKind::TraitAlias(..) = item.kind
     {
-        // Something of a hack: We reuse the node ID of the trait for the self type parameter.
+        // Something of a hack: We reuse the DefId of the trait for the self type parameter.
         Some(ty::GenericParamDef {
             index: 0,
             name: kw::SelfUpper,
@@ -286,6 +293,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         prev + type_start
     };
 
+    let mut has_arg_pos_consts = false;
+
     own_params.extend(hir_generics.params.iter().filter_map(|param| {
         const MESSAGE: &str = "defaults for generic parameters are not allowed here";
         let kind = match param.kind {
@@ -296,7 +305,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         ParamDefaultPolicy::Allowed => {}
                         ParamDefaultPolicy::FutureCompatForbidden => {
                             tcx.emit_node_span_lint(
-                                lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
+                                INVALID_TYPE_PARAM_DEFAULT,
                                 param.hir_id,
                                 param.span,
                                 GenericParametersForbiddenHere { msg: MESSAGE },
@@ -310,7 +319,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
                 ty::GenericParamDefKind::Type { has_default: default.is_some(), synthetic }
             }
-            GenericParamKind::Const { ty: _, default } => {
+            GenericParamKind::Const { ty: _, default, arg_pos } => {
                 if default.is_some() {
                     match param_default_policy.expect("no policy for generic param default") {
                         ParamDefaultPolicy::Allowed => {}
@@ -321,7 +330,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     }
                 }
 
-                ty::GenericParamDefKind::Const { has_default: default.is_some() }
+                has_arg_pos_consts |= arg_pos.is_some();
+                ty::GenericParamDefKind::Const { has_default: default.is_some(), arg_pos }
             }
         };
         Some(ty::GenericParamDef {
@@ -395,6 +405,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         own_params,
         param_def_id_to_index,
         has_self: has_self || parent_has_self,
+        has_arg_pos_consts,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
     }
 }
@@ -524,7 +535,7 @@ impl<'v> Visitor<'v> for AnonConstInParamTyDetector {
     type Result = ControlFlow<()>;
 
     fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) -> Self::Result {
-        if let GenericParamKind::Const { ty, default: _ } = p.kind {
+        if let GenericParamKind::Const { ty, default: _, arg_pos: _ } = p.kind {
             let prev = self.in_param_ty;
             self.in_param_ty = true;
             let res = self.visit_ty_unambig(ty);

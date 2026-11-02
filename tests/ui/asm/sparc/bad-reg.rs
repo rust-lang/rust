@@ -9,7 +9,7 @@
 //@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
-#![feature(no_core, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch, f128)]
 #![no_core]
 
 extern crate minicore;
@@ -28,7 +28,7 @@ fn f() {
         asm!("", out("g3") _);
         asm!("", out("g4") _);
         asm!("", out("g5") _);
-        //[sparc,sparcv8plus]~^ ERROR cannot use register `r5`: g5 is reserved for system on SPARC32
+        //[sparc,sparcv8plus]~^ ERROR cannot use register `g5`: g5 is reserved for system on SPARC32
         asm!("", out("g6") _);
         //~^ ERROR invalid register `g6`: reserved for system and cannot be used as an operand for inline asm
         asm!("", out("g7") _);
@@ -54,5 +54,9 @@ fn f() {
         //~| ERROR type `i32` cannot be used with this register class
         asm!("/* {} */", out(yreg) _);
         //~^ ERROR can only be used as a clobber
+        asm!("", in("d62") 0.0_f64);
+        //[sparc]~^ ERROR cannot use register `d62`
+        asm!("", in("q60") 0.0_f128);
+        //[sparc]~^ ERROR cannot use register `q60`
     }
 }

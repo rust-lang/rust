@@ -1,5 +1,5 @@
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/allowed-positions.rs:106:25
+  --> $DIR/allowed-positions.rs:105:25
    |
 LL |     let _closure_expr = #[coverage(off)] || ();
    |                         ^^^^^^^^^^^^^^^^
@@ -9,138 +9,155 @@ LL |     let _closure_expr = #[coverage(off)] || ();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: the `coverage` attribute cannot be used on type aliases
-  --> $DIR/allowed-positions.rs:14:3
+  --> $DIR/allowed-positions.rs:13:3
    |
 LL | #[coverage(off)]
    |   ^^^^^^^^
+LL | type MyTypeAlias = ();
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on traits
-  --> $DIR/allowed-positions.rs:17:3
+  --> $DIR/allowed-positions.rs:16:3
    |
 LL | #[coverage(off)]
    |   ^^^^^^^^
+LL | trait MyTrait {
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on associated consts
-  --> $DIR/allowed-positions.rs:19:7
+  --> $DIR/allowed-positions.rs:18:7
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     const TRAIT_ASSOC_CONST: u32;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on associated types
-  --> $DIR/allowed-positions.rs:22:7
+  --> $DIR/allowed-positions.rs:21:7
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     type TraitAssocType;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on required trait methods
-  --> $DIR/allowed-positions.rs:25:7
+  --> $DIR/allowed-positions.rs:24:7
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     fn trait_method(&self);
    |
    = help: the `coverage` attribute can be applied to crates, functions with a body, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on required trait methods
-  --> $DIR/allowed-positions.rs:31:7
+  --> $DIR/allowed-positions.rs:30:7
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     fn trait_assoc_fn();
    |
    = help: the `coverage` attribute can be applied to crates, functions with a body, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on associated types
-  --> $DIR/allowed-positions.rs:39:7
+  --> $DIR/allowed-positions.rs:38:7
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     type TraitAssocType = Self;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on associated types
-  --> $DIR/allowed-positions.rs:56:7
+  --> $DIR/allowed-positions.rs:55:7
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     type T = impl Copy;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on structs
-  --> $DIR/allowed-positions.rs:61:3
+  --> $DIR/allowed-positions.rs:60:3
    |
 LL | #[coverage(off)]
    |   ^^^^^^^^
+LL | struct MyStruct {
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on struct fields
-  --> $DIR/allowed-positions.rs:63:7
+  --> $DIR/allowed-positions.rs:62:7
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     field: u32,
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on foreign statics
-  --> $DIR/allowed-positions.rs:76:7
+  --> $DIR/allowed-positions.rs:75:7
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     static X: u32;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on foreign types
-  --> $DIR/allowed-positions.rs:79:7
+  --> $DIR/allowed-positions.rs:78:7
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     type T;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on foreign functions
-  --> $DIR/allowed-positions.rs:82:7
+  --> $DIR/allowed-positions.rs:81:7
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     fn foreign_fn();
    |
    = help: the `coverage` attribute can be applied to crates, functions with a body, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on statements
-  --> $DIR/allowed-positions.rs:88:7
+  --> $DIR/allowed-positions.rs:87:7
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     let _ = ();
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on statements
-  --> $DIR/allowed-positions.rs:94:7
+  --> $DIR/allowed-positions.rs:93:7
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     let _let_closure = || ();
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on match arms
-  --> $DIR/allowed-positions.rs:110:11
+  --> $DIR/allowed-positions.rs:109:11
    |
 LL |         #[coverage(off)]
    |           ^^^^^^^^
+LL |         () => (),
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error: the `coverage` attribute cannot be used on expressions
-  --> $DIR/allowed-positions.rs:114:7
+  --> $DIR/allowed-positions.rs:113:7
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     return ();
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 

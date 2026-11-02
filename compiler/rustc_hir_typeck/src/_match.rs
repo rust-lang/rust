@@ -421,7 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return self.get_fn_decl(hir_id).map(|(_, fn_decl)| {
                         let (ty, span) = match fn_decl.output {
                             hir::FnRetTy::DefaultReturn(span) => ("()".to_string(), span),
-                            hir::FnRetTy::Return(ty) => (ty_to_string(&self.tcx, ty), ty.span),
+                            hir::FnRetTy::Return(ty) => (ty_to_string(self, ty), ty.span),
                         };
                         (span, format!("expected `{ty}` because of this return type"))
                     });
@@ -550,7 +550,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         else {
             return None;
         };
-        if &args[0..self.tcx.generics_of(parent_def_id).count()]
+        if &args.as_slice()[0..self.tcx.generics_of(parent_def_id).count()]
             != ty::GenericArgs::identity_for_item(self.tcx, parent_def_id).as_slice()
         {
             return None;

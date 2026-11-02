@@ -1,6 +1,7 @@
 //@revisions: stack tree tree_implicit_writes
 //@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
+//@[stack]run-native
 
 use std::cell::RefCell;
 use std::thread;
@@ -27,10 +28,7 @@ fn check_destructors() {
         static A_CONST: TestCell = const { TestCell { value: RefCell::new(10) } };
     }
 
-    // We use the same value for both of them, since destructor order differs between Miri on Linux
-    // (which uses `register_dtor_fallback`, in the end using a single pthread_key to manage a
-    // thread-local linked list of dtors to call), real Linux rustc (which uses
-    // `__cxa_thread_atexit_impl`), and Miri on Windows.
+    // We use the same value for both of them, since destructor order differs between platforms.
     thread::spawn(|| {
         A.with(|f| {
             assert_eq!(*f.value.borrow(), 0);

@@ -1,8 +1,8 @@
 error: this is a block expression, not an array
-  --> $DIR/issue-87830-try-brackets-for-arrays.rs:3:22
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:5:23
    |
-LL |   const FOO: [u8; 3] = {
-   |  ______________________^
+LL |   const INTS: [u8; 3] = {
+   |  _______________________^
 LL | |
 LL | |     1, 2, 3
 LL | | };
@@ -10,26 +10,26 @@ LL | | };
    |
 help: to make an array, use square brackets instead of curly braces
    |
-LL ~ const FOO: [u8; 3] = [
+LL ~ const INTS: [u8; 3] = [
 LL |
 LL |     1, 2, 3
 LL ~ ];
    |
 
 error: this is a block expression, not an array
-  --> $DIR/issue-87830-try-brackets-for-arrays.rs:8:24
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:10:25
    |
-LL | const BAR: [&str; 3] = {"one", "two", "three"};
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^
+LL | const STRS: [&str; 3] = {"one", "two", "three"};
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: to make an array, use square brackets instead of curly braces
    |
-LL - const BAR: [&str; 3] = {"one", "two", "three"};
-LL + const BAR: [&str; 3] = ["one", "two", "three"];
+LL - const STRS: [&str; 3] = {"one", "two", "three"};
+LL + const STRS: [&str; 3] = ["one", "two", "three"];
    |
 
 error: this is a block expression, not an array
-  --> $DIR/issue-87830-try-brackets-for-arrays.rs:12:5
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:14:5
    |
 LL |     {1, 2, 3};
    |     ^^^^^^^^^
@@ -41,10 +41,34 @@ LL +     [1, 2, 3];
    |
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
-  --> $DIR/issue-87830-try-brackets-for-arrays.rs:17:6
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:20:15
+   |
+LL |     unsafe { 1, 2, 3 }
+   |               ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:25:16
+   |
+LL |     'label: { 1, 2, 3 }
+   |                ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:30:6
    |
 LL |     1, 2, 3
    |      ^ expected one of `.`, `;`, `?`, `}`, or an operator
 
-error: aborting due to 4 previous errors
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:35:18
+   |
+LL |     || -> i32 { 1, 2, 3 };
+   |                  ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
+  --> $DIR/issue-87830-try-brackets-for-arrays.rs:41:17
+   |
+LL |     Casket::<{ 1, 2, 3 }>;
+   |                 ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: aborting due to 8 previous errors
 

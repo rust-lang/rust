@@ -22,6 +22,7 @@ mod misrefactored_assign_op;
 mod modulo_arithmetic;
 mod modulo_one;
 mod needless_bitwise_bool;
+mod new_instead_of_clear;
 mod numeric_arithmetic;
 mod op_ref;
 mod self_assignment;
@@ -32,8 +33,7 @@ pub(crate) mod arithmetic_side_effects;
 use clippy_config::Conf;
 use clippy_utils::msrvs::Msrv;
 use rustc_hir::{Body, Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -884,6 +884,38 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for assignments of `Collection::new()` or `vec![]` to a collection
+    /// variable that was already initialized.
+    ///
+    /// ### Why is this bad?
+    /// The existing allocation is thrown away. `.clear()` empties the collection
+    /// without freeing the memory, so the next push/insert won't need to allocate.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # fn f(v: &Vec<i32>) {}
+    /// let mut v = Vec::new();
+    /// v.push(1);
+    /// f(&v);
+    /// v = Vec::new();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # fn f(v: &Vec<i32>) {}
+    /// let mut v = Vec::new();
+    /// v.push(1);
+    /// f(&v);
+    /// v.clear();
+    /// ```
+    #[clippy::version = "1.101.0"]
+    pub NEW_INSTEAD_OF_CLEAR,
+    perf,
+    "creating a new collection instead of calling `.clear()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for arguments to `==` which have their address
     /// taken to satisfy a bound
     /// and suggests to dereference the other argument instead
@@ -1021,6 +1053,7 @@ impl_lint_pass!(Operators => [
     MODULO_ARITHMETIC,
     MODULO_ONE,
     NEEDLESS_BITWISE_BOOL,
+    NEW_INSTEAD_OF_CLEAR,
     OP_REF,
     REDUNDANT_COMPARISONS,
     SELF_ASSIGNMENT,
@@ -1040,7 +1073,7 @@ impl Operators {
             arithmetic_context: numeric_arithmetic::Context::default(),
             verbose_bit_mask_threshold: conf.verbose_bit_mask_threshold,
             modulo_arithmetic_allow_comparison_to_zero: conf.allow_comparison_to_zero,
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
         }
     }
 }
@@ -1048,6 +1081,7 @@ impl Operators {
 impl<'tcx> LateLintPass<'tcx> for Operators {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         eq_op::check_assert(cx, e);
+        float_cmp::check_assert(cx, e);
         match e.kind {
             ExprKind::Binary(op, lhs, rhs) => {
                 if !e.span.from_expansion() {
@@ -1095,14 +1129,15 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 self.arithmetic_context.check_binary(cx, e, bin_op, lhs, rhs);
                 misrefactored_assign_op::check(cx, e, bin_op, lhs, rhs);
                 modulo_arithmetic::check(cx, e, bin_op, lhs, rhs, false);
+                integer_division_remainder_used::check(cx, bin_op, lhs, rhs, e.span);
             },
             ExprKind::Assign(lhs, rhs, _) => {
                 assign_op_pattern::check(cx, e, lhs, rhs, self.msrv);
                 self_assignment::check(cx, e, lhs, rhs);
+                new_instead_of_clear::check(cx, e, lhs, rhs);
             },
-            ExprKind::Unary(op, arg) =>
-            {
-                #[expect(clippy::collapsible_match)]
+            #[expect(clippy::collapsible_match)]
+            ExprKind::Unary(op, arg) => {
                 if op == UnOp::Neg {
                     self.arithmetic_context.check_negate(cx, e, arg);
                 }
