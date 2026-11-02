@@ -5337,7 +5337,7 @@ unsafe impl<T: Allocator + ?Sized, A: AllocatorClone> AllocatorClone for Arc<T, 
 #[unstable(feature = "arc_n", issue = "none")]
 pub struct ArcClones<T: ?Sized> {
     /// This is an owned reference that's being handed out + the number of references that have
-    /// been acquired in the batch operations (including the Arc<T>).
+    /// been acquired in the batch operations (including the `Arc<T>`).
     arc_remaining: Option<(Arc<T>, NonZero<usize>)>,
 }
 
