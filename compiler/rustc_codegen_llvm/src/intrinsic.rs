@@ -59,7 +59,7 @@ fn call_simple_intrinsic<'ll, 'tcx>(
     // We use the fallback body there.
     let fixed_minmax = llvm_version >= (23, 0, 0);
 
-    let (base_name, type_params): (&'static str, &[&'ll Type]) = match name {
+    let (base_name, type_params): (&'static str, &[Type<'ll>]) = match name {
         sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
         sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
         sym::minimumf64 if fixed_minmax => ("llvm.minimum", &[bx.type_f64()]),
@@ -555,7 +555,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     _ => bug!(),
                 };
 
-                let params: &[&'ll Type] = match name {
+                let params: &[Type<'ll>] = match name {
                     sym::powi => &[llty, self.type_i32()],
                     _ => &[llty],
                 };
@@ -856,7 +856,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         let ty = self.type_ix(32);
                         let val = self.const_int(ty, 0);
 
-                        let type_params: &[&'ll Type] =
+                        let type_params: &[Type<'ll>] =
                             if llvm_version < (23, 0, 0) { &[] } else { &[self.type_ptr()] };
 
                         self.call_intrinsic("llvm.returnaddress", type_params, &[val])
@@ -1057,7 +1057,7 @@ fn llvm_arch_for(rust_arch: &Arch) -> Option<&'static str> {
     })
 }
 
-fn can_autocast<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: &'ll Type, llvm_ty: &'ll Type) -> bool {
+fn can_autocast<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: Type<'ll>, llvm_ty: Type<'ll>) -> bool {
     if rust_ty == llvm_ty {
         return true;
     }
@@ -1116,8 +1116,8 @@ fn can_autocast<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: &'ll Type, llvm_ty: &'ll 
 fn autocast<'ll>(
     bx: &mut Builder<'_, 'll, '_>,
     val: &'ll Value,
-    src_ty: &'ll Type,
-    dest_ty: &'ll Type,
+    src_ty: Type<'ll>,
+    dest_ty: Type<'ll>,
 ) -> &'ll Value {
     if src_ty == dest_ty {
         return val;
@@ -1195,8 +1195,8 @@ fn autocast<'ll>(
 fn intrinsic_fn<'ll, 'tcx>(
     bx: &Builder<'_, 'll, 'tcx>,
     name: &str,
-    rust_return_ty: &'ll Type,
-    rust_argument_tys: Vec<&'ll Type>,
+    rust_return_ty: Type<'ll>,
+    rust_argument_tys: Vec<Type<'ll>>,
     instance: ty::Instance<'tcx>,
 ) -> &'ll Value {
     let tcx = bx.tcx;
@@ -1701,7 +1701,7 @@ fn gen_fn<'a, 'll, 'tcx>(
     name: &str,
     rust_fn_sig: ty::PolyFnSig<'tcx>,
     codegen: &mut dyn FnMut(Builder<'a, 'll, 'tcx>),
-) -> (&'ll Type, &'ll Value) {
+) -> (Type<'ll>, &'ll Value) {
     let fn_abi = cx.fn_abi_of_fn_ptr(rust_fn_sig, ty::List::empty());
     let llty = fn_abi.llvm_type(cx);
     let llfn = cx.declare_fn(name, fn_abi, None);
@@ -1722,7 +1722,7 @@ fn gen_fn<'a, 'll, 'tcx>(
 fn get_rust_try_fn<'a, 'll, 'tcx>(
     cx: &'a CodegenCx<'ll, 'tcx>,
     codegen: &mut dyn FnMut(Builder<'a, 'll, 'tcx>),
-) -> (&'ll Type, &'ll Value) {
+) -> (Type<'ll>, &'ll Value) {
     if let Some(llfn) = cx.rust_try_fn.get() {
         return llfn;
     }
@@ -2008,7 +2008,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     fn_args: GenericArgs<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
     ret_ty: Ty<'tcx>,
-    llret_ty: &'ll Type,
+    llret_ty: Type<'ll>,
     span: Span,
 ) -> Result<&'ll Value, ErrorGuaranteed> {
     macro_rules! return_error {
@@ -2522,7 +2522,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return simd_simple_float_intrinsic(name, in_elem, in_ty, in_len, bx, span, args);
     }
 
-    fn llvm_vector_ty<'ll>(cx: &CodegenCx<'ll, '_>, elem_ty: Ty<'_>, vec_len: u64) -> &'ll Type {
+    fn llvm_vector_ty<'ll>(cx: &CodegenCx<'ll, '_>, elem_ty: Ty<'_>, vec_len: u64) -> Type<'ll> {
         let elem_ty = match *elem_ty.kind() {
             ty::Int(v) => cx.type_int_from_ty(v),
             ty::Uint(v) => cx.type_uint_from_ty(v),
