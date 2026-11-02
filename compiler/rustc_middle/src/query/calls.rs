@@ -11,7 +11,6 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug};
 
 use crate::dep_graph::DepNode;
 use crate::query::erase::{self, Erasable, Erased};
-use crate::query::job::try_get_cached;
 use crate::query::q_impl::execution::{
     ActiveJobGuard, check_feedable_consistency, current_query_job, next_job_id, wait_for_query,
 };
@@ -126,6 +125,26 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
+/// Checks whether there is already a value for this key in the in-memory
+/// query cache, returning that value if present.
+///
+/// (Also performs some associated bookkeeping, if a value was found.)
+#[inline(always)]
+fn try_get_cached<'tcx, C: QueryCache>(
+    tcx: TyCtxt<'tcx>,
+    cache: &C,
+    key: C::Key,
+) -> Option<C::Value> {
+    match cache.lookup(&key) {
+        Some((value, index)) => {
+            tcx.prof.query_cache_hit(index.into());
+            tcx.dep_graph.read_index(index);
+            Some(value)
+        }
+        None => None,
+    }
+}
+
 /// Shared implementation of `tcx.$query(..)` and `tcx.at(span).$query(..)`
 /// for all queries.
 #[inline(always)]
@@ -199,10 +218,11 @@ where
     }
 }
 
-#[inline]
+/// "Feeds" a feedable query by adding a given key/value pair to its in-memory cache.
+/// Called by macro-generated methods of [`rustc_middle::ty::TyCtxtFeed`].
 pub(crate) fn query_feed<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
+    query: &'tcx QueryVTable<'tcx, C>,
     key: C::Key,
     value: C::Value,
 ) {
