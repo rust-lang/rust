@@ -117,7 +117,7 @@ jobs:
           rustup target add ${{ matrix.target }}
 
       - name: Dist
-        run: cargo xtask dist --client-patch-version ${GITHUB_RUN_NUMBER} ${{ env.ALLOCATOR_FLAG }} ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
+        run: cargo xtask dist --client-patch-version ${GITHUB_RUN_NUMBER} ${ALLOCATOR_FLAG} ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
 
       - run: npm ci
         working-directory: editors/code
