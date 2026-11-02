@@ -108,7 +108,7 @@ impl<'sess> AttributeParser<'sess> {
             sess,
             attrs,
             Some(parse_filter),
-            Target::Crate,
+            AstTarget::None(Target::Crate),
             target_span,
             CRATE_NODE_ID,
             features,
@@ -150,7 +150,7 @@ impl<'sess> AttributeParser<'sess> {
         sess: &'sess Session,
         attrs: &[ast::Attribute],
         parse_filter: Option<&dyn Fn(&ast::Attribute) -> bool>,
-        target: Target,
+        ast_target: AstTarget<'_>,
         target_span: Span,
         target_node_id: NodeId,
         features: Option<&'sess Features>,
@@ -161,8 +161,7 @@ impl<'sess> AttributeParser<'sess> {
         p.parse_attribute_list(
             attrs,
             target_span,
-            target,
-            AstTarget::None,
+            ast_target,
             std::convert::identity,
             |lint_id, span, kind| {
                 sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, kind.0)
@@ -177,7 +176,6 @@ impl<'sess> AttributeParser<'sess> {
         attr: &ast::Attribute,
         target_span: Span,
         target_node_id: NodeId,
-        target: Target,
         ast_target: AstTarget<'_>,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
@@ -208,7 +206,6 @@ impl<'sess> AttributeParser<'sess> {
             ParsedDescription::Attribute,
             target_span,
             target_node_id,
-            target,
             ast_target,
             features,
             emit_errors,
@@ -231,7 +228,6 @@ impl<'sess> AttributeParser<'sess> {
         parsed_description: ParsedDescription,
         target_span: Span,
         target_node_id: NodeId,
-        target: Target,
         ast_target: AstTarget<'_>,
         features: Option<&'sess Features>,
         should_emit: ShouldEmit,
@@ -256,7 +252,7 @@ impl<'sess> AttributeParser<'sess> {
             shared: SharedContext {
                 cx: &mut parser,
                 target_span,
-                target,
+                target: Target::from_ast_target(&ast_target),
                 emit_lint: &mut emit_lint,
                 #[cfg(debug_assertions)]
                 has_lint_been_emitted: AtomicBool::new(false),
@@ -322,7 +318,6 @@ impl<'sess> AttributeParser<'sess> {
         &mut self,
         attrs: &[ast::Attribute],
         target_span: Span,
-        target: Target,
         ast_target: AstTarget<'_>,
         lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
@@ -423,7 +418,7 @@ impl<'sess> AttributeParser<'sess> {
                             shared: SharedContext {
                                 cx: self,
                                 target_span,
-                                target,
+                                target: Target::from_ast_target(&ast_target),
                                 emit_lint: &mut emit_lint,
                                 #[cfg(debug_assertions)]
                                 has_lint_been_emitted: AtomicBool::new(false),
@@ -468,7 +463,7 @@ impl<'sess> AttributeParser<'sess> {
                         );
 
                         if !matches!(self.should_emit, ShouldEmit::Nothing)
-                            && target == Target::Crate
+                            && Target::from_ast_target(&ast_target) == Target::Crate
                         {
                             self.check_invalid_crate_level_attr_item(&attr, inner_span);
                         }
@@ -498,7 +493,7 @@ impl<'sess> AttributeParser<'sess> {
                 shared: SharedContext {
                     cx: self,
                     target_span,
-                    target,
+                    target: Target::from_ast_target(&ast_target),
                     ast_target,
                     emit_lint: &mut emit_lint,
                     #[cfg(debug_assertions)]
@@ -523,7 +518,7 @@ impl<'sess> AttributeParser<'sess> {
                         shared: SharedContext {
                             cx: self,
                             target_span,
-                            target,
+                            target: Target::from_ast_target(&ast_target),
                             ast_target,
                             emit_lint: &mut emit_lint,
                             #[cfg(debug_assertions)]
@@ -537,7 +532,9 @@ impl<'sess> AttributeParser<'sess> {
             }
         }
 
-        if !matches!(self.should_emit, ShouldEmit::Nothing) && target == Target::WherePredicate {
+        if !matches!(self.should_emit, ShouldEmit::Nothing)
+            && Target::from_ast_target(&ast_target) == Target::WherePredicate
+        {
             self.check_invalid_where_predicate_attrs(attributes.iter());
         }
 

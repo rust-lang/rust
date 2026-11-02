@@ -6,7 +6,7 @@ use rustc_ast::attr::data_structures::CfgEntry;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{LazyTokenStream, Spacing, TokenStream, TokenTree, WithTokens};
 use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, NodeId, SyntheticAttr};
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_ir::{self as attrs, AttributeKind};
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
@@ -333,8 +333,7 @@ impl<'a> StripUnconfigured<'a> {
             attr.span,
             self.lint_node_id,
             // Doesn't matter what the target actually is here.
-            Target::Crate,
-            rustc_attr_ir::target::AstTarget::None,
+            AstTarget::None(Target::Crate),
             self.features,
             emit_errors,
             parse_cfg,
