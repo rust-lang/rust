@@ -108,7 +108,7 @@ jobs:
       - name: Combine json
         run: |
           mkdir ~/.ssh
-          echo "${{ secrets.METRICS_DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          echo "${METRICS_DEPLOY_KEY}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           chmod 700 ~/.ssh
 
@@ -118,3 +118,5 @@ jobs:
           git add .
           git -c user.name=Bot -c user.email=dummy@example.com commit --message 📈
           git push origin master
+        env:
+          METRICS_DEPLOY_KEY: ${{ secrets.METRICS_DEPLOY_KEY }}
