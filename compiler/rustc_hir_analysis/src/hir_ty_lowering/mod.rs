@@ -1174,6 +1174,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 trait_ref.hir_ref_id,
                 poly_trait_ref,
                 constraint,
+                &constraints,
                 bounds,
                 dup_constraints.as_mut(),
                 constraint.span,
@@ -1278,6 +1279,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             assoc_ident,
             span,
             None,
+            &[],
             span,
         )
     }
@@ -1364,6 +1366,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_ident: Ident,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'_>>,
+        constraints: &[hir::AssocItemConstraint<'_>],
         outer_span: Span,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed>
     where
@@ -1381,6 +1384,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 assoc_ident,
                 span,
                 constraint,
+                constraints,
             ));
         };
 
@@ -1668,6 +1672,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     segment.ident,
                     span,
                     None,
+                    &[],
                     span,
                 )?
             }
