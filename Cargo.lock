@@ -4165,6 +4165,7 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_hir",
+ "rustc_hir_pretty",
  "rustc_index",
  "rustc_infer",
  "rustc_lint_defs",
