@@ -2603,37 +2603,32 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
     ) -> Option<Vec<Ident>> {
         let ns = source_decl.res().ns()?;
-        let path = Path {
-            span: source.span,
-            segments: import
-                .module_path
-                .iter()
-                // A leading `::` is only equivalent to a relative path before the 2018 edition.
-                .filter(|segment| {
-                    segment.ident.name != kw::PathRoot || segment.ident.span.at_least_rust_2018()
-                })
-                .map(|segment| segment.ident.clone())
-                .chain(std::iter::once(source))
-                .map(ast::PathSegment::from_ident)
-                .collect(),
-        };
-        let segments = Segment::from_path(&path);
-        let (last, prefix) = segments.split_last()?;
-        let module = if prefix.is_empty() {
+        let module_path = import
+            .module_path
+            .iter()
+            .filter(|seg| seg.ident.name != kw::PathRoot || seg.ident.span.at_least_rust_2018())
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let module = if module_path.is_empty() {
             ModuleOrUniformRoot::CurrentScope
+        } else if let PathResult::Module(module) =
+            self.cm().maybe_resolve_path(&module_path, None, parent_scope, None)
+        {
+            module
         } else {
-            match self.cm().maybe_resolve_path(prefix, None, parent_scope, None) {
-                PathResult::Module(module) => module,
-                PathResult::NonModule(_)
-                | PathResult::Indeterminate
-                | PathResult::Failed { .. } => return None,
-            }
+            return None;
         };
-        let decl = self
-            .cm()
-            .maybe_resolve_ident_in_module(module, last.ident, ns, parent_scope, None)
-            .ok()?;
-        (decl == source_decl).then(|| path.segments.iter().map(|segment| segment.ident).collect())
+
+        let decl =
+            self.cm().maybe_resolve_ident_in_module(module, source, ns, parent_scope, None).ok()?;
+        (decl == source_decl).then(|| {
+            module_path
+                .into_iter()
+                .map(|segment| segment.ident)
+                .chain(std::iter::once(source))
+                .collect()
+        })
     }
 
     fn shorten_candidate_path(
@@ -2880,8 +2875,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 {
                     path_is_accessible = true;
                     sugg_paths.push((path, through_reexport));
-                } else if !has_direct_suggestion && let Some(ns) = source_res.ns() {
-                    let candidate = self
+                } else if !has_direct_suggestion
+                    && let Some(ns) = source_res.ns()
+                    && let Some(candidate) = self
                         .lookup_import_candidates(source, ns, &parent_scope, |res| {
                             res == source_res
                         })
@@ -2896,30 +2892,29 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 candidate.path.segments.len(),
                                 candidate.path.segments[0].ident.name == sym::core,
                             )
-                        });
-                    if let Some(candidate) = candidate {
-                        // The same item may have several re-exports. Only label this one
-                        // if the suggested path resolves to its binding.
-                        let segments = Segment::from_path(&candidate.path);
-                        path_is_accessible = if let Some((last, prefix)) = segments.split_last()
-                            && let PathResult::Module(module) =
-                                self.cm().maybe_resolve_path(prefix, None, &parent_scope, None)
-                        {
-                            self.cm()
-                                .maybe_resolve_ident_in_module(
-                                    module,
-                                    last.ident,
-                                    ns,
-                                    &parent_scope,
-                                    None,
-                                )
-                                .is_ok_and(|decl| decl == source_decl)
-                        } else {
-                            false
-                        };
-                        let path = candidate.path.segments.iter().map(|seg| seg.ident).collect();
-                        sugg_paths.push((path, candidate.via_import));
-                    }
+                        })
+                {
+                    // The same item may have several re-exports. Only label this one
+                    // if the suggested path resolves to its binding.
+                    let segments = Segment::from_path(&candidate.path);
+                    path_is_accessible = if let Some((last, prefix)) = segments.split_last()
+                        && let PathResult::Module(module) =
+                            self.cm().maybe_resolve_path(prefix, None, &parent_scope, None)
+                    {
+                        self.cm()
+                            .maybe_resolve_ident_in_module(
+                                module,
+                                last.ident,
+                                ns,
+                                &parent_scope,
+                                None,
+                            )
+                            .is_ok_and(|decl| decl == source_decl)
+                    } else {
+                        false
+                    };
+                    let path = candidate.path.segments.iter().map(|seg| seg.ident).collect();
+                    sugg_paths.push((path, candidate.via_import));
                 }
                 next_binding = Some((source_decl, path_is_accessible));
             }
