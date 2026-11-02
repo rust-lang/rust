@@ -12,7 +12,7 @@ use super::{
     TargetKind, TargetOptions, TargetWarnings, TlsModel,
 };
 use crate::json::{Json, ToJson};
-use crate::spec::{AbiMap, LlvmAbi};
+use crate::spec::{AbiMap, LlvmAbi, StdSupport};
 
 impl Target {
     /// Loads a target descriptor from a JSON object.
@@ -39,6 +39,7 @@ impl Target {
             base.metadata.tier = metadata.tier.filter(|tier| (1..=3).contains(tier));
             base.metadata.host_tools = metadata.host_tools;
             base.metadata.std = metadata.std;
+            base.metadata.standard_library_support = metadata.standard_library_support;
         }
 
         let alignment_error = |field_name: &str, error: AlignFromBytesError| -> String {
@@ -485,6 +486,7 @@ struct TargetSpecJsonMetadata {
     tier: Option<u64>,
     host_tools: Option<bool>,
     std: Option<bool>,
+    standard_library_support: Option<StdSupport>,
 }
 
 #[derive(serde_derive::Deserialize, schemars::JsonSchema)]

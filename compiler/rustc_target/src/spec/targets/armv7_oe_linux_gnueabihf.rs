@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetMetadata};
+use crate::spec::{StdCrates, StdSupport, Target, TargetMetadata};
 
 pub(crate) fn target() -> Target {
     let mut base = super::armv7_unknown_linux_gnueabihf::target();
@@ -8,6 +8,7 @@ pub(crate) fn target() -> Target {
         tier: Some(3),
         host_tools: Some(false),
         std: Some(true),
+        standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
     };
 
     base.llvm_target = "armv7-oe-linux-gnueabihf".into();

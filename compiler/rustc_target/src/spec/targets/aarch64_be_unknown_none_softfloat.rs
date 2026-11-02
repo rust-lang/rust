@@ -9,7 +9,7 @@ use rustc_abi::Endian;
 
 use crate::spec::{
     Arch, Cc, CfgAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, RustcAbi, SanitizerSet,
-    StackProbeType, Target, TargetMetadata, TargetOptions,
+    StackProbeType, StdCrates, StdSupport, Target, TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -37,6 +37,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(false),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Alloc)),
         },
         pointer_width: 64,
         data_layout: "E-m:e-p270:32:32-p271:32:32-p272:64:64-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128-Fn32".into(),

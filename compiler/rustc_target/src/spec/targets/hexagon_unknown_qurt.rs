@@ -1,4 +1,7 @@
-use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Os, Target, TargetMetadata, TargetOptions, cvs};
+use crate::spec::{
+    Arch, Cc, LinkerFlavor, Lld, Os, StdCrates, StdSupport, Target, TargetMetadata, TargetOptions,
+    cvs,
+};
 
 pub(crate) fn target() -> Target {
     let mut base = TargetOptions::default();
@@ -11,6 +14,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(false),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Core)),
         },
         pointer_width: 32,
         data_layout: "\

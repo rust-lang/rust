@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, CfgAbi, FloatAbi, LinkSelfContainedDefault, Os, PanicStrategy, RelroLevel, Target,
-    TargetMetadata, TargetOptions,
+    Arch, CfgAbi, FloatAbi, LinkSelfContainedDefault, Os, PanicStrategy, RelroLevel, StdCrates,
+    StdSupport, Target, TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -14,6 +14,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),

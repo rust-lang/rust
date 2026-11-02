@@ -1,5 +1,5 @@
 use crate::spec::base::xtensa;
-use crate::spec::{Arch, Target, TargetMetadata, TargetOptions};
+use crate::spec::{Arch, StdCrates, StdSupport, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -12,6 +12,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(false),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Core)),
         },
 
         options: TargetOptions {

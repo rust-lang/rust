@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, Cc, CfgAbi, LinkerFlavor, Lld, LlvmAbi, StackProbeType, Target, TargetMetadata,
-    TargetOptions, add_link_args, base,
+    Arch, Cc, CfgAbi, LinkerFlavor, Lld, LlvmAbi, StackProbeType, StdCrates, StdSupport, Target,
+    TargetMetadata, TargetOptions, add_link_args, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -22,6 +22,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(true),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 64,
         data_layout: "e-m:e-Fn32-i64:64-i128:128-n32:64".into(),

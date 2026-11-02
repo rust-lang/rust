@@ -6,7 +6,7 @@
 
 use crate::spec::{
     Arch, Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelroLevel, RustcAbi, SanitizerSet,
-    StackProbeType, Target, TargetMetadata, TargetOptions,
+    StackProbeType, StdCrates, StdSupport, Target, TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -35,6 +35,7 @@ pub(crate) fn target() -> Target {
             tier: Some(2),
             host_tools: Some(false),
             std: Some(false),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Alloc)),
         },
         pointer_width: 64,
         data_layout:

@@ -4,7 +4,7 @@
 //!
 //! Like `wasm32-wasip2` this target produces a component by default.
 
-use crate::spec::{Cc, Env, LinkerFlavor, Target, add_link_args};
+use crate::spec::{Cc, Env, LinkerFlavor, StdCrates, StdSupport, Target, add_link_args};
 
 pub(crate) fn target() -> Target {
     // For now wasip3 is a lightly-edited wasip2 target.
@@ -15,6 +15,7 @@ pub(crate) fn target() -> Target {
         tier: Some(2),
         host_tools: Some(false),
         std: Some(true),
+        standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
     };
     target.options.env = Env::P3;
 

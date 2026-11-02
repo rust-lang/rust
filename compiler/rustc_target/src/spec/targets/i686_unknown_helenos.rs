@@ -1,4 +1,4 @@
-use crate::spec::{Arch, Cc, LinkerFlavor, Lld, RustcAbi, Target, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Lld, RustcAbi, StdCrates, StdSupport, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::helenos::opts();
@@ -15,6 +15,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-p270:32:32-p271:32:32-p272:64:64-\

@@ -1,6 +1,8 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Arch, StackProbeType, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{
+    Arch, StackProbeType, StdCrates, StdSupport, Target, TargetMetadata, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -10,6 +12,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 64,
         arch: Arch::AArch64,

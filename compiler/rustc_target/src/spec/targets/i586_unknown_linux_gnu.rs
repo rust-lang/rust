@@ -1,4 +1,4 @@
-use crate::spec::Target;
+use crate::spec::{StdCrates, StdSupport, Target};
 
 pub(crate) fn target() -> Target {
     let mut base = super::i686_unknown_linux_gnu::target();
@@ -10,6 +10,7 @@ pub(crate) fn target() -> Target {
         tier: Some(2),
         host_tools: Some(false),
         std: Some(true),
+        standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
     };
     base
 }

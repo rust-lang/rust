@@ -43,7 +43,8 @@ pub(crate) fn target() -> Target {
             description: Some("WebAssembly".into()),
             tier: Some(3),
             host_tools: Some(false),
-            std: None, // ?
+            std: None,                      // ?
+            standard_library_support: None, // ?
         },
         pointer_width: 64,
         data_layout: "e-m:e-p:64:64-p10:8:8-p20:8:8-i64:64-i128:128-n32:64-S128-ni:1:10:20".into(),

@@ -1,4 +1,6 @@
-use crate::spec::{Arch, CfgAbi, LlvmAbi, Target, TargetMetadata, TargetOptions, base, cvs};
+use crate::spec::{
+    Arch, CfgAbi, LlvmAbi, StdCrates, StdSupport, Target, TargetMetadata, TargetOptions, base, cvs,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -8,6 +10,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(true),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 64,
         data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".into(),

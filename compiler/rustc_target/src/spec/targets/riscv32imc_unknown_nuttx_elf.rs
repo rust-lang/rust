@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, LlvmAbi, Os, PanicStrategy, RelocModel, Target, TargetMetadata,
-    TargetOptions, cvs,
+    Arch, Cc, LinkerFlavor, Lld, LlvmAbi, Os, PanicStrategy, RelocModel, StdCrates, StdSupport,
+    Target, TargetMetadata, TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -12,6 +12,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: None,
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 32,
         arch: Arch::RiscV32,

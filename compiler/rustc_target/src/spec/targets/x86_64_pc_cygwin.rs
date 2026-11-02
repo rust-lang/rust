@@ -1,4 +1,4 @@
-use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Target, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Lld, StdCrates, StdSupport, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::cygwin::opts();
@@ -19,6 +19,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
     }
 }

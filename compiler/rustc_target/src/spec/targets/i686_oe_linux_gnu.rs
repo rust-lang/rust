@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetMetadata};
+use crate::spec::{StdCrates, StdSupport, Target, TargetMetadata};
 
 pub(crate) fn target() -> Target {
     let mut base = super::i686_unknown_linux_gnu::target();
@@ -8,6 +8,7 @@ pub(crate) fn target() -> Target {
         tier: Some(3),
         host_tools: Some(false),
         std: Some(true),
+        standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
     };
 
     base.llvm_target = "i686-oe-linux-gnu".into();

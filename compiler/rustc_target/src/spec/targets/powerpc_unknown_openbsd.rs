@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Arch, StackProbeType, Target, TargetMetadata, base};
+use crate::spec::{Arch, StackProbeType, StdCrates, StdSupport, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::openbsd::opts();
@@ -15,6 +15,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 32,
         data_layout: "E-m:e-p:32:32-Fn32-i64:64-n32".into(),
