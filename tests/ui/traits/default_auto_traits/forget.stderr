@@ -1,0 +1,39 @@
+error[E0277]: values of type `A` may not be forgotten
+  --> $DIR/forget.rs:13:17
+   |
+LL |     mem::forget(A);
+   |     ----------- ^ the trait `Forget` is not implemented for `A`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: the trait bound `A: Forget` is not satisfied
+note: required by a bound in `std::mem::forget`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: consider borrowing here
+   |
+LL |     mem::forget(&A);
+   |                 +
+LL |     mem::forget(&mut A);
+   |                 ++++
+
+error[E0277]: values of type `T` may not be forgotten
+  --> $DIR/forget.rs:18:17
+   |
+LL |     mem::forget(t);
+   |     ----------- ^ the trait `Forget` is not implemented for `T`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: the trait bound `T: Forget` is not satisfied
+note: required by a bound in `std::mem::forget`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+help: consider borrowing here
+   |
+LL |     mem::forget(&t);
+   |                 +
+LL |     mem::forget(&mut t);
+   |                 ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
