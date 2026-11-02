@@ -89,6 +89,48 @@ fn main() {
             e.log(2);
         }
     });
+
+    // Proof-of-concept regression tests for <https://github.com/rust-lang/rust/issues/165322>:
+    use std::pin::Pin;
+    macro_rules! value {
+        ($arg:expr) => {
+            'l: {
+                scope!('l => extend!('l => $arg))
+            }
+        }
+    }
+    macro_rules! pin {
+        ($arg:expr) => {
+            'l: {
+                let pinned_ref = &mut scope!('l => extend!('l => value!($arg)));
+                unsafe { Pin::new_unchecked(pinned_ref) }
+            }
+        }
+    }
+    // make sure the pinned place is dropped in each sub-branch
+    #[allow(irrefutable_let_patterns)]
+    for b in [false, true] {
+        assert_drop_order(1..=2, |e| {
+            match b {
+                false | true if let p = pin!(e.log(2)) => drop(e.log(1)),
+                _ => {}
+            }
+        });
+    }
+    // make sure the re-scoped temporary is dropped in each sub-branch
+    #[allow(irrefutable_let_patterns)]
+    for b in [false, true] {
+        assert_drop_order(1..=2, |e| {
+            match b {
+                false | true
+                    if let _ = 'a: {
+                        scope!('a => &e.log(2));
+                        e.log(1);
+                    } => {}
+                _ => {}
+            }
+        });
+    }
 }
 
 // Test scaffolding
