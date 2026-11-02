@@ -2,6 +2,7 @@
 //@compile-flags: -Zmiri-disable-isolation
 //@run-native
 
+// temporary hack until <https://github.com/rust-lang/miri/issues/5406> is fixed.
 //@revisions: windows_host unix_host
 //@[unix_host] ignore-host: windows
 //@[windows_host] only-host: windows

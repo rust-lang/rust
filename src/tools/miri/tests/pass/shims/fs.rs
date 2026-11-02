@@ -68,6 +68,9 @@ fn main() {
     }
     // Windows file handling is very incomplete.
     if cfg!(not(windows)) || cfg!(not(miri)) {
+        test_fs_set_permissions();
+        test_file_set_permissions();
+
         test_create_new_dangling_symlink();
         test_directory();
         test_canonicalize();
@@ -854,6 +857,45 @@ fn test_directory_handle() {
 
     fs::create_dir(dirname.join("subdir")).unwrap();
     let _subdir = dir.open_dir("subdir").unwrap();
+}
+
+fn test_fs_set_permissions() {
+    let file = utils::prepare("miri_test_fs_set_permissions.txt");
+    drop(File::create(&file).unwrap());
+
+    // Make file read-only
+    let mut p = fs::metadata(&file).unwrap().permissions();
+    assert!(!p.readonly());
+    p.set_readonly(true);
+    fs::set_permissions(&file, p.clone()).unwrap();
+    assert!(fs::metadata(&file).unwrap().permissions().readonly());
+
+    // Make it writable again
+    p.set_readonly(false);
+    fs::set_permissions(&file, p.clone()).unwrap();
+    assert!(!fs::metadata(&file).unwrap().permissions().readonly());
+
+    // Test error for non-existing file
+    match fs::set_permissions(&file.with_file_name("foo"), p) {
+        Ok(..) => panic!("wanted an error"),
+        Err(err) => assert_eq!(err.kind(), ErrorKind::NotFound),
+    }
+}
+
+fn test_file_set_permissions() {
+    let path = utils::prepare("miri_test_file_set_permissions.txt");
+
+    let file = File::create(&path).unwrap();
+    let attr = fs::metadata(&path).unwrap();
+    assert!(!attr.permissions().readonly());
+    let mut p = attr.permissions();
+    p.set_readonly(true);
+    file.set_permissions(p.clone()).unwrap();
+    let attr = fs::metadata(&path).unwrap();
+    assert!(attr.permissions().readonly());
+
+    p.set_readonly(false);
+    file.set_permissions(p).unwrap();
 }
 
 fn test_copy() {
