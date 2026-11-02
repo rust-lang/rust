@@ -53,7 +53,6 @@
 - Correct visibility and defaultness order on associated impl type alias [#7064](https://github.com/rust-lang/rustfmt/pull/7064).
 - Correctly calculate the `shape` for inline const blocks when using `style_edition=2027` [#7065](https://github.com/rust-lang/rustfmt/pull/7065).
 - Prevent invalid code generation in macros that use raw identifiers [#7110](https://github.com/rust-lang/rustfmt/pull/7110).
-- Prevent rustfmt from reporting on `max_width` configuration issues when formatting macros [#6651](https://github.com/rust-lang/rustfmt/pull/6651).
 
 ### Changed
 - No longer apply `use_field_init_shorthand` when formatting macros [#6981](https://github.com/rust-lang/rustfmt/pull/6981).
