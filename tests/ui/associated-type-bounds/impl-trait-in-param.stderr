@@ -14,7 +14,7 @@ LL | fn foo<T: Trait<Assoc = u32>>() {}
 help: consider being explicit about the bounds
    |
 LL - fn foo<T: Trait<Assoc = u32>>() {}
-LL + fn foo<T: Trait<> + Super<i32, Assoc = u32> + Super<u32, Assoc = u32>>() {}
+LL + fn foo<T: Trait + Super<i32, Assoc = u32> + Super<u32, Assoc = u32>>() {}
    |
 
 error: aborting due to 1 previous error
