@@ -15,7 +15,7 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, Node};
 use rustc_lint::{LateContext, LateLintPass, Lint, impl_lint_pass};
-use rustc_middle::ty::{self, ClauseKind, ClausePolarity, GenericArgKind, Ty};
+use rustc_middle::ty::{self, ClauseKind, ClausePolarity, GenericArgKind, Ty, CallerBoundsIterator};
 use rustc_span::{DesugaringKind, Span, Spanned, SyntaxContext};
 use std::cmp::Ordering;
 
@@ -428,6 +428,8 @@ fn can_switch_ranges<'tcx>(
                 .tcx
                 .param_env(id)
                 .caller_bounds()
+            .all_clauses(cx.tcx)
+            .iter()
                 .into_iter()
                 .any(|c| {
                     if let ClauseKind::Trait(t) = c.kind().skip_binder()

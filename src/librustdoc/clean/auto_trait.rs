@@ -174,11 +174,11 @@ fn clean_param_env<'tcx>(
 
     // FIXME(#111101): Incorporate the explicit predicates of the item here...
     let item_clauses: FxIndexSet<_> =
-        tcx.param_env(item_def_id).caller_bounds().all_clauses().iter().collect();
+        tcx.param_env(item_def_id).caller_bounds().all_clauses(tcx).iter().collect();
     let where_predicates = cx.with_exact_param_env(param_env, |cx| {
         param_env
             .caller_bounds()
-            .all_clauses()
+            .all_clauses(tcx)
             .iter()
             // FIXME: ...which hopefully allows us to simplify this:
             .filter(|clause| {
