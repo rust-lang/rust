@@ -1481,7 +1481,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let entry = this.allocate_ptr(
                     Size::from_bytes(size),
-                    dirent_layout.align.abi,
+                    dirent_layout.align,
                     MiriMemoryKind::Runtime.into(),
                     AllocInit::Uninit,
                 )?;

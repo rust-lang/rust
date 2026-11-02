@@ -384,10 +384,8 @@ impl<'tcx> GlobalAlloc<'tcx> {
 
                     // Take over-alignment from attributes into account.
                     let align = match tcx.codegen_fn_attrs(def_id).alignment {
-                        Some(align_from_attribute) => {
-                            Ord::max(align_from_attribute, layout.align.abi)
-                        }
-                        None => layout.align.abi,
+                        Some(align_from_attribute) => Ord::max(align_from_attribute, layout.align),
+                        None => layout.align,
                     };
 
                     (layout.size, align)

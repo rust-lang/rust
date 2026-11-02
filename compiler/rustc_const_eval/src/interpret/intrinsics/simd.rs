@@ -844,9 +844,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             ty::SimdAlign::Element => {
                 // Take the alignment of the only field, which is an array and therefore has the same
                 // alignment as the element type.
-                vector_layout.field(self, 0).align.abi
+                vector_layout.field(self, 0).align
             }
-            ty::SimdAlign::Vector => vector_layout.align.abi,
+            ty::SimdAlign::Vector => vector_layout.align,
         };
 
         self.check_ptr_align(ptr, align)

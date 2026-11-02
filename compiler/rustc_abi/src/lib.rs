@@ -2267,7 +2267,7 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// especially in the case of by-pointer struct returns, which allocate stack even when unused.
     pub uninhabited: bool,
 
-    pub align: AbiAlign,
+    pub align: Align,
     pub size: Size,
 
     /// The largest alignment explicitly requested with `repr(align)` on this type or any field.
