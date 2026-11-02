@@ -1,0 +1,315 @@
+error: generic arguments must come before the first constraint
+  --> $DIR/dyn-trait-in-param-or-body.rs:27:28
+   |
+LL |     fn f(_: impl C<T = (), bool>) {}
+   |                    ------  ^^^^ generic argument
+   |                    |
+   |                    constraint
+   |
+help: move the constraint after the generic argument
+   |
+LL -     fn f(_: impl C<T = (), bool>) {}
+LL +     fn f(_: impl C<bool, T = ()>) {}
+   |
+
+error: generic arguments must come before the first constraint
+  --> $DIR/dyn-trait-in-param-or-body.rs:37:20
+   |
+LL |     fn f(_: impl C<bool, T = (), bool>) {}
+   |                    ^^^^  ------  ^^^^ generic arguments
+   |                          |
+   |                          constraint
+   |
+help: move the constraint after the generic arguments
+   |
+LL -     fn f(_: impl C<bool, T = (), bool>) {}
+LL +     fn f(_: impl C<bool, bool, T = ()>) {}
+   |
+
+error: generic arguments must come before the first constraint
+  --> $DIR/dyn-trait-in-param-or-body.rs:46:20
+   |
+LL |     fn f(_: impl C<bool, T = (), bool, K = ()>) {}
+   |                    ^^^^  ------  ^^^^  ------
+   |                          |       |
+   |                          |       generic arguments
+   |                          constraints
+   |
+help: move the constraints after the generic arguments
+   |
+LL -     fn f(_: impl C<bool, T = (), bool, K = ()>) {}
+LL +     fn f(_: impl C<bool, bool, T = (), K = ()>) {}
+   |
+
+error[E0222]: ambiguous associated type `Assoc` in bounds of `Trait`
+  --> $DIR/dyn-trait-in-param-or-body.rs:7:24
+   |
+LL | trait Super<T> {
+LL |     type Assoc;
+   |     ----------
+   |     |
+   |     ambiguous `Assoc` from `Super<i32>`
+   |     ambiguous `Assoc` from `Super<u32>`
+...
+LL | fn foo<T>(_: dyn Trait<Assoc = u32>, _: T) {}
+   |                        ^^^^^^^^^^^ ambiguous associated type `Assoc`
+   |
+help: consider introducing a new type parameter `U` and adding `where` constraints
+   |
+LL ~ fn foo<T, U>(_: U, _: T) where
+LL +         U: Trait,
+LL +         U: Super<i32, Assoc = u32>,
+LL +         U: Super<u32, Assoc = u32>
+   |
+
+error[E0222]: ambiguous associated type `T` in bounds of `with_args_before::C`
+  --> $DIR/dyn-trait-in-param-or-body.rs:18:26
+   |
+LL |     mod module { pub trait A<X> { type T; } }
+   |                                   ------ ambiguous `T` from `with_args_before::module::A<((bool,),)>`
+LL |     trait B<X>: module::A<(X,)> { type T; }
+   |                                   ------ ambiguous `T` from `with_args_before::B<(bool,)>`
+...
+LL |     fn f(_: impl C<bool, T = ()>) {}
+   |                          ^^^^^^ ambiguous associated type `T`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl C<bool, T = ()>) {}
+LL +     fn f(_: impl C<bool> + with_args_before::B<(bool,), T = ()> + with_args_before::module::A<((bool,),), T = ()>) {}
+   |
+
+error[E0222]: ambiguous associated type `T` in bounds of `with_args_after::C`
+  --> $DIR/dyn-trait-in-param-or-body.rs:27:20
+   |
+LL |     mod module { pub trait A<X> { type T; } }
+   |                                   ------ ambiguous `T` from `with_args_after::module::A<((bool,),)>`
+LL |     trait B<X>: module::A<(X,)> { type T; }
+   |                                   ------ ambiguous `T` from `with_args_after::B<(bool,)>`
+...
+LL |     fn f(_: impl C<T = (), bool>) {}
+   |                    ^^^^^^ ambiguous associated type `T`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl C<T = (), bool>) {}
+LL +     fn f(_: impl C<, bool> + with_args_after::B<(bool,), T = ()> + with_args_after::module::A<((bool,),), T = ()>) {}
+   |
+
+error[E0222]: ambiguous associated type `T` in bounds of `with_args_mixed::C`
+  --> $DIR/dyn-trait-in-param-or-body.rs:37:26
+   |
+LL |     mod module { pub trait A<X> { type T; } }
+   |                                   ------ ambiguous `T` from `with_args_mixed::module::A<((bool,),)>`
+LL |     trait B<X>: module::A<(X,)> { type T; }
+   |                                   ------ ambiguous `T` from `with_args_mixed::B<(bool,)>`
+...
+LL |     fn f(_: impl C<bool, T = (), bool>) {}
+   |                          ^^^^^^ ambiguous associated type `T`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl C<bool, T = (), bool>) {}
+LL +     fn f(_: impl C<bool, , bool> + with_args_mixed::B<(bool,), T = ()> + with_args_mixed::module::A<((bool,),), T = ()>) {}
+   |
+
+error[E0222]: ambiguous associated type `T` in bounds of `with_args_mingled::C`
+  --> $DIR/dyn-trait-in-param-or-body.rs:46:26
+   |
+LL |     mod module { pub trait A<X> { type T; type K;} }
+   |                                   ------ ambiguous `T` from `with_args_mingled::module::A<((bool,),)>`
+LL |     trait B<X>: module::A<(X,)> { type T; type K;}
+   |                                   ------ ambiguous `T` from `with_args_mingled::B<(bool,)>`
+...
+LL |     fn f(_: impl C<bool, T = (), bool, K = ()>) {}
+   |                          ^^^^^^ ambiguous associated type `T`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl C<bool, T = (), bool, K = ()>) {}
+LL +     fn f(_: impl C<bool, K = ()> + with_args_mingled::B<(bool,), T = ()> + with_args_mingled::module::A<((bool,),), T = ()>) {}
+   |
+
+error[E0222]: ambiguous associated type `K` in bounds of `with_args_mingled::C`
+  --> $DIR/dyn-trait-in-param-or-body.rs:46:40
+   |
+LL |     mod module { pub trait A<X> { type T; type K;} }
+   |                                           ------ ambiguous `K` from `with_args_mingled::module::A<((bool,),)>`
+LL |     trait B<X>: module::A<(X,)> { type T; type K;}
+   |                                           ------ ambiguous `K` from `with_args_mingled::B<(bool,)>`
+...
+LL |     fn f(_: impl C<bool, T = (), bool, K = ()>) {}
+   |                                        ^^^^^^ ambiguous associated type `K`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl C<bool, T = (), bool, K = ()>) {}
+LL +     fn f(_: impl C<bool, T = ()> + with_args_mingled::B<(bool,), K = ()> + with_args_mingled::module::A<((bool,),), K = ()>) {}
+   |
+
+error[E0222]: ambiguous associated type `T` in bounds of `without_args_and_padded_first::C`
+  --> $DIR/dyn-trait-in-param-or-body.rs:56:20
+   |
+LL |     trait A { type T; }
+   |               ------ ambiguous `T` from `without_args_and_padded_first::A`
+LL |     trait B: A { type T; }
+   |                  ------ ambiguous `T` from `without_args_and_padded_first::B`
+...
+LL |     fn f(_: impl C<T = (), PadLeft = (), PadRight = ()>) {}
+   |                    ^^^^^^ ambiguous associated type `T`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl C<T = (), PadLeft = (), PadRight = ()>) {}
+LL +     fn f(_: impl C<PadLeft = (), PadRight = ()> + without_args_and_padded_first::B<T = ()> + without_args_and_padded_first::A<T = ()>) {}
+   |
+
+error[E0222]: ambiguous associated type `T` in bounds of `without_args_and_padded_middle::C`
+  --> $DIR/dyn-trait-in-param-or-body.rs:65:34
+   |
+LL |     trait A { type T; }
+   |               ------ ambiguous `T` from `without_args_and_padded_middle::A`
+LL |     trait B: A { type T; }
+   |                  ------ ambiguous `T` from `without_args_and_padded_middle::B`
+...
+LL |     fn f(_: impl C<PadLeft = (), T = (), PadRight = ()>) {}
+   |                                  ^^^^^^ ambiguous associated type `T`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl C<PadLeft = (), T = (), PadRight = ()>) {}
+LL +     fn f(_: impl C<PadLeft = (), PadRight = ()> + without_args_and_padded_middle::B<T = ()> + without_args_and_padded_middle::A<T = ()>) {}
+   |
+
+error[E0222]: ambiguous associated type `T` in bounds of `without_args_and_padded_last::C`
+  --> $DIR/dyn-trait-in-param-or-body.rs:74:49
+   |
+LL |     trait A { type T; }
+   |               ------ ambiguous `T` from `without_args_and_padded_last::A`
+LL |     trait B: A { type T; }
+   |                  ------ ambiguous `T` from `without_args_and_padded_last::B`
+...
+LL |     fn f(_: impl C<PadLeft = (), PadRight = (), T = ()>) {}
+   |                                                 ^^^^^^ ambiguous associated type `T`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl C<PadLeft = (), PadRight = (), T = ()>) {}
+LL +     fn f(_: impl C<PadLeft = (), PadRight = ()> + without_args_and_padded_last::B<T = ()> + without_args_and_padded_last::A<T = ()>) {}
+   |
+
+error[E0222]: ambiguous associated type `T` in bounds of `gat::C`
+  --> $DIR/dyn-trait-in-param-or-body.rs:85:20
+   |
+LL |     trait A { type T<Q, K>; }
+   |               ------------ ambiguous `T` from `gat::A`
+LL |     trait B: A { type T<Q>; }
+   |                  --------- ambiguous `T` from `gat::B`
+...
+LL |     fn f(_: impl C<T<i32> = ()>) {}
+   |                    ^^^^^^^^^^^ ambiguous associated type `T`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl C<T<i32> = ()>) {}
+LL +     fn f(_: impl C + gat::B<T = ()> + gat::A<T = ()>) {}
+   |
+
+error[E0222]: ambiguous associated type `T` in bounds of `super_with_projs::B`
+  --> $DIR/dyn-trait-in-param-or-body.rs:98:20
+   |
+LL |     trait A { type T; type Unrelated; }
+   |               ------ ambiguous `T` from `super_with_projs::A`
+LL |     trait K { type T; }
+   |               ------ ambiguous `T` from `K`
+...
+LL |     fn f(_: impl B<T = ()>) {}
+   |                    ^^^^^^ ambiguous associated type `T`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl B<T = ()>) {}
+LL +     fn f(_: impl B + K<T = ()> + super_with_projs::A<T = ()>) {}
+   |
+
+error[E0222]: ambiguous associated type `T` in bounds of `super_with_exhaustive_projs::B`
+  --> $DIR/dyn-trait-in-param-or-body.rs:116:20
+   |
+LL |     trait A0 { type T; }
+   |                ------ ambiguous `T` from `A0`
+LL |     trait A1 { type T; }
+   |                ------ ambiguous `T` from `A1`
+...
+LL |     fn f(_: impl B<T = ()>) {}
+   |                    ^^^^^^ ambiguous associated type `T`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl B<T = ()>) {}
+LL +     fn f(_: impl B + A1<T = ()> + A0<T = ()>) {}
+   |
+
+error[E0222]: ambiguous associated type `Output` in bounds of `paren_sugar::B`
+  --> $DIR/dyn-trait-in-param-or-body.rs:127:20
+   |
+LL |     trait A { type Output; }
+   |               ----------- ambiguous `Output` from `paren_sugar::A`
+...
+LL |     fn f(_: impl B<Output = ()>) {}
+   |                    ^^^^^^^^^^^ ambiguous associated type `Output`
+   |
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+   = note: ambiguous `Output` from `FnOnce()`
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl B<Output = ()>) {}
+LL +     fn f(_: impl B + FnOnce<(), Output = ()> + paren_sugar::A<Output = ()>) {}
+   |
+
+error[E0222]: ambiguous associated type `T` in bounds of `higher_rank::C`
+  --> $DIR/dyn-trait-in-param-or-body.rs:137:20
+   |
+LL |     trait A<'a> {type T;}
+   |                  ------ ambiguous `T` from `for<'a> higher_rank::A<'a>`
+LL |     trait B<'a> {type T;}
+   |                  ------ ambiguous `T` from `for<'r> higher_rank::B<'r>`
+...
+LL |     fn f(_: impl C<T = ()>) {}
+   |                    ^^^^^^ ambiguous associated type `T`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl C<T = ()>) {}
+LL +     fn f(_: impl C + for<'r> higher_rank::B<'r, T = ()> + for<'a> higher_rank::A<'a, T = ()>) {}
+   |
+
+error[E0221]: ambiguous associated type `T` in bounds of `atb::C`
+  --> $DIR/dyn-trait-in-param-or-body.rs:146:20
+   |
+LL |     trait A { type T; }
+   |               ------ ambiguous `T` from `atb::A`
+LL |     trait B: A { type T; }
+   |                  ------ ambiguous `T` from `atb::B`
+...
+LL |     fn f(_: impl C<T: Copy>) {}
+   |                    ^^^^^^^ ambiguous associated type `T`
+
+error[E0222]: ambiguous associated type `Assoc` in bounds of `Trait`
+  --> $DIR/dyn-trait-in-param-or-body.rs:10:22
+   |
+LL | trait Super<T> {
+LL |     type Assoc;
+   |     ----------
+   |     |
+   |     ambiguous `Assoc` from `Super<i32>`
+   |     ambiguous `Assoc` from `Super<u32>`
+...
+LL |     let _: dyn Trait<Assoc = u32>;
+   |                      ^^^^^^^^^^^ ambiguous associated type `Assoc`
+
+error: aborting due to 19 previous errors
+
+Some errors have detailed explanations: E0221, E0222.
+For more information about an error, try `rustc --explain E0221`.

@@ -57,6 +57,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let mut user_written_bounds = Vec::new();
         let mut potential_assoc_items = Vec::new();
+        let mut silence_missing_bounds = None;
         for poly_trait_ref in hir_bounds.iter() {
             // FIXME(mgca): We actually leak `trait_object_dummy_self` if the type of any assoc
             //              const mentions `Self` (in "Self projections" which we intentionally
@@ -70,8 +71,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 PredicateFilter::SelfOnly,
                 OverlappingAsssocItemConstraints::Forbidden,
             );
-            if let Err(GenericArgCountMismatch { invalid_args, .. }) = result.correct {
+            if let Err(GenericArgCountMismatch { invalid_args, reported }) = result.correct {
                 potential_assoc_items.extend(invalid_args);
+                silence_missing_bounds = Some(reported);
             }
         }
 
@@ -324,14 +326,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             })
             .collect();
 
-        // If there are any associated items whose value wasn't provided, bail out with an error.
-        if let Err(guar) = self.check_for_required_assoc_items(
-            principal_trait.as_ref().map_or(smallvec![], |(_, spans)| spans.clone()),
-            missing_assoc_items,
-            potential_assoc_items,
-            hir_bounds,
-        ) {
+        if let Some(guar) = silence_missing_bounds {
+            // There were associated items whose value was ambiguous, bail out with an error
+            // without complaining about missing required bounds.
             return Ty::new_error(tcx, guar);
+        } else {
+            // If there are any associated items whose value wasn't provided, bail out with an error.
+            if let Err(guar) = self.check_for_required_assoc_items(
+                principal_trait.as_ref().map_or(smallvec![], |(_, spans)| spans.clone()),
+                missing_assoc_items,
+                potential_assoc_items,
+                hir_bounds,
+            ) {
+                return Ty::new_error(tcx, guar);
+            }
         }
 
         // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as

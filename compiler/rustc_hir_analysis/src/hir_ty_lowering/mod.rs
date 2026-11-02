@@ -1017,7 +1017,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let _ = self.prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
         self.report_internal_fn_trait(span, trait_def_id, segment, false);
 
-        let (generic_args, arg_count) = self.lower_generic_args_of_path(
+        let (generic_args, mut arg_count) = self.lower_generic_args_of_path(
             trait_ref.path.span,
             trait_def_id,
             &[],
@@ -1170,7 +1170,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
 
             // Specify type to assert that error was already reported in `Err` case.
-            let _: Result<_, ErrorGuaranteed> = self.lower_assoc_item_constraint(
+            if let Err(reported) = self.lower_assoc_item_constraint(
                 trait_ref.hir_ref_id,
                 poly_trait_ref,
                 constraint,
@@ -1178,7 +1178,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 dup_constraints.as_mut(),
                 constraint.span,
                 predicate_filter,
-            );
+                span,
+            ) {
+                arg_count.correct = Err(GenericArgCountMismatch { reported, invalid_args: vec![] });
+            }
             // Okay to ignore `Err` because of `ErrorGuaranteed` (see above).
         }
 
@@ -1275,6 +1278,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             assoc_ident,
             span,
             None,
+            span,
         )
     }
 
@@ -1360,6 +1364,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_ident: Ident,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'_>>,
+        outer_span: Span,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed>
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
@@ -1394,6 +1399,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 assoc_ident,
                 span,
                 constraint,
+                outer_span,
             ));
         }
 
@@ -1662,6 +1668,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     segment.ident,
                     span,
                     None,
+                    span,
                 )?
             }
             (

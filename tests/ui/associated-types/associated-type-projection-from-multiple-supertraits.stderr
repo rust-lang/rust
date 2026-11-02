@@ -1,9 +1,11 @@
 error[E0221]: ambiguous associated type `Color` in bounds of `C`
   --> $DIR/associated-type-projection-from-multiple-supertraits.rs:19:32
    |
+LL | pub trait Vehicle {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Vehicle`
 ...
+LL | pub trait Box {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Box`
 ...
@@ -24,41 +26,55 @@ LL + fn dent<C:BoxCar>(c: C, color: <C as Box>::Color) {
 error[E0222]: ambiguous associated type `Color` in bounds of `BoxCar`
   --> $DIR/associated-type-projection-from-multiple-supertraits.rs:23:38
    |
+LL | pub trait Vehicle {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Vehicle`
 ...
+LL | pub trait Box {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Box`
 ...
 LL | fn dent_object<COLOR>(c: &dyn BoxCar<Color=COLOR>) {
    |                                      ^^^^^^^^^^^ ambiguous associated type `Color`
    |
-   = help: consider introducing a new type parameter `T` and adding `where` constraints:
-               where
-                   T: BoxCar,
-                   T: Vehicle::Color = COLOR,
-                   T: Box::Color = COLOR
+help: consider introducing a new type parameter `T` and adding `where` constraints
+   |
+LL ~ fn dent_object<COLOR, T>(c: &T) where
+LL +         T: BoxCar,
+LL +         T: Vehicle<Color = COLOR>,
+LL +         T: Box<Color = COLOR>
+   |
 
-error[E0191]: the value of the associated types `Color` in `Box`, `Color` in `Vehicle` must be specified
-  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:23:31
+error[E0222]: ambiguous associated type `Color` in bounds of `BoxCar`
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:27:44
    |
-LL |     type Color;
-   |     ---------- `Vehicle::Color` defined here
-...
-LL |     type Color;
-   |     ---------- `Box::Color` defined here
-...
-LL | fn dent_object<COLOR>(c: &dyn BoxCar<Color=COLOR>) {
-   |                               ^^^^^^^^^^^^^^^^^^^ associated types `Color` (from trait `Vehicle`), `Color` (from trait `Box`) must be specified
-   |
-   = help: consider introducing a new type parameter, adding `where` constraints using the fully-qualified path to the associated types
-
-error[E0221]: ambiguous associated type `Color` in bounds of `C`
-  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:28:29
-   |
+LL | pub trait Vehicle {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Vehicle`
 ...
+LL | pub trait Box {
+LL |     type Color;
+   |     ---------- ambiguous `Color` from `Box`
+...
+LL | fn other_dent_object<COLOR>(c: &dyn BoxCar<Color=COLOR>) where COLOR: std::fmt::Debug {
+   |                                            ^^^^^^^^^^^ ambiguous associated type `Color`
+   |
+help: consider introducing a new type parameter `T` and adding `where` constraints
+   |
+LL ~ fn other_dent_object<COLOR, T>(c: &T) where COLOR: std::fmt::Debug,
+LL +         T: BoxCar,
+LL +         T: Vehicle<Color = COLOR>,
+LL +         T: Box<Color = COLOR>
+   |
+
+error[E0221]: ambiguous associated type `Color` in bounds of `C`
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:31:29
+   |
+LL | pub trait Vehicle {
+LL |     type Color;
+   |     ---------- ambiguous `Color` from `Vehicle`
+...
+LL | pub trait Box {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Box`
 ...
@@ -78,5 +94,5 @@ LL + fn paint<C:BoxCar>(c: C, d: <C as Box>::Color) {
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0191, E0221, E0222.
-For more information about an error, try `rustc --explain E0191`.
+Some errors have detailed explanations: E0221, E0222.
+For more information about an error, try `rustc --explain E0221`.

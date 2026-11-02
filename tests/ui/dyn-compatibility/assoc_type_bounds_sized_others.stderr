@@ -1,6 +1,8 @@
 error[E0191]: the value of the associated type `Bop` in `Foo` must be specified
   --> $DIR/assoc_type_bounds_sized_others.rs:12:16
    |
+LL | trait Foo {
+...
 LL |     type Bop;
    |     -------- `Bop` defined here
 ...
@@ -15,6 +17,7 @@ LL | fn foo(_: &dyn Foo<Bop = /* Type */>) {}
 error[E0191]: the value of the associated type `Bop` in `Bar` must be specified
   --> $DIR/assoc_type_bounds_sized_others.rs:22:16
    |
+LL | trait Bar {
 LL |     type Bop;
    |     -------- `Bop` defined here
 ...

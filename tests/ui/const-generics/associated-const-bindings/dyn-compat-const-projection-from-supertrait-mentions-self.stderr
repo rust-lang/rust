@@ -1,6 +1,8 @@
 error[E0191]: the value of the associated constant `K` in `Y` must be specified
   --> $DIR/dyn-compat-const-projection-from-supertrait-mentions-self.rs:18:16
    |
+LL | trait Y {
+LL |     #[rustc_always_gca]
 LL |     const K: usize;
    |     -------------- `K` defined here
 ...
