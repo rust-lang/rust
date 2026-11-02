@@ -292,11 +292,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 flags
             );
         };
-
-        match fd_result {
-            Ok(fd) => interp_ok(Scalar::from_i32(this.machine.fds.insert(fd))),
-            Err(e) => this.set_errno_and_return_neg1_i32(e),
-        }
+        let fd = match fd_result {
+            Ok(fd) => fd,
+            Err(e) => return this.set_errno_and_return_neg1_i32(e),
+        };
+        let Some(fd_num) = this.machine.fds.insert(fd) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
+        interp_ok(Scalar::from_i32(fd_num))
     }
 
     fn bind(

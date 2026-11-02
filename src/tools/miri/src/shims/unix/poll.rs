@@ -32,12 +32,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let nfds_layout = this.libc_ty_layout("nfds_t");
-        let nfds: u64 = this.read_scalar(nfds)?.to_int(nfds_layout.size)?.try_into().unwrap();
+        let nfds: u64 = this.read_scalar(nfds)?.to_int(nfds.layout.size)?.try_into().unwrap();
         let timeout = this.read_scalar(timeout)?.to_i32()?;
-        let fds_arr_layout = this.libc_array_ty_layout("pollfd", nfds);
-        let fds_arr_mplace = this.deref_pointer_as(fds, fds_arr_layout)?;
-        let mut fds_arr_iter = this.project_array_fields(&fds_arr_mplace)?;
+        let fds_arr = this.deref_pointer(fds)?;
 
         // The provided interests indexed by the file descriptor they're for.
         let mut interests = BTreeMap::<FdNum, PollInterest<'tcx>>::new();
@@ -49,7 +46,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // We iterate over the fds array of the `poll` syscall. For each fd, we check its
         // output field, the relevant events, and whether they are currently fulfilled.
-        while let Some((_idx, pollfd)) = fds_arr_iter.next(this)? {
+        for idx in 0..nfds {
+            let pollfd = this.project_c_array_field(&fds_arr, idx)?;
             let fd_field = this.project_field_named(&pollfd, "fd")?;
             let fd_num = this.read_scalar(&fd_field)?.to_i32()?;
             let events_field = this.project_field_named(&pollfd, "events")?;

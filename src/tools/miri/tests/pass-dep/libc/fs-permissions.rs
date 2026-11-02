@@ -1,5 +1,5 @@
 //@ignore-target: windows # libc bits exist, but we don't support them
-//@ignore-host: windows # needs unix PermissionExt
+//@ignore-host: windows # shim needs unix PermissionExt on the host
 //@compile-flags: -Zmiri-disable-isolation
 //@run-native
 

@@ -33,6 +33,8 @@ fn main() {
     test_fcntl_getfd();
     test_canonicalize_too_long();
     test_rename();
+    test_mkdir();
+    test_rmdir();
     test_ftruncate::<libc::off_t>(libc::ftruncate);
     #[cfg(target_os = "linux")]
     test_ftruncate::<libc::off64_t>(libc::ftruncate64);
@@ -83,12 +85,19 @@ fn main() {
     test_readv_empty_bufs();
     #[cfg(not(target_os = "solaris"))]
     test_preadv();
-    test_pread();
+    test_pread::<libc::off_t>(libc::pread);
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    test_pread::<libc::off64_t>(libc::pread64);
     test_writev();
     test_writev_empty_bufs();
     #[cfg(not(target_os = "solaris"))]
     test_pwritev();
-    test_pwrite();
+    test_pwrite::<libc::off_t>(libc::pwrite);
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    test_pwrite::<libc::off64_t>(libc::pwrite64);
+    test_lseek::<libc::off_t>(libc::lseek);
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    test_lseek::<libc::off64_t>(libc::lseek64);
     test_readlink();
     test_linkat();
 }
@@ -636,6 +645,16 @@ fn test_dup() {
         let third_len = third_len as usize;
         assert_eq!(third_buf[..third_len], remaining_bytes[..third_len]);
 
+        // dup'ing to invalid FD numbers should fail.
+        let err = errno_result(libc::dup2(1, -1)).unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
+        let err = errno_result(libc::dup2(1, i32::MAX)).unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
+        let err = errno_result(libc::fcntl(1, libc::F_DUPFD, -1)).unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
+        let err = errno_result(libc::fcntl(1, libc::F_DUPFD, i32::MAX)).unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
+
         // Cleanup
         let err = errno_result(libc::close(99)).unwrap_err(); // new_fd2, already closed above!
         assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
@@ -679,6 +698,67 @@ fn test_rename() {
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
 
     fs::remove_file(&path2).unwrap();
+}
+
+fn test_mkdir() {
+    let path = utils::prepare("miri_test_libc_mkdir");
+    let cpath = utils::into_c_string(&path);
+
+    // Creating a directory should succeed.
+    errno_check(unsafe { libc::mkdir(cpath.as_ptr(), 0o777) });
+    assert!(path.metadata().unwrap().is_dir());
+
+    // Creating the same directory again should fail since it already exists.
+    let err = errno_result(unsafe { libc::mkdir(cpath.as_ptr(), 0o777) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EEXIST);
+
+    // Creating a directory whose parent does not exist should fail.
+    let missing_parent = utils::into_c_string(path.join("nonexistent").join("child"));
+    let err = errno_result(unsafe { libc::mkdir(missing_parent.as_ptr(), 0o777) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+
+    // Creating a directory below a path that is actually a file should fail.
+    let file_path = utils::prepare_with_content("miri_test_libc_mkdir_file.txt", b"hello");
+    let bad_child = utils::into_c_string(file_path.join("child"));
+    let err = errno_result(unsafe { libc::mkdir(bad_child.as_ptr(), 0o777) }).unwrap_err();
+
+    if cfg!(miri) {
+        // Miri error here is host-dependent (Windows returns ENOENT, the rest return ENOTDIR)
+        assert!(matches!(err.raw_os_error().unwrap(), libc::ENOENT | libc::ENOTDIR));
+    } else {
+        assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR);
+    }
+
+    fs::remove_file(&file_path).unwrap();
+    fs::remove_dir(&path).unwrap();
+}
+
+fn test_rmdir() {
+    let path = utils::prepare("miri_test_libc_rmdir");
+    fs::create_dir(&path).unwrap();
+    let cpath = utils::into_c_string(&path);
+
+    // Removing a non-empty directory should fail.
+    let child = path.join("child");
+    fs::create_dir(&child).unwrap();
+    let err = errno_result(unsafe { libc::rmdir(cpath.as_ptr()) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOTEMPTY);
+    fs::remove_dir(&child).unwrap();
+
+    // Removing an empty directory should succeed.
+    errno_check(unsafe { libc::rmdir(cpath.as_ptr()) });
+    assert!(!path.exists());
+
+    // Removing it again should fail since it no longer exists.
+    let err = errno_result(unsafe { libc::rmdir(cpath.as_ptr()) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+
+    // Removing a regular file (instead of a directory) should fail.
+    let file_path = utils::prepare_with_content("miri_test_libc_rmdir_file.txt", b"hello");
+    let c_file_path = utils::into_c_string(&file_path);
+    let err = errno_result(unsafe { libc::rmdir(c_file_path.as_ptr()) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR);
+    fs::remove_file(&file_path).unwrap();
 }
 
 fn test_ftruncate<T: From<i32>>(
@@ -1069,7 +1149,11 @@ fn test_fstat() {
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
-    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    assert_eq!(
+        stat.st_mode & libc::S_IRWXU,
+        libc::S_IWUSR | libc::S_IRUSR,
+        "owner should be able to read & write"
+    );
     assert_eq!(stat.st_size, 5);
 
     // Ensure fstat64 also works.
@@ -1080,7 +1164,7 @@ fn test_fstat() {
         let stat = unsafe { stat.assume_init_ref() };
 
         assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
-        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
         assert_eq!(stat.st_size, 5);
     }
 
@@ -1104,7 +1188,7 @@ fn test_fstat() {
             // Miri currently gets this wrong.
             // assert_eq!(stat.st_mode & !libc::S_IFMT, 0, "no permission should be set");
         } else {
-            assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+            assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
         }
         assert_eq!(stat.st_size, 0);
 
@@ -1135,7 +1219,7 @@ fn test_fstatat() {
 
     let checkstat = |stat: &libc::stat| {
         assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
-        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
         assert_eq!(stat.st_size, 5);
         check_stat_fields(stat);
     };
@@ -1201,7 +1285,7 @@ fn test_fstatat() {
         });
         let stat = unsafe { stat.assume_init_ref() };
         assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFLNK); // not S_IFREG!
-        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
         check_stat_fields(stat);
     }
 
@@ -1227,7 +1311,7 @@ fn test_stat() {
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
-    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
     assert_eq!(stat.st_size, 5);
 
     // Check that all fields are initialized.
@@ -1252,7 +1336,7 @@ fn test_lstat() {
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFLNK);
-    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
 
     // Check that all fields are initialized.
     check_stat_fields(stat);
@@ -1705,7 +1789,7 @@ fn test_dirfd() {
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFDIR);
-    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
 
     // Check that all fields are initialized.
     check_stat_fields(stat);
@@ -1719,7 +1803,7 @@ fn test_dirfd() {
     errno_check(unsafe { libc::fstatat(dirfd, c".".as_ptr(), stat.as_mut_ptr(), 0) });
     let stat = unsafe { stat.assume_init_ref() };
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFDIR);
-    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
     check_stat_fields(stat);
 
     // Close the stream.
@@ -1779,6 +1863,26 @@ fn test_readv() {
     // The vectored read should read at least one byte.
     assert!(bytes_read > 0);
     assert_eq!(&buffer[0..bytes_read], &file_contents[0..bytes_read]);
+
+    // A negative `iovcnt` is invalid.
+    let err = errno_result(unsafe { libc::readv(fd, iov.as_ptr(), -1) }).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+
+    // The total length of the buffers must fit in `ssize_t`.
+    let mut buffer = [0u8; 4];
+    let iov = [
+        libc::iovec {
+            iov_base: buffer.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: libc::size_t::MAX,
+        },
+    ];
+    let err = errno_result(unsafe { libc::readv(fd, iov.as_ptr(), iov.len() as libc::c_int) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 }
 
 /// Test that vectored reads without any buffers return zero.
@@ -1839,7 +1943,14 @@ fn test_preadv() {
 }
 
 /// Test reading with an offset.
-fn test_pread() {
+fn test_pread<T: From<i32>>(
+    pread: unsafe extern "C" fn(
+        fd: libc::c_int,
+        buf: *mut libc::c_void,
+        count: libc::size_t,
+        offset: T,
+    ) -> libc::ssize_t,
+) {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
     let path = utils::prepare_with_content("miri-pass-libc-pread.txt", &file_contents);
     let cpath = utils::into_c_string(path);
@@ -1850,11 +1961,11 @@ fn test_pread() {
     // Read with a 2 byte offset.
     const OFFSET: usize = 2;
     let bytes_read = unsafe {
-        errno_result(libc::pread(
+        errno_result(pread(
             fd,
             buffer.as_mut_ptr().cast(),
             buffer.len() as libc::size_t,
-            OFFSET as libc::off_t,
+            T::from(OFFSET as i32),
         ))
         .unwrap() as usize
     };
@@ -1891,6 +2002,31 @@ fn test_writev() {
     };
     // The vectored write should write at least one byte.
     assert!(bytes_written > 0);
+
+    // A negative `iovcnt` is invalid.
+    let err = errno_result(unsafe { libc::writev(fd, iov.as_ptr(), -1) }).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+
+    // The total length of the buffers must fit in `ssize_t`.
+    let invalid_iov = [
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: libc::size_t::MAX,
+        },
+    ];
+    let err = errno_result(unsafe {
+        libc::writev(fd, invalid_iov.as_ptr(), invalid_iov.len() as libc::c_int)
+    })
+    .unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+
+    // The failed writes must not have written anything.
+    let pos = errno_result(unsafe { libc::lseek(fd, 0, libc::SEEK_CUR) }).unwrap();
+    assert_eq!(pos as usize, bytes_written);
 
     // Open the FD again in readonly mode and with an unadvanced pointer.
     let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
@@ -1983,7 +2119,14 @@ fn test_pwritev() {
 }
 
 /// Test writing with an offset.
-fn test_pwrite() {
+fn test_pwrite<T: From<i32>>(
+    pwrite: unsafe extern "C" fn(
+        fd: libc::c_int,
+        buf: *const libc::c_void,
+        count: libc::size_t,
+        offset: T,
+    ) -> libc::ssize_t,
+) {
     let path = utils::prepare_with_content("miri-pass-libc-pwritev.txt", &[]);
     let cpath = utils::into_c_string(path);
     let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) }).unwrap();
@@ -1993,11 +2136,11 @@ fn test_pwrite() {
     // Write with a 2 byte offset.
     const OFFSET: usize = 2;
     let bytes_written = unsafe {
-        errno_result(libc::pwrite(
+        errno_result(pwrite(
             fd,
             write_buffer.as_ptr().cast(),
             write_buffer.len() as libc::size_t,
-            OFFSET as libc::off_t,
+            T::from(OFFSET as i32),
         ))
         .unwrap() as usize
     };
@@ -2021,6 +2164,56 @@ fn test_pwrite() {
 
     // The write should start at the provided byte offset.
     assert_eq!(&write_buffer[0..bytes_written], &read_buffer[OFFSET..(bytes_written + OFFSET)]);
+}
+
+/// Test repositioning the file offset.
+fn test_lseek<T: From<i32> + From<i8> + Ord + std::fmt::Debug>(
+    lseek: unsafe extern "C" fn(fd: libc::c_int, offset: T, whence: libc::c_int) -> T,
+) {
+    let file_contents = [1u8, 2, 3, 4, 5, 6];
+    let path = utils::prepare_with_content("miri-pass-libc-lseek.txt", &file_contents);
+    let cpath = utils::into_c_string(path);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
+
+    // To make SEEK_SET and SEEK_CUR behave differently, read a byte to advance the position to 1.
+    assert_eq!(libc_utils::read_exact_array::<1>(fd).unwrap(), [file_contents[0]]);
+
+    // SEEK_SET: Offset relative to the start of the file.
+    assert_eq!(
+        errno_result(unsafe { lseek(fd, T::from(2i32), libc::SEEK_SET) }).unwrap(),
+        T::from(2i32)
+    );
+
+    assert_eq!(libc_utils::read_exact_array::<1>(fd).unwrap(), [file_contents[2]]);
+
+    // SEEK_CUR: Offset relative to the current position.
+    // The previous read advanced the current position to 3.
+    assert_eq!(
+        errno_result(unsafe { lseek(fd, T::from(1i32), libc::SEEK_CUR) }).unwrap(),
+        T::from(4i32)
+    );
+
+    assert_eq!(libc_utils::read_exact_array::<1>(fd).unwrap(), [file_contents[4]]);
+
+    // SEEK_END: Offset relative to the end of the file.
+    assert_eq!(
+        errno_result(unsafe { lseek(fd, T::from(-2i32), libc::SEEK_END) }).unwrap(),
+        T::from(4i32)
+    );
+
+    assert_eq!(libc_utils::read_exact_array::<1>(fd).unwrap(), [file_contents[4]]);
+
+    // invalid fd
+    let err = errno_result(unsafe { lseek(-1, T::from(2i32), libc::SEEK_SET) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
+
+    // invalid offset + SEEK_SET
+    let err = errno_result(unsafe { lseek(fd, T::from(-1i32), libc::SEEK_SET) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
+
+    // invalid whence
+    let err = errno_result(unsafe { lseek(fd, T::from(2i32), 99) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
 }
 
 fn test_readlink() {

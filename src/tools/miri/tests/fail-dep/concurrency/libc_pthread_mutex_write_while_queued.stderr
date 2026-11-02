@@ -1,4 +1,4 @@
-error: Undefined Behavior: write of `pthread_mutex_t` is forbidden while the queue is non-empty
+error: Undefined Behavior: accessing the memory backing a `pthread_mutex_t` is forbidden while the queue is non-empty
   --> tests/fail-dep/concurrency/libc_pthread_mutex_write_while_queued.rs:LL:CC
    |
 LL |             atomic_ref.store(0, Ordering::Relaxed);

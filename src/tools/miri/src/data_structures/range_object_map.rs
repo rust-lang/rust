@@ -2,7 +2,7 @@
 //! ranges and data are discrete and non-splittable -- they represent distinct "objects". An
 //! allocation in the map will always have the same range until explicitly removed
 
-use std::ops::{Index, IndexMut, Range};
+use std::ops::Range;
 
 use rustc_abi::Size;
 use rustc_const_eval::interpret::AllocRange;
@@ -25,11 +25,11 @@ pub struct RangeObjectMap<T> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AccessType {
-    /// The access perfectly overlaps (same offset and range) with the existing allocation
+    /// The access perfectly overlaps (same offset and range) with an existing object.
     PerfectlyOverlapping(Position),
-    /// The access does not touch any existing allocation
+    /// The access does not touch any existing object.
     Empty(Position),
-    /// The access overlaps with one or more existing allocations
+    /// The access overlaps with one or more existing objects.
     ImperfectlyOverlapping(Range<Position>),
 }
 
@@ -103,7 +103,11 @@ impl<T> RangeObjectMap<T> {
     // always calls access_type before calling insert/index/index_mut, and we don't
     // want to repeat the binary search on each time, so we ask the caller to supply Position
     pub fn insert_at_pos(&mut self, pos: Position, range: AllocRange, data: T) {
+        assert!(range.size > Size::ZERO);
+
         self.v.insert(pos, Elem { range, data });
+
+        // Validate position.
         // If we aren't the first element, then our start must be greater than the previous element's end
         if pos > 0 {
             assert!(self.v[pos - 1].range.end() <= range.start);
@@ -118,26 +122,69 @@ impl<T> RangeObjectMap<T> {
         self.v.drain(pos_range);
     }
 
-    pub fn remove_from_pos(&mut self, pos: Position) {
-        self.v.remove(pos);
+    pub fn remove_from_pos(&mut self, pos: Position) -> T {
+        self.v.remove(pos).data
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.v.iter().map(|e| &e.data)
     }
-}
 
-impl<T> Index<Position> for RangeObjectMap<T> {
-    type Output = T;
-
-    fn index(&self, pos: Position) -> &Self::Output {
-        &self.v[pos].data
+    pub fn range(&self, range: AllocRange) -> impl Iterator<Item = &T> {
+        let begin = self.find_offset(range.start).unwrap_or_else(|i| i);
+        self.v[begin..]
+            .iter()
+            .take_while(move |elem| {
+                debug_assert!(elem.range.end() > range.start);
+                // `elem` overlaps `range` if it starts before the end of `range`.
+                elem.range.start < range.end()
+            })
+            .map(|e| &e.data)
     }
-}
 
-impl<T> IndexMut<Position> for RangeObjectMap<T> {
-    fn index_mut(&mut self, pos: Position) -> &mut Self::Output {
-        &mut self.v[pos].data
+    pub fn remove_range_if(&mut self, range: AllocRange, pred: impl Fn(&T) -> bool) {
+        let mut idx = self.find_offset(range.start).unwrap_or_else(|i| i);
+        loop {
+            let Some(elem) = self.v.get(idx) else { break };
+            // If we no longer overlap, we can end the loop.
+            if elem.range.start >= range.end() {
+                break;
+            }
+            // See if we should remove this element.
+            if pred(&elem.data) {
+                self.v.remove(idx);
+                // `idx` now refers to the next element.
+            } else {
+                // If not, go look at next element.
+                idx += 1;
+            }
+        }
+    }
+
+    /// Get the element that starts at the given offset.
+    pub fn get_start(&self, offset: Size) -> Option<&T> {
+        let idx = self.find_offset(offset).ok()?;
+        let elem = &self.v[idx];
+        (elem.range.start == offset).then_some(&elem.data)
+    }
+
+    /// Get the element that starts at the given offset.
+    pub fn get_start_mut(&mut self, offset: Size) -> Option<&mut T> {
+        let idx = self.find_offset(offset).ok()?;
+        let elem = &mut self.v[idx];
+        (elem.range.start == offset).then_some(&mut elem.data)
+    }
+
+    pub fn get_pos(&self, pos: Position) -> Option<&T> {
+        self.v.get(pos).map(|e| &e.data)
+    }
+
+    pub fn get_mut_pos(&mut self, pos: Position) -> Option<&mut T> {
+        self.v.get_mut(pos).map(|e| &mut e.data)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.v.is_empty()
     }
 }
 

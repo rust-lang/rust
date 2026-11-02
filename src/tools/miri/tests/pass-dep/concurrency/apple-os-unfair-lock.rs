@@ -1,4 +1,5 @@
 //@only-target: darwin
+//@run-native
 
 use std::cell::UnsafeCell;
 

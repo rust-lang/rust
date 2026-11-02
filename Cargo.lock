@@ -2562,7 +2562,6 @@ dependencies = [
  "ipc-channel",
  "libc",
  "libffi",
- "libffi-sys",
  "libloading",
  "measureme",
  "mio",

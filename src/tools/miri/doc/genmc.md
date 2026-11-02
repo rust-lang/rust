@@ -16,7 +16,7 @@ Any loops that may run infinitely must be replaced or bounded (see [below](#elim
 GenMC makes use of Dynamic Partial Order Reduction (DPOR) to reduce the number of executions that must be explored, but the runtime can still be super-exponential in the size of the input program (number of threads and amount of interaction between threads).
 Large programs may not be verifiable in a reasonable amount of time.
 
-GenMC currently only supports Linux hosts.
+GenMC currently only supports Linux and macOS hosts.
 Both the host and the target must be 64-bit little-endian.
 
 ## Usage
@@ -134,7 +134,7 @@ fn count_until_true_genmc(flag: &AtomicBool) -> u64 {
 
 GenMC is written in C++, which complicates development a bit.
 The prerequisites for building Miri-GenMC are:
-- A compiler with sufficient C++20 support (we are testing GCC 13).
+- A compiler with sufficient C++23 support (we are testing GCC 13 on Linux and AppleClang 17 of Xcode 16.4 on macOS).
 
 The actual code for GenMC is not contained in the Miri repo itself, but in a [separate GenMC repo](https://github.com/MPI-SWS/genmc) (with its own maintainers).
 These sources need to be available to build Miri-GenMC.
