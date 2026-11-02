@@ -641,6 +641,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     err.multipart_suggestion(
                         msg,
                         vec![
+                            if let Some(span) = generics.span_for_param_suggestion() {
+                                (span, format!(", {param_name}"))
+                            } else {
+                                (generics.span, format!("<{param_name}>"))
+                            },
                             (outer_span, param_name.clone()),
                             (
                                 generics.tail_span_for_predicate_suggestion(),

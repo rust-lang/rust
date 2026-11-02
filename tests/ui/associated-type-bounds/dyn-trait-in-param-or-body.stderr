@@ -56,7 +56,7 @@ LL | fn foo<T>(_: dyn Trait<Assoc = u32>, _: T) {}
    |
 help: consider introducing a new type parameter `U` and adding `where` constraints
    |
-LL ~ fn foo<T>(_: U, _: T) where
+LL ~ fn foo<T, U>(_: U, _: T) where
 LL +         U: Trait,
 LL +         U: Super<i32, Assoc = u32>,
 LL +         U: Super<u32, Assoc = u32>
@@ -216,7 +216,7 @@ LL +     fn f(_: impl C + gat::B<T = ()> + gat::A<T = ()>) {}
    |
 
 error[E0222]: ambiguous associated type `T` in bounds of `super_with_projs::B`
-  --> $DIR/dyn-trait-in-param-or-body.rs:97:20
+  --> $DIR/dyn-trait-in-param-or-body.rs:98:20
    |
 LL |     trait A { type T; type Unrelated; }
    |               ------ ambiguous `T` from `super_with_projs::A`
@@ -233,7 +233,7 @@ LL +     fn f(_: impl B + K<T = ()> + super_with_projs::A<T = ()>) {}
    |
 
 error[E0222]: ambiguous associated type `T` in bounds of `super_with_exhaustive_projs::B`
-  --> $DIR/dyn-trait-in-param-or-body.rs:115:20
+  --> $DIR/dyn-trait-in-param-or-body.rs:116:20
    |
 LL |     trait A0 { type T; }
    |                ------ ambiguous `T` from `A0`
@@ -250,7 +250,7 @@ LL +     fn f(_: impl B + A1<T = ()> + A0<T = ()>) {}
    |
 
 error[E0222]: ambiguous associated type `Output` in bounds of `paren_sugar::B`
-  --> $DIR/dyn-trait-in-param-or-body.rs:126:20
+  --> $DIR/dyn-trait-in-param-or-body.rs:127:20
    |
 LL |     trait A { type Output; }
    |               ----------- ambiguous `Output` from `paren_sugar::A`
@@ -269,7 +269,7 @@ LL +     fn f(_: impl B + FnOnce<(), Output = ()> + paren_sugar::A<Output = ()>)
    |
 
 error[E0222]: ambiguous associated type `T` in bounds of `higher_rank::C`
-  --> $DIR/dyn-trait-in-param-or-body.rs:136:20
+  --> $DIR/dyn-trait-in-param-or-body.rs:137:20
    |
 LL |     trait A<'a> {type T;}
    |                  ------ ambiguous `T` from `for<'a> higher_rank::A<'a>`
@@ -286,7 +286,7 @@ LL +     fn f(_: impl C + for<'r> higher_rank::B<'r, T = ()> + for<'a> higher_ra
    |
 
 error[E0221]: ambiguous associated type `T` in bounds of `atb::C`
-  --> $DIR/dyn-trait-in-param-or-body.rs:145:20
+  --> $DIR/dyn-trait-in-param-or-body.rs:146:20
    |
 LL |     trait A { type T; }
    |               ------ ambiguous `T` from `atb::A`
