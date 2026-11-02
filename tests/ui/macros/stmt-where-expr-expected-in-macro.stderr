@@ -1,18 +1,33 @@
 error: expected expression, found `stmt` metavariable
   --> $DIR/stmt-where-expr-expected-in-macro.rs:5:20
    |
+LL | macro_rules! foo {
 LL |     ($s:stmt) => { $s }
    |                    ^^ expected expression
 ...
-LL |     println!("{}", foo!(42));
-   |                    -------- in this macro invocation
+LL |     let _ = foo!(42);
+   |             -------- in this macro invocation
    |
    = note: the macro call doesn't expand to an expression, but it can expand to a statement
-   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: surround the macro invocation with `{}` to interpret the expansion as a statement
+help: invoke the macro in a new block with a single statement to interpret the expansion as a statement
    |
-LL |     println!("{}", { foo!(42); });
-   |                    +         +++
+LL |     let _ = { foo!(42); };
+   |             +         +++
 
-error: aborting due to 1 previous error
+error: expected expression, found `stmt` metavariable
+  --> $DIR/stmt-where-expr-expected-in-macro.rs:8:35
+   |
+LL | macro_rules! bar { ($s:stmt) => { $s } }
+   |                                   ^^ expected expression
+...
+LL |     bar!(32)
+   |     -------- in this macro invocation
+   |
+   = note: the macro call doesn't expand to an expression, but it can expand to a statement
+help: invoke the macro in a new block with a single statement to interpret the expansion as a statement
+   |
+LL |     { bar!(32); }
+   |     +         +++
+
+error: aborting due to 2 previous errors
 

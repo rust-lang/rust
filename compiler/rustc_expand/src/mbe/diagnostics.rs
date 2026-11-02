@@ -408,15 +408,20 @@ pub(super) fn emit_frag_parse_err(
             Err(err) => err.cancel(),
             Ok(_) => {
                 e.note(
-                    "the macro call doesn't expand to an expression, but it can expand to a statement",
+                    "the macro call doesn't expand to an expression, but it can expand to a \
+                     statement",
                 );
 
                 if parser.token == token::Semi
                     || matches!(parser.token.kind, token::TokenKind::OpenInvisible(_))
                 {
                     e.multipart_suggestion(
-                        "surround the macro invocation with `{}` to interpret the expansion as a statement",
-                        vec![(site_span.shrink_to_lo(), "{ ".to_string()), (site_span.shrink_to_hi(), "; }".to_string())],
+                        "invoke the macro in a new block with a single statement to interpret the \
+                         expansion as a statement",
+                        vec![
+                            (site_span.shrink_to_lo(), "{ ".to_string()),
+                            (site_span.shrink_to_hi(), "; }".to_string()),
+                        ],
                         Applicability::MaybeIncorrect,
                     );
                 } else {

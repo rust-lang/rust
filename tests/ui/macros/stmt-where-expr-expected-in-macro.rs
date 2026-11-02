@@ -5,7 +5,11 @@ macro_rules! foo {
     ($s:stmt) => { $s } //~ ERROR expected expression, found `stmt` metavariable
 }
 
+macro_rules! bar { ($s:stmt) => { $s } } //~ ERROR expected expression, found `stmt` metavariable
+
 fn main() {
-    println!("{}", foo!(42));
-    //~^ HELP surround the macro invocation with `{}` to interpret the expansion as a statement
+    let _ = foo!(42);
+    //~^ HELP invoke the macro in a new block with a single statement to interpret the expansion as a statement
+    bar!(32)
+    //~^ HELP invoke the macro in a new block with a single statement to interpret the expansion as a statement
 }
