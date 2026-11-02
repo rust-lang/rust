@@ -252,21 +252,26 @@ fn test_seek() {
 
     let mut file = File::open(&path).unwrap();
     let mut contents = Vec::new();
+    assert_eq!(file.stream_position().unwrap(), 0);
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
+    assert_eq!(file.stream_position().unwrap(), bytes.len() as u64);
     // Test that seeking to the beginning and reading until EOF gets the text again.
     file.seek(SeekFrom::Start(0)).unwrap();
+    assert_eq!(file.stream_position().unwrap(), 0);
     let mut contents = Vec::new();
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
     // Test seeking relative to the end of the file.
     file.seek(SeekFrom::End(-1)).unwrap();
+    assert_eq!(file.stream_position().unwrap(), bytes.len().strict_sub(1) as u64);
     let mut contents = Vec::new();
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(&bytes[bytes.len() - 1..], contents.as_slice());
     // Test seeking relative to the current position.
     file.seek(SeekFrom::Start(5)).unwrap();
     file.seek(SeekFrom::Current(-3)).unwrap();
+    assert_eq!(file.stream_position().unwrap(), 2);
     let mut contents = Vec::new();
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(&bytes[2..], contents.as_slice());
