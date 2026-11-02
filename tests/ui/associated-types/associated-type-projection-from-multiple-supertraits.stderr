@@ -39,7 +39,7 @@ LL | fn dent_object<COLOR>(c: &dyn BoxCar<Color=COLOR>) {
    |
 help: consider introducing a new type parameter `T` and adding `where` constraints
    |
-LL ~ fn dent_object<COLOR>(c: &T) where
+LL ~ fn dent_object<COLOR, T>(c: &T) where
 LL +         T: BoxCar,
 LL +         T: Vehicle<Color = COLOR>,
 LL +         T: Box<Color = COLOR>
@@ -61,7 +61,7 @@ LL | fn other_dent_object<COLOR>(c: &dyn BoxCar<Color=COLOR>) where COLOR: std::
    |
 help: consider introducing a new type parameter `T` and adding `where` constraints
    |
-LL ~ fn other_dent_object<COLOR>(c: &T) where COLOR: std::fmt::Debug,
+LL ~ fn other_dent_object<COLOR, T>(c: &T) where COLOR: std::fmt::Debug,
 LL +         T: BoxCar,
 LL +         T: Vehicle<Color = COLOR>,
 LL +         T: Box<Color = COLOR>
