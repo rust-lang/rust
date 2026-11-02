@@ -11,8 +11,9 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::{HirTyCtxt, Visitor};
 use rustc_hir::{self as hir, HirId};
+use rustc_hir_pretty::PpAnn;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
 use rustc_middle::ty::{
@@ -555,10 +556,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             }
                             // FIXME: come up with a better way to generate the snippet.
                             let tr = bound.print_only_trait_path().to_string();
+                            let args = rustc_hir_pretty::generic_args_to_string(
+                                &(&tcx as &dyn HirTyCtxt<'_>) as &dyn PpAnn,
+                                constraint.gen_args,
+                            );
                             let sugg = if tr.ends_with(">") {
-                                format!("{}, {assoc_ident} = {term}>", &tr[..tr.len() - 1])
+                                format!("{}, {assoc_ident}{args} = {term}>", &tr[..tr.len() - 1])
                             } else {
-                                format!("{tr}<{assoc_ident} = {term}>")
+                                format!("{tr}<{assoc_ident}{args} = {term}>")
                             };
                             where_bounds.push(format!("        {param_name}: {sugg}"));
                             if let ty::Param(_) = bound.self_ty().skip_binder().kind() {

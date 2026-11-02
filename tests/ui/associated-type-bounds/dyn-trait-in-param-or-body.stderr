@@ -212,7 +212,7 @@ LL |     fn f(_: impl C<T<i32> = ()>) {}
 help: consider being explicit about the bounds
    |
 LL -     fn f(_: impl C<T<i32> = ()>) {}
-LL +     fn f(_: impl C + gat::B<T = ()> + gat::A<T = ()>) {}
+LL +     fn f(_: impl C + gat::B<T<i32> = ()> + gat::A<T<i32> = ()>) {}
    |
 
 error[E0222]: ambiguous associated type `T` in bounds of `super_with_projs::B`
