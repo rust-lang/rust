@@ -1,5 +1,5 @@
 error: variable does not need to be mutable
-  --> $DIR/capture-mut-ref.rs:9:9
+  --> $DIR/capture-mut-ref.rs:9:13
    |
 LL |     let mut x = &mut 0;
    |         ----^

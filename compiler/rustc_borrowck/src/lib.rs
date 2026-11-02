@@ -2756,6 +2756,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             }
 
             let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
+            let span = span.trim_start(mut_span).unwrap_or(span);
 
             tcx.emit_node_span_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
         }
