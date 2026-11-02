@@ -260,8 +260,9 @@ impl From<Reg> for Uniform {
 }
 
 impl Uniform {
-    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
-        self.unit.align(cx)
+    /// Alignment used for the scratch space when this type is part of a `PassMode::Cast`.
+    pub fn scratch_align<C: HasDataLayout>(&self, cx: &C) -> Align {
+        self.unit.scratch_align(cx)
     }
 
     /// Pass using one or more values of the given type, without requiring them to be consecutive.
@@ -358,12 +359,10 @@ impl CastTarget {
     }
 
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
-        self.prefix
-            .iter()
-            .map(|reg| reg.align(cx))
-            .fold(cx.data_layout().aggregate_align.max(self.rest.align(cx)), |acc, align| {
-                acc.max(align)
-            })
+        self.prefix.iter().map(|reg| reg.scratch_align(cx)).fold(
+            cx.data_layout().aggregate_align.max(self.rest.scratch_align(cx)),
+            |acc, align| acc.max(align),
+        )
     }
 
     /// Checks if these two `CastTarget` are equal enough to be considered "the same for all

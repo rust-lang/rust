@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use rustc_abi::Primitive::{Float, Int, Pointer};
+use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{Align, BackendRepr, FieldsShape, Scalar, Size, Variants};
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
@@ -85,7 +85,16 @@ fn uncached_llvm_type<'a, 'tcx>(
                 }
             }
         }
-        FieldsShape::Array { count, .. } => cx.type_array(layout.field(cx, 0).llvm_type(cx), count),
+        FieldsShape::Array { count, .. } => {
+            let element_ty = layout.field(cx, 0);
+            if let BackendRepr::Scalar(scalar) = element_ty.backend_repr
+                && scalar.primitive() == Primitive::Float(rustc_abi::Float::X87F80)
+            {
+                cx.type_padding_filler(element_ty.size * count, Align::ONE)
+            } else {
+                cx.type_array(element_ty.llvm_type(cx), count)
+            }
+        }
         FieldsShape::Arbitrary { .. } => match name {
             None => {
                 let (llfields, packed) = struct_llfields(cx, layout);
@@ -135,7 +144,15 @@ fn struct_llfields<'a, 'tcx>(
             result.push(cx.type_padding_filler(padding, padding_align));
             debug!("    padding before: {:?}", padding);
         }
-        result.push(field.llvm_type(cx));
+
+        if let BackendRepr::Scalar(scalar) = field.backend_repr
+            && scalar.primitive() == Primitive::Float(rustc_abi::Float::X87F80)
+        {
+            result.push(cx.type_padding_filler(field.size, Align::ONE));
+        } else {
+            result.push(field.llvm_type(cx));
+        }
+
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
     }

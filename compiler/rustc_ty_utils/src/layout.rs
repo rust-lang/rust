@@ -25,6 +25,7 @@ use rustc_middle::ty::{
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, bug, sym};
 use rustc_structures::Limit;
+use rustc_target::spec::{Arch, HasTargetSpec};
 use tracing::{debug, instrument};
 
 use crate::diagnostics::NonPrimitiveSimdType;
@@ -823,11 +824,35 @@ fn layout_of_uncached<'tcx>(
                 layout.backend_repr = BackendRepr::Scalar(bfloat);
             }
 
+            let arch = &tcx.target_spec().arch;
+
             if tcx.is_lang_item(def.did(), LangItem::PpcF128) {
+                std::assert_matches!(arch, Arch::PowerPC | Arch::PowerPC64);
+
                 let ppcf128 = scalar_unit(Primitive::Float(abi::Float::PpcF128));
                 assert_eq!(layout.size, abi::Float::PpcF128.size());
                 layout.align = AbiAlign::new(abi::Float::PpcF128.align(cx));
                 layout.backend_repr = BackendRepr::Scalar(ppcf128);
+            }
+
+            if tcx.is_lang_item(def.did(), LangItem::X87F80Raw) {
+                std::assert_matches!(arch, Arch::X86 | Arch::X86_64);
+
+                // The lang item has no fields: give it a scalar layout.
+                return Ok(scalar(Primitive::Float(abi::Float::X87F80)));
+            }
+
+            if tcx.is_lang_item(def.did(), LangItem::X87F80) {
+                std::assert_matches!(arch, Arch::X86 | Arch::X86_64);
+
+                // A wrapper around `x87_f80_raw` that adds the target-specific alignment.
+                // It is an ordinary aggregate with trailing padding.
+                assert_eq!(layout.size, abi::Float::X87F80.size());
+                layout.align = AbiAlign::new(cx.data_layout().x87_f80_align);
+                layout.unadjusted_abi_align = layout.align.abi;
+                layout.size = layout.size.align_to(layout.align.abi);
+                layout.backend_repr = BackendRepr::Memory { sized: true };
+                layout.largest_niche = None;
             }
 
             tcx.mk_layout(layout)

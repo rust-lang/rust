@@ -95,7 +95,7 @@ fn get_param_type_alignment<'ll, 'tcx>(
                 Integer::I128 => return Align::EIGHT,
             },
             Primitive::Float(float) => match float {
-                Float::F16 | Float::F16B | Float::F32 => unreachable!(),
+                Float::F16 | Float::F16B | Float::F32 | Float::X87F80 => unreachable!(),
                 Float::F64 | Float::F128 => { /* fall through */ }
                 Float::PpcF128 => {
                     return if is_powerpc_softfloat_abi(&bx.cx.tcx.sess.target) {
@@ -490,6 +490,9 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
                 }
                 Primitive::Float(Float::PpcF128) => {
                     bug!("`ppcf128` use in varadics unsupported on s390x")
+                }
+                Primitive::Float(Float::X87F80) => {
+                    bug!("`x87_f80` use in varadics unsupported on s390x")
                 }
             },
 
