@@ -1,0 +1,4 @@
+repo = "portable-simd"
+filter = ":~(history=\"keep-trivial-merges,no-splice\")[:rev(<=9b1c0d8d0e98a705b1ed9f3af21d106f693c8443:prefix=library/portable-simd,<=922325bb13bfea5b41454318563f2a65e83c2336:SQUASH)]:/library/portable-simd"
+filter-version = 2
+pull-mode = "Nightly"

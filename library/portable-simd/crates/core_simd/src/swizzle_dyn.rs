@@ -77,13 +77,12 @@ impl<const N: usize> Simd<u8, N> {
                 16 => transize(x86::_mm_shuffle_epi8, self, zeroing_idxs(idxs)),
                 #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
                 32 => {
-                    // Unlike vpshufb, vpermb doesn't zero out values in the result based on the index high bit
                     let swizzler = |bytes, idxs| {
-                        let mask = x86::_mm256_cmp_epu8_mask::<{ x86::_MM_CMPINT_LT }>(
-                            idxs,
-                            Simd::<u8, 32>::splat(N as u8).into(),
-                        );
-                        x86::_mm256_maskz_permutexvar_epi8(mask, idxs, bytes)
+                        // Clamp out-of-range indices to the first byte of a
+                        // second, all-zero table.
+                        let idxs =
+                            x86::_mm256_min_epu8(idxs, Simd::<u8, 32>::splat(N as u8).into());
+                        x86::_mm256_permutex2var_epi8(bytes, idxs, x86::_mm256_setzero_si256())
                     };
                     transize(swizzler, self, idxs)
                 }
@@ -94,13 +93,12 @@ impl<const N: usize> Simd<u8, N> {
                 // Notable absence: avx512bw pshufb shuffle
                 #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
                 64 => {
-                    // Unlike vpshufb, vpermb doesn't zero out values in the result based on the index high bit
                     let swizzler = |bytes, idxs| {
-                        let mask = x86::_mm512_cmp_epu8_mask::<{ x86::_MM_CMPINT_LT }>(
-                            idxs,
-                            Simd::<u8, 64>::splat(N as u8).into(),
-                        );
-                        x86::_mm512_maskz_permutexvar_epi8(mask, idxs, bytes)
+                        // Clamp out-of-range indices to the first byte of a
+                        // second, all-zero table.
+                        let idxs =
+                            x86::_mm512_min_epu8(idxs, Simd::<u8, 64>::splat(N as u8).into());
+                        x86::_mm512_permutex2var_epi8(bytes, idxs, x86::_mm512_setzero_si512())
                     };
                     transize(swizzler, self, idxs)
                 }
@@ -271,19 +269,26 @@ unsafe fn avx2_pshufb(bytes: Simd<u8, 32>, idxs: Simd<u8, 32>) -> Simd<u8, 32> {
     use x86::_mm256_shuffle_epi8 as avx2_half_pshufb;
     // SAFETY: Caller promised AVX2
     unsafe {
-        let lolo = avx2_cross_shuffle::<0x00>(bytes.into(), bytes.into());
-        let hihi = avx2_cross_shuffle::<0x11>(bytes.into(), bytes.into());
+        let bytes = bytes.into();
+        let indices = idxs.into();
+        let swapped = avx2_cross_shuffle::<0x01>(bytes, bytes);
 
         // Adding 0x60 preserves the low nibble and bit 4 for valid
         // indices 0..=31. Larger indices get their high bit set, so
         // VPSHUFB supplies the required out-of-bounds zeroing.
-        let control = x86::_mm256_adds_epu8(idxs.into(), x86::_mm256_set1_epi8(0x60));
+        let control = x86::_mm256_adds_epu8(indices, x86::_mm256_set1_epi8(0x60));
 
-        // Move index bit 4 into each byte's sign bit for VPBLENDVB.
-        let select_high = x86::_mm256_slli_epi16::<3>(control);
-        let from_low = avx2_half_pshufb(lolo, control);
-        let from_high = avx2_half_pshufb(hihi, control);
-        x86::_mm256_blendv_epi8(from_low, from_high, select_high).into()
+        let local = avx2_half_pshufb(bytes, control);
+        let remote = avx2_half_pshufb(swapped, control);
+
+        // In the low lane, adding 0x10 moves the valid index's bit 4
+        // into the sign bit. The high lane has the opposite
+        // local/remote mapping, so adding 0x90 flips the selection.
+        // Out-of-range indices already zeroed both shuffle results,
+        // making the blend selection irrelevant for them.
+        let select_bias = x86::_mm256_set_m128i(x86::_mm_set1_epi8(-112), x86::_mm_set1_epi8(16));
+        let select_remote = x86::_mm256_add_epi8(control, select_bias);
+        x86::_mm256_blendv_epi8(local, remote, select_remote).into()
     }
 }
 
