@@ -1002,7 +1002,6 @@ impl OutputTypes {
             OutputType::Validation
             | OutputType::DepInfo
             | OutputType::FullAnalysis => true,
-
             OutputType::Exe
             | OutputType::Bitcode
             | OutputType::Object
@@ -1014,6 +1013,28 @@ impl OutputTypes {
             // this is just to keep behaviour
             | OutputType::Metadata => false,
         })
+    }
+
+    pub fn stop_before_analysis(&self) -> bool {
+        self.0.keys().all(|k| match *k {
+            OutputType::DepInfo => true,
+            OutputType::Exe
+            | OutputType::Bitcode
+            | OutputType::Object
+            | OutputType::Assembly
+            | OutputType::ThinLinkBitcode
+            | OutputType::LlvmAssembly
+            | OutputType::Mir
+            | OutputType::FullAnalysis
+            | OutputType::Validation
+            // FIXME: Metadata does not technically need it,
+            // this is just to keep behaviour
+            | OutputType::Metadata => false,
+        })
+    }
+
+    pub fn needs_mir(&self) -> bool {
+        self.0.keys().any(|k| k == &OutputType::Mir)
     }
 
     pub fn all<F: Fn(&OutputType) -> bool>(&self, f: F) -> bool {

@@ -315,12 +315,7 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
             passes::write_interface(tcx);
 
-            if output_types.all(|out| out <= &OutputType::DepInfo) {
-                if output_types.contains_key(&OutputType::Validation) {
-                    let _metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
-                    debug_assert!(_metadata.is_ok());
-                }
-
+            if output_types.stop_before_analysis() {
                 return None;
             }
 
@@ -339,7 +334,7 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
                 debug_assert!(_metadata.is_ok());
             }
 
-            if output_types.contains_key(&OutputType::Mir) {
+            if output_types.needs_mir() {
                 if let Err(error) = pretty::emit_mir(tcx) {
                     tcx.dcx().emit_fatal(CantEmitMIR { error });
                 }
