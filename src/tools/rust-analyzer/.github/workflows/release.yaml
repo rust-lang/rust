@@ -113,10 +113,11 @@ jobs:
         run: |
           rustup update --no-self-update stable
           # llvm-tools contain the llvm-profdata tool which is needed for PGO
-          rustup component add rust-src ${{ matrix.pgo && 'llvm-tools' || '' }}
+          rustup component add rust-src ${MAYBE_LLVM_TOOLS}
           rustup target add ${TARGET}
         env:
           TARGET: ${{ matrix.target }}
+          MAYBE_LLVM_TOOLS: ${{ matrix.pgo && 'llvm-tools' || '' }}
 
       - name: Dist
         run: cargo xtask dist --client-patch-version ${GITHUB_RUN_NUMBER} ${ALLOCATOR_FLAG} ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
