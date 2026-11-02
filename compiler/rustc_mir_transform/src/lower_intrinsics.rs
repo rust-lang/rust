@@ -12,7 +12,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let local_decls = &body.local_decls;
         for block in body.basic_blocks.as_mut() {
-            let terminator = &mut block.terminator;//.as_mut().unwrap();
+            let terminator = &mut block.terminator; //.as_mut().unwrap();
             if let TerminatorKind::Call { func, args, destination, target, .. } =
                 &mut terminator.kind
                 && let ty::FnDef(def_id, generic_args) = *func.ty(local_decls, tcx).kind()

@@ -431,19 +431,12 @@ impl<'tcx> Terminator<'tcx> {
     pub fn none() -> Terminator<'tcx> {
         Terminator {
             source_info: SourceInfo::outermost(DUMMY_SP),
-            kind: TerminatorKind::Goto {
-                target: BasicBlock::MAX,
-                loop_hint_attrs: ThinVec::new(),
-            },
+            kind: TerminatorKind::Goto { target: BasicBlock::MAX, loop_hint_attrs: ThinVec::new() },
         }
     }
 
     pub fn take(&mut self) -> Option<Terminator<'tcx>> {
-        if self.is_none() {
-            None
-        } else {
-            Some(std::mem::replace(self, Self::none()))
-        }
+        if self.is_none() { None } else { Some(std::mem::replace(self, Self::none())) }
     }
 
     pub fn is_none(&self) -> bool {

@@ -563,11 +563,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         continue;
                     } else if let Terminator {
                         kind:
-                        TerminatorKind::Call {
-                            func,
-                            call_source: CallSource::OverloadedOperator,
-                            ..
-                        },
+                            TerminatorKind::Call {
+                                func,
+                                call_source: CallSource::OverloadedOperator,
+                                ..
+                            },
                         ..
                     } = &bbd.terminator
                     {

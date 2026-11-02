@@ -767,8 +767,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                     discr: Operand::Move(temp),
                     targets: SwitchTargets::new(cases.into_iter(), unreachable),
                 };
-            }
-            // BasicBlockData { terminator: None, .. } => unreachable!(),
+            } // BasicBlockData { terminator: None, .. } => unreachable!(),
         }
     }
 }
