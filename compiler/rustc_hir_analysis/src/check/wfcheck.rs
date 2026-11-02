@@ -2386,49 +2386,51 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(super) fn check_test_binder_body(&self, body: TestBinderBody<'tcx>) {
-        let TestBinderBody { span, foralls, exists, region_equalities, constraints, predicates } =
-            body;
-        for (equality, span) in region_equalities {
-            let cause = traits::ObligationCause::misc(span, self.body_def_id);
-            self.infcx.register_region_eq_constraint(
-                equality,
-                ty::VisibleForLeakCheck::Yes,
-                &cause,
-            );
-        }
-        if !predicates.is_empty() {
-            for (predicate, span) in predicates {
-                let cause = traits::ObligationCause::misc(span, self.body_def_id);
-                let obligation = Obligation::new(self.tcx(), cause, self.param_env, predicate);
-                self.register_obligation(obligation);
-            }
-            match self.ocx.evaluate_obligations_error_on_ambiguity() {
-                TraitErrors::NoErrors => (),
-                TraitErrors::HasErrors(errors) => {
-                    self.infcx.err_ctxt().report_fulfillment_errors(errors);
-                    return;
+        let TestBinderBody { span, items } = body;
+        for item in items {
+            match item {
+                TestBinderItem::Forall(forall) => {
+                    self.check_test_binder_forall(forall);
+                }
+                TestBinderItem::Exists(exist) => {
+                    self.check_test_binder_exists(exist);
+                }
+                TestBinderItem::Constraint(constraint) => {
+                    let constraint = match validate(self.tcx(), &constraint) {
+                        Ok(()) => constraint,
+                        Err(_guar) => ty::region_constraint::RegionConstraint::new_true(),
+                    };
+                    if constraint.is_false() {
+                        self.tcx()
+                            .dcx()
+                            .span_err(span, "top level false constraints are not supported");
+                    } else {
+                        self.infcx.register_solver_region_constraint(constraint);
+                    }
+                }
+                TestBinderItem::Predicate { clause, span } => {
+                    let cause = traits::ObligationCause::misc(span, self.body_def_id);
+                    let obligation = Obligation::new(self.tcx(), cause, self.param_env, clause);
+                    self.register_obligation(obligation);
+
+                    match self.ocx.evaluate_obligations_error_on_ambiguity() {
+                        TraitErrors::NoErrors => (),
+                        TraitErrors::HasErrors(errors) => {
+                            self.infcx.err_ctxt().report_fulfillment_errors(errors);
+                            return;
+                        }
+                    }
+                }
+                TestBinderItem::RegionEquality((equality, span)) => {
+                    let cause = traits::ObligationCause::misc(span, self.body_def_id);
+                    self.infcx.register_region_eq_constraint(
+                        equality,
+                        ty::VisibleForLeakCheck::Yes,
+                        &cause,
+                    );
                 }
             }
         }
-
-        let constraints = match validate(self.tcx(), &constraints) {
-            Ok(()) => constraints,
-            Err(_guar) => ty::region_constraint::RegionConstraint::new_true(),
-        };
-        if constraints.is_false() {
-            self.tcx().dcx().span_err(span, "top level false constraints are not supported");
-            return;
-        }
-
-        self.infcx.register_solver_region_constraint(constraints);
-
-        for forall in foralls {
-            self.check_test_binder_forall(forall);
-        }
-        for exists in exists {
-            self.check_test_binder_exists(exists);
-        }
-
         fn validate<'tcx>(
             tcx: TyCtxt<'tcx>,
             constraint: &SolverRegionConstraint<'tcx>,
@@ -2813,13 +2815,21 @@ struct RedundantLifetimeArgsLint<'tcx> {
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub(crate) struct TestBinderBody<'tcx> {
     pub span: Span,
-    pub foralls: Vec<TestBinderForall<'tcx>>,
-    pub exists: Vec<TestBinderExists<'tcx>>,
-    pub region_equalities: Vec<(ty::RegionEqPredicate<'tcx>, Span)>,
+    pub items: Vec<TestBinderItem<'tcx>>,
+}
+
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+pub(crate) enum TestBinderItem<'tcx> {
+    Forall(TestBinderForall<'tcx>),
+    Exists(TestBinderExists<'tcx>),
+    RegionEquality((ty::RegionEqPredicate<'tcx>, Span)),
     /// Constraints to be inserted directly into constraint storage to be proven
-    pub constraints: SolverRegionConstraint<'tcx>,
+    Constraint(SolverRegionConstraint<'tcx>),
     /// Constraints declared using `where` syntax, used via `register_obligation`
-    pub predicates: Vec<(ty::Binder<'tcx, ty::ClauseKind<'tcx>>, Span)>,
+    Predicate {
+        clause: ty::Clause<'tcx>,
+        span: Span,
+    },
 }
 
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]

@@ -48,7 +48,7 @@ use rustc_trait_selection::traits::{
 use tracing::{debug, instrument};
 use ty::region_constraint::LeafRegionConstraint;
 
-use crate::check::wfcheck::{TestBinderBody, TestBinderExists, TestBinderForall};
+use crate::check::wfcheck::{TestBinderBody, TestBinderExists, TestBinderForall, TestBinderItem};
 use crate::diagnostics::{self, ElidedLifetimesAreNotAllowedInDelegations};
 use crate::hir_ty_lowering::{HirTyLowerer, InherentAssocCandidate, RegionInferReason};
 
@@ -326,34 +326,44 @@ impl<'tcx> ItemCtxt<'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn lower_test_binder_body(
         &self,
-        item: &hir::TestBinderBody<'tcx>,
+        body: &hir::TestBinderBody<'tcx>,
     ) -> TestBinderBody<'tcx> {
-        let hir::TestBinderBody {
-            span,
-            foralls,
-            exists,
-            region_equalities,
-            constraints,
-            predicates,
-        } = item;
-        let foralls = foralls.iter().map(|forall| self.lower_test_binder_forall(forall)).collect();
-        let exists = exists.iter().map(|exists| self.lower_test_binder_exists(exists)).collect();
-        let region_equalities = region_equalities
-            .iter()
-            .map(|(lhs, rhs)| {
-                let span = lhs.ident.span.to(rhs.ident.span);
-                let lhs = self.lowerer().lower_lifetime(lhs, RegionInferReason::RegionPredicate);
-                let rhs = self.lowerer().lower_lifetime(rhs, RegionInferReason::RegionPredicate);
-                (ty::RegionEqPredicate(lhs, rhs), span)
-            })
-            .collect();
-        let constraints = self.lower_test_binder_constraint(&constraints);
-        let mut clauses = Default::default();
-        for predicate in *predicates {
-            clauses_of::where_predicate_clauses(self, predicate, &mut clauses);
+        let hir::TestBinderBody { span, items: hir_items } = body;
+        let mut items: Vec<TestBinderItem<'_>> = vec![];
+        for hir_item in *hir_items {
+            match hir_item {
+                hir::TestBinderItem::Forall(forall) => {
+                    items.push(TestBinderItem::Forall(self.lower_test_binder_forall(forall)));
+                }
+                hir::TestBinderItem::Exists(exist) => {
+                    items.push(TestBinderItem::Exists(self.lower_test_binder_exists(exist)));
+                }
+                hir::TestBinderItem::Constraint(constraint) => {
+                    items.push(TestBinderItem::Constraint(
+                        self.lower_test_binder_constraint(constraint),
+                    ));
+                }
+                hir::TestBinderItem::Predicate(predicate) => {
+                    let mut clauses = Default::default();
+                    clauses_of::where_predicate_clauses(self, predicate, &mut clauses);
+                    for (clause, span) in clauses {
+                        items.push(TestBinderItem::Predicate { clause, span });
+                    }
+                }
+                hir::TestBinderItem::RegionEquality { lhs, rhs } => {
+                    let span = lhs.ident.span.to(rhs.ident.span);
+                    let lhs =
+                        self.lowerer().lower_lifetime(lhs, RegionInferReason::RegionPredicate);
+                    let rhs =
+                        self.lowerer().lower_lifetime(rhs, RegionInferReason::RegionPredicate);
+                    items.push(TestBinderItem::RegionEquality((
+                        ty::RegionEqPredicate(lhs, rhs),
+                        span,
+                    )));
+                }
+            }
         }
-        let predicates = clauses.into_iter().map(|(c, span)| (c.kind(), span)).collect();
-        TestBinderBody { span: *span, foralls, exists, region_equalities, constraints, predicates }
+        TestBinderBody { span: *span, items }
     }
 
     #[instrument(level = "debug", skip(self), ret)]
