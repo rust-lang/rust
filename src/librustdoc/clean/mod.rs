@@ -2673,10 +2673,14 @@ fn clean_variant_data<'tcx>(
 }
 
 fn clean_path<'tcx>(path: &hir::Path<'_>, cx: &mut DocContext<'tcx>) -> Path {
-    Path {
+    let mut path = Path {
         res: path.res,
         segments: path.segments.iter().map(|x| clean_path_segment(x, cx)).collect(),
+    };
+    if path.segments.last().is_some_and(|s| s.name == kw::SelfLower) {
+        path.segments.pop();
     }
+    path
 }
 
 fn clean_generic_args<'tcx>(
@@ -3219,9 +3223,6 @@ fn clean_use_statement<'tcx>(
             for (tree, hir_id, def_id) in items {
                 let mut segments = path.segments.to_vec();
                 segments.extend(tree.prefix.segments.iter());
-                if segments.last().is_some_and(|seg| seg.ident.name == kw::SelfLower) {
-                    segments.pop();
-                }
                 let path = hir::UsePath {
                     segments: &segments,
                     res: tree.prefix.res,
