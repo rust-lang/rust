@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -9,6 +11,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, HirId};
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
@@ -575,7 +578,41 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
         if !suggestions.is_empty() {
-            suggestions.push((span, String::new()));
+            struct RemovalSpan(Span);
+            impl<'v> Visitor<'v> for RemovalSpan {
+                type Result = ControlFlow<Span>;
+                fn visit_generic_args(
+                    &mut self,
+                    generic_args: &'v hir::GenericArgs<'v>,
+                ) -> Self::Result {
+                    for (i, arg) in generic_args.constraints.iter().enumerate() {
+                        if arg.span == self.0 {
+                            if generic_args.args.len() == 0 && generic_args.constraints.len() == 1 {
+                                // We have `Trait<Param = Ty>`, we'll leave behind `Trait`.
+                                return ControlFlow::Break(generic_args.span_ext().unwrap());
+                            } else if let Some(next) = generic_args.constraints.get(i + 1) {
+                                // We have `Trait<Param = Ty, Other = Ty>`, we'll leave behind
+                                // `Trait<Other = Ty>`.
+                                return ControlFlow::Break(arg.span.until(next.span));
+                            } else if let Some(prev) = generic_args.constraints.get(i - 1) {
+                                // We have `Trait<Other = Ty, Param = Ty>`, we'll leave behind
+                                // `Trait<Other = Ty>`.
+                                return ControlFlow::Break(prev.span.shrink_to_hi().to(arg.span));
+                            } else if let Some(prev) = generic_args.args.iter().last()
+                                && prev.span().hi() < arg.span.lo()
+                            {
+                                // We have `Trait<Other, Param = Ty>`, we'll leave `Trait<Other>`.
+                                return ControlFlow::Break(prev.span().shrink_to_hi().to(arg.span));
+                            }
+                        }
+                    }
+                    hir::intravisit::walk_generic_args(self, generic_args)
+                }
+            }
+            let remove = generics
+                .and_then(|generics| RemovalSpan(span).visit_generics(generics).break_value())
+                .unwrap_or(span);
+            suggestions.push((remove, String::new()));
             err.multipart_suggestion(
                 "consider being explicit about the bounds",
                 suggestions,
