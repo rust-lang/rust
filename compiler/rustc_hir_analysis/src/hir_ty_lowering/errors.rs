@@ -594,7 +594,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 // We have `Trait<Param = Ty, Other = Ty>`, we'll leave behind
                                 // `Trait<Other = Ty>`.
                                 return ControlFlow::Break(arg.span.until(next.span));
-                            } else if let Some(prev) = generic_args.constraints.get(i - 1) {
+                            } else if i > 0 && let Some(prev) = generic_args.constraints.get(i - 1) {
                                 // We have `Trait<Other = Ty, Param = Ty>`, we'll leave behind
                                 // `Trait<Other = Ty>`.
                                 return ControlFlow::Break(prev.span.shrink_to_hi().to(arg.span));
