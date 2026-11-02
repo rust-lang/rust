@@ -45,12 +45,18 @@ use crate::{
     ScopeSet, Segment, diagnostics, path_names_to_string,
 };
 
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum AssocFrom {
+    Trait,
+    Impl,
+}
+
 /// A field or associated item from self type suggested in case of resolution failure.
 enum AssocSuggestion {
     Field,
-    MethodWithSelf { called: bool, from_trait: bool },
-    AssocFn { called: bool, from_trait: bool },
-    AssocType { from_trait: bool },
+    MethodWithSelf { called: bool, from: AssocFrom },
+    AssocFn { called: bool, from: AssocFrom },
+    AssocType { from: AssocFrom },
     AssocConst,
 }
 
@@ -1167,9 +1173,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             err.span_note(span, "a field by that name exists in `Self`");
                         }
                     }
-                    AssocSuggestion::MethodWithSelf { from_trait, .. }
-                    | AssocSuggestion::AssocFn { from_trait, .. }
-                    | AssocSuggestion::AssocType { from_trait, .. }
+                    AssocSuggestion::MethodWithSelf { from, .. }
+                    | AssocSuggestion::AssocFn { from, .. }
+                    | AssocSuggestion::AssocType { from, .. }
                         if matches!(
                             source,
                             PathSource::Expr(Some(Expr { kind: ExprKind::FormatArgs(_), .. }))
@@ -1188,7 +1194,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             // Show the current assoc item.
                             err.span_context(item.span.shrink_to_lo());
                         }
-                        if from_trait && let Some((module, _)) = &self.current_trait_ref {
+                        if let AssocFrom::Trait = from
+                            && let Some((module, _)) = &self.current_trait_ref
+                        {
                             // The item with the same name comes from the `trait` and not the
                             // `impl`, so we show the assoc item in a note.
                             let mut span: MultiSpan = def_span.into();
@@ -3199,16 +3207,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 if let Some(assoc_ident) = assoc_item.kind.ident()
                     && assoc_ident == ident
                 {
-                    let from_trait = false;
+                    let from = AssocFrom::Impl;
                     let candidate = match &assoc_item.kind {
                         ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,
                         ast::AssocItemKind::Fn(ast::Fn { sig, .. }) if sig.decl.has_self() => {
-                            AssocSuggestion::MethodWithSelf { called, from_trait }
+                            AssocSuggestion::MethodWithSelf { called, from }
                         }
-                        ast::AssocItemKind::Fn(..) => {
-                            AssocSuggestion::AssocFn { called, from_trait }
-                        }
-                        ast::AssocItemKind::Type(..) => AssocSuggestion::AssocType { from_trait },
+                        ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn { called, from },
+                        ast::AssocItemKind::Type(..) => AssocSuggestion::AssocType { from },
                         ast::AssocItemKind::Delegation(..)
                             if self
                                 .r
@@ -3217,10 +3223,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 .and_then(|o| self.r.delegation_fn_sigs.get(&o.def_id))
                                 .is_some_and(|sig| sig.has_self) =>
                         {
-                            AssocSuggestion::MethodWithSelf { called, from_trait }
+                            AssocSuggestion::MethodWithSelf { called, from }
                         }
                         ast::AssocItemKind::Delegation(..) => {
-                            AssocSuggestion::AssocFn { called, from_trait }
+                            AssocSuggestion::AssocFn { called, from }
                         }
                         ast::AssocItemKind::MacCall(_) | ast::AssocItemKind::DelegationMac(..) => {
                             continue;
@@ -3243,7 +3249,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         {
             let res = binding.res();
             if filter_fn(res) {
-                let from_trait = true;
+                let from = AssocFrom::Trait;
                 match res {
                     Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) => {
                         let has_self = match def_id.as_local() {
@@ -3260,21 +3266,18 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         };
                         if has_self {
                             return Some((
-                                AssocSuggestion::MethodWithSelf { called, from_trait },
+                                AssocSuggestion::MethodWithSelf { called, from },
                                 binding.span,
                             ));
                         } else {
-                            return Some((
-                                AssocSuggestion::AssocFn { called, from_trait },
-                                binding.span,
-                            ));
+                            return Some((AssocSuggestion::AssocFn { called, from }, binding.span));
                         }
                     }
                     Res::Def(DefKind::AssocConst, _) => {
                         return Some((AssocSuggestion::AssocConst, binding.span));
                     }
                     Res::Def(DefKind::AssocTy, _) => {
-                        return Some((AssocSuggestion::AssocType { from_trait }, binding.span));
+                        return Some((AssocSuggestion::AssocType { from }, binding.span));
                     }
                     _ => {}
                 }
