@@ -3,26 +3,26 @@
 
 pub mod foo {}
 
-#[diagnostic::on_unknown(note = "the name of this item is a single ident: `{This}`")]
+#[diagnostic::on_unknown(note = "the name of this item is a single ident: `{this}`")]
 use foo::Foo;
 //~^ERROR unresolved import `foo::Foo`
 //~|NOTE the name of this item is a single ident: `Foo`
 //~|NOTE no `Foo` in `foo`
 
-#[diagnostic::on_unknown(note = "the name of this item is a single ident: `{This}`")]
+#[diagnostic::on_unknown(note = "the name of this item is a single ident: `{this}`")]
 use foo::foo::Foo;
 //~^ERROR unresolved import `foo::foo`
 //~|NOTE the name of this item is a single ident: `foo`
 //~|NOTE could not find `foo` in `foo`
 
-#[diagnostic::on_unknown(note = "the name of this item is two idents: `{This}`")]
+#[diagnostic::on_unknown(note = "the name of this item is two idents: `{this}`")]
 use foo::{Bar, Foo};
 //~^ERROR unresolved imports `foo::Bar`, `foo::Foo`
 //~|NOTE the name of this item is two idents: `Bar, Foo`
 //~|NOTE no `Foo` in `foo`
 //~|NOTE no `Bar` in `foo`
 
-#[diagnostic::on_unknown(note = "the name of this item is many idents: `{This}`")]
+#[diagnostic::on_unknown(note = "the name of this item is many idents: `{this}`")]
 use foo::{
     Foo,
     //~^ERROR unresolved imports `foo::Foo`, `foo::bar`
@@ -32,13 +32,13 @@ use foo::{
     //~^NOTE could not find `bar` in `foo`
 };
 
-#[diagnostic::on_unknown(note = "the name of this is: `{This}`")]
+#[diagnostic::on_unknown(note = "the name of this is: `{this}`")]
 pub use doesnt_exist::*;
 //~^ERROR unresolved import `doesnt_exist`
 //~|NOTE use of unresolved module or unlinked crate `doesnt_exist`
 //~|NOTE the name of this is: `doesnt_exist`
 
-#[diagnostic::on_unknown(note = "the name of this item is a single ident: `{This}`")]
+#[diagnostic::on_unknown(note = "the name of this item is a single ident: `{this}`")]
 use foo::Foo as DoNotUseForThisParam;
 //~^ERROR unresolved import `foo::Foo`
 //~|NOTE the name of this item is a single ident: `Foo`

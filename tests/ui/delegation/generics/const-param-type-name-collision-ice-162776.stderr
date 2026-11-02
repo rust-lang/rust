@@ -1,0 +1,63 @@
+error[E0403]: the name `C` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/const-param-type-name-collision-ice-162776.rs:6:23
+   |
+LL | impl<'b, 'c, C, const C: usize> S<C, C> {
+   |              -        ^ already used
+   |              |
+   |              first use of `C`
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/const-param-type-name-collision-ice-162776.rs:6:38
+   |
+LL | impl<'b, 'c, C, const C: usize> S<C, C> {
+   |                                      ^
+   |
+help: consider changing this type parameter to a const parameter
+   |
+LL - impl<'b, 'c, C, const C: usize> S<C, C> {
+LL + impl<'b, 'c, const C: usize, const C: usize> S<C, C> {
+   |
+
+error[E0392]: type parameter `A` is never used
+  --> $DIR/const-param-type-name-collision-ice-162776.rs:3:10
+   |
+LL | struct S<A, const C: usize>;
+   |          ^ unused type parameter
+   |
+   = help: consider removing `A`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `A` to be a const parameter, use `const A: /* Type */` instead
+
+error: failed to inherit delegation predicates
+  --> $DIR/const-param-type-name-collision-ice-162776.rs:12:21
+   |
+LL |     fn foo_self<T, const B: bool>() {}
+   |     ------------------------------- callee defined here
+...
+LL | reuse S::<(), 123>::foo_self;
+   |                     ^^^^^^^^
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/const-param-type-name-collision-ice-162776.rs:12:21
+   |
+LL | reuse S::<(), 123>::foo_self;
+   |                     ^^^^^^^^
+   |                     |
+   |                     doesn't have a size known at compile-time
+   |                     this type parameter needs to be `Sized`
+   |
+note: required by an implicit `Sized` bound in `S::<C, {const error}>::foo_self`
+  --> $DIR/const-param-type-name-collision-ice-162776.rs:9:17
+   |
+LL | impl<'b, 'c, C, const C: usize> S<C, C> {
+...
+LL |     fn foo_self<T, const B: bool>() {}
+   |                 ^ required by the implicit `Sized` requirement on this type parameter in `S::<C, {const error}>::foo_self`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     fn foo_self<T: ?Sized, const B: bool>() {}
+   |                  ++++++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0392, E0403, E0747.
+For more information about an error, try `rustc --explain E0277`.

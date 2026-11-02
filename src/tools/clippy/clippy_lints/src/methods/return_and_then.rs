@@ -32,7 +32,7 @@ pub(super) fn check<'tcx>(
 
     let has_ref_type = matches!(recv_type.kind(), ty::Adt(_, args) if args
         .first()
-        .and_then(|arg0: &GenericArg<'tcx>| GenericArg::as_type(*arg0))
+        .and_then(|arg0: GenericArg<'tcx>| GenericArg::as_type(arg0))
         .is_some_and(Ty::is_ref));
     let has_temporaries = for_each_unconsumed_temporary(cx, recv, |_| ControlFlow::Break(())).is_break();
     if has_ref_type && has_temporaries {
@@ -44,7 +44,7 @@ pub(super) fn check<'tcx>(
     };
 
     let closure_arg = fn_decl.inputs[0];
-    let closure_expr = peel_blocks(&cx.tcx.hir_body(body).value);
+    let closure_expr = peel_blocks(cx.tcx.hir_body(body).value);
 
     let mut applicability = Applicability::MachineApplicable;
     let arg_snip = snippet_with_applicability(cx, closure_arg.span, "_", &mut applicability);

@@ -64,7 +64,7 @@ use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesClause, Region, RegionVid, Ty, TyCtxt,
+    self, GenericArgKind, GenericArgs, PolyTypeOutlivesClause, Region, RegionVid, Ty, TyCtxt,
     TypeVisitableExt, Upcast,
 };
 use rustc_span::bug;
@@ -141,19 +141,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn register_solver_region_constraint(&self, c: SolverRegionConstraint<'tcx>) {
-        let mut inner = self.inner.borrow_mut();
-
-        let old_constraint = inner.solver_region_constraint_storage.get_constraint();
-        let new_constraint = rustc_type_ir::region_constraint::RegionConstraint::build_and(
-            c,
-            old_constraint.clone(),
-        );
-
-        // FIXME(-Zassumptions-on-binders): This is pretty bad for perf, we don't make incremental
-        // changes to the region constraints, instead we just rewrite the entire thing every time
-        // and store the old version.
-        inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });
-        inner.solver_region_constraint_storage.overwrite(new_constraint);
+        self.inner.borrow_mut().unwrap_region_constraints().register_solver_constraint(c);
     }
 
     pub fn register_type_outlives_constraint(
@@ -278,15 +266,41 @@ impl<'tcx> InferCtxt<'tcx> {
     ) {
         assert!(self.tcx.assumptions_on_binders());
         assert!(self.next_trait_solver());
+        use LeafRegionConstraint::*;
 
-        let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
+        let solver_constraint = self.get_solver_region_constraint();
+        debug!(?solver_constraint);
+        let region_constraint::RootDestructuredConstraints { constraint, failing_leafs } =
+            region_constraint::destructure_type_outlives_constraints_in_root(
+                self,
+                solver_constraint,
+                &assumptions,
+            );
         debug!(?constraint);
-        let constraint = region_constraint::destructure_type_outlives_constraints_in_root(
-            self,
-            constraint,
-            &assumptions,
-        );
-        debug!(?constraint);
+
+        if constraint.is_false() {
+            match failing_leafs.first() {
+                Some(PlaceholderTyOutlives(_a, _b, span)) => {
+                    self.dcx()
+                        .struct_span_err(
+                            *span,
+                            "unable to satisfy constraints because it cannot be proven",
+                        )
+                        .emit();
+                }
+                Some(AliasTyOutlivesViaEnv(_, span)) => {
+                    self.dcx()
+                        .struct_span_err(
+                            *span,
+                            "unable to satisfy constraints because it cannot be proven",
+                        )
+                        .emit();
+                }
+                _ => {
+                    unreachable!()
+                }
+            }
+        }
 
         // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
         for c in constraint.and_constraint.0.into_iter().chain(
@@ -296,8 +310,6 @@ impl<'tcx> InferCtxt<'tcx> {
                 .into_iter()
                 .flat_map(|and_constraint| and_constraint.0.into_iter()),
         ) {
-            use LeafRegionConstraint::*;
-
             match c {
                 Ambiguity(span) => {
                     self.dcx()
@@ -683,7 +695,7 @@ where
     #[instrument(level = "debug", skip(self))]
     fn args_must_outlive(
         &mut self,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
         opt_variances: Option<&[ty::Variance]>,

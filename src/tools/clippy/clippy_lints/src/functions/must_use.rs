@@ -290,11 +290,8 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut DefIdSet) 
     if let hir::PatKind::Wild = pat.kind {
         return false; // ignore `_` patterns
     }
-    if cx.tcx.has_typeck_results(pat.hir_id.owner.def_id) {
-        is_mutable_ty(cx, cx.tcx.typeck(pat.hir_id.owner.def_id).pat_ty(pat), tys)
-    } else {
-        false
-    }
+    cx.tcx.has_typeck_results(pat.hir_id.owner.def_id)
+        && is_mutable_ty(cx, cx.tcx.typeck(pat.hir_id.owner.def_id).pat_ty(pat), tys)
 }
 
 fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, tys: &mut DefIdSet) -> bool {
@@ -327,7 +324,7 @@ fn is_mutated_static(e: &hir::Expr<'_>) -> bool {
 }
 
 fn mutates_static<'tcx>(cx: &LateContext<'tcx>, body: &'tcx hir::Body<'_>) -> bool {
-    for_each_expr_without_closures(&body.value, |e| {
+    for_each_expr_without_closures(body.value, |e| {
         use hir::ExprKind::{AddrOf, Assign, AssignOp, Call, MethodCall};
 
         match e.kind {

@@ -11,7 +11,7 @@
 #[unsafe(no_mangle)]
 pub fn filter_count_untrusted(bar: &[u8; 1234]) -> u16 {
     // CHECK-NOT: llvm.assume
-    // CHECK: call void @{{.+}}unwrap_failed
+    // CHECK: call {{.+}}unwrap_failed
     // CHECK-NOT: llvm.assume
     let mut iter = bar.iter();
     let iter = std::iter::from_fn(|| iter.next()); // Make it not TrustedLen

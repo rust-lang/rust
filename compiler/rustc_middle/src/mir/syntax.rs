@@ -20,7 +20,7 @@ use thin_vec::ThinVec;
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 use crate::mir::coverage::CoverageKind;
 use crate::ty::adjustment::PointerCoercion;
-use crate::ty::{self, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex};
+use crate::ty::{self, GenericArgs, List, Region, Ty, UserTypeAnnotationIndex};
 
 /// Represents the "flavors" of MIR.
 ///
@@ -127,7 +127,6 @@ pub enum RuntimePhase {
     /// disallowed:
     /// * [`TerminatorKind::Yield`]
     /// * [`TerminatorKind::CoroutineDrop`]
-    /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
     /// * [`Rvalue::CopyForDeref`]
     /// * [`PlaceElem::OpaqueCast`]
     /// * [`LocalInfo::DerefTemp`](super::LocalInfo::DerefTemp)
@@ -1449,9 +1448,6 @@ pub enum Rvalue<'tcx> {
     /// This is needed because dataflow analysis needs to distinguish
     /// `dest = Foo { x: ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case that `Foo`
     /// has a destructor.
-    ///
-    /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Coroutine`. After
-    /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
     Aggregate(Box<AggregateKind<'tcx>>, IndexVec<FieldIdx, Operand<'tcx>>),
 
     /// A CopyForDeref is equivalent to a read from a place at the
@@ -1563,11 +1559,11 @@ pub enum AggregateKind<'tcx> {
     /// active field number and is present only for union expressions
     /// -- e.g., for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`
-    Adt(DefId, VariantIdx, GenericArgsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
+    Adt(DefId, VariantIdx, GenericArgs<'tcx>, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
 
-    Closure(DefId, GenericArgsRef<'tcx>),
-    Coroutine(DefId, GenericArgsRef<'tcx>),
-    CoroutineClosure(DefId, GenericArgsRef<'tcx>),
+    Closure(DefId, GenericArgs<'tcx>),
+    Coroutine(DefId, GenericArgs<'tcx>),
+    CoroutineClosure(DefId, GenericArgs<'tcx>),
 
     /// Construct a raw pointer from the data pointer and metadata.
     ///

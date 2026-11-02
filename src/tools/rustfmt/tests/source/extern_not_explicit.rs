@@ -1,4 +1,4 @@
-// rustfmt-force_explicit_abi: false
+//@ rustfmt-force_explicit_abi: false
 
  extern  "C" {
    fn some_fn() -> ();

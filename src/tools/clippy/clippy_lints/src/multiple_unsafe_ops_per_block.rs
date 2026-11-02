@@ -167,6 +167,15 @@ impl<'tcx> UnsafeExprCollector<'tcx> {
 
         self.visit_expr(base);
     }
+
+    fn visit_lhs(&mut self, mut expr: &'tcx hir::Expr<'tcx>) {
+        while let ExprKind::Field(base, _) = expr.kind
+            && self.typeck_results.expr_adjustments(base).is_empty()
+        {
+            expr = base;
+        }
+        self.visit_expr(expr);
+    }
 }
 
 impl UnsafeExprCollector<'_> {
@@ -248,7 +257,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
                 }
             },
 
-            ExprKind::AssignOp(_, lhs, rhs) | ExprKind::Assign(lhs, rhs, _) => {
+            ExprKind::AssignOp(_, lhs, rhs) | ExprKind::Assign(lhs, rhs, _)
                 if matches!(
                     lhs.kind,
                     ExprKind::Path(QPath::Resolved(
@@ -264,10 +273,17 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
                             ..
                         }
                     ))
-                ) {
-                    self.insert_span(expr.span, "modification of a mutable static occurs here");
-                    return self.visit_expr(rhs);
-                }
+                ) =>
+            {
+                self.insert_span(expr.span, "modification of a mutable static occurs here");
+                self.visit_expr(rhs);
+                return;
+            },
+
+            ExprKind::Assign(lhs, rhs, _) => {
+                self.visit_lhs(lhs);
+                self.visit_expr(rhs);
+                return;
             },
 
             _ => {},
@@ -276,7 +292,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
         walk_expr(self, expr);
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
+    fn visit_body(&mut self, body: &hir::Body<'tcx>) {
         let saved_typeck_results = self.typeck_results;
         self.typeck_results = self.tcx.typeck_body(body.id());
         walk_body(self, body);

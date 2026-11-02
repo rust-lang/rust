@@ -28,7 +28,7 @@ pub struct CrateRunInfo {
     /// The command-line arguments.
     pub args: Vec<String>,
     /// The environment.
-    pub env: Vec<(OsString, OsString)>,
+    pub env: Vec<(String, OsString)>,
     /// The current working directory.
     pub current_dir: OsString,
     /// The contents passed via standard input.
@@ -40,20 +40,20 @@ impl CrateRunInfo {
     pub fn collect(args: impl Iterator<Item = String>, capture_stdin: bool) -> Self {
         let args = args.collect();
         let env = env::vars_os()
+            // We only need to bother with env vars cargo actually sets.
+            // Those all have UTF-8 names.
+            .filter_map(|(var, val)| Some((var.into_string().ok()?, val)))
             .filter(|(var, _val)| {
-                // We only need to bother with env vars cargo actually sets.
-                var.to_str().is_some_and(|var| {
-                    (   // Env vars cargo sets for crates.
-                        // <https://doc.rust-lang.org/nightly/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates>
-                        var == "OUT_DIR"
-                        || var.starts_with("CARGO_")
-                        // Env vars rustdoc sets for its rustc invocation.
-                        || var.starts_with("UNSTABLE_RUSTDOC_")
-                        || var.starts_with("RUSTDOC_")
-                    )
-                    // We try to avoid storing anything that may contain secrets.
-                    && !var.ends_with("_TOKEN")
-                })
+                (   // Env vars cargo sets for crates.
+                    // <https://doc.rust-lang.org/nightly/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates>
+                    var == "OUT_DIR"
+                    || var.starts_with("CARGO_")
+                    // Env vars rustdoc sets for its rustc invocation.
+                    || var.starts_with("UNSTABLE_RUSTDOC_")
+                    || var.starts_with("RUSTDOC_")
+                )
+                // We try to avoid storing anything that may contain secrets.
+                && !var.ends_with("_TOKEN")
             })
             .collect();
         let current_dir = env::current_dir().unwrap().into_os_string();

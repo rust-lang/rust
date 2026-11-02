@@ -1,6 +1,5 @@
 //! OS-specific functionality.
-
-#![unstable(feature = "darwin_objc", issue = "145496")]
+#![unstable(feature = "core_os", issue = "none")]
 #![allow(missing_docs)]
 
 #[cfg(all(
@@ -23,3 +22,6 @@ pub mod darwin {}
 )))]
 #[cfg(any(target_vendor = "apple", doc))]
 pub mod darwin;
+
+#[cfg(any(target_family = "windows", doc))]
+pub mod windows;

@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ops::Index;
 
 use arrayvec::ArrayVec;
 use derive_where::derive_where;
@@ -7,7 +8,6 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContex
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
-use thin_vec::ThinVec;
 
 use crate::data_structures::{DelayedMap, HashMap};
 use crate::inherent::*;
@@ -71,6 +71,10 @@ impl<I: Interner, V> Canonical<I, V> {
         let Canonical { max_universe, var_kinds, value } = self;
         Canonical { max_universe, var_kinds, value: map_op(value) }
     }
+
+    pub fn project<W>(self, f: impl FnOnce(V) -> W) -> Canonicalized<W> {
+        Canonicalized(f(self.value))
+    }
 }
 
 impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
@@ -80,6 +84,31 @@ impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
             f,
             "Canonical {{ value: {value}, max_universe: {max_universe:?}, var_kinds: {var_kinds:?} }}",
         )
+    }
+}
+
+/// A projection of a `Canonical<V>`, as produced by `Canonical::project`. Useful as a marker when
+/// dealing with fields within a `Canonical<V>`, because it indicates that `T` may contain
+/// canonical bound variables that must be instantiated before use.
+///
+/// The field is private and the contents can only be accessed directly with `into_uninstantiated`,
+/// which is easy to spot.
+#[derive(Copy, Clone, Debug)]
+pub struct Canonicalized<T>(T);
+
+impl<T> Canonicalized<T> {
+    pub fn into_uninstantiated(self) -> T {
+        self.0
+    }
+}
+
+impl<T: SliceLike> Canonicalized<T> {
+    pub fn len(self) -> usize {
+        self.0.len()
+    }
+
+    pub fn iter(self) -> impl Iterator<Item = Canonicalized<T::Item>> {
+        self.0.iter().map(|x| Canonicalized(x))
     }
 }
 
@@ -240,6 +269,7 @@ impl<I: Interner> CanonicalVarValues<I> {
         if var_kinds.len() <= 4 {
             let mut var_values = ArrayVec::<_, 4>::new();
             for info in var_kinds.iter() {
+                // Note: the `f` call gets all the previously constructed `var_values`.
                 var_values.push(f(&var_values, info));
             }
             CanonicalVarValues { var_values: cx.mk_args(&var_values) }
@@ -267,6 +297,14 @@ impl<I: Interner> CanonicalVarValues<I> {
     }
 }
 
+impl<I: Interner> Index<ty::BoundVar> for CanonicalVarValues<I> {
+    type Output = I::GenericArg;
+
+    fn index(&self, value: ty::BoundVar) -> &I::GenericArg {
+        &self.var_values.as_slice()[value.as_usize()]
+    }
+}
+
 #[derive_where(Default; I: Interner)]
 pub struct CanonicalParamEnvCache<I: Interner>(
     pub HashMap<I::ParamEnv, CanonicalParamEnvCacheEntry<I>>,
@@ -277,16 +315,16 @@ pub struct CanonicalParamEnvCacheEntry<I: Interner> {
     // Note: this `param_env` is the canonicalized form of the key for this entry in the enclosing
     // `CanonicalParamEnvCache`.
     pub param_env: I::ParamEnv,
-    pub variables: ThinVec<I::GenericArg>,
+    pub variables: Vec<I::GenericArg>,
     pub variable_lookup_table: HashMap<I::GenericArg, usize>,
     pub var_kinds: Vec<CanonicalVarKind<I>>,
 }
 
 /// State used and modified by a canonicalizer during canonicalization. To avoid many allocations,
-/// this state is reused by many canonicalizers from a single `InferCtxt`.
+/// this state is reused by many canonicalizers from `GlobalCaches`.
 #[derive_where(Default; I: Interner)]
 pub struct CanonicalizerState<I: Interner> {
-    pub variables: ThinVec<I::GenericArg>,
+    pub variables: Vec<I::GenericArg>,
     pub var_kinds: Vec<CanonicalVarKind<I>>,
     pub variable_lookup_table: HashMap<I::GenericArg, usize>,
 
@@ -308,10 +346,32 @@ impl<I: Interner> CanonicalizerState<I> {
         // Deconstruct to ensure no fields are missed.
         let Self { variables, var_kinds, variable_lookup_table, sub_root_lookup_table, cache } =
             self;
+
+        // The vectors can be simply cleared because `Vec::clear` is cheap: it just sets the length
+        // to zero. (The elements don't impl `Drop`.)
+        //
+        // The hash maps are different: `HashMap::clear` has to write some control bytes, the
+        // number of which is proportional to capacity. Most of the time the hash map capacity is
+        // small and it's not a problem, but on some benchmarks it can occasionally get very big.
+        // In which case we just start over with a fresh hash map so we aren't saddled with a high
+        // `clear` cost forevermore.
+
         variables.clear();
         var_kinds.clear();
-        variable_lookup_table.clear();
-        sub_root_lookup_table.clear();
-        cache.clear();
+        if variable_lookup_table.capacity() <= 128 {
+            variable_lookup_table.clear();
+        } else {
+            *variable_lookup_table = HashMap::default();
+        }
+        if sub_root_lookup_table.capacity() <= 128 {
+            sub_root_lookup_table.clear();
+        } else {
+            *sub_root_lookup_table = HashMap::default();
+        }
+        if cache.capacity() <= 128 {
+            cache.clear();
+        } else {
+            *cache = Default::default();
+        }
     }
 }

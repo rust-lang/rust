@@ -1,0 +1,52 @@
+- // MIR for `simple_partial_alias` before MoveElimination
++ // MIR for `simple_partial_alias` after MoveElimination
+  
+  fn simple_partial_alias(_1: [u8; 4]) -> U {
+      debug x => _1;
+      let mut _0: U;
+      let mut _2: U;
+      let mut _3: [u8; 4];
+      let mut _5: [u8; 4];
+      scope 1 {
+-         debug u => _2;
++         debug u => _0;
+          let _4: [u8; 4];
+          scope 2 {
+-             debug tmp => _4;
++             debug tmp => _5;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         StorageLive(_3);
+-         _3 = copy _1;
+-         _2 = U { a: move _3 };
+-         StorageDead(_3);
+-         StorageLive(_4);
+-         _4 = copy (_2.0: [u8; 4]);
++         nop;
++         nop;
++         nop;
++         _0 = U { a: move _1 };
++         nop;
++         nop;
+          StorageLive(_5);
+-         _5 = copy _4;
+-         (_2.1: [u8; 4]) = move _5;
++         _5 = copy (_0.0: [u8; 4]);
++         nop;
++         nop;
++         (_0.1: [u8; 4]) = move _5;
+          StorageDead(_5);
+-         _0 = move _2;
+-         StorageDead(_4);
+-         StorageDead(_2);
++         nop;
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  

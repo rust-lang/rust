@@ -32,6 +32,11 @@ note: the lint level is defined here
    |
 LL |     #[deny(unused_macros)]
    |            ^^^^^^^^^^^^^
+help: consider annotating the enclosing module with `#[macro_use]`
+   |
+LL + #[macro_use]
+LL | mod bar {
+   |
 
 error: aborting due to 3 previous errors
 

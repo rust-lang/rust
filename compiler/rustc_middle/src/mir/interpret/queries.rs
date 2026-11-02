@@ -113,7 +113,14 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::AliasConstKind::Anon { def_id } => def_id,
         };
 
-        let cid = match ty::Instance::try_resolve(self, typing_env, def_id, ct.args) {
+        // We need to use post analysis mode for instance resolving to succeed.
+        // Otherwise we often bail due to impl candidate not being final.
+        // Revealing opaques here should be fine as we proved the trait ref
+        // with rigid opaques in typeck.
+        let ty::PseudoCanonicalInput { typing_env, value: args } =
+            typing_env.with_post_analysis_normalized_invalidating_rigid_aliases(self, ct.args);
+
+        let cid = match ty::Instance::try_resolve(self, typing_env, def_id, args) {
             Ok(Some(instance)) => GlobalId { instance, promoted: None },
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
@@ -136,7 +143,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // here does feel somewhat sensible.
             let def_id = cid.instance.def_id();
             if !self.features().generic_const_exprs()
-                && ct.args.has_non_region_param()
+                && args.has_non_region_param()
                 // We only FCW for anon consts as repeat expr counts with anon consts are the only place
                 // that we have a back compat hack for. We don't need to check this is a const argument
                 // as only anon consts as const args should get evaluated "for the type system".
@@ -184,7 +191,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_and_anonymize_regions(
-            typing_env.with_post_analysis_normalized(self).as_query_input(cid),
+            typing_env.with_post_analysis_normalized_invalidating_rigid_aliases(self, cid),
         );
         if !span.is_dummy() {
             // The query doesn't know where it is being invoked, so we need to fix the span.
@@ -205,7 +212,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_and_anonymize_regions(
-            typing_env.with_post_analysis_normalized(self).as_query_input(cid),
+            typing_env.with_post_analysis_normalized_invalidating_rigid_aliases(self, cid),
         );
         debug!(?inputs);
         let res = if !span.is_dummy() {

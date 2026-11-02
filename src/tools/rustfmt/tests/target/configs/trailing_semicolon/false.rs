@@ -1,4 +1,4 @@
-// rustfmt-trailing_semicolon: false
+//@ rustfmt-trailing_semicolon: false
 
 #![feature(loop_break_value)]
 

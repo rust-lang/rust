@@ -1,4 +1,4 @@
-// rustfmt-error_on_line_overflow: true
+//@ rustfmt-error_on_line_overflow: true
 
 #[rustfmt::skip] use one::two::three::four::five::six::seven::eight::night::ten::eleven::twelve::thirteen::fourteen::fiveteen;
 #[rustfmt::skip]

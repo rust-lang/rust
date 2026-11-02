@@ -3,7 +3,7 @@
 
 use std::{assert_matches, iter};
 
-use rustc_ast::{self as ast, GenericParamKind, Mutability, attr, join_path_idents};
+use rustc_ast::{self as ast, GeneratedAttr, GenericParamKind, Mutability, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
 use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_attr_parsing::AttributeParser;
@@ -65,7 +65,9 @@ pub(crate) fn expand_test_case(
                 ident,
             ));
             item.vis = ast::Visibility { span: item.vis.span, kind: ast::VisibilityKind::Public };
-            item.attrs.push(ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, sp));
+            item.attrs.push(
+                ecx.generated_attr(attr_sp, GeneratedAttr::RustcTestMarker(test_path_symbol)),
+            );
         }
         _ => {}
     }
@@ -161,13 +163,13 @@ pub(crate) fn expand_test_or_bench(
     let test_ident = Ident::new(sym::test, attr_sp);
 
     // creates test::$name
-    let test_path = |name| cx.path(ret_ty_sp, vec![test_ident, Ident::from_str_and_span(name, sp)]);
+    let test_path = |name| cx.path(ret_ty_sp, &[test_ident, Ident::from_str_and_span(name, sp)]);
 
     // creates test::ShouldPanic::$name
     let should_panic_path = |name| {
         cx.path(
             sp,
-            vec![test_ident, Ident::new(sym::ShouldPanic, sp), Ident::from_str_and_span(name, sp)],
+            &[test_ident, Ident::new(sym::ShouldPanic, sp), Ident::from_str_and_span(name, sp)],
         )
     };
 
@@ -175,7 +177,7 @@ pub(crate) fn expand_test_or_bench(
     let test_type_path = |name| {
         cx.path(
             sp,
-            vec![test_ident, Ident::new(sym::TestType, sp), Ident::from_str_and_span(name, sp)],
+            &[test_ident, Ident::new(sym::TestType, sp), Ident::from_str_and_span(name, sp)],
         )
     };
 
@@ -188,14 +190,13 @@ pub(crate) fn expand_test_or_bench(
     // corresponding macro declaration in `core::macros`.
     let coverage_off = |mut expr: Box<ast::Expr>| {
         assert_matches!(expr.kind, ast::ExprKind::Closure(_));
-        expr.attrs.push(cx.attr_nested_word(sym::coverage, sym::off, sp));
+        expr.attrs.push(cx.generated_attr(sp, GeneratedAttr::CoverageOff));
         expr
     };
 
     let test_fn = if is_bench {
         // avoid name collisions by using the function name within the identifier, see bug #148275
-        let bencher_param =
-            Ident::from_str_and_span(&format!("__bench_{}", fn_.ident.name), attr_sp);
+        let bencher_param = Symbol::intern(&format!("__bench_{}", fn_.ident.name));
         cx.expr_call(
             sp,
             cx.expr_path(test_path("StaticBenchFn")),
@@ -212,8 +213,8 @@ pub(crate) fn expand_test_or_bench(
                             // super::$test_fn(__bench_fn_name)
                             cx.expr_call(
                                 ret_ty_sp,
-                                cx.expr_path(cx.path(sp, vec![fn_.ident])),
-                                thin_vec![cx.expr_ident(sp, bencher_param)],
+                                cx.expr_path(cx.path_ident(sp, fn_.ident)),
+                                thin_vec![cx.expr_name(sp, bencher_param)],
                             ),
                         ],
                     ),
@@ -238,7 +239,7 @@ pub(crate) fn expand_test_or_bench(
                             // $test_fn()
                             cx.expr_call(
                                 ret_ty_sp,
-                                cx.expr_path(cx.path(sp, vec![fn_.ident])),
+                                cx.expr_path(cx.path(sp, &[fn_.ident])),
                                 ThinVec::new(),
                             ), // )
                         ],
@@ -267,12 +268,12 @@ pub(crate) fn expand_test_or_bench(
             // #[cfg(test)]
             cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
             // #[rustc_test_marker = "test_case_sort_key"]
-            cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
+            cx.generated_attr(attr_sp, GeneratedAttr::RustcTestMarker(test_path_symbol)),
             // #[doc(hidden)]
-            cx.attr_nested_word(sym::doc, sym::hidden, attr_sp),
+            cx.generated_attr(attr_sp, GeneratedAttr::DocHidden),
         ],
         Ident::new(fn_.ident.name, sp),
-        cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
+        cx.ty_path(test_path("TestDescAndFn")),
         Mutability::Not,
         // test::TestDescAndFn {
         cx.expr_struct(

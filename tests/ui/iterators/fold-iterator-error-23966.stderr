@@ -1,8 +1,8 @@
-error[E0277]: expected an `FnMut(_, char)` closure, found `()`
+error[E0277]: expected `FnMut(_, char)` signature, found `()`
   --> $DIR/fold-iterator-error-23966.rs:3:32
    |
 LL |     "".chars().fold(|_, _| (), ());
-   |                ----            ^^ expected an `FnMut(_, char)` closure, found `()`
+   |                ----            ^^ expected `FnMut(_, char)` signature, found `()`
    |                |
    |                required by a bound introduced by this call
    |

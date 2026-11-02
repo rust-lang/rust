@@ -274,9 +274,11 @@ For example:
 - A test with the `//@ edition: 2015..2021` directive can be run under the 2015 and the 2018 edition,
   so the upper bound is exclusive just like in Rust
   (note that there's no equivalent to Rust's `..=` where the upper bound is inclusive).
-  However, CI will only run the test with the lowest edition in the range (which is 2015 in this example).
+  However,
+  CI will only run the test with the lowest edition in the range (which is 2015 in this example).
 - A test with the `//@ edition: 2018..` directive will run under 2018 edition or greater.
-  However, CI will only run the test with the lowest edition in the range (which is 2018 in this example).
+  However,
+  CI will only run the test with the lowest edition in the range (which is 2018 in this example).
 
 You can also force `./x test` to use a specific edition by passing the `-- --edition=` argument.
 However, tests with the `//@ edition` directive will clamp the value passed to the argument.
@@ -300,10 +302,11 @@ Asked in
 
 #### Test-suite-specific directives
 
-The test suites [`rustdoc-html`][rustdoc-html-tests], [`rustdoc-js`/`rustdoc-js-std`][rustdoc-js-tests]
+The test suites [`rustdoc-html`][rustdoc-html-tests],
+[`rustdoc-js`/`rustdoc-js-std`][rustdoc-js-tests],
 and [`rustdoc-json`][rustdoc-json-tests] each feature an additional set of directives whose basic
-syntax resembles the one of compiletest directives but which are ultimately read and checked by
-separate tools.
+syntax resembles one of the compiletest directives,
+but which are ultimately read and checked by separate tools.
 For more information, please read their respective chapters as linked above.
 
 [rustdoc-html-tests]: ../rustdoc-internals/rustdoc-html-test-suite.md

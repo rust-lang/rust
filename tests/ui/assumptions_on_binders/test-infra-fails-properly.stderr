@@ -69,14 +69,14 @@ note: constraint from here
    |
 LL |         forall<'a> where 'b: 'a {
    |         ^^^^^^
-   = note: expected: RegionOutlives(
-               'b/#0,
-               'c/#1,
-           )
-   = note: actual: RegionOutlives(
-               'c/#1,
-               'static,
-           )
+   = note: expected: or {
+               'c/#1: 'b/#0,
+               'b/#0: 'c/#1,
+           }
+   = note: actual: or {
+               'c/#1: 'b/#0,
+               'c/#1: 'static,
+           }
 
 error: bound type test binder constraint must be alias (it's a AliasTyOutlivesViaEnv)
   --> $DIR/test-infra-fails-properly.rs:73:15
@@ -106,14 +106,8 @@ error: forall expect clause failed
 LL |             ambiguity
    |             ^^^^^^^^^
    |
-   = note: expected: And(
-               [
-                   Ambiguity,
-               ],
-           )
-   = note: actual: And(
-               [],
-           )
+   = note: expected: ambiguity
+   = note: actual: true
 
 error: forall expect clause failed
   --> $DIR/test-infra-fails-properly.rs:99:9
@@ -126,14 +120,8 @@ note: constraint from here
    |
 LL |         forall<'a> where 'a: 'static {
    |         ^^^^^^
-   = note: expected: And(
-               [],
-           )
-   = note: actual: And(
-               [
-                   Ambiguity,
-               ],
-           )
+   = note: expected: true
+   = note: actual: ambiguity
 
 error: unable to satisfy constraints involving placeholders due to unknown implied bounds
   --> $DIR/test-infra-fails-properly.rs:99:9

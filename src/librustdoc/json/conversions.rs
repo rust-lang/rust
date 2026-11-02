@@ -17,7 +17,7 @@ use rustc_hir_pretty::PpAnn;
 use rustc_metadata::rendered_const;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::ModId;
-use rustc_span::{Pos, Symbol, bug, kw, sym};
+use rustc_span::{Pos, RemapPathScopeComponents, Symbol, bug, kw, sym};
 use rustdoc_json_types::*;
 
 use crate::clean::{self, ItemId};
@@ -191,17 +191,14 @@ impl FromClean<clean::Span> for Option<Span> {
     fn from_clean(span: &clean::Span, renderer: &JsonRenderer<'_>) -> Self {
         match span.filename(renderer.sess()) {
             rustc_span::FileName::Real(name) => {
-                if let Some(local_path) = name.into_local_path() {
-                    let hi = span.hi(renderer.sess());
-                    let lo = span.lo(renderer.sess());
-                    Some(Span {
-                        filename: local_path,
-                        begin: (lo.line, lo.col.to_usize() + 1),
-                        end: (hi.line, hi.col.to_usize() + 1),
-                    })
-                } else {
-                    None
-                }
+                let filename = name.path(RemapPathScopeComponents::DOCUMENTATION);
+                let hi = span.hi(renderer.sess());
+                let lo = span.lo(renderer.sess());
+                Some(Span {
+                    filename: filename.to_path_buf(),
+                    begin: (lo.line, lo.col.to_usize() + 1),
+                    end: (hi.line, hi.col.to_usize() + 1),
+                })
             }
             _ => None,
         }
@@ -1089,7 +1086,7 @@ fn maybe_from_hir_attr(
     let kind = match attr {
         rustc_attr_ir::Attribute::Parsed(kind) => kind,
 
-        rustc_attr_ir::Attribute::Unparsed(_) => {
+        rustc_attr_ir::Attribute::Tool(_) | rustc_attr_ir::Attribute::DeriveHelper(_) => {
             // FIXME: We should handle `#[doc(hidden)]`.
             return vec![other_attr(tcx, attr)];
         }
@@ -1228,7 +1225,13 @@ fn maybe_from_hir_attr(
             name_value_attr(&mut ret, "keyword", keyword);
             name_value_attr(&mut ret, "attribute", attribute);
             toggle_attr(&mut ret, "masked", masked);
-            toggle_attr(&mut ret, "notable_trait", notable_trait);
+            if let Some((notable_trait, _span)) = notable_trait {
+                if let Some((color, _span)) = notable_trait {
+                    ret.push(Attribute::Other(format!("#[doc(notable_trait = \"{color}\")]")));
+                } else {
+                    ret.push(Attribute::Other(format!("#[doc(notable_trait)]")));
+                }
+            }
             toggle_attr(&mut ret, "search_unbox", search_unbox);
             name_value_attr(&mut ret, "html_favicon_url", html_favicon_url);
             name_value_attr(&mut ret, "html_logo_url", html_logo_url);

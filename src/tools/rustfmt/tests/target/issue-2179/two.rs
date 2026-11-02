@@ -1,5 +1,5 @@
-// rustfmt-style_edition: 2024
-// rustfmt-error_on_line_overflow: false
+//@ rustfmt-style_edition: 2024
+//@ rustfmt-error_on_line_overflow: false
 
 fn issue_2179() {
     let (opts, rustflags, clear_env_rust_log) = {

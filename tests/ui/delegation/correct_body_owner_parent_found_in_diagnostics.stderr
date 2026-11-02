@@ -77,6 +77,7 @@ LL |     reuse <u8 as Trait>::{foo, bar, meh} { &const { InvariantRef::<'a>::NEW
 note: method defined here
   --> $DIR/correct_body_owner_parent_found_in_diagnostics.rs:13:8
    |
+LL | trait Trait {
 LL |     fn foo(&self) -> u8 { 0 }
    |        ^^^ -----
 
@@ -106,6 +107,8 @@ LL |     reuse <u8 as Trait>::{foo, bar, meh} { &const { InvariantRef::<'a>::NEW
 note: method defined here
   --> $DIR/correct_body_owner_parent_found_in_diagnostics.rs:14:8
    |
+LL | trait Trait {
+LL |     fn foo(&self) -> u8 { 0 }
 LL |     fn bar(&self) -> u8 { 1 }
    |        ^^^ -----
 
@@ -135,6 +138,8 @@ LL |     reuse <u8 as Trait>::{foo, bar, meh} { &const { InvariantRef::<'a>::NEW
 note: method defined here
   --> $DIR/correct_body_owner_parent_found_in_diagnostics.rs:15:8
    |
+LL | trait Trait {
+...
 LL |     fn meh(&self) -> u8 { 2 }
    |        ^^^ -----
 

@@ -26,6 +26,7 @@ allow-unauthenticated = [
     "beta-nominated",
     "CI-spurious-*",
     "const-hack",
+    "llm-assisted",
     "llvm-*",
     "needs-fcp",
     "relnotes",
@@ -243,6 +244,7 @@ exclude_labels = [
     "T-infra",
     "T-release",
     "requires-nightly",
+    "requires-internal-features",
     "F-*",
 ]
 
@@ -614,7 +616,6 @@ trigger_files = [
     "src/doc/rustc/src/exploit-mitigations.md",
     "src/doc/unstable-book/src/compiler-flags/branch-protection.md",
     "src/doc/unstable-book/src/compiler-flags/cf-protection.md",
-    "src/doc/unstable-book/src/compiler-flags/control-flow-guard.md",
     "src/doc/unstable-book/src/compiler-flags/sanitizer.md",
     "src/doc/unstable-book/src/language-features/cfg-sanitize.md",
     "src/doc/unstable-book/src/language-features/cfi-encoding.md",
@@ -1103,6 +1104,10 @@ cc = ["@BoxyUwU"]
 message = "Some changes occurred in `rustc_ty_utils::consts.rs`"
 cc = ["@BoxyUwU"]
 
+[mentions."compiler/rustc_ty_utils/src/layout/invariant.rs"]
+message = "Layout invariants are being changed"
+cc = ["@RalfJung"]
+
 [mentions."compiler/rustc_trait_selection/src/solve/"]
 message = "Some changes occurred to the core trait solver"
 cc = ["@rust-lang/initiative-trait-system-refactor"]
@@ -1429,9 +1434,6 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 [mentions."src/doc/unstable-book/src/compiler-flags/cf-protection.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
-[mentions."src/doc/unstable-book/src/compiler-flags/control-flow-guard.md"]
-cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
-
 [mentions."src/doc/unstable-book/src/compiler-flags/sanitizer.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
@@ -1646,20 +1648,6 @@ branch = "stable"
 compiler_leads = [
     "@davidtwco",
     "@boxyuwu",
-]
-libs = [
-    "@Mark-Simulacrum",
-    "@workingjubilee",
-    "@jhpratt",
-    "@tgross35",
-    "@thomcc",
-    "@joboet",
-    "@nia-e",
-    "@LawnGnome",
-    "@clarfonthey",
-    "@aapoalas",
-    "@Darksonn",
-    "@JohnTitor",
 ]
 infra-ci = [
     "@Mark-Simulacrum",

@@ -210,7 +210,7 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
 fn check_call_site_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     callee: Ty<'tcx>,
-    caller: InstanceKind<'tcx>,
+    caller: Instance<'tcx>,
     loc: impl Fn() -> (Span, HirId) + Copy,
 ) {
     let extern_abi = callee.fn_sig(tcx).abi();
@@ -225,6 +225,11 @@ fn check_call_site_abi<'tcx>(
         return;
     }
     let typing_env = ty::TypingEnv::fully_monomorphized();
+    let callee = caller.instantiate_mir_and_normalize_erasing_regions(
+        tcx,
+        typing_env,
+        ty::EarlyBinder::bind(tcx, callee),
+    );
     let callee_abi = match *callee.kind() {
         ty::FnPtr(..) => {
             let sig = callee.fn_sig(tcx);
@@ -289,12 +294,7 @@ fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &m
             mir::TerminatorKind::Call { ref func, ref fn_span, .. }
             | mir::TerminatorKind::TailCall { ref func, ref fn_span, .. } => {
                 let callee_ty = func.ty(body, tcx);
-                let callee_ty = instance.instantiate_mir_and_normalize_erasing_regions(
-                    tcx,
-                    ty::TypingEnv::fully_monomorphized(),
-                    ty::EarlyBinder::bind(tcx, callee_ty),
-                );
-                check_call_site_abi(tcx, callee_ty, body.source.instance, || {
+                check_call_site_abi(tcx, callee_ty, instance, || {
                     let loc = Location {
                         block: bb,
                         statement_index: body.basic_blocks[bb].statements.len(),

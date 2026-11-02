@@ -7,20 +7,21 @@
 #![feature(maybe_dangling)]
 
 use std::mem::{self, MaybeDangling};
-use std::ptr::drop_in_place;
+use std::ptr;
 
 fn main() {
     boxy();
     reference();
     write_through_shared_ref();
     large();
+    zst_at_the_end();
 }
 
 fn boxy() {
     let mut x = MaybeDangling::new(Box::new(1));
 
     // make the box dangle
-    unsafe { drop_in_place(x.as_mut()) };
+    unsafe { ptr::drop_in_place(x.as_mut()) };
 
     // move the dangling box (without `MaybeDangling` this causes UB)
     let x: MaybeDangling<Box<u32>> = x;
@@ -63,4 +64,11 @@ fn write_through_shared_ref() {
 fn large() {
     // Used to be rejected due to faulty logic for the "does this fit the address space" check.
     let _x: MaybeDangling<&i8> = unsafe { mem::transmute(usize::MAX - 127) };
+}
+
+fn zst_at_the_end() {
+    // usize::MAX is valid for ZST.
+    let ptr: *const () = ptr::without_provenance::<()>(usize::MAX);
+    let ref_ = unsafe { &*ptr };
+    let _x = MaybeDangling::new(ref_);
 }

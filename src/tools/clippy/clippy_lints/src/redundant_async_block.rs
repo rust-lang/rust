@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
         if let Some(body_expr) = desugar_async_block(cx, expr) &&
             let Some(expr) = desugar_await(peel_blocks(body_expr)) &&
             // The await prefix must not come from a macro as its content could change in the future.
-            expr.span.eq_ctxt(body_expr.span) &&
+            expr.span.ctxt() == body_expr.span.ctxt() &&
             !span.in_external_macro(cx.tcx.sess.source_map()) &&
             // The await prefix must implement Future, as implementing IntoFuture is not enough.
             let Some(future_trait) = cx.tcx.lang_items().future_trait() &&
@@ -89,7 +89,7 @@ fn desugar_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Op
                         .all(|place| matches!(place.info.capture_kind, UpvarCapture::ByValue))
                 })
             })
-            .then_some(&body.value)
+            .then_some(body.value)
     } else {
         None
     }

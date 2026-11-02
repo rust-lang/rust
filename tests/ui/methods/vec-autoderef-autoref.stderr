@@ -10,6 +10,8 @@ note: `MyIter` defines an item `test_mut`, perhaps you need to implement it
    |
 LL | trait MyIter {
    | ^^^^^^^^^^^^
+LL |     fn test_mut(&mut self);
+   |
 help: there is a method `get_mut` with a similar name, but with different arguments
   --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
 
@@ -25,6 +27,9 @@ note: `MyIter` defines an item `test`, perhaps you need to implement it
    |
 LL | trait MyIter {
    | ^^^^^^^^^^^^
+LL |     fn test_mut(&mut self);
+LL |     fn test(&self);
+   |
 
 error[E0599]: no method named `test` found for array `[{integer}; 1]` in the current scope
   --> $DIR/vec-autoderef-autoref.rs:9:11
@@ -38,6 +43,9 @@ note: `MyIter` defines an item `test`, perhaps you need to implement it
    |
 LL | trait MyIter {
    | ^^^^^^^^^^^^
+LL |     fn test_mut(&mut self);
+LL |     fn test(&self);
+   |
 
 error[E0599]: no method named `test` found for reference `&[{integer}; 1]` in the current scope
   --> $DIR/vec-autoderef-autoref.rs:10:12
@@ -51,6 +59,9 @@ note: `MyIter` defines an item `test`, perhaps you need to implement it
    |
 LL | trait MyIter {
    | ^^^^^^^^^^^^
+LL |     fn test_mut(&mut self);
+LL |     fn test(&self);
+   |
 
 error: aborting due to 4 previous errors
 

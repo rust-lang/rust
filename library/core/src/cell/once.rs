@@ -32,7 +32,7 @@ use crate::{fmt, mem};
 /// assert!(cell.get().is_some());
 /// ```
 #[stable(feature = "once_cell", since = "1.70.0")]
-pub struct OnceCell<T> {
+pub struct OnceCell<#[rustc_assert_variance(invariant)] T> {
     // Invariant: written to at most once.
     inner: UnsafeCell<Option<T>>,
 }

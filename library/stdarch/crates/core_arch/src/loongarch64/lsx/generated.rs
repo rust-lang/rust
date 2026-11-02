@@ -91,6 +91,22 @@ unsafe extern "llvm-intrinsic" {
     fn __lsx_vsat_wu(a: __v4u32, b: u32) -> __v4u32;
     #[link_name = "llvm.loongarch.lsx.vsat.du"]
     fn __lsx_vsat_du(a: __v2u64, b: u32) -> __v2u64;
+    #[link_name = "llvm.loongarch.lsx.vdiv.b"]
+    fn __lsx_vdiv_b(a: __v16i8, b: __v16i8) -> __v16i8;
+    #[link_name = "llvm.loongarch.lsx.vdiv.h"]
+    fn __lsx_vdiv_h(a: __v8i16, b: __v8i16) -> __v8i16;
+    #[link_name = "llvm.loongarch.lsx.vdiv.w"]
+    fn __lsx_vdiv_w(a: __v4i32, b: __v4i32) -> __v4i32;
+    #[link_name = "llvm.loongarch.lsx.vdiv.d"]
+    fn __lsx_vdiv_d(a: __v2i64, b: __v2i64) -> __v2i64;
+    #[link_name = "llvm.loongarch.lsx.vdiv.bu"]
+    fn __lsx_vdiv_bu(a: __v16u8, b: __v16u8) -> __v16u8;
+    #[link_name = "llvm.loongarch.lsx.vdiv.hu"]
+    fn __lsx_vdiv_hu(a: __v8u16, b: __v8u16) -> __v8u16;
+    #[link_name = "llvm.loongarch.lsx.vdiv.wu"]
+    fn __lsx_vdiv_wu(a: __v4u32, b: __v4u32) -> __v4u32;
+    #[link_name = "llvm.loongarch.lsx.vdiv.du"]
+    fn __lsx_vdiv_du(a: __v2u64, b: __v2u64) -> __v2u64;
     #[link_name = "llvm.loongarch.lsx.vhaddw.h.b"]
     fn __lsx_vhaddw_h_b(a: __v16i8, b: __v16i8) -> __v8i16;
     #[link_name = "llvm.loongarch.lsx.vhaddw.w.h"]
@@ -115,6 +131,22 @@ unsafe extern "llvm-intrinsic" {
     fn __lsx_vhsubw_wu_hu(a: __v8u16, b: __v8u16) -> __v4i32;
     #[link_name = "llvm.loongarch.lsx.vhsubw.du.wu"]
     fn __lsx_vhsubw_du_wu(a: __v4u32, b: __v4u32) -> __v2i64;
+    #[link_name = "llvm.loongarch.lsx.vmod.b"]
+    fn __lsx_vmod_b(a: __v16i8, b: __v16i8) -> __v16i8;
+    #[link_name = "llvm.loongarch.lsx.vmod.h"]
+    fn __lsx_vmod_h(a: __v8i16, b: __v8i16) -> __v8i16;
+    #[link_name = "llvm.loongarch.lsx.vmod.w"]
+    fn __lsx_vmod_w(a: __v4i32, b: __v4i32) -> __v4i32;
+    #[link_name = "llvm.loongarch.lsx.vmod.d"]
+    fn __lsx_vmod_d(a: __v2i64, b: __v2i64) -> __v2i64;
+    #[link_name = "llvm.loongarch.lsx.vmod.bu"]
+    fn __lsx_vmod_bu(a: __v16u8, b: __v16u8) -> __v16u8;
+    #[link_name = "llvm.loongarch.lsx.vmod.hu"]
+    fn __lsx_vmod_hu(a: __v8u16, b: __v8u16) -> __v8u16;
+    #[link_name = "llvm.loongarch.lsx.vmod.wu"]
+    fn __lsx_vmod_wu(a: __v4u32, b: __v4u32) -> __v4u32;
+    #[link_name = "llvm.loongarch.lsx.vmod.du"]
+    fn __lsx_vmod_du(a: __v2u64, b: __v2u64) -> __v2u64;
     #[link_name = "llvm.loongarch.lsx.vreplve.b"]
     fn __lsx_vreplve_b(a: __v16i8, b: i32) -> __v16i8;
     #[link_name = "llvm.loongarch.lsx.vreplve.h"]
@@ -829,36 +861,35 @@ unsafe extern "llvm-intrinsic" {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrar_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrar_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrar_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrar_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrar_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrar_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrar_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrar_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrari_b<const IMM3: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM3, 3);
     unsafe { transmute(__lsx_vsrari_b(transmute(a), IMM3)) }
@@ -866,8 +897,7 @@ pub fn lsx_vsrari_b<const IMM3: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrari_h<const IMM4: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vsrari_h(transmute(a), IMM4)) }
@@ -875,8 +905,7 @@ pub fn lsx_vsrari_h<const IMM4: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrari_w<const IMM5: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsrari_w(transmute(a), IMM5)) }
@@ -884,8 +913,7 @@ pub fn lsx_vsrari_w<const IMM5: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrari_d<const IMM6: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vsrari_d(transmute(a), IMM6)) }
@@ -893,36 +921,35 @@ pub fn lsx_vsrari_d<const IMM6: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlr_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrlr_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlr_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrlr_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlr_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrlr_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlr_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrlr_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlri_b<const IMM3: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM3, 3);
     unsafe { transmute(__lsx_vsrlri_b(transmute(a), IMM3)) }
@@ -930,8 +957,7 @@ pub fn lsx_vsrlri_b<const IMM3: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlri_h<const IMM4: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vsrlri_h(transmute(a), IMM4)) }
@@ -939,8 +965,7 @@ pub fn lsx_vsrlri_h<const IMM4: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlri_w<const IMM5: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsrlri_w(transmute(a), IMM5)) }
@@ -948,8 +973,7 @@ pub fn lsx_vsrlri_w<const IMM5: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlri_d<const IMM6: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vsrlri_d(transmute(a), IMM6)) }
@@ -957,8 +981,7 @@ pub fn lsx_vsrlri_d<const IMM6: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitclri_b<const IMM3: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM3, 3);
     unsafe { transmute(__lsx_vbitclri_b(transmute(a), IMM3)) }
@@ -966,8 +989,7 @@ pub fn lsx_vbitclri_b<const IMM3: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitclri_h<const IMM4: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vbitclri_h(transmute(a), IMM4)) }
@@ -975,8 +997,7 @@ pub fn lsx_vbitclri_h<const IMM4: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitclri_w<const IMM5: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vbitclri_w(transmute(a), IMM5)) }
@@ -984,8 +1005,7 @@ pub fn lsx_vbitclri_w<const IMM5: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitclri_d<const IMM6: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vbitclri_d(transmute(a), IMM6)) }
@@ -993,8 +1013,7 @@ pub fn lsx_vbitclri_d<const IMM6: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitseti_b<const IMM3: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM3, 3);
     unsafe { transmute(__lsx_vbitseti_b(transmute(a), IMM3)) }
@@ -1002,8 +1021,7 @@ pub fn lsx_vbitseti_b<const IMM3: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitseti_h<const IMM4: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vbitseti_h(transmute(a), IMM4)) }
@@ -1011,8 +1029,7 @@ pub fn lsx_vbitseti_h<const IMM4: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitseti_w<const IMM5: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vbitseti_w(transmute(a), IMM5)) }
@@ -1020,8 +1037,7 @@ pub fn lsx_vbitseti_w<const IMM5: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitseti_d<const IMM6: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vbitseti_d(transmute(a), IMM6)) }
@@ -1029,8 +1045,7 @@ pub fn lsx_vbitseti_d<const IMM6: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitrevi_b<const IMM3: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM3, 3);
     unsafe { transmute(__lsx_vbitrevi_b(transmute(a), IMM3)) }
@@ -1038,8 +1053,7 @@ pub fn lsx_vbitrevi_b<const IMM3: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitrevi_h<const IMM4: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vbitrevi_h(transmute(a), IMM4)) }
@@ -1047,8 +1061,7 @@ pub fn lsx_vbitrevi_h<const IMM4: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitrevi_w<const IMM5: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vbitrevi_w(transmute(a), IMM5)) }
@@ -1056,8 +1069,7 @@ pub fn lsx_vbitrevi_w<const IMM5: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitrevi_d<const IMM6: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vbitrevi_d(transmute(a), IMM6)) }
@@ -1065,8 +1077,7 @@ pub fn lsx_vbitrevi_d<const IMM6: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubi_bu<const IMM5: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsubi_bu(transmute(a), IMM5)) }
@@ -1074,8 +1085,7 @@ pub fn lsx_vsubi_bu<const IMM5: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubi_hu<const IMM5: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsubi_hu(transmute(a), IMM5)) }
@@ -1083,8 +1093,7 @@ pub fn lsx_vsubi_hu<const IMM5: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubi_wu<const IMM5: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsubi_wu(transmute(a), IMM5)) }
@@ -1092,8 +1101,7 @@ pub fn lsx_vsubi_wu<const IMM5: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubi_du<const IMM5: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsubi_du(transmute(a), IMM5)) }
@@ -1101,8 +1109,7 @@ pub fn lsx_vsubi_du<const IMM5: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsat_b<const IMM3: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM3, 3);
     unsafe { transmute(__lsx_vsat_b(transmute(a), IMM3)) }
@@ -1110,8 +1117,7 @@ pub fn lsx_vsat_b<const IMM3: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsat_h<const IMM4: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vsat_h(transmute(a), IMM4)) }
@@ -1119,8 +1125,7 @@ pub fn lsx_vsat_h<const IMM4: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsat_w<const IMM5: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsat_w(transmute(a), IMM5)) }
@@ -1128,8 +1133,7 @@ pub fn lsx_vsat_w<const IMM5: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsat_d<const IMM6: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vsat_d(transmute(a), IMM6)) }
@@ -1137,8 +1141,7 @@ pub fn lsx_vsat_d<const IMM6: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsat_bu<const IMM3: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM3, 3);
     unsafe { transmute(__lsx_vsat_bu(transmute(a), IMM3)) }
@@ -1146,8 +1149,7 @@ pub fn lsx_vsat_bu<const IMM3: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsat_hu<const IMM4: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vsat_hu(transmute(a), IMM4)) }
@@ -1155,8 +1157,7 @@ pub fn lsx_vsat_hu<const IMM4: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsat_wu<const IMM5: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsat_wu(transmute(a), IMM5)) }
@@ -1164,8 +1165,7 @@ pub fn lsx_vsat_wu<const IMM5: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsat_du<const IMM6: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vsat_du(transmute(a), IMM6)) }
@@ -1173,141 +1173,252 @@ pub fn lsx_vsat_du<const IMM6: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vdiv_b(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_b(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vdiv_h(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_h(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vdiv_w(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_w(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vdiv_d(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_d(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vdiv_bu(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_bu(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vdiv_hu(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_hu(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vdiv_wu(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_wu(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vdiv_du(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_du(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhaddw_h_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhaddw_h_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhaddw_w_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhaddw_w_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhaddw_d_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhaddw_d_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhaddw_hu_bu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhaddw_hu_bu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhaddw_wu_hu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhaddw_wu_hu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhaddw_du_wu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhaddw_du_wu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhsubw_h_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhsubw_h_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhsubw_w_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhsubw_w_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhsubw_d_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhsubw_d_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhsubw_hu_bu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhsubw_hu_bu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhsubw_wu_hu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhsubw_wu_hu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhsubw_du_wu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhsubw_du_wu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vmod_b(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_b(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vmod_h(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_h(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vmod_w(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_w(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vmod_d(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_d(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vmod_bu(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_bu(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vmod_hu(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_hu(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vmod_wu(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_wu(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
+pub fn lsx_vmod_du(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_du(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vreplve_b(a: m128i, b: i32) -> m128i {
     unsafe { transmute(__lsx_vreplve_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vreplve_h(a: m128i, b: i32) -> m128i {
     unsafe { transmute(__lsx_vreplve_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vreplve_w(a: m128i, b: i32) -> m128i {
     unsafe { transmute(__lsx_vreplve_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vreplve_d(a: m128i, b: i32) -> m128i {
     unsafe { transmute(__lsx_vreplve_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vshuf_h(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vshuf_h(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vshuf_w(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vshuf_w(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vshuf_d(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vshuf_d(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vandi_b<const IMM8: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { transmute(__lsx_vandi_b(transmute(a), IMM8)) }
@@ -1315,8 +1426,7 @@ pub fn lsx_vandi_b<const IMM8: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vori_b<const IMM8: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { transmute(__lsx_vori_b(transmute(a), IMM8)) }
@@ -1324,8 +1434,7 @@ pub fn lsx_vori_b<const IMM8: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vnori_b<const IMM8: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { transmute(__lsx_vnori_b(transmute(a), IMM8)) }
@@ -1333,8 +1442,7 @@ pub fn lsx_vnori_b<const IMM8: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vxori_b<const IMM8: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { transmute(__lsx_vxori_b(transmute(a), IMM8)) }
@@ -1342,15 +1450,14 @@ pub fn lsx_vxori_b<const IMM8: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitsel_v(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vbitsel_v(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vbitseli_b<const IMM8: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { transmute(__lsx_vbitseli_b(transmute(a), transmute(b), IMM8)) }
@@ -1358,288 +1465,287 @@ pub fn lsx_vbitseli_b<const IMM8: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vclo_b(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vclo_b(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vclo_h(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vclo_h(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vclo_w(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vclo_w(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vclo_d(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vclo_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcvt_h_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcvt_h_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcvt_s_d(a: m128d, b: m128d) -> m128 {
     unsafe { transmute(__lsx_vfcvt_s_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfmin_s(a: m128, b: m128) -> m128 {
     unsafe { transmute(__lsx_vfmin_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfmin_d(a: m128d, b: m128d) -> m128d {
     unsafe { transmute(__lsx_vfmin_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfmina_s(a: m128, b: m128) -> m128 {
     unsafe { transmute(__lsx_vfmina_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfmina_d(a: m128d, b: m128d) -> m128d {
     unsafe { transmute(__lsx_vfmina_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfmax_s(a: m128, b: m128) -> m128 {
     unsafe { transmute(__lsx_vfmax_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfmax_d(a: m128d, b: m128d) -> m128d {
     unsafe { transmute(__lsx_vfmax_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfmaxa_s(a: m128, b: m128) -> m128 {
     unsafe { transmute(__lsx_vfmaxa_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfmaxa_d(a: m128d, b: m128d) -> m128d {
     unsafe { transmute(__lsx_vfmaxa_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfclass_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vfclass_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfclass_d(a: m128d) -> m128i {
     unsafe { transmute(__lsx_vfclass_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx,frecipe")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfrecipe_s(a: m128) -> m128 {
     unsafe { transmute(__lsx_vfrecipe_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx,frecipe")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfrecipe_d(a: m128d) -> m128d {
     unsafe { transmute(__lsx_vfrecipe_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx,frecipe")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfrsqrte_s(a: m128) -> m128 {
     unsafe { transmute(__lsx_vfrsqrte_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx,frecipe")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfrsqrte_d(a: m128d) -> m128d {
     unsafe { transmute(__lsx_vfrsqrte_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfrint_s(a: m128) -> m128 {
     unsafe { transmute(__lsx_vfrint_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfrint_d(a: m128d) -> m128d {
     unsafe { transmute(__lsx_vfrint_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vflogb_s(a: m128) -> m128 {
     unsafe { transmute(__lsx_vflogb_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vflogb_d(a: m128d) -> m128d {
     unsafe { transmute(__lsx_vflogb_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcvth_s_h(a: m128i) -> m128 {
     unsafe { transmute(__lsx_vfcvth_s_h(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcvth_d_s(a: m128) -> m128d {
     unsafe { transmute(__lsx_vfcvth_d_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcvtl_s_h(a: m128i) -> m128 {
     unsafe { transmute(__lsx_vfcvtl_s_h(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcvtl_d_s(a: m128) -> m128d {
     unsafe { transmute(__lsx_vfcvtl_d_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftint_w_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftint_w_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftint_l_d(a: m128d) -> m128i {
     unsafe { transmute(__lsx_vftint_l_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftint_wu_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftint_wu_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftint_lu_d(a: m128d) -> m128i {
     unsafe { transmute(__lsx_vftint_lu_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrz_w_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintrz_w_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrz_l_d(a: m128d) -> m128i {
     unsafe { transmute(__lsx_vftintrz_l_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrz_wu_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintrz_wu_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrz_lu_d(a: m128d) -> m128i {
     unsafe { transmute(__lsx_vftintrz_lu_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vffint_s_w(a: m128i) -> m128 {
     unsafe { transmute(__lsx_vffint_s_w(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vffint_d_l(a: m128i) -> m128d {
     unsafe { transmute(__lsx_vffint_d_l(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vffint_s_wu(a: m128i) -> m128 {
     unsafe { transmute(__lsx_vffint_s_wu(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vffint_d_lu(a: m128i) -> m128d {
     unsafe { transmute(__lsx_vffint_d_lu(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsllwil_h_b<const IMM3: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM3, 3);
     unsafe { transmute(__lsx_vsllwil_h_b(transmute(a), IMM3)) }
@@ -1647,8 +1753,7 @@ pub fn lsx_vsllwil_h_b<const IMM3: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsllwil_w_h<const IMM4: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vsllwil_w_h(transmute(a), IMM4)) }
@@ -1656,8 +1761,7 @@ pub fn lsx_vsllwil_w_h<const IMM4: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsllwil_d_w<const IMM5: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsllwil_d_w(transmute(a), IMM5)) }
@@ -1665,8 +1769,7 @@ pub fn lsx_vsllwil_d_w<const IMM5: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsllwil_hu_bu<const IMM3: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM3, 3);
     unsafe { transmute(__lsx_vsllwil_hu_bu(transmute(a), IMM3)) }
@@ -1674,8 +1777,7 @@ pub fn lsx_vsllwil_hu_bu<const IMM3: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsllwil_wu_hu<const IMM4: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vsllwil_wu_hu(transmute(a), IMM4)) }
@@ -1683,8 +1785,7 @@ pub fn lsx_vsllwil_wu_hu<const IMM4: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsllwil_du_wu<const IMM5: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsllwil_du_wu(transmute(a), IMM5)) }
@@ -1692,218 +1793,217 @@ pub fn lsx_vsllwil_du_wu<const IMM5: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsran_b_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsran_b_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsran_h_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsran_h_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsran_w_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsran_w_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssran_b_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssran_b_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssran_h_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssran_h_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssran_w_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssran_w_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssran_bu_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssran_bu_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssran_hu_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssran_hu_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssran_wu_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssran_wu_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrarn_b_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrarn_b_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrarn_h_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrarn_h_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrarn_w_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrarn_w_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarn_b_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrarn_b_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarn_h_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrarn_h_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarn_w_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrarn_w_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarn_bu_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrarn_bu_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarn_hu_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrarn_hu_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarn_wu_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrarn_wu_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrln_b_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrln_b_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrln_h_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrln_h_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrln_w_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrln_w_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrln_bu_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrln_bu_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrln_hu_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrln_hu_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrln_wu_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrln_wu_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlrn_b_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrlrn_b_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlrn_h_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrlrn_h_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlrn_w_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsrlrn_w_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrn_bu_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrlrn_bu_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrn_hu_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrlrn_hu_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrn_wu_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrlrn_wu_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfrstpi_b<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vfrstpi_b(transmute(a), transmute(b), IMM5)) }
@@ -1911,8 +2011,7 @@ pub fn lsx_vfrstpi_b<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfrstpi_h<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vfrstpi_h(transmute(a), transmute(b), IMM5)) }
@@ -1920,22 +2019,21 @@ pub fn lsx_vfrstpi_h<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfrstp_b(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vfrstp_b(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfrstp_h(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vfrstp_h(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vextrins_b<const IMM8: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { transmute(__lsx_vextrins_b(transmute(a), transmute(b), IMM8)) }
@@ -1943,8 +2041,7 @@ pub fn lsx_vextrins_b<const IMM8: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vextrins_h<const IMM8: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { transmute(__lsx_vextrins_h(transmute(a), transmute(b), IMM8)) }
@@ -1952,8 +2049,7 @@ pub fn lsx_vextrins_h<const IMM8: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vextrins_w<const IMM8: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { transmute(__lsx_vextrins_w(transmute(a), transmute(b), IMM8)) }
@@ -1961,8 +2057,7 @@ pub fn lsx_vextrins_w<const IMM8: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vextrins_d<const IMM8: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { transmute(__lsx_vextrins_d(transmute(a), transmute(b), IMM8)) }
@@ -1970,246 +2065,245 @@ pub fn lsx_vextrins_d<const IMM8: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmskltz_b(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vmskltz_b(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmskltz_h(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vmskltz_h(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmskltz_w(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vmskltz_w(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmskltz_d(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vmskltz_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsigncov_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsigncov_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsigncov_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsigncov_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsigncov_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsigncov_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsigncov_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsigncov_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrne_w_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintrne_w_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrne_l_d(a: m128d) -> m128i {
     unsafe { transmute(__lsx_vftintrne_l_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrp_w_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintrp_w_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrp_l_d(a: m128d) -> m128i {
     unsafe { transmute(__lsx_vftintrp_l_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrm_w_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintrm_w_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrm_l_d(a: m128d) -> m128i {
     unsafe { transmute(__lsx_vftintrm_l_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftint_w_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vftint_w_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vffint_s_l(a: m128i, b: m128i) -> m128 {
     unsafe { transmute(__lsx_vffint_s_l(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrz_w_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vftintrz_w_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrp_w_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vftintrp_w_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrm_w_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vftintrm_w_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrne_w_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vftintrne_w_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintl_l_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintl_l_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftinth_l_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftinth_l_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vffinth_d_w(a: m128i) -> m128d {
     unsafe { transmute(__lsx_vffinth_d_w(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vffintl_d_w(a: m128i) -> m128d {
     unsafe { transmute(__lsx_vffintl_d_w(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrzl_l_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintrzl_l_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrzh_l_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintrzh_l_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrpl_l_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintrpl_l_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrph_l_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintrph_l_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrml_l_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintrml_l_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrmh_l_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintrmh_l_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrnel_l_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintrnel_l_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vftintrneh_l_s(a: m128) -> m128i {
     unsafe { transmute(__lsx_vftintrneh_l_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfrintrne_s(a: m128) -> m128 {
     unsafe { transmute(__lsx_vfrintrne_s(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfrintrne_d(a: m128d) -> m128d {
     unsafe { transmute(__lsx_vfrintrne_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2, 3)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub unsafe fn lsx_vstelm_b<const IMM_S8: i32, const IMM4: u32>(a: m128i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
     static_assert_uimm_bits!(IMM4, 4);
@@ -2218,8 +2312,7 @@ pub unsafe fn lsx_vstelm_b<const IMM_S8: i32, const IMM4: u32>(a: m128i, mem_add
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2, 3)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub unsafe fn lsx_vstelm_h<const IMM_S8: i32, const IMM3: u32>(a: m128i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
     static_assert_uimm_bits!(IMM3, 3);
@@ -2228,8 +2321,7 @@ pub unsafe fn lsx_vstelm_h<const IMM_S8: i32, const IMM3: u32>(a: m128i, mem_add
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2, 3)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub unsafe fn lsx_vstelm_w<const IMM_S8: i32, const IMM2: u32>(a: m128i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
     static_assert_uimm_bits!(IMM2, 2);
@@ -2238,8 +2330,7 @@ pub unsafe fn lsx_vstelm_w<const IMM_S8: i32, const IMM2: u32>(a: m128i, mem_add
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2, 3)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub unsafe fn lsx_vstelm_d<const IMM_S8: i32, const IMM1: u32>(a: m128i, mem_addr: *mut i8) {
     static_assert_simm_bits!(IMM_S8, 8);
     static_assert_uimm_bits!(IMM1, 1);
@@ -2248,504 +2339,504 @@ pub unsafe fn lsx_vstelm_d<const IMM_S8: i32, const IMM1: u32>(a: m128i, mem_add
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwev_d_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwev_d_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwev_w_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwev_w_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwev_h_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwev_h_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwod_d_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwod_d_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwod_w_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwod_w_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwod_h_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwod_h_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwev_d_wu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwev_d_wu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwev_w_hu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwev_w_hu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwev_h_bu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwev_h_bu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwod_d_wu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwod_d_wu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwod_w_hu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwod_w_hu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwod_h_bu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwod_h_bu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwev_d_wu_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwev_d_wu_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwev_w_hu_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwev_w_hu_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwev_h_bu_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwev_h_bu_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwod_d_wu_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwod_d_wu_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwod_w_hu_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwod_w_hu_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwod_h_bu_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwod_h_bu_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwev_d_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwev_d_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwev_w_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwev_w_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwev_h_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwev_h_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwod_d_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwod_d_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwod_w_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwod_w_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwod_h_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwod_h_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwev_d_wu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwev_d_wu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwev_w_hu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwev_w_hu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwev_h_bu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwev_h_bu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwod_d_wu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwod_d_wu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwod_w_hu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwod_w_hu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwod_h_bu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwod_h_bu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwev_q_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwev_q_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwod_q_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwod_q_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwev_q_du(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwev_q_du(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwod_q_du(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwod_q_du(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwev_q_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwev_q_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwod_q_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwod_q_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwev_q_du(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwev_q_du(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsubwod_q_du(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsubwod_q_du(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwev_q_du_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwev_q_du_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vaddwod_q_du_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vaddwod_q_du_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwev_d_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwev_d_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwev_w_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwev_w_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwev_h_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwev_h_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwod_d_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwod_d_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwod_w_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwod_w_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwod_h_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwod_h_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwev_d_wu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwev_d_wu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwev_w_hu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwev_w_hu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwev_h_bu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwev_h_bu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwod_d_wu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwod_d_wu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwod_w_hu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwod_w_hu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwod_h_bu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwod_h_bu(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwev_d_wu_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwev_d_wu_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwev_w_hu_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwev_w_hu_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwev_h_bu_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwev_h_bu_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwod_d_wu_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwod_d_wu_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwod_w_hu_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwod_w_hu_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwod_h_bu_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwod_h_bu_b(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwev_q_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwev_q_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwod_q_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwod_q_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwev_q_du(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwev_q_du(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwod_q_du(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwod_q_du(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwev_q_du_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwev_q_du_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmulwod_q_du_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vmulwod_q_du_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhaddw_q_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhaddw_q_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhaddw_qu_du(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhaddw_qu_du(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhsubw_q_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhsubw_q_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vhsubw_qu_du(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhsubw_qu_du(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwev_d_w(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vmaddwev_d_w(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwev_w_h(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vmaddwev_w_h(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwev_h_b(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vmaddwev_h_b(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwev_d_wu(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwev_d_wu(
@@ -2758,7 +2849,7 @@ pub fn lsx_vmaddwev_d_wu(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwev_w_hu(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwev_w_hu(
@@ -2771,7 +2862,7 @@ pub fn lsx_vmaddwev_w_hu(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwev_h_bu(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwev_h_bu(
@@ -2784,28 +2875,28 @@ pub fn lsx_vmaddwev_h_bu(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwod_d_w(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vmaddwod_d_w(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwod_w_h(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vmaddwod_w_h(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwod_h_b(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vmaddwod_h_b(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwod_d_wu(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwod_d_wu(
@@ -2818,7 +2909,7 @@ pub fn lsx_vmaddwod_d_wu(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwod_w_hu(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwod_w_hu(
@@ -2831,7 +2922,7 @@ pub fn lsx_vmaddwod_w_hu(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwod_h_bu(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwod_h_bu(
@@ -2844,7 +2935,7 @@ pub fn lsx_vmaddwod_h_bu(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwev_d_wu_w(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwev_d_wu_w(
@@ -2857,7 +2948,7 @@ pub fn lsx_vmaddwev_d_wu_w(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwev_w_hu_h(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwev_w_hu_h(
@@ -2870,7 +2961,7 @@ pub fn lsx_vmaddwev_w_hu_h(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwev_h_bu_b(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwev_h_bu_b(
@@ -2883,7 +2974,7 @@ pub fn lsx_vmaddwev_h_bu_b(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwod_d_wu_w(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwod_d_wu_w(
@@ -2896,7 +2987,7 @@ pub fn lsx_vmaddwod_d_wu_w(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwod_w_hu_h(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwod_w_hu_h(
@@ -2909,7 +3000,7 @@ pub fn lsx_vmaddwod_w_hu_h(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwod_h_bu_b(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwod_h_bu_b(
@@ -2922,21 +3013,21 @@ pub fn lsx_vmaddwod_h_bu_b(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwev_q_d(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vmaddwev_q_d(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwod_q_d(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vmaddwod_q_d(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwev_q_du(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwev_q_du(
@@ -2949,7 +3040,7 @@ pub fn lsx_vmaddwev_q_du(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwod_q_du(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwod_q_du(
@@ -2962,7 +3053,7 @@ pub fn lsx_vmaddwod_q_du(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwev_q_du_d(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwev_q_du_d(
@@ -2975,7 +3066,7 @@ pub fn lsx_vmaddwev_q_du_d(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmaddwod_q_du_d(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe {
         transmute(__lsx_vmaddwod_q_du_d(
@@ -2988,22 +3079,21 @@ pub fn lsx_vmaddwod_q_du_d(a: m128i, b: m128i, c: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vadd_q(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vadd_q(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsub_q(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vsub_q(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub unsafe fn lsx_vldrepl_b<const IMM_S12: i32>(mem_addr: *const i8) -> m128i {
     static_assert_simm_bits!(IMM_S12, 12);
     transmute(__lsx_vldrepl_b(mem_addr, IMM_S12))
@@ -3011,8 +3101,7 @@ pub unsafe fn lsx_vldrepl_b<const IMM_S12: i32>(mem_addr: *const i8) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub unsafe fn lsx_vldrepl_h<const IMM_S11: i32>(mem_addr: *const i8) -> m128i {
     static_assert_simm_bits!(IMM_S11, 11);
     transmute(__lsx_vldrepl_h(mem_addr, IMM_S11))
@@ -3020,8 +3109,7 @@ pub unsafe fn lsx_vldrepl_h<const IMM_S11: i32>(mem_addr: *const i8) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub unsafe fn lsx_vldrepl_w<const IMM_S10: i32>(mem_addr: *const i8) -> m128i {
     static_assert_simm_bits!(IMM_S10, 10);
     transmute(__lsx_vldrepl_w(mem_addr, IMM_S10))
@@ -3029,8 +3117,7 @@ pub unsafe fn lsx_vldrepl_w<const IMM_S10: i32>(mem_addr: *const i8) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub unsafe fn lsx_vldrepl_d<const IMM_S9: i32>(mem_addr: *const i8) -> m128i {
     static_assert_simm_bits!(IMM_S9, 9);
     transmute(__lsx_vldrepl_d(mem_addr, IMM_S9))
@@ -3038,85 +3125,84 @@ pub unsafe fn lsx_vldrepl_d<const IMM_S9: i32>(mem_addr: *const i8) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmskgez_b(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vmskgez_b(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vmsknz_b(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vmsknz_b(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vexth_h_b(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vexth_h_b(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vexth_w_h(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vexth_w_h(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vexth_d_w(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vexth_d_w(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vexth_q_d(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vexth_q_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vexth_hu_bu(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vexth_hu_bu(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vexth_wu_hu(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vexth_wu_hu(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vexth_du_wu(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vexth_du_wu(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vexth_qu_du(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vexth_qu_du(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vextl_q_d(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vextl_q_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlni_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vsrlni_b_h(transmute(a), transmute(b), IMM4)) }
@@ -3124,8 +3210,7 @@ pub fn lsx_vsrlni_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlni_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsrlni_h_w(transmute(a), transmute(b), IMM5)) }
@@ -3133,8 +3218,7 @@ pub fn lsx_vsrlni_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlni_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vsrlni_w_d(transmute(a), transmute(b), IMM6)) }
@@ -3142,8 +3226,7 @@ pub fn lsx_vsrlni_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlni_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM7, 7);
     unsafe { transmute(__lsx_vsrlni_d_q(transmute(a), transmute(b), IMM7)) }
@@ -3151,8 +3234,7 @@ pub fn lsx_vsrlni_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlrni_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vsrlrni_b_h(transmute(a), transmute(b), IMM4)) }
@@ -3160,8 +3242,7 @@ pub fn lsx_vsrlrni_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlrni_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsrlrni_h_w(transmute(a), transmute(b), IMM5)) }
@@ -3169,8 +3250,7 @@ pub fn lsx_vsrlrni_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlrni_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vsrlrni_w_d(transmute(a), transmute(b), IMM6)) }
@@ -3178,8 +3258,7 @@ pub fn lsx_vsrlrni_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrlrni_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM7, 7);
     unsafe { transmute(__lsx_vsrlrni_d_q(transmute(a), transmute(b), IMM7)) }
@@ -3187,8 +3266,7 @@ pub fn lsx_vsrlrni_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlni_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vssrlni_b_h(transmute(a), transmute(b), IMM4)) }
@@ -3196,8 +3274,7 @@ pub fn lsx_vssrlni_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlni_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vssrlni_h_w(transmute(a), transmute(b), IMM5)) }
@@ -3205,8 +3282,7 @@ pub fn lsx_vssrlni_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlni_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vssrlni_w_d(transmute(a), transmute(b), IMM6)) }
@@ -3214,8 +3290,7 @@ pub fn lsx_vssrlni_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlni_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM7, 7);
     unsafe { transmute(__lsx_vssrlni_d_q(transmute(a), transmute(b), IMM7)) }
@@ -3223,8 +3298,7 @@ pub fn lsx_vssrlni_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlni_bu_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vssrlni_bu_h(transmute(a), transmute(b), IMM4)) }
@@ -3232,8 +3306,7 @@ pub fn lsx_vssrlni_bu_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlni_hu_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vssrlni_hu_w(transmute(a), transmute(b), IMM5)) }
@@ -3241,8 +3314,7 @@ pub fn lsx_vssrlni_hu_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlni_wu_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vssrlni_wu_d(transmute(a), transmute(b), IMM6)) }
@@ -3250,8 +3322,7 @@ pub fn lsx_vssrlni_wu_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlni_du_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM7, 7);
     unsafe { transmute(__lsx_vssrlni_du_q(transmute(a), transmute(b), IMM7)) }
@@ -3259,8 +3330,7 @@ pub fn lsx_vssrlni_du_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrni_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vssrlrni_b_h(transmute(a), transmute(b), IMM4)) }
@@ -3268,8 +3338,7 @@ pub fn lsx_vssrlrni_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrni_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vssrlrni_h_w(transmute(a), transmute(b), IMM5)) }
@@ -3277,8 +3346,7 @@ pub fn lsx_vssrlrni_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrni_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vssrlrni_w_d(transmute(a), transmute(b), IMM6)) }
@@ -3286,8 +3354,7 @@ pub fn lsx_vssrlrni_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrni_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM7, 7);
     unsafe { transmute(__lsx_vssrlrni_d_q(transmute(a), transmute(b), IMM7)) }
@@ -3295,8 +3362,7 @@ pub fn lsx_vssrlrni_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrni_bu_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vssrlrni_bu_h(transmute(a), transmute(b), IMM4)) }
@@ -3304,8 +3370,7 @@ pub fn lsx_vssrlrni_bu_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrni_hu_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vssrlrni_hu_w(transmute(a), transmute(b), IMM5)) }
@@ -3313,8 +3378,7 @@ pub fn lsx_vssrlrni_hu_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrni_wu_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vssrlrni_wu_d(transmute(a), transmute(b), IMM6)) }
@@ -3322,8 +3386,7 @@ pub fn lsx_vssrlrni_wu_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrni_du_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM7, 7);
     unsafe { transmute(__lsx_vssrlrni_du_q(transmute(a), transmute(b), IMM7)) }
@@ -3331,8 +3394,7 @@ pub fn lsx_vssrlrni_du_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrani_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vsrani_b_h(transmute(a), transmute(b), IMM4)) }
@@ -3340,8 +3402,7 @@ pub fn lsx_vsrani_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrani_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsrani_h_w(transmute(a), transmute(b), IMM5)) }
@@ -3349,8 +3410,7 @@ pub fn lsx_vsrani_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrani_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vsrani_w_d(transmute(a), transmute(b), IMM6)) }
@@ -3358,8 +3418,7 @@ pub fn lsx_vsrani_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrani_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM7, 7);
     unsafe { transmute(__lsx_vsrani_d_q(transmute(a), transmute(b), IMM7)) }
@@ -3367,8 +3426,7 @@ pub fn lsx_vsrani_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrarni_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vsrarni_b_h(transmute(a), transmute(b), IMM4)) }
@@ -3376,8 +3434,7 @@ pub fn lsx_vsrarni_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrarni_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vsrarni_h_w(transmute(a), transmute(b), IMM5)) }
@@ -3385,8 +3442,7 @@ pub fn lsx_vsrarni_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrarni_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vsrarni_w_d(transmute(a), transmute(b), IMM6)) }
@@ -3394,8 +3450,7 @@ pub fn lsx_vsrarni_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vsrarni_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM7, 7);
     unsafe { transmute(__lsx_vsrarni_d_q(transmute(a), transmute(b), IMM7)) }
@@ -3403,8 +3458,7 @@ pub fn lsx_vsrarni_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrani_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vssrani_b_h(transmute(a), transmute(b), IMM4)) }
@@ -3412,8 +3466,7 @@ pub fn lsx_vssrani_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrani_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vssrani_h_w(transmute(a), transmute(b), IMM5)) }
@@ -3421,8 +3474,7 @@ pub fn lsx_vssrani_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrani_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vssrani_w_d(transmute(a), transmute(b), IMM6)) }
@@ -3430,8 +3482,7 @@ pub fn lsx_vssrani_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrani_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM7, 7);
     unsafe { transmute(__lsx_vssrani_d_q(transmute(a), transmute(b), IMM7)) }
@@ -3439,8 +3490,7 @@ pub fn lsx_vssrani_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrani_bu_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vssrani_bu_h(transmute(a), transmute(b), IMM4)) }
@@ -3448,8 +3498,7 @@ pub fn lsx_vssrani_bu_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrani_hu_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vssrani_hu_w(transmute(a), transmute(b), IMM5)) }
@@ -3457,8 +3506,7 @@ pub fn lsx_vssrani_hu_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrani_wu_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vssrani_wu_d(transmute(a), transmute(b), IMM6)) }
@@ -3466,8 +3514,7 @@ pub fn lsx_vssrani_wu_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrani_du_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM7, 7);
     unsafe { transmute(__lsx_vssrani_du_q(transmute(a), transmute(b), IMM7)) }
@@ -3475,8 +3522,7 @@ pub fn lsx_vssrani_du_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarni_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vssrarni_b_h(transmute(a), transmute(b), IMM4)) }
@@ -3484,8 +3530,7 @@ pub fn lsx_vssrarni_b_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarni_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vssrarni_h_w(transmute(a), transmute(b), IMM5)) }
@@ -3493,8 +3538,7 @@ pub fn lsx_vssrarni_h_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarni_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vssrarni_w_d(transmute(a), transmute(b), IMM6)) }
@@ -3502,8 +3546,7 @@ pub fn lsx_vssrarni_w_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarni_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM7, 7);
     unsafe { transmute(__lsx_vssrarni_d_q(transmute(a), transmute(b), IMM7)) }
@@ -3511,8 +3554,7 @@ pub fn lsx_vssrarni_d_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarni_bu_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM4, 4);
     unsafe { transmute(__lsx_vssrarni_bu_h(transmute(a), transmute(b), IMM4)) }
@@ -3520,8 +3562,7 @@ pub fn lsx_vssrarni_bu_h<const IMM4: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarni_hu_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM5, 5);
     unsafe { transmute(__lsx_vssrarni_hu_w(transmute(a), transmute(b), IMM5)) }
@@ -3529,8 +3570,7 @@ pub fn lsx_vssrarni_hu_w<const IMM5: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarni_wu_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vssrarni_wu_d(transmute(a), transmute(b), IMM6)) }
@@ -3538,8 +3578,7 @@ pub fn lsx_vssrarni_wu_d<const IMM6: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrarni_du_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM7, 7);
     unsafe { transmute(__lsx_vssrarni_du_q(transmute(a), transmute(b), IMM7)) }
@@ -3547,8 +3586,7 @@ pub fn lsx_vssrarni_du_q<const IMM7: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(2)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vpermi_w<const IMM8: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { transmute(__lsx_vpermi_w(transmute(a), transmute(b), IMM8)) }
@@ -3556,434 +3594,434 @@ pub fn lsx_vpermi_w<const IMM8: u32>(a: m128i, b: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrn_b_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrlrn_b_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrn_h_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrlrn_h_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrlrn_w_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrlrn_w_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrln_b_h(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrln_b_h(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrln_h_w(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrln_h_w(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vssrln_w_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrln_w_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vshuf_b(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vshuf_b(transmute(a), transmute(b), transmute(c))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vextl_qu_du(a: m128i) -> m128i {
     unsafe { transmute(__lsx_vextl_qu_du(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_bnz_b(a: m128i) -> i32 {
     unsafe { transmute(__lsx_bnz_b(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_bnz_d(a: m128i) -> i32 {
     unsafe { transmute(__lsx_bnz_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_bnz_h(a: m128i) -> i32 {
     unsafe { transmute(__lsx_bnz_h(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_bnz_v(a: m128i) -> i32 {
     unsafe { transmute(__lsx_bnz_v(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_bnz_w(a: m128i) -> i32 {
     unsafe { transmute(__lsx_bnz_w(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_bz_b(a: m128i) -> i32 {
     unsafe { transmute(__lsx_bz_b(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_bz_d(a: m128i) -> i32 {
     unsafe { transmute(__lsx_bz_d(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_bz_h(a: m128i) -> i32 {
     unsafe { transmute(__lsx_bz_h(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_bz_v(a: m128i) -> i32 {
     unsafe { transmute(__lsx_bz_v(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_bz_w(a: m128i) -> i32 {
     unsafe { transmute(__lsx_bz_w(transmute(a))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_caf_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_caf_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_caf_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_caf_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_ceq_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_ceq_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_ceq_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_ceq_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cle_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cle_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cle_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cle_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_clt_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_clt_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_clt_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_clt_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cne_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cne_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cne_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cne_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cor_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cor_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cor_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cor_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cueq_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cueq_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cueq_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cueq_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cule_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cule_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cule_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cule_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cult_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cult_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cult_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cult_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cun_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cun_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cune_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cune_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cune_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cune_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_cun_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_cun_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_saf_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_saf_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_saf_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_saf_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_seq_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_seq_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_seq_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_seq_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sle_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sle_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sle_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sle_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_slt_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_slt_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_slt_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_slt_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sne_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sne_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sne_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sne_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sor_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sor_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sor_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sor_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sueq_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sueq_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sueq_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sueq_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sule_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sule_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sule_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sule_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sult_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sult_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sult_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sult_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sun_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sun_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sune_d(a: m128d, b: m128d) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sune_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sune_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sune_s(transmute(a), transmute(b))) }
 }
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 pub fn lsx_vfcmp_sun_s(a: m128, b: m128) -> m128i {
     unsafe { transmute(__lsx_vfcmp_sun_s(transmute(a), transmute(b))) }
 }

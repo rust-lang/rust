@@ -7,6 +7,9 @@
 
 #![crate_type = "lib"]
 
+#[repr(transparent)]
+pub struct Type1(pub i32);
+
 pub fn foo(f: fn(i32) -> i32, arg: i32) -> i32 {
     // CHECK-LABEL: define{{.*}}foo{{.*}}!type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
     // CHECK:       start:
@@ -18,6 +21,22 @@ pub fn foo(f: fn(i32) -> i32, arg: i32) -> i32 {
     // CHECK-NEXT:  {{%.+}} = ptrtoint ptr {{%f|%0}} to i64
     // cfi-diag-NEXT:                 call void @__ubsan_handle_cfi_check_fail_abort(
     // cfi-diag-minimal-runtime-NEXT: call void @__ubsan_handle_cfi_check_fail_minimal_abort()
+    // CHECK-NEXT:  unreachable
+    f(arg)
+}
+
+pub fn bar(f: fn(Type1) -> Type1, arg: Type1) -> Type1 {
+    // CHECK-LABEL: define{{.*}}bar{{.*}}!type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+    // CHECK:       start:
+    // CHECK:       [[TT:%.+]] = call i1 @llvm.type.test(ptr {{%f|%0}}, metadata !"{{[[:print:]]+}}")
+    // CHECK-NEXT:  br i1 [[TT]], label %type_test.pass, label %type_test.fail
+    // CHECK:       type_test.pass:
+    // CHECK-NEXT:  {{%.+}} = call i32 %f(i32{{.*}} %arg)
+    // CHECK:       type_test.fail:
+    // CHECK-NEXT:  {{%.+}} = ptrtoint ptr {{%f|%0}} to i64
+    // cfi-diag-NEXT:                 call void @__ubsan_handle_cfi_check_fail_abort(
+    // cfi-diag-minimal-runtime-NEXT: call void @__ubsan_handle_cfi_check_fail_minimal_abort(
+
     // CHECK-NEXT:  unreachable
     f(arg)
 }

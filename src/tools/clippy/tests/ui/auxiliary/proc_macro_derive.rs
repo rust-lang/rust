@@ -243,3 +243,17 @@ pub fn derive_double_parens(_: TokenStream) -> TokenStream {
         }
     }
 }
+
+#[proc_macro_derive(TryFromStr)]
+pub fn derive_try_from_str(_: TokenStream) -> TokenStream {
+    quote! {
+        struct DerivedTryFromStr;
+
+        impl TryFrom<&str> for DerivedTryFromStr {
+            type Error = ();
+            fn try_from(_value: &str) -> Result<Self, Self::Error> {
+                Ok(DerivedTryFromStr)
+            }
+        }
+    }
+}

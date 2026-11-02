@@ -1,4 +1,4 @@
-// rustfmt-style_edition: 2024
+//@ rustfmt-style_edition: 2024
 
 // The `removes_trailing_whitespace` case from the 2027 test is deliberately
 // absent here: at style editions before 2027 rustfmt fails with "left behind

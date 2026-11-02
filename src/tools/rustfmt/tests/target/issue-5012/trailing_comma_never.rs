@@ -1,4 +1,4 @@
-// rustfmt-trailing_comma: Never
+//@ rustfmt-trailing_comma: Never
 
 pub struct Matrix<T, const R: usize, const C: usize>
 where

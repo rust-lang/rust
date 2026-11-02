@@ -3,6 +3,8 @@ error: the `collapse_debuginfo` attribute cannot be used on extern crates
    |
 LL | #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | extern crate std;
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -11,6 +13,8 @@ error: the `collapse_debuginfo` attribute cannot be used on use statements
    |
 LL | #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | use std::collections::HashMap;
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -19,6 +23,8 @@ error: the `collapse_debuginfo` attribute cannot be used on statics
    |
 LL | #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | static FOO: u32 = 3;
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -27,6 +33,8 @@ error: the `collapse_debuginfo` attribute cannot be used on constants
    |
 LL | #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | const BAR: u32 = 3;
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -35,6 +43,8 @@ error: the `collapse_debuginfo` attribute cannot be used on functions
    |
 LL | #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn foo() {
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -51,6 +61,8 @@ error: the `collapse_debuginfo` attribute cannot be used on statements
    |
 LL |     #[collapse_debuginfo(yes)]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     let _ = 3;
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -67,6 +79,8 @@ error: the `collapse_debuginfo` attribute cannot be used on match arms
    |
 LL |         #[collapse_debuginfo(yes)]
    |           ^^^^^^^^^^^^^^^^^^
+LL |
+LL |         _ => (),
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -75,6 +89,8 @@ error: the `collapse_debuginfo` attribute cannot be used on modules
    |
 LL | #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | mod bar {
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -83,6 +99,8 @@ error: the `collapse_debuginfo` attribute cannot be used on type aliases
    |
 LL | #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | type Map = HashMap<u32, u32>;
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -91,6 +109,8 @@ error: the `collapse_debuginfo` attribute cannot be used on enums
    |
 LL | #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | enum Foo {
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -99,6 +119,8 @@ error: the `collapse_debuginfo` attribute cannot be used on enum variants
    |
 LL |     #[collapse_debuginfo(yes)]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     Variant,
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -107,6 +129,8 @@ error: the `collapse_debuginfo` attribute cannot be used on structs
    |
 LL | #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct Bar {
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -115,6 +139,8 @@ error: the `collapse_debuginfo` attribute cannot be used on struct fields
    |
 LL |     #[collapse_debuginfo(yes)]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     field: u32,
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -123,6 +149,8 @@ error: the `collapse_debuginfo` attribute cannot be used on unions
    |
 LL | #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | union Qux {
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -131,6 +159,8 @@ error: the `collapse_debuginfo` attribute cannot be used on traits
    |
 LL | #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | trait Foobar {
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -139,6 +169,8 @@ error: the `collapse_debuginfo` attribute cannot be used on associated types
    |
 LL |     #[collapse_debuginfo(yes)]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     type Bar;
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -147,6 +179,8 @@ error: the `collapse_debuginfo` attribute cannot be used on type aliases
    |
 LL | #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | type AFoobar = impl Foobar;
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -155,6 +189,8 @@ error: the `collapse_debuginfo` attribute cannot be used on inherent impl blocks
    |
 LL | #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl Bar {
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -163,6 +199,8 @@ error: the `collapse_debuginfo` attribute cannot be used on associated consts
    |
 LL |     #[collapse_debuginfo(yes)]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     const FOO: u32 = 3;
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 
@@ -171,6 +209,8 @@ error: the `collapse_debuginfo` attribute cannot be used on inherent methods
    |
 LL |     #[collapse_debuginfo(yes)]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn bar(&self) {}
    |
    = help: the `collapse_debuginfo` attribute can only be applied to macro defs
 

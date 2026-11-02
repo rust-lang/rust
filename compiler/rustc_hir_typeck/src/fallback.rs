@@ -341,7 +341,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 let reachable_vids =
                     graph::depth_first_search_as_undirected(coercions, vid).collect();
                 AnnotateUnitFallbackVisitor { reachable_vids, fcx: self }
-                    .visit_expr(&body.value)
+                    .visit_expr(body.value)
                     .break_value()
             })
             .collect();
@@ -370,7 +370,7 @@ impl<'tcx> AnnotateUnitFallbackVisitor<'_, 'tcx> {
         if arg_segment.args.is_none()
             && let Some(all_args) = self.fcx.typeck_results.borrow().node_args_opt(id)
             && let generics = self.fcx.tcx.generics_of(def_id)
-            && let args = all_args[generics.parent_count..].iter().zip(&generics.own_params)
+            && let args = all_args.as_slice()[generics.parent_count..].iter().zip(&generics.own_params)
             // We can't turbofish consts :(
             && args.clone().all(|(_, param)| matches!(param.kind, ty::GenericParamDefKind::Type { .. } | ty::GenericParamDefKind::Lifetime))
         {

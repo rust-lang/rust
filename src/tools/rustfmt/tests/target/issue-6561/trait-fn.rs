@@ -1,4 +1,4 @@
-// rustfmt-edition: 2015
+//@ rustfmt-edition: 2015
 
 trait A {
     fn f1(#[allow()] u32);

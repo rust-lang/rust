@@ -17,7 +17,7 @@ error: unused return value of `foo` that must be used
 LL |     foo();
    |     ^^^^^
    |
-help: use `let _unused = ...` to ignore the resulting value without dropping it immediately
+help: if you wish to disregard this recommendation, use `let _unused = ...` to ignore the resulting value without dropping it immediately
    |
 LL |     let _unused = foo();
    |     +++++++++++++
@@ -28,7 +28,7 @@ error: unused output of future returned by `foo` that must be used
 LL |     foo().await;
    |     ^^^^^^^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation, use `let _ = ...` to ignore the value
    |
 LL |     let _ = foo().await;
    |     +++++++
@@ -47,7 +47,7 @@ error: unused return value of `bar` that must be used
 LL |     bar();
    |     ^^^^^
    |
-help: use `let _unused = ...` to ignore the resulting value without dropping it immediately
+help: if you wish to disregard this recommendation, use `let _unused = ...` to ignore the resulting value without dropping it immediately
    |
 LL |     let _unused = bar();
    |     +++++++++++++

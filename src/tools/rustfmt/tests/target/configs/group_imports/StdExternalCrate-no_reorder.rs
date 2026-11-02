@@ -1,5 +1,5 @@
-// rustfmt-group_imports: StdExternalCrate
-// rustfmt-reorder_imports: false
+//@ rustfmt-group_imports: StdExternalCrate
+//@ rustfmt-reorder_imports: false
 
 use alloc::alloc::Layout;
 use std::sync::Arc;

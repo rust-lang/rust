@@ -1,8 +1,8 @@
 use rustc_span::Symbol;
 
 use super::{
-    ShiftOp, mpsadbw, packssdw, packsswb, packusdw, packuswb, permute, pmaddbw, pmaddwd, pmulhrsw,
-    psadbw, pshufb, psign, shift_simd_by_scalar, shift_simd_by_simd,
+    ShiftOp, mpsadbw, packssdw, packsswb, packusdw, packuswb, pavg, permute, pmaddbw, pmaddwd,
+    pmulh, pmulhrsw, psadbw, pshufb, psign, shift_simd_by_scalar, shift_simd_by_simd,
 };
 use crate::*;
 
@@ -20,6 +20,17 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.avx2.").unwrap();
 
         match unprefixed_name {
+            // Used to implement the _mm256_avg_epu8 and _mm256_avg_epu16 functions.
+            // Averages packed unsigned 8/16-bit integers in `left` and `right`.
+            "pavg.b" | "pavg.w" => {
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                pavg(this, left, right, dest)?;
+            }
+            // Used to implement the _mm256_mulhi_epi16 and _mm256_mulhi_epu16 functions.
+            "pmulh.w" | "pmulhu.w" => {
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                pmulh(this, left, right, dest)?;
+            }
             // Used to implement `_mm{,_mask}_{i32,i64}gather_{epi32,epi64,pd,ps}` functions
             // Gathers elements from `slice` using `offsets * scale` as indices.
             // When the highest bit of the corresponding element of `mask` is 0,
@@ -84,7 +95,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Used to implement the _mm256_maddubs_epi16 function.
             "pmadd.ub.sw" => {
                 let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-
                 pmaddbw(this, left, right, dest)?;
             }
             // Used to implement the _mm256_mpsadbw_epu8 function.
@@ -95,7 +105,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mpsadbw_epu8
             "mpsadbw" => {
                 let [left, right, imm] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-
                 mpsadbw(this, left, right, imm, dest)?;
             }
             // Used to implement the _mm256_mulhrs_epi16 function.
@@ -106,7 +115,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mulhrs_epi16
             "pmul.hr.sw" => {
                 let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-
                 pmulhrsw(this, left, right, dest)?;
             }
             // Used to implement the _mm256_packs_epi16 function.
@@ -114,7 +122,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // vector with signed saturation.
             "packsswb" => {
                 let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-
                 packsswb(this, left, right, dest)?;
             }
             // Used to implement the _mm256_packs_epi32 function.
@@ -122,7 +129,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // vector with signed saturation.
             "packssdw" => {
                 let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-
                 packssdw(this, left, right, dest)?;
             }
             // Used to implement the _mm256_packus_epi16 function.
@@ -130,7 +136,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // unsigned integer vector with saturation.
             "packuswb" => {
                 let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-
                 packuswb(this, left, right, dest)?;
             }
             // Used to implement the _mm256_packus_epi32 function.
@@ -138,19 +143,16 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // the result to a 16-bit unsigned integer vector with saturation.
             "packusdw" => {
                 let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-
                 packusdw(this, left, right, dest)?;
             }
             // Used to implement _mm256_permutevar8x32_epi32 and _mm256_permutevar8x32_ps.
             "permd" | "permps" => {
                 let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-
                 permute(this, left, right, dest)?;
             }
             // Used to implement the _mm256_sad_epu8 function.
             "psad.bw" => {
                 let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-
                 psadbw(this, left, right, dest)?
             }
             // Used to implement the _mm256_shuffle_epi8 intrinsic.
@@ -158,7 +160,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Each 128-bit block is shuffled independently.
             "pshuf.b" => {
                 let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-
                 pshufb(this, left, right, dest)?;
             }
             // Used to implement the _mm256_sign_epi{8,16,32} functions.
@@ -168,7 +169,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Basically, we multiply `left` with `right.signum()`.
             "psign.b" | "psign.w" | "psign.d" => {
                 let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-
                 psign(this, left, right, dest)?;
             }
             // Used to implement the _mm256_{sll,srl,sra}_epi{16,32,64} functions

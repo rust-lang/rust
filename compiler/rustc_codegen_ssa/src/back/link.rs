@@ -1349,17 +1349,25 @@ fn link_natively(
             continue;
         }
 
-        // Detect '-static-pie' used with an older version of gcc or clang not supporting it.
-        // Fallback from '-static-pie' to '-static' in that case.
+        // Detect '-static-pie' used with an older version of gcc or clang not supporting it,
+        // or with glibc that's missing crt objects, e.g. for arches that don't support it.
+        // Fallback from '-static-pie' to '-static' in either case.
+        let mut static_pie_message = None;
         if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
-            && unknown_arg_regex.is_match(&out)
-            && (out.contains("-static-pie") || out.contains("--no-dynamic-linker"))
             && cmd.get_args().iter().any(|e| e == "-static-pie")
         {
+            if unknown_arg_regex.is_match(&out)
+                && (out.contains("-static-pie") || out.contains("--no-dynamic-linker"))
+            {
+                static_pie_message =
+                    Some("Linker does not support -static-pie command line option.");
+            } else if Regex::new(r"cannot (find|open) g?rcrt1\.o:").unwrap().is_match(&out) {
+                static_pie_message = Some("C library is missing static-PIE startup objects.");
+            }
+        }
+        if let Some(message) = static_pie_message {
             info!("linker output: {:?}", out);
-            warn!(
-                "Linker does not support -static-pie command line option. Retrying with -static instead."
-            );
+            warn!("{message} Retrying with -static instead.");
             // Mirror `add_(pre,post)_link_objects` to replace CRT objects.
             let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
             let opts = &sess.target;

@@ -265,7 +265,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         return self.dcx().emit_err(err);
                     }
 
-                    let trait_args = &ty::GenericArgs::identity_for_item(tcx, best_trait)[1..];
+                    let trait_args = ty::GenericArgs::identity_for_item(tcx, best_trait);
+                    let trait_args = &trait_args.as_slice()[1..];
                     let mut trait_ref = trait_name.clone();
                     let applicability = if let [arg, args @ ..] = trait_args {
                         use std::fmt::Write;
@@ -393,6 +394,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         } else {
             (ident.span, None, assoc_tag, assoc_item.tag())
         };
+        let mut def_span: MultiSpan = tcx.def_span(assoc_item.def_id).into();
+        def_span.push_span_context(tcx.def_span(tcx.parent(assoc_item.def_id)));
 
         let def_kind = tcx.def_kind(self.item_def_id());
         let item_span = tcx.def_span(self.item_def_id()).shrink_to_lo();
@@ -423,7 +426,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             got: assoc_tag_str(got),
             expected_because_label,
             assoc_kind: assoc_tag_str(assoc_item.tag()),
-            def_span: tcx.def_span(assoc_item.def_id),
+            def_span,
             bound_on_assoc_const_label,
             wrap_in_braces_sugg,
         })

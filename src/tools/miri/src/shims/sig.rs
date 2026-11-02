@@ -1,6 +1,6 @@
 //! Everything related to checking the signature of shim invocations.
 
-use rustc_abi::{CanonAbi, ExternAbi};
+use rustc_abi::ExternAbi;
 use rustc_middle::ty::{Binder, FnSig, FnSigKind, Ty};
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
@@ -21,7 +21,7 @@ pub struct ShimSig<'tcx, const ARGS: usize> {
 /// ```
 ///
 /// The following types are supported:
-/// - primitive integer types
+/// - primitive integer and floating-point types
 /// - `()`
 /// - (thin) raw pointers, written `*_` since the mutability and pointee type are irrelevant
 /// - `$crate::$mod::...::$ty` for a type from the given crate (most commonly that is `libc`)
@@ -139,6 +139,12 @@ macro_rules! shim_sig_arg {
     };
     ($this:ident, usize) => {
         $this.tcx.types.usize
+    };
+    ($this:ident, f32) => {
+        $this.tcx.types.f32
+    };
+    ($this:ident, f64) => {
+        $this.tcx.types.f64
     };
     ($this:ident, ()) => {
         $this.tcx.types.unit
@@ -290,46 +296,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// 'Lenient' signature check. Deprecated; use `check_shim_sig` instead.
-    fn check_shim_sig_deprecated<'a, const N: usize>(
-        &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: CanonAbi,
-        link_name: Symbol,
-        args: &'a [OpTy<'tcx>],
-    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
-        self.check_shim_symbol_clash(link_name)?;
-
-        if abi.conv != exp_abi {
-            throw_ub_format!(
-                r#"calling a function with calling convention "{exp_abi}" using caller calling convention "{}""#,
-                abi.conv
-            );
-        }
-        if abi.c_variadic {
-            throw_ub_format!(
-                "calling a non-variadic function with a c-variadic caller-side signature"
-            );
-        }
-
-        if let Ok(ops) = args.try_into() {
-            return interp_ok(ops);
-        }
-        throw_ub_format!(
-            "incorrect number of arguments for `{link_name}`: got {}, expected {}",
-            args.len(),
-            N
-        )
-    }
-
     /// Check that the given `caller_fn_abi` matches the expected ABI described by `shim_sig`, and
-    /// then returns the list of arguments.
-    fn check_shim_sig<'a, const N: usize>(
+    /// then returns the list of arguments, transmuted to the expected (shim) types.
+    fn check_shim_sig<const N: usize>(
         &self,
         shim_sig: fn(&MiriInterpCx<'tcx>) -> ShimSig<'tcx, N>,
         // We take these as a tuple so that this takes less space on the caller side.
-        (link_name, caller_fn_abi, caller_args): (Symbol, &FnAbi<'tcx, Ty<'tcx>>, &'a [OpTy<'tcx>]),
-    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
+        (link_name, caller_fn_abi, caller_args): (Symbol, &FnAbi<'tcx, Ty<'tcx>>, &[OpTy<'tcx>]),
+    ) -> InterpResult<'tcx, [OpTy<'tcx>; N]> {
         let this = self.eval_context_ref();
 
         // Compute callee ABI.
@@ -342,20 +316,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.check_shim_symbol_clash(link_name)?;
 
         // Return arguments.
-        if let Ok(ops) = caller_args.try_into() {
-            return interp_ok(ops);
-        }
-        unreachable!()
+        let transmuted = std::array::try_from_fn(|i| {
+            caller_args[i].transmute(callee_fn_abi.args[i].layout, this)
+        })?;
+        interp_ok(transmuted)
     }
 
     /// Check that the given `caller_fn_abi` matches the expected ABI described by `shim_sig`, and
     /// then returns the list of fixed and variadic arguments in separate lists.
+    /// The fixed arguments are transmuted to the expected (shim) types.
     fn check_shim_sig_variadic<'a, const N: usize>(
         &self,
         shim_sig: fn(&MiriInterpCx<'tcx>) -> ShimSig<'tcx, N>,
         // We take these as a tuple so that this takes less space on the caller side.
         (link_name, caller_fn_abi, caller_args): (Symbol, &FnAbi<'tcx, Ty<'tcx>>, &'a [OpTy<'tcx>]),
-    ) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], Varargs<'tcx, 'a>)> {
+    ) -> InterpResult<'tcx, ([OpTy<'tcx>; N], Varargs<'tcx, 'a>)> {
         let this = self.eval_context_ref();
 
         // Compute callee ABI.
@@ -367,21 +342,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         check_shim_abi(this, link_name, callee_fn_abi, caller_fn_abi)?;
         this.check_shim_symbol_clash(link_name)?;
 
-        // Return arguments.
-        if let Some((fixed, var)) = caller_args.split_first_chunk() {
-            return interp_ok((fixed, Varargs { args: var, already_gone: N }));
+        // Return transmuted arguments.
+        if let Some((fixed, var)) = caller_args.split_first_chunk::<N>() {
+            let transmuted = std::array::try_from_fn(|i| {
+                fixed[i].transmute(callee_fn_abi.args[i].layout, this)
+            })?;
+            return interp_ok((transmuted, Varargs { args: var, already_gone: N }));
         }
         unreachable!()
     }
 
     /// Fetches `N` arguments from `varargs`, checking their types.
     /// Also returns the remaining varargs.
+    /// The returned arguments are transmuted to the expected types.
     fn check_varargs<'a, const N: usize>(
         &self,
         tys: fn(&MiriInterpCx<'tcx>) -> [Ty<'tcx>; N],
         varargs: Varargs<'tcx, 'a>,
         fn_name: &str,
-    ) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], Varargs<'tcx, 'a>)> {
+    ) -> InterpResult<'tcx, ([OpTy<'tcx>; N], Varargs<'tcx, 'a>)> {
         let this = self.eval_context_ref();
         let tys = tys(this);
 
@@ -428,7 +407,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
 
-        interp_ok((now, Varargs { args: tail, already_gone: varargs.already_gone.strict_add(N) }))
+        let transmuted = std::array::try_from_fn(|i| {
+            let layout = this.layout_of(tys[i])?;
+            now[i].transmute(layout, this)
+        })?;
+
+        interp_ok((
+            transmuted,
+            Varargs { args: tail, already_gone: varargs.already_gone.strict_add(N) },
+        ))
     }
 
     /// Check that the given function has the expected amount of arguments, and then

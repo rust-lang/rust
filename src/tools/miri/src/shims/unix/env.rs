@@ -126,8 +126,8 @@ fn alloc_environ_block<'tcx>(
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn getenv(&mut self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, Pointer> {
-        let this = self.eval_context_mut();
+    fn getenv(&self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, Pointer> {
+        let this = self.eval_context_ref();
         this.assert_target_os_is_unix("getenv");
 
         let name_ptr = this.read_pointer(name_op)?;
@@ -326,8 +326,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    fn getpid(&mut self) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+    fn getpid(&self) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_ref();
         this.assert_target_os_is_unix("getpid");
 
         // The reason we need to do this wacky of a conversion is because
@@ -367,7 +367,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
 
-        let uname = this.deref_pointer_as(uname, this.libc_ty_layout("utsname"))?;
+        let uname = this.deref_pointer(uname)?;
         let arch = this.machine.tcx.sess.target.arch.desc_symbol();
         // Values required by POSIX.
         let mut values = vec![
@@ -428,7 +428,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This returns an `int`, not a `pthread_t`, so we treat it like we treat `gettid` on Linux.
         let tid = this.get_tid(thread);
-        let tid_dest = this.deref_pointer_as(tid_op, this.machine.layouts.u64)?;
+        let tid_dest = this.deref_pointer(tid_op)?;
         this.write_int(tid, &tid_dest)?;
 
         // Possible errors have been handled, return success.

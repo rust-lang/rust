@@ -11,7 +11,7 @@
 //@ compile-flags: -Cstrip=none -Cdebuginfo=line-tables-only
 //@ ignore-android FIXME #17520
 //@ ignore-fuchsia Backtraces not symbolized
-//@ ignore-emscripten Requires custom symbolization code
+//@ ignore-wasm Requires custom symbolization code
 //@ ignore-ios needs the `.dSYM` files to be moved to the device
 //@ ignore-tvos needs the `.dSYM` files to be moved to the device
 //@ ignore-watchos needs the `.dSYM` files to be moved to the device

@@ -4,6 +4,6 @@ fn main() {
     let ptr: *mut () = core::ptr::null_mut();
     let _: &mut dyn Fn() = unsafe {
         &mut *(ptr as *mut dyn Fn())
-        //~^ ERROR expected an `Fn()` closure, found `()`
+        //~^ ERROR expected `Fn()` signature, found `()`
     };
 }

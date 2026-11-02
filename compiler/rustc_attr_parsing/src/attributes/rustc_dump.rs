@@ -1,5 +1,5 @@
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
-use rustc_attr_ir::{AttributeKind, RustcDumpLayoutKind};
+use rustc_attr_ir::{AttributeKind, RustcDumpLayoutKind, RustcShowSpansKind};
 use rustc_feature::AttributeStability;
 use rustc_span::{Span, Symbol, sym};
 
@@ -300,4 +300,45 @@ impl NoArgsAttributeParser for RustcDumpVtableParser {
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcDumpVtable;
+}
+
+pub(crate) struct RustcShowSpans;
+
+impl SingleAttributeParser for RustcShowSpans {
+    const PATH: &[Symbol] = &[sym::rustc_show_spans];
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+
+    const TEMPLATE: AttributeTemplate = template!(List: &["expr", "ty", "path"]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let Some(items) = cx.expect_list(args, cx.attr_span) else {
+            return None;
+        };
+
+        let mut result = ThinVec::new();
+        for item in items.mixed() {
+            let Some(arg) = item.meta_item_no_args() else {
+                cx.adcx().expected_not_literal(item.span());
+                continue;
+            };
+            let Some(ident) = arg.ident() else {
+                cx.adcx().expected_identifier(arg.span());
+                return None;
+            };
+            let kind = match ident.name {
+                sym::expr => RustcShowSpansKind::Expr,
+                sym::ty => RustcShowSpansKind::Ty,
+                sym::path => RustcShowSpansKind::Path,
+                _ => {
+                    cx.adcx()
+                        .expected_specific_argument(ident.span, &[sym::expr, sym::ty, sym::path]);
+                    continue;
+                }
+            };
+            result.push(kind);
+        }
+        Some(AttributeKind::RustcShowSpans(result))
+    }
 }

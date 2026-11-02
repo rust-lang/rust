@@ -24,6 +24,9 @@ use std::time::SystemTime;
 
 pub use f8_impl::{f8, hf8};
 pub use libm::support::{Float, Int, IntTy, MinInt};
+// Dev deps can't be optional, needed to avoid unused warnings
+#[cfg(feature = "build-musl")]
+use musl_math_sys as _;
 pub use num::{FloatExt, linear_ints, logspace};
 pub use op::{
     Arg0, Arg1, Arg2, BaseName, Group, Identifier, MathOp, OpCFn, OpCRet, OpRustArgs, OpRustFn,

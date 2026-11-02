@@ -1,4 +1,4 @@
-// rustfmt-skip_macro_invocations: ["*"]
+//@ rustfmt-skip_macro_invocations: ["*"]
 
 // Should skip this invocation
 items!(

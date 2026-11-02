@@ -121,12 +121,10 @@ jobs:
         with:
           fetch-depth: 2
 
-      # Free up disk space on Linux by removing preinstalled components that
-      # we do not need. We do this to enable some of the less resource
-      # intensive jobs to run on free runners, which however also have
-      # less disk space.
+      # Free up disk space on Linux or macOS by removing preinstalled components that
+      # we do not need.
       - name: free up disk space
-        run: src/ci/scripts/free-disk-space-linux.sh
+        run: src/ci/scripts/free-disk-space.sh
         if: matrix.free_disk
 
       # If we don't need to free up disk space then just report how much space we have
@@ -195,7 +193,7 @@ jobs:
         # discoverable Python in $env:PATH. Only install if we're actually running Windows tests
         # that use LLDB
         if: ${{ startsWith(matrix.os, 'windows') && matrix.required_python_version}}
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.required_python_version }}
 
@@ -263,7 +261,7 @@ jobs:
           df -h
 
       - name: upload artifacts to github
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           # name is set in previous step
           name: ${{ env.DOC_ARTIFACT_NAME }}

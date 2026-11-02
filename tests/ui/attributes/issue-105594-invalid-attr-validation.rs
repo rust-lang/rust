@@ -4,4 +4,4 @@
 fn main() {}
 
 #[track_caller] //~ ERROR attribute cannot be used on
-static _A: () = ();
+static _A: () = panic!();

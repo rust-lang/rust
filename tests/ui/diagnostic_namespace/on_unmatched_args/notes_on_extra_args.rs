@@ -1,7 +1,7 @@
 #![feature(diagnostic_on_unmatched_args)]
 
 #[diagnostic::on_unmatched_args(
-    message = "{This}! expects exactly two arguments",
+    message = "{this}! expects exactly two arguments",
     label = "unexpected extra input starts here",
     note = "this macro expects a type and a value, like `pair!(u8, 0)`",
     note = "make sure to pass both arguments",

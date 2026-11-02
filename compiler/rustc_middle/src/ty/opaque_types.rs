@@ -49,8 +49,8 @@ impl<'tcx> ReverseMapper<'tcx> {
     fn fold_closure_args(
         &mut self,
         def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> ty::GenericArgsRef<'tcx> {
+        args: ty::GenericArgs<'tcx>,
+    ) -> ty::GenericArgs<'tcx> {
         // I am a horrible monster and I pray for death. When
         // we encounter a closure here, it is always a closure
         // from within the function that we are currently

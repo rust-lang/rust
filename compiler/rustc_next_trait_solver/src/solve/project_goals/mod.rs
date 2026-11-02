@@ -33,11 +33,9 @@ where
             }
             ty::AliasTermKind::OpaqueTy { .. } => self.normalize_opaque_type(goal),
             ty::AliasTermKind::FreeTy { .. } | ty::AliasTermKind::FreeConst { .. } => {
-                self.normalize_free_alias(goal).map_err(Into::into)
+                self.normalize_free_alias(goal)
             }
-            ty::AliasTermKind::AnonConst { .. } => {
-                self.normalize_anon_const(goal).map_err(Into::into)
-            }
+            ty::AliasTermKind::AnonConst { .. } => self.normalize_anon_const(goal),
         }
     }
 

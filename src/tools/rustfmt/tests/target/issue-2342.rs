@@ -1,4 +1,4 @@
-// rustfmt-max_width: 80
+//@ rustfmt-max_width: 80
 
 struct Foo {
     #[cfg(feature = "serde")]

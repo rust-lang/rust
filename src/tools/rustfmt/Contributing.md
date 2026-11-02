@@ -77,13 +77,13 @@ Without explicit settings, the tests will be run using rustfmt's default
 configuration. It is possible to run a test using non-default settings in several
 ways. Firstly, you can include configuration parameters in comments at the top
 of the file. For example: to use 3 spaces per tab, start your test with
-`// rustfmt-tab_spaces: 3`. Just remember that the comment is part of the input,
+`//@ rustfmt-tab_spaces: 3`. Just remember that the comment is part of the input,
 so include in both the source and target files! It is also possible to
 explicitly specify the name of the expected output file in the target directory.
-Use `// rustfmt-target: filename.rs` for this. You can also specify a custom
+Use `//@ rustfmt-target: filename.rs` for this. You can also specify a custom
 configuration by using the `rustfmt-config` directive. Rustfmt will then use
 that toml file located in `./tests/config/` for its configuration. Including
-`// rustfmt-config: small_tabs.toml` will run your test with the configuration
+`//@ rustfmt-config: small_tabs.toml` will run your test with the configuration
 file found at `./tests/config/small_tabs.toml`. The final option is used when the
 test source file contains no configuration parameter comments. In this case, the
 test harness looks for a configuration file with the same filename as the test

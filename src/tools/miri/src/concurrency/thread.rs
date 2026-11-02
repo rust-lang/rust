@@ -19,16 +19,6 @@ use crate::concurrency::GlobalDataRaceHandler;
 use crate::shims::tls;
 use crate::*;
 
-/// What to do with TLS allocations from terminated threads
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum TlsAllocAction {
-    /// Deallocate backing memory of thread-local statics as usual
-    Deallocate,
-    /// Skip deallocating backing memory of thread-local statics and consider all memory reachable
-    /// from them as "allowed to leak" (like global `static`s).
-    Leak,
-}
-
 /// The argument type for the "unblock" callback, indicating why the thread got unblocked.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum UnblockKind {
@@ -89,6 +79,8 @@ pub enum BlockReason {
     Condvar,
     /// Blocked on a reader-writer lock.
     RwLock,
+    /// Blocked on a semaphore.
+    Semaphore,
     /// Blocked on a Futex variable.
     Futex,
     /// Blocked on an InitOnce.
@@ -689,7 +681,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Create the new thread
         let current_span = this.machine.current_user_relevant_span();
         let new_thread_id = this.machine.threads.create_thread({
-            let mut state = tls::TlsDtorsState::default();
+            let mut state = tls::TlsDtorsState::new_for_thread_finish();
             Box::new(move |m| state.on_stack_empty(m))
         });
         match &mut this.machine.data_race {
@@ -747,45 +739,60 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(new_thread_id)
     }
 
+    /// Replace the active thread with an empty one, and a new on-empty handler.
+    /// The memory of the old stack is leaked.
+    /// Used to implement `exit`.
+    fn replace_active_thread_stack(&mut self, on_stack_empty: StackEmptyCallback<'tcx>) {
+        let this = self.eval_context_mut();
+        let thread = this.active_thread_mut();
+        let span = thread.current_user_relevant_span();
+
+        thread.stack.clear();
+        thread.origin_span = span;
+        thread.top_user_relevant_frame = None;
+        thread.on_stack_empty = Some(on_stack_empty);
+    }
+
     /// Handles thread termination of the active thread: wakes up threads joining on this one,
-    /// and deals with the thread's thread-local statics according to `tls_alloc_action`.
+    /// and frees the thread's thread-local statics. `for_exit` indicates whether we are
+    /// about to exit the program; that changes some details.
     ///
     /// This is called by the eval loop when a thread's on_stack_empty returns `Ready`.
-    fn terminate_active_thread(&mut self, tls_alloc_action: TlsAllocAction) -> InterpResult<'tcx> {
+    fn terminate_active_thread(&mut self, for_exit: bool) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         // Mark thread as terminated.
         let thread = this.active_thread_mut();
-        assert!(thread.stack.is_empty(), "only threads with an empty stack can be terminated");
         thread.state = ThreadState::Terminated;
+        assert!(
+            for_exit || thread.stack.is_empty(),
+            "only threads with an empty stack can be terminated"
+        );
 
         // Deallocate TLS.
         let gone_thread = this.active_thread();
         {
             let mut free_tls_statics = Vec::new();
-            this.machine.threads.thread_local_allocs.retain(|&(_def_id, thread), &mut alloc_id| {
+            this.machine.threads.thread_local_allocs.retain(|&(_def_id, thread), &mut ptr| {
                 if thread != gone_thread {
                     // A different thread, keep this static around.
                     return true;
                 }
                 // Delete this static from the map and from memory.
                 // We cannot free directly here as we cannot use `?` in this context.
-                free_tls_statics.push(alloc_id);
+                free_tls_statics.push(ptr);
                 false
             });
             // Now free the TLS statics.
             for ptr in free_tls_statics {
-                match tls_alloc_action {
-                    TlsAllocAction::Deallocate =>
-                        this.deallocate_ptr(ptr.into(), None, MiriMemoryKind::Tls.into())?,
-                    TlsAllocAction::Leak =>
-                        if let Some(alloc) = ptr.provenance.get_alloc_id() {
-                            trace!(
-                                "Thread-local static leaked and stored as static root: {:?}",
-                                alloc
-                            );
-                            this.machine.static_roots.push(alloc);
-                        },
+                if for_exit {
+                    // Leak the thread-local statics rather than freeing them.
+                    if let Some(alloc) = ptr.provenance.get_alloc_id() {
+                        trace!("Thread-local static leaked and stored as static root: {:?}", alloc);
+                        this.machine.static_roots.push(alloc);
+                    }
+                } else {
+                    this.deallocate_ptr(ptr.into(), None, MiriMemoryKind::Tls.into())?;
                 }
             }
         }

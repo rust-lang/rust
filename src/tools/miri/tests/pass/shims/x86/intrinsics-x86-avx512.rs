@@ -1,7 +1,7 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512bitalg,+avx512vpopcntdq,+avx512vnni,+avx512vbmi
-//@run-native
+//@run-native: ignore-output
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
@@ -545,6 +545,80 @@ unsafe fn test_avx512ternarylogic() {
         assert_eq_m128i(r, e);
     }
     test_mm_ternarylogic_epi32();
+
+    #[target_feature(enable = "avx512f")]
+    unsafe fn test_mm512_ternarylogic_epi64() {
+        let a = _mm512_set4_epi64(0b100, 0b110, 0b001, 0b101);
+        let b = _mm512_set4_epi64(0b010, 0b011, 0b001, 0b110);
+        let c = _mm512_set4_epi64(0b001, 0b000, 0b001, 0b111);
+
+        // Identity of A.
+        let r = _mm512_ternarylogic_epi64::<0b1111_0000>(a, b, c);
+        assert_eq_m512i(r, a);
+
+        // Bitwise xor.
+        let r = _mm512_ternarylogic_epi64::<0b10010110>(a, b, c);
+        let e = _mm512_set4_epi64(0b111, 0b101, 0b001, 0b100);
+        assert_eq_m512i(r, e);
+
+        // Majority (2 or more bits set).
+        let r = _mm512_ternarylogic_epi64::<0b1110_1000>(a, b, c);
+        let e = _mm512_set4_epi64(0b000, 0b010, 0b001, 0b111);
+        assert_eq_m512i(r, e);
+
+        // Every bit of every lane: with these inputs, bit `i` indexes the table with
+        // `i % 8`, so the result is the table repeated in every byte.
+        let a = _mm512_set1_epi64(0xF0F0_F0F0_F0F0_F0F0_u64 as i64);
+        let b = _mm512_set1_epi64(0xCCCC_CCCC_CCCC_CCCC_u64 as i64);
+        let c = _mm512_set1_epi64(0xAAAA_AAAA_AAAA_AAAA_u64 as i64);
+        let r = _mm512_ternarylogic_epi64::<0x6C>(a, b, c);
+        assert_eq_m512i(r, _mm512_set1_epi64(0x6C6C_6C6C_6C6C_6C6C));
+    }
+    test_mm512_ternarylogic_epi64();
+
+    #[target_feature(enable = "avx512f,avx512vl")]
+    unsafe fn test_mm256_ternarylogic_epi64() {
+        let a = _mm256_setr_epi64x(0b100, 0b110, 0b001, 0b101);
+        let b = _mm256_setr_epi64x(0b010, 0b011, 0b001, 0b110);
+        let c = _mm256_setr_epi64x(0b001, 0b000, 0b001, 0b111);
+
+        // Identity of A.
+        let r = _mm256_ternarylogic_epi64::<0b1111_0000>(a, b, c);
+        assert_eq_m256i(r, a);
+
+        // Bitwise xor.
+        let r = _mm256_ternarylogic_epi64::<0b10010110>(a, b, c);
+        let e = _mm256_setr_epi64x(0b111, 0b101, 0b001, 0b100);
+        assert_eq_m256i(r, e);
+
+        // Majority (2 or more bits set).
+        let r = _mm256_ternarylogic_epi64::<0b1110_1000>(a, b, c);
+        let e = _mm256_setr_epi64x(0b000, 0b010, 0b001, 0b111);
+        assert_eq_m256i(r, e);
+    }
+    test_mm256_ternarylogic_epi64();
+
+    #[target_feature(enable = "avx512f,avx512vl")]
+    unsafe fn test_mm_ternarylogic_epi64() {
+        let a = _mm_set_epi64x(0b100, 0b110);
+        let b = _mm_set_epi64x(0b010, 0b011);
+        let c = _mm_set_epi64x(0b001, 0b000);
+
+        // Identity of A.
+        let r = _mm_ternarylogic_epi64::<0b1111_0000>(a, b, c);
+        assert_eq_m128i(r, a);
+
+        // Bitwise xor.
+        let r = _mm_ternarylogic_epi64::<0b10010110>(a, b, c);
+        let e = _mm_set_epi64x(0b111, 0b101);
+        assert_eq_m128i(r, e);
+
+        // Majority (2 or more bits set).
+        let r = _mm_ternarylogic_epi64::<0b1110_1000>(a, b, c);
+        let e = _mm_set_epi64x(0b000, 0b010);
+        assert_eq_m128i(r, e);
+    }
+    test_mm_ternarylogic_epi64();
 }
 
 #[target_feature(enable = "avx512vnni")]
@@ -764,6 +838,54 @@ unsafe fn test_avx512bw() {
         assert_eq_m512i(_mm512_packus_epi32(a, b), dst);
     }
     test_mm512_packus_epi32();
+
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_avg_epu8() {
+        let a = _mm512_set1_epi8(1);
+        let b = _mm512_set1_epi8(1);
+        let r = _mm512_avg_epu8(a, b);
+        let e = _mm512_set1_epi8(1);
+        assert_eq_m512i(r, e);
+
+        // Intermediary sum can overflow, but the final result not.
+        let a = _mm512_set1_epi8(u8::MAX as i8);
+        let b = _mm512_set1_epi8((u8::MAX - 2) as i8);
+        let r = _mm512_avg_epu8(a, b);
+        let e = _mm512_set1_epi8((u8::MAX - 1) as i8);
+        assert_eq_m512i(r, e);
+
+        // Odd sums are rounded up.
+        let a = _mm512_set1_epi8(3);
+        let b = _mm512_set1_epi8(6);
+        let r = _mm512_avg_epu8(a, b);
+        let e = _mm512_set1_epi8(5);
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_avg_epu8();
+
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_avg_epu16() {
+        let a = _mm512_set1_epi16(1);
+        let b = _mm512_set1_epi16(1);
+        let r = _mm512_avg_epu16(a, b);
+        let e = _mm512_set1_epi16(1);
+        assert_eq_m512i(r, e);
+
+        // Intermediary sum can overflow, but the final result not.
+        let a = _mm512_set1_epi16(u16::MAX as i16);
+        let b = _mm512_set1_epi16((u16::MAX - 2) as i16);
+        let r = _mm512_avg_epu16(a, b);
+        let e = _mm512_set1_epi16((u16::MAX - 1) as i16);
+        assert_eq_m512i(r, e);
+
+        // Odd sums are rounded up.
+        let a = _mm512_set1_epi16(3);
+        let b = _mm512_set1_epi16(6);
+        let r = _mm512_avg_epu16(a, b);
+        let e = _mm512_set1_epi16(5);
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_avg_epu16();
 }
 
 #[target_feature(enable = "avx512vbmi,avx512vl")]

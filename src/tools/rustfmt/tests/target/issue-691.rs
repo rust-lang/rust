@@ -1,4 +1,4 @@
-// rustfmt-normalize_comments: true
+//@ rustfmt-normalize_comments: true
 
 //! `std` or `core` and simply link to this library. In case the target
 //! platform has no hardware

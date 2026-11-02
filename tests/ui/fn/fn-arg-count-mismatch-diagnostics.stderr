@@ -12,6 +12,7 @@ LL |         delegate_local!(foo);
 note: associated function defined here
   --> $DIR/fn-arg-count-mismatch-diagnostics.rs:39:8
    |
+LL | impl Bar {
 LL |     fn foo(a: u8, b: u8) {}
    |        ^^^        -----
 help: provide the argument
@@ -28,6 +29,7 @@ LL |         delegate!(foo);
 note: associated function defined here
   --> $DIR/fn-arg-count-mismatch-diagnostics.rs:39:8
    |
+LL | impl Bar {
 LL |     fn foo(a: u8, b: u8) {}
    |        ^^^        -----
    = note: this error originates in the macro `delegate` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -46,6 +48,7 @@ LL |         delegate_from!(Bar, foo);
 note: associated function defined here
   --> $DIR/fn-arg-count-mismatch-diagnostics.rs:39:8
    |
+LL | impl Bar {
 LL |     fn foo(a: u8, b: u8) {}
    |        ^^^        -----
 help: provide the argument

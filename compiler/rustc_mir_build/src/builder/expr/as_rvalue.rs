@@ -8,7 +8,6 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::{CastTy, mir_cast_kind};
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, UpvarArgs};
 use rustc_span::{DUMMY_SP, Span, Spanned, bug};
@@ -348,11 +347,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
                 block = this.stmt_expr(block, expr_id, None).into_block();
                 block.and(Rvalue::Use(
-                    Operand::Constant(Box::new(ConstOperand {
-                        span: expr_span,
-                        user_ty: None,
-                        const_: Const::zero_sized(this.tcx.types.unit),
-                    })),
+                    Operand::zero_sized_constant(this.tcx.types.unit, expr_span),
                     WithRetag::Yes,
                 ))
             }

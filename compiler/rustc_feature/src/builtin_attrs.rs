@@ -233,6 +233,10 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // - https://github.com/rust-lang/rust/issues/157081
     sym::instrument_fn,
 
+    // The attribute is part of feature `checked_type_aliases`. Its name is but a placeholder.
+    // FIXME(#134963): Temporarily prefixed with `rustc_` to prevent potential name resolution ambiguities.
+    sym::rustc_unchecked_type_alias,
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
@@ -320,6 +324,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // types (as well as any others in future).
     sym::rustc_lint_opt_deny_field_access,
     sym::rustc_diagnostic_opaque,
+    sym::rustc_assert_variance,
 
     // ==========================================================================
     // Internal attributes, Const related:
@@ -384,6 +389,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // Internal attributes, Testing:
     // ==========================================================================
 
+    sym::rustc_show_spans,
     sym::rustc_effective_visibility,
     sym::rustc_dump_inferred_outlives,
     sym::rustc_capture_analysis,

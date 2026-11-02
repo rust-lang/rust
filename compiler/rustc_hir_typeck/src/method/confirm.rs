@@ -23,8 +23,8 @@ use rustc_middle::ty::adjustment::{
     PointerCoercion,
 };
 use rustc_middle::ty::{
-    self, AssocContainer, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, Unnormalized, UserArgs,
+    self, AssocContainer, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, Unnormalized, UserArgs,
 };
 use rustc_span::{DUMMY_SP, Span, bug, span_bug};
 use rustc_trait_selection::traits;
@@ -40,6 +40,7 @@ pub(crate) struct ConfirmContext<'a, 'tcx> {
     self_expr: &'tcx hir::Expr<'tcx>,
     call_expr: &'tcx hir::Expr<'tcx>,
     skip_record_for_diagnostics: bool,
+    call_args: Option<&'tcx [hir::Expr<'tcx>]>,
 }
 
 impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
@@ -64,6 +65,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unadjusted_self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
         segment: &'tcx hir::PathSegment<'tcx>,
+        args: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> ConfirmResult<'tcx> {
         debug!(
             "confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
@@ -71,6 +73,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let mut confirm_cx = ConfirmContext::new(self, span, self_expr, call_expr);
+        confirm_cx.call_args = args;
         confirm_cx.confirm(unadjusted_self_ty, pick, segment)
     }
 
@@ -96,7 +99,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self_expr: &'tcx hir::Expr<'tcx>,
         call_expr: &'tcx hir::Expr<'tcx>,
     ) -> ConfirmContext<'a, 'tcx> {
-        ConfirmContext { fcx, span, self_expr, call_expr, skip_record_for_diagnostics: false }
+        ConfirmContext {
+            fcx,
+            span,
+            self_expr,
+            call_expr,
+            skip_record_for_diagnostics: false,
+            call_args: None,
+        }
     }
 
     fn confirm(
@@ -291,7 +301,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
-    ) -> GenericArgsRef<'tcx> {
+    ) -> GenericArgs<'tcx> {
         match pick.kind {
             probe::InherentImplPick => {
                 let impl_def_id = pick.item.container_id(self.tcx);
@@ -409,8 +419,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         pick: &probe::Pick<'tcx>,
         seg: &hir::PathSegment<'tcx>,
-        parent_args: GenericArgsRef<'tcx>,
-    ) -> GenericArgsRef<'tcx> {
+        parent_args: GenericArgs<'tcx>,
+    ) -> GenericArgs<'tcx> {
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
         // variables.
@@ -489,10 +499,19 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             fn inferred_kind(
                 &mut self,
-                _preceding_args: &[ty::GenericArg<'tcx>],
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 _infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
+                if let Some(pos) = param.kind.arg_pos()
+                    && let Some(args) = self.cfcx.call_args
+                    && let Some(arg) = pos.checked_sub(1).and_then(|index| args.get(index as usize))
+                {
+                    let tcx = self.cfcx.tcx;
+                    let ty =
+                        tcx.type_of(param.def_id).instantiate(tcx, preceding_args).skip_norm_wip();
+                    return self.cfcx.lower_const_arg_expr(arg, ty).into();
+                }
                 self.cfcx.var_for_def(self.cfcx.span, param)
             }
         }
@@ -500,7 +519,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let args = lower_generic_args(
             self.fcx,
             pick.item.def_id,
-            parent_args,
+            parent_args.as_slice(),
             false,
             None,
             &arg_count_correct,
@@ -561,7 +580,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             self_ty, method_self_ty, self.span, pick
         );
         let cause = self.cause(self.self_expr.span, ObligationCauseCode::Misc);
-        match self.at(&cause, self.param_env).sup(DefineOpaqueTypes::Yes, method_self_ty, self_ty) {
+        match self.sup_raw(&cause, self.param_env, DefineOpaqueTypes::Yes, method_self_ty, self_ty)
+        {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
             }
@@ -594,7 +614,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn instantiate_method_sig(
         &mut self,
         pick: &probe::Pick<'tcx>,
-        all_args: GenericArgsRef<'tcx>,
+        all_args: GenericArgs<'tcx>,
     ) -> (ty::FnSig<'tcx>, ty::InstantiatedClauses<'tcx>) {
         debug!("instantiate_method_sig(pick={:?}, all_args={:?})", pick, all_args);
 
@@ -618,7 +638,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn add_obligations(
         &mut self,
         sig: ty::FnSig<'tcx>,
-        all_args: GenericArgsRef<'tcx>,
+        all_args: GenericArgs<'tcx>,
         method_clauses: ty::InstantiatedClauses<'tcx>,
         def_id: DefId,
     ) {

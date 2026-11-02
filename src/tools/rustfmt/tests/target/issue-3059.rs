@@ -1,5 +1,5 @@
-// rustfmt-wrap_comments: true
-// rustfmt-max_width: 80
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-max_width: 80
 
 /// Vestibulum elit nibh, rhoncus non, euismod sit amet, pretium eu, enim. Nunc
 /// commodo ultricies dui. Cras gravida rutrum massa. Donec accumsan mattis

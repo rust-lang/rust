@@ -2251,6 +2251,8 @@ options! {
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],
         "emit bitcode in rlibs (default: yes)"),
+    embed_metadata: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "embed metadata in rlibs and dylibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
         "extra data to put in each output filename"),
     force_frame_pointers: FramePointer = (FramePointer::MayOmit, parse_frame_pointer, [TRACKED],
@@ -2401,6 +2403,8 @@ options! {
     assumptions_on_binders: bool = (false, parse_bool, [TRACKED],
         "allow deducing higher-ranked outlives assumptions from all binders (`for<'a>`); \
          implies `-Znext-solver=globally`"),
+    async_panic: bool = (true, parse_bool, [TRACKED],
+        "let async blocks and functions panic when polled after completion"),
     autodiff: Vec<crate::config::AutoDiff> = (Vec::new(), parse_autodiff, [TRACKED],
         "a list of autodiff flags to enable
         Mandatory setting:
@@ -2514,7 +2518,8 @@ options! {
         them only if an error has not been emitted"),
     ehcont_guard: bool = (false, parse_bool, [TRACKED],
         "generate Windows EHCont Guard tables"),
-    embed_metadata: bool = (true, parse_bool, [TRACKED],
+    // FIXME(kobzol): remove in 2027
+    embed_metadata: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "embed metadata in rlibs and dylibs (default: yes)"),
     embed_source: bool = (false, parse_bool, [TRACKED],
         "embed source text in DWARF debug sections (default: no)"),
@@ -2687,7 +2692,7 @@ options! {
         "include extra comments in mir pretty printing, like line numbers and statement indices, \
          details about types, etc. (boolean for all passes, 'nll' to enable in NLL MIR only, default: 'nll')"),
     mir_move_elimination: bool = (false, parse_bool, [TRACKED],
-        "enable the experimental MIR move elimination pass (default: no)"),
+        "enable the experimental MIR semantics for the move elimination optimization (default: no)"),
     mir_opt_bisect_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "limit the number of MIR optimization pass executions (global across all bodies). \
         Pass executions after this limit are skipped and reported. (default: no limit)"),
@@ -2961,9 +2966,6 @@ written to standard error output)"),
         "in diagnostics, use heuristics to shorten paths referring to items"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
-    #[rustc_lint_opt_deny_field_access("use `TyCtxt::use_typing_mode_post_typeck` instead of this field")]
-    typing_mode_post_typeck_until_borrowck: bool = (false, parse_bool, [TRACKED],
-        "enable `TypingMode::PostTypeckUntilBorrowck`, changing the way opaque types are handled during MIR borrowck"),
     #[rustc_lint_opt_deny_field_access("use `Session::ub_checks` instead of this field")]
     ub_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit runtime checks for Undefined Behavior (default: -Cdebug-assertions)"),

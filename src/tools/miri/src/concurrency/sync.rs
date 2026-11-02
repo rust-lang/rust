@@ -206,6 +206,37 @@ impl VisitProvenance for CondvarRef {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
 }
 
+/// The semaphore state.
+#[derive(Default, Debug)]
+struct Semaphore {
+    waiters: VecDeque<ThreadId>,
+    value: u64,
+    /// The joint data race clock of the most recent semaphore increment.
+    clock: VClock,
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct SemaphoreRef(Rc<RefCell<Semaphore>>);
+
+impl SemaphoreRef {
+    pub fn new(value: u64) -> Self {
+        Self(Rc::new(RefCell::new(Semaphore { value, ..Default::default() })))
+    }
+
+    pub fn value(&self) -> u64 {
+        self.0.borrow().value
+    }
+
+    pub fn queue_is_empty(&self) -> bool {
+        self.0.borrow().waiters.is_empty()
+    }
+}
+
+impl VisitProvenance for SemaphoreRef {
+    // Semaphore contains no provenance.
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
+}
+
 /// The futex state.
 #[derive(Default, Debug)]
 struct Futex {
@@ -414,8 +445,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Lock by setting the mutex owner and increasing the lock count.
-    fn mutex_lock(&mut self, mutex_ref: &MutexRef) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+    fn mutex_lock(&self, mutex_ref: &MutexRef) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
         let thread = this.active_thread();
         let mut mutex = mutex_ref.0.borrow_mut();
         if let Some(current_owner) = mutex.owner {
@@ -510,8 +541,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Read-lock the lock by adding the `reader` the list of threads that own
     /// this lock.
-    fn rwlock_reader_lock(&mut self, rwlock_ref: &RwLockRef) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+    fn rwlock_reader_lock(&self, rwlock_ref: &RwLockRef) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
         let thread = this.active_thread();
         trace!("rwlock_reader_lock: now also held (one more time) by {:?}", thread);
         let mut rwlock = rwlock_ref.0.borrow_mut();
@@ -597,8 +628,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Lock by setting the writer that owns the lock.
     #[inline]
-    fn rwlock_writer_lock(&mut self, rwlock_ref: &RwLockRef) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+    fn rwlock_writer_lock(&self, rwlock_ref: &RwLockRef) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
         let thread = this.active_thread();
         trace!("rwlock_writer_lock: now held by {:?}", thread);
 
@@ -825,15 +856,96 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Remove `count` of the threads in the queue that match any of the bits in the bitset.
         // We collect all of them before unblocking because the unblock callback may access the
         // futex state to retrieve the remaining number of waiters on macOS.
-        let waiters: Vec<_> =
+        let wake_threads: Vec<_> =
             futex.waiters.extract_if(.., |w| w.bitset & bitset != 0).take(count).collect();
         drop(futex);
 
-        let woken = waiters.len();
-        for waiter in waiters {
+        let woken = wake_threads.len();
+        for waiter in wake_threads {
             this.unblock_thread(waiter.thread, BlockReason::Futex)?;
         }
 
         interp_ok(woken)
+    }
+
+    /// Tries to decrement the semaphore. Blocks the current thread if that is not possible.
+    /// `callback` is invoked after the decrement was successful.
+    ///
+    /// Once the Mutex becomes available and if it exists, `retval_dest.0` will
+    /// be written to `retval_dest.1`.
+    fn semaphore_decrement(
+        &mut self,
+        semaphore_ref: SemaphoreRef,
+        deadline: Option<Deadline>,
+        callback: DynUnblockCallback<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let mut semaphore = semaphore_ref.0.borrow_mut();
+        if let Some(new_value) = semaphore.value.checked_sub(1) {
+            semaphore.value = new_value;
+            this.acquire_clock(&semaphore.clock)?;
+            drop(semaphore);
+            return callback.call(this, UnblockKind::Ready);
+        }
+
+        // We have to block.
+        semaphore.waiters.push_back(this.active_thread());
+        drop(semaphore);
+
+        this.block_thread(
+            BlockReason::Semaphore,
+            deadline.clone(),
+            callback!(
+                @capture<'tcx> {
+                    semaphore_ref: SemaphoreRef,
+                    deadline: Option<Deadline>,
+                    callback: DynUnblockCallback<'tcx>,
+                }
+                |this, unblock: UnblockKind| {
+                    match unblock {
+                        UnblockKind::TimedOut => {
+                            // Remove the waiter.
+                            let thread = this.active_thread();
+                            let mut semaphore = semaphore_ref.0.borrow_mut();
+                            semaphore.waiters.retain(|&waiter| waiter != thread);
+                            // Finish with callback.
+                            return callback.call(this, UnblockKind::TimedOut);
+                        }
+                        UnblockKind::Ready => {
+                            // Try again! This time it will definitely work.
+                            // (But it's too much of a hassle to assert that.)
+                            this.semaphore_decrement(semaphore_ref, deadline, callback)
+                        }
+                    }
+                }
+            ),
+        );
+        interp_ok(())
+    }
+
+    /// Increment the semaphore.
+    /// Returns whether anyone was woken up.
+    fn semaphore_increment(&mut self, semaphore_ref: &SemaphoreRef) -> InterpResult<'tcx, bool> {
+        let this = self.eval_context_mut();
+
+        let mut semaphore = semaphore_ref.0.borrow_mut();
+        // If the value is currently 0, we will unlock one thread later.
+        let wake_thread =
+            (semaphore.value == 0).then_some(()).and_then(|()| semaphore.waiters.pop_front());
+        // Increment value.
+        let Some(new_value) = semaphore.value.checked_add(1) else {
+            throw_unsup_format!("the counter of a semaphore overflowed")
+        };
+        semaphore.value = new_value;
+        // Snapshot vector clock.
+        this.release_clock(|clock| semaphore.clock.clone_from(clock))?;
+        drop(semaphore);
+
+        if let Some(thread) = wake_thread {
+            this.unblock_thread(thread, BlockReason::Semaphore)?;
+        }
+
+        interp_ok(wake_thread.is_some())
     }
 }

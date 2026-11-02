@@ -3,6 +3,8 @@ warning: the `diagnostic::on_unknown` attribute cannot be used on expressions
    |
 LL |     #[diagnostic::on_unknown(message = "anonymous block")]
    |       ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     {}
    |
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default

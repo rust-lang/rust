@@ -15,6 +15,8 @@ LL |     reuse S::<(), 1>::foo_self::<'static, _, _> as foo_self_4;
 note: method defined here
   --> $DIR/inherent-impls-structs.rs:9:8
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
 LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 
@@ -45,6 +47,8 @@ LL |     reuse S::<(), 1>::foo_self::<'static, _, _> as foo_self_4;
 note: method defined here
   --> $DIR/inherent-impls-structs.rs:9:8
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
 LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 
@@ -62,6 +66,8 @@ LL |     reuse S::<(), 1>::foo_self::<'static, _, _> as foo_self_4;
 note: method defined here
   --> $DIR/inherent-impls-structs.rs:9:8
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
 LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 

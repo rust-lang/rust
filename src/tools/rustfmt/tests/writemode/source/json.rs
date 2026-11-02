@@ -1,5 +1,5 @@
-// rustfmt-fn_single_line: true
-// rustfmt-emit_mode: json
+//@ rustfmt-fn_single_line: true
+//@ rustfmt-emit_mode: json
 // Test single-line functions.
 
 fn foo_expr() {

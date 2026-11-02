@@ -12,6 +12,7 @@ use io::{Read, Write};
 use crate::ffi::OsStr;
 use crate::fs::{self, File, OpenOptions};
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
+use crate::macros::rustdoc_skip_body;
 #[cfg(target_env = "p1")]
 use crate::os::fd::AsRawFd;
 use crate::path::Path;
@@ -232,6 +233,7 @@ impl FileExt for File {
         self.as_inner().read_buf_at(buf, offset)
     }
 
+    #[rustdoc_skip_body]
     fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         self.as_inner().read_vectored_at(bufs, offset)
     }
@@ -240,6 +242,7 @@ impl FileExt for File {
         self.as_inner().write_at(buf, offset)
     }
 
+    #[rustdoc_skip_body]
     fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         self.as_inner().write_vectored_at(bufs, offset)
     }
@@ -316,6 +319,7 @@ pub trait OpenOptionsExt {
 }
 
 impl OpenOptionsExt for OpenOptions {
+    #[rustdoc_skip_body]
     fn custom_flags(&mut self, flags: i32) -> &mut OpenOptions {
         self.as_inner_mut().custom_flags(flags);
         self
@@ -333,12 +337,15 @@ pub trait MetadataExt {
 }
 
 impl MetadataExt for fs::Metadata {
+    #[rustdoc_skip_body]
     fn dev(&self) -> u64 {
         self.as_inner().as_inner().st_dev
     }
+    #[rustdoc_skip_body]
     fn ino(&self) -> u64 {
         self.as_inner().as_inner().st_ino
     }
+    #[rustdoc_skip_body]
     fn nlink(&self) -> u64 {
         self.as_inner().as_inner().st_nlink
     }
@@ -358,12 +365,15 @@ pub trait FileTypeExt {
 }
 
 impl FileTypeExt for fs::FileType {
+    #[rustdoc_skip_body]
     fn is_block_device(&self) -> bool {
         self.as_inner().is(libc::S_IFBLK)
     }
+    #[rustdoc_skip_body]
     fn is_char_device(&self) -> bool {
         self.as_inner().is(libc::S_IFCHR)
     }
+    #[rustdoc_skip_body]
     fn is_socket(&self) -> bool {
         self.as_inner().is(libc::S_IFSOCK)
     }
@@ -376,6 +386,7 @@ pub trait DirEntryExt {
 }
 
 impl DirEntryExt for fs::DirEntry {
+    #[rustdoc_skip_body]
     fn ino(&self) -> u64 {
         self.as_inner().ino()
     }

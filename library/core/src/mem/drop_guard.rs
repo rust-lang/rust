@@ -30,7 +30,7 @@ use crate::ops::{Deref, DerefMut};
 #[stable(feature = "drop_guard", since = "1.100.0")]
 #[doc(alias = "ScopeGuard")]
 #[doc(alias = "defer")]
-pub struct DropGuard<T, F>
+pub struct DropGuard<#[rustc_assert_variance(covariant)] T, #[rustc_assert_variance(covariant)] F>
 where
     F: FnOnce(T),
 {

@@ -151,7 +151,7 @@ impl<'a, 'tcx, V> RetagPlan<V> {
             let boxed_ty = layout.ty.expect_boxed_ty();
             let boxed_layout = bx.layout_of(boxed_ty);
             if let Some(mut plan) = Self::emit_retag(bx, boxed_layout, None, is_fn_entry) {
-                // `Unique<T>`
+                // `BoxRaw<T>`
                 let unique = layout.field(bx, 0);
                 assert_eq!(unique.fields.count(), 2);
                 plan = plan.for_field(FieldIdx::ZERO);
@@ -283,7 +283,7 @@ impl<'a, 'tcx, V> RetagPlan<V> {
         }
 
         let intptr_ty = data_layout.ptr_sized_integer();
-        let align = intptr_ty.align(data_layout).abi;
+        let align = intptr_ty.align(data_layout);
 
         let alloc = Allocation::from_bytes(&bytes, align, Mutability::Not, ());
         let const_alloc = tcx.mk_const_alloc(alloc);

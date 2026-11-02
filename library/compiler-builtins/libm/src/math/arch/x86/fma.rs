@@ -8,6 +8,17 @@ use crate::support::Round;
 use crate::support::feature_detect::select_once;
 
 pub fn fma(x: f64, y: f64, z: f64) -> f64 {
+    // Skips runtime detection when a feature is enabled at compile time, so the call can be
+    // inlined.
+    if cfg!(target_feature = "fma") {
+        // SAFETY: `fma` is enabled at compile time.
+        return unsafe { fma_with_fma(x, y, z) };
+    }
+    if cfg!(target_feature = "fma4") {
+        // SAFETY: `fma4` is enabled at compile time.
+        return unsafe { fma_with_fma4(x, y, z) };
+    }
+
     select_once! {
         sig: fn(x: f64, y: f64, z: f64) -> f64,
         init: || {
@@ -26,6 +37,17 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
 }
 
 pub fn fmaf(x: f32, y: f32, z: f32) -> f32 {
+    // Skips runtime detection when a feature is enabled at compile time, so the call can be
+    // inlined.
+    if cfg!(target_feature = "fma") {
+        // SAFETY: `fma` is enabled at compile time.
+        return unsafe { fmaf_with_fma(x, y, z) };
+    }
+    if cfg!(target_feature = "fma4") {
+        // SAFETY: `fma4` is enabled at compile time.
+        return unsafe { fmaf_with_fma4(x, y, z) };
+    }
+
     select_once! {
         sig: fn(x: f32, y: f32, z: f32) -> f32,
         init: || {

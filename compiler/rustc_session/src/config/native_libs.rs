@@ -18,7 +18,7 @@ mod tests;
 pub(crate) fn parse_native_libs(
     early_dcx: &EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
-    unstable_features: UnstableFeatures,
+    unstable_features: &UnstableFeatures,
     matches: &getopts::Matches,
 ) -> Vec<NativeLib> {
     let cx = ParseNativeLibCx {

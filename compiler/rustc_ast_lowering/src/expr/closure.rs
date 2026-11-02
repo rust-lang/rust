@@ -1,6 +1,6 @@
 use rustc_ast::*;
 use rustc_attr_ir::find_attr;
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_span::{Span, span_bug};
@@ -20,7 +20,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         closure: &Closure,
     ) -> hir::Expr<'hir> {
         let expr_hir_id = self.lower_node_id(e.id);
-        let attrs = self.lower_attrs(expr_hir_id, &e.attrs, e.span, Target::from_expr(e));
+        let attrs = self.lower_attrs(
+            expr_hir_id,
+            &e.attrs,
+            e.span,
+            Target::from_expr(e),
+            AstTarget::Closure(closure),
+        );
 
         match closure.coroutine_marker {
             Some(coroutine_marker) => self.lower_expr_coroutine_closure_with_move_exprs(

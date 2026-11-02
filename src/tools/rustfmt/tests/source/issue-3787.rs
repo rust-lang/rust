@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+//@ rustfmt-wrap_comments: true
 
 //! URLs in items
 //! * [This is a link with a very loooooooooooooooooooooooooooooooooooooooooong URL.](https://example.com/This/is/a/link/with/a/very/loooooooooooooooooooooooooooooooooooooooooong/URL)

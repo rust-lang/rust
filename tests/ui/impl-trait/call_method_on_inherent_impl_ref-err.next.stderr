@@ -13,6 +13,8 @@ note: `MyDebug` defines an item `my_debug`, perhaps you need to implement it
    |
 LL | trait MyDebug {
    | ^^^^^^^^^^^^^
+LL |     fn my_debug(&self);
+   |
 
 error: aborting due to 1 previous error
 

@@ -1,4 +1,4 @@
-// rustfmt-reorder_modules: true
+//@ rustfmt-reorder_modules: true
 // Reorder modules
 
 mod lorem;

@@ -74,21 +74,21 @@ LL |     #[macro_use] 'a: 'static,
    |
    = help: the `macro_use` attribute can be applied to extern crates and modules
 
-error: most attributes are not supported in `where` clauses
-  --> $DIR/unsupported_attribute.rs:21:5
+error: the `allow` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:21:7
    |
 LL |     #[allow(unused)] T: Trait,
-   |     ^^^^^^^^^^^^^^^^
+   |       ^^^^^
    |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+   = help: the `allow` attribute can be applied to associated consts, associated types, break expressions, const parameters, constants, crates, data types, enum variants, extern crates, for loops, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, loops, macro defs, match arms, modules, pattern fields, statics, struct fields, trait aliases, traits, type aliases, type parameters, use statements, and while loops
 
-error: most attributes are not supported in `where` clauses
-  --> $DIR/unsupported_attribute.rs:22:5
+error: the `allow` attribute cannot be used on where predicates
+  --> $DIR/unsupported_attribute.rs:22:7
    |
 LL |     #[allow(unused)] 'a: 'static,
-   |     ^^^^^^^^^^^^^^^^
+   |       ^^^^^
    |
-   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+   = help: the `allow` attribute can be applied to associated consts, associated types, break expressions, const parameters, constants, crates, data types, enum variants, extern crates, for loops, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, loops, macro defs, match arms, modules, pattern fields, statics, struct fields, trait aliases, traits, type aliases, type parameters, use statements, and while loops
 
 error: the `deprecated` attribute cannot be used on where predicates
   --> $DIR/unsupported_attribute.rs:23:7

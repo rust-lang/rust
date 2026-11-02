@@ -6,7 +6,6 @@ use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_middle::ty::consts::ConstExt as _;
 
 use super::ITER_OUT_OF_BOUNDS;
 

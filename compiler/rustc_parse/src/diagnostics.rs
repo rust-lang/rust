@@ -1712,6 +1712,15 @@ pub(crate) struct GenericParamsWithoutAngleBrackets {
     pub sugg: GenericParamsWithoutAngleBracketsSugg,
 }
 
+#[derive(Diagnostic)]
+#[diag("use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments")]
+pub(crate) struct MissingTurbofishForLifetime {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion("add `::`", style = "verbose", code = "::", applicability = "machine-applicable")]
+    pub suggest_turbofish: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     "surround the type parameters with angle brackets",
@@ -2058,22 +2067,6 @@ pub(crate) struct ExpectedFnPathFoundFnKeyword {
         style = "verbose"
     )]
     pub fn_token_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`Trait(...)` syntax does not support c_variadic parameters")]
-pub(crate) struct PathFoundCVariadicParams {
-    #[primary_span]
-    #[suggestion("remove the `...`", applicability = "machine-applicable", code = "")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`Trait(...)` syntax does not support attributes in parameters")]
-pub(crate) struct PathFoundAttributeInParams {
-    #[primary_span]
-    #[suggestion("remove the attributes", applicability = "machine-applicable", code = "")]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

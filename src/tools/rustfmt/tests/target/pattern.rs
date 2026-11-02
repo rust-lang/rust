@@ -1,4 +1,4 @@
-// rustfmt-normalize_comments: true
+//@ rustfmt-normalize_comments: true
 #![feature(exclusive_range_pattern)]
 use core::u8::MAX;
 

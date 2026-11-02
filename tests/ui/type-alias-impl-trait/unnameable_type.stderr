@@ -3,13 +3,15 @@ error[E0053]: method `dont_define_this` has an incompatible type for trait
    |
 LL | type MyPrivate = impl Sized;
    |                  ---------- the found opaque type
-...
+LL | impl Trait for u32 {
+LL |     #[define_opaque(MyPrivate)]
 LL |     fn dont_define_this(private: MyPrivate) {
    |                                  ^^^^^^^^^ expected `Private`, found opaque type
    |
 note: type in trait
   --> $DIR/unnameable_type.rs:10:39
    |
+LL |     pub trait Trait {
 LL |         fn dont_define_this(_private: Private) {}
    |                                       ^^^^^^^
    = note: expected signature `fn(Private)`

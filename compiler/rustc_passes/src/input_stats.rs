@@ -272,7 +272,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_item(self, i)
     }
 
-    fn visit_body(&mut self, b: &'v hir::Body<'v>) {
+    fn visit_body(&mut self, b: &hir::Body<'v>) {
         self.record("Body", None, b);
         hir_visit::walk_body(self, b);
     }
@@ -781,7 +781,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
         record_variants!(
             (self, attr, attr.kind, None, ast, Attribute, AttrKind),
-            [Normal, Synthetic, DocComment]
+            [Normal, Synthetic, DocComment, Generated]
         );
         ast_visit::walk_attribute(self, attr)
     }

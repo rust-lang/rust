@@ -13,10 +13,6 @@ LL |     type Assert
 LL |     where
 LL |         Self: Sized;
    |               ^^^^^ required by this bound in `Bad::Assert`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL |     type Assert: ?Sized
-   |                ++++++++
 
 error[E0277]: the size for values of type `[()]` cannot be known at compilation time
   --> $DIR/trivial-unsized-projection.rs:20:12
@@ -34,10 +30,6 @@ LL |     where
 LL |         Self: Sized;
    |               ^^^^^ required by this bound in `Bad::Assert`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL |     type Assert: ?Sized
-   |                ++++++++
 
 error: aborting due to 2 previous errors
 

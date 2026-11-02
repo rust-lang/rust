@@ -387,7 +387,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         item_def_id: DefId,
         item_segment: &rustc_hir::PathSegment<'_>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Result<(DefId, ty::GenericArgsRef<'tcx>), ErrorGuaranteed> {
+    ) -> Result<(DefId, ty::GenericArgs<'tcx>), ErrorGuaranteed> {
         let trait_ref = self.instantiate_binder_with_fresh_vars(
             span,
             // FIXME(mgca): `item_def_id` can be an AssocConst; rename this variant.
@@ -434,7 +434,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                 ty::AliasTy { kind: ty::Projection { def_id } | ty::Free { def_id }, args, .. },
             ) = ty.kind()
             {
-                self.add_required_obligations_for_hir(span, *def_id, args, hir_id);
+                self.add_required_obligations_for_hir(span, *def_id, *args, hir_id);
             }
 
             self.normalize(span, Unnormalized::new_wip(ty))

@@ -1,5 +1,5 @@
-// rustfmt-config: small_tabs.toml
-// rustfmt-target: hello.rs
+//@ rustfmt-config: small_tabs.toml
+//@ rustfmt-target: hello.rs
 
 // Smoke test - hello world.
 

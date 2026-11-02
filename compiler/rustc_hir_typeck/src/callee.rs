@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::iter;
 
 use rustc_abi::{CanonAbi, ExternAbi};
@@ -15,7 +16,7 @@ use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode, Well
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::{self, FnSig, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, FnSig, GenericArgs, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Ident, Span, bug, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
@@ -664,13 +665,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         tuple_arguments_flag: TupleArgumentsFlag,
         fn_id: SplatLoweringInfo<'tcx>,
-        callee_generic_args: Option<GenericArgsRef<'tcx>>,
+        callee_generic_args: Option<GenericArgs<'tcx>>,
     ) {
+        let mut formal_inputs = Cow::Borrowed(fn_sig.inputs());
+        if let (SplatLoweringInfo::FnDef(def_id), Some(args)) = (fn_id, callee_generic_args) {
+            for (param, pos) in self.tcx.generics_of(def_id).own_arg_pos_consts() {
+                let ty = self.tcx.type_of(param.def_id).instantiate(self.tcx, args).skip_norm_wip();
+                let ty = self.normalize(call_expr.span, Unnormalized::new_wip(ty));
+                formal_inputs.to_mut().insert(pos as usize, ty);
+            }
+        }
+
         let do_check = || {
             self.check_argument_types(
                 call_expr.span,
                 call_expr,
-                fn_sig.inputs(),
+                &formal_inputs,
                 fn_sig.output(),
                 expected,
                 arg_exprs,
@@ -732,9 +742,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     call_expr.span,
                     ObligationCauseCode::WellFormed(WellFormedLoc::HirId(call_expr.hir_id)),
                 );
+                // FIXME: This needs to happen in a `probe` as the `sup`
+                // call can currently guide type inference.
                 if self
-                    .at(&cause, self.param_env)
-                    .sup(DefineOpaqueTypes::Yes, formal_input_tys[0], adjusted_arg_type)
+                    .sup_raw(
+                        &cause,
+                        self.param_env,
+                        DefineOpaqueTypes::Yes,
+                        formal_input_tys[0],
+                        adjusted_arg_type,
+                    )
                     .is_err()
                 {
                     return do_check();
@@ -1005,7 +1022,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .sess
                 .source_map()
                 .is_multiline(call_expr.span.with_lo(callee_expr.span.hi()))
-                && call_expr.span.eq_ctxt(callee_expr.span);
+                && call_expr.span.ctxt() == callee_expr.span.ctxt();
             if call_is_multiline {
                 err.span_suggestion(
                     callee_expr.span.shrink_to_hi(),
@@ -1110,7 +1127,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_hir_id: Option<HirId>,
         span: Span,
         callee_did: DefId,
-        callee_args: GenericArgsRef<'tcx>,
+        callee_args: GenericArgs<'tcx>,
     ) {
         let const_context = self.tcx.hir_body_const_context(self.body_def_id);
 

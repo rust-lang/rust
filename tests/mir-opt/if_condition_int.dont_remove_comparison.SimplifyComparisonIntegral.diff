@@ -30,7 +30,7 @@
           _7 = copy _2;
           _6 = copy _2 as i32 (IntToInt);
           StorageDead(_7);
-          _0 = Add(const 100_i32, move _6);
+          _0 = Add(move _6, const 100_i32);
           StorageDead(_6);
           goto -> bb3;
       }
@@ -41,7 +41,7 @@
           _5 = copy _2;
           _4 = copy _2 as i32 (IntToInt);
           StorageDead(_5);
-          _0 = Add(const 10_i32, move _4);
+          _0 = Add(move _4, const 10_i32);
           StorageDead(_4);
           goto -> bb3;
       }

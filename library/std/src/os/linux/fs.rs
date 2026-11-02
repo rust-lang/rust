@@ -5,6 +5,7 @@
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 
 use crate::fs::Metadata;
+use crate::macros::rustdoc_skip_body;
 #[allow(deprecated)]
 use crate::os::linux::raw;
 use crate::sys::AsInner;
@@ -344,6 +345,7 @@ pub trait MetadataExt {
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for Metadata {
     #[allow(deprecated)]
+    #[rustdoc_skip_body]
     fn as_raw_stat(&self) -> &raw::stat {
         #[cfg(target_env = "musl")]
         unsafe {
@@ -354,30 +356,39 @@ impl MetadataExt for Metadata {
             &*(self.as_inner().as_inner() as *const libc::stat64 as *const raw::stat)
         }
     }
+    #[rustdoc_skip_body]
     fn st_dev(&self) -> u64 {
         self.as_inner().as_inner().st_dev as u64
     }
+    #[rustdoc_skip_body]
     fn st_ino(&self) -> u64 {
         self.as_inner().as_inner().st_ino as u64
     }
+    #[rustdoc_skip_body]
     fn st_mode(&self) -> u32 {
         self.as_inner().as_inner().st_mode as u32
     }
+    #[rustdoc_skip_body]
     fn st_nlink(&self) -> u64 {
         self.as_inner().as_inner().st_nlink as u64
     }
+    #[rustdoc_skip_body]
     fn st_uid(&self) -> u32 {
         self.as_inner().as_inner().st_uid as u32
     }
+    #[rustdoc_skip_body]
     fn st_gid(&self) -> u32 {
         self.as_inner().as_inner().st_gid as u32
     }
+    #[rustdoc_skip_body]
     fn st_rdev(&self) -> u64 {
         self.as_inner().as_inner().st_rdev as u64
     }
+    #[rustdoc_skip_body]
     fn st_size(&self) -> u64 {
         self.as_inner().as_inner().st_size as u64
     }
+    #[rustdoc_skip_body]
     fn st_atime(&self) -> i64 {
         let file_attr = self.as_inner();
         #[cfg(all(target_env = "gnu", target_pointer_width = "32"))]
@@ -386,9 +397,11 @@ impl MetadataExt for Metadata {
         }
         file_attr.as_inner().st_atime as i64
     }
+    #[rustdoc_skip_body]
     fn st_atime_nsec(&self) -> i64 {
         self.as_inner().as_inner().st_atime_nsec as i64
     }
+    #[rustdoc_skip_body]
     fn st_mtime(&self) -> i64 {
         let file_attr = self.as_inner();
         #[cfg(all(target_env = "gnu", target_pointer_width = "32"))]
@@ -397,9 +410,11 @@ impl MetadataExt for Metadata {
         }
         file_attr.as_inner().st_mtime as i64
     }
+    #[rustdoc_skip_body]
     fn st_mtime_nsec(&self) -> i64 {
         self.as_inner().as_inner().st_mtime_nsec as i64
     }
+    #[rustdoc_skip_body]
     fn st_ctime(&self) -> i64 {
         let file_attr = self.as_inner();
         #[cfg(all(target_env = "gnu", target_pointer_width = "32"))]
@@ -408,12 +423,15 @@ impl MetadataExt for Metadata {
         }
         file_attr.as_inner().st_ctime as i64
     }
+    #[rustdoc_skip_body]
     fn st_ctime_nsec(&self) -> i64 {
         self.as_inner().as_inner().st_ctime_nsec as i64
     }
+    #[rustdoc_skip_body]
     fn st_blksize(&self) -> u64 {
         self.as_inner().as_inner().st_blksize as u64
     }
+    #[rustdoc_skip_body]
     fn st_blocks(&self) -> u64 {
         self.as_inner().as_inner().st_blocks as u64
     }

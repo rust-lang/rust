@@ -1,7 +1,7 @@
-// rustfmt-struct_field_align_threshold: 20
-// rustfmt-normalize_comments: true
-// rustfmt-wrap_comments: true
-// rustfmt-error_on_line_overflow: false
+//@ rustfmt-struct_field_align_threshold: 20
+//@ rustfmt-normalize_comments: true
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-error_on_line_overflow: false
 
 struct Foo {
     x: u32,

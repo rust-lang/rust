@@ -8,7 +8,7 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Spanned, Symbol};
 
 use crate::Res;
-use crate::late::PatternSource;
+use crate::late::{Duplicate, PatternSource};
 
 pub(crate) mod impls;
 
@@ -424,12 +424,10 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     #[help("add `#![feature(generic_const_exprs)]` to allow generic const expressions")]
     pub(crate) help: bool,
     pub(crate) is_gca_const_items: bool,
-    #[help(
-        "consider factoring the expression into a `type const` item and use it as the const argument instead"
-    )]
+    #[help("consider wrapping the expression in the `gca!` macro")]
     pub(crate) help_gca: bool,
     #[help(
-        "alternatively, you can use `#![feature(gca_const_items)]` and extract the expression into a `type const` item"
+        "alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro"
     )]
     pub(crate) help_suggest_gca: bool,
 }
@@ -523,6 +521,20 @@ pub(crate) struct BindingInNeverPattern {
         style = "short"
     )]
     pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("cannot use `{$ident}` in this move expression")]
+pub(crate) struct CannotUseInnerLocalInMoveExpr {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+    #[label("`{$ident}` is defined here")]
+    pub(crate) binding_span: Span,
+    #[label("this expression is evaluated outside that scope")]
+    pub(crate) move_expr_span: Span,
+    #[label("`{$ident}` is defined within this scope")]
+    pub(crate) scope_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -770,8 +782,11 @@ pub(crate) struct MaybeMissingMacroRulesName {
 }
 
 #[derive(Subdiagnostic)]
-#[help("have you added the `#[macro_use]` on the module/import?")]
-pub(crate) struct AddedMacroUse;
+#[help("you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import")]
+pub(crate) struct AddedMacroUse {
+    #[primary_span]
+    pub(crate) span: MultiSpan,
+}
 
 #[derive(Subdiagnostic)]
 #[suggestion("consider adding a derive", code = "{suggestion}", applicability = "maybe-incorrect")]
@@ -1472,6 +1487,14 @@ pub(crate) struct MacroIsPrivate {
 #[diag("unused macro definition: `{$name}`")]
 pub(crate) struct UnusedMacroDefinition {
     pub name: Symbol,
+    #[suggestion(
+        "consider annotating the enclosing module with `#[macro_use]`",
+        code = "#[macro_use]\n",
+        applicability = "machine-applicable"
+    )]
+    pub unannotated_mod: Option<Span>,
+    #[label("the macro is exported by its enclosing module")]
+    pub annotated_mod: Option<Span>,
 }
 
 #[derive(Diagnostic)]
@@ -1748,4 +1771,146 @@ pub(crate) enum UnusedImportsSugg {
         remove_spans: Vec<Span>,
         num_to_remove: usize,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag("attribute macro `{$attr_path}` is ambiguous")]
+#[note("ambiguous because of a name conflict with a tool namespace")]
+#[note("`{$tool}` could refer to a tool namespace")]
+pub(crate) struct ToolAttrAmbiguity {
+    #[primary_span]
+    pub path_span: Span,
+    pub attr_path: String,
+    pub tool: Symbol,
+}
+
+pub(crate) struct DuplicateLangItem {
+    pub local_span: Option<Span>,
+    pub lang_item_name: Symbol,
+    pub crate_name: Symbol,
+    pub dependency_of: Option<Symbol>,
+    pub is_local: bool,
+    pub path: String,
+    pub first_defined_span: Option<Span>,
+    pub orig_crate_name: Option<Symbol>,
+    pub orig_dependency_of: Option<Symbol>,
+    pub orig_is_local: bool,
+    pub orig_path: String,
+    pub(crate) duplicate: Duplicate,
+}
+
+impl Diagnostic<'_> for DuplicateLangItem {
+    #[track_caller]
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            match self.duplicate {
+                Duplicate::Plain => msg!("found duplicate lang item `{$lang_item_name}`"),
+                Duplicate::Crate => {
+                    msg!("duplicate lang item in crate `{$crate_name}`: `{$lang_item_name}`")
+                }
+                Duplicate::CrateDepends => msg!(
+                    "duplicate lang item in crate `{$crate_name}` (which `{$dependency_of}` depends on): `{$lang_item_name}`"
+                ),
+            },
+        );
+        diag.code(E0152);
+        diag.arg("lang_item_name", self.lang_item_name);
+        diag.arg("crate_name", self.crate_name);
+        if let Some(dependency_of) = self.dependency_of {
+            diag.arg("dependency_of", dependency_of);
+        }
+        diag.arg("path", self.path);
+        if let Some(orig_crate_name) = self.orig_crate_name {
+            diag.arg("orig_crate_name", orig_crate_name);
+        }
+        if let Some(orig_dependency_of) = self.orig_dependency_of {
+            diag.arg("orig_dependency_of", orig_dependency_of);
+        }
+        diag.arg("orig_path", self.orig_path);
+        if let Some(span) = self.local_span {
+            diag.span(span);
+        }
+        if let Some(span) = self.first_defined_span {
+            diag.span_note(span, msg!("the lang item is first defined here"));
+        } else {
+            if self.orig_dependency_of.is_none() {
+                diag.note(msg!("the lang item is first defined in crate `{$orig_crate_name}`"));
+            } else {
+                diag.note(msg!("the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)"));
+            }
+
+            if self.orig_is_local {
+                diag.note(msg!("first definition in the local crate (`{$orig_crate_name}`)"));
+            } else {
+                diag.note(msg!(
+                    "first definition in `{$orig_crate_name}` loaded from {$orig_path}"
+                ));
+            }
+
+            if self.is_local {
+                diag.note(msg!("second definition in the local crate (`{$crate_name}`)"));
+            } else {
+                diag.note(msg!("second definition in `{$crate_name}` loaded from {$path}"));
+            }
+        }
+        diag
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[panic_handler]` function required, but not found")]
+pub(crate) struct MissingPanicHandler;
+
+#[derive(Diagnostic)]
+#[diag("unwinding panics are not supported without std")]
+#[help("using nightly cargo, use -Zbuild-std with panic=\"abort\" to avoid unwinding")]
+#[note(
+    "since the core library is usually precompiled with panic=\"unwind\", rebuilding your crate with panic=\"abort\" may not be enough to fix the problem"
+)]
+pub(crate) struct PanicUnwindWithoutStd;
+
+#[derive(Diagnostic)]
+#[diag("lang items are not allowed in stable dylibs")]
+pub(crate) struct IncorrectCrateType {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`{$name}` lang item must be applied to a {$kind} with {$at_least ->
+        [true] at least {$num}
+        *[false] {$num}
+    } generic {$num ->
+        [one] argument
+        *[other] arguments
+    }", code = E0718)]
+pub(crate) struct IncorrectTarget<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[label(
+        "this {$kind} has {$actual_num} generic {$actual_num ->
+            [one] argument
+            *[other] arguments
+        }"
+    )]
+    pub generics_span: Span,
+    pub name: &'a str, // cannot be symbol because it renders e.g. `r#fn` instead of `fn`
+    pub kind: &'static str,
+    pub num: usize,
+    pub actual_num: usize,
+    pub at_least: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag("lang item required, but not found: `{$name}`")]
+#[note(
+    "this can occur when a binary crate with `#![no_std]` is compiled for a target where `{$name}` is defined in the standard library"
+)]
+#[help(
+    "you may be able to compile for a target that doesn't need `{$name}`, specify a target with `--target` or in `.cargo/config`"
+)]
+pub(crate) struct MissingLangItem {
+    pub name: Symbol,
 }

@@ -894,7 +894,7 @@ pub(crate) struct NoAssociatedItem<'tcx> {
 )]
 pub(crate) struct CandidateTraitNote {
     #[primary_span]
-    pub span: Span,
+    pub span: MultiSpan,
     pub trait_name: String,
     pub item_name: Ident,
     pub action_or_ty: String,
@@ -1393,4 +1393,12 @@ pub(crate) struct WrapConstBlock {
     pub left: Span,
     #[suggestion_part(code = " }}")]
     pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("the `{$adt_name}` must contain one field for wrapping the return value in delegation")]
+pub(crate) struct DelegationInvalidAdtForReturnWrapping {
+    #[primary_span]
+    pub span: Span,
+    pub adt_name: String,
 }

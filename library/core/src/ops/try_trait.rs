@@ -118,12 +118,12 @@ use crate::ops::ControlFlow;
     on(
         all(from_desugaring = "TryBlock"),
         message = "a `try` block must return `Result` or `Option` \
-                    (or another type that implements `{This}`)",
+                    (or another type that implements `{this}`)",
         label = "could not wrap the final value of the block as `{Self}` doesn't implement `Try`",
     ),
     on(
         all(from_desugaring = "QuestionMark"),
-        message = "the `?` operator can only be applied to values that implement `{This}`",
+        message = "the `?` operator can only be applied to values that implement `{this}`",
         label = "the `?` operator cannot be applied to type `{Self}`"
     )
 )]
@@ -232,7 +232,7 @@ pub const trait Try: [const] FromResidual {
             R = "core::option::Option<!>",
         ),
         message = "the `?` operator can only be used on `Result`s, not `Option`s, \
-            in {ItemContext} that returns `Result`",
+            in {item_context} that returns `Result`",
         label = "use `.ok_or(...)?` to provide an error compatible with `{Self}`",
         parent_label = "this function returns a `Result`"
     ),
@@ -245,7 +245,7 @@ pub const trait Try: [const] FromResidual {
         // `From` in `?`, so this is not shown for result-in-result errors,
         // and thus it can be phrased more strongly than `ControlFlow`'s.
         message = "the `?` operator can only be used on `Result`s \
-            in {ItemContext} that returns `Result`",
+            in {item_context} that returns `Result`",
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
         parent_label = "this function returns a `Result`"
     ),
@@ -256,7 +256,7 @@ pub const trait Try: [const] FromResidual {
             R = "core::result::Result<T, E>",
         ),
         message = "the `?` operator can only be used on `Option`s, not `Result`s, \
-            in {ItemContext} that returns `Option`",
+            in {item_context} that returns `Option`",
         label = "use `.ok()?` if you want to discard the `{R}` error information",
         parent_label = "this function returns an `Option`"
     ),
@@ -268,7 +268,7 @@ pub const trait Try: [const] FromResidual {
         // `Option`-in-`Option` always works, as there's only one possible
         // residual, so this can also be phrased strongly.
         message = "the `?` operator can only be used on `Option`s \
-            in {ItemContext} that returns `Option`",
+            in {item_context} that returns `Option`",
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
         parent_label = "this function returns an `Option`"
     ),
@@ -278,7 +278,7 @@ pub const trait Try: [const] FromResidual {
             Self = "core::ops::control_flow::ControlFlow<B, C>",
             R = "core::ops::control_flow::ControlFlow<B, C>",
         ),
-        message = "the `?` operator in {ItemContext} that returns `ControlFlow<B, _>` \
+        message = "the `?` operator in {item_context} that returns `ControlFlow<B, _>` \
             can only be used on other `ControlFlow<B, _>`s (with the same Break type)",
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
         parent_label = "this function returns a `ControlFlow`",
@@ -291,16 +291,16 @@ pub const trait Try: [const] FromResidual {
             // `R` is not a `ControlFlow`, as that case was matched previously
         ),
         message = "the `?` operator can only be used on `ControlFlow`s \
-            in {ItemContext} that returns `ControlFlow`",
+            in {item_context} that returns `ControlFlow`",
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
         parent_label = "this function returns a `ControlFlow`",
     ),
     on(
         all(from_desugaring = "QuestionMark"),
-        message = "the `?` operator can only be used in {ItemContext} \
+        message = "the `?` operator can only be used in {item_context} \
                     that returns `Result` or `Option` \
-                    (or another type that implements `{This}`)",
-        label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
+                    (or another type that implements `{this}`)",
+        label = "cannot use the `?` operator in {item_context} that returns `{Self}`",
         parent_label = "this function should return `Result` or `Option` to accept `?`"
     ),
 )]

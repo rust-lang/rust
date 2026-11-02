@@ -36,6 +36,10 @@ pub mod process;
 pub mod raw;
 pub mod thread;
 
+#[unstable(feature = "codeview_annotation", issue = "163964")]
+#[cfg(windows)]
+pub use core::os::windows::{CodeViewAnnotationArgs, codeview_annotation};
+
 /// A prelude for conveniently writing platform-specific code.
 ///
 /// Includes all extension traits, and some important type definitions.

@@ -1,4 +1,4 @@
-// rustfmt-short_array_element_width_threshold: 10
+//@ rustfmt-short_array_element_width_threshold: 10
 
 fn main() {
     pub const FORMAT_TEST: [u64; 5] = [

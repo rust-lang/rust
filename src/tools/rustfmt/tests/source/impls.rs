@@ -1,4 +1,4 @@
-// rustfmt-normalize_comments: true
+//@ rustfmt-normalize_comments: true
 impl Foo for Bar { fn foo() { "hi" } }
 
 pub impl Foo for Bar {

@@ -1,0 +1,27 @@
+error: attribute macro `my_tool::attr` is ambiguous
+  --> $DIR/no_implicit_prelude.rs:10:7
+   |
+LL |     #[my_tool::attr(Debug)]
+   |       ^^^^^^^^^^^^^
+   |
+   = note: ambiguous because of a name conflict with a tool namespace
+   = note: `my_tool` could refer to a tool namespace
+
+error: attribute macro `clippy::format_args` is ambiguous
+  --> $DIR/no_implicit_prelude.rs:22:7
+   |
+LL |     #[clippy::format_args(Debug)]
+   |       ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: ambiguous because of a name conflict with a tool namespace
+   = note: `clippy` could refer to a tool namespace
+
+error[E0433]: cannot find module or crate `rustfmt` in this scope
+  --> $DIR/no_implicit_prelude.rs:20:7
+   |
+LL |     #[rustfmt::skip]
+   |       ^^^^^^^ use of unresolved module or unlinked crate `rustfmt`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

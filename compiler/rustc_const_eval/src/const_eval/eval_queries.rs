@@ -42,7 +42,7 @@ fn retry_codegen_mode_with_postanalysis<'tcx, K: TypeVisitable<TyCtxt<'tcx>>, V>
         }
         ty::TypingMode::Coherence
         | ty::TypingMode::Typeck { .. }
-        | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+        | ty::TypingMode::PostTypeckThroughBorrowck { .. }
         | ty::TypingMode::PostBorrowck { .. }
         | ty::TypingMode::Reflection
         | ty::TypingMode::PostAnalysis => {}
@@ -108,6 +108,19 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
         with_no_trimmed_paths!(ecx.tcx.def_path_str(cid.instance.def_id())),
         cid.promoted.map_or_else(String::new, |p| format!("::{p:?}"))
     );
+
+    // We are about to initialize a frame without any arguments,
+    // and without `#[track_caller]` support.
+    // Make sure that the body expects this.
+    // Note: Promoteds don't require a caller location,
+    // even when inside an `Instance` with `#[track_caller]`
+    assert_eq!(body.arg_count, 0);
+    if cid.promoted.is_none() && cid.instance.def.requires_caller_location(tcx) {
+        // FIXME: Once #131787 is fixed, turn this delayed bug into an assertion.
+        throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
+            tcx.dcx().span_delayed_bug(body.span, "can't evaluate body with `#[track_caller]`")
+        )));
+    }
 
     // This can't use `init_stack_frame` since `body` is not a function,
     // so computing its ABI would fail. It's also not worth it since there are no arguments to pass.

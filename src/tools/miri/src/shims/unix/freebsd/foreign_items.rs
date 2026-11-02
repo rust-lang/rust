@@ -1,4 +1,3 @@
-use rustc_abi::CanonAbi;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
@@ -24,8 +23,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match link_name.as_str() {
             // Threading
             "pthread_setname_np" => {
-                let [thread, name] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [thread, name] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(libc::pthread_t, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let max_len = u64::MAX; // FreeBSD does not seem to have a limit.
                 let res = match this.pthread_setname_np(
                     this.read_scalar(thread)?,
@@ -39,8 +40,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "pthread_getname_np" => {
-                let [thread, name, len] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [thread, name, len] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(libc::pthread_t, *_, usize) -> i32),
+                    (link_name, abi, args),
+                )?;
                 // FreeBSD's pthread_getname_np uses strlcpy, which truncates the resulting value,
                 // but always adds a null terminator (except for zero-sized buffers).
                 // https://github.com/freebsd/freebsd-src/blob/c2d93a803acef634bd0eede6673aeea59e90c277/lib/libthr/thread/thr_info.c#L119-L144
@@ -57,15 +60,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "pthread_getthreadid_np" => {
-                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn() -> i32), (link_name, abi, args))?;
                 let result = this.unix_gettid(link_name.as_str())?;
                 this.write_scalar(result, dest)?;
             }
 
             "cpuset_getaffinity" => {
                 // The "same" kind of api as `sched_getaffinity` but more fine grained control for FreeBSD specifically.
-                let [level, which, id, set_size, mask] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [level, which, id, set_size, mask] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, i32, i64, usize, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
 
                 let level = this.read_scalar(level)?.to_i32()?;
                 let which = this.read_scalar(which)?.to_i32()?;
@@ -136,14 +142,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Synchronization primitives
             "_umtx_op" => {
-                let [obj, op, val, uaddr, uaddr2] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [obj, op, val, uaddr, uaddr2] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*_, i32, usize, *_, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this._umtx_op(obj, op, val, uaddr, uaddr2, dest)?;
             }
 
             // Miscellaneous
             "__error" => {
-                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn() -> *_), (link_name, abi, args))?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
@@ -151,8 +160,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FreeBSD uses __xuname under the hood to implement uname, see:
                 // https://github.com/freebsd/freebsd-src/blob/3542d60fb8042474f66fbf2d779ed8c5a80d0f78/sys/sys/utsname.h#L64
                 // https://github.com/freebsd/freebsd-src/blob/3542d60fb8042474f66fbf2d779ed8c5a80d0f78/lib/libc/gen/uname.c#L44
-                let [size, uname] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_) -> i32),
+                let [size, uname] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *libc::utsname) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.uname(uname, Some(size))?;
@@ -162,8 +171,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "pthread_attr_get_np" if this.frame_in_std() => {
-                let [_thread, _attr] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [_thread, _attr] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(libc::pthread_t, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.write_null(dest)?;
             }
 

@@ -78,7 +78,7 @@ union Data<T, F> {
 /// }
 /// ```
 #[stable(feature = "lazy_cell", since = "1.80.0")]
-pub struct LazyLock<T, F = fn() -> T> {
+pub struct LazyLock<#[rustc_assert_variance(invariant)] T, F = fn() -> T> {
     // FIXME(nonpoison_once): if possible, switch to nonpoison version once it is available
     once: Once,
     data: UnsafeCell<Data<T, F>>,

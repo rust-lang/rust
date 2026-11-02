@@ -977,7 +977,6 @@ ui/feature-gates/issue-43106-gating-of-proc_macro_derive.rs
 ui/feature-gates/issue-43106-gating-of-stable.rs
 ui/feature-gates/issue-43106-gating-of-test.rs
 ui/feature-gates/issue-43106-gating-of-unstable.rs
-ui/feature-gates/issue-49983-see-issue-0.rs
 ui/fmt/issue-103826.rs
 ui/fmt/issue-104142.rs
 ui/fmt/issue-23781.rs
@@ -2395,8 +2394,6 @@ ui/rust-2018/uniform-paths/issue-55779.rs
 ui/rust-2018/uniform-paths/issue-56596-2.rs
 ui/rust-2018/uniform-paths/issue-56596.rs
 ui/rust-2018/uniform-paths/issue-87932.rs
-ui/sanitizer/issue-111184-cfi-coroutine-witness.rs
-ui/sanitizer/issue-114275-cfi-const-expr-in-arry-len.rs
 ui/sanitizer/issue-72154-address-lifetime-markers.rs
 ui/self/issue-61882-2.rs
 ui/self/issue-61882.rs

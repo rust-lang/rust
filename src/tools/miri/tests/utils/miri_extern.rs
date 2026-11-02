@@ -13,7 +13,7 @@ pub struct MiriFrame {
     // The function pointer to the function currently being executed.
     // This can be compared against function pointers obtained by
     // casting a function (e.g. `my_fn as *mut ()`)
-    pub fn_ptr: *mut (),
+    pub fn_ptr: *mut core::ffi::c_void,
 }
 
 #[cfg(miri)]
@@ -48,8 +48,8 @@ extern "Rust" {
     pub fn miri_resolve_frame_names(
         ptr: *mut (),
         flags: u64,
-        name_buf: *mut (),
-        filename_buf: *mut (),
+        name_buf: *mut u8,
+        filename_buf: *mut u8,
     );
 
     /// Miri-provided extern function to begin unwinding with the given payload.

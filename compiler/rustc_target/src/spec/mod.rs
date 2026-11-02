@@ -1511,6 +1511,7 @@ supported_targets! {
     ("thumbv7a-pc-windows-msvc", thumbv7a_pc_windows_msvc),
     ("thumbv7a-uwp-windows-msvc", thumbv7a_uwp_windows_msvc),
 
+    ("wasm32-none-component", wasm32_none_component),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32v1-none", wasm32v1_none),
@@ -1656,6 +1657,8 @@ supported_targets! {
     ("x86_64-unknown-none", x86_64_unknown_none),
 
     ("aarch64-unknown-teeos", aarch64_unknown_teeos),
+
+    ("aarch64-unknown-qtee", aarch64_unknown_qtee),
 
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 
@@ -1878,6 +1881,7 @@ crate::target_spec_enum! {
         Psp = "psp",
         Psx = "psx",
         Qnx = "qnx",
+        Qtee = "qtee",
         Qurt = "qurt",
         Redox = "redox",
         Rtems = "rtems",

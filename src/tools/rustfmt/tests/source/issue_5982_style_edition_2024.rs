@@ -1,4 +1,4 @@
-// rustfmt-style_edition: 2024
+//@ rustfmt-style_edition: 2024
 
 struct Foo {
     #[cfg(all())]

@@ -70,4 +70,41 @@ fn main() {
         | 255 => 6,
         | _ => 7,
     };
+
+    char_literal();
+    byte_literal();
+}
+
+fn char_literal() {
+    let ch = '0';
+
+    matches!(ch, 'a' | 'b' | 'c' | 'd' | 'e');
+    //~^ manual_range_patterns
+    matches!(ch, '0' | '1' | '2' | '3' | '4');
+    //~^ manual_range_patterns
+
+    // FIXME: Reduce to 'A'..='Z' | '[' | '\\' | ']' | '^' | '_' | '`' | 'a'..='z'
+    #[rustfmt::skip]
+    matches!(ch, 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' |
+        'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' | '[' | '\\' | ']' |
+        '^' | '_' | '`' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' |
+        'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z');
+
+    matches!(ch, '0' | '1' | '2' | '4'); // '3' is missing
+    matches!(ch, 'A' | 'B' | 'c' | 'd' | 'e'); // 'C'..'c' is missing
+    matches!(ch, '<' | '=' | '>'); // range is not intuitive
+    matches!(ch, '/' | '0'..='9'); // range is not intuitive
+}
+fn byte_literal() {
+    let byte = b'0';
+
+    matches!(byte, b'a' | b'b' | b'c' | b'd' | b'e');
+    //~^ manual_range_patterns
+    matches!(byte, b'0' | b'1' | b'2' | b'3' | b'4');
+    //~^ manual_range_patterns
+
+    matches!(byte, b'0' | b'1' | b'2' | b'4'); // b'3' is missing
+    matches!(byte, b'A' | b'B' | b'c' | b'd' | b'e'); // b'C'..b'c' is missing
+    matches!(byte, b'<' | b'=' | b'>'); // range is not intuitive
+    matches!(byte, b'/' | b'0'..=b'9'); // range is not intuitive
 }

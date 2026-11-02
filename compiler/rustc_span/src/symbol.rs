@@ -11,6 +11,7 @@ use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{Decodable, Encodable, StableHash, symbols};
+use rustc_serialize::ContextOrd;
 
 use crate::edit_distance::find_best_match_for_name;
 use crate::{DUMMY_SP, Edition, Span, with_session_globals};
@@ -219,7 +220,6 @@ symbols! {
         Equal,
         Err,
         ExitCode,
-        Expected,
         ExternC,
         ExternRust,
         Float,
@@ -233,7 +233,6 @@ symbols! {
         FnPtrToPtr,
         Formatter,
         Forward,
-        Found,
         From,
         FromIterator,
         FromResidual,
@@ -257,7 +256,6 @@ symbols! {
         IoBufReader,
         IrTyKind,
         Item,
-        ItemContext,
         Iterator,
         IteratorItem,
         IteratorMap,
@@ -333,7 +331,6 @@ symbols! {
         SliceIndex,
         Some,
         Source,
-        SpanCtxt,
         StdinLock,
         Str,
         String,
@@ -361,7 +358,6 @@ symbols! {
         Type,
         TypeVisitable,
         Union,
-        Unresolved,
         Unsafe,
         UnsafeFnPointer,
         Unsize,
@@ -564,6 +560,7 @@ symbols! {
         bits,
         bitxor,
         bitxor_assign,
+        bivariant,
         black_box,
         block,
         blocking,
@@ -605,10 +602,7 @@ symbols! {
         catch_unwind,
         cause,
         cdylib,
-        ceilf16,
-        ceilf32,
-        ceilf64,
-        ceilf128,
+        ceil,
         cfg,
         cfg_accessible,
         cfg_attr,
@@ -666,6 +660,7 @@ symbols! {
         cmpxchg16b_target_feature,
         cmse_nonsecure_entry,
         code,
+        codeview_annotation,
         coerce_pointee_validated,
         coerce_shared,
         coerce_shared_target,
@@ -674,6 +669,7 @@ symbols! {
         cold,
         cold_path,
         collapse_debuginfo,
+        color,
         column,
         compare_bytes,
         compare_exchange,
@@ -747,6 +743,7 @@ symbols! {
         contracts_ensures,
         contracts_internals,
         contracts_requires,
+        contravariant,
         convert,
         coprocessor,
         copy,
@@ -769,6 +766,7 @@ symbols! {
         coroutines,
         cos,
         count,
+        covariant,
         covariant_unsafe_cell,
         coverage,
         coverage_attribute,
@@ -804,8 +802,8 @@ symbols! {
         debug_assert_macro,
         debug_assert_ne_macro,
         debug_assertions,
+        debug_c_like_enum_write_str,
         debug_struct_fields_finish,
-        debug_tuple_fields_finish,
         debugger_visualizer,
         decl_macro,
         declare_lint_pass,
@@ -838,7 +836,6 @@ symbols! {
         deref_target,
         derive,
         derive_const,
-        derive_const_issue: "118304",
         derive_default_enum,
         derive_from,
         derive_smart_pointer,
@@ -881,6 +878,7 @@ symbols! {
         dreg,
         dreg_low8,
         dreg_low16,
+        dret,
         drop,
         drop_glue,
         drop_in_place,
@@ -1006,23 +1004,14 @@ symbols! {
         final_associated_functions,
         float_mul_add_relaxed,
         float_to_int_unchecked,
-        floorf16,
-        floorf32,
-        floorf64,
-        floorf128,
+        floor,
+        fma,
         fma4_target_feature,
-        fmaf16,
-        fmaf32,
-        fmaf64,
-        fmaf128,
         fmt,
         fmt_debug,
         fmul_algebraic,
         fmul_fast,
-        fmuladdf16,
-        fmuladdf32,
-        fmuladdf64,
-        fmuladdf128,
+        fmuladd,
         fn_align,
         fn_body,
         fn_delegation,
@@ -1048,6 +1037,7 @@ symbols! {
         format_macro,
         format_placeholder,
         format_unsafe_arg,
+        found,
         fp,
         fpregs,
         framework,
@@ -1071,6 +1061,7 @@ symbols! {
         fsub_algebraic,
         fsub_fast,
         full,
+        function_arg_const_generics,
         fundamental,
         fused_iterator,
         future_output,
@@ -1188,7 +1179,9 @@ symbols! {
         into_iter,
         into_try_type,
         intra_doc_pointers,
+        intrinsic_fallback_is_spec,
         intrinsics,
+        invariant,
         irrefutable_let_patterns,
         is,
         is_auto,
@@ -1201,6 +1194,7 @@ symbols! {
         issue_5723_bootstrap,
         issue_tracker_base_url,
         item,
+        item_context,
         item_like_imports,
         iter,
         iter_mut,
@@ -1301,6 +1295,7 @@ symbols! {
         manually_drop,
         map,
         map_err,
+        marked_unchecked_type_aliases,
         marker,
         marker_trait_attr,
         masked,
@@ -1510,6 +1505,7 @@ symbols! {
         offload,
         offload_get_num_devices,
         offload_kernel,
+        offload_region,
         offset,
         offset_of,
         offset_of_enum,
@@ -1628,14 +1624,8 @@ symbols! {
         powerpc,
         powerpc64,
         powerpc_target_feature,
-        powf16,
-        powf32,
-        powf64,
-        powf128,
-        powif16,
-        powif32,
-        powif64,
-        powif128,
+        powf,
+        powi,
         ppcf128,
         pre_dash_lto: "pre-lto",
         precise_capturing,
@@ -1765,6 +1755,7 @@ symbols! {
         residual,
         result,
         result_ffi_guarantees,
+        resumable_breakpoint,
         return_address,
         return_position_impl_trait_in_trait,
         return_type_notation,
@@ -1777,14 +1768,8 @@ symbols! {
         ropi_rwpi: "ropi-rwpi",
         rotate_left,
         rotate_right,
-        round_ties_even_f16,
-        round_ties_even_f32,
-        round_ties_even_f64,
-        round_ties_even_f128,
-        roundf16,
-        roundf32,
-        roundf64,
-        roundf128,
+        round,
+        round_ties_even,
         rtm_target_feature,
         runtime,
         rust,
@@ -1817,6 +1802,7 @@ symbols! {
         rustc_allowed_through_unstable_modules,
         rustc_always_gca,
         rustc_as_ptr,
+        rustc_assert_variance,
         rustc_attrs,
         rustc_autodiff,
         rustc_builtin_macro,
@@ -1913,6 +1899,7 @@ symbols! {
         rustc_regions,
         rustc_scalable_vector,
         rustc_should_not_be_called_on_const_items,
+        rustc_show_spans,
         rustc_simd_monomorphize_lane_limit,
         rustc_skip_during_method_dispatch,
         rustc_specialization_trait,
@@ -1922,11 +1909,13 @@ symbols! {
         rustc_test_marker,
         rustc_then_this_would_need,
         rustc_trivial_field_reads,
+        rustc_unchecked_type_alias,
         // FIXME(#159429): temporary rename to avoid `#[unroll]` nameres ambiguity
         rustc_unroll,
         rustdoc,
         rustdoc_internals,
         rustdoc_missing_doc_code_examples,
+        rustdoc_skip_body,
         rustfmt,
         rvalue_static_promotion,
         rvector,
@@ -2073,10 +2062,7 @@ symbols! {
         splat,
         splatted_index,
         spotlight,
-        sqrtf16,
-        sqrtf32,
-        sqrtf64,
-        sqrtf128,
+        sqrt,
         sreg,
         sreg_low16,
         sse,
@@ -2170,6 +2156,7 @@ symbols! {
         test_removed_feature,
         test_runner,
         test_unstable_lint,
+        this,
         thread,
         thread_local,
         threadptr,
@@ -2199,10 +2186,7 @@ symbols! {
         transparent_unions,
         trivial_bounds,
         trivial_clone,
-        truncf16,
-        truncf32,
-        truncf64,
-        truncf128,
+        trunc,
         try_as_dyn,
         try_blocks,
         try_blocks_heterogeneous,
@@ -2318,6 +2302,7 @@ symbols! {
         unreachable_code,
         unreachable_display,
         unreachable_macro,
+        unresolved,
         unrestricted_attribute_tokens,
         unsafe_attributes,
         unsafe_binders,
@@ -2416,6 +2401,7 @@ symbols! {
         vtable_align,
         vtable_size,
         warn,
+        warnings,
         wasip2,
         wasm,
         wasm32,
@@ -2572,7 +2558,7 @@ impl Ident {
 impl PartialEq for Ident {
     #[inline]
     fn eq(&self, rhs: &Self) -> bool {
-        self.name == rhs.name && self.span.eq_ctxt(rhs.span)
+        self.name == rhs.name && self.span.ctxt() == rhs.span.ctxt()
     }
 }
 
@@ -2727,6 +2713,12 @@ impl fmt::Display for MacroRulesNormalizedIdent {
 /// implements `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(SymbolIndex);
+
+impl<E> ContextOrd<E> for Symbol {
+    fn stable_cmp_with_context(_context: E) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        StableCompare::stable_cmp
+    }
+}
 
 // Used within both `Symbol` and `ByteSymbol`.
 rustc_index::newtype_index! {
@@ -2896,7 +2888,15 @@ impl Interner {
     // `ByteSymbol`.
     fn prefill(init: &[&'static str], extra: &[&'static str]) -> Self {
         let values = init.iter().copied().chain(extra.iter().copied()).map(|str| str.as_bytes());
-        let (size_hint, _) = values.size_hint();
+        // At the time of writing, `helloworld` Check benchmark interns ~1k additional symbols.
+        // Some of the noisy ones (`include-blob`, `tt-muncher`, `externs`, `large-workspace`, etc.)
+        // are between 1k and 2k. Lowest number among non-artificial benchmarks is ~5k for `ucd`.
+        // This was chosen to make small, artificial benchmarks more stable, and to
+        // reduce resizing for normal code without regresing memory use for smaller crates.
+        // FIXME(panstromek): we could do better if we take into account whether this is
+        //  Debug/Opt build. Those builds intern at least 6k more symbols than Check ones.
+        let additional_capacity = 2400;
+        let size_hint = values.size_hint().0 + additional_capacity;
         let mut conflicting_values: Vec<&[u8]> = Vec::new();
 
         let mut indices: HashTable<(&'static [u8], u32)> = HashTable::with_capacity(size_hint);
@@ -2995,9 +2995,19 @@ pub mod kw {
 ///
 /// Given that `sym` is imported, use them like `sym::symbol_name`.
 /// For example `sym::rustfmt` or `sym::u8`.
-#[diagnostic::on_unknown(
-    label = "`{Unresolved}` is not a pre-interned symbol",
-    note = "consider adding `{Unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+#[cfg_attr(
+    bootstrap,
+    diagnostic::on_unknown(
+        label = "`{Unresolved}` is not a pre-interned symbol",
+        note = "consider adding `{Unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+    )
+)]
+#[cfg_attr(
+    not(bootstrap),
+    diagnostic::on_unknown(
+        label = "`{unresolved}` is not a pre-interned symbol",
+        note = "consider adding `{unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+    )
 )]
 pub mod sym {
     use super::Symbol;

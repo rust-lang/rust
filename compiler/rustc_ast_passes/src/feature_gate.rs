@@ -445,6 +445,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
     gate_all!(forced_keywords, "forced keywords are experimental");
     gate_all!(frontmatter, "frontmatters are experimental");
+    gate_all!(function_arg_const_generics, "function arg const generics are experimental");
     gate_all!(gca_min_const_items, "unbraced const blocks as const args are experimental");
     gate_all!(gen_blocks, "gen blocks are experimental");
     gate_all!(generic_const_items, "generic const items are experimental");
@@ -490,7 +491,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     );
     gate_all!(
         named_fn_trait_parameters,
-        "named parameters in parenthesized generic argument lists are experimental"
+        "parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental"
     );
 
     // `associated_const_equality` will be stabilized as part of `gca_min_const_items`.

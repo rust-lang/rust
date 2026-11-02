@@ -1,0 +1,24 @@
+error[E0080]: evaluation panicked: panic
+  --> tests/fail/intrinsics/codeview-annotation.rs:LL:CC
+   |
+LL | impl CodeViewAnnotationArgs for Args {
+LL |     const ARGS: &[&str] = panic!("panic");
+   |                           ^^^^^^^^^^^^^^^ evaluation of `<Args as std::intrinsics::CodeViewAnnotationArgs>::ARGS` failed here
+
+note: erroneous constant encountered
+  --> RUSTLIB/core/src/intrinsics/mod.rs:LL:CC
+   |
+LL |         let _ignore = T::ARGS;
+   |                       ^^^^^^^
+
+note: erroneous constant encountered
+  --> RUSTLIB/core/src/intrinsics/mod.rs:LL:CC
+   |
+LL | /     const {
+LL | |         let _ignore = T::ARGS;
+LL | |     }
+   | |_____^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

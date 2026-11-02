@@ -10,7 +10,7 @@ mod x86;
 use rand::RngExt;
 use rustc_abi::{Endian, Size};
 use rustc_middle::{mir, ty};
-use rustc_span::{Symbol, sym};
+use rustc_span::sym;
 use rustc_target::spec::Arch;
 
 use self::math::EvalContextExt as _;
@@ -59,13 +59,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
                 throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
             }
-            let intrinsic_fallback_is_spec = Symbol::intern("intrinsic_fallback_is_spec");
-            if this
+            let intrinsic_fallback_is_spec = this
                 .tcx
-                .get_attrs_by_path(instance.def_id(), &[sym::miri, intrinsic_fallback_is_spec])
+                .tool_attrs(
+                    instance.def_id(),
+                    &[sym::miri, sym::intrinsic_fallback_is_spec],
+                )
                 .next()
-                .is_none()
-            {
+                .is_some();
+            if !intrinsic_fallback_is_spec {
                 throw_unsup_format!(
                     "Miri can only use intrinsic fallback bodies that exactly reflect the specification: they fully check for UB and are as non-deterministic as possible. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_is_spec]` attribute to it; also ping @rust-lang/miri when you do that"
                 );
@@ -82,7 +84,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_intrinsic_by_name(
         &mut self,
         intrinsic_name: &str,
-        generic_args: ty::GenericArgsRef<'tcx>,
+        generic_args: ty::GenericArgs<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,

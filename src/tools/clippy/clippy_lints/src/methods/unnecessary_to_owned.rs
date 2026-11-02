@@ -17,7 +17,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind, OverloadedDeref};
 use rustc_middle::ty::{
-    self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionClause, TraitClause, Ty,
+    self, ClauseKind, GenericArg, GenericArgKind, GenericArgs, ParamTy, ProjectionClause, TraitClause, Ty,
 };
 use rustc_span::Symbol;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -451,12 +451,7 @@ fn skip_addr_of_ancestors<'tcx>(
 fn get_callee_generic_args_and_args<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
-) -> Option<(
-    DefId,
-    GenericArgsRef<'tcx>,
-    Option<&'tcx Expr<'tcx>>,
-    &'tcx [Expr<'tcx>],
-)> {
+) -> Option<(DefId, GenericArgs<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
     if let ExprKind::Call(callee, args) = expr.kind
         && let callee_ty = cx.typeck_results().expr_ty(callee)
         && let ty::FnDef(callee_def_id, _) = callee_ty.kind()

@@ -6,6 +6,7 @@
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use rustc_abi::Size;
 use rustc_ast_ir::Mutability;
 
 use crate::elaborate::Elaboratable;
@@ -231,8 +232,10 @@ pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
 
 #[rust_analyzer::prefer_underscore_import]
 pub trait ValueConst<I: Interner<ValueConst = Self>>: Copy + Debug + Hash + Eq {
+    fn new(ty: I::Ty, valtree: I::ValTree) -> Self;
     fn ty(self) -> I::Ty;
     fn valtree(self) -> I::ValTree;
+    fn try_to_target_usize(self, interner: I) -> Option<u64>;
 }
 
 #[rust_analyzer::prefer_underscore_import]
@@ -394,9 +397,9 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
         original_args: &[I::GenericArg],
     ) -> I::GenericArgs;
 
-    fn split_closure_args(self) -> ty::ClosureArgsParts<I>;
-    fn split_coroutine_closure_args(self) -> ty::CoroutineClosureArgsParts<I>;
-    fn split_coroutine_args(self) -> ty::CoroutineArgsParts<I>;
+    fn split_closure_args<'a>(&'a self) -> ty::ClosureArgsParts<'a, I>;
+    fn split_coroutine_closure_args<'a>(&'a self) -> ty::CoroutineClosureArgsParts<'a, I>;
+    fn split_coroutine_args<'a>(&'a self) -> ty::CoroutineArgsParts<'a, I>;
 
     fn as_closure(self) -> ty::ClosureArgs<I> {
         ty::ClosureArgs { args: self }
@@ -746,4 +749,15 @@ pub trait RegionName<I: Interner>: Copy + Hash + PartialEq + Eq + Debug {
 
 pub trait DefIdGetter<I: Interner>: Copy + Hash + PartialEq + Eq + Debug {
     fn get_def_id(self) -> Option<I::DefId>;
+}
+
+pub trait ScalarInt<I: Interner>: Copy + Debug + Hash + Eq {
+    fn to_scalar(self) -> I::Scalar;
+    fn try_from_uint(i: impl Into<u128>, size: Size) -> Option<Self>;
+}
+
+pub trait TypingEnv<I: Interner>: Copy + Clone + Debug + PartialEq + Eq + Hash {
+    fn fully_monomorphized() -> Self;
+    fn layout_size(self, interner: I, ty: I::Ty) -> Size;
+    fn post_analysis(interner: I, def_id: I::DefId) -> Self;
 }

@@ -613,21 +613,9 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     where
         Ty: PartialEq,
     {
-        // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will look
-        // at the type.
-        self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode) && {
-            // `fn_arg_sanity_check` accepts `PassMode::Direct` for some aggregates.
-            // That elevates any type difference to an ABI difference since we just use the
-            // full Rust type as the LLVM argument/return type.
-            if matches!(self.mode, PassMode::Direct(..))
-                && matches!(self.layout.backend_repr, BackendRepr::Memory { .. })
-            {
-                // For aggregates in `Direct` mode to be compatible, the types need to be equal.
-                self.layout.ty == other.layout.ty
-            } else {
-                true
-            }
-        }
+        // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will
+        // look at the type.
+        self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode)
     }
 }
 
@@ -809,7 +797,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 // x86-64 non-softfloat targets all require SSE2 so we can use SSE registers.
                 arg.layout.size.bits() <= 128
             }
-            // So far, we haven't implemented this logic for any other target.
+            Arch::AArch64 if spec.rustc_abi != Some(RustcAbi::Softfloat) => {
+                // aarch64 non-softfloat targets all require Neon
+                arg.layout.size.bits() <= 128
+            }
             _ => false,
         };
 

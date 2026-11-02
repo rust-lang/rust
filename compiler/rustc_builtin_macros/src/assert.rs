@@ -34,7 +34,7 @@ pub(crate) fn expand_assert<'cx>(
     let panic_path = || {
         if use_panic_2021(span) {
             // On edition 2021, we always call `$crate::panic::panic_2021!()`.
-            cx.path(call_site_span, cx.std_path(&[sym::panic, sym::panic_2021]))
+            cx.std_path(call_site_span, &[sym::panic, sym::panic_2021])
         } else {
             // Before edition 2021, we call `panic!()` unqualified,
             // such that it calls either `std::panic!()` or `core::panic!()`.
@@ -64,7 +64,7 @@ pub(crate) fn expand_assert<'cx>(
         // passed literally.
         let then = cx.expr_call_global(
             call_site_span,
-            cx.std_path(&[sym::panicking, sym::panic]),
+            cx.std_path(call_site_span, &[sym::panicking, sym::panic]),
             thin_vec![cx.expr_str(
                 DUMMY_SP,
                 Symbol::intern(&format!(

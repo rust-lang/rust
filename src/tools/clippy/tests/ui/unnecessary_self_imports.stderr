@@ -14,9 +14,9 @@ error: import ending with `::{self}`
   --> tests/ui/unnecessary_self_imports.rs:7:1
    |
 LL | use std::rc::{self};
-   | ^^^^^^^^^----------^
-   |          |
-   |          help: consider omitting `::{self}`: `rc`
+   | ^^^^^^^^^^^--------^
+   |            |
+   |            help: consider omitting `::{self}`
    |
    = note: this will slightly change semantics; any non-module items at the same path will also be imported
 
@@ -24,7 +24,9 @@ error: import ending with `::{self}`
   --> tests/ui/unnecessary_self_imports.rs:25:9
    |
 LL |         b::{self},
-   |         ^^^^^^^^^ help: consider omitting `::{self}`: `b`
+   |         ^--------
+   |          |
+   |          help: consider omitting `::{self}`
    |
    = note: this will slightly change semantics; any non-module items at the same path will also be imported
 
@@ -32,7 +34,9 @@ error: import ending with `::{self}`
   --> tests/ui/unnecessary_self_imports.rs:28:13
    |
 LL |             c::{self},
-   |             ^^^^^^^^^ help: consider omitting `::{self}`: `c`
+   |             ^--------
+   |              |
+   |              help: consider omitting `::{self}`
    |
    = note: this will slightly change semantics; any non-module items at the same path will also be imported
 
@@ -40,7 +44,9 @@ error: import ending with `::{self}`
   --> tests/ui/unnecessary_self_imports.rs:34:13
    |
 LL |             e::{self},
-   |             ^^^^^^^^^ help: consider omitting `::{self}`: `e`
+   |             ^--------
+   |              |
+   |              help: consider omitting `::{self}`
    |
    = note: this will slightly change semantics; any non-module items at the same path will also be imported
 
@@ -48,7 +54,9 @@ error: import ending with `::{self}`
   --> tests/ui/unnecessary_self_imports.rs:37:17
    |
 LL |                 f::{self}
-   |                 ^^^^^^^^^ help: consider omitting `::{self}`: `f`
+   |                 ^--------
+   |                  |
+   |                  help: consider omitting `::{self}`
    |
    = note: this will slightly change semantics; any non-module items at the same path will also be imported
 

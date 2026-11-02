@@ -22,11 +22,11 @@ help: there is a method `borrow_mut` with a similar name
 LL |     foo.borrow_mut();
    |               ++++
 
-error[E0277]: expected an `Fn(bool)` closure, found `Bar`
+error[E0277]: expected `Fn(bool)` signature, found `Bar`
   --> $DIR/method-suggestion-trait-with-extra-generics-no-ice.rs:18:43
    |
 LL |     let foo: Box<dyn Fn(bool) -> usize> = Box::new(Bar);
-   |                                           ^^^^^^^^^^^^^ expected an `Fn(bool)` closure, found `Bar`
+   |                                           ^^^^^^^^^^^^^ expected `Fn(bool)` signature, found `Bar`
    |
 help: the trait `Fn(bool)` is not implemented for `Bar`
   --> $DIR/method-suggestion-trait-with-extra-generics-no-ice.rs:15:1

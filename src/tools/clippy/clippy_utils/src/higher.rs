@@ -174,6 +174,7 @@ impl<'hir> IfLetOrMatch<'hir> {
         }
     }
 
+    /// Returns the [expression](Expr) scrutinized by this `if let` or `match` expression.
     pub fn scrutinee(&self) -> &'hir Expr<'hir> {
         match self {
             Self::Match(scrutinee, _, _) | Self::IfLet(scrutinee, _, _, _, _) => scrutinee,
@@ -212,6 +213,7 @@ pub struct Range<'a> {
     pub start: Option<&'a Expr<'a>>,
     /// The upper bound of the range, or `None` for ranges such as `X..`.
     pub end: Option<&'a Expr<'a>>,
+    /// The span of the range.
     pub span: Span,
 }
 
@@ -338,6 +340,7 @@ impl RangeTy {
         }
     }
 
+    /// Converts the current [range type](RangeTy) into its equivalent [`ast::RangeLimits`].
     pub fn limits(self) -> ast::RangeLimits {
         match self {
             RangeTy::RangeFrom => ast::RangeLimits::HalfOpen,
@@ -408,6 +411,7 @@ pub struct While<'hir> {
     pub body: &'hir Expr<'hir>,
     /// Span of the loop header
     pub span: Span,
+    /// The loop's label, if present
     pub label: Option<ast::Label>,
 }
 
@@ -449,6 +453,7 @@ pub struct WhileLet<'hir> {
     pub let_expr: &'hir Expr<'hir>,
     /// `while let` loop body
     pub if_then: &'hir Expr<'hir>,
+    /// The loop's label, if present
     pub label: Option<ast::Label>,
     /// `while let PAT = EXPR`
     ///        ^^^^^^^^^^^^^^

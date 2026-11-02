@@ -3,6 +3,7 @@ error: the `rustc_abi` attribute cannot be used on constants
    |
 LL | #[rustc_abi(debug)]
    |   ^^^^^^^^^
+LL | const C: () = ();
    |
    = help: the `rustc_abi` attribute can be applied to functions and type aliases
 
@@ -11,6 +12,7 @@ error: the `rustc_abi` attribute cannot be used on associated consts
    |
 LL |     #[rustc_abi(debug)]
    |       ^^^^^^^^^
+LL |     const C: () = ();
    |
    = help: the `rustc_abi` attribute can be applied to functions and type aliases
 
@@ -38,9 +40,7 @@ error: fn_abi_of(test) = FnAbi {
                        ty: u8,
                        layout: Layout {
                            size: Size(1 bytes),
-                           align: AbiAlign {
-                               abi: $SOME_ALIGN,
-                           },
+                           align: $SOME_ALIGN,
                            backend_repr: Scalar(
                                u8 is ..,
                            ),
@@ -71,9 +71,7 @@ error: fn_abi_of(test) = FnAbi {
                    ty: bool,
                    layout: Layout {
                        size: Size(1 bytes),
-                       align: AbiAlign {
-                           abi: $SOME_ALIGN,
-                       },
+                       align: $SOME_ALIGN,
                        backend_repr: Scalar(
                            u8 is 0..=1,
                        ),
@@ -121,9 +119,7 @@ error: fn_abi_of(test_unsized) = FnAbi {
                        ty: [u8],
                        layout: Layout {
                            size: Size(0 bytes),
-                           align: AbiAlign {
-                               abi: $SOME_ALIGN,
-                           },
+                           align: $SOME_ALIGN,
                            backend_repr: Memory {
                                sized: false,
                            },
@@ -165,9 +161,7 @@ error: fn_abi_of(test_unsized) = FnAbi {
                    ty: bool,
                    layout: Layout {
                        size: Size(1 bytes),
-                       align: AbiAlign {
-                           abi: $SOME_ALIGN,
-                       },
+                       align: $SOME_ALIGN,
                        backend_repr: Scalar(
                            u8 is 0..=1,
                        ),
@@ -215,9 +209,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                        ty: bool,
                        layout: Layout {
                            size: Size(1 bytes),
-                           align: AbiAlign {
-                               abi: $SOME_ALIGN,
-                           },
+                           align: $SOME_ALIGN,
                            backend_repr: Scalar(
                                u8 is 0..=1,
                            ),
@@ -254,9 +246,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                    ty: u8,
                    layout: Layout {
                        size: Size(1 bytes),
-                       align: AbiAlign {
-                           abi: $SOME_ALIGN,
-                       },
+                       align: $SOME_ALIGN,
                        backend_repr: Scalar(
                            u8 is ..,
                        ),
@@ -298,9 +288,7 @@ error: fn_abi_of(test_generic) = FnAbi {
                        ty: *const T,
                        layout: Layout {
                            size: $SOME_SIZE,
-                           align: AbiAlign {
-                               abi: $SOME_ALIGN,
-                           },
+                           align: $SOME_ALIGN,
                            backend_repr: Scalar(
                                pointer is $FULL,
                            ),
@@ -331,9 +319,7 @@ error: fn_abi_of(test_generic) = FnAbi {
                    ty: (),
                    layout: Layout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: $SOME_ALIGN,
-                       },
+                       align: $SOME_ALIGN,
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -378,9 +364,7 @@ error: ABIs are not compatible
                        ty: u8,
                        layout: Layout {
                            size: Size(1 bytes),
-                           align: AbiAlign {
-                               abi: $SOME_ALIGN,
-                           },
+                           align: $SOME_ALIGN,
                            backend_repr: Scalar(
                                u8 is ..,
                            ),
@@ -411,9 +395,7 @@ error: ABIs are not compatible
                    ty: (),
                    layout: Layout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: $SOME_ALIGN,
-                       },
+                       align: $SOME_ALIGN,
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -446,9 +428,7 @@ error: ABIs are not compatible
                        ty: u32,
                        layout: Layout {
                            size: $SOME_SIZE,
-                           align: AbiAlign {
-                               abi: $SOME_ALIGN,
-                           },
+                           align: $SOME_ALIGN,
                            backend_repr: Scalar(
                                u32 is ..,
                            ),
@@ -479,9 +459,7 @@ error: ABIs are not compatible
                    ty: (),
                    layout: Layout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: $SOME_ALIGN,
-                       },
+                       align: $SOME_ALIGN,
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -520,9 +498,7 @@ error: ABIs are not compatible
                        ty: [u8; 32],
                        layout: Layout {
                            size: Size(32 bytes),
-                           align: AbiAlign {
-                               abi: $SOME_ALIGN,
-                           },
+                           align: $SOME_ALIGN,
                            backend_repr: Memory {
                                sized: true,
                            },
@@ -560,9 +536,7 @@ error: ABIs are not compatible
                    ty: (),
                    layout: Layout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: $SOME_ALIGN,
-                       },
+                       align: $SOME_ALIGN,
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -595,9 +569,7 @@ error: ABIs are not compatible
                        ty: [u32; 32],
                        layout: Layout {
                            size: Size(128 bytes),
-                           align: AbiAlign {
-                               abi: $SOME_ALIGN,
-                           },
+                           align: $SOME_ALIGN,
                            backend_repr: Memory {
                                sized: true,
                            },
@@ -635,9 +607,7 @@ error: ABIs are not compatible
                    ty: (),
                    layout: Layout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: $SOME_ALIGN,
-                       },
+                       align: $SOME_ALIGN,
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -676,9 +646,7 @@ error: ABIs are not compatible
                        ty: f32,
                        layout: Layout {
                            size: $SOME_SIZE,
-                           align: AbiAlign {
-                               abi: $SOME_ALIGN,
-                           },
+                           align: $SOME_ALIGN,
                            backend_repr: Scalar(
                                f32 is ..,
                            ),
@@ -709,9 +677,7 @@ error: ABIs are not compatible
                    ty: (),
                    layout: Layout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: $SOME_ALIGN,
-                       },
+                       align: $SOME_ALIGN,
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -744,9 +710,7 @@ error: ABIs are not compatible
                        ty: u32,
                        layout: Layout {
                            size: $SOME_SIZE,
-                           align: AbiAlign {
-                               abi: $SOME_ALIGN,
-                           },
+                           align: $SOME_ALIGN,
                            backend_repr: Scalar(
                                u32 is ..,
                            ),
@@ -777,9 +741,7 @@ error: ABIs are not compatible
                    ty: (),
                    layout: Layout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: $SOME_ALIGN,
-                       },
+                       align: $SOME_ALIGN,
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -818,9 +780,7 @@ error: ABIs are not compatible
                        ty: i32,
                        layout: Layout {
                            size: $SOME_SIZE,
-                           align: AbiAlign {
-                               abi: $SOME_ALIGN,
-                           },
+                           align: $SOME_ALIGN,
                            backend_repr: Scalar(
                                i32 is ..,
                            ),
@@ -851,9 +811,7 @@ error: ABIs are not compatible
                    ty: (),
                    layout: Layout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: $SOME_ALIGN,
-                       },
+                       align: $SOME_ALIGN,
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -886,9 +844,7 @@ error: ABIs are not compatible
                        ty: u32,
                        layout: Layout {
                            size: $SOME_SIZE,
-                           align: AbiAlign {
-                               abi: $SOME_ALIGN,
-                           },
+                           align: $SOME_ALIGN,
                            backend_repr: Scalar(
                                u32 is ..,
                            ),
@@ -919,9 +875,7 @@ error: ABIs are not compatible
                    ty: (),
                    layout: Layout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: $SOME_ALIGN,
-                       },
+                       align: $SOME_ALIGN,
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -974,9 +928,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
                        ty: &S,
                        layout: Layout {
                            size: $SOME_SIZE,
-                           align: AbiAlign {
-                               abi: $SOME_ALIGN,
-                           },
+                           align: $SOME_ALIGN,
                            backend_repr: Scalar(
                                pointer is $NON_NULL,
                            ),
@@ -1015,9 +967,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
                    ty: (),
                    layout: Layout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: $SOME_ALIGN,
-                       },
+                       align: $SOME_ALIGN,
                        backend_repr: Memory {
                            sized: true,
                        },

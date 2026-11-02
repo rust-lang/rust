@@ -7,6 +7,7 @@ LL |     s.infer(0i32);
 note: method defined here
   --> $DIR/point-at-inference-4.rs:4:8
    |
+LL | impl<A, B> S<A, B> {
 LL |     fn infer(&self, a: A, b: B) {}
    |        ^^^^^              ----
 help: provide the argument

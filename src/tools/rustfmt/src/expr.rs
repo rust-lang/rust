@@ -1681,9 +1681,13 @@ pub(crate) fn rewrite_paren(
         pre_comment = rewrite_missing_comment(pre_span, shape, context)?;
         post_comment = rewrite_missing_comment(post_span, shape, context)?;
 
-        // Remove nested parens if there are no comments.
+        // Remove nested parens if there are no comments and no attributes.
         if let ast::ExprKind::Paren(ref subsubexpr) = subexpr.kind {
-            if remove_nested_parens && pre_comment.is_empty() && post_comment.is_empty() {
+            if remove_nested_parens
+                && pre_comment.is_empty()
+                && post_comment.is_empty()
+                && subexpr.attrs.is_empty()
+            {
                 span = subexpr.span;
                 subexpr = subsubexpr;
                 continue;

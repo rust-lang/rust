@@ -142,7 +142,7 @@ async unsafe extern "custom" fn no_async_fn() {
 }
 
 fn no_promotion_to_fn_trait(f: unsafe extern "custom" fn()) -> impl Fn() {
-    //~^ ERROR expected an `Fn()` closure, found `unsafe extern "custom" fn()`
+    //~^ ERROR expected `Fn()` signature, found `unsafe extern "custom" fn()`
     f
 }
 

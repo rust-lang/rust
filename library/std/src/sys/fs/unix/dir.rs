@@ -60,7 +60,7 @@ impl Dir {
     pub fn self_metadata(&self) -> io::Result<FileAttr> {
         // Reuse the implementation for files, which should work for all FDs.
         let fd = self.0.as_raw_fd();
-        let f = core::mem::ManuallyDrop::new(File(
+        let f = mem::ManuallyDrop::new(File(
             // SAFETY: we borrowed `self` so the FD will not be closed while this function runs.
             unsafe { FileDesc::from_raw_fd(fd) },
         ));

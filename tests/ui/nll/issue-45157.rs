@@ -29,3 +29,5 @@ fn main() {
         println!("{} {}", mref, nref)
     }
 }
+
+//@ reference: items.union.ref.borrow

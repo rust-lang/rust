@@ -1,6 +1,6 @@
-// rustfmt-format_macro_bodies: true
-// rustfmt-max_width: 82
-// rustfmt-fn_call_width: 76
+//@ rustfmt-format_macro_bodies: true
+//@ rustfmt-max_width: 82
+//@ rustfmt-fn_call_width: 76
 
 macro_rules! short {
     () => {

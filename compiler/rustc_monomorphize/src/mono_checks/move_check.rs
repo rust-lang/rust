@@ -24,6 +24,10 @@ pub(crate) fn check_moves<'tcx>(
     instance: Instance<'tcx>,
     body: &'tcx mir::Body<'tcx>,
 ) {
+    if tcx.move_size_limit().0 == 0 {
+        return;
+    }
+
     let mut visitor = MoveCheckVisitor { tcx, instance, body, move_size_spans: vec![] };
     for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
         visitor.visit_basic_block_data(bb, data)

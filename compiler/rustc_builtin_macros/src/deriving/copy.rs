@@ -1,4 +1,3 @@
-use rustc_ast::Safety;
 use rustc_expand::base::ExtCtxt;
 use rustc_span::Span;
 
@@ -15,14 +14,12 @@ pub(crate) fn expand_deriving_copy(
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, marker::Copy),
-        skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: false,
         additional_bounds: SmallVec::new(),
         supports_unions: true,
         methods: SmallVec::new(),
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
 
     trait_def.expand(cx, item, push);

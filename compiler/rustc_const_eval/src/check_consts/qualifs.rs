@@ -41,6 +41,11 @@ pub fn in_any_value_of_ty<'tcx>(
 /// To accomplish this, const-checking and promotion use a value-based analysis (as opposed to a
 /// type-based one). Qualifications propagate structurally across variables: If a local (or a
 /// projection of a local) is assigned a qualified value, that local itself becomes qualified.
+///
+/// Note that whenever this analysis relies on something being UB and hence impossible in
+/// well-defined code, it is crucial that const-eval actually detects that UB! Const-eval is not
+/// guaranteed to detect all UB, and if it would skip this particular UB we may end up executing
+/// code that has not been const-checked.
 pub trait Qualif {
     /// The name of the file used to debug the dataflow analysis that computes this qualif.
     const ANALYSIS_NAME: &'static str;
@@ -105,7 +110,7 @@ impl Qualif for HasMutInterior {
         let freeze_def_id = cx.tcx.require_lang_item(LangItem::Freeze, cx.body.span);
         let did = cx.body.source.def_id().expect_local();
 
-        let typing_env = if cx.tcx.use_typing_mode_post_typeck_until_borrowck() {
+        let typing_env = if cx.tcx.use_typing_mode_post_typeck_through_borrowck() {
             cx.typing_env
         } else {
             ty::TypingEnv::new(cx.typing_env.param_env, TypingMode::analysis_in_body(cx.tcx, did))

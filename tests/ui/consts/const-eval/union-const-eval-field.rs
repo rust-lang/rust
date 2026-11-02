@@ -37,3 +37,6 @@ fn main() {
     assert_eq!(read_field2(), 1.0);
     assert_eq!(read_field3(), unsafe { UNION.field3 });
 }
+
+//@ reference: items.union.fields.read
+//@ reference: items.union.fields.validity

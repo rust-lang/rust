@@ -1,12 +1,12 @@
-error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
+error[E0277]: expected `FnOnce<&'a i32>` signature, found `()`
   --> $DIR/closure-trait-ice-in-wfcheck-diagnostics.rs:11:17
    |
 LL |     fn foo() -> impl Sized
-   |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
+   |                 ^^^^^^^^^^ expected `FnOnce<&'a i32>` signature, found `()`
    |
    = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
 
-error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
+error[E0277]: expected `FnOnce<&'a i32>` signature, found `()`
   --> $DIR/closure-trait-ice-in-wfcheck-diagnostics.rs:11:5
    |
 LL | /     fn foo() -> impl Sized
@@ -14,7 +14,7 @@ LL | |
 LL | |
 LL | |     where
 LL | |         for<'a> <() as FnOnce<&'a i32>>::Output: Tr,
-   | |____________________________________________________^ expected an `FnOnce<&'a i32>` closure, found `()`
+   | |____________________________________________________^ expected `FnOnce<&'a i32>` signature, found `()`
    |
    = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
 

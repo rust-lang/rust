@@ -42,6 +42,7 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        _goal_lang_item: Option<SolverTraitLangItem>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
         if let Some(host_clause) = assumption.as_host_effect_clause()
@@ -339,7 +340,6 @@ where
             pred,
             requirements,
         )
-        .map_err(Into::into)
     }
 
     fn consider_builtin_async_fn_trait_candidates(
@@ -486,7 +486,7 @@ where
         let (_, proven_via) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
             let trait_goal: Goal<I, ty::TraitClause<I>> =
                 goal.with(ecx.cx(), goal.predicate.trait_ref);
-            ecx.compute_trait_goal(trait_goal).map_err(Into::into)
+            ecx.compute_trait_goal(trait_goal)
         })?;
         self.assemble_and_merge_candidates(
             proven_via,

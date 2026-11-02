@@ -1,4 +1,4 @@
-// rustfmt-normalize_doc_attributes: true
+//@ rustfmt-normalize_doc_attributes: true
 
 /// Foo
 ///

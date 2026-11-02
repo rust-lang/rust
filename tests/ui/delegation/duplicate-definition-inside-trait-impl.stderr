@@ -20,6 +20,7 @@ LL |     reuse Trait::foo;
 note: method defined here
   --> $DIR/duplicate-definition-inside-trait-impl.rs:4:8
    |
+LL | trait Trait {
 LL |     fn foo(&self) -> u32 { 0 }
    |        ^^^ -----
 help: provide the argument

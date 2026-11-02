@@ -21,7 +21,6 @@ use tracing::debug;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::traits::ObligationCause;
-use crate::ty::consts::ConstExt;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 
@@ -141,7 +140,7 @@ impl abi::Float {
             F16B => Ty::new_adt(
                 tcx,
                 tcx.adt_def(tcx.require_lang_item(LangItem::F16B, DUMMY_SP)),
-                ty::List::empty(),
+                ty::GenericArgs::empty(),
             ),
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
@@ -149,7 +148,7 @@ impl abi::Float {
             PpcF128 => Ty::new_adt(
                 tcx,
                 tcx.adt_def(tcx.require_lang_item(LangItem::PpcF128, DUMMY_SP)),
-                ty::List::empty(),
+                ty::GenericArgs::empty(),
             ),
         }
     }
@@ -1428,6 +1427,7 @@ pub fn codegen_handle_fn_abi_err<'tcx>(
     fn_abi_request: FnAbiRequest<'tcx>,
 ) -> ErrorGuaranteed {
     match err {
+        FnAbiError::Layout(LayoutError::ReferencesError(guar)) => guar,
         FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::InvalidSimd { .. }) => {
             tcx.dcx().emit_err(Spanned { span, node: err })
         }

@@ -1,0 +1,64 @@
+error: pinning a value with `Box::pin` when local pinning suffices
+  --> tests/ui/unnecessary_box_pin.rs:18:22
+   |
+LL |     accept_unpin_fut(Box::pin(fut()).as_mut());
+   |                      ^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-box-pin` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_box_pin)]`
+help: use the `pin!` macro
+   |
+LL -     accept_unpin_fut(Box::pin(fut()).as_mut());
+LL +     accept_unpin_fut(std::pin::pin!(fut()));
+   |
+
+error: pinning a value with `Box::pin` when local pinning suffices
+  --> tests/ui/unnecessary_box_pin.rs:21:18
+   |
+LL |     let mut bx = Box::pin(fut());
+   |                  ^^^^^^^^^^^^^^^
+   |
+help: use the `pin!` macro
+   |
+LL -     let mut bx = Box::pin(fut());
+LL +     let mut bx = std::pin::pin!(fut());
+   |
+
+error: pinning a value with `Box::pin` when local pinning suffices
+  --> tests/ui/unnecessary_box_pin.rs:26:26
+   |
+LL |     let _: Pin<&mut _> = Box::pin(fut()).as_mut();
+   |                          ^^^^^^^^^^^^^^^
+   |
+help: use the `pin!` macro
+   |
+LL -     let _: Pin<&mut _> = Box::pin(fut()).as_mut();
+LL +     let _: Pin<&mut _> = std::pin::pin!(fut());
+   |
+
+error: pinning a value with `Box::pin` when local pinning suffices
+  --> tests/ui/unnecessary_box_pin.rs:33:5
+   |
+LL |     Box::pin(fut()).as_mut().poll(cx);
+   |     ^^^^^^^^^^^^^^^
+   |
+help: use the `pin!` macro
+   |
+LL -     Box::pin(fut()).as_mut().poll(cx);
+LL +     std::pin::pin!(fut()).poll(cx);
+   |
+
+error: pinning a value with `Box::pin` when local pinning suffices
+  --> tests/ui/unnecessary_box_pin.rs:38:18
+   |
+LL |     let mut bx = Box::pin(fut());
+   |                  ^^^^^^^^^^^^^^^
+   |
+help: use the `pin!` macro
+   |
+LL -     let mut bx = Box::pin(fut());
+LL +     let mut bx = std::pin::pin!(fut());
+   |
+
+error: aborting due to 5 previous errors
+

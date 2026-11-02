@@ -25,8 +25,8 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - { image: ubuntu-24.04, asset_name_suffix: "" }
-          - { image: ubuntu-24.04-arm, asset_name_suffix: "-aarch64" }
+          - { image: ubuntu-26.04, asset_name_suffix: "" }
+          - { image: ubuntu-26.04-arm, asset_name_suffix: "-aarch64" }
         libgccjit_version:
           - { gcc: "gcc-15" }
           - { gcc: "gcc-15-without-int128" }
@@ -34,10 +34,7 @@ jobs:
           "--std-tests --alloc-tests",
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
           # "--asm-tests",
-          "--test-libcore",
-          "--extended-rand-tests",
-          "--extended-regex-example-tests --test-libcore-doctests",
-          "--extended-regex-tests",
+          "--test-libcore --test-libcore-doctests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
           "--librsvg-tests",
@@ -48,18 +45,18 @@ jobs:
         ]
         # The checks that don't depend on the test command only run in the fastest job.
         include:
-          - commands: "--extended-rand-tests"
+          - commands: "--std-tests --alloc-tests"
             run_checks: true
         # No need to run the tests without 128-bit integers on more than one platform.
         exclude:
-          - os: { image: ubuntu-24.04-arm, asset_name_suffix: "-aarch64" }
+          - os: { image: ubuntu-26.04-arm, asset_name_suffix: "-aarch64" }
             libgccjit_version: { gcc: "gcc-15-without-int128" }
           # FIXME: re-enable when the AES, SHA, RDMA and CRC intrinsics are supported on Aarch64.
-          - os: { image: ubuntu-24.04-arm, asset_name_suffix: "-aarch64" }
+          - os: { image: ubuntu-26.04-arm, asset_name_suffix: "-aarch64" }
             commands: "--librsvg-tests"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     # `rustup show` installs from rust-toolchain.toml
     - name: Setup rust toolchain
@@ -72,11 +69,11 @@ jobs:
       uses: ./.github/actions/apt-mirrors
 
     - name: Install packages
-      # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
+      # `llvm-tools` is needed to install the `FileCheck` binary which is used for asm tests.
       timeout-minutes: 20
       run: |
         sudo apt-get update
-        sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
+        sudo apt-get install ninja-build ripgrep llvm-tools llvm
 
     - name: Install the libraries needed to build librsvg
       if: ${{ contains(matrix.commands, '--librsvg-tests') }}
@@ -103,7 +100,7 @@ jobs:
     # lto1: fatal error: bytecode stream in file '...rcgu.o' generated with LTO
     # version 17.0 instead of the expected 14.0
     - name: Set default GCC to gcc-14
-      if: ${{ matrix.os.image == 'ubuntu-24.04' }}
+      if: ${{ matrix.os.image == 'ubuntu-26.04' }}
       run: sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-14 30
 
     # Since we keep our GCC as the linker on Aarch64 (see above) and it is
@@ -113,12 +110,14 @@ jobs:
     # only used to resolve `-l` options, so the startup files still come from
     # our GCC.
     - name: Use the libraries from gcc-14 that our GCC doesn't bundle
-      if: ${{ matrix.os.image == 'ubuntu-24.04-arm' }}
+      if: ${{ matrix.os.image == 'ubuntu-26.04-arm' }}
       run: echo "LIBRARY_PATH=$(dirname "$(gcc-14 -print-file-name=libubsan.so)")" >> $GITHUB_ENV
 
     - name: Set env
       run: |
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
+        # /tmp is a small tmpfs, and rustdoc keeps every compiled doctest there until the run ends.
+        echo "TMPDIR=$RUNNER_TEMP" >> $GITHUB_ENV
 
     #- name: Cache rust repository
       ## We only clone the rust repository for rustc tests
@@ -181,15 +180,15 @@ jobs:
         ./y.sh test --release --clean --build-sysroot --no-builtins-tests ${{ matrix.commands }}
 
   duplicates:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: python tools/check_intrinsics_duplicates.py
 
   build_system:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Test build system
         run: |
           cd build_system

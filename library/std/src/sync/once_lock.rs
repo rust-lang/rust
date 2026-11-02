@@ -106,7 +106,7 @@ use crate::sync::Once;
 ///
 /// ```
 #[stable(feature = "once_cell", since = "1.70.0")]
-pub struct OnceLock<T> {
+pub struct OnceLock<#[rustc_assert_variance(invariant)] T> {
     // FIXME(nonpoison_once): switch to nonpoison version once it is available
     once: Once,
     // Whether or not the value is initialized is tracked by `once.is_completed()`.

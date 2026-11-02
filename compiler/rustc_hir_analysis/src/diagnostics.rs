@@ -50,7 +50,7 @@ pub(crate) struct AssocKindMismatch {
     pub expected_because_label: Option<Span>,
     pub assoc_kind: &'static str,
     #[note("the associated {$assoc_kind} is defined here")]
-    pub def_span: Span,
+    pub def_span: MultiSpan,
     #[label("bounds are not allowed on associated constants")]
     pub bound_on_assoc_const_label: Option<Span>,
     #[subdiagnostic]
@@ -1704,6 +1704,16 @@ pub(crate) struct OnlyCurrentTraitsPointerSugg<'a> {
     pub(crate) struct_span: Span,
     pub mut_key: &'a str,
     pub ptr_ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag("failed to inherit delegation {$kind}")]
+pub(crate) struct DelegationInheritanceFailed {
+    #[primary_span]
+    pub span: Span,
+    pub kind: &'static str,
+    #[label("callee defined here")]
+    pub callee_span: Span,
 }
 
 #[derive(Diagnostic)]

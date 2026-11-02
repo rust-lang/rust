@@ -1,4 +1,4 @@
-// rustfmt-stable: true
+//@ rustfmt-stable: true
 
 // While we gate the `cfg_select!` formatting behind the `is_nightly_channel!()` check
 // this test helps ensure that we don't start formatting `cfg_select!` on the `stable`

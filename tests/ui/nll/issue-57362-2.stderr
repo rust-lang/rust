@@ -10,6 +10,9 @@ note: `X` defines an item `make_g`, perhaps you need to implement it
    |
 LL | trait X {
    | ^^^^^^^
+LL |     type G;
+LL |     fn make_g() -> Self::G;
+   |
 
 error: aborting due to 1 previous error
 

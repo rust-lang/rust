@@ -727,10 +727,11 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         should_emit: ShouldEmit,
         allow_expr_metavar: AllowExprMetavar,
     ) -> PResult<'sess, MetaItemListParser> {
-        let mut parser = Parser::new(psess, tokens, None);
-        if let ShouldEmit::ErrorsAndLints { recovery } = should_emit {
-            parser = parser.recovery(recovery);
-        }
+        let recovery = match should_emit {
+            ShouldEmit::ErrorsAndLints { recovery } => recovery,
+            _ => Recovery::Forbidden,
+        };
+        let mut parser = Parser::new(psess, tokens, None).recovery(recovery);
 
         let mut this =
             MetaItemListParserContext { parser: &mut parser, should_emit, allow_expr_metavar };
@@ -791,5 +792,9 @@ impl MetaItemListParser {
     pub fn as_single(&self) -> Option<&MetaItemOrLitParser> {
         let mut iter = self.mixed();
         iter.next().filter(|_| iter.next().is_none())
+    }
+
+    pub fn sub_parsers(&self) -> &[MetaItemOrLitParser] {
+        &self.sub_parsers
     }
 }

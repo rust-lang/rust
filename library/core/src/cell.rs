@@ -11,19 +11,21 @@
 //! mutate it.
 //!
 //! Shareable mutable containers exist to permit mutability in a controlled manner, even in the
-//! presence of aliasing. [`Cell<T>`], [`RefCell<T>`], and [`OnceCell<T>`] allow doing this in
-//! a single-threaded way—they do not implement [`Sync`]. (If you need to do aliasing and
-//! mutation among multiple threads, [`Mutex<T>`], [`RwLock<T>`], [`OnceLock<T>`] or [`atomic`]
-//! types are the correct data structures to do so).
+//! presence of aliasing. The cell types in this module allow this from a single
+//! thread (as enforced by not implementing [`Sync`]).
+//! If you need to mutate while sharing across threads, each cell type has a
+//! corresponding [`std::sync`] type that you can use. See also [`atomic`] types
+//! which provide cross thread shared mutability for primitive types.
 //!
-//! Values of the `Cell<T>`, `RefCell<T>`, and `OnceCell<T>` types may be mutated through shared
-//! references (i.e. the common `&T` type), whereas most Rust types can only be mutated through
-//! unique (`&mut T`) references. We say these cell types provide 'interior mutability'
-//! (mutable via `&T`), in contrast with typical Rust types that exhibit 'inherited mutability'
-//! (mutable only via `&mut T`).
+//! Values of the cell types types may be mutated through shared references (i.e. the common `&T`
+//! type), whereas most Rust types can only be mutated through unique (`&mut T`) references.
+//! We say these cell types provide 'interior mutability' (mutable via `&T`), in contrast with
+//! typical Rust types that exhibit 'inherited mutability' (mutable only via `&mut T`).
 //!
-//! Cell types come in four flavors: `Cell<T>`, `RefCell<T>`, `OnceCell<T>`, and `LazyCell<T>`.
-//! Each provides a different way of providing safe interior mutability.
+//! Cell types come in four flavors: `Cell<T>`, `RefCell<T>`, `OnceCell<T>`, and
+//! `LazyCell<T>`. Each provides a different way of providing safe interior mutability.
+//!
+//! [`std::sync`]: ../sync/index.html
 //!
 //! ## `Cell<T>`
 //!
@@ -312,7 +314,7 @@ pub use once::OnceCell;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
 #[rustc_pub_transparent]
-pub struct Cell<T: ?Sized> {
+pub struct Cell<#[rustc_assert_variance(invariant)] T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
@@ -849,7 +851,7 @@ impl<T: CloneFromCell> Cell<T> {
 /// See the [module-level documentation](self) for more.
 #[rustc_diagnostic_item = "RefCell"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct RefCell<T: ?Sized> {
+pub struct RefCell<#[rustc_assert_variance(invariant)] T: ?Sized> {
     borrow: Cell<BorrowCounter>,
     // Stores the location of the earliest currently active borrow.
     // This gets updated whenever we go from having zero borrows
@@ -2308,7 +2310,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
 #[rustc_pub_transparent]
-pub struct UnsafeCell<T: ?Sized> {
+pub struct UnsafeCell<#[rustc_assert_variance(invariant)] T: ?Sized> {
     value: T,
 }
 
@@ -2603,7 +2605,7 @@ impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafeCell<U>> for UnsafeCell<T> 
 #[repr(transparent)]
 #[rustc_diagnostic_item = "SyncUnsafeCell"]
 #[rustc_pub_transparent]
-pub struct SyncUnsafeCell<T: ?Sized> {
+pub struct SyncUnsafeCell<#[rustc_assert_variance(invariant)] T: ?Sized> {
     value: UnsafeCell<T>,
 }
 

@@ -5,6 +5,7 @@
 )]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
+#![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(exitcode_exit_method)]
 #![feature(file_buffered)]
@@ -363,6 +364,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "sort-modules-by-appearance",
             "sort modules by where they appear in the program, rather than alphabetically",
             "",
+        ),
+        opt(
+            Unstable,
+            Opt,
+            "",
+            "crate-list-heading",
+            "heading under which to list this crate in the sidebar crate list",
+            "TEXT",
         ),
         opt(
             Stable,

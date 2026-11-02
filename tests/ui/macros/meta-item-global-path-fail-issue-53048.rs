@@ -13,6 +13,6 @@ m!(::);
 
 // value must be a literal, not a path
 #[allow(a = ::b::c)]
-//~^ ERROR expected unsuffixed literal, found `::`
+//~^ ERROR expected a literal
 
 fn main() {}

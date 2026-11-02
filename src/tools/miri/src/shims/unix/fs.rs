@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::ffi::OsString;
-use std::fs::{self, DirBuilder, File, FileTimes, FileType, OpenOptions, TryLockError};
+use std::fs::{self, DirBuilder, File, FileTimes, OpenOptions, TryLockError};
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{self, Path};
 use std::time::SystemTime;
@@ -321,7 +321,6 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         metadata: FileMetadata,
         buf_op: &OpTy<'tcx>,
-        buf_type: &str,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -329,7 +328,7 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
         let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
 
-        let buf = this.deref_pointer_as(buf_op, this.libc_ty_layout(buf_type))?;
+        let buf = this.deref_pointer(buf_op)?;
 
         this.write_int_fields_named(
             &[
@@ -374,39 +373,15 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(0)
     }
 
-    fn file_type_to_d_type(&self, file_type: std::io::Result<FileType>) -> InterpResult<'tcx, i32> {
-        #[cfg(unix)]
-        use std::os::unix::fs::FileTypeExt;
-
+    #[cfg(windows)]
+    fn file_type_to_d_type(&self, file_type: fs::FileType) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_ref();
-        match file_type {
-            Ok(file_type) => {
-                match () {
-                    _ if file_type.is_dir() => interp_ok(this.eval_libc("DT_DIR").to_u8()?.into()),
-                    _ if file_type.is_file() => interp_ok(this.eval_libc("DT_REG").to_u8()?.into()),
-                    _ if file_type.is_symlink() =>
-                        interp_ok(this.eval_libc("DT_LNK").to_u8()?.into()),
-                    // Certain file types are only supported when the host is a Unix system.
-                    #[cfg(unix)]
-                    _ if file_type.is_block_device() =>
-                        interp_ok(this.eval_libc("DT_BLK").to_u8()?.into()),
-                    #[cfg(unix)]
-                    _ if file_type.is_char_device() =>
-                        interp_ok(this.eval_libc("DT_CHR").to_u8()?.into()),
-                    #[cfg(unix)]
-                    _ if file_type.is_fifo() =>
-                        interp_ok(this.eval_libc("DT_FIFO").to_u8()?.into()),
-                    #[cfg(unix)]
-                    _ if file_type.is_socket() =>
-                        interp_ok(this.eval_libc("DT_SOCK").to_u8()?.into()),
-                    // Fallback
-                    _ => interp_ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into()),
-                }
-            }
-            Err(_) => {
-                // Fallback on error
-                interp_ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into())
-            }
+        match () {
+            _ if file_type.is_dir() => interp_ok(this.eval_libc("DT_DIR").to_u8()?.into()),
+            _ if file_type.is_file() => interp_ok(this.eval_libc("DT_REG").to_u8()?.into()),
+            _ if file_type.is_symlink() => interp_ok(this.eval_libc("DT_LNK").to_u8()?.into()),
+            // Fallback
+            _ => interp_ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into()),
         }
     }
 
@@ -417,15 +392,28 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
         interp_ok(match entry {
             Either::Left(dir_entry) => {
-                DirEntry {
-                    name: dir_entry.file_name(),
-                    d_type: this.file_type_to_d_type(dir_entry.file_type())?,
-                    // If the host is a Unix system, fill in the inode number with its real value.
-                    // If not, use 0 as a fallback value.
-                    #[cfg(unix)]
-                    ino: std::os::unix::fs::DirEntryExt::ino(&dir_entry),
-                    #[cfg(not(unix))]
-                    ino: 0u64,
+                cfg_select! {
+                    unix => {
+                        use std::os::unix::fs::DirEntryExt;
+                        DirEntry {
+                            name: dir_entry.file_name(),
+                            d_type: {
+                                // We cannot rely on `dir_entry.file_type`, it might use a separate
+                                // syscall based on `file_name` which is racy.
+                                // It's always okay to return DT_UNKNOWN instead.
+                                this.eval_libc("DT_UNKNOWN").to_u8()?.into()
+                            },
+                            ino: dir_entry.ino(),
+                        }
+                    }
+                    windows => {
+                        DirEntry {
+                            name: dir_entry.file_name(),
+                            // `DirEntry::file_type` is always race-free and never fails on Windows.
+                            d_type: this.file_type_to_d_type(dir_entry.file_type().unwrap())?,
+                            ino: 0u64,
+                        }
+                    }
                 }
             }
             Either::Right(special) =>
@@ -500,7 +488,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 varargs,
                 fn_name,
             )?;
-            let mode = this.read_scalar(mode)?.to_u32()?;
+            let mode = this.read_scalar(&mode)?.to_u32()?;
 
             cfg_select! {
                 unix => {
@@ -689,17 +677,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None => None,
         };
 
-        // Let's see what we get when we open this!
-        options.custom_flags(custom_flags);
-        // Windows does not by itself treat `.` correctly so we do that by hand.
+        // Empty path should consistently error.
+        if path.is_empty() {
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
+        }
+        // Windows does not support "." relative to a `Dir` handle, but the empty path works.
         // (https://github.com/rust-lang/rust/issues/163032)
-        let f_or_d = match &dirfd {
-            // Using `try_clone` here means that on the host, we have the same underlying file
-            // description, even when it would be separate natively. That should be fine since
-            // std never gives us an `fs::Dir` whose internal state (e.g. for iteration) matters.
-            Some(dirfd) if path.to_str() == Some(".") => dirfd.dir.try_clone().map(Either::Right),
-            _ => open_file_or_dir(dirfd.as_ref().map(|d| &d.dir), &path, &options),
+        let path = if cfg!(windows) && dirfd.is_some() && path.to_str() == Some(".") {
+            Path::new("")
+        } else {
+            &path
         };
+
+        // Let's see what we get when we open this!
+        let f_or_d = open_file_or_dir(
+            dirfd.as_ref().map(|d| &d.dir),
+            path,
+            options.custom_flags(custom_flags),
+        );
         match f_or_d {
             Err(err) => this.set_errno_and_return_neg1_i32(err),
             Ok(Either::Right(dir)) => {
@@ -789,7 +784,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        #[rustfmt::skip] // work around https://github.com/rust-lang/rustfmt/issues/7045
         let result = cfg_select! {
             unix => fs::remove_file(path),
             windows => {{
@@ -882,7 +876,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if oldfd != at_fdcwd {
             throw_unsup_format!("linkat with `olddirfd` not equal to `AT_FDCWD` is not supported");
         }
-        if oldpath_ptr == Pointer::null() {
+        if this.ptr_is_null(oldpath_ptr)? {
             return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
         let oldpath = this.read_path_from_c_str(oldpath_ptr)?.into_owned();
@@ -891,7 +885,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if newfd != at_fdcwd {
             throw_unsup_format!("linkat with `newdirfd` not equal to `AT_FDCWD` is not supported");
         }
-        if newpath_ptr == Pointer::null() {
+        if this.ptr_is_null(newpath_ptr)? {
             return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
         let newpath = this.read_path_from_c_str(newpath_ptr)?.into_owned();
@@ -924,7 +918,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, "stat")?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
     // `lstat` is used to get symlink metadata.
@@ -952,15 +946,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, "stat")?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
-    fn fstat(
-        &mut self,
-        fd_op: &OpTy<'tcx>,
-        buf_op: &OpTy<'tcx>,
-        buf_type: &str,
-    ) -> InterpResult<'tcx, Scalar> {
+    fn fstat(&mut self, fd_op: &OpTy<'tcx>, buf_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         if !matches!(
@@ -983,7 +972,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, buf_type)?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
     fn fstatat(
@@ -1037,7 +1026,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, "stat")?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
     fn linux_statx(
@@ -1063,7 +1052,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
 
-        let statxbuf = this.deref_pointer_as(statxbuf_op, this.libc_ty_layout("statx"))?;
+        let statxbuf = this.deref_pointer(statxbuf_op)?;
         let path = this.read_path_from_c_str(pathname_ptr)?.into_owned();
 
         // Parse flags.
@@ -1330,7 +1319,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        #[rustfmt::skip] // work around https://github.com/rust-lang/rustfmt/issues/7045
         let result = cfg_select! {
             unix => fs::remove_dir(path),
             windows => {{
@@ -1366,14 +1354,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         match result {
             Ok(read_dir) => {
-                // Also open the same directory as a directory handle, so we have
-                // an underlying FD.
-                // FIXME(https://github.com/rust-lang/miri/issues/5326): This is racy! We can't even
-                // verify whether there was a race. We just trust that the directory did not change
-                // in between above and here. One day, the standard library will support converting
-                // between `Dir` and `ReadDir` (one of the two directions would suffice for our
-                // needs), then we'll use that.
-                let Ok(dir) = fs::Dir::open(&name) else {
+                // Create an underlying FD as well, in case someone calls `dirfd` later.
+                // (We could do this lazily but that does not seem worth it.)
+                #[cfg(not(bootstrap))]
+                let dir = read_dir.dir();
+                #[cfg(bootstrap)]
+                let dir = fs::Dir::open(&name);
+                let Ok(dir) = dir else {
                     throw_unsup_format!(
                         "cannot `opendir` this directory: failed to create directory handle"
                     );
@@ -1683,12 +1670,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Shared logic between `posix_fallocate` and `linux_fallocate`.
     fn fallocate_impl(
-        &mut self,
+        &self,
         fd_num: i32,
         offset: i64,
         len: i64,
     ) -> InterpResult<'tcx, Result<(), IoError>> {
-        let this = self.eval_context_mut();
+        let this = self.eval_context_ref();
 
         // EINVAL is returned/set when: "offset was less than 0, or len was less than or equal to 0".
         if offset < 0 || len <= 0 {
@@ -1741,7 +1728,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        self.ffullsync_fd(fd)
+        this.ffullsync_fd(fd)
     }
 
     fn ffullsync_fd(&mut self, fd_num: i32) -> InterpResult<'tcx, Scalar> {
@@ -2269,20 +2256,18 @@ impl FileMetadata {
                 return interp_ok(Err(LibcError("ENOTDIR")));
             };
 
-            // Windows does not by itself treat `.` correctly so we do that by hand.
+            // Windows does not support "." relative to a `Dir` handle, but the empty path works.
             // (https://github.com/rust-lang/rust/issues/163032)
+            let path =
+                if cfg!(windows) && path.to_str() == Some(".") { Path::new("") } else { path };
             #[cfg(not(bootstrap))]
-            let metadata = if path.to_str() == Some(".") {
-                dir.dir.self_metadata()
-            } else if symlink_nofollow_flag {
+            let metadata = if symlink_nofollow_flag {
                 dir.dir.symlink_metadata(path)
             } else {
                 dir.dir.metadata(path)
             };
             #[cfg(bootstrap)]
-            let metadata = if path.to_str() == Some(".") {
-                dir.dir.metadata()
-            } else if symlink_nofollow_flag {
+            let metadata = if symlink_nofollow_flag {
                 dir.fallback.join(path).symlink_metadata()
             } else {
                 dir.fallback.join(path).metadata()
@@ -2298,7 +2283,7 @@ impl FileMetadata {
         let Some(fd) = ecx.machine.fds.get(fd_num) else {
             return interp_ok(Err(LibcError("EBADF")));
         };
-        match fd.metadata()? {
+        match fd.metadata(ecx.machine.communicate())? {
             Either::Left(host) => Self::from_host(ecx, host),
             Either::Right(mode_name) => Self::synthetic(ecx, mode_name),
         }

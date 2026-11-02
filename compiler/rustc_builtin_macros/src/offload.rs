@@ -75,16 +75,7 @@ pub(crate) fn expand_kernel(
     let span = ecx.with_def_site_ctxt(expand_span);
 
     // device function
-    let mut device_fn = Box::new(ast::Fn {
-        defaultness: ast::Defaultness::Implicit,
-        sig: sig.clone(),
-        ident,
-        generics: generics.clone(),
-        contract: None,
-        body,
-        define_opaque: None,
-        eii_impl: None,
-    });
+    let mut device_fn = ecx.item_fn(sig.clone(), ident, generics.clone(), body);
 
     let extern_gpu_kernel = ast::Extern::from_abi(
         Some(ast::StrLit {
@@ -120,10 +111,7 @@ pub(crate) fn expand_kernel(
         span,
         ecx.macro_call(
             span,
-            ecx.path_global(
-                span,
-                [sym::core, sym::unimplemented].map(|s| Ident::new(s, span)).to_vec(),
-            ),
+            ecx.std_path(span, &[sym::unimplemented]),
             Delimiter::Parenthesis,
             TokenStream::default(),
         ),
@@ -132,16 +120,7 @@ pub(crate) fn expand_kernel(
     let body = ecx.block(span, thin_vec![stmt]);
 
     // host function
-    let mut host_fn = Box::new(ast::Fn {
-        defaultness: ast::Defaultness::Implicit,
-        sig,
-        ident,
-        generics,
-        contract: None,
-        body: Some(body),
-        define_opaque: None,
-        eii_impl: None,
-    });
+    let mut host_fn = ecx.item_fn(sig, ident, generics, Some(body));
 
     for param in host_fn.sig.decl.inputs.iter_mut() {
         *param.pat = ecx.pat_wild(param.pat.span);
