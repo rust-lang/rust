@@ -483,9 +483,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             },
         );
 
-        // FIXME(#97583): Print associated item bindings properly (i.e., not as equality
-        // predicates!).
-        // FIXME: Turn this into a structured, translatable & more actionable suggestion.
         let mut where_bounds = vec![];
         let mut suggestions = vec![];
         for &bound in matching_candidates {
@@ -642,7 +639,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // would be appropriate, but if we encounter something like
                 // `_: &dyn Trait<Assoc = X>`, then the spans don't overlap and would not be
                 // reasonable to suggest adding a new type parameter to the enclosing function.
-                // FIXME(#97583): Turn this into a structured suggestion.
                 let msg = format!(
                     "consider introducing a new type parameter `{param_name}` and adding `where` constraints"
                 );
