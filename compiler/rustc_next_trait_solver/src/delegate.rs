@@ -102,7 +102,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         &self,
         kind: ty::CanonicalVarKind<Self::Interner>,
         span: <Self::Interner as Interner>::Span,
-        var_values: &[<Self::Interner as Interner>::GenericArg],
+        prev_var_values: &[<Self::Interner as Interner>::GenericArg],
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> <Self::Interner as Interner>::GenericArg;
 
@@ -131,13 +131,13 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
 
     /// Obtain canonicalizer state, either by allocating it afresh (the default) or by reusing
     /// previously allocated state.
-    fn obtain_canonicalizer_state(&self) -> CanonicalizerState<Self::Interner> {
+    fn obtain_canonicalizer_state(&self) -> Box<CanonicalizerState<Self::Interner>> {
         Default::default()
     }
 
     /// Release canonicalizer state, either by deallocating it (the default) or by clearing it and
     /// stashing it for later reuse.
-    fn release_canonicalizer_state(&self, _: CanonicalizerState<Self::Interner>) {}
+    fn release_canonicalizer_state(&self, _: Box<CanonicalizerState<Self::Interner>>) {}
 
     fn emit_next_solver_overflow_fcw(
         &self,

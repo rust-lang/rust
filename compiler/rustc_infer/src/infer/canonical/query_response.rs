@@ -488,27 +488,31 @@ impl<'tcx> InferCtxt<'tcx> {
         // a fresh inference variable.
         let tcx = self.tcx;
         let var_kinds = query_response.var_kinds;
-        let var_values = CanonicalVarValues::instantiate(tcx, var_kinds, |var_values, kind| {
-            if kind.universe() != ty::UniverseIndex::ROOT {
-                // A variable from inside a binder of the query. While ideally these shouldn't
-                // exist at all, we have to deal with them for now.
-                self.instantiate_canonical_var(cause.span, kind, &var_values, |u| {
-                    universe_map[u.as_usize()]
-                })
-            } else if kind.is_existential() {
-                match opt_values[BoundVar::new(var_values.len())] {
-                    Some(k) => k,
-                    None => self.instantiate_canonical_var(cause.span, kind, &var_values, |u| {
+        let var_values =
+            CanonicalVarValues::instantiate(tcx, var_kinds, |prev_var_values, kind| {
+                if kind.universe() != ty::UniverseIndex::ROOT {
+                    // A variable from inside a binder of the query. While ideally these shouldn't
+                    // exist at all, we have to deal with them for now.
+                    self.instantiate_canonical_var(cause.span, kind, &prev_var_values, |u| {
                         universe_map[u.as_usize()]
-                    }),
+                    })
+                } else if kind.is_existential() {
+                    match opt_values[BoundVar::new(prev_var_values.len())] {
+                        Some(k) => k,
+                        None => self.instantiate_canonical_var(
+                            cause.span,
+                            kind,
+                            &prev_var_values,
+                            |u| universe_map[u.as_usize()],
+                        ),
+                    }
+                } else {
+                    // For placeholders which were already part of the input, we simply map this
+                    // universal bound variable back the placeholder of the input.
+                    opt_values[BoundVar::new(prev_var_values.len())]
+                        .expect("expected placeholder to be unified with itself during response")
                 }
-            } else {
-                // For placeholders which were already part of the input, we simply map this
-                // universal bound variable back the placeholder of the input.
-                opt_values[BoundVar::new(var_values.len())]
-                    .expect("expected placeholder to be unified with itself during response")
-            }
-        });
+            });
 
         let mut obligations = PredicateObligations::new();
 
