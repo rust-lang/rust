@@ -18,7 +18,7 @@ unsafe extern "C" {
     //~^ WARN identifier `x` is bound more than once in this parameter list
 }
 
-type Example3 = fn(x: usize, x: u64);
+type FnPointer = fn(x: usize, x: u64);
 //~^ WARN identifier `x` is bound more than once in this parameter list
 
 fn generic_type<T: Fn(x: usize, x: usize), U>()

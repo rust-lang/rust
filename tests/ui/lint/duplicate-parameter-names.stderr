@@ -73,12 +73,12 @@ LL |     fn extern_fn(x: usize, x: usize);
    |                  used here already
 
 warning: identifier `x` is bound more than once in this parameter list
-  --> $DIR/duplicate-parameter-names.rs:21:30
+  --> $DIR/duplicate-parameter-names.rs:21:31
    |
-LL | type Example3 = fn(x: usize, x: u64);
-   |                    -         ^ used as parameter more than once
-   |                    |
-   |                    used here already
+LL | type FnPointer = fn(x: usize, x: u64);
+   |                     -         ^ used as parameter more than once
+   |                     |
+   |                     used here already
 
 warning: identifier `x` is bound more than once in this parameter list
   --> $DIR/duplicate-parameter-names.rs:24:33
