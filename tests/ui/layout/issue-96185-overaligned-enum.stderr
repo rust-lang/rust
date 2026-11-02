@@ -1,8 +1,6 @@
 error: layout_of(Aligned1) = Layout {
            size: Size(8 bytes),
-           align: AbiAlign {
-               abi: Align(8 bytes),
-           },
+           align: Align(8 bytes),
            backend_repr: Memory {
                sized: true,
            },
@@ -56,16 +54,14 @@ error: layout_of(Aligned1) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/issue-96185-overaligned-enum.rs:9:1
+  --> $DIR/issue-96185-overaligned-enum.rs:8:1
    |
 LL | pub enum Aligned1 {
    | ^^^^^^^^^^^^^^^^^
 
 error: layout_of(Aligned2) = Layout {
            size: Size(1 bytes),
-           align: AbiAlign {
-               abi: Align(1 bytes),
-           },
+           align: Align(1 bytes),
            backend_repr: Scalar(
                u8 is 0..=1,
            ),
@@ -119,7 +115,7 @@ error: layout_of(Aligned2) = Layout {
            repr_c: false,
            randomization_seed: $SEED,
        }
-  --> $DIR/issue-96185-overaligned-enum.rs:17:1
+  --> $DIR/issue-96185-overaligned-enum.rs:16:1
    |
 LL | pub enum Aligned2 {
    | ^^^^^^^^^^^^^^^^^
