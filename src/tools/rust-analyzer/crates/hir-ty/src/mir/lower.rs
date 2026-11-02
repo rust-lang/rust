@@ -1510,7 +1510,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     }
 
     fn set_terminator(&mut self, source: BasicBlockId, terminator: TerminatorKind, span: MirSpan) {
-        self.result.basic_blocks[source].terminator = Some(Terminator { span, kind: terminator });
+        self.result.basic_blocks[source].terminator = (Terminator{ span, kind: terminator });
     }
 
     fn set_goto(&mut self, source: BasicBlockId, target: BasicBlockId, span: MirSpan) {

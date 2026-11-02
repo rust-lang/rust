@@ -325,7 +325,7 @@ pub fn build_drop_shim<'tcx>(
                 ),
             ))),
         ));
-        start.terminator = Some(Terminator {
+        start.terminator = Terminator {
             source_info,
             kind: TerminatorKind::Call {
                 func: Operand::function_handle(
@@ -341,7 +341,7 @@ pub fn build_drop_shim<'tcx>(
                 call_source: CallSource::Misc,
                 fn_span: span,
             },
-        });
+        };
     } else {
         let patch = {
             let mut elaborator = DropShimElaborator {
@@ -763,14 +763,13 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let rvalue = Rvalue::Discriminant(src);
         let statement = self.make_statement(StatementKind::Assign(Box::new((temp, rvalue))));
         match &mut self.blocks[switch] {
-            BasicBlockData { statements, terminator: Some(Terminator { kind, .. }), .. } => {
+            BasicBlockData { statements, terminator: Terminator { kind, .. }, .. } => {
                 statements.push(statement);
                 *kind = TerminatorKind::SwitchInt {
                     discr: Operand::Move(temp),
                     targets: SwitchTargets::new(cases.into_iter(), unreachable),
                 };
             }
-            BasicBlockData { terminator: None, .. } => unreachable!(),
         }
     }
 }
