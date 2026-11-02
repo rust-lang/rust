@@ -1028,6 +1028,7 @@ symbols! {
         force_target_feature,
         forced_keywords,
         forget,
+        forget_trait,
         format_args,
         format_args_capture,
         format_args_macro,

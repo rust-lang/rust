@@ -551,6 +551,8 @@ declare_features! (
     (unstable, fn_static, "1.100.0", Some(148768)),
     /// Allows using forced keywords `k#fn`.
     (unstable, forced_keywords, "CURRENT_RUSTC_VERSION", Some(153839)),
+    /// The `Forget` autotrait.
+    (incomplete, forget_trait, "CURRENT_RUSTC_VERSION", Some(165370)),
     /// Allows impls for the Freeze trait.
     (internal, freeze_impls, "1.78.0", Some(121675)),
     /// Frontmatter `---` blocks for use by external tools.
