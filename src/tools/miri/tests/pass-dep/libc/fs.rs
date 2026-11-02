@@ -1149,7 +1149,11 @@ fn test_fstat() {
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
-    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    assert_eq!(
+        stat.st_mode & libc::S_IRWXU,
+        libc::S_IWUSR | libc::S_IRUSR,
+        "owner should be able to read & write"
+    );
     assert_eq!(stat.st_size, 5);
 
     // Ensure fstat64 also works.
@@ -1160,7 +1164,7 @@ fn test_fstat() {
         let stat = unsafe { stat.assume_init_ref() };
 
         assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
-        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
         assert_eq!(stat.st_size, 5);
     }
 
@@ -1184,7 +1188,7 @@ fn test_fstat() {
             // Miri currently gets this wrong.
             // assert_eq!(stat.st_mode & !libc::S_IFMT, 0, "no permission should be set");
         } else {
-            assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+            assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
         }
         assert_eq!(stat.st_size, 0);
 
@@ -1215,7 +1219,7 @@ fn test_fstatat() {
 
     let checkstat = |stat: &libc::stat| {
         assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
-        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
         assert_eq!(stat.st_size, 5);
         check_stat_fields(stat);
     };
@@ -1281,7 +1285,7 @@ fn test_fstatat() {
         });
         let stat = unsafe { stat.assume_init_ref() };
         assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFLNK); // not S_IFREG!
-        assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+        assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
         check_stat_fields(stat);
     }
 
@@ -1307,7 +1311,7 @@ fn test_stat() {
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
-    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
     assert_eq!(stat.st_size, 5);
 
     // Check that all fields are initialized.
@@ -1332,7 +1336,7 @@ fn test_lstat() {
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFLNK);
-    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
 
     // Check that all fields are initialized.
     check_stat_fields(stat);
@@ -1785,7 +1789,7 @@ fn test_dirfd() {
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFDIR);
-    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
 
     // Check that all fields are initialized.
     check_stat_fields(stat);
@@ -1799,7 +1803,7 @@ fn test_dirfd() {
     errno_check(unsafe { libc::fstatat(dirfd, c".".as_ptr(), stat.as_mut_ptr(), 0) });
     let stat = unsafe { stat.assume_init_ref() };
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFDIR);
-    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    assert_ne!(stat.st_mode & libc::S_IRUSR, 0, "owner should be able to read");
     check_stat_fields(stat);
 
     // Close the stream.
