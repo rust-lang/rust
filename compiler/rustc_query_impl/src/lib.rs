@@ -16,6 +16,7 @@ pub use crate::job::collect_active_query_jobs;
 
 mod dep_kind_vtables;
 mod execution;
+mod handle_cycle_error;
 mod incremental;
 mod job;
 mod query_vtables;

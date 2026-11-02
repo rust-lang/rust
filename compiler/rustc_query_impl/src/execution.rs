@@ -1,21 +1,76 @@
 use rustc_data_structures::hash_table::Entry;
-use rustc_data_structures::{sharded, sync};
+use rustc_data_structures::{defer, sharded, sync};
 use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{
     DepGraphData, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex,
 };
 use rustc_middle::query::q_impl::execution::{
     ActiveJobGuard, check_feedable_consistency, current_query_job, depth_limit_error,
-    equivalent_key, find_and_handle_cycle, next_job_id, wait_for_query,
+    equivalent_key, next_job_id, wait_for_query,
 };
 use rustc_middle::query::q_impl::incremental::should_verify_loaded_value;
+use rustc_middle::query::q_impl::job::CollectActiveJobsKind;
 use rustc_middle::query::{
-    ActiveKeyStatus, QueryCache, QueryJob, QueryJobId, QueryLatch, QueryMode, QueryVTable,
+    ActiveKeyStatus, QueryCache, QueryCycle, QueryJob, QueryJobId, QueryLatch, QueryMode,
+    QueryVTable,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_span::{DUMMY_SP, Span};
+
+use crate::handle_cycle_error;
+use crate::job::find_cycle_in_stack;
+
+#[cold]
+#[inline(never)]
+pub(crate) fn find_and_handle_cycle<'tcx, C: QueryCache>(
+    query: &'tcx QueryVTable<'tcx, C>,
+    tcx: TyCtxt<'tcx>,
+    key: C::Key,
+    try_execute: QueryJobId,
+    span: Span,
+) -> (C::Value, Option<DepNodeIndex>) {
+    // Ensure there were no errors collecting all active jobs.
+    // We need the complete map to ensure we find a cycle to break.
+    let job_map = tcx.collect_active_query_jobs(CollectActiveJobsKind::FullNoContention);
+
+    let cycle = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
+    (handle_cycle(query, tcx, key, cycle), None)
+}
+
+#[cold]
+#[inline(never)]
+fn handle_cycle<'tcx, C: QueryCache>(
+    query: &'tcx QueryVTable<'tcx, C>,
+    tcx: TyCtxt<'tcx>,
+    key: C::Key,
+    cycle: QueryCycle<'tcx>,
+) -> C::Value {
+    let nested;
+    {
+        let mut nesting = tcx.query_system.cycle_handler_nesting.lock();
+        nested = match *nesting {
+            0 => false,
+            1 => true,
+            _ => {
+                // Don't print further nested errors to avoid cases of infinite recursion
+                tcx.dcx().delayed_bug("doubly nested cycle error").raise_fatal()
+            }
+        };
+        *nesting += 1;
+    }
+    let _guard = defer(|| *tcx.query_system.cycle_handler_nesting.lock() -= 1);
+
+    let error = handle_cycle_error::create_cycle_error(tcx, &cycle, nested);
+
+    if nested {
+        // Avoid custom handlers and only use the robust `create_cycle_error` for nested cycle errors
+        handle_cycle_error::default(error)
+    } else {
+        (query.handle_cycle_error_fn)(tcx, key, cycle, error)
+    }
+}
 
 /// Shared main part of both [`execute_query_incr_inner`] and [`execute_query_non_incr_inner`].
 #[inline(never)]
@@ -88,7 +143,11 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
                         // Only call `wait_for_query` if we're using a Rayon thread pool
                         // as it will attempt to mark the worker thread as blocked.
-                        wait_for_query(query, tcx, span, key, key_hash, latch, current_job_id)
+                        match wait_for_query(query, tcx, span, key, key_hash, latch, current_job_id)
+                        {
+                            Ok(res) => res,
+                            Err(cycle) => (handle_cycle(query, tcx, key, cycle), None),
+                        }
                     } else {
                         let id = job.id;
                         drop(state_lock);

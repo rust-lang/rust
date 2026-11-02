@@ -4,7 +4,7 @@ use std::num::NonZero;
 use std::sync::Arc;
 
 use parking_lot::{Condvar, Mutex};
-use rustc_data_structures::{defer, outline};
+use rustc_data_structures::outline;
 use rustc_errors::FatalError;
 use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::query::{
@@ -18,45 +18,11 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_structures::Limit;
 
 use super::diagnostics::{QueryOverflow, QueryOverflowNote};
-use super::handle_cycle_error;
-use crate::query::q_impl::job::{CollectActiveJobsKind, find_cycle_in_stack, find_dep_kind_root};
+use crate::query::q_impl::job::{CollectActiveJobsKind, find_dep_kind_root};
 
 #[inline]
 pub fn equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {
     move |x| x.0 == k
-}
-
-#[cold]
-#[inline(never)]
-fn handle_cycle<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
-    tcx: TyCtxt<'tcx>,
-    key: C::Key,
-    cycle: QueryCycle<'tcx>,
-) -> C::Value {
-    let nested;
-    {
-        let mut nesting = tcx.query_system.cycle_handler_nesting.lock();
-        nested = match *nesting {
-            0 => false,
-            1 => true,
-            _ => {
-                // Don't print further nested errors to avoid cases of infinite recursion
-                tcx.dcx().delayed_bug("doubly nested cycle error").raise_fatal()
-            }
-        };
-        *nesting += 1;
-    }
-    let _guard = defer(|| *tcx.query_system.cycle_handler_nesting.lock() -= 1);
-
-    let error = handle_cycle_error::create_cycle_error(tcx, &cycle, nested);
-
-    if nested {
-        // Avoid custom handlers and only use the robust `create_cycle_error` for nested cycle errors
-        handle_cycle_error::default(error)
-    } else {
-        (query.handle_cycle_error_fn)(tcx, key, cycle, error)
-    }
 }
 
 /// Signals to waiters that the query is complete.
@@ -151,23 +117,6 @@ where
     }
 }
 
-#[cold]
-#[inline(never)]
-pub fn find_and_handle_cycle<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
-    tcx: TyCtxt<'tcx>,
-    key: C::Key,
-    try_execute: QueryJobId,
-    span: Span,
-) -> (C::Value, Option<DepNodeIndex>) {
-    // Ensure there were no errors collecting all active jobs.
-    // We need the complete map to ensure we find a cycle to break.
-    let job_map = tcx.collect_active_query_jobs(CollectActiveJobsKind::FullNoContention);
-
-    let cycle = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
-    (handle_cycle(query, tcx, key, cycle), None)
-}
-
 /// Awaits for the query job to complete.
 fn latch_wait_on<'tcx>(
     latch: &QueryLatch<'tcx>,
@@ -218,7 +167,7 @@ pub fn wait_for_query<'tcx, C: QueryCache>(
     key_hash: u64,
     latch: QueryLatch<'tcx>,
     current: Option<QueryJobId>,
-) -> (C::Value, Option<DepNodeIndex>) {
+) -> Result<(C::Value, Option<DepNodeIndex>), QueryCycle<'tcx>> {
     // For parallel queries, we'll block and wait until the query running
     // in another thread has completed. Record how long we wait in the
     // self-profiler.
@@ -248,9 +197,9 @@ pub fn wait_for_query<'tcx, C: QueryCache>(
             tcx.prof.query_cache_hit(index.into());
             query_blocked_prof_timer.finish_with_query_invocation_id(index.into());
 
-            (v, Some(index))
+            Ok((v, Some(index)))
         }
-        Err(cycle) => (handle_cycle(query, tcx, key, cycle), None),
+        Err(cycle) => Err(cycle),
     }
 }
 

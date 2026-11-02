@@ -177,11 +177,11 @@ macro_rules! define_queries {
                         handle_cycle_error_fn: |tcx, key, cycle, err| {
                             use rustc_middle::query::erase::erase_val;
 
-                            erase_val(rustc_middle::query::q_impl::handle_cycle_error::$name(tcx, key, cycle, err))
+                            erase_val($crate::handle_cycle_error::$name(tcx, key, cycle, err))
                         },
                         #[cfg(not($handle_cycle_error))]
                         handle_cycle_error_fn: |_tcx, _key, _cycle, err| {
-                            rustc_middle::query::q_impl::handle_cycle_error::default(err)
+                            $crate::handle_cycle_error::default(err)
                         },
 
                         #[cfg($no_hash)]

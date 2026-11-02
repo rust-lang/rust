@@ -10,18 +10,21 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::QueryCycle;
+use rustc_middle::query::q_impl::diagnostics::{
+    Alias, Cycle, CycleStack, CycleUsage, NestedCycle, NestedCycleBottom, StackCount,
+};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug};
 
 // Default cycle handler used for all queries that don't use the `handle_cycle_error` query
 // modifier.
-pub fn default(err: Diag<'_>) -> ! {
+pub(crate) fn default(err: Diag<'_>) -> ! {
     let guar = err.emit_err();
     guar.raise_fatal()
 }
 
-pub fn fn_sig<'tcx>(
+pub(crate) fn fn_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     _: QueryCycle<'tcx>,
@@ -46,7 +49,7 @@ pub fn fn_sig<'tcx>(
     )
 }
 
-pub fn check_representability<'tcx>(
+pub(crate) fn check_representability<'tcx>(
     tcx: TyCtxt<'tcx>,
     _key: LocalDefId,
     cycle: QueryCycle<'tcx>,
@@ -55,7 +58,7 @@ pub fn check_representability<'tcx>(
     check_representability_inner(tcx, cycle);
 }
 
-pub fn check_representability_adt_ty<'tcx>(
+pub(crate) fn check_representability_adt_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     _key: Ty<'tcx>,
     cycle: QueryCycle<'tcx>,
@@ -95,7 +98,7 @@ fn check_representability_inner<'tcx>(tcx: TyCtxt<'tcx>, cycle: QueryCycle<'tcx>
     guar.raise_fatal()
 }
 
-pub fn variances_of<'tcx>(
+pub(crate) fn variances_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     _cycle: QueryCycle<'tcx>,
@@ -125,7 +128,7 @@ fn search_for_cycle_permutation<Q, T>(
     otherwise()
 }
 
-pub fn layout_of<'tcx>(
+pub(crate) fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     _key: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
     cycle: QueryCycle<'tcx>,
@@ -343,7 +346,7 @@ fn find_item_ty_spans(
 
 #[inline(never)]
 #[cold]
-pub fn create_cycle_error<'tcx>(
+pub(crate) fn create_cycle_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     QueryCycle { usage, frames }: &QueryCycle<'tcx>,
     nested: bool,
@@ -354,7 +357,6 @@ pub fn create_cycle_error<'tcx>(
 
     let mut cycle_stack = Vec::new();
 
-    use super::diagnostics::StackCount;
     let stack_bottom = frames[0].tagged_key.catch_description(tcx);
     let stack_count = if frames.len() == 1 {
         StackCount::Single { stack_bottom: stack_bottom.clone() }
@@ -366,7 +368,7 @@ pub fn create_cycle_error<'tcx>(
     for i in 1..frames.len() {
         let frame = &frames[i];
         let span = frame.tagged_key.catch_default_span(tcx, frames[(i + 1) % frames.len()].span);
-        cycle_stack.push(super::diagnostics::CycleStack {
+        cycle_stack.push(CycleStack {
             span: if span == prev { DUMMY_SP } else { span },
             desc: frame.tagged_key.catch_description(tcx),
         });
@@ -375,7 +377,7 @@ pub fn create_cycle_error<'tcx>(
 
     let cycle_usage = usage.as_ref().map(|usage| {
         let cycle_span = usage.tagged_key.catch_default_span(tcx, usage.span);
-        super::diagnostics::CycleUsage {
+        CycleUsage {
             span: if cycle_span != span { cycle_span } else { DUMMY_SP },
             usage: usage.tagged_key.catch_description(tcx),
         }
@@ -397,9 +399,9 @@ pub fn create_cycle_error<'tcx>(
 
     let alias = if !nested {
         if is_all_def_kind(DefKind::TyAlias) {
-            Some(super::diagnostics::Alias::Ty)
+            Some(Alias::Ty)
         } else if is_all_def_kind(DefKind::TraitAlias) {
-            Some(super::diagnostics::Alias::Trait)
+            Some(Alias::Trait)
         } else {
             None
         }
@@ -408,16 +410,16 @@ pub fn create_cycle_error<'tcx>(
     };
 
     if nested {
-        tcx.sess.dcx().create_err(super::diagnostics::NestedCycle {
+        tcx.sess.dcx().create_err(NestedCycle {
             span,
             cycle_stack,
-            stack_bottom: super::diagnostics::NestedCycleBottom { stack_bottom },
+            stack_bottom: NestedCycleBottom { stack_bottom },
             cycle_usage,
             stack_count,
             note_span: (),
         })
     } else {
-        tcx.sess.dcx().create_err(super::diagnostics::Cycle {
+        tcx.sess.dcx().create_err(Cycle {
             span,
             cycle_stack,
             stack_bottom,

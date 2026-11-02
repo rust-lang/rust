@@ -26,22 +26,32 @@ impl<'tcx> QueryJobMap<'tcx> {
     /// Adds information about a job ID to the job map.
     ///
     /// Should only be called by `collect_active_query_jobs_inner`.
+    #[inline]
     pub fn insert(&mut self, id: QueryJobId, info: QueryJobInfo<'tcx>) {
         self.map.insert(id, info);
     }
 
-    fn tagged_key_of(&self, id: QueryJobId) -> TaggedQueryKey<'tcx> {
+    #[inline]
+    pub fn tagged_key_of(&self, id: QueryJobId) -> TaggedQueryKey<'tcx> {
         self.map[&id].tagged_key
     }
 
+    #[inline]
+    pub fn info(&self, id: QueryJobId) -> &QueryJobInfo<'tcx> {
+        &self.map[&id]
+    }
+
+    #[inline]
     fn span_of(&self, id: QueryJobId) -> Span {
         self.map[&id].job.span
     }
 
+    #[inline]
     fn parent_of(&self, id: QueryJobId) -> Option<QueryJobId> {
         self.map[&id].job.parent
     }
 
+    #[inline]
     fn latch_of(&self, id: QueryJobId) -> Option<&QueryLatch<'tcx>> {
         self.map[&id].job.latch.as_ref()
     }
@@ -118,41 +128,6 @@ pub fn collect_active_query_jobs_inner<'tcx, C>(
             }
         }
     }
-}
-
-pub fn find_cycle_in_stack<'tcx>(
-    id: QueryJobId,
-    job_map: QueryJobMap<'tcx>,
-    current_job: &Option<QueryJobId>,
-    span: Span,
-) -> QueryCycle<'tcx> {
-    // Find the waitee amongst `current_job` parents.
-    let mut frames = Vec::new();
-    let mut current_job = Option::clone(current_job);
-
-    while let Some(job) = current_job {
-        let info = &job_map.map[&job];
-        frames.push(QueryStackFrame { span: info.job.span, tagged_key: info.tagged_key });
-
-        if job == id {
-            frames.reverse();
-
-            // This is the end of the cycle. The span entry we included was for
-            // the usage of the cycle itself, and not part of the cycle.
-            // Replace it with the span which caused the cycle to form.
-            frames[0].span = span;
-            // Find out why the cycle itself was used.
-            let usage = try {
-                let parent = info.job.parent?;
-                QueryStackFrame { span: info.job.span, tagged_key: job_map.tagged_key_of(parent) }
-            };
-            return QueryCycle { usage, frames };
-        }
-
-        current_job = info.job.parent;
-    }
-
-    panic!("did not find a cycle")
 }
 
 /// Finds the query job closest to the root that is for the same query method as `id`

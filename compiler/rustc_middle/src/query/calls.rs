@@ -199,7 +199,8 @@ where
     }
 }
 
-pub(crate) fn feed_query<'tcx, C: QueryCache>(
+#[inline]
+pub(crate) fn query_feed<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
@@ -247,10 +248,13 @@ pub(crate) fn feed_query<'tcx, C: QueryCache>(
                     let latch = job.latch.get_or_insert_with(QueryLatch::new).clone();
                     drop(state_lock);
 
-                    let (existing, _) =
-                        wait_for_query(query, tcx, DUMMY_SP, key, key_hash, latch, current_job_id);
-
-                    check_feedable_consistency(tcx, query, key, &value, &existing);
+                    match wait_for_query(query, tcx, DUMMY_SP, key, key_hash, latch, current_job_id)
+                    {
+                        Ok((existing, _)) => {
+                            check_feedable_consistency(tcx, query, key, &value, &existing)
+                        }
+                        Err(_) => bug!("encountered a cycle while waiting for query while feeding"),
+                    }
                 } else {
                     drop(state_lock);
                     bug!("can't feed query while it is executing");
