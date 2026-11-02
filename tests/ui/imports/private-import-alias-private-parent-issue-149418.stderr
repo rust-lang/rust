@@ -1,0 +1,37 @@
+error[E0603]: constant import `fruit` is private
+  --> $DIR/private-import-alias-private-parent-issue-149418.rs:24:31
+   |
+LL |     let _ = delicious_snacks::fruit;
+   |                               ^^^^^ private constant import
+   |
+note: the constant import `fruit` is defined here...
+  --> $DIR/private-import-alias-private-parent-issue-149418.rs:7:9
+   |
+LL |     use self::fruits::PEAR as fruit;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the constant `PEAR` which is defined here
+  --> $DIR/private-import-alias-private-parent-issue-149418.rs:10:9
+   |
+LL |         pub const PEAR: &str = "Pear";
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0603]: constant import `fruit` is private
+  --> $DIR/private-import-alias-private-parent-issue-149418.rs:26:44
+   |
+LL |     let _ = delicious_snacks_without_self::fruit;
+   |                                            ^^^^^ private constant import
+   |
+note: the constant import `fruit` is defined here...
+  --> $DIR/private-import-alias-private-parent-issue-149418.rs:16:9
+   |
+LL |     use fruits::PEAR as fruit;
+   |         ^^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the constant `PEAR` which is defined here
+  --> $DIR/private-import-alias-private-parent-issue-149418.rs:19:9
+   |
+LL |         pub const PEAR: &str = "Pear";
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.
