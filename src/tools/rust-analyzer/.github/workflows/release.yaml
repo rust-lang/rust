@@ -126,12 +126,16 @@ jobs:
 
       - name: Package Extension (release)
         if: github.ref == 'refs/heads/release' && matrix.code-target
-        run: npx vsce package -o "../../dist/rust-analyzer-${{ matrix.code-target }}.vsix" --target ${{ matrix.code-target }}
+        run: npx vsce package -o "../../dist/rust-analyzer-${CODE_TARGET}.vsix" --target ${CODE_TARGET}
+        env:
+          CODE_TARGET: ${{ matrix.code-target }}
         working-directory: editors/code
 
       - name: Package Extension (nightly)
         if: github.ref != 'refs/heads/release' && matrix.code-target
-        run: npx vsce package -o "../../dist/rust-analyzer-${{ matrix.code-target }}.vsix" --target ${{ matrix.code-target }} --pre-release
+        run: npx vsce package -o "../../dist/rust-analyzer-${CODE_TARGET}.vsix" --target ${CODE_TARGET} --pre-release
+        env:
+          CODE_TARGET: ${{ matrix.code-target }}
         working-directory: editors/code
 
       - if: matrix.target == 'x86_64-unknown-linux-gnu'
