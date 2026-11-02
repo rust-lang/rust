@@ -16,6 +16,7 @@ use super::item_bounds::explicit_item_bounds_with_filter;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
 use crate::delegation::inherit_clauses_for_delegation_item;
+use crate::hir_ty_lowering::bounds::IncludeSizedImplicitBound;
 use crate::hir_ty_lowering::{
     HirTyLowerer, ImpliedBoundsContext, OverlappingAsssocItemConstraints, PredicateFilter,
     RegionInferReason,
@@ -195,19 +196,13 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
             PredicateFilter::All,
             OverlappingAsssocItemConstraints::Allowed,
         );
-        icx.lowerer().add_implicit_sizedness_bounds(
+        icx.lowerer().add_implicit_bounds(
             &mut bounds,
             tcx.types.self_param,
             self_bounds,
             ImpliedBoundsContext::TraitDef(def_id),
             span,
-        );
-        icx.lowerer().add_default_traits(
-            &mut bounds,
-            tcx.types.self_param,
-            self_bounds,
-            ImpliedBoundsContext::TraitDef(def_id),
-            span,
+            IncludeSizedImplicitBound::Yes,
         );
         clauses.extend(bounds);
     }
@@ -234,19 +229,13 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
                 let param_ty = icx.lowerer().lower_ty_param(param.hir_id);
                 let mut bounds = Vec::new();
                 // Implicit bounds are added to type params unless a `?Trait` bound is found
-                icx.lowerer().add_implicit_sizedness_bounds(
+                icx.lowerer().add_implicit_bounds(
                     &mut bounds,
                     param_ty,
                     &[],
                     ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                     param.span,
-                );
-                icx.lowerer().add_default_traits(
-                    &mut bounds,
-                    param_ty,
-                    &[],
-                    ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
-                    param.span,
+                    IncludeSizedImplicitBound::Yes,
                 );
                 trace!(?bounds);
                 clauses.extend(bounds);
@@ -690,19 +679,13 @@ pub(super) fn implied_clauses_with_filter<'tcx>(
         | PredicateFilter::SelfOnly
         | PredicateFilter::SelfTraitThatDefines(_)
         | PredicateFilter::SelfAndAssociatedTypeBounds => {
-            icx.lowerer().add_implicit_sizedness_bounds(
+            icx.lowerer().add_implicit_bounds(
                 &mut bounds,
                 self_param_ty,
                 superbounds,
                 ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
-            );
-            icx.lowerer().add_default_traits(
-                &mut bounds,
-                self_param_ty,
-                superbounds,
-                ImpliedBoundsContext::TraitDef(trait_def_id),
-                item.span,
+                IncludeSizedImplicitBound::Yes,
             );
         }
         //`ConstIfConst` is only interested in `[const]` bounds.
@@ -992,19 +975,13 @@ impl<'tcx> ItemCtxt<'tcx> {
                 match param.kind {
                     hir::GenericParamKind::Type { .. } => {
                         let param_ty = self.lowerer().lower_ty_param(param.hir_id);
-                        self.lowerer().add_implicit_sizedness_bounds(
+                        self.lowerer().add_implicit_bounds(
                             &mut bounds,
                             param_ty,
                             &[],
                             ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                             param.span,
-                        );
-                        self.lowerer().add_default_traits(
-                            &mut bounds,
-                            param_ty,
-                            &[],
-                            ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
-                            param.span,
+                            IncludeSizedImplicitBound::Yes,
                         );
                     }
                     hir::GenericParamKind::Lifetime { .. }

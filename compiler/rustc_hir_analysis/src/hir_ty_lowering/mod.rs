@@ -15,7 +15,7 @@
 //! [^1]: This includes types, lifetimes / regions, constants in type positions,
 //! trait references and bounds.
 
-mod bounds;
+pub(crate) mod bounds;
 mod cmse;
 mod dyn_trait;
 pub mod errors;
@@ -57,6 +57,7 @@ use tracing::{debug, instrument};
 use crate::check::check_abi;
 use crate::check_c_variadic_abi;
 use crate::diagnostics::{self, BadReturnTypeNotation, NoFieldOnType, NoVariantNamed};
+use crate::hir_ty_lowering::bounds::IncludeSizedImplicitBound;
 use crate::hir_ty_lowering::errors::{
     GenericsArgsErrExtend, eq_ctxt_suggestion_span, prohibit_assoc_item_constraint,
 };
@@ -3326,12 +3327,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     PredicateFilter::All,
                     OverlappingAsssocItemConstraints::Allowed,
                 );
-                self.add_implicit_sizedness_bounds(
+                self.add_implicit_bounds(
                     &mut bounds,
                     self_ty,
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     hir_ty.span,
+                    IncludeSizedImplicitBound::Yes,
                 );
                 self.register_trait_ascription_bounds(bounds, hir_ty.hir_id, hir_ty.span);
                 self_ty

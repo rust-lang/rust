@@ -23,6 +23,7 @@ use tracing::{debug, instrument};
 
 use super::HirTyLowerer;
 use crate::diagnostics::DynTraitAssocItemBindingMentionsSelf;
+use crate::hir_ty_lowering::bounds::IncludeSizedImplicitBound;
 use crate::hir_ty_lowering::{
     GenericArgCountMismatch, ImpliedBoundsContext, OverlappingAsssocItemConstraints,
     PredicateFilter, RegionInferReason,
@@ -75,7 +76,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        self.add_default_traits(
+        self.add_implicit_bounds(
             &mut user_written_bounds,
             dummy_self,
             &hir_bounds
@@ -84,6 +85,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .collect::<Vec<_>>(),
             ImpliedBoundsContext::AssociatedTypeOrImplTrait,
             span,
+            IncludeSizedImplicitBound::No,
         );
 
         let (mut elaborated_trait_bounds, elaborated_projection_bounds) =
