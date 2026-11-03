@@ -31,4 +31,22 @@ fn main() {
 
     foo::< /* e */ 7>();
     //~^ WARN unnecessary braces around const expression
+
+    foo::<7 /* f */ >();
+    //~^ WARN unnecessary braces around const expression
+
+    let _ = [0;  /* g */ 3];
+    //~^ WARN unnecessary braces around const expression
+
+    if  /* h */ true {}
+    //~^ WARN unnecessary braces around `if` condition
+
+    let _ = || /* i */ 1;
+    //~^ WARN unnecessary parentheses around closure body
+
+    let _ = || {
+        _ = 0;
+         /* j */ 1
+        //~^ WARN unnecessary braces around block return value
+    };
 }
