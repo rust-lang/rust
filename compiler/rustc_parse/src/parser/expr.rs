@@ -15,7 +15,7 @@ use rustc_ast::{
     self as ast, AnonConst, Arm, AssignOp, AssignOpKind, AttrStyle, AttrVec, BinOp, BinOpKind,
     BlockCheckMode, CaptureBy, ClosureBinder, CoroutineKind, DUMMY_NODE_ID, Expr, ExprField,
     ExprKind, FnDecl, FnRetTy, ForLoop, Guard, Label, MacCall, MetaItemLit, Movability, Param,
-    RangeLimits, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
+    RangeLimits, RescopeKind, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
@@ -1838,6 +1838,8 @@ impl<'a> Parser<'a> {
                 sym::unwrap_binder => {
                     Some(this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Unwrap)?)
                 }
+                sym::scope => Some(this.parse_expr_rescope(lo, RescopeKind::Scope)?),
+                sym::extend => Some(this.parse_expr_rescope(lo, RescopeKind::Extend)?),
                 _ => None,
             })
         })
@@ -1922,6 +1924,21 @@ impl<'a> Parser<'a> {
         let ty = if self.eat(exp!(Comma)) { Some(self.parse_ty()?) } else { None };
         let span = lo.to(self.token.span);
         Ok(self.mk_expr(span, ExprKind::UnsafeBinderCast(kind, expr, ty)))
+    }
+
+    /// Built-in macros `scope!` and `extend!` for temporary scoping.
+    fn parse_expr_rescope(&mut self, lo: Span, kind: RescopeKind) -> PResult<'a, Box<Expr>> {
+        // FIXME(super_let): we may be able to recover identifiers into labels here, or generally
+        // provide better diagnostics
+        let Some(label) = self.eat_label() else {
+            let err =
+                self.dcx().create_err(crate::diagnostics::ExpectedLabel { span: self.token.span });
+            return Err(err);
+        };
+        self.expect(exp!(FatArrow))?;
+        let expr = self.parse_expr()?;
+        let span = lo.to(self.token.span);
+        Ok(self.mk_expr(span, ExprKind::Rescope(kind, label, expr)))
     }
 
     /// Returns a string literal if the next token is a string literal.
@@ -4242,7 +4259,8 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Call(_, _)
             | ExprKind::MethodCall(_)
             | ExprKind::Tup(_)
-            | ExprKind::Paren(_) => {
+            | ExprKind::Paren(_)
+            | ExprKind::Rescope(_, _, _) => {
                 let forbid_let_reason = self.forbid_let_reason;
                 self.forbid_let_reason =
                     Some(crate::diagnostics::ForbiddenLetReason::OtherForbidden);

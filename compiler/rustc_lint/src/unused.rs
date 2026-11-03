@@ -198,6 +198,10 @@ trait UnusedDelimLint {
             | Paren(_)
             | Become(_) => true,
             Call(..) | MethodCall(_) | Let(..) | Field(..) | MacCall(_) | FormatArgs(_) => false,
+            // `scope!` uses the temporary scope given by its label, rather than the enclosing block
+            Rescope(ast::RescopeKind::Scope, _, _) => true,
+            // `extend!` does not change the enclosing temporary scope, so the block's applies
+            Rescope(ast::RescopeKind::Extend, _, _) => false,
             // `gca!()` is invalid in function/method argument position.
             GcaMacro(_) => false,
             // don't lint for placeholder/error-recovery
