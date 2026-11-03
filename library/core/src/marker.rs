@@ -1416,6 +1416,7 @@ pub macro CoerceShared($item:item) {
     message = "values of type `{Self}` may not be forgotten",
     label = "value may be forgotten"
 )]
+#[lang = "forget"]
 #[unstable(feature = "forget_trait", issue = "165370")]
 pub unsafe auto trait Forget {
     // Empty.

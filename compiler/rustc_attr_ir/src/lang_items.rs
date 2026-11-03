@@ -191,6 +191,7 @@ language_item_table! {
     Code,                    sym::code,                code,                       Target::ForeignTy,      GenericRequirement::None;
 
     Drop,                    sym::drop,                drop_trait,                 Target::Trait,          GenericRequirement::None;
+    Forget,                  sym::forget,              forget_trait,               Target::Trait,          GenericRequirement::None;
     Destruct,                sym::destruct,            destruct_trait,             Target::Trait,          GenericRequirement::None;
     AsyncDrop,               sym::async_drop,          async_drop_trait,           Target::Trait,          GenericRequirement::None;
     AsyncDropInPlace,        sym::async_drop_in_place, async_drop_in_place_fn,     Target::Fn,             GenericRequirement::Exact(1);

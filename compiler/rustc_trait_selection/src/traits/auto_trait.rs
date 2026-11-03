@@ -81,6 +81,16 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
 
+        // Without `#![feature(forget_trait)]`, assume absolutely all types are forget.
+        if !tcx.features().forget_trait() && tcx.is_forget_trait(trait_did) {
+            let info = AutoTraitInfo {
+                full_user_env: typing_env.param_env,
+                region_data: Default::default(),
+                vid_to_region: Default::default(),
+            };
+            return AutoTraitResult::PositiveImpl(auto_trait_callback(info));
+        }
+
         if tcx.next_trait_solver_globally() {
             return self.find_auto_trait_generics_next_solver(
                 ty,
