@@ -1219,8 +1219,27 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn is_unsafe_cell(self) -> bool {
-        if let Adt(def, _) = self.kind() { def.is_unsafe_cell() } else { false }
+    pub fn is_like_unsafe_cell(self) -> bool {
+        // Layout code assumes that enums, closures (including corotuine closures), and tuples
+        // always return `false` here.
+        match self.kind() {
+            // The `HasMutInterior` const-checking qualif assumes that we check IS_UNSAFE_CELL and
+            // nothing else here.
+            ty::Adt(def, _) => def.flags().contains(AdtFlags::IS_UNSAFE_CELL),
+            ty::Coroutine(..) => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
+    pub fn is_like_unsafe_pinned(self) -> bool {
+        // Layout code assumes that enums, closures (including corotuine closures), and tuples
+        // always return `false` here.
+        match self.kind() {
+            ty::Adt(def, _) => def.flags().contains(AdtFlags::IS_UNSAFE_PINNED),
+            ty::Coroutine(..) => true,
+            _ => false,
+        }
     }
 
     #[inline]

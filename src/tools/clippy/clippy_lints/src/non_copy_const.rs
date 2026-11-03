@@ -286,7 +286,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                     return IsFreeze::Yes;
                 }
                 let is_freeze = match *ty.kind() {
-                    ty::Adt(adt, _) if adt.is_unsafe_cell() => {
+                    _ if ty.is_like_unsafe_cell() => {
                         *e = IsFreeze::No;
                         return IsFreeze::No;
                     },

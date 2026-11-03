@@ -26,8 +26,8 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use tracing::{debug, trace};
 
 use crate::{
-    BackendRepr, FieldsShape, HasDataLayout, Integer, LayoutData, Primitive, ReprOptions, Scalar,
-    StructKind, TagEncoding, VariantLayout, Variants, WrappingRange,
+    BackendRepr, FieldsShape, HasDataLayout, Integer, LayoutData, NicheOptimizations, Primitive,
+    ReprOptions, Scalar, StructKind, TagEncoding, VariantLayout, Variants, WrappingRange,
 };
 
 /// Overlap eligibility and variant assignment for each CoroutineSavedLocal.
@@ -175,6 +175,7 @@ where
         &prefix_layouts,
         &ReprOptions::default(),
         StructKind::AlwaysSized,
+        NicheOptimizations::Disabled, // we are a coroutine and act like UnsafePinned
     )?;
 
     let (prefix_size, prefix_align) = (prefix.size, prefix.align);
@@ -232,6 +233,7 @@ where
                 &variant_only_tys.collect::<IndexVec<_, _>>(),
                 &ReprOptions::default(),
                 StructKind::Prefixed(prefix_size, prefix_align.abi),
+                NicheOptimizations::Disabled, // we are a coroutine and act like UnsafePinned
             )?;
 
             let FieldsShape::Arbitrary { offsets, in_memory_order } = variant.fields else {

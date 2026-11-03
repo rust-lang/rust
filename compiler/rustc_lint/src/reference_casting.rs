@@ -249,7 +249,7 @@ fn is_ty_fully_unsafe_celled<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
         }
 
         // Is this an `UnsafeCell` or `PhantomData`?
-        if ty.is_unsafe_cell() || ty.is_phantom_data() {
+        if ty.is_like_unsafe_cell() || ty.is_phantom_data() {
             return true;
         }
 
