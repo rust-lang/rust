@@ -295,6 +295,12 @@ LL |     trait B: A { type T; }
 ...
 LL |     fn f(_: impl C<T: Copy>) {}
    |                    ^^^^^^^ ambiguous associated type `T`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     fn f(_: impl C<T: Copy>) {}
+LL +     fn f(_: impl C + atb::B<T: Copy> + atb::A<T: Copy>) {}
+   |
 
 error[E0222]: ambiguous associated type `Assoc` in bounds of `Trait`
   --> $DIR/dyn-trait-in-param-or-body.rs:10:22

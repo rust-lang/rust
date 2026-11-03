@@ -343,10 +343,6 @@ pub fn item_to_string(ann: &dyn PpAnn, pat: &hir::Item<'_>) -> String {
     to_string(ann, |s| s.print_item(pat))
 }
 
-pub fn generic_args_to_string(ann: &dyn PpAnn, args: &hir::GenericArgs<'_>) -> String {
-    to_string(ann, |s| s.print_generic_args(args, false))
-}
-
 impl<'a> State<'a> {
     fn bclose_maybe_open(&mut self, span: rustc_span::Span, cb: Option<BoxMarker>) {
         self.maybe_print_comment(span.hi());
