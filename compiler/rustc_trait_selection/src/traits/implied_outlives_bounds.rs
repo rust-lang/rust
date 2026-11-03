@@ -165,7 +165,7 @@ pub fn query_compute_implied_outlives_bounds<'tcx>(
     /* if cfg!(debug_assertions) {
         match ocx.infcx.typing_mode_raw() {
             TypingMode::Typeck { defining_opaque_types_and_generators: opaque_types }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaque_types }
+            | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: opaque_types }
             | TypingMode::PostBorrowck { defined_opaque_types: opaque_types } => {
                 assert!(opaque_types.is_empty())
             }

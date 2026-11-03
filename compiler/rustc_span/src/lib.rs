@@ -17,7 +17,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
+#![cfg_attr(all(bootstrap, target_arch = "loongarch64"), feature(stdarch_loongarch))]
 #![feature(core_io_borrowed_buf)]
 #![feature(decl_macro)]
 #![feature(diagnostic_on_unknown)]
@@ -25,6 +25,7 @@
 #![feature(negative_impls)]
 #![feature(read_buf)]
 #![feature(rustc_attrs)]
+#![feature(trait_alias)]
 // tidy-alphabetical-end
 
 // The code produced by the `Encodable`/`Decodable` derive macros refer to
@@ -32,7 +33,7 @@
 // this crate without this line making `rustc_span` available.
 extern crate self as rustc_span;
 
-use rustc_data_structures::stable_hash::StableHashCtxt;
+use rustc_data_structures::stable_hash::{DummyStableHashCtxt, StableHashCtxt};
 use rustc_data_structures::{AtomicRef, outline};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_serialize::opaque::mem_encoder::MemEncoder;
@@ -317,7 +318,7 @@ pub struct RealFileName {
 /// The inner workings of `RealFileName`.
 ///
 /// It contains the `name`, `working_directory` and `embeddable_name` components.
-#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Decodable, Encodable, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, StableHash, Decodable, Encodable)]
 struct InnerRealFileName {
     /// The name.
     name: PathBuf,
@@ -327,18 +328,18 @@ struct InnerRealFileName {
     embeddable_name: PathBuf,
 }
 
-impl Hash for RealFileName {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+impl StableHash for RealFileName {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        let RealFileName { local, maybe_remapped, scopes } = self;
         // To prevent #70924 from happening again we should only hash the
         // remapped path if that exists. This is because remapped paths to
         // sysroot crates (/rust/$hash or /rust/$version) remain stable even
         // if the corresponding local path changes.
         if !self.was_fully_remapped() {
-            self.local.hash(state);
+            local.stable_hash(hcx, hasher);
         }
-        self.maybe_remapped.hash(state);
-        self.scopes.bits().hash(state);
+        maybe_remapped.stable_hash(hcx, hasher);
+        scopes.bits().stable_hash(hcx, hasher);
     }
 }
 
@@ -507,7 +508,7 @@ impl RealFileName {
 }
 
 /// Differentiates between real files and common virtual files.
-#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Decodable, Encodable)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, StableHash, Decodable, Encodable)]
 pub enum FileName {
     Real(RealFileName),
     /// Strings provided as `--cfg [cfgspec]`.
@@ -732,12 +733,6 @@ impl SpanData {
     }
 }
 
-impl Default for SpanData {
-    fn default() -> Self {
-        Self { lo: BytePos(0), hi: BytePos(0), ctxt: SyntaxContext::root(), parent: None }
-    }
-}
-
 impl Span {
     #[inline]
     pub fn lo(self) -> BytePos {
@@ -918,7 +913,7 @@ impl Span {
     /// [`find_ancestor_inside`]: Self::find_ancestor_inside
     /// [`find_ancestor_inside_same_ctxt`]: Self::find_ancestor_inside_same_ctxt
     pub fn find_ancestor_in_same_ctxt(mut self, other: Span) -> Option<Span> {
-        while !self.eq_ctxt(other) {
+        while self.ctxt() != other.ctxt() {
             self = self.parent_callsite()?;
         }
         Some(self)
@@ -937,7 +932,7 @@ impl Span {
     /// [`find_ancestor_inside`]: Self::find_ancestor_inside
     /// [`find_ancestor_in_same_ctxt`]: Self::find_ancestor_in_same_ctxt
     pub fn find_ancestor_inside_same_ctxt(mut self, outer: Span) -> Option<Span> {
-        while !outer.contains(self) || !self.eq_ctxt(outer) {
+        while !outer.contains(self) || self.ctxt() != outer.ctxt() {
             self = self.parent_callsite()?;
         }
         Some(self)
@@ -1278,7 +1273,7 @@ impl Span {
 
         // Don't return something if it's marked with `#[diagnostic::opaque]`.
         // This already accounts for `-Zmacro-backtrace`.
-        if within.data().ctxt.outer_expn_data().diagnostic_opaque {
+        if within.ctxt().outer_expn_data().diagnostic_opaque {
             return None;
         }
 
@@ -1419,9 +1414,9 @@ pub trait SpanEncoder: Encoder {
 
 impl SpanEncoder for FileEncoder<'_> {
     fn encode_span(&mut self, span: Span) {
-        let span = span.data();
-        span.lo.encode(self);
-        span.hi.encode(self);
+        let (lo, hi) = span.lo_hi();
+        lo.encode(self);
+        hi.encode(self);
     }
 
     fn encode_symbol(&mut self, sym: Symbol) {
@@ -1456,9 +1451,9 @@ impl SpanEncoder for FileEncoder<'_> {
 
 impl SpanEncoder for MemEncoder {
     fn encode_span(&mut self, span: Span) {
-        let span = span.data();
-        span.lo.encode(self);
-        span.hi.encode(self);
+        let (lo, hi) = span.lo_hi();
+        lo.encode(self);
+        hi.encode(self);
     }
 
     fn encode_symbol(&mut self, sym: Symbol) {
@@ -2207,8 +2202,8 @@ impl StableSourceFileId {
         stable_crate_id: Option<StableCrateId>,
     ) -> Self {
         let mut hasher = StableHasher::new();
-        filename.hash(&mut hasher);
-        stable_crate_id.hash(&mut hasher);
+        filename.stable_hash(&mut DummyStableHashCtxt, &mut hasher);
+        stable_crate_id.stable_hash(&mut DummyStableHashCtxt, &mut hasher);
         StableSourceFileId(hasher.finish())
     }
 }

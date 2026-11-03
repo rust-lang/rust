@@ -32,8 +32,8 @@ use rustc_macros::TypeVisitable;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, Clause, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode,
+    self, BottomUpFolder, Clause, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode,
     Unnormalized, Upcast,
 };
 use rustc_span::Span;
@@ -798,8 +798,8 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
 /// args when they're not actually needed to evaluate a constant.
 fn replace_param_and_infer_args_with_placeholder<'tcx>(
     tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
-) -> GenericArgsRef<'tcx> {
+    args: GenericArgs<'tcx>,
+) -> GenericArgs<'tcx> {
     struct ReplaceParamAndInferWithPlaceholder<'tcx> {
         tcx: TyCtxt<'tcx>,
         idx: ty::BoundVar,
@@ -874,7 +874,7 @@ pub fn impossible_clauses<'tcx>(tcx: TyCtxt<'tcx>, clauses: Vec<ty::Clause<'tcx>
 
 fn instantiate_and_check_impossible_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: (DefId, GenericArgsRef<'tcx>),
+    key: (DefId, GenericArgs<'tcx>),
 ) -> bool {
     debug!("instantiate_and_check_impossible_clauses(key={:?})", key);
 

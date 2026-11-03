@@ -18,7 +18,7 @@ use crate::mono::CollectionMode;
 use crate::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
-use crate::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};
+use crate::ty::{self, GenericArg, GenericArgs, Ty, TyCtxt};
 use crate::{mir, traits};
 
 /// Placeholder for `CrateNum`'s "local" counterpart
@@ -248,13 +248,13 @@ impl QueryKey for (DefId, ty::SizedTraitKind) {
     }
 }
 
-impl<'tcx> QueryKey for GenericArgsRef<'tcx> {
+impl<'tcx> QueryKey for GenericArgs<'tcx> {
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
 }
 
-impl<'tcx> QueryKey for (DefId, GenericArgsRef<'tcx>) {
+impl<'tcx> QueryKey for (DefId, GenericArgs<'tcx>) {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.0.default_span(tcx)
     }
@@ -308,7 +308,7 @@ impl<'tcx, T: QueryKey> QueryKey for ty::PseudoCanonicalInput<'tcx, T> {
     }
 }
 
-impl<'tcx> QueryKey for (ty::AdtDef<'tcx>, ty::GenericArgsRef<'tcx>) {
+impl<'tcx> QueryKey for (ty::AdtDef<'tcx>, ty::GenericArgs<'tcx>) {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(self.0.did())
     }

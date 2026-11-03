@@ -17,6 +17,7 @@ use rustc_ast::visit::{
     AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, try_visit, visit_opt, walk_list,
 };
 use rustc_ast::*;
+use rustc_attr_ir::target::Target;
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -50,8 +51,11 @@ use crate::{
 };
 
 mod diagnostics;
+mod lang_items;
+pub(super) mod weak_lang_items;
 
 use diagnostics::{ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime};
+pub(super) use lang_items::{Duplicate, collect_item};
 
 #[derive(Copy, Clone, Debug)]
 struct BindingInfo {
@@ -1130,6 +1134,13 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         with_owner(self, foreign_item.id, |this| {
             this.resolve_doc_links(&foreign_item.attrs, MaybeExported::Ok(foreign_item.id));
             let def_kind = this.r.tcx.def_kind(this.r.current_owner.def_id);
+            this.check_for_lang(
+                Target::from_foreign_item_kind(&foreign_item.kind),
+                this.r.current_owner.def_id,
+                &foreign_item.attrs,
+                foreign_item.span,
+                None,
+            );
             match foreign_item.kind {
                 ForeignItemKind::TyAlias(TyAlias { ref generics, .. }) => {
                     this.with_generic_param_rib(
@@ -1549,6 +1560,13 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         self.visit_vis(&v.vis);
         self.visit_ident(&v.ident);
         self.visit_variant_data(&v.data);
+        self.check_for_lang(
+            Target::Variant,
+            self.r.current_owner.node_id_to_def_id[&v.id],
+            &v.attrs,
+            v.span,
+            None,
+        );
         if let Some(discr) = &v.disr_expr {
             self.resolve_anon_const(discr, AnonConstKind::EnumDiscriminant);
         }
@@ -2964,9 +2982,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let mut mod_inner_attrs_start = None;
         match item.kind {
             ItemKind::Mod(..) => {
-                // We only handle outer doc comments for modules here.
+                // We only handle outer attributes which can contain intra-doc links (doc comments
+                // and `deprecated`) for modules here.
                 let attrs = if let Some(pos) = item.attrs.iter().position(|a| {
                     a.doc_resolution_scope().is_some_and(|style| style == AttrStyle::Inner)
+                    || matches!(
+                        a.kind,
+                        AttrKind::Normal(ref n)
+                            if n.item.name() == Some(sym::deprecated) && a.style == AttrStyle::Inner)
                 }) {
                     mod_inner_attrs_start = Some(pos);
                     &item.attrs[..pos]
@@ -2984,6 +3007,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         debug!("(resolving item) resolving {:?} ({:?})", item.kind.ident(), item.kind);
 
         let def_kind = self.r.tcx.def_kind(self.r.current_owner.def_id);
+
+        self.check_for_lang(
+            Target::from_ast_item(item),
+            self.r.current_owner.def_id,
+            &item.attrs,
+            item.span,
+            item.opt_generics(),
+        );
+
         match &item.kind {
             ItemKind::TyAlias(TyAlias { generics, .. }) => {
                 self.with_generic_param_rib(
@@ -3583,6 +3615,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         };
 
         self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
+        self.check_for_lang(
+            Target::from_assoc_item_kind(&item.kind, AssocCtxt::Trait),
+            self.r.current_owner.def_id,
+            &item.attrs,
+            item.span,
+            item.opt_generics(),
+        );
         match &item.kind {
             AssocItemKind::Const(ast::ConstItem { generics, ty, body, define_opaque, .. }) => {
                 self.with_generic_param_rib(
@@ -3814,6 +3853,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
         let prev = self.diag_metadata.current_impl_item.take();
         self.diag_metadata.current_impl_item = Some(&item);
+        self.check_for_lang(
+            Target::from_assoc_item_kind(
+                &item.kind,
+                AssocCtxt::Impl { of_trait: is_in_trait_impl },
+            ),
+            self.r.current_owner.def_id,
+            &item.attrs,
+            item.span,
+            item.opt_generics(),
+        );
         match &item.kind {
             AssocItemKind::Const(ast::ConstItem {
                 ident,
@@ -5166,6 +5215,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     /// Handles paths that may refer to associated items.
+    #[tracing::instrument(skip(self, source), level = "debug")]
     fn resolve_qpath(
         &mut self,
         qself: &Option<Box<QSelf>>,
@@ -5174,11 +5224,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         finalize: Finalize,
         source: PathSource<'_, 'ast, 'ra>,
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'ra>>> {
-        debug!(
-            "resolve_qpath(qself={:?}, path={:?}, ns={:?}, finalize={:?})",
-            qself, path, ns, finalize,
-        );
-
         if let Some(qself) = qself {
             if qself.position == 0 {
                 // This is a case like `<T>::B`, where there is no
@@ -5578,6 +5623,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     self.resolve_expr(arg, None);
                 }
                 self.visit_path_segment(seg);
+                self.detect_missing_turbofish(&args);
             }
 
             ExprKind::Call(ref callee, ref arguments) => {
@@ -5599,6 +5645,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         self.resolve_expr(argument, None);
                     }
                 }
+                self.detect_missing_turbofish(&arguments);
             }
             ExprKind::FormatArgs(ref args) => {
                 for arg in args.arguments.all_args() {
@@ -5753,7 +5800,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
             ResolveDocLinks::Exported
                 if !maybe_exported.eval(self.r)
-                    && !rustdoc::has_primitive_or_keyword_or_attribute_docs(attrs) =>
+                    && !rustdoc::has_primitive_or_keyword_or_attribute_docs_ast(attrs) =>
             {
                 return;
             }

@@ -503,7 +503,7 @@ pub struct DocAttribute {
     pub keyword: Option<(Symbol, Span)>,
     pub attribute: Option<(Symbol, Span)>,
     pub masked: Option<Span>,
-    pub notable_trait: Option<Span>,
+    pub notable_trait: Option<(Option<(NotableTraitColor, Span)>, Span)>,
     pub search_unbox: Option<Span>,
 
     // valid on crate
@@ -518,6 +518,41 @@ pub struct DocAttribute {
     // #[doc(test(...))]
     pub test_attrs: ThinVec<Span>,
     pub no_crate_inject: Option<Span>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
+pub enum NotableTraitColor {
+    Grey,
+    Red,
+    Green,
+    Yellow,
+    Blue,
+    Magenta,
+    Cyan,
+    Transparent,
+}
+
+impl From<NotableTraitColor> for &'static str {
+    fn from(color: NotableTraitColor) -> &'static str {
+        use NotableTraitColor::*;
+        match color {
+            Grey => "grey",
+            Red => "red",
+            Green => "green",
+            Yellow => "yellow",
+            Blue => "blue",
+            Magenta => "magenta",
+            Cyan => "cyan",
+            Transparent => "transparent",
+        }
+    }
+}
+
+impl std::fmt::Display for NotableTraitColor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str((*self).into())
+    }
 }
 
 impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute {
@@ -1513,6 +1548,10 @@ pub enum AttributeKind {
     TypeLengthLimit {
         limit: Limit,
     },
+
+    /// Represents `#[rustc_unchecked_type_alias]`
+    // FIXME(#134963): Temporarily prefixed with `rustc_` to prevent potential name resolution ambiguities.
+    UncheckedTypeAlias,
 
     /// Represents `#[rustc_unroll]`
     // FIXME(#159429): temporarily renamed from `#[unroll]` to mitigate nameres ambiguity

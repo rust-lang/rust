@@ -5,11 +5,12 @@ use std::time::Duration;
 use rustc_abi::Size;
 use rustc_target::spec::Os;
 
-use crate::shims::FileDescriptionRef;
 use crate::shims::files::FdNum;
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket_address::EvalContextExt as _;
 use crate::shims::unix::tcp_socket::TcpSocket;
+use crate::shims::unix::udp_socket::UdpSocket;
+use crate::shims::{FileDescription, FileDescriptionRef};
 use crate::*;
 
 /// Represents unix-specific socket file descriptions.
@@ -266,28 +267,36 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         };
 
-        if flags != this.eval_libc_i32("SOCK_STREAM") {
+        let fd_result = if flags == this.eval_libc_i32("SOCK_STREAM") {
+            if ![0, this.eval_libc_i32("IPPROTO_TCP")].contains(&protocol) {
+                throw_unsup_format!(
+                    "socket: socket protocol {protocol} is unsupported for \
+                    streaming socket, only IPPROTO_TCP and 0 are allowed"
+                );
+            }
+
+            TcpSocket::new(family, is_non_block, this).map(|fd| fd.as_unix())
+        } else if flags == this.eval_libc_i32("SOCK_DGRAM") {
+            if ![0, this.eval_libc_i32("IPPROTO_UDP")].contains(&protocol) {
+                throw_unsup_format!(
+                    "socket: socket protocol {protocol} is unsupported for \
+                    datagram socket, only IPPROTO_UDP and 0 are allowed"
+                );
+            }
+
+            UdpSocket::new(family, is_non_block, this).map(|fd| fd.as_unix())
+        } else {
             throw_unsup_format!(
                 "socket: type {:#x} is unsupported, only SOCK_STREAM, \
-            SOCK_CLOEXEC and SOCK_NONBLOCK are allowed",
+                SOCK_DGRAM, SOCK_CLOEXEC and SOCK_NONBLOCK are allowed",
                 flags
             );
-        }
-        if protocol != 0 && protocol != this.eval_libc_i32("IPPROTO_TCP") {
-            throw_unsup_format!(
-                "socket: socket protocol {protocol} is unsupported, \
-            only IPPROTO_TCP and 0 are allowed"
-            );
-        }
-
-        let socket = match TcpSocket::new(family, is_non_block) {
-            Ok(socket) => socket,
-            Err(e) => return this.set_errno_and_return_neg1_i32(e),
         };
-        let fds = &mut this.machine.fds;
-        let fd = fds.new_ref(socket);
 
-        interp_ok(Scalar::from_i32(fds.insert(fd)))
+        match fd_result {
+            Ok(fd) => interp_ok(Scalar::from_i32(this.machine.fds.insert(fd))),
+            Err(e) => this.set_errno_and_return_neg1_i32(e),
+        }
     }
 
     fn bind(

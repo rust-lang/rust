@@ -122,7 +122,7 @@ pub use core::prelude::v1::{
 #[doc(no_inline)]
 pub use core::prelude::v1::derive;
 
-#[unstable(feature = "derive_const", issue = "118304")]
+#[unstable(feature = "derive_const", issue = "143874")]
 pub use core::prelude::v1::derive_const;
 
 // Do not `doc(no_inline)` either.
@@ -144,7 +144,7 @@ pub use core::prelude::v1::cfg_eval;
 // Do not `doc(no_inline)` either.
 #[unstable(
     feature = "type_ascription",
-    issue = "23416",
+    issue = "101728",
     reason = "placeholder syntax for type ascription"
 )]
 pub use core::prelude::v1::type_ascribe;

@@ -40,7 +40,7 @@ fn collect_doc_replacements(attrs: &[Attribute]) -> Vec<(Span, String)> {
                 style: AttrStyle::Outer,
                 kind: DocFragmentKind::Sugared(comment_kind),
                 comment,
-                ..
+                span,
             }) = attr
                 && let Some(com) = comment.as_str().strip_prefix('!')
             {
@@ -48,7 +48,7 @@ fn collect_doc_replacements(attrs: &[Attribute]) -> Vec<(Span, String)> {
                     CommentKind::Block => format!("/*!{com}*/"),
                     CommentKind::Line => format!("//!{com}"),
                 };
-                Some((attr.span(), sugg))
+                Some((*span, sugg))
             } else {
                 None
             }

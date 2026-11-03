@@ -1497,7 +1497,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // encountering query cycles instead.
         if let ty::Adt(def, args) = obligation.predicate.self_ty().skip_binder().kind()
             && let Some(FieldInfo { base, ty, .. }) =
-                def.field_representing_type_info(self.tcx(), args)
+                def.field_representing_type_info(self.tcx(), *args)
             // NOTE: these bounds have to be kept in sync with the definition of the `Field` trait
             // in `library/core/src/field.rs` as well as the new trait solver `fn
             // consider_builtin_field_candidate` in

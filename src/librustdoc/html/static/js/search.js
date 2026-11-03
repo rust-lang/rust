@@ -2884,6 +2884,13 @@ class DocSearch {
                         return a - b;
                     }
 
+                    // sort re-exports lower
+                    a = Number(aai.ty === itemTypes.import);
+                    b = Number(bbi.ty === itemTypes.import);
+                    if (a !== b) {
+                        return a - b;
+                    }
+
                     // sort deprecated items later
                     a = Number(aai.deprecated);
                     b = Number(bbi.deprecated);

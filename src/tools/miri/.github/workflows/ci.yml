@@ -183,30 +183,21 @@ jobs:
       - name: check build
         run: |
           cd ../rust # ./x does not seem to like being invoked from elsewhere
-          # checks every tool in that folder (including priroda)
           ./x check src/tools/miri
 
-  # This job is intentionally separate from `test` so that Priroda can be
-  # developed as a separate crate inside the Miri repository for now.
+  # This job is intentionally separate from `test` so that the Priroda test
+  # suite is exercised on its own (it is gated behind the `priroda` feature of
+  # the `miri` crate, and so is not part of the regular `./miri test` run).
   priroda:
-    name: Priroda
+    name: priroda
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/workflows/setup
-      - name: install Miri driver
-        run: ./miri install
-      - name: build Priroda
-        working-directory: priroda
-        run: cargo build --locked
       - name: clippy Priroda
-        working-directory: priroda
-        run: cargo clippy --all-targets --locked -- -D warnings
+        run: CARGO_EXTRA_FLAGS=--locked ./miri clippy --features priroda -- -D warnings
       - name: test Priroda
-        working-directory: priroda
-        run: |
-          sysroot="$(cargo miri setup --print-sysroot)"
-          MIRI_SYSROOT="$sysroot" cargo test --locked
+        run: CARGO_EXTRA_FLAGS=--locked ./miri test-priroda
 
   coverage:
     name: coverage report

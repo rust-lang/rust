@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{for_each_top_level_late_bound_region, is_copy};
-use clippy_utils::{is_self, is_self_ty};
+use clippy_utils::{is_self, is_self_ty, requires_exact_signature};
 use core::ops::ControlFlow;
 use rustc_abi::ExternAbi;
 use rustc_attr_ir::{InlineAttr, find_attr};
@@ -16,8 +16,8 @@ use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, BoundVarIndexKind, RegionKind, TyCtxt};
+use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, sym};
 use std::iter;
 
 declare_clippy_lint! {
@@ -273,15 +273,8 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
                     return;
                 }
                 let attrs = cx.tcx.hir_attrs(hir_id);
-                if find_attr!(attrs, Inline(InlineAttr::Always, _)) {
+                if find_attr!(attrs, Inline(InlineAttr::Always, _)) || requires_exact_signature(attrs) {
                     return;
-                }
-
-                for a in attrs {
-                    // FIXME(jdonszelmann): make part of the find_attr above
-                    if a.has_name(sym::proc_macro_derive) {
-                        return;
-                    }
                 }
             },
             FnKind::Method(..) => (),

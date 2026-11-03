@@ -26,6 +26,8 @@ LL |         foo
 note: method defined here
   --> $DIR/self-coercion-errors.rs:12:8
    |
+LL | trait Trait: Sized {
+LL |     fn by_value(self) -> i32 { 1 }
 LL |     fn by_mut_ref(&mut self) -> i32 { 2 }
    |        ^^^^^^^^^^ ---------
 help: consider mutably borrowing here
@@ -47,6 +49,8 @@ LL |         foo
 note: method defined here
   --> $DIR/self-coercion-errors.rs:13:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn by_ref(&self) -> i32 { 3 }
    |        ^^^^^^ -----
 help: consider borrowing here
@@ -68,6 +72,8 @@ LL |     reuse Trait::* { &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
 help: store this in the heap by calling `Box::new`
@@ -88,6 +94,8 @@ LL |     reuse Trait::* { &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
 help: call `Into::into` on this expression to convert `&mut F` into `Arc<_>`
@@ -108,6 +116,8 @@ LL |     reuse Trait::* { &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
 help: call `Into::into` on this expression to convert `&mut F` into `Rc<_>`
@@ -128,6 +138,8 @@ LL |     reuse Trait::* { &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
 help: you need to pin and box this expression
@@ -148,6 +160,8 @@ LL |     reuse Trait::* { &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 
@@ -164,6 +178,8 @@ LL |     reuse Trait::* { &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 
@@ -180,6 +196,8 @@ LL |     reuse Trait::* { &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 
@@ -197,6 +215,8 @@ LL |     reuse Trait::* { &self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
 help: store this in the heap by calling `Box::new`
@@ -217,6 +237,8 @@ LL |     reuse Trait::* { &self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
 help: call `Into::into` on this expression to convert `&F` into `Arc<_>`
@@ -237,6 +259,8 @@ LL |     reuse Trait::* { &self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
 help: call `Into::into` on this expression to convert `&F` into `Rc<_>`
@@ -257,6 +281,8 @@ LL |     reuse Trait::* { &self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
 help: you need to pin and box this expression
@@ -277,6 +303,8 @@ LL |     reuse Trait::* { &self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 
@@ -293,6 +321,8 @@ LL |     reuse Trait::* { &self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 
@@ -309,6 +339,8 @@ LL |     reuse Trait::* { &self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 
@@ -326,6 +358,8 @@ LL |     reuse Trait::* { &&&&self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
 help: store this in the heap by calling `Box::new`
@@ -346,6 +380,8 @@ LL |     reuse Trait::* { &&&&self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
 help: call `Into::into` on this expression to convert `&&&&F` into `Arc<_>`
@@ -366,6 +402,8 @@ LL |     reuse Trait::* { &&&&self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
 help: call `Into::into` on this expression to convert `&&&&F` into `Rc<_>`
@@ -386,6 +424,8 @@ LL |     reuse Trait::* { &&&&self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
 help: you need to pin and box this expression
@@ -406,6 +446,8 @@ LL |     reuse Trait::* { &&&&self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 
@@ -422,6 +464,8 @@ LL |     reuse Trait::* { &&&&self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 
@@ -438,6 +482,8 @@ LL |     reuse Trait::* { &&&&self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 
@@ -454,6 +500,8 @@ LL |     reuse Trait::* { self.0.as_ref() }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
 help: try removing the method call
@@ -475,6 +523,8 @@ LL |     reuse Trait::* { self.0.as_ref() }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
 help: call `Into::into` on this expression to convert `&F` into `Arc<_>`
@@ -495,6 +545,8 @@ LL |     reuse Trait::* { self.0.as_ref() }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
 help: call `Into::into` on this expression to convert `&F` into `Rc<_>`
@@ -515,6 +567,8 @@ LL |     reuse Trait::* { self.0.as_ref() }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
 help: you need to pin and box this expression
@@ -535,6 +589,8 @@ LL |     reuse Trait::* { self.0.as_ref() }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 
@@ -551,6 +607,8 @@ LL |     reuse Trait::* { self.0.as_ref() }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 
@@ -567,6 +625,8 @@ LL |     reuse Trait::* { self.0.as_ref() }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 
@@ -584,6 +644,8 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
 help: store this in the heap by calling `Box::new`
@@ -604,6 +666,8 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
 help: call `Into::into` on this expression to convert `&mut &mut &mut F` into `Arc<_>`
@@ -624,6 +688,8 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
 help: call `Into::into` on this expression to convert `&mut &mut &mut F` into `Rc<_>`
@@ -644,6 +710,8 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
 help: you need to pin and box this expression
@@ -664,6 +732,8 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 
@@ -680,6 +750,8 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 
@@ -696,6 +768,8 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 
@@ -713,6 +787,8 @@ LL |     reuse Trait::* { &&mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
 help: store this in the heap by calling `Box::new`
@@ -733,6 +809,8 @@ LL |     reuse Trait::* { &&mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
 help: call `Into::into` on this expression to convert `&&mut F` into `Arc<_>`
@@ -753,6 +831,8 @@ LL |     reuse Trait::* { &&mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
 help: call `Into::into` on this expression to convert `&&mut F` into `Rc<_>`
@@ -773,6 +853,8 @@ LL |     reuse Trait::* { &&mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
 help: you need to pin and box this expression
@@ -793,6 +875,8 @@ LL |     reuse Trait::* { &&mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 
@@ -809,6 +893,8 @@ LL |     reuse Trait::* { &&mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 
@@ -825,6 +911,8 @@ LL |     reuse Trait::* { &&mut self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 
@@ -841,6 +929,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
 help: consider removing the tuple struct field `0`
@@ -862,6 +952,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
 help: consider removing the tuple struct field `0`
@@ -883,6 +975,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -904,6 +998,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -925,6 +1021,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -960,6 +1058,8 @@ LL | struct X6(Box<F>);
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -981,6 +1081,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
 help: consider unboxing the value
@@ -1001,6 +1103,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
 help: consider removing the tuple struct field `0`
@@ -1022,6 +1126,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1043,6 +1149,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1064,6 +1172,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1099,6 +1209,8 @@ LL | struct X7(Box<Arc<Box<F>>>);
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1134,6 +1246,8 @@ LL | struct X8(Pin<Box<F>>);
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1155,6 +1269,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1176,6 +1292,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
 help: consider removing the tuple struct field `0`
@@ -1197,6 +1315,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1218,6 +1338,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1253,6 +1375,8 @@ LL | struct X8(Pin<Box<F>>);
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1293,6 +1417,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:12:8
    |
+LL | trait Trait: Sized {
+LL |     fn by_value(self) -> i32 { 1 }
 LL |     fn by_mut_ref(&mut self) -> i32 { 2 }
    |        ^^^^^^^^^^ ---------
 help: consider mutably borrowing here
@@ -1313,6 +1439,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:13:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn by_ref(&self) -> i32 { 3 }
    |        ^^^^^^ -----
 help: consider borrowing here
@@ -1347,6 +1475,8 @@ LL | struct X9(OtherStruct);
 note: method defined here
   --> $DIR/self-coercion-errors.rs:14:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |        ^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1368,6 +1498,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:15:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn arc(self: Arc<Self>) -> i32 { 5 }
    |        ^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1389,6 +1521,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:16:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn rc(self: Rc<Self>) -> i32 { 6 }
    |        ^^ ----
 help: consider removing the tuple struct field `0`
@@ -1410,6 +1544,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:17:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |        ^^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1431,6 +1567,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:18:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_rc(self: Pin<Rc<Self>>) -> i32 { 8 }
    |        ^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1452,6 +1590,8 @@ LL |     reuse Trait::* { self.0 }
 note: method defined here
   --> $DIR/self-coercion-errors.rs:19:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_arc(self: Pin<Arc<Self>>) -> i32 { 9 }
    |        ^^^^^^^ ----
 help: consider removing the tuple struct field `0`
@@ -1487,6 +1627,8 @@ LL | struct X9(OtherStruct);
 note: method defined here
   --> $DIR/self-coercion-errors.rs:20:8
    |
+LL | trait Trait: Sized {
+...
 LL |     fn box_box(self: Box<Box<Self>>) -> i32 { 10 }
    |        ^^^^^^^ ----
 help: consider removing the tuple struct field `0`

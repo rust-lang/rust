@@ -1,5 +1,5 @@
 // Demonstrate that generic const arguments in GAT constraints are rejected at
-// the definition site of an eager type alias.
+// the definition site of an unchecked type alias.
 
 //@ compile-flags: -Znext-solver=globally
 

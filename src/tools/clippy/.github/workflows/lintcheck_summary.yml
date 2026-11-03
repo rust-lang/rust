@@ -18,16 +18,17 @@ on:
     types: [completed]
 
 # Restrict the default permission scope https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#defining-access-for-the-github_token-scopes
-permissions:
-  pull-requests: write
+permissions: {}
 
 jobs:
   download:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # Required by `gh pr comment` to create/update comments on PRs
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: summary
           path: untrusted
@@ -35,7 +36,7 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: Format comment
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require("fs");
@@ -99,8 +100,9 @@ jobs:
             # - If a comment exists from a previous run that did detect changes, edit it (--edit-last)
             # - If no comment exists do not create one, the `gh` command exits with an error which
             #   `|| true` ignores
-            gh pr comment "$PR" --body "No changes for ${{ github.event.workflow_run.head_sha }}" --edit-last || true
+            gh pr comment "$PR" --body "No changes for ${GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA}" --edit-last || true
           fi
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}

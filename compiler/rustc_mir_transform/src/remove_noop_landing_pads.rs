@@ -172,15 +172,9 @@ fn find_noop_landing_pads<'tcx>(
 
     // This is a post-order traversal, so that if A post-dominates B
     // then A will be visited before B.
-    let postorder: Vec<_> = traversal::postorder(body).map(|(bb, _)| bb).collect();
-    for bb in postorder {
-        let is_nop_landing_pad = RemoveNoopLandingPads.is_nop_landing_pad(
-            tcx,
-            &body.basic_blocks[bb],
-            body,
-            &nop_landing_pads,
-            extra,
-        );
+    for (bb, bb_data) in traversal::postorder(body) {
+        let is_nop_landing_pad =
+            RemoveNoopLandingPads.is_nop_landing_pad(tcx, bb_data, body, &nop_landing_pads, extra);
         if is_nop_landing_pad {
             nop_landing_pads.insert(bb);
         }

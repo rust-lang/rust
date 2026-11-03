@@ -111,7 +111,7 @@ impl LateLintPass<'_> for ManualBitWidth {
             && let left_ty = cx.typeck_results().node_type(hir_ty.hir_id)
             && let Some(left_int_kind) = get_int_kind(cx, left_ty)
             && self.msrv.meets(cx, msrvs::BIT_WIDTH)
-            && left.span.eq_ctxt(right.span)
+            && left.span.ctxt() == right.span.ctxt()
             && !is_from_proc_macro(cx, expr)
         {
             if left_int_kind == right_int_kind {

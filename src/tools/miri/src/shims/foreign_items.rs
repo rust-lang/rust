@@ -19,6 +19,7 @@ use rustc_target::spec::Os;
 use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
 use crate::concurrency::GenmcEvalContextExt as _;
+use crate::eval::{ExitType, ProgramExitHandler};
 use crate::helpers::EvalContextExt as _;
 use crate::*;
 
@@ -50,31 +51,31 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // Handle allocator shim.
-        if let Some(shim) = this.machine.allocator_shim_symbols.get(&link_name) {
+        if let Some(shim) = ecx.machine.allocator_shim_symbols.get(&link_name) {
             match *shim {
                 Either::Left(other_fn) => {
-                    let handler = this
+                    let handler = ecx
                         .lookup_exported_fn(other_fn)?
                         .expect("missing alloc error handler symbol");
                     return interp_ok(Some(handler));
                 }
                 Either::Right(special) => {
-                    this.rust_special_allocator_method(special, link_name, abi, args, dest)?;
-                    this.return_to_block(ret)?;
+                    ecx.rust_special_allocator_method(special, link_name, abi, args, dest)?;
+                    ecx.return_to_block(ret)?;
                     return interp_ok(None);
                 }
             }
         }
 
         // FIXME: avoid allocating memory
-        let dest = this.force_allocation(dest)?;
+        let dest = ecx.force_allocation(dest)?;
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
-        let res = this.emulate_foreign_item_inner(link_name, abi, args, &dest)?;
-        res.jump_to_next_block(this, &dest.clone().into(), ret, Some(unwind), |this| {
+        let res = ecx.emulate_foreign_item_inner(link_name, abi, args, &dest)?;
+        res.jump_to_next_block(ecx, &dest.clone().into(), ret, Some(unwind), |this| {
             if let Some(body) = this.lookup_exported_fn(link_name)? {
                 return interp_ok(Some(body));
             }
@@ -87,9 +88,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn is_dyn_sym(&self, name: &str) -> bool {
-        let this = self.eval_context_ref();
-        match &this.tcx.sess.target.os {
-            os if this.target_os_is_unix() => shims::unix::foreign_items::is_dyn_sym(name, os),
+        let ecx = self.eval_context_ref();
+        match &ecx.tcx.sess.target.os {
+            _ if ecx.target_os_is_unix() =>
+                shims::unix::foreign_items::is_dyn_sym(name, &ecx.tcx.sess.target),
             Os::Windows => shims::windows::foreign_items::is_dyn_sym(name),
             _ => false,
         }
@@ -115,12 +117,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &self,
         link_name: Symbol,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
-        let this = self.eval_context_ref();
-        let tcx = this.tcx.tcx;
+        let ecx = self.eval_context_ref();
+        let tcx = ecx.tcx.tcx;
 
         // If the result was cached, just return it.
         // (Cannot use `or_insert` since the code below might have to throw an error.)
-        let mut cache = this.machine.exported_symbols_cache.borrow_mut();
+        let mut cache = ecx.machine.exported_symbols_cache.borrow_mut();
         let entry = cache.entry(link_name);
         let instance = *match entry {
             Entry::Occupied(e) => e.into_mut(),
@@ -218,10 +220,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &self,
         link_name: Symbol,
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
-        let this = self.eval_context_ref();
-        let instance = this.lookup_exported_symbol(link_name)?;
+        let ecx = self.eval_context_ref();
+        let instance = ecx.lookup_exported_symbol(link_name)?;
         if let Some(instance) = &instance {
-            if !matches!(this.tcx.def_kind(instance.def_id()), DefKind::Fn | DefKind::AssocFn) {
+            if !matches!(ecx.tcx.def_kind(instance.def_id()), DefKind::Fn | DefKind::AssocFn) {
                 throw_ub_format!(
                     "attempt to call an exported symbol that is not defined as a function"
                 );
@@ -229,7 +231,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         match instance {
             None => interp_ok(None),
-            Some(instance) => interp_ok(Some((this.load_mir(instance.def, None)?, instance))),
+            Some(instance) => interp_ok(Some((ecx.load_mir(instance.def, None)?, instance))),
         }
     }
 
@@ -238,10 +240,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &self,
         link_name: Symbol,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
-        let this = self.eval_context_ref();
-        let instance = this.lookup_exported_symbol(link_name)?;
+        let ecx = self.eval_context_ref();
+        let instance = ecx.lookup_exported_symbol(link_name)?;
         if let Some(instance) = &instance {
-            if !matches!(this.tcx.def_kind(instance.def_id()), DefKind::Static { .. }) {
+            if !matches!(ecx.tcx.def_kind(instance.def_id()), DefKind::Static { .. }) {
                 throw_ub_format!(
                     "attempt to access an exported symbol `{link_name}` that is not defined as a static"
                 );
@@ -260,25 +262,27 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // First deal with any external C functions in linked .so file.
         #[cfg(all(feature = "native-lib", unix))]
-        if !this.machine.native_lib.is_empty() {
+        if !ecx.machine.native_lib.is_empty() {
             use crate::shims::native_lib::EvalContextExt as _;
             // An Ok(false) here means that the function being called was not exported
             // by the specified `.so` file; we should continue and check if it corresponds to
             // a provided shim.
-            if this.call_native_fn(link_name, dest, args)? {
+            if ecx.call_native_fn(link_name, dest, args)? {
                 return interp_ok(EmulateItemResult::NeedsReturn);
             }
         }
         // When adding a new shim, you should follow the following pattern:
         // ```
         // "shim_name" => {
-        //     let [arg1, arg2, arg3] = this.check_shim(abi, CanonAbi::C , link_name, args)?;
-        //     let result = this.shim_name(arg1, arg2, arg3)?;
-        //     this.write_scalar(result, dest)?;
+        //     let [arg1, arg2, arg3] = &this.check_shim_sig(
+        //         shim_sig!(extern "C" fn(usize, *libc::some_type, *i32) -> u32),
+        //         (link_name, abi, args),
+        //     )?;
+        //     this.shim_name(arg1, arg2, arg3, dest)?;
         // }
         // ```
         // and then define `shim_name` as a helper function in an extension trait in a suitable file
@@ -289,19 +293,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         //     arg1: &OpTy<'tcx>,
         //     arg2: &OpTy<'tcx>,
         //     arg3: &OpTy<'tcx>,
-        //     arg4: &OpTy<'tcx>)
+        //     dest: &MPlaceTy<'tcx>)
         // -> InterpResult<'tcx, Scalar> {
-        //     let this = self.eval_context_mut();
+        //     let ecx = self.eval_context_mut();
         //
         //     // First thing: load all the arguments. Details depend on the shim.
-        //     let arg1 = this.read_scalar(arg1)?.to_u32()?;
-        //     let arg2 = this.read_pointer(arg2)?; // when you need to work with the pointer directly
-        //     // when you want to load/store through the pointer
-        //     let arg3 = this.deref_pointer(arg3)?;
+        //     let arg1 = ecx.read_scalar(arg1)?.to_u32()?;
+        //     let arg2 = ecx.read_pointer(arg2)?; // when you need to work with the pointer directly
+        //     let arg3 = ecx.deref_pointer(arg3)?; // when you want to load/store through the pointer
         //
         //     // ...
         //
-        //     interp_ok(Scalar::from_u32(42))
+        //     ecx.write_int(42, dest)?;
+        //     interp_ok(())
         // }
         // ```
         // You might find existing shims not following this pattern, most
@@ -311,104 +315,104 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // shim, add it to the corresponding submodule.
         match link_name.as_str() {
             // Magic function Rust emits (and not as part of the allocator shim).
-            name if name == this.mangle_internal_symbol(NO_ALLOC_SHIM_IS_UNSTABLE) => {
+            name if name == ecx.mangle_internal_symbol(NO_ALLOC_SHIM_IS_UNSTABLE) => {
                 // This is a no-op shim that only exists to prevent making the allocator shims
                 // instantly stable.
-                let [] = &this
+                let [] = &ecx
                     .check_shim_sig(shim_sig!(extern "Rust" fn() -> ()), (link_name, abi, args))?;
             }
 
             // Miri-specific extern functions
             "miri_alloc" => {
-                let [size, align] = &this.check_shim_sig(
+                let [size, align] = &ecx.check_shim_sig(
                     shim_sig!(extern "Rust" fn(usize, usize) -> *()),
                     (link_name, abi, args),
                 )?;
-                let size = this.read_target_usize(size)?;
-                let align = this.read_target_usize(align)?;
+                let size = ecx.read_target_usize(size)?;
+                let align = ecx.read_target_usize(align)?;
 
-                this.check_rust_alloc_request(size, align)?;
+                ecx.check_rust_alloc_request(size, align)?;
 
-                let ptr = this.allocate_ptr(
+                let ptr = ecx.allocate_ptr(
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::Miri.into(),
                     AllocInit::Uninit,
                 )?;
 
-                this.write_pointer(ptr, dest)?;
+                ecx.write_pointer(ptr, dest)?;
             }
             "miri_dealloc" => {
-                let [ptr, old_size, align] = &this.check_shim_sig(
+                let [ptr, old_size, align] = &ecx.check_shim_sig(
                     shim_sig!(extern "Rust" fn(*(), usize, usize) -> ()),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
-                let old_size = this.read_target_usize(old_size)?;
-                let align = this.read_target_usize(align)?;
+                let ptr = ecx.read_pointer(ptr)?;
+                let old_size = ecx.read_target_usize(old_size)?;
+                let align = ecx.read_target_usize(align)?;
 
                 // No need to check old_size/align; we anyway check that they match the allocation.
-                this.deallocate_ptr(
+                ecx.deallocate_ptr(
                     ptr,
                     Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
                     MiriMemoryKind::Miri.into(),
                 )?;
             }
             "miri_track_alloc" => {
-                let [ptr] = &this.check_shim_sig(
+                let [ptr] = &ecx.check_shim_sig(
                     shim_sig!(extern "Rust" fn(*()) -> ()),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
-                let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr, 0).map_err_kind(|_e| {
+                let ptr = ecx.read_pointer(ptr)?;
+                let (alloc_id, _, _) = ecx.ptr_get_alloc_id(ptr, 0).map_err_kind(|_e| {
                     err_machine_stop!(TerminationInfo::Abort(format!(
                         "pointer passed to `miri_get_alloc_id` must not be dangling, got {ptr:?}"
                     )))
                 })?;
-                if this.machine.tracked_alloc_ids.insert(alloc_id) {
-                    let info = this.get_alloc_info(alloc_id);
-                    this.emit_diagnostic(NonHaltingDiagnostic::TrackingAlloc(
+                if ecx.machine.tracked_alloc_ids.insert(alloc_id) {
+                    let info = ecx.get_alloc_info(alloc_id);
+                    ecx.emit_diagnostic(NonHaltingDiagnostic::TrackingAlloc(
                         alloc_id, info.size, info.align,
                     ));
                 }
             }
             "miri_start_unwind" => {
-                let [payload] = &this.check_shim_sig(
+                let [payload] = &ecx.check_shim_sig(
                     shim_sig!(extern "Rust" fn(*()) -> !),
                     (link_name, abi, args),
                 )?;
-                this.handle_miri_start_unwind(payload)?;
+                ecx.handle_miri_start_unwind(payload)?;
                 return interp_ok(EmulateItemResult::NeedsUnwind);
             }
             "miri_run_provenance_gc" => {
-                let [] = &this
+                let [] = &ecx
                     .check_shim_sig(shim_sig!(extern "Rust" fn() -> ()), (link_name, abi, args))?;
-                this.run_provenance_gc();
+                ecx.run_provenance_gc();
             }
             "miri_get_alloc_id" => {
-                let [ptr] = &this.check_shim_sig(
+                let [ptr] = &ecx.check_shim_sig(
                     shim_sig!(extern "Rust" fn(*()) -> u64),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
-                let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr, 0).map_err_kind(|_e| {
+                let ptr = ecx.read_pointer(ptr)?;
+                let (alloc_id, _, _) = ecx.ptr_get_alloc_id(ptr, 0).map_err_kind(|_e| {
                     err_machine_stop!(TerminationInfo::Abort(format!(
                         "pointer passed to `miri_get_alloc_id` must not be dangling, got {ptr:?}"
                     )))
                 })?;
-                this.write_scalar(Scalar::from_u64(alloc_id.0.get()), dest)?;
+                ecx.write_scalar(Scalar::from_u64(alloc_id.0.get()), dest)?;
             }
             "miri_print_borrow_state" => {
-                let [id, show_unnamed] = &this.check_shim_sig(
+                let [id, show_unnamed] = &ecx.check_shim_sig(
                     shim_sig!(extern "Rust" fn(u64, bool) -> ()),
                     (link_name, abi, args),
                 )?;
-                let id = this.read_scalar(id)?.to_u64()?;
-                let show_unnamed = this.read_scalar(show_unnamed)?.to_bool()?;
+                let id = ecx.read_scalar(id)?.to_u64()?;
+                let show_unnamed = ecx.read_scalar(show_unnamed)?.to_bool()?;
                 if let Some(id) = std::num::NonZero::new(id).map(AllocId)
-                    && this.get_alloc_info(id).kind == AllocKind::LiveData
+                    && ecx.get_alloc_info(id).kind == AllocKind::LiveData
                 {
-                    this.print_borrow_state(id, show_unnamed)?;
+                    ecx.print_borrow_state(id, show_unnamed)?;
                 } else {
                     eprintln!("{id} is not the ID of a live data allocation");
                 }
@@ -416,128 +420,128 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "miri_pointer_name" => {
                 // This associates a name to a tag. Very useful for debugging, and also makes
                 // tests more strict.
-                let [ptr, nth_parent, name] = &this.check_shim_sig(
+                let [ptr, nth_parent, name] = &ecx.check_shim_sig(
                     shim_sig!(extern "Rust" fn(*(), u8, &[u8]) -> ()),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
-                let nth_parent = this.read_scalar(nth_parent)?.to_u8()?;
-                let name = this.read_immediate(name)?;
+                let ptr = ecx.read_pointer(ptr)?;
+                let nth_parent = ecx.read_scalar(nth_parent)?.to_u8()?;
+                let name = ecx.read_immediate(name)?;
 
-                let name = this.read_byte_slice(&name)?;
+                let name = ecx.read_byte_slice(&name)?;
                 // We must make `name` owned because we need to
                 // end the shared borrow from `read_byte_slice` before we can
                 // start the mutable borrow for `give_pointer_debug_name`.
                 let name = String::from_utf8_lossy(name).into_owned();
-                this.give_pointer_debug_name(ptr, nth_parent, &name)?;
+                ecx.give_pointer_debug_name(ptr, nth_parent, &name)?;
             }
             "miri_static_root" => {
-                let [ptr] = &this.check_shim_sig(
+                let [ptr] = &ecx.check_shim_sig(
                     shim_sig!(extern "Rust" fn(*()) -> ()),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
-                let (alloc_id, offset, _) = this.ptr_get_alloc_id(ptr, 0)?;
+                let ptr = ecx.read_pointer(ptr)?;
+                let (alloc_id, offset, _) = ecx.ptr_get_alloc_id(ptr, 0)?;
                 if offset != Size::ZERO {
                     throw_unsup_format!(
                         "pointer passed to `miri_static_root` must point to beginning of an allocated block"
                     );
                 }
-                this.machine.static_roots.push(alloc_id);
+                ecx.machine.static_roots.push(alloc_id);
             }
             "miri_host_to_target_path" => {
-                let [ptr, out, out_size] = &this.check_shim_sig(
+                let [ptr, out, out_size] = &ecx.check_shim_sig(
                     shim_sig!(extern "Rust" fn(*(), *(), usize) -> usize),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
-                let out = this.read_pointer(out)?;
-                let out_size = this.read_scalar(out_size)?.to_target_usize(this)?;
+                let ptr = ecx.read_pointer(ptr)?;
+                let out = ecx.read_pointer(out)?;
+                let out_size = ecx.read_scalar(out_size)?.to_target_usize(ecx)?;
 
                 // The host affects program behavior here, so this requires isolation to be disabled.
-                this.check_no_isolation("`miri_host_to_target_path`")?;
+                ecx.check_no_isolation("`miri_host_to_target_path`")?;
 
                 // We read this as a plain OsStr and write it as a path, which will convert it to the target.
-                let path = this.read_os_str_from_c_str(ptr)?.to_owned();
+                let path = ecx.read_os_str_from_c_str(ptr)?.to_owned();
                 let (success, needed_size) =
-                    this.write_path_to_c_str(Path::new(&path), out, out_size)?;
+                    ecx.write_path_to_c_str(Path::new(&path), out, out_size)?;
                 // Return value: 0 on success, otherwise the size it would have needed.
-                this.write_int(if success { 0 } else { needed_size }, dest)?;
+                ecx.write_int(if success { 0 } else { needed_size }, dest)?;
             }
             "miri_thread_spawn" => {
-                let [start_routine, func_arg] = &this.check_shim_sig(
+                let [start_routine, func_arg] = &ecx.check_shim_sig(
                     // FIXME: The first argument is actually a function pointer.
                     shim_sig!(extern "Rust" fn(fn(..) -> _, *()) -> usize),
                     (link_name, abi, args),
                 )?;
-                let start_routine = this.read_pointer(start_routine)?;
-                let func_arg = this.read_immediate(func_arg)?;
+                let start_routine = ecx.read_pointer(start_routine)?;
+                let func_arg = ecx.read_immediate(func_arg)?;
 
-                this.start_regular_thread(
+                ecx.start_regular_thread(
                     Some(dest.clone()),
                     start_routine,
                     ExternAbi::Rust,
                     func_arg,
-                    this.machine.layouts.unit,
+                    ecx.machine.layouts.unit,
                 )?;
             }
             "miri_thread_join" => {
-                let [thread_id] = &this.check_shim_sig(
+                let [thread_id] = &ecx.check_shim_sig(
                     shim_sig!(extern "Rust" fn(usize) -> bool),
                     (link_name, abi, args),
                 )?;
 
-                let thread = this.read_target_usize(thread_id)?;
+                let thread = ecx.read_target_usize(thread_id)?;
                 // Joining a terminated thread is valid.
                 use crate::concurrency::thread::ThreadLookupError;
-                let thread = match this.thread_id_try_from(thread) {
+                let thread = match ecx.thread_id_try_from(thread) {
                     Ok(id) | Err(ThreadLookupError::Terminated(id)) => Some(id),
                     Err(ThreadLookupError::InvalidId) => None,
                 };
                 if let Some(thread) = thread {
-                    this.join_thread_exclusive(
+                    ecx.join_thread_exclusive(
                         thread,
                         /* success_retval */ Scalar::from_bool(true),
                         dest,
                     )?;
                 } else {
-                    this.write_scalar(Scalar::from_bool(false), dest)?;
+                    ecx.write_scalar(Scalar::from_bool(false), dest)?;
                 }
             }
             // Hint that a loop is spinning indefinitely.
             "miri_spin_loop" => {
-                let [] = &this
+                let [] = &ecx
                     .check_shim_sig(shim_sig!(extern "Rust" fn() -> ()), (link_name, abi, args))?;
 
                 // Try to run another thread to maximize the chance of finding actual bugs.
-                this.yield_active_thread();
+                ecx.yield_active_thread();
             }
             // Obtains the size of a Miri backtrace. See the README for details.
             "miri_backtrace_size" => {
-                this.handle_miri_backtrace_size(abi, link_name, args, dest)?;
+                ecx.handle_miri_backtrace_size(abi, link_name, args, dest)?;
             }
             // Obtains a Miri backtrace. See the README for details.
             "miri_get_backtrace" => {
                 // `check_shim` happens inside `handle_miri_get_backtrace`.
-                this.handle_miri_get_backtrace(abi, link_name, args)?;
+                ecx.handle_miri_get_backtrace(abi, link_name, args)?;
             }
             // Resolves a Miri backtrace frame. See the README for details.
             "miri_resolve_frame" => {
                 // `check_shim` happens inside `handle_miri_resolve_frame`.
-                this.handle_miri_resolve_frame(abi, link_name, args, dest)?;
+                ecx.handle_miri_resolve_frame(abi, link_name, args, dest)?;
             }
             // Writes the function and file names of a Miri backtrace frame into a user provided buffer. See the README for details.
             "miri_resolve_frame_names" => {
-                this.handle_miri_resolve_frame_names(abi, link_name, args)?;
+                ecx.handle_miri_resolve_frame_names(abi, link_name, args)?;
             }
             // Writes some bytes to the interpreter's stdout/stderr. See the README for details.
             "miri_write_to_stdout" | "miri_write_to_stderr" => {
-                let [msg] = &this.check_shim_sig(
+                let [msg] = &ecx.check_shim_sig(
                     shim_sig!(extern "Rust" fn(&[u8]) -> ()),
                     (link_name, abi, args),
                 )?;
-                let msg = this.read_immediate(msg)?;
-                let msg = this.read_byte_slice(&msg)?;
+                let msg = ecx.read_immediate(msg)?;
+                let msg = ecx.read_byte_slice(&msg)?;
                 // Note: we're ignoring errors writing to host stdout/stderr.
                 let _ignore = match link_name.as_str() {
                     "miri_write_to_stdout" => std::io::stdout().write_all(msg),
@@ -549,13 +553,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "miri_promise_symbolic_alignment" => {
                 use rustc_abi::AlignFromBytesError;
 
-                let [ptr, align] = &this.check_shim_sig(
+                let [ptr, align] = &ecx.check_shim_sig(
                     shim_sig!(extern "Rust" fn(*(), usize) -> ()),
                     (link_name, abi, args),
                 )?;
 
-                let ptr = this.read_pointer(ptr)?;
-                let align = this.read_target_usize(align)?;
+                let ptr = ecx.read_pointer(ptr)?;
+                let align = ecx.read_target_usize(align)?;
                 if !align.is_power_of_two() {
                     throw_unsup_format!(
                         "`miri_promise_symbolic_alignment`: alignment must be a power of 2, got {align}"
@@ -575,31 +579,31 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "`miri_promise_symbolic_alignment`: pointer is not actually aligned"
                     );
                 }
-                if let Ok((alloc_id, offset, ..)) = this.ptr_try_get_alloc_id(ptr, 0) {
-                    let alloc_align = this.get_alloc_info(alloc_id).align;
+                if let Ok((alloc_id, offset, ..)) = ecx.ptr_try_get_alloc_id(ptr, 0) {
+                    let alloc_align = ecx.get_alloc_info(alloc_id).align;
                     // If the newly promised alignment is bigger than the native alignment of this
                     // allocation, and bigger than the previously promised alignment, then set it.
                     if align > alloc_align
-                        && this
+                        && ecx
                             .machine
                             .symbolic_alignment
                             .get_mut()
                             .get(&alloc_id)
                             .is_none_or(|&(_, old_align)| align > old_align)
                     {
-                        this.machine.symbolic_alignment.get_mut().insert(alloc_id, (offset, align));
+                        ecx.machine.symbolic_alignment.get_mut().insert(alloc_id, (offset, align));
                     }
                 }
             }
             // GenMC mode: Assume statements block the current thread when their condition is false.
             "miri_genmc_assume" => {
-                let [condition] = &this.check_shim_sig(
+                let [condition] = &ecx.check_shim_sig(
                     shim_sig!(extern "Rust" fn(bool) -> ()),
                     (link_name, abi, args),
                 )?;
 
-                if this.machine.data_race.as_genmc_ref().is_some() {
-                    this.handle_genmc_verifier_assume(condition)?;
+                if ecx.machine.data_race.as_genmc_ref().is_some() {
+                    ecx.handle_genmc_verifier_assume(condition)?;
                 } else {
                     throw_unsup_format!("miri_genmc_assume is only supported in GenMC mode")
                 }
@@ -608,24 +612,22 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Aborting the process.
             "exit" => {
                 // FIXME: This does not have a direct test (#3179).
-                let [code] = &this
+                let [exit_code] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(i32) -> ()), (link_name, abi, args))?;
-                let code = this.read_scalar(code)?.to_i32()?;
-                if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-                    // If there is no error, execution should continue (on a different thread).
-                    genmc_ctx.handle_exit(
-                        this.machine.threads.active_thread(),
-                        code,
-                        crate::concurrency::ExitType::ExitCalled,
-                    )?;
-                    return interp_ok(EmulateItemResult::AlreadyJumped);
-                }
-                throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
+                let exit_code = ecx.read_scalar(exit_code)?.to_i32()?;
+                // Initialize the at-exit state machine.
+                ecx.replace_active_thread_stack({
+                    let mut state_machine =
+                        ProgramExitHandler::new(exit_code, ExitType::ExitCalled);
+                    Box::new(move |m| state_machine.on_stack_empty(m))
+                });
+                // We "jumped" to the exit handling.
+                return interp_ok(EmulateItemResult::AlreadyJumped);
             }
             "abort" => {
                 // FIXME: This does not have a direct test (#3179).
-                let [] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn() -> ()), (link_name, abi, args))?;
+                let [] =
+                    &ecx.check_shim_sig(shim_sig!(extern "C" fn() -> ()), (link_name, abi, args))?;
                 throw_machine_stop!(TerminationInfo::Abort(
                     "the program aborted execution".to_owned()
                 ));
@@ -633,82 +635,82 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Standard C allocation
             "malloc" => {
-                let [size] = &this.check_shim_sig(
+                let [size] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(usize) -> *_),
                     (link_name, abi, args),
                 )?;
-                let size = this.read_target_usize(size)?;
-                if size <= this.max_size_of_val().bytes() {
-                    let res = this.malloc(size, AllocInit::Uninit)?;
-                    this.write_pointer(res, dest)?;
+                let size = ecx.read_target_usize(size)?;
+                if size <= ecx.max_size_of_val().bytes() {
+                    let res = ecx.malloc(size, AllocInit::Uninit)?;
+                    ecx.write_pointer(res, dest)?;
                 } else {
                     // If this does not fit in an isize, return null and, on Unix, set errno.
-                    if this.target_os_is_unix() {
-                        this.set_last_error(LibcError("ENOMEM"))?;
+                    if ecx.target_os_is_unix() {
+                        ecx.set_last_error(LibcError("ENOMEM"))?;
                     }
-                    this.write_null(dest)?;
+                    ecx.write_null(dest)?;
                 }
             }
             "calloc" => {
-                let [items, elem_size] = &this.check_shim_sig(
+                let [items, elem_size] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(usize, usize) -> *_),
                     (link_name, abi, args),
                 )?;
-                let items = this.read_target_usize(items)?;
-                let elem_size = this.read_target_usize(elem_size)?;
-                if let Some(size) = this.compute_size_in_bytes(Size::from_bytes(elem_size), items) {
-                    let res = this.malloc(size.bytes(), AllocInit::Zero)?;
-                    this.write_pointer(res, dest)?;
+                let items = ecx.read_target_usize(items)?;
+                let elem_size = ecx.read_target_usize(elem_size)?;
+                if let Some(size) = ecx.compute_size_in_bytes(Size::from_bytes(elem_size), items) {
+                    let res = ecx.malloc(size.bytes(), AllocInit::Zero)?;
+                    ecx.write_pointer(res, dest)?;
                 } else {
                     // On size overflow, return null and, on Unix, set errno.
-                    if this.target_os_is_unix() {
-                        this.set_last_error(LibcError("ENOMEM"))?;
+                    if ecx.target_os_is_unix() {
+                        ecx.set_last_error(LibcError("ENOMEM"))?;
                     }
-                    this.write_null(dest)?;
+                    ecx.write_null(dest)?;
                 }
             }
             "free" => {
-                let [ptr] = &this
+                let [ptr] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> ()), (link_name, abi, args))?;
-                let ptr = this.read_pointer(ptr)?;
-                this.free(ptr)?;
+                let ptr = ecx.read_pointer(ptr)?;
+                ecx.free(ptr)?;
             }
             "realloc" => {
-                let [old_ptr, new_size] = &this.check_shim_sig(
+                let [old_ptr, new_size] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, usize) -> *_),
                     (link_name, abi, args),
                 )?;
-                let old_ptr = this.read_pointer(old_ptr)?;
-                let new_size = this.read_target_usize(new_size)?;
-                if new_size <= this.max_size_of_val().bytes() {
-                    let res = this.realloc(old_ptr, new_size)?;
-                    this.write_pointer(res, dest)?;
+                let old_ptr = ecx.read_pointer(old_ptr)?;
+                let new_size = ecx.read_target_usize(new_size)?;
+                if new_size <= ecx.max_size_of_val().bytes() {
+                    let res = ecx.realloc(old_ptr, new_size)?;
+                    ecx.write_pointer(res, dest)?;
                 } else {
                     // If this does not fit in an isize, return null and, on Unix, set errno.
-                    if this.target_os_is_unix() {
-                        this.set_last_error(LibcError("ENOMEM"))?;
+                    if ecx.target_os_is_unix() {
+                        ecx.set_last_error(LibcError("ENOMEM"))?;
                     }
-                    this.write_null(dest)?;
+                    ecx.write_null(dest)?;
                 }
             }
             "malloc_usable_size" => {
-                this.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Android], link_name)?;
+                ecx.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Android], link_name)?;
 
-                let [ptr] = &this.check_shim_sig(
+                let [ptr] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_) -> usize),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
-                let size = if this.ptr_is_null(ptr)? {
+                let ptr = ecx.read_pointer(ptr)?;
+                let size = if ecx.ptr_is_null(ptr)? {
                     0
                 } else {
-                    let (alloc_id, offset, _) = this.ptr_get_alloc_id(ptr, 0)?;
+                    let (alloc_id, offset, _) = ecx.ptr_get_alloc_id(ptr, 0)?;
                     if offset.bytes() != 0 {
                         throw_ub_format!(
                             "`malloc_usable_size` was called on a pointer that does not point to the beginning of its allocation"
                         );
                     }
-                    let Some((alloc_kind, _)) = this.memory.alloc_map().get(alloc_id) else {
+                    let Some((alloc_kind, _)) = ecx.memory.alloc_map().get(alloc_id) else {
                         throw_ub_format!(
                             "`malloc_usable_size` was called on a pointer to memory not managed by the C allocator"
                         );
@@ -718,32 +720,32 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             "`malloc_usable_size` was called on a pointer to {alloc_kind} memory, which is not managed by the C allocator"
                         );
                     }
-                    this.get_alloc_info(alloc_id).size.bytes()
+                    ecx.get_alloc_info(alloc_id).size.bytes()
                 };
-                this.write_scalar(Scalar::from_target_usize(size, this), dest)?;
+                ecx.write_scalar(Scalar::from_target_usize(size, ecx), dest)?;
             }
 
             // C memory handling functions
             "memcmp" => {
-                let [left, right, n] = &this.check_shim_sig(
+                let [left, right, n] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_, usize) -> i32),
                     (link_name, abi, args),
                 )?;
-                let left = this.read_pointer(left)?;
-                let right = this.read_pointer(right)?;
-                let n = Size::from_bytes(this.read_target_usize(n)?);
+                let left = ecx.read_pointer(left)?;
+                let right = ecx.read_pointer(right)?;
+                let n = Size::from_bytes(ecx.read_target_usize(n)?);
 
                 // C requires that this must always be a valid pointer (C18 §7.1.4).
-                this.ptr_get_alloc_id(left, 0)?;
-                this.ptr_get_alloc_id(right, 0)?;
+                ecx.ptr_get_alloc_id(left, 0)?;
+                ecx.ptr_get_alloc_id(right, 0)?;
 
                 // memcmp does *not* have any wording like `memchr` that says anything about
                 // stopping as soon as a difference is found. So we requires both buffers
                 // to be fully inbounds and initialized.
 
                 let result = {
-                    let left_bytes = this.read_bytes_ptr_strip_provenance(left, n)?;
-                    let right_bytes = this.read_bytes_ptr_strip_provenance(right, n)?;
+                    let left_bytes = ecx.read_bytes_ptr_strip_provenance(left, n)?;
+                    let right_bytes = ecx.read_bytes_ptr_strip_provenance(right, n)?;
 
                     use std::cmp::Ordering::*;
                     match left_bytes.cmp(right_bytes) {
@@ -753,125 +755,119 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                 };
 
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                ecx.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "memchr" => {
-                let [ptr, val, num] = &this.check_shim_sig(
+                let [ptr, val, num] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, i32, usize) -> *_),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
-                let val = this.read_scalar(val)?.to_i32()?;
-                let num = this.read_target_usize(num)?;
+                let ptr = ecx.read_pointer(ptr)?;
+                let val = ecx.read_scalar(val)?.to_i32()?;
+                let num = ecx.read_target_usize(num)?;
                 // The docs say val is "interpreted as unsigned char".
                 #[expect(clippy::as_conversions)]
                 let val = val as u8;
 
                 // C requires that this must always be a valid pointer (C18 §7.1.4).
-                this.ptr_get_alloc_id(ptr, 0)?;
+                ecx.ptr_get_alloc_id(ptr, 0)?;
 
                 // "The implementation shall behave as if it reads the characters sequentially and
                 // stops as soon as a matching character is found."
-                let needle_ptr = this.memchr(ptr, 0..num, val)?.map(|(_idx, ptr)| ptr);
+                let needle_ptr = ecx.memchr(ptr, 0..num, val)?.map(|(_idx, ptr)| ptr);
 
                 if let Some(needle_ptr) = needle_ptr {
-                    this.write_pointer(needle_ptr, dest)?;
+                    ecx.write_pointer(needle_ptr, dest)?;
                 } else {
-                    this.write_null(dest)?;
+                    ecx.write_null(dest)?;
                 }
             }
             "memrchr" => {
-                this.check_target_os(&[Os::Linux, Os::Android, Os::FreeBsd], link_name)?;
+                ecx.check_target_os(&[Os::Linux, Os::Android, Os::FreeBsd], link_name)?;
 
-                let [ptr, val, num] = &this.check_shim_sig(
+                let [ptr, val, num] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, i32, usize) -> *_),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
-                let val = this.read_scalar(val)?.to_i32()?;
-                let num = this.read_target_usize(num)?;
+                let ptr = ecx.read_pointer(ptr)?;
+                let val = ecx.read_scalar(val)?.to_i32()?;
+                let num = ecx.read_target_usize(num)?;
                 // The docs say val is "interpreted as unsigned char".
                 #[expect(clippy::as_conversions)]
                 let val = val as u8;
 
                 // C requires that this must always be a valid pointer (C18 §7.1.4).
-                this.ptr_get_alloc_id(ptr, 0)?;
+                ecx.ptr_get_alloc_id(ptr, 0)?;
 
                 // We use the same early-abort search strategy as `memchr` (see above).
-                let needle_ptr = this.memchr(ptr, (0..num).rev(), val)?.map(|(_idx, ptr)| ptr);
+                let needle_ptr = ecx.memchr(ptr, (0..num).rev(), val)?.map(|(_idx, ptr)| ptr);
 
                 if let Some(needle_ptr) = needle_ptr {
-                    this.write_pointer(needle_ptr, dest)?;
+                    ecx.write_pointer(needle_ptr, dest)?;
                 } else {
-                    this.write_null(dest)?;
+                    ecx.write_null(dest)?;
                 }
             }
             "strlen" => {
-                let [ptr] = &this.check_shim_sig(
+                let [ptr] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_) -> usize),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
+                let ptr = ecx.read_pointer(ptr)?;
                 // This reads at least 1 byte, so we are already enforcing that this is a valid pointer.
-                let n = this.read_c_str(ptr)?.len();
-                this.write_scalar(
-                    Scalar::from_target_usize(u64::try_from(n).unwrap(), this),
-                    dest,
-                )?;
+                let n = ecx.read_c_str(ptr)?.len();
+                ecx.write_scalar(Scalar::from_target_usize(u64::try_from(n).unwrap(), ecx), dest)?;
             }
             "strnlen" => {
-                let [ptr, num] = &this.check_shim_sig(
+                let [ptr, num] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, usize) -> usize),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
-                let num = this.read_target_usize(num)?;
+                let ptr = ecx.read_pointer(ptr)?;
+                let num = ecx.read_target_usize(num)?;
 
                 // C requires that this must always be a valid pointer (C18 §7.1.4).
-                this.ptr_get_alloc_id(ptr, 0)?;
+                ecx.ptr_get_alloc_id(ptr, 0)?;
 
                 // The docs say this behaves like memchr, which only deref's the memory it actually
                 // needs to compare.
-                let idx = this.memchr(ptr, 0..num, 0)?.map(|(idx, _ptr)| idx).unwrap_or(num);
-                this.write_scalar(Scalar::from_target_usize(idx, this), dest)?;
+                let idx = ecx.memchr(ptr, 0..num, 0)?.map(|(idx, _ptr)| idx).unwrap_or(num);
+                ecx.write_scalar(Scalar::from_target_usize(idx, ecx), dest)?;
             }
             "wcslen" => {
-                let [ptr] = &this.check_shim_sig(
+                let [ptr] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_) -> usize),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.read_pointer(ptr)?;
+                let ptr = ecx.read_pointer(ptr)?;
                 // This reads at least 1 byte, so we are already enforcing that this is a valid pointer.
-                let n = this.read_wchar_t_str(ptr)?.len();
-                this.write_scalar(
-                    Scalar::from_target_usize(u64::try_from(n).unwrap(), this),
-                    dest,
-                )?;
+                let n = ecx.read_wchar_t_str(ptr)?.len();
+                ecx.write_scalar(Scalar::from_target_usize(u64::try_from(n).unwrap(), ecx), dest)?;
             }
             "memcpy" => {
-                let [ptr_dest, ptr_src, n] = &this.check_shim_sig(
+                let [ptr_dest, ptr_src, n] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_, usize) -> *_),
                     (link_name, abi, args),
                 )?;
-                let ptr_dest = this.read_pointer(ptr_dest)?;
-                let ptr_src = this.read_pointer(ptr_src)?;
-                let n = this.read_target_usize(n)?;
+                let ptr_dest = ecx.read_pointer(ptr_dest)?;
+                let ptr_src = ecx.read_pointer(ptr_src)?;
+                let n = ecx.read_target_usize(n)?;
 
                 // C requires that this must always be a valid pointer, even if `n` is zero, so we better check that.
                 // (This is more than Rust requires, so `mem_copy` is not sufficient.)
-                this.ptr_get_alloc_id(ptr_dest, 0)?;
-                this.ptr_get_alloc_id(ptr_src, 0)?;
+                ecx.ptr_get_alloc_id(ptr_dest, 0)?;
+                ecx.ptr_get_alloc_id(ptr_src, 0)?;
 
-                this.mem_copy(ptr_src, ptr_dest, Size::from_bytes(n), true)?;
-                this.write_pointer(ptr_dest, dest)?;
+                ecx.mem_copy(ptr_src, ptr_dest, Size::from_bytes(n), true)?;
+                ecx.write_pointer(ptr_dest, dest)?;
             }
             "strcpy" => {
-                let [ptr_dest, ptr_src] = &this.check_shim_sig(
+                let [ptr_dest, ptr_src] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_) -> *_),
                     (link_name, abi, args),
                 )?;
-                let ptr_dest = this.read_pointer(ptr_dest)?;
-                let ptr_src = this.read_pointer(ptr_src)?;
+                let ptr_dest = ecx.read_pointer(ptr_dest)?;
+                let ptr_src = ecx.read_pointer(ptr_src)?;
 
                 // We use `read_c_str` to determine the amount of data to copy,
                 // and then use `mem_copy` for the actual copy. This means
@@ -879,49 +875,49 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // That is probably overly cautious, but there also is no fundamental
                 // reason to have `strcpy` destroy pointer provenance.
                 // This reads at least 1 byte, so we are already enforcing that this is a valid pointer.
-                let n = this.read_c_str(ptr_src)?.len().strict_add(1);
-                this.mem_copy(ptr_src, ptr_dest, Size::from_bytes(n), true)?;
-                this.write_pointer(ptr_dest, dest)?;
+                let n = ecx.read_c_str(ptr_src)?.len().strict_add(1);
+                ecx.mem_copy(ptr_src, ptr_dest, Size::from_bytes(n), true)?;
+                ecx.write_pointer(ptr_dest, dest)?;
             }
             "memset" => {
-                let [ptr_dest, val, n] = &this.check_shim_sig(
+                let [ptr_dest, val, n] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, i32, usize) -> *_),
                     (link_name, abi, args),
                 )?;
-                let ptr_dest = this.read_pointer(ptr_dest)?;
-                let val = this.read_scalar(val)?.to_i32()?;
-                let n = this.read_target_usize(n)?;
+                let ptr_dest = ecx.read_pointer(ptr_dest)?;
+                let val = ecx.read_scalar(val)?.to_i32()?;
+                let n = ecx.read_target_usize(n)?;
                 // The docs say val is "interpreted as unsigned char".
                 #[expect(clippy::as_conversions)]
                 let val = val as u8;
 
                 // C requires that this must always be a valid pointer, even if `n` is zero, so we better check that.
-                this.ptr_get_alloc_id(ptr_dest, 0)?;
+                ecx.ptr_get_alloc_id(ptr_dest, 0)?;
 
                 let bytes = std::iter::repeat_n(val, n.try_into().unwrap());
-                this.write_bytes_ptr(ptr_dest, bytes)?;
-                this.write_pointer(ptr_dest, dest)?;
+                ecx.write_bytes_ptr(ptr_dest, bytes)?;
+                ecx.write_pointer(ptr_dest, dest)?;
             }
 
             // Fallback to shims in submodules.
             _ => {
                 // Math shims
                 if let res = shims::math::EvalContextExt::emulate_foreign_item_inner(
-                    this, link_name, abi, args, dest,
+                    ecx, link_name, abi, args, dest,
                 )? && !matches!(res, EmulateItemResult::NotSupported)
                 {
                     return interp_ok(res);
                 }
 
                 // Platform-specific shims
-                return match &this.tcx.sess.target.os {
-                    _ if this.target_os_is_unix() =>
+                return match &ecx.tcx.sess.target.os {
+                    _ if ecx.target_os_is_unix() =>
                         shims::unix::foreign_items::EvalContextExt::emulate_foreign_item_inner(
-                            this, link_name, abi, args, dest,
+                            ecx, link_name, abi, args, dest,
                         ),
                     Os::Windows =>
                         shims::windows::foreign_items::EvalContextExt::emulate_foreign_item_inner(
-                            this, link_name, abi, args, dest,
+                            ecx, link_name, abi, args, dest,
                         ),
                     _ => interp_ok(EmulateItemResult::NotSupported),
                 };
@@ -940,11 +936,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         idxs: impl Iterator<Item = u64>,
         needle: u8,
     ) -> InterpResult<'tcx, Option<(u64, Pointer)>> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         for idx in idxs {
-            let ptr = ptr.wrapping_offset(Size::from_bytes(idx), this);
-            let place = this.ptr_to_mplace(ptr, this.machine.layouts.u8);
-            let val = this.read_scalar(&place)?.to_u8()?;
+            let ptr = ptr.wrapping_offset(Size::from_bytes(idx), ecx);
+            let place = ecx.ptr_to_mplace(ptr, ecx.machine.layouts.u8);
+            let val = ecx.read_scalar(&place)?.to_u8()?;
             if val == needle {
                 return interp_ok(Some((idx, ptr)));
             }

@@ -50,6 +50,12 @@ help: consider adding an explicit lifetime bound
    |
 LL |     executor: impl FnOnce(T) -> (dyn Future<Output = ()>) + 'static,
    |                                 +                       +++++++++++
+help: consider adding an explicit lifetime bound
+   |
+LL ~ pub fn dyn_func<'a, T>(
+LL |     executor: impl FnOnce(T) -> dyn Future<Output = ()>,
+LL ~ ) -> Box<dyn FnOnce(T) -> dyn Future<Output = ()> + 'a> {
+   |
 
 error: aborting due to 3 previous errors
 

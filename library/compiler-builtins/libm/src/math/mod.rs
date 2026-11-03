@@ -303,11 +303,13 @@ pub use self::trunc::{trunc, truncf};
 
 cfg_select_nofmt! {
     f16_enabled => {
+        mod exp2m1f16;
         mod fmaf16;
 
         // verify-sorted-start
         pub use self::ceil::ceilf16;
         pub use self::copysign::copysignf16;
+        pub use self::exp2m1f16::exp2m1f16;
         pub use self::fabs::fabsf16;
         pub use self::fdim::fdimf16;
         pub use self::floor::floorf16;

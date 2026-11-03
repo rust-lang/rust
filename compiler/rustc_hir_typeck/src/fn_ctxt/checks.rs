@@ -1,3 +1,4 @@
+// ignore-tidy-file-filelength
 use std::ops::Deref;
 use std::{fmt, iter};
 
@@ -41,9 +42,8 @@ use crate::diagnostics::{ExprParenthesesNeeded, SuggestPtrNullMut, SuggestRawMut
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
 use crate::gather_locals::Declaration;
 use crate::inline_asm::InlineAsmCtxt;
-use crate::method::probe::IsSuggestion;
-use crate::method::probe::Mode::MethodCall;
 use crate::method::probe::ProbeScope::TraitsInScope;
+use crate::method::probe::{IsSuggestion, Mode};
 use crate::{
     BreakableCtxt, Diverges, Expectation, FnCtxt, GatherLocalsVisitor, LoweredTy, Needs,
     TupleArgumentsFlag, diagnostics, struct_span_code_err,
@@ -209,7 +209,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Lowering info if a splatted function is being called.
         fn_id: SplatLoweringInfo<'tcx>,
         // The generics of the function being called. Only used for splatting
-        callee_generic_args: Option<ty::GenericArgsRef<'tcx>>,
+        callee_generic_args: Option<ty::GenericArgs<'tcx>>,
     ) {
         let tcx = self.tcx;
 
@@ -597,7 +597,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Lowering info if a splatted function is being called.
         fn_id: SplatLoweringInfo<'tcx>,
         // The generics of the function being called. Only used for splatting
-        callee_generic_args: Option<ty::GenericArgsRef<'tcx>>,
+        callee_generic_args: Option<ty::GenericArgs<'tcx>>,
     ) -> TupledArgCheckOutcome<'tcx> {
         let (first_tupled_arg_index, is_self_splatted) = tuple_arguments.tupled_arg_index();
         let Some(first_tupled_arg_index) = first_tupled_arg_index else {
@@ -924,6 +924,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut err = fn_call_diag_ctxt.initial_final_diagnostic();
         fn_call_diag_ctxt.suggest_confusable(&mut err);
+        fn_call_diag_ctxt.detect_missing_turbofish(&mut err);
 
         // As we encounter issues, keep track of what we want to provide for the suggestion.
 
@@ -1054,6 +1055,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
+                    // If we have an expected type that is an `IntVar`, we can just reuse the
+                    // `IntVar` rather than creating a new one and then later unifying them.
+                    // (But we don't want to do this for `ExpectCastableToType`.)
+                    ty::Infer(ty::IntVar(_)) if matches!(expected, ExpectHasType(_)) => Some(ty),
                     // These exist to direct casts like `0x61 as char` to use
                     // the right integer type to cast from, instead of falling back to
                     // i32 due to no further constraints.
@@ -1081,6 +1086,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Float(_) => Some(ty),
+                    // See the comment on the `ty::Infer(ty::IntVar(_))` case above.
+                    ty::Infer(ty::FloatVar(_)) if matches!(expected, ExpectHasType(_)) => Some(ty),
                     _ => None,
                 });
                 opt_ty.unwrap_or_else(|| self.next_float_var(lit.span, Some(lint_id)))
@@ -1911,8 +1918,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
+            let def_kind = self.tcx.def_kind(def_id);
+            if let DefKind::AssocFn = def_kind {
+                let parent_def_id = self.tcx.parent(def_id);
+                spans.push_span_context(self.tcx.def_span(parent_def_id).shrink_to_lo());
+            }
             err.span_note(spans, format!("{} defined here", self.tcx.def_descr(def_id)));
-            if let DefKind::Fn | DefKind::AssocFn = self.tcx.def_kind(def_id)
+            if let DefKind::AssocFn = def_kind
+                && !is_method
+                && let parent_def_id = self.tcx.parent(def_id)
+                && let Some(callee_ty) = callee_ty
+                && let ty::FnDef(_def_id, args) = callee_ty.kind()
+                && let DefKind::Trait = self.tcx.def_kind(parent_def_id)
+                && let Ok(Some(traits::ImplSource::UserDefined(pick))) = self.probe(|_| {
+                    let trait_ref = ty::TraitRef::new(
+                        self.tcx,
+                        parent_def_id,
+                        args.skip_binder()
+                            .truncate_to(self.tcx, self.tcx.generics_of(parent_def_id)),
+                    );
+                    let obligation = traits::Obligation::new(
+                        self.tcx,
+                        traits::ObligationCause::dummy(),
+                        self.param_env,
+                        trait_ref,
+                    );
+                    SelectionContext::new(self).select(&obligation)
+                })
+            {
+                err.span_note(
+                    self.tcx.def_span(pick.impl_def_id),
+                    format!(
+                        "{} provided through this {}`impl`",
+                        self.tcx.def_descr(def_id),
+                        if let ty::Param(_) =
+                            self.tcx.type_of(pick.impl_def_id).skip_binder().kind()
+                        {
+                            "blanket "
+                        } else {
+                            ""
+                        },
+                    ),
+                );
+            }
+            if let DefKind::Fn | DefKind::AssocFn = def_kind
                 && let ty::Param(_) =
                     self.tcx.fn_sig(def_id).instantiate_identity().skip_binder().output().kind()
                 && let parent = self.tcx.hir_get_parent_item(call_expr.hir_id).def_id
@@ -3227,6 +3276,45 @@ impl<'a, 'tcx> ArgMatchingCtxt<'a, 'tcx> {
         self.annotate_alternative_method_deref(err, self.call_expr, None);
     }
 
+    fn detect_missing_turbofish(&self, err: &mut Diag<'_>) {
+        if self.tcx.dcx().has_errors().is_none() {
+            return;
+        }
+        let mut iter = self.provided_args.iter().peekable();
+        while let Some(arg) = iter.next() {
+            let hir::ExprKind::Binary(lt, lt_left, lt_right) = arg.kind else {
+                continue;
+            };
+            let hir::BinOpKind::Lt = lt.node else { continue };
+            let hir::ExprKind::Path(_) = lt_left.kind else { continue };
+            let hir::ExprKind::Path(_) = lt_right.kind else { continue };
+
+            let Some(mut next) = iter.next() else { break };
+            loop {
+                match next.kind {
+                    hir::ExprKind::Binary(gt, gt_left, gt_right)
+                        if let hir::BinOpKind::Gt = gt.node
+                            && let hir::ExprKind::Path(_) = gt_left.kind
+                            && let hir::ExprKind::Call(..) = gt_right.kind =>
+                    {
+                        // We've encountered a likely missing turbofish error, for which we've already
+                        // emitted a more targeted diagnostic during name resolution making this one
+                        // redundant (`LateResolutionVisitor::detect_missing_turbofish`).
+                        err.downgrade_to_delayed_bug();
+                    }
+                    hir::ExprKind::Path(_) => {
+                        if let Some(n) = iter.next() {
+                            next = n;
+                            continue;
+                        }
+                    }
+                    _ => {}
+                }
+                break;
+            }
+        }
+    }
+
     /// A "softer" version of the `demand_compatible`, which checks types without persisting them,
     /// and treats error types differently
     /// This will allow us to "probe" for other argument orders that would likely have been correct
@@ -3386,7 +3474,7 @@ impl<'a, 'tcx> ArgsCtxt<'a, 'tcx> {
         if let Some(callee_ty) = self.call_ctxt.callee_ty
             && let Ok(Some(assoc)) = self.call_ctxt.fn_ctxt.probe_op(
                 call_name.span,
-                MethodCall,
+                Mode::MethodCall,
                 Some(call_name),
                 None,
                 IsSuggestion(true),
@@ -3637,9 +3725,9 @@ fn only_keep_structural_changes<'tcx>(
             formal_ty: Ty<'tcx>,
             _expected_ty: Ty<'tcx>,
             _def_id: DefId,
-            formal_args: ty::GenericArgsRef<'tcx>,
-            expected_args: ty::GenericArgsRef<'tcx>,
-            mk: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+            formal_args: ty::GenericArgs<'tcx>,
+            expected_args: ty::GenericArgs<'tcx>,
+            mk: impl FnOnce(ty::GenericArgs<'tcx>) -> Ty<'tcx>,
         ) -> RelateResult<'tcx, Ty<'tcx>> {
             let new_args = relate::relate_args_invariantly(self, formal_args, expected_args)?;
 

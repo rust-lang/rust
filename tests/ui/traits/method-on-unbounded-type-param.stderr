@@ -14,7 +14,7 @@ LL | fn f<T: Iterator>(a: T, b: T) -> std::cmp::Ordering {
 LL | fn f<T: Ord>(a: T, b: T) -> std::cmp::Ordering {
    |       +++++
 
-error[E0599]: the method `cmp` exists for reference `&T`, but its trait bounds were not satisfied
+error[E0599]: no method named `cmp` found for type parameter `&T` in the current scope
   --> $DIR/method-on-unbounded-type-param.rs:5:10
    |
 LL |     (&a).cmp(&b)
@@ -35,7 +35,7 @@ LL | fn g<T: Iterator>(a: T, b: T) -> std::cmp::Ordering {
 LL | fn g<T: Ord>(a: T, b: T) -> std::cmp::Ordering {
    |       +++++
 
-error[E0599]: the method `cmp` exists for reference `&T`, but its trait bounds were not satisfied
+error[E0599]: no method named `cmp` found for type parameter `&T` in the current scope
   --> $DIR/method-on-unbounded-type-param.rs:8:7
    |
 LL |     a.cmp(&b)
@@ -56,7 +56,7 @@ LL | fn h<T: Iterator>(a: &T, b: T) -> std::cmp::Ordering {
 LL | fn h<T: Ord>(a: &T, b: T) -> std::cmp::Ordering {
    |       +++++
 
-error[E0599]: the method `cmp` exists for struct `Box<dyn T>`, but its trait bounds were not satisfied
+error[E0599]: no method named `cmp` found for struct `Box<dyn T>` in the current scope
   --> $DIR/method-on-unbounded-type-param.rs:14:7
    |
 LL | trait T {}

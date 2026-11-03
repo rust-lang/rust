@@ -174,32 +174,40 @@ pub fn remove_dir_all_iterative(dir: File) -> Result<(), WinError> {
     let mut buffer = DirBuff::new();
     let mut dirlist = vec![dir];
 
-    let mut restart = true;
-    'outer: while let Some(dir) = dirlist.pop() {
+    while let Some(dir) = dirlist.pop() {
+        let restart = false; // we never have to restart, we iterate every directory only once
         let more_data = dir.fill_dir_buff(&mut buffer, restart)?;
-        for (name, is_directory) in buffer.iter() {
-            let name = unicode_str!(&name);
-            if is_directory {
-                let Some(subdir) = open_dir(&dir, name)? else { continue };
-                dirlist.push(dir);
-                dirlist.push(subdir);
-                continue 'outer;
-            } else {
-                // Attempt to delete, retrying on sharing violation errors as these
-                // can often be very temporary. E.g. if something takes just a
-                // bit longer than expected to release a file handle.
-                retry(|| delete(&dir, name), WinError::SHARING_VIOLATION)?;
-            }
-        }
-        if more_data {
-            dirlist.push(dir);
-            restart = false;
-        } else {
+        if !more_data {
+            // This directory is done!
             // Attempt to delete, retrying on not empty errors because we may
             // need to wait some time for files to be removed from the filesystem.
             let name = unicode_str!("");
             retry(|| delete(&dir, name), WinError::DIR_NOT_EMPTY)?;
-            restart = true;
+            continue;
+        }
+
+        // There is more data, so we have to re-insert `dir` so it gets visited again. We need to
+        // push it first so that it gets visited after any subdirs that we push below. We also need
+        // to still access it during the `for` loop so remember where we put it.
+        let dir_idx = dirlist.len();
+        dirlist.push(dir);
+        // To avoid indexing `dirlist` each time through the loop, we use a reference that we
+        // re-compute whenever the borrow got invalidated.
+        let mut dir = &dirlist[dir_idx];
+
+        for (name, is_directory) in buffer.iter() {
+            let name = unicode_str!(&name);
+            if is_directory {
+                let Some(subdir) = open_dir(dir, name)? else { continue };
+                dirlist.push(subdir);
+                // We need to re-create the borrow.
+                dir = &dirlist[dir_idx]
+            } else {
+                // Attempt to delete, retrying on sharing violation errors as these
+                // can often be very temporary. E.g. if something takes just a
+                // bit longer than expected to release a file handle.
+                retry(|| delete(dir, name), WinError::SHARING_VIOLATION)?;
+            }
         }
     }
     Ok(())

@@ -868,7 +868,7 @@ impl<'db> InferenceContext<'db> {
             expected,
         );
         if !(ty.is_numeric() || ty.is_char() || ty.references_error()) {
-            // FIXME: Emit an error.
+            self.push_diagnostic(InferenceDiagnostic::InvalidRangePatType { pat });
             return self.types.types.error;
         }
         ty

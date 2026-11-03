@@ -328,16 +328,32 @@ impl<'tcx> ItemCtxt<'tcx> {
         &self,
         item: &hir::TestBinderBody<'tcx>,
     ) -> TestBinderBody<'tcx> {
-        let hir::TestBinderBody { span, foralls, exists, constraints, predicates } = item;
+        let hir::TestBinderBody {
+            span,
+            foralls,
+            exists,
+            region_equalities,
+            constraints,
+            predicates,
+        } = item;
         let foralls = foralls.iter().map(|forall| self.lower_test_binder_forall(forall)).collect();
         let exists = exists.iter().map(|exists| self.lower_test_binder_exists(exists)).collect();
+        let region_equalities = region_equalities
+            .iter()
+            .map(|(lhs, rhs)| {
+                let span = lhs.ident.span.to(rhs.ident.span);
+                let lhs = self.lowerer().lower_lifetime(lhs, RegionInferReason::RegionPredicate);
+                let rhs = self.lowerer().lower_lifetime(rhs, RegionInferReason::RegionPredicate);
+                (ty::RegionEqPredicate(lhs, rhs), span)
+            })
+            .collect();
         let constraints = self.lower_test_binder_constraint(&constraints);
         let mut clauses = Default::default();
         for predicate in *predicates {
             clauses_of::where_predicate_clauses(self, predicate, &mut clauses);
         }
         let predicates = clauses.into_iter().map(|(c, span)| (c.kind(), span)).collect();
-        TestBinderBody { span: *span, foralls, exists, constraints, predicates }
+        TestBinderBody { span: *span, foralls, exists, region_equalities, constraints, predicates }
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -614,7 +630,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         item_def_id: DefId,
         item_segment: &rustc_hir::PathSegment<'_>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Result<(DefId, ty::GenericArgsRef<'tcx>), ErrorGuaranteed> {
+    ) -> Result<(DefId, ty::GenericArgs<'tcx>), ErrorGuaranteed> {
         if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
             let item_args = self.lowerer().lower_generic_args_of_assoc_item(
                 span,
@@ -1433,7 +1449,7 @@ pub fn suggest_impl_trait<'tcx>(
 ) -> Option<String> {
     let format_as_assoc: fn(_, _, _, _, _) -> _ =
         |tcx: TyCtxt<'tcx>,
-         _: ty::GenericArgsRef<'tcx>,
+         _: ty::GenericArgs<'tcx>,
          trait_def_id: DefId,
          assoc_item_def_id: DefId,
          item_ty: Ty<'tcx>| {
@@ -1443,7 +1459,7 @@ pub fn suggest_impl_trait<'tcx>(
         };
     let format_as_parenthesized: fn(_, _, _, _, _) -> _ =
         |tcx: TyCtxt<'tcx>,
-         args: ty::GenericArgsRef<'tcx>,
+         args: ty::GenericArgs<'tcx>,
          trait_def_id: DefId,
          _: DefId,
          item_ty: Ty<'tcx>| {

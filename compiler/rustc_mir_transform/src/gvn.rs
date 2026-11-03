@@ -137,8 +137,8 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
 
         let typing_env = body.typing_env(tcx);
         let ssa = SsaLocals::new(tcx, body, typing_env);
-        // Clone dominators because we need them while mutating the body.
-        let dominators = body.basic_blocks.dominators().clone();
+        let cfg_cache = body.basic_blocks.cfg_cache();
+        let dominators = cfg_cache.dominators(&body.basic_blocks);
 
         let arena = DroplessArena::default();
         let mut state =
@@ -149,8 +149,7 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
             state.assign(local, opaque);
         }
 
-        let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
-        for bb in reverse_postorder {
+        for &bb in cfg_cache.reverse_postorder(&body.basic_blocks) {
             let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
             state.visit_basic_block_data(bb, data);
         }
@@ -395,7 +394,7 @@ struct VnState<'body, 'a, 'tcx> {
     /// - `Some(Some(op))` are successful computations.
     evaluated: IndexVec<VnIndex, Option<Option<&'a OpTy<'tcx>>>>,
     ssa: &'body SsaLocals,
-    dominators: Dominators<BasicBlock>,
+    dominators: &'a Dominators<BasicBlock>,
     reused_locals: DenseBitSet<Local>,
     arena: &'a DroplessArena,
 }
@@ -406,7 +405,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         body: &Body<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         ssa: &'body SsaLocals,
-        dominators: Dominators<BasicBlock>,
+        dominators: &'a Dominators<BasicBlock>,
         local_decls: &'body LocalDecls<'tcx>,
         arena: &'a DroplessArena,
     ) -> Self {
@@ -1736,7 +1735,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                         || adt_def.all_fields().any(|field| {
                             ty_may_have_ref_inner(
                                 tcx,
-                                field.ty(tcx, args).skip_normalization(),
+                                field.ty(tcx, *args).skip_normalization(),
                                 depth,
                             )
                         })
@@ -1850,7 +1849,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             && adt.repr().transparent()
             && let [single_field] = adt.non_enum_variant().fields.raw.as_slice()
         {
-            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args).skip_norm_wip()))
+            Some((FieldIdx::ZERO, single_field.ty(self.tcx, *args).skip_norm_wip()))
         } else {
             None
         }

@@ -3,6 +3,7 @@ error: the `lang = "owned_box"` attribute cannot be used on statics
    |
 LL | #[lang = "owned_box"]
    |   ^^^^^^^^^^^^^^^^^^
+LL | static X: u32 = 42;
    |
    = help: the `lang = "owned_box"` attribute can only be applied to structs
 

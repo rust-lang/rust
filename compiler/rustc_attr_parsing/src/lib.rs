@@ -101,6 +101,7 @@ mod attributes;
 mod check_cfg;
 mod context;
 mod diagnostics;
+mod generated;
 mod interface;
 pub mod parser;
 mod safety;

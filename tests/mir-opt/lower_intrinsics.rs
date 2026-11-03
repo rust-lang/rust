@@ -147,6 +147,7 @@ pub fn discriminant<T>(t: T) {
 pub fn f_copy_nonoverlapping() {
     // CHECK-LABEL: fn f_copy_nonoverlapping(
     // CHECK: copy_nonoverlapping({{.*}});
+    // CHECK-NEXT: {{_[0-9]+}} = const ();
 
     let src = ();
     let mut dst = ();
@@ -159,6 +160,7 @@ pub fn f_copy_nonoverlapping() {
 pub fn assume() {
     // CHECK-LABEL: fn assume(
     // CHECK: assume({{.*}});
+    // CHECK-NEXT: {{_[0-9]+}} = const ();
 
     unsafe {
         std::intrinsics::assume(true);

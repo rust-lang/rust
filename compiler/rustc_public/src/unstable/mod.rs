@@ -31,7 +31,7 @@ pub trait InternalCx<'tcx>: Copy + Clone {
     fn mk_args_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: ty::CollectAndApply<ty::GenericArg<'tcx>, ty::GenericArgsRef<'tcx>>;
+        T: ty::CollectAndApply<ty::GenericArg<'tcx>, ty::GenericArgs<'tcx>>;
 
     fn mk_pat(self, v: ty::PatternKind<'tcx>) -> ty::Pattern<'tcx>;
 

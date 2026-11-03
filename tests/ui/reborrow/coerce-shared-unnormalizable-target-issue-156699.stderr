@@ -1,0 +1,14 @@
+error[E0277]: `T` is not an iterator
+  --> $DIR/coerce-shared-unnormalizable-target-issue-156699.rs:14:1
+   |
+LL | impl<'a, T> CoerceShared<<T as Iterator>::Item> for Wrapper<'a, T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `T` is not an iterator
+   |
+help: consider restricting type parameter `T` with trait `Iterator`
+   |
+LL | impl<'a, T: std::iter::Iterator> CoerceShared<<T as Iterator>::Item> for Wrapper<'a, T> {}
+   |           +++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

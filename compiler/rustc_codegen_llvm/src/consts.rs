@@ -758,7 +758,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 let g = self.define_global(&sym, llty).unwrap_or_else(|| {
                     bug!("symbol `{}` is already defined", sym);
                 });
-                set_global_alignment(self, g, self.tcx.data_layout.pointer_align().abi);
+                set_global_alignment(self, g, self.tcx.data_layout.pointer_align());
                 llvm::set_initializer(g, llval);
                 llvm::set_linkage(g, llvm::Linkage::PrivateLinkage);
                 llvm::set_section(g, c"__OBJC,__cls_refs,literal_pointers,no_dead_strip");
@@ -778,7 +778,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 let g = self.define_global(&sym, llty).unwrap_or_else(|| {
                     bug!("symbol `{}` is already defined", sym);
                 });
-                set_global_alignment(self, g, self.tcx.data_layout.pointer_align().abi);
+                set_global_alignment(self, g, self.tcx.data_layout.pointer_align());
                 llvm::set_initializer(g, llval);
                 llvm::set_linkage(g, llvm::Linkage::InternalLinkage);
                 llvm::set_section(g, c"__DATA,__objc_classrefs,regular,no_dead_strip");
@@ -841,7 +841,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let selref_g = self.define_global(&selref_sym, selref_llty).unwrap_or_else(|| {
             bug!("symbol `{}` is already defined", selref_sym);
         });
-        set_global_alignment(self, selref_g, self.tcx.data_layout.pointer_align().abi);
+        set_global_alignment(self, selref_g, self.tcx.data_layout.pointer_align());
         llvm::set_initializer(selref_g, selref_llval);
         llvm::set_externally_initialized(selref_g, true);
         llvm::set_linkage(
@@ -897,7 +897,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let g = self.define_global(&sym, llty).unwrap_or_else(|| {
             bug!("symbol `{}` is already defined", sym);
         });
-        set_global_alignment(self, g, self.tcx.data_layout.pointer_align().abi);
+        set_global_alignment(self, g, self.tcx.data_layout.pointer_align());
         llvm::set_initializer(g, llval);
         llvm::set_linkage(g, llvm::Linkage::PrivateLinkage);
         llvm::set_section(g, c"__OBJC,__module_info,regular,no_dead_strip");

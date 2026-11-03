@@ -44,6 +44,7 @@ LL |         self.bar(collection)
 note: method defined here
   --> $DIR/relate-bound-region-ice-144033.rs:6:8
    |
+LL | trait FooMut {
 LL |     fn bar<I>(self, _: I)
    |        ^^^          -
 

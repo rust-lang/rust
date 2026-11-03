@@ -27,10 +27,10 @@ LL + /// [^1]: <!-- description -->
    |
 
 error: looks like a footnote ref, but has no matching footnote
-  --> tests/ui/doc_suspicious_footnotes.rs:39:13
+  --> tests/ui/doc_suspicious_footnotes.rs:39:38
    |
 LL |     #[doc = r#"This is not a footnote[^1]."#]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                      ^^^^
    |
 help: add footnote definition
    |
@@ -87,10 +87,10 @@ LL + [^1]: <!-- description -->"#
    |
 
 error: looks like a footnote ref, but has no matching footnote
-  --> tests/ui/doc_suspicious_footnotes.rs:91:9
+  --> tests/ui/doc_suspicious_footnotes.rs:91:33
    |
 LL | #[doc = r"This is not a footnote[^1]."]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                 ^^^^
    |
 help: add footnote definition
    |

@@ -2,9 +2,11 @@ use std::hash::Hash;
 
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::ty::{Binder, EarlyBinder, GenericArg, Region};
+use rustc_middle::ty::{Binder, EarlyBinder, GenericArg, Region, Ty};
+use rustc_serialize::Encodable;
 use rustc_span::Symbol;
 
+use crate::rmeta::encoder::EncodeContext;
 use crate::rmeta::{LazyArray, LazyValue, LocalDefId};
 
 pub(crate) trait ParameterizedOverTcx: 'static {
@@ -175,4 +177,140 @@ parameterized_over_tcx! {
     rustc_middle::ty::TraitRef,
     rustc_middle::ty::Ty,
     // tidy-alphabetical-end
+}
+
+/// Converts values from `TyCtxt` stored form into metadata table stored form
+pub(super) trait EncodeFrom<'tcx, T> {
+    /// When a `T` is trivial to encode, it has a fixed size, no pointers inside, this can be
+    /// just a no-op. For more complex types this usually creates a `LazyValue<T>` or `LazyArray<T>`
+    /// encoding `value` with `encoder` in the process
+    fn encode_from<'a>(encoder: &mut EncodeContext<'a, 'tcx>, value: T) -> Self;
+}
+
+macro_rules! trivial_encode_from {
+    (
+        $($ty:ty,)+
+    ) => {
+        $(
+            impl<'tcx> EncodeFrom<'tcx, $ty> for $ty {
+                fn encode_from<'a>(
+                    _encoder: &mut EncodeContext<'a, 'tcx>,
+                    value: $ty,
+                ) -> $ty {
+                    value
+                }
+            }
+        )+
+    };
+}
+
+macro_rules! lazy_encode_from {
+    (
+        $($ty:ty,)+
+    ) => {
+        $(
+            impl<'tcx, B> EncodeFrom<'tcx, B> for LazyValue<$ty>
+            where
+                B: std::borrow::Borrow<<$ty as ParameterizedOverTcx>::Value<'tcx>>
+            {
+                fn encode_from<'a>(
+                    encoder: &mut EncodeContext<'a, 'tcx>,
+                    value: B,
+                ) -> LazyValue<$ty> {
+                    encoder.lazy(value)
+                }
+            }
+        )+
+    };
+}
+
+trivial_encode_from! {
+    bool,
+    u64,
+    // tidy-alphabetical-start
+    crate::rmeta::AttrFlags,
+    crate::rmeta::remapped_def_id::RemappedRawDefId,
+    rustc_hir::Constness,
+    rustc_hir::CoroutineKind,
+    rustc_hir::Defaultness,
+    rustc_hir::Safety,
+    rustc_hir::def::DefKind,
+    rustc_middle::ty::Asyncness,
+    // tidy-alphabetical-end
+}
+
+lazy_encode_from! {
+    // tidy-alphabetical-start
+    (rustc_middle::mir::ConstValue, Ty<'static>),
+    crate::rmeta::VariantData,
+    rustc_abi::ReprOptions,
+    rustc_ast::DelimArgs,
+    rustc_attr_ir::ConstStability,
+    rustc_attr_ir::DefaultBodyStability,
+    rustc_attr_ir::Deprecation,
+    rustc_attr_ir::Stability,
+    rustc_hir::OpaqueTyOrigin<rustc_span::def_id::DefId>,
+    rustc_hir::def_id::DefId,
+    rustc_hir::def_id::DefIdMap<rustc_middle::ty::EarlyBinder<'static, Ty<'static>>>,
+    rustc_hir::def_id::DefIdMap<std::vec::Vec<rustc_hir::def_id::DefId>>,
+    rustc_hir::definitions::DefKey,
+    rustc_index::IndexVec<rustc_abi::FieldIdx, rustc_span::Symbol>,
+    rustc_index::IndexVec<rustc_middle::mir::Promoted, rustc_middle::mir::Body<'static>>,
+    rustc_index::bit_set::DenseBitSet<u32>,
+    rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs,
+    rustc_middle::middle::resolve::DocLinkResMap,
+    rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault,
+    rustc_middle::mir::Body<'static>,
+    rustc_middle::mir::ConstQualifs,
+    rustc_middle::mir::CoroutineLayout<'static>,
+    rustc_middle::mir::interpret::ConstAllocation<'static>,
+    rustc_middle::ty::AnonConstKind,
+    rustc_middle::ty::AssocContainer,
+    rustc_middle::ty::AsyncDestructor,
+    rustc_middle::ty::ConstConditions<'static>,
+    rustc_middle::ty::Destructor,
+    rustc_middle::ty::EarlyBinder<'static, Ty<'static>>,
+    rustc_middle::ty::EarlyBinder<'static, rustc_middle::ty::Const<'static>>,
+    rustc_middle::ty::EarlyBinder<'static, rustc_middle::ty::PolyFnSig<'static>>,
+    rustc_middle::ty::GenericClauses<'static>,
+    rustc_middle::ty::Generics,
+    rustc_middle::ty::ImplTraitHeader<'static>,
+    rustc_middle::ty::ImplTraitInTraitData,
+    rustc_middle::ty::IntrinsicDef,
+    rustc_middle::ty::RestrictionKind,
+    rustc_middle::ty::Visibility<rustc_span::def_id::LocalDefId>,
+    rustc_middle::ty::adjustment::CoerceUnsizedInfo,
+    rustc_middle::ty::trait_def::TraitDef,
+    rustc_span::ExpnId,
+    rustc_span::Span,
+    std::option::Option<rustc_middle::ty::EarlyBinder<'static, rustc_middle::ty::Const<'static>>>,
+    std::string::String,
+    std::vec::Vec<(usize, rustc_index::bit_set::DenseBitSet<u32>)>,
+    // tidy-alphabetical-end
+}
+
+impl<'tcx, T, B> EncodeFrom<'tcx, Option<B>> for Option<LazyValue<T>>
+where
+    T: ParameterizedOverTcx,
+    T::Value<'tcx>: for<'b> Encodable<EncodeContext<'b, 'tcx>>,
+    B: std::borrow::Borrow<T::Value<'tcx>>,
+{
+    fn encode_from<'a>(
+        encoder: &mut EncodeContext<'a, 'tcx>,
+        value: Option<B>,
+    ) -> Option<LazyValue<T>> {
+        value.map(|v| encoder.lazy(v))
+    }
+}
+
+impl<'tcx, T, I, B> EncodeFrom<'tcx, I> for LazyArray<T>
+where
+    T: ParameterizedOverTcx,
+    I: IntoIterator<Item = B>,
+    B: std::borrow::Borrow<T::Value<'tcx>>,
+    T::Value<'tcx>: for<'a> Encodable<EncodeContext<'a, 'tcx>>,
+{
+    fn encode_from<'a>(encoder: &mut EncodeContext<'a, 'tcx>, values: I) -> Self {
+        encoder.lazy_array(values)
+    }
 }

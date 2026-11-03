@@ -49,8 +49,14 @@ LL |         reuse <F as Trait>::foo1 { self }
 note: method defined here
   --> $DIR/explicit-paths.rs:5:8
    |
+LL | trait Trait {
 LL |     fn foo1(&self, x: i32) -> i32 { x }
    |        ^^^^ -----
+note: method provided through this `impl`
+  --> $DIR/explicit-paths.rs:10:1
+   |
+LL | impl Trait for F {}
+   | ^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `S2: Trait` is not satisfied
   --> $DIR/explicit-paths.rs:73:16
@@ -89,6 +95,7 @@ LL |         reuse <S2 as Trait>::foo1;
 note: method defined here
   --> $DIR/explicit-paths.rs:5:8
    |
+LL | trait Trait {
 LL |     fn foo1(&self, x: i32) -> i32 { x }
    |        ^^^^ -----
 

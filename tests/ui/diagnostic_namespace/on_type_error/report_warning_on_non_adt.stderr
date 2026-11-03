@@ -3,6 +3,8 @@ warning: the `diagnostic::on_type_error` attribute cannot be used on functions
    |
 LL | #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn function() {}
    |
    = help: the `diagnostic::on_type_error` attribute can only be applied to data types
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
@@ -12,6 +14,8 @@ warning: the `diagnostic::on_type_error` attribute cannot be used on statics
    |
 LL | #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | static STATIC: i32 = 0;
    |
    = help: the `diagnostic::on_type_error` attribute can only be applied to data types
 
@@ -20,6 +24,8 @@ warning: the `diagnostic::on_type_error` attribute cannot be used on modules
    |
 LL | #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | mod module {}
    |
    = help: the `diagnostic::on_type_error` attribute can only be applied to data types
 
@@ -28,6 +34,8 @@ warning: the `diagnostic::on_type_error` attribute cannot be used on traits
    |
 LL | #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | trait Trait {}
    |
    = help: the `diagnostic::on_type_error` attribute can only be applied to data types
 
@@ -36,6 +44,8 @@ warning: the `diagnostic::on_type_error` attribute cannot be used on type aliase
    |
 LL | #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | type TypeAlias = i32;
    |
    = help: the `diagnostic::on_type_error` attribute can only be applied to data types
 
@@ -44,6 +54,8 @@ warning: the `diagnostic::on_type_error` attribute cannot be used on inherent me
    |
 LL |     #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn method() {}
    |
    = help: the `diagnostic::on_type_error` attribute can only be applied to data types
 

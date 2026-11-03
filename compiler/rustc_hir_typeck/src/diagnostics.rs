@@ -1394,3 +1394,11 @@ pub(crate) struct WrapConstBlock {
     #[suggestion_part(code = " }}")]
     pub right: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("the `{$adt_name}` must contain one field for wrapping the return value in delegation")]
+pub(crate) struct DelegationInvalidAdtForReturnWrapping {
+    #[primary_span]
+    pub span: Span,
+    pub adt_name: String,
+}

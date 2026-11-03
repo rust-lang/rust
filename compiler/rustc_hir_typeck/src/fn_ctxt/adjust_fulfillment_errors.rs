@@ -83,12 +83,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (predicate_args, predicate_self_type_to_point_at) =
             match uninstantiated_clause.kind().skip_binder() {
                 ty::ClauseKind::Trait(pred) => {
-                    (pred.trait_ref.args.to_vec(), Some(pred.self_ty().into()))
+                    (pred.trait_ref.args.as_slice().to_vec(), Some(pred.self_ty().into()))
                 }
                 ty::ClauseKind::HostEffect(clause) => {
-                    (clause.trait_ref.args.to_vec(), Some(clause.self_ty().into()))
+                    (clause.trait_ref.args.as_slice().to_vec(), Some(clause.self_ty().into()))
                 }
-                ty::ClauseKind::Projection(pred) => (pred.projection_term.args.to_vec(), None),
+                ty::ClauseKind::Projection(pred) => {
+                    (pred.projection_term.args.as_slice().to_vec(), None)
+                }
                 ty::ClauseKind::ConstArgHasType(arg, ty) => (vec![ty.into(), arg.into()], None),
                 ty::ClauseKind::ConstEvaluatable(e) => (vec![e.into()], None),
                 _ => return false,
@@ -542,10 +544,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         param_to_point_at: ty::GenericArg<'tcx>,
         segment: &hir::PathSegment<'tcx>,
     ) -> bool {
-        let own_args = self
-            .tcx
-            .generics_of(def_id)
-            .own_args(ty::GenericArgs::identity_for_item(self.tcx, def_id));
+        let args = ty::GenericArgs::identity_for_item(self.tcx, def_id);
+        let own_args = self.tcx.generics_of(def_id).own_args(args.as_slice());
         let Some(mut index) = own_args.iter().position(|arg| *arg == param_to_point_at) else {
             return false;
         };
@@ -589,7 +589,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let Some(arg) =
                         ty::GenericArgs::identity_for_item(self.0.tcx, self.1).get(index as usize)
                 {
-                    ControlFlow::Break(*arg)
+                    ControlFlow::Break(arg)
                 } else {
                     ty.super_visit_with(self)
                 }
@@ -1130,7 +1130,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .variant_with_id(variant_def_id)
                     .fields
                     .iter()
-                    .map(|field| field.ty(self.tcx, in_ty_adt_generic_args).skip_norm_wip())
+                    .map(|field| field.ty(self.tcx, *in_ty_adt_generic_args).skip_norm_wip())
                     .enumerate()
                     .filter(|(_index, field_type)| find_param_in_ty((*field_type).into(), param)),
             ) else {

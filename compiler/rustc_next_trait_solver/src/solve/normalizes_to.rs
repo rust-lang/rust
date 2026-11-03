@@ -350,7 +350,7 @@ where
                             }
                             // Outside of coherence, we treat the associated item as rigid instead.
                             ty::TypingMode::Typeck { .. }
-                            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                            | ty::TypingMode::PostTypeckThroughBorrowck { .. }
                             | ty::TypingMode::PostBorrowck { .. }
                             | ty::TypingMode::PostAnalysis
                             | ty::TypingMode::Reflection
@@ -459,7 +459,7 @@ where
                         },
                         target_args,
                     );
-                    return ecx.evaluate_const_and_instantiate_projection_term(
+                    return ecx.evaluate_const(
                         goal.param_env,
                         goal.predicate.alias,
                         goal.predicate.term,

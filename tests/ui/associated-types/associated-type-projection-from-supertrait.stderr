@@ -37,6 +37,8 @@ LL | fn f() { ModelT.chip_paint(Blue); }
 note: method defined here
   --> $DIR/associated-type-projection-from-supertrait.rs:12:8
    |
+LL | pub trait Car : Vehicle {
+LL |     fn honk(&self) { }
 LL |     fn chip_paint(&self, c: Self::Color) { }
    |        ^^^^^^^^^^        --------------
 
@@ -51,6 +53,8 @@ LL | fn g() { ModelU.chip_paint(Black); }
 note: method defined here
   --> $DIR/associated-type-projection-from-supertrait.rs:12:8
    |
+LL | pub trait Car : Vehicle {
+LL |     fn honk(&self) { }
 LL |     fn chip_paint(&self, c: Self::Color) { }
    |        ^^^^^^^^^^        --------------
 

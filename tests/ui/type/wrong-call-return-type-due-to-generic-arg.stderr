@@ -101,6 +101,7 @@ LL |     let x: u16 = (S {}).method(0u32);
 note: method defined here
   --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:7:8
    |
+LL | impl S {
 LL |     fn method<T>(&self, x: T) -> T {
    |        ^^^^^^           ----
 help: change the type of the numeric literal from `u32` to `u16`

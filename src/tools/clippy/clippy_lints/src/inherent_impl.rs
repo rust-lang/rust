@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{LocalDefId, LocalModId};
 use rustc_hir::{Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
-use rustc_span::{FileName, Span};
+use rustc_span::{Span, StableSourceFileId};
 use std::collections::hash_map::Entry;
 
 declare_clippy_lint! {
@@ -63,7 +63,7 @@ impl MultipleInherentImpl {
 #[derive(Hash, Eq, PartialEq, Clone)]
 enum Criterion {
     Module(LocalModId),
-    File(FileName),
+    File(StableSourceFileId),
     Crate,
 }
 
@@ -95,7 +95,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
                     InherentImplLintScope::Module => Criterion::Module(cx.tcx.parent_module(hir_id)),
                     InherentImplLintScope::File => {
                         let span = cx.tcx.hir_span(hir_id);
-                        Criterion::File(cx.tcx.sess.source_map().lookup_source_file(span.lo()).name.clone())
+                        Criterion::File(cx.tcx.sess.source_map().lookup_source_file(span.lo()).stable_id)
                     },
                     InherentImplLintScope::Crate => Criterion::Crate,
                 };

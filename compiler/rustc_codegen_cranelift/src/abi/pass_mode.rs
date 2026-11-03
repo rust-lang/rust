@@ -133,7 +133,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 );
                 if mode == IndirectMode::OnStack {
                     // Abi requires aligning struct size to pointer size
-                    let size = self.layout.size.align_to(tcx.data_layout.pointer_align().abi);
+                    let size = self.layout.size.align_to(tcx.data_layout.pointer_align());
                     let size = u32::try_from(size.bytes()).unwrap();
                     smallvec![apply_attrs_to_abi_param(
                         AbiParam::special(pointer_ty(tcx), ArgumentPurpose::StructArgument(size),),

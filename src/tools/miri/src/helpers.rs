@@ -954,10 +954,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Lookup an array of immediates from any linker sections matching the provided predicate,
     /// with the spans of where they were found.
     fn lookup_link_section(
-        &mut self,
+        &self,
         include_name: impl Fn(&str) -> bool,
     ) -> InterpResult<'tcx, Vec<(ImmTy<'tcx>, Span)>> {
-        let this = self.eval_context_mut();
+        let this = self.eval_context_ref();
         let tcx = this.tcx.tcx;
 
         let mut array = vec![];

@@ -9,7 +9,7 @@ use rustc_type_ir::{TypeSuperVisitable as _, TypeVisitable, TypeVisitor};
 use tracing::instrument;
 
 use super::{Clause, InstantiatedClauses, ParamConst, ParamTy, Ty, TyCtxt, Unnormalized};
-use crate::ty::{self, ClauseKind, EarlyBinder, GenericArgsRef, Region, RegionKind, TyKind};
+use crate::ty::{self, ClauseKind, EarlyBinder, GenericArgs, Region, RegionKind, TyKind};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash)]
 pub enum GenericParamDefKind {
@@ -362,10 +362,7 @@ impl<'tcx> Generics {
     /// Returns the args corresponding to the generic parameters of this item, excluding `Self`.
     ///
     /// **This should only be used for diagnostics purposes.**
-    pub fn own_args(
-        &'tcx self,
-        args: &'tcx [ty::GenericArg<'tcx>],
-    ) -> &'tcx [ty::GenericArg<'tcx>] {
+    pub fn own_args<'a>(&self, args: &'a [ty::GenericArg<'tcx>]) -> &'a [ty::GenericArg<'tcx>] {
         let own = &args[self.parent_count..][..self.own_params.len()];
         if self.has_own_self() { &own[1..] } else { own }
     }
@@ -377,7 +374,7 @@ impl<'tcx> Generics {
     pub fn check_concrete_type_after_default(
         &'tcx self,
         tcx: TyCtxt<'tcx>,
-        args: &'tcx [ty::GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> bool {
         let mut default_param_seen = false;
         for param in self.own_params.iter() {
@@ -419,7 +416,7 @@ impl<'tcx> GenericClauses<'tcx> {
     pub fn instantiate(
         self,
         tcx: TyCtxt<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> InstantiatedClauses<'tcx> {
         let mut instantiated = InstantiatedClauses::empty();
         self.instantiate_into(tcx, &mut instantiated, args);
@@ -429,7 +426,7 @@ impl<'tcx> GenericClauses<'tcx> {
     pub fn instantiate_own(
         self,
         tcx: TyCtxt<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> impl Iterator<Item = (Unnormalized<'tcx, Clause<'tcx>>, Span)>
     + DoubleEndedIterator
     + ExactSizeIterator
@@ -457,7 +454,7 @@ impl<'tcx> GenericClauses<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         instantiated: &mut InstantiatedClauses<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) {
         if let Some(def_id) = self.parent {
             tcx.clauses_of(def_id).instantiate_into(tcx, instantiated, args);
@@ -536,7 +533,7 @@ impl<'tcx> GenericClauses<'tcx> {
                     // considering we apply the fully-generic-for-reflection rules to any impls for
                     // that trait, too.
                     if matches!(trait_predicate.self_ty().kind(), ty::Param(_))
-                        && trait_predicate.trait_ref.args[1..]
+                        && trait_predicate.trait_ref.args.as_slice()[1..]
                             .iter()
                             .all(|arg| arg.visit_with(&mut ParamChecker).is_continue())
                     {
@@ -571,7 +568,7 @@ impl<'tcx> ConstConditions<'tcx> {
     pub fn instantiate(
         self,
         tcx: TyCtxt<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Vec<(Unnormalized<'tcx, ty::PolyTraitRef<'tcx>>, Span)> {
         let mut instantiated = vec![];
         self.instantiate_into(tcx, &mut instantiated, args);
@@ -581,7 +578,7 @@ impl<'tcx> ConstConditions<'tcx> {
     pub fn instantiate_own(
         self,
         tcx: TyCtxt<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> impl Iterator<Item = (Unnormalized<'tcx, ty::PolyTraitRef<'tcx>>, Span)>
     + DoubleEndedIterator
     + ExactSizeIterator
@@ -609,7 +606,7 @@ impl<'tcx> ConstConditions<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         instantiated: &mut Vec<(Unnormalized<'tcx, ty::PolyTraitRef<'tcx>>, Span)>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) {
         if let Some(def_id) = self.parent {
             tcx.const_conditions(def_id).instantiate_into(tcx, instantiated, args);

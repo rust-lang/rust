@@ -25,31 +25,27 @@ declare_clippy_lint! {
     /// ASCII (lowercase|uppercase|digit|hexdigit) characters.
     /// ### Example
     /// ```no_run
-    /// fn main() {
-    ///     assert!(matches!('x', 'a'..='z'));
-    ///     assert!(matches!(b'X', b'A'..=b'Z'));
-    ///     assert!(matches!('2', '0'..='9'));
-    ///     assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
-    ///     assert!(matches!('C', '0'..='9' | 'a'..='f' | 'A'..='F'));
+    /// assert!(matches!('x', 'a'..='z'));
+    /// assert!(matches!(b'X', b'A'..=b'Z'));
+    /// assert!(matches!('2', '0'..='9'));
+    /// assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
+    /// assert!(matches!('C', '0'..='9' | 'a'..='f' | 'A'..='F'));
     ///
-    ///     ('0'..='9').contains(&'0');
-    ///     ('a'..='z').contains(&'a');
-    ///     ('A'..='Z').contains(&'A');
-    /// }
+    /// ('0'..='9').contains(&'0');
+    /// ('a'..='z').contains(&'a');
+    /// ('A'..='Z').contains(&'A');
     /// ```
     /// Use instead:
     /// ```no_run
-    /// fn main() {
-    ///     assert!('x'.is_ascii_lowercase());
-    ///     assert!(b'X'.is_ascii_uppercase());
-    ///     assert!('2'.is_ascii_digit());
-    ///     assert!('x'.is_ascii_alphabetic());
-    ///     assert!('C'.is_ascii_hexdigit());
+    /// assert!('x'.is_ascii_lowercase());
+    /// assert!(b'X'.is_ascii_uppercase());
+    /// assert!('2'.is_ascii_digit());
+    /// assert!('x'.is_ascii_alphabetic());
+    /// assert!('C'.is_ascii_hexdigit());
     ///
-    ///     '0'.is_ascii_digit();
-    ///     'a'.is_ascii_lowercase();
-    ///     'A'.is_ascii_uppercase();
-    /// }
+    /// '0'.is_ascii_digit();
+    /// 'a'.is_ascii_lowercase();
+    /// 'A'.is_ascii_uppercase();
     /// ```
     #[clippy::version = "1.67.0"]
     pub MANUAL_IS_ASCII_CHECK,

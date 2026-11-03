@@ -656,22 +656,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 impl<'a, 'tcx: 'a, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Consume the arguments provided by the iterator and store them as a list
     /// of variadic arguments. Return a list of the places that hold those arguments.
-    pub(crate) fn allocate_varargs<I, J>(
+    pub(crate) fn allocate_varargs<I>(
         &mut self,
         caller_args: I,
-        mut callee_abis: J,
     ) -> InterpResult<'tcx, Vec<MPlaceTy<'tcx, M::Provenance>>>
     where
         I: Iterator<Item = (&'a FnArg<'tcx, M::Provenance>, &'a ArgAbi<'tcx, Ty<'tcx>>)>,
-        J: Iterator<Item = (usize, &'a ArgAbi<'tcx, Ty<'tcx>>)>,
     {
         // Consume the remaining arguments and store them in fresh allocations.
         let mut varargs = Vec::new();
-        for (fn_arg, caller_abi) in caller_args {
-            // The callee ABI is entirely computed based on which arguments the caller has
-            // provided so it should not be possible to get a mismatch here.
-            let (_idx, callee_abi) = callee_abis.next().unwrap();
-            assert!(self.check_argument_compat(caller_abi, callee_abi)?);
+        for (fn_arg, _caller_abi) in caller_args {
             // FIXME: do we have to worry about in-place argument passing?
             let op = fn_arg.copy_fn_arg();
             let mplace = self.allocate(op.layout, MemoryKind::Stack)?;
@@ -679,7 +673,6 @@ impl<'a, 'tcx: 'a, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             varargs.push(mplace);
         }
-        assert!(callee_abis.next().is_none());
 
         interp_ok(varargs)
     }

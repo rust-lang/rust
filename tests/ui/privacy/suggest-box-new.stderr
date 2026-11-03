@@ -68,7 +68,7 @@ LL -             x: (),
 LL -         })),
 LL +         wtf: Some(Box::new_in(_, _)),
    |
-   = and 15 other candidates
+   = and 16 other candidates
 help: consider using the `Default` trait
    |
 LL -         wtf: Some(Box(U {
@@ -125,7 +125,7 @@ LL +     let _ = Box::new_zeroed();
 LL -     let _ = Box {};
 LL +     let _ = Box::new_in(_, _);
    |
-   = and 16 other candidates
+   = and 17 other candidates
 help: consider using the `Default` trait
    |
 LL -     let _ = Box {};
@@ -147,12 +147,12 @@ LL -     let _ = Box::<i32> {};
 LL +     let _ = Box::<i32>::new_in(_, _);
    |
 LL -     let _ = Box::<i32> {};
-LL +     let _ = Box::<i32>::into_inner(_);
+LL +     let _ = Box::<i32>::cast_unchecked(_);
    |
 LL -     let _ = Box::<i32> {};
-LL +     let _ = Box::<i32>::map(_, _);
+LL +     let _ = Box::<i32>::into_inner(_);
    |
-   = and 7 other candidates
+   = and 8 other candidates
 help: consider using the `Default` trait
    |
 LL -     let _ = Box::<i32> {};

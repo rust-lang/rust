@@ -1,10 +1,11 @@
 use std::fmt::{self, Write};
-use std::mem::{self, discriminant};
+use std::mem;
 
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_hashes::Hash64;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_macros::StableHash;
 use rustc_middle::ty::print::{PrettyPrinter, Print, PrintError, Printer};
 use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, Instance, ReifyReason, Ty, TyCtxt, TypeVisitableExt,
@@ -65,6 +66,7 @@ pub(super) fn mangle<'tcx>(
     let hash = get_symbol_hash(tcx, instance, instance_ty, instantiating_crate);
 
     let mut p = LegacySymbolMangler { tcx, path: SymbolPath::new(), keep_within_component: false };
+
     p.print_def_path(
         def_id,
         if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, _))
@@ -72,7 +74,7 @@ pub(super) fn mangle<'tcx>(
         | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(_, _, _)) = instance.def
         {
             // Add the name of the dropped type to the symbol name
-            &*instance.args
+            instance.args
         } else if let ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_, ty)) = instance.def {
             let ty::Coroutine(_, cor_args) = ty.kind() else {
                 bug!();
@@ -80,7 +82,7 @@ pub(super) fn mangle<'tcx>(
             let drop_ty = cor_args.first().unwrap().expect_ty();
             tcx.mk_args(&[GenericArg::from(drop_ty)])
         } else {
-            &[]
+            ty::GenericArgs::empty()
         },
     )
     .unwrap();
@@ -170,7 +172,22 @@ fn get_symbol_hash<'tcx>(
             // We want to avoid accidental collision between different types of instances.
             // Especially, `VTableShim`s and `ReifyShim`s may overlap with their original
             // instances without this.
-            discriminant(&instance.def).stable_hash(hcx, &mut hasher);
+            #[derive(StableHash)]
+            enum Tag {
+                Item,
+                Intrinsic,
+                LlvmIntrinsic,
+                Virtual,
+                Shim,
+            }
+            match instance.def {
+                ty::InstanceKind::Item(_) => Tag::Item,
+                ty::InstanceKind::Intrinsic(_) => Tag::Intrinsic,
+                ty::InstanceKind::LlvmIntrinsic(_) => Tag::LlvmIntrinsic,
+                ty::InstanceKind::Virtual(_, _) => Tag::Virtual,
+                ty::InstanceKind::Shim(_) => Tag::Shim,
+            }
+            .stable_hash(hcx, &mut hasher);
         });
 
         // 64 bits should be enough to avoid collisions.
@@ -399,12 +416,11 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
     fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-        args: &[GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         print_prefix(self)?;
 
-        let args =
-            args.iter().cloned().filter(|arg| !matches!(arg.kind(), GenericArgKind::Lifetime(_)));
+        let args = args.iter().filter(|arg| !matches!(arg.kind(), GenericArgKind::Lifetime(_)));
         if args.clone().next().is_some() {
             self.generic_delimiters(|cx| cx.comma_sep(args))
         } else {
@@ -415,7 +431,7 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
     fn print_impl_path(
         &mut self,
         impl_def_id: DefId,
-        args: &'tcx [GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         let self_ty = self.tcx.type_of(impl_def_id);
         let impl_trait_ref = self.tcx.impl_opt_trait_ref(impl_def_id);
@@ -434,7 +450,7 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
         // NOTE: We don't support mangling partially substituted but still polymorphic
         // instances, like `impl<A> Tr<A> for ()` where `A` is substituted w/ `(T,)`.
         let (typing_env, mut self_ty, mut impl_trait_ref) = if generics.count() > args.len()
-            || &args[..generics.count()]
+            || &args.as_slice()[..generics.count()]
                 == self
                     .tcx
                     .erase_and_anonymize_regions(ty::GenericArgs::identity_for_item(

@@ -61,9 +61,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type InherentAssocTermId = DefId;
     type Span = Span;
 
-    type GenericArgs = ty::GenericArgsRef<'tcx>;
+    type GenericArgs = ty::GenericArgs<'tcx>;
 
-    type GenericArgsSlice = &'tcx [ty::GenericArg<'tcx>];
+    type GenericArgsSlice<'a>
+        = &'a [ty::GenericArg<'tcx>]
+    where
+        Self: 'a;
     type GenericArg = ty::GenericArg<'tcx>;
     type Term = ty::Term<'tcx>;
     type BoundVarKinds = &'tcx List<ty::BoundVariableKind<'tcx>>;
@@ -160,6 +163,26 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         // See trait-system-refactor-initiative#234.
     }
 
+    fn erase_and_anonymize_regions<T: TypeFoldable<Self>>(self, value: T) -> T {
+        self.erase_and_anonymize_regions(value)
+    }
+
+    fn const_eval_resolve_for_typeck(
+        self,
+        typing_env: Self::TypingEnv,
+        ct: ty::AliasConst<'tcx>,
+        span: Self::Span,
+    ) -> ty::ConstEvalResult<Self> {
+        use crate::mir::interpret::ErrorHandled;
+
+        match self.const_eval_resolve_for_typeck(typing_env, ct, span) {
+            Ok(Ok(vt)) => Ok(vt),
+            Ok(Err(ty)) => Err(ty::ConstEvalErr::NonValtreeable(ty)),
+            Err(ErrorHandled::Reported(e, _)) => Err(ty::ConstEvalErr::Reported(e.into())),
+            Err(ErrorHandled::TooGeneric(_)) => Err(ty::ConstEvalErr::TooGeneric),
+        }
+    }
+
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
         self.expand_abstract_consts(t)
     }
@@ -211,6 +234,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         }
     }
 
+    fn anon_const_kind(self, def_id: DefId) -> ty::AnonConstKind {
+        self.anon_const_kind(def_id)
+    }
+
     fn def_span(self, def_id: DefId) -> Span {
         self.def_span(def_id)
     }
@@ -220,26 +247,26 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.adt_def(adt_def_id)
     }
 
-    fn trait_ref_and_own_args_for_alias(
+    fn trait_ref_and_own_args_for_alias<'a>(
         self,
         def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
-    ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
+        args: &'a ty::GenericArgs<'tcx>,
+    ) -> (ty::TraitRef<'tcx>, &'a [ty::GenericArg<'tcx>]) {
         debug_assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst);
         let trait_def_id = self.parent(def_id);
         debug_assert_matches!(self.def_kind(trait_def_id), DefKind::Trait);
-        let trait_ref = ty::TraitRef::from_assoc(self, trait_def_id, args);
-        (trait_ref, &args[trait_ref.args.len()..])
+        let trait_ref = ty::TraitRef::from_assoc(self, trait_def_id, *args);
+        (trait_ref, &args.as_slice()[trait_ref.args.len()..])
     }
 
-    fn mk_args(self, args: &[Self::GenericArg]) -> ty::GenericArgsRef<'tcx> {
+    fn mk_args(self, args: &[Self::GenericArg]) -> ty::GenericArgs<'tcx> {
         self.mk_args(args)
     }
 
     fn mk_args_from_iter<I, T>(self, args: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: CollectAndApply<Self::GenericArg, ty::GenericArgsRef<'tcx>>,
+        T: CollectAndApply<Self::GenericArg, ty::GenericArgs<'tcx>>,
     {
         self.mk_args_from_iter(args)
     }
@@ -247,19 +274,19 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn check_alias_term_args_compatible(
         self,
         kind: ty::AliasTermKind<'tcx>,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> bool {
         self.check_alias_term_args_compatible(kind, args)
     }
 
-    fn debug_assert_args_compatible(self, def_id: DefId, args: ty::GenericArgsRef<'tcx>) {
+    fn debug_assert_args_compatible(self, def_id: DefId, args: ty::GenericArgs<'tcx>) {
         self.debug_assert_args_compatible(def_id, args);
     }
 
     fn debug_assert_alias_term_args_compatible(
         self,
         kind: ty::AliasTermKind<'tcx>,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) {
         self.debug_assert_alias_term_args_compatible(kind, args);
     }
@@ -278,7 +305,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             self.debug_assert_args_compatible(
                 def_id,
                 self.mk_args_from_iter(
-                    [self.types.trait_object_dummy_self.into()].into_iter().chain(args.iter()),
+                    [self.types.trait_object_dummy_self.into()]
+                        .into_iter()
+                        .chain(args.as_slice().iter().copied()),
                 ),
             );
         }

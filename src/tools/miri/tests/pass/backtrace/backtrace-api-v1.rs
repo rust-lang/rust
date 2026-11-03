@@ -22,9 +22,9 @@ fn func_c() -> Box<[*mut ()]> {
 #[inline(never)]
 fn func_d() -> Box<[*mut ()]> {
     unsafe {
-        let count = miri_backtrace_size(0);
+        let count = utils::miri_backtrace_size(0);
         let mut buf = vec![std::ptr::null_mut(); count];
-        miri_get_backtrace(1, buf.as_mut_ptr());
+        utils::miri_get_backtrace(1, buf.as_mut_ptr());
         buf.into()
     }
 }
@@ -33,20 +33,20 @@ fn main() {
     let mut seen_main = false;
     let frames = func_a();
     for frame in frames.iter() {
-        let miri_frame = unsafe { miri_resolve_frame(*frame, 1) };
+        let miri_frame = unsafe { utils::miri_resolve_frame(*frame, 1) };
 
-        let mut name = vec![0; miri_frame.name_len];
-        let mut filename = vec![0; miri_frame.filename_len];
+        let mut name = vec![0u8; miri_frame.name_len];
+        let mut filename = vec![0u8; miri_frame.filename_len];
 
         unsafe {
-            miri_resolve_frame_names(*frame, 0, name.as_mut_ptr(), filename.as_mut_ptr());
+            utils::miri_resolve_frame_names(*frame, 0, name.as_mut_ptr(), filename.as_mut_ptr());
         }
 
         let name = String::from_utf8(name).unwrap();
         let filename = String::from_utf8(filename).unwrap();
 
         if name == "func_a" {
-            assert_eq!(func_a as *mut (), miri_frame.fn_ptr);
+            assert_eq!(func_a as *mut std::ffi::c_void, miri_frame.fn_ptr);
         }
 
         // Print every frame to stderr.
@@ -66,19 +66,5 @@ fn main() {
 // This goes at the bottom of the file so that we can change it
 // without disturbing line numbers of the functions in the backtrace.
 
-extern "Rust" {
-    fn miri_backtrace_size(flags: u64) -> usize;
-    fn miri_get_backtrace(flags: u64, buf: *mut *mut ());
-    fn miri_resolve_frame(ptr: *mut (), flags: u64) -> MiriFrame;
-    fn miri_resolve_frame_names(ptr: *mut (), flags: u64, name_buf: *mut u8, filename_buf: *mut u8);
-}
-
-#[derive(Debug)]
-#[repr(C)]
-struct MiriFrame {
-    name_len: usize,
-    filename_len: usize,
-    lineno: u32,
-    colno: u32,
-    fn_ptr: *mut (),
-}
+#[path = "../../utils/mod.no_std.rs"]
+mod utils;

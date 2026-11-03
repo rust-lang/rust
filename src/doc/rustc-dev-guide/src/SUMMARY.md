@@ -274,10 +274,12 @@
 
 [Appendix C: Code Index](./appendix/code-index.md)
 
-[Appendix D: Compiler Lecture Series](./appendix/compiler-lecture.md)
+[Appendix D: Additional Resources](./appendix/additional-resources.md)
 
-[Appendix E: Bibliography](./appendix/bibliography.md)
+[Appendix E: Compiler Lecture Series](./appendix/compiler-lecture.md)
 
-[Appendix F: Reading club sessions](./appendix/reading-club.md)
+[Appendix F: Bibliography](./appendix/bibliography.md)
+
+[Appendix G: Reading club sessions](./appendix/reading-club.md)
 
 [Appendix Z: HumorRust](./appendix/humorust.md)

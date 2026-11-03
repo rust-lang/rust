@@ -54,6 +54,7 @@ error: the `repr(align(...))` attribute cannot be used on functions
    |
 LL | #[repr(align(16))]
    |   ^^^^^^^^^^^^^^^
+LL | fn f4() {}
    |
    = help: the `repr(align(...))` attribute can only be applied to data types
    = help: use `#[rustc_align(...)]` instead
@@ -101,6 +102,7 @@ error: the `rustc_align` attribute cannot be used on structs
    |
 LL | #[rustc_align(16)]
    |   ^^^^^^^^^^^
+LL | struct S1;
    |
    = help: the `rustc_align` attribute can only be applied to functions
 
@@ -109,6 +111,7 @@ error: the `rustc_align` attribute cannot be used on constants
    |
 LL | #[rustc_align(32)]
    |   ^^^^^^^^^^^
+LL | const FOO: i32 = 42;
    |
    = help: the `rustc_align` attribute can only be applied to functions
 
@@ -117,6 +120,7 @@ error: the `rustc_align` attribute cannot be used on modules
    |
 LL | #[rustc_align(32)]
    |   ^^^^^^^^^^^
+LL | mod test {}
    |
    = help: the `rustc_align` attribute can only be applied to functions
 
@@ -125,6 +129,7 @@ error: the `rustc_align` attribute cannot be used on use statements
    |
 LL | #[rustc_align(32)]
    |   ^^^^^^^^^^^
+LL | use ::std::iter;
    |
    = help: the `rustc_align` attribute can only be applied to functions
 

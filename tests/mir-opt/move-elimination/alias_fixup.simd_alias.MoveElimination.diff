@@ -19,19 +19,19 @@
       bb0: {
 -         StorageLive(_2);
 -         StorageLive(_3);
--         StorageLive(_4);
 +         nop;
 +         nop;
 +         nop;
+          StorageLive(_4);
           _4 = [const 0_u32; 4];
 -         _3 = Vector(move _4);
--         StorageDead(_4);
++         (_0.0: Vector) = Vector(move _4);
+          StorageDead(_4);
 -         _2 = VectorUnion { vector: move _3 };
 -         StorageDead(_3);
 -         StorageLive(_5);
 -         _5 = copy _1;
 -         switchInt(move _5) -> [0: bb2, otherwise: bb1];
-+         (_0.0: Vector) = Vector(move _4);
 +         nop;
 +         nop;
 +         nop;

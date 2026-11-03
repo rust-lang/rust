@@ -145,8 +145,8 @@ fn emit_unnecessary_get<'tcx>(
     // Removing `.get()` means editing the span between the receiver and the surrounding
     // expression, which is only meaningful when both are written out in the same context.
     if expr.span.from_expansion()
-        || !recv.span.eq_ctxt(expr.span)
-        || !get_call.span.eq_ctxt(expr.span)
+        || recv.span.ctxt() != expr.span.ctxt()
+        || get_call.span.ctxt() != expr.span.ctxt()
         || is_from_proc_macro(cx, expr)
     {
         return;

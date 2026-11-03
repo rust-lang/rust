@@ -46,7 +46,7 @@ where
                 free.into()
             }
             ty::AliasTermKind::FreeConst { .. } => {
-                return self.evaluate_const_and_instantiate_projection_term(
+                return self.evaluate_const(
                     goal.param_env,
                     free_alias,
                     goal.predicate.term,

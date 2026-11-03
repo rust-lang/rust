@@ -12,8 +12,8 @@ impl TryFromIntError {
     /// Outputs the detailed cause of converting an integer failing.
     #[must_use]
     #[unstable(feature = "try_from_int_error_kind", issue = "153978")]
-    pub const fn kind(&self) -> &IntErrorKind {
-        &self.0
+    pub const fn kind(&self) -> IntErrorKind {
+        self.0
     }
 }
 

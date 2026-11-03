@@ -103,6 +103,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
         StorageDead(_8);
         StorageDead(_5);
         StorageDead(_3);
+        _0 = const ();
         return;
     }
 }

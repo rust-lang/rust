@@ -127,7 +127,7 @@ pub use crate::macros::builtin::{
 #[doc(no_inline)]
 pub use crate::macros::builtin::derive;
 
-#[unstable(feature = "derive_const", issue = "118304")]
+#[unstable(feature = "derive_const", issue = "143874")]
 pub use crate::macros::builtin::derive_const;
 
 #[unstable(
@@ -146,7 +146,7 @@ pub use crate::macros::builtin::cfg_eval;
 
 #[unstable(
     feature = "type_ascription",
-    issue = "23416",
+    issue = "101728",
     reason = "placeholder syntax for type ascription"
 )]
 pub use crate::macros::builtin::type_ascribe;

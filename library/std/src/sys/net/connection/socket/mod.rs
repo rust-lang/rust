@@ -57,6 +57,21 @@ const MAX_SEND_LEN: usize =
         _ => libc::ssize_t::MAX as usize,
     };
 
+/// Some systems support setting the nonblocking mode upon socket creation, which
+/// saves a syscall.
+const SOCK_NONBLOCK: i32 = cfg_select! {
+    any(
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "hermit",
+        target_os = "illumos",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_os = "openbsd",
+    ) => c::SOCK_NONBLOCK,
+    _ => 0,
+};
+
 cfg_select! {
     any(
         target_os = "dragonfly",
@@ -407,8 +422,26 @@ impl TcpStream {
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
         init();
 
-        let sock = Socket::new(addr_family(addr), c::SOCK_STREAM)?;
-        sock.connect_timeout(addr, timeout)?;
+        let sock = Socket::new(addr_family(addr), c::SOCK_STREAM | SOCK_NONBLOCK)?;
+        if SOCK_NONBLOCK == 0 {
+            // The `SOCK_NONBLOCK` option is unsupported...
+            sock.set_nonblocking(true)?;
+        }
+
+        match sock.connect(addr) {
+            Ok(()) => {
+                sock.set_nonblocking(false)?;
+                return Ok(TcpStream { inner: sock });
+            }
+            #[cfg(not(target_os = "windows"))]
+            Err(ref e) if e.raw_os_error() == Some(c::EINPROGRESS) => {}
+            #[cfg(target_os = "windows")]
+            Err(ref e) if e.raw_os_error() == Some(crate::sys::pal::c::WSAEWOULDBLOCK) => {}
+            Err(e) => return Err(e),
+        }
+
+        sock.set_nonblocking(false)?;
+        sock.poll_connected(timeout)?;
         Ok(TcpStream { inner: sock })
     }
 
