@@ -1,4 +1,4 @@
-error: expected a lint
+error: malformed `expect` attribute input
   --> $DIR/pre-expansion-parsing.rs:6:10
    |
 LL | #[expect(expect(expect))]

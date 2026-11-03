@@ -1,4 +1,4 @@
-error: expected a lint
+error: malformed `allow` attribute input
   --> $DIR/lint-malformed.rs:2:10
    |
 LL | #![allow(bar = "baz")]
@@ -6,16 +6,7 @@ LL | #![allow(bar = "baz")]
    |
    = help: for example, write `#[allow(dead_code)]` for `dead_code`
 
-error: expected a lint
-  --> $DIR/lint-malformed.rs:2:10
-   |
-LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ not the name of a lint
-   |
-   = help: for example, write `#[allow(dead_code)]` for `dead_code`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: expected a lint
+error: malformed `allow` attribute input
   --> $DIR/lint-malformed.rs:2:10
    |
 LL | #![allow(bar = "baz")]
@@ -24,7 +15,16 @@ LL | #![allow(bar = "baz")]
    = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: expected a lint
+error: malformed `allow` attribute input
+  --> $DIR/lint-malformed.rs:2:10
+   |
+LL | #![allow(bar = "baz")]
+   |          ^^^^^^^^^^^ not the name of a lint
+   |
+   = help: for example, write `#[allow(dead_code)]` for `dead_code`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: malformed `allow` attribute input
   --> $DIR/lint-malformed.rs:2:10
    |
 LL | #![allow(bar = "baz")]
@@ -54,7 +54,7 @@ LL - #![deny = "foo"]
 LL + #![deny(lint1, lint2, lint3, reason = "...")]
    |
 
-error: expected a lint
+error: malformed `allow` attribute input
   --> $DIR/lint-malformed.rs:2:10
    |
 LL | #![allow(bar = "baz")]
@@ -63,7 +63,7 @@ LL | #![allow(bar = "baz")]
    = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: expected a lint
+error: malformed `allow` attribute input
   --> $DIR/lint-malformed.rs:2:10
    |
 LL | #![allow(bar = "baz")]

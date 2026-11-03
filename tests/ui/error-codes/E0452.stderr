@@ -1,4 +1,4 @@
-error: expected a lint
+error: malformed `allow` attribute input
   --> $DIR/E0452.rs:1:10
    |
 LL | #![allow(foo = "")]
@@ -6,16 +6,7 @@ LL | #![allow(foo = "")]
    |
    = help: for example, write `#[allow(dead_code)]` for `dead_code`
 
-error: expected a lint
-  --> $DIR/E0452.rs:1:10
-   |
-LL | #![allow(foo = "")]
-   |          ^^^^^^^^ not the name of a lint
-   |
-   = help: for example, write `#[allow(dead_code)]` for `dead_code`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: expected a lint
+error: malformed `allow` attribute input
   --> $DIR/E0452.rs:1:10
    |
 LL | #![allow(foo = "")]
@@ -24,7 +15,7 @@ LL | #![allow(foo = "")]
    = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: expected a lint
+error: malformed `allow` attribute input
   --> $DIR/E0452.rs:1:10
    |
 LL | #![allow(foo = "")]
@@ -33,7 +24,7 @@ LL | #![allow(foo = "")]
    = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: expected a lint
+error: malformed `allow` attribute input
   --> $DIR/E0452.rs:1:10
    |
 LL | #![allow(foo = "")]
@@ -42,7 +33,16 @@ LL | #![allow(foo = "")]
    = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: expected a lint
+error: malformed `allow` attribute input
+  --> $DIR/E0452.rs:1:10
+   |
+LL | #![allow(foo = "")]
+   |          ^^^^^^^^ not the name of a lint
+   |
+   = help: for example, write `#[allow(dead_code)]` for `dead_code`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: malformed `allow` attribute input
   --> $DIR/E0452.rs:1:10
    |
 LL | #![allow(foo = "")]
