@@ -12,6 +12,7 @@ pub(crate) mod helpers;
 pub(crate) mod job;
 pub(crate) mod render_tests;
 pub(crate) mod tarball;
+pub(crate) mod vcs;
 
 pub(crate) mod tracing;
 

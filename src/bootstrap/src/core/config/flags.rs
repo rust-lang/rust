@@ -201,11 +201,15 @@ pub struct Flags {
     #[arg(global = true, long)]
     pub skip_std_check_if_no_download_rustc: bool,
 
-    /// Copy the sources in a specific subdirectory in the `build` directory and compile everything
-    /// from there. Allow keeping multiple revisions of `rustc` around without having to constantly
-    /// checkout to another version. Intended primarily for benchmarking.
+    /// Copy the sources in a specific subdirectory with that name in the `build` directory and
+    /// compile everything from there.
+    #[arg(global = true, long, conflicts_with("snapshot_sources"))]
+    pub snapshot_sources_name: Option<String>,
+
+    /// Copy the sources in a specific subdirectory named after the current commit hash in the
+    /// `build` directory and compile everything from there.
     #[arg(global = true, long)]
-    pub snapshot_sources: Option<String>,
+    pub snapshot_sources: bool,
 }
 
 impl Flags {

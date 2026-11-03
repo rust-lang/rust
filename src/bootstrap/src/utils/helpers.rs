@@ -567,6 +567,26 @@ pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
     git
 }
 
+/// Prepares `BootstrapCommand` that runs jj inside the source directory if given.
+///
+/// Whenever a jj invocation is needed, this function should be preferred over
+/// manually building a jj `BootstrapCommand`. This approach allows us to manage
+/// bootstrap-specific needs from a single source, rather than applying them on next to every
+/// jj command creation, which is painful to ensure that the required change is applied
+/// on each one of them correctly.
+#[track_caller]
+pub fn jj(source_dir: Option<&Path>) -> BootstrapCommand {
+    let mut jj = command("jj");
+    // jj commands are almost always read-only, so cache them by default
+    jj.cached();
+
+    if let Some(source_dir) = source_dir {
+        jj.current_dir(source_dir);
+    }
+
+    jj
+}
+
 /// Sets the file times for a given file at `path`.
 pub fn set_file_times<P: AsRef<Path>>(path: P, times: fs::FileTimes) -> io::Result<()> {
     // Windows requires file to be writable to modify file times. But on Linux CI the file does not

@@ -17,7 +17,9 @@ use crate::core::build_steps::vendor::VENDOR_DIR;
 use crate::core::builder::{Builder, Kind};
 use crate::core::compiler::Compiler;
 use crate::core::config::flags::{self, Subcommand};
-use crate::core::config::{BootstrapOverrideLld, Config, DryRun, LlvmLibunwind, TargetSelection};
+use crate::core::config::{
+    BootstrapOverrideLld, Config, DryRun, LlvmLibunwind, SnapshotSources, TargetSelection,
+};
 use crate::core::download::{DownloadContext, download_beta_toolchain};
 use crate::core::metadata::Crate;
 #[cfg(feature = "tracing")]
@@ -29,6 +31,7 @@ use crate::utils::helpers::{
     self, dir_is_empty, exe, is_symlink_dir, lazily_copy_recursively, libdir, set_file_times,
     split_debuginfo, symlink_dir, t,
 };
+use crate::utils::vcs::git_or_jj_hash;
 use crate::{debug, trace};
 
 /// Global configuration for the build system.
@@ -442,7 +445,12 @@ impl Session {
             // Now, update all existing submodules.
             sess.update_existing_submodules();
 
-            if let Some(suffix) = &sess.config.snapshot_sources {
+            if let Some(snapshot_name) = &sess.snapshot_sources {
+                let suffix = match &snapshot_name {
+                    SnapshotSources::Named(name) => name.clone(),
+                    SnapshotSources::Unnamed => git_or_jj_hash(Some(sess.src.as_path())),
+                };
+
                 // Run the rest of bootstrap in a backed-up version of the repo.
                 let snapshot_root = sess.out.join(format!("snapshot-{suffix}"));
                 let initial_root = &sess.config.src;

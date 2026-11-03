@@ -48,8 +48,8 @@ use crate::core::config::toml::target::{
 };
 use crate::core::config::{
     Allocator, CompilerBuiltins, CompressDebuginfo, DebuggerPath, DebuginfoLevel, DryRun,
-    GccCiMode, LlvmCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo,
-    StringOrBool, TargetSelection, threads_from_config,
+    GccCiMode, LlvmCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SnapshotSources,
+    SplitDebuginfo, StringOrBool, TargetSelection, threads_from_config,
 };
 use crate::core::download::{DownloadContext, is_download_ci_available};
 use crate::utils::channel::{self, GitInfo};
@@ -356,7 +356,7 @@ pub(crate) struct Config {
     /// Copy the sources in a specific subdirectory in the `build` directory and compile everything
     /// from there. Allow keeping multiple revisions of `rustc` around without having to constantly
     /// checkout to another version. Intended primarily for benchmarking.
-    pub snapshot_sources: Option<String>,
+    pub snapshot_sources: Option<SnapshotSources>,
 }
 
 impl Config {
@@ -432,6 +432,7 @@ impl Config {
             ci: flags_ci,
             skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
             snapshot_sources: flags_snapshot_sources,
+            snapshot_sources_name: flags_snapshot_sources_name,
         } = flags;
 
         #[cfg(feature = "tracing")]
@@ -1411,6 +1412,14 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             paths
         };
 
+        let snapshot_sources = match (flags_snapshot_sources, flags_snapshot_sources_name) {
+            (false, None) => None,
+            (true, None) => Some(SnapshotSources::Unnamed),
+            (false, Some(name)) => Some(SnapshotSources::Named(name)),
+
+            _ => unreachable!("conflict between arguments should be handled by clap"),
+        };
+
         // If we're building with ThinLTO on, by default we want to link
         // to LLVM shared, to avoid re-doing ThinLTO (which happens in
         // the link step) with each stage.
@@ -1605,7 +1614,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             sde: build_sde.map(PathBuf::from),
             skip,
             skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
-            snapshot_sources: flags_snapshot_sources,
+            snapshot_sources,
             src,
             stage,
             stage0_metadata,
