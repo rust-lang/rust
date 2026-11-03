@@ -59,17 +59,6 @@ jobs:
         MATRIX_TARGET: ${{ matrix.target }}
       shell: powershell
 
-    - name: Add mingw32 to path for i686-gnu
-      run: |
-        echo "C:\msys64\mingw32\bin" >> $GITHUB_PATH
-      if: matrix.target == 'i686-pc-windows-gnu' && matrix.channel == 'nightly'
-      shell: bash
-
-    - name: Add mingw64 to path for x86_64-gnu
-      run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
-      if: matrix.target == 'x86_64-pc-windows-gnu' && matrix.channel == 'nightly'
-      shell: bash
-
     - name: install rustup
       if: ${{ matrix.os != 'windows-latest' }}
       run: |
