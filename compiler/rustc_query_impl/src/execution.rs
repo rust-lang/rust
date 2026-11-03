@@ -226,7 +226,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
     key_hash: u64,
     latch: QueryLatch<'tcx>,
     current: Option<QueryJobId>,
-) -> (C::Value, Option<DepNodeIndex>) {
+) -> Result<(C::Value, Option<DepNodeIndex>), QueryCycle<'tcx>> {
     // For parallel queries, we'll block and wait until the query running
     // in another thread has completed. Record how long we wait in the
     // self-profiler.
@@ -256,9 +256,9 @@ fn wait_for_query<'tcx, C: QueryCache>(
             tcx.prof.query_cache_hit(index.into());
             query_blocked_prof_timer.finish_with_query_invocation_id(index.into());
 
-            (v, Some(index))
+            Ok((v, Some(index)))
         }
-        Err(cycle) => (handle_cycle(query, tcx, key, cycle), None),
+        Err(cycle) => Err(cycle),
     }
 }
 
@@ -346,7 +346,11 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
                         // Only call `wait_for_query` if we're using a Rayon thread pool
                         // as it will attempt to mark the worker thread as blocked.
-                        wait_for_query(query, tcx, span, key, key_hash, latch, current_job_id)
+                        match wait_for_query(query, tcx, span, key, key_hash, latch, current_job_id)
+                        {
+                            Ok(res) => res,
+                            Err(cycle) => (handle_cycle(query, tcx, key, cycle), None),
+                        }
                     } else {
                         let id = job.id;
                         drop(state_lock);
@@ -684,61 +688,70 @@ pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
     true
 }
 
+#[inline(always)]
 pub(crate) fn feed_query<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
     value: C::Value,
 ) {
+    let create_dep_node_index = || {
+        // There is no cached value for this key, so feed the query by
+        // adding the provided value to the cache.
+        let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
+        tcx.dep_graph.with_feed_task(dep_node, tcx, &value, query.hash_value_fn, query.format_value)
+    };
+
+    if !sync::is_dyn_thread_safe() {
+        match try_get_cached(tcx, &query.cache, key) {
+            Some(existing) => {
+                check_feedable_consistency(tcx, query, key, &value, &existing);
+            }
+            None => {
+                let dep_node_index = create_dep_node_index();
+                query.cache.complete(key, value, dep_node_index);
+            }
+        }
+
+        return;
+    }
+
     let key_hash = sharded::make_hash(&key);
     let current_job_id = current_query_job();
 
     let mut state_lock = query.state.active.lock_shard_by_hash(key_hash);
     match state_lock.entry(key_hash, |kv| kv.0 == key, |(k, _)| sharded::make_hash(k)) {
-        Entry::Vacant(entry) => {
-            match try_get_cached(tcx, &query.cache, key) {
-                Some(existing) => {
-                    drop(state_lock);
-                    check_feedable_consistency(tcx, query, key, &value, &existing);
-                }
-                None => {
-                    let id = next_job_id(tcx);
-                    let job = QueryJob::new(id, DUMMY_SP, current_job_id);
-
-                    entry.insert((key, ActiveKeyStatus::Started(job)));
-
-                    drop(state_lock);
-
-                    let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
-
-                    // There is no cached value for this key, so feed the query by
-                    // adding the provided value to the cache.
-                    let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
-                    let dep_node_index = tcx.dep_graph.with_feed_task(
-                        dep_node,
-                        tcx,
-                        &value,
-                        query.hash_value_fn,
-                        query.format_value,
-                    );
-
-                    job_guard.complete(&query.cache, value, dep_node_index);
-                }
+        Entry::Vacant(entry) => match try_get_cached(tcx, &query.cache, key) {
+            Some(existing) => {
+                drop(state_lock);
+                check_feedable_consistency(tcx, query, key, &value, &existing);
             }
-        }
+            None => {
+                let id = next_job_id(tcx);
+                let job = QueryJob::new(id, DUMMY_SP, current_job_id);
+
+                entry.insert((key, ActiveKeyStatus::Started(job)));
+
+                drop(state_lock);
+
+                let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
+
+                let dep_node_index = create_dep_node_index();
+                job_guard.complete(&query.cache, value, dep_node_index);
+            }
+        },
         Entry::Occupied(mut entry) => match &mut entry.get_mut().1 {
             ActiveKeyStatus::Started(job) => {
-                if sync::is_dyn_thread_safe() {
-                    let latch = job.latch.get_or_insert_with(QueryLatch::new).clone();
-                    drop(state_lock);
+                debug_assert!(sync::is_dyn_thread_safe());
 
-                    let (existing, _) =
-                        wait_for_query(query, tcx, DUMMY_SP, key, key_hash, latch, current_job_id);
+                let latch = job.latch.get_or_insert_with(QueryLatch::new).clone();
+                drop(state_lock);
 
-                    check_feedable_consistency(tcx, query, key, &value, &existing);
-                } else {
-                    drop(state_lock);
-                    bug!("can't feed query while it is executing");
+                match wait_for_query(query, tcx, DUMMY_SP, key, key_hash, latch, current_job_id) {
+                    Ok((existing, _)) => {
+                        check_feedable_consistency(tcx, query, key, &value, &existing)
+                    }
+                    Err(_) => bug!("encountered a cycle while waiting for query while feeding"),
                 }
             }
             ActiveKeyStatus::Poisoned => FatalError.raise(),

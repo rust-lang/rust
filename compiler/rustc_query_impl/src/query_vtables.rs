@@ -203,12 +203,12 @@ macro_rules! define_queries {
                         },
 
                         #[cfg($feedable)]
-                        feed_query_fn: Some(|tcx, key, value| {
+                        feed_query_fn: |tcx, key, value| {
                             let query = &tcx.query_system.query_vtables.$name;
                             crate::execution::feed_query(query, tcx, key, value);
-                        }),
+                        },
                         #[cfg(not($feedable))]
-                        feed_query_fn: None,
+                        feed_query_fn: |_, _, _| panic!("calling feed_query_fn on non-feedable query"),
                     }
                 }
 
