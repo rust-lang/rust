@@ -118,4 +118,21 @@ fn main() {
             "invalid standard library support: 'cor'. \
             allowed values: 'core', 'alloc', 'std'",
         );
+    rustc()
+        .arg("-Zunstable-options")
+        .input("foo.rs")
+        .crate_type("lib")
+        .target("std-crates-default-exceed.json")
+        .run_fail()
+        .assert_stderr_contains(
+            "`standard_library_support.default` can only be set to a \
+            value which is a subset of `supported`",
+        );
+    rustc()
+        .arg("-Zunstable-options")
+        .input("foo.rs")
+        .crate_type("lib")
+        .target("std-crates-consistency.json")
+        .run_fail()
+        .assert_stderr_contains("Invalid combination of supported standard library crates");
 }

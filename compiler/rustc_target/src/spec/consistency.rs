@@ -4,8 +4,8 @@ use rustc_abi::Endian;
 use rustc_data_structures::fx::FxHashSet;
 
 use crate::spec::{
-    Arch, Cc, CfgAbi, Env, FloatAbi, LinkerFlavor, Lld, LlvmAbi, Os, RelocModel, RustcAbi, Target,
-    TargetKind,
+    Arch, Cc, CfgAbi, Env, FloatAbi, LinkerFlavor, Lld, LlvmAbi, Os, RelocModel, RustcAbi,
+    StdCrate, Target, TargetKind,
 };
 
 impl Target {
@@ -731,6 +731,27 @@ impl Target {
                     ));
                 }
             }
+        }
+
+        if let Some(standard_library_support) = &self.metadata.standard_library_support {
+            let check_std_crates = |std_crates: &[StdCrate]| -> Result<(), String> {
+                check_matches!(
+                    std_crates,
+                    [StdCrate::Core, StdCrate::Alloc, StdCrate::Std]
+                        | [StdCrate::Core, StdCrate::Alloc]
+                        | [StdCrate::Core],
+                    "Invalid combination of supported standard library crates"
+                );
+                Ok(())
+            };
+
+            check_std_crates(standard_library_support.default.as_ref())?;
+            check_std_crates(standard_library_support.supported.as_ref())?;
+
+            check!(
+                standard_library_support.default <= standard_library_support.supported,
+                "`standard_library_support.default` can only be set to a value which is a subset of `supported`"
+            );
         }
 
         Ok(())
