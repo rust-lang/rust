@@ -165,7 +165,7 @@ macro_rules! define_queries {
                             use rustc_middle::queries::$name::{ProvidedValue, provided_to_erased};
 
                             let loaded_value: ProvidedValue<'tcx> =
-                                rustc_middle::query::q_impl::incremental::try_load_from_disk(tcx, prev_index)?;
+                                $crate::incremental::try_load_from_disk(tcx, prev_index)?;
 
                             // Arena-alloc the value if appropriate, and erase it.
                             Some(provided_to_erased(tcx, loaded_value))
@@ -201,6 +201,14 @@ macro_rules! define_queries {
                         } else {
                             crate::query_vtables::$name::execute_query_non_incr::__rust_end_short_backtrace
                         },
+
+                        #[cfg($feedable)]
+                        feed_query_fn: Some(|tcx, key, value| {
+                            let query = &tcx.query_system.query_vtables.$name;
+                            crate::execution::feed_query(query, tcx, key, value);
+                        }),
+                        #[cfg(not($feedable))]
+                        feed_query_fn: None,
                     }
                 }
 
