@@ -173,7 +173,6 @@
 #![feature(slice_range)]
 #![feature(std_internals)]
 #![feature(temporary_niche_types)]
-#![feature(titlecase)]
 #![feature(transmutability)]
 #![feature(trivial_clone)]
 #![feature(trusted_fused)]
