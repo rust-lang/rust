@@ -410,7 +410,7 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             // As such, no_mangle foreign items on wasm that have the same defid as some
             // import will *still* be mangled despite this.
             //
-            // if none of the exceptions apply; apply no_mangle
+            // if none of the exceptions apply; do not mangle the symbol name
             codegen_fn_attrs.symbol_name = Some(tcx.item_name(did));
         }
     }
