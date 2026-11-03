@@ -15,8 +15,8 @@ use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, PredicateObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, ExistentialPredicate, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt,
-    elaborate,
+    self, ExistentialPredicate, FieldInfo, IncludeSizedImplicitBounds, SizedTraitKind, TraitRef,
+    Ty, TypeVisitableExt, elaborate,
 };
 use rustc_span::{DUMMY_SP, bug, span_bug};
 use tracing::{debug, instrument, trace};
@@ -782,7 +782,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                     // Backward compatibility for default auto traits.
                     // Test: ui/traits/default_auto_traits/extern-types.rs
-                    if self.tcx().is_default_trait(def_id) {
+                    if self.tcx().is_implicit_trait(def_id, IncludeSizedImplicitBounds::No) {
                         check_impls()
                     }
                 }
