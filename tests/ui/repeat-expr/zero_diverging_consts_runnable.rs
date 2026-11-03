@@ -4,6 +4,7 @@
 //
 //@ run-fail
 //@ check-run-results
+//@ exec-env:RUST_BACKTRACE=0
 
 fn get(v: &[u32], i: usize) -> u32 {
     if i >= v.len() {
