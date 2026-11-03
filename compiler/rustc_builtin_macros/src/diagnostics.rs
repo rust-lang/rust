@@ -1200,6 +1200,15 @@ pub(crate) struct EiiAttributeNotSupported {
 }
 
 #[derive(Diagnostic)]
+#[diag("only builtin and autodiff attributes are supported on autodiff functions")]
+pub(crate) struct AutodiffAttributeNotSupported {
+    #[primary_span]
+    pub span: Span,
+    #[note("this attribute is not supported")]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("named argument `{$named_arg_name}` is not used by name")]
 pub(crate) struct NamedArgumentUsedPositionally {
     #[label("this named argument is referred to by position in formatting string")]
