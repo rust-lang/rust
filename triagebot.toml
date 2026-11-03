@@ -428,6 +428,7 @@ trigger_files = [
 [autolabel."A-allocators"]
 trigger_files = [
     "library/{core,alloc,std}/src/alloc{.rs,}",
+    "library/std/src/sys/**/alloc{.rs,}",
 ]
 
 [autolabel."A-array"]
@@ -444,6 +445,7 @@ trigger_files = [
 trigger_files = [
     "library/backtrace",
     "library/{core,alloc,std}/src/backtrace{.rs,}",
+    "library/std/src/sys/**/backtrace{.rs,}",
 ]
 
 [autolabel."A-box"]
@@ -484,11 +486,14 @@ trigger_files = [
 [autolabel."A-env"]
 trigger_files = [
     "library/{core,alloc,std}/src/env{.rs,}",
+    "library/std/src/sys/**/env{.rs,}",
+    "library/std/src/sys/**/env_consts{.rs,}",
 ]
 
 [autolabel."A-filesystem"]
 trigger_files = [
     "library/{core,alloc,std}/src/fs{.rs,}",
+    "library/std/src/sys/**/fs{.rs,}",
 ]
 
 [autolabel."A-fmt"]
@@ -499,6 +504,8 @@ trigger_files = [
 [autolabel."A-io"]
 trigger_files = [
     "library/{core,alloc,std}/src/io{.rs,}",
+    "library/std/src/sys/**/io{.rs,}",
+    "library/std/src/sys/**/stdio{.rs,}",
 ]
 
 [autolabel."A-iterators"]
@@ -509,6 +516,7 @@ trigger_files = [
 [autolabel."A-networking"]
 trigger_files = [
     "library/{core,alloc,std}/src/net{.rs,}",
+    "library/std/src/sys/**/net{.rs,}",
 ]
 
 [autolabel."A-option-result"]
@@ -520,6 +528,8 @@ trigger_files = [
 [autolabel."A-path"]
 trigger_files = [
     "library/{core,alloc,std}/src/path{.rs,}",
+    "library/std/src/sys/**/path{.rs,}",
+    "library/std/src/sys/**/paths{.rs,}",
 ]
 
 [autolabel."A-panic"]
@@ -531,6 +541,7 @@ trigger_files = [
 [autolabel."A-process"]
 trigger_files = [
     "library/{core,alloc,std}/src/process{.rs,}",
+    "library/std/src/sys/**/process{.rs,}",
 ]
 
 [autolabel."A-raw-pointers"]
@@ -541,6 +552,7 @@ trigger_files = [
 [autolabel."A-random"]
 trigger_files = [
     "library/{core,alloc,std}/src/random{.rs,}",
+    "library/std/src/sys/**/random{.rs,}",
 ]
 
 [autolabel."A-rc"]
@@ -563,13 +575,14 @@ trigger_files = [
 [autolabel."A-thread"]
 trigger_files = [
     "library/{core,alloc,std}/src/thread{.rs,}",
-    "library/std/src/sys/thread",
-    "library/std/src/sys/thread_local",
+    "library/std/src/sys/**/thread{.rs,}",
+    "library/std/src/sys/**/thread_local{.rs,}",
 ]
 
 [autolabel."A-time"]
 trigger_files = [
     "library/{core,alloc,std}/src/time{.rs,}",
+    "library/std/src/sys/**/time{.rs,}",
 ]
 
 [autolabel."O-android"]
