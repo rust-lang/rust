@@ -63,6 +63,8 @@ pub fn provide(providers: &mut Providers) {
         |tcx, scalar, layout| util::validate_scalar_in_layout(tcx, scalar, layout);
     providers.queries.experimental_comptime_fetch_file =
         const_eval::comptime_fs::experimental_comptime_fetch_file_provider;
+    providers.queries.experimental_comptime_list_files =
+        const_eval::comptime_fs::experimental_comptime_list_files_provider;
 }
 
 /// `rustc_driver::main` installs a handler that will set this to `true` if

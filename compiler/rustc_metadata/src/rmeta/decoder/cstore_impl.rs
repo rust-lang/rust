@@ -625,8 +625,18 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         ..providers.queries
     };
     provide_extern(&mut providers.extern_queries);
+    provide_extern_comptime(&mut providers.extern_queries);
+}
 
-    providers.extern_queries.experimental_comptime_fetch_file = |tcx, (cnum, path)| {
+fn provide_extern_comptime(extern_queries: &mut ExternProviders) {
+    extern_queries.experimental_comptime_list_files = |tcx, cnum| {
+        let cstore = CStore::from_tcx(tcx);
+        let crate_data = cstore.get_crate_data(cnum);
+        let filelist = crate_data.root.comptime_files.keys().copied().collect::<Vec<_>>();
+        Some(tcx.arena.alloc_slice(&filelist))
+    };
+
+    extern_queries.experimental_comptime_fetch_file = |tcx, (cnum, path)| {
         let cstore = CStore::from_tcx(tcx);
         let crate_data = cstore.get_crate_data(cnum);
         crate_data

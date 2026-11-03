@@ -1,6 +1,24 @@
+use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Symbol;
 use tracing::instrument;
+
+#[instrument(skip(tcx), level = "debug")]
+pub fn experimental_comptime_list_files_provider(
+    tcx: TyCtxt<'_>,
+    _: LocalCrate,
+) -> Option<&[Symbol]> {
+    let filelist = tcx
+        .sess
+        .opts
+        .unstable_opts
+        .experimental_comptime_files
+        .iter()
+        .map(|p| Symbol::intern(p))
+        .collect::<Vec<_>>();
+
+    Some(tcx.arena.alloc_slice(&filelist))
+}
 
 #[instrument(skip(tcx), level = "debug")]
 pub fn experimental_comptime_fetch_file_provider<'tcx>(
