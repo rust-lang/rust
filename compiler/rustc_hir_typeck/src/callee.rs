@@ -784,9 +784,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (prev_type, method_adjustments) =
                 prev_types.remove(&arg.hir_id).expect("must be in a map");
 
-            // Remove any added adjustments for arg expression during `do_check` and replace them with ours.
+            // Insert adjustments that were obtained when we were probing before adjustments
+            // that were potentially obtained during arguments check. As when checking arguments we
+            // change the real arg type with an adjusted one, so new adjustments are created for already
+            // adjusted type. See #165171, in short if we have `self.0` which is `u8` and the expected input
+            // is `&dyn Trait`, we would have:
+            // `adjustments` == [Deref(Builtin) -> u8, Borrow(Ref(Not)) -> &u8, Pointer(Unsize) -> &dyn original_ice::Trait],
+            // `method_adjustments` == [Borrow(Ref(Not)) -> &u8]
+            // This makes sense only if `method_adjustments` are inserted before `adjustments`.
+            // FIXME(fn_delegation): maybe useless adjustments can be optimized away here
             let adjustments = adjustments.entry(arg.hir_id).or_default();
-            *adjustments = method_adjustments;
+            adjustments.splice(0..0, method_adjustments);
 
             // Restore original first provided arg type.
             results.node_types_mut().insert(arg.hir_id, prev_type);
