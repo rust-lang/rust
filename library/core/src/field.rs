@@ -124,7 +124,7 @@ impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Ord
 /// The container type may be a tuple, `struct`, `union` or `enum`. In the case of an enum, the
 /// variant must also be specified. Only a single field is supported.
 #[unstable(feature = "field_projections", issue = "145383")]
-#[allow_internal_unstable(field_representing_type_raw, builtin_syntax)]
+#[allow_internal_unstable(field_representing_type_raw, internal_syntax)]
 #[diagnostic::on_unmatched_args(
     note = "this macro expects a container type and a field path, like `field_of!(Type, field)` or `field_of!(Enum, Variant.field)`"
 )]
@@ -134,7 +134,7 @@ impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Ord
 // it to `FieldRepresentingType<...>`. Thus stabilizing this requires careful thought about the
 // completeness of the trait impls for `FieldRepresentingType`.
 pub macro field_of($Container:ty, $($fields:expr)+ $(,)?) {
-    builtin # field_of($Container, $($fields)+)
+    k#field_of($Container, $($fields)+)
 }
 
 /// Type representing a field of a `struct`, `union`, `enum` variant or tuple.

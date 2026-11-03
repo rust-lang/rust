@@ -393,11 +393,14 @@ impl<T: PointeeSized> *const T {
     /// `count` is in units of **bytes**.
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
-    /// using [offset][pointer::offset] on it. See that method for documentation
-    /// and safety requirements.
+    /// using [offset][pointer::offset] on it.
     ///
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
+    ///
+    /// # Safety
+    ///
+    /// See [offset][pointer::offset] for documentation and safety requirements.
     #[must_use]
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
@@ -626,11 +629,14 @@ impl<T: PointeeSized> *const T {
     /// units of **bytes**.
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
-    /// using [`offset_from`][pointer::offset_from] on it. See that method for
-    /// documentation and safety requirements.
+    /// using [`offset_from`][pointer::offset_from] on it.
     ///
     /// For non-`Sized` pointees this operation considers only the data pointers,
     /// ignoring the metadata.
+    ///
+    /// # Safety
+    ///
+    /// See [`offset_from`][pointer::offset_from] for documentation and safety requirements.
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
     #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "1.75.0")]
@@ -738,10 +744,13 @@ impl<T: PointeeSized> *const T {
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
     /// using [`offset_from_unsigned`][pointer::offset_from_unsigned] on it.
-    /// See that method for documentation and safety requirements.
     ///
     /// For non-`Sized` pointees this operation considers only the data pointers,
     /// ignoring the metadata.
+    ///
+    /// # Safety
+    ///
+    /// See [`offset_from_unsigned`][pointer::offset_from_unsigned] for documentation and safety requirements.
     #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
     #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
     #[inline]
@@ -875,11 +884,14 @@ impl<T: PointeeSized> *const T {
     /// `count` is in units of bytes.
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
-    /// using [add][pointer::add] on it. See that method for documentation
-    /// and safety requirements.
+    /// using [add][pointer::add] on it.
     ///
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
+    ///
+    /// # Safety
+    ///
+    /// See [add][pointer::add] for documentation and safety requirements.
     #[must_use]
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
@@ -960,11 +972,14 @@ impl<T: PointeeSized> *const T {
     /// `count` is in units of bytes.
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
-    /// using [sub][pointer::sub] on it. See that method for documentation
-    /// and safety requirements.
+    /// using [sub][pointer::sub] on it.
     ///
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
+    ///
+    /// # Safety
+    ///
+    /// See [sub][pointer::sub] for documentation and safety requirements.
     #[must_use]
     #[inline(always)]
     #[stable(feature = "pointer_byte_offsets", since = "1.75.0")]
@@ -1137,6 +1152,8 @@ impl<T: PointeeSized> *const T {
     /// Reads the value from `self` without moving it. This leaves the
     /// memory in `self` unchanged.
     ///
+    /// # Safety
+    ///
     /// See [`ptr::read`] for safety concerns and examples.
     ///
     /// [`ptr::read`]: crate::ptr::read()
@@ -1159,6 +1176,8 @@ impl<T: PointeeSized> *const T {
     /// to not be elided or reordered by the compiler across other volatile
     /// operations.
     ///
+    /// # Safety
+    ///
     /// See [`ptr::read_volatile`] for safety concerns and examples.
     ///
     /// [`ptr::read_volatile`]: crate::ptr::read_volatile()
@@ -1178,6 +1197,8 @@ impl<T: PointeeSized> *const T {
     /// memory in `self` unchanged.
     ///
     /// Unlike `read`, the pointer may be unaligned.
+    ///
+    /// # Safety
     ///
     /// See [`ptr::read_unaligned`] for safety concerns and examples.
     ///
@@ -1199,6 +1220,8 @@ impl<T: PointeeSized> *const T {
     ///
     /// NOTE: this has the *same* argument order as [`ptr::copy`].
     ///
+    /// # Safety
+    ///
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
@@ -1218,6 +1241,8 @@ impl<T: PointeeSized> *const T {
     /// and destination may *not* overlap.
     ///
     /// NOTE: this has the *same* argument order as [`ptr::copy_nonoverlapping`].
+    ///
+    /// # Safety
     ///
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
@@ -1493,6 +1518,8 @@ impl<T> *const [T] {
 
     /// Returns a raw pointer to an element or subslice, without doing bounds
     /// checking.
+    ///
+    /// # Safety
     ///
     /// Calling this method with an [out-of-bounds index] or when `self` is not dereferenceable
     /// is *[undefined behavior]* even if the resulting pointer is not used.

@@ -42,7 +42,7 @@ ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu \
  --set llvm.libzstd=true"
 ENV SCRIPT="python3 ../x.py \
   --stage 2 \
-  test tests \
+  test tests compiler/rustc_codegen_gcc \
   --test-codegen-backend gcc \
   --skip tests/coverage \
   --skip tests/coverage-run-rustdoc \
