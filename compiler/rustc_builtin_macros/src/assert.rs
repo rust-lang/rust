@@ -76,23 +76,17 @@ pub(crate) fn expand_assert<'cx>(
         expr_if_not(cx, call_site_span, cond_expr, then, None)
     };
 
-    ExpandResult::Ready(MacEager::expr(expr))
+    ExpandResult::Ready(MacEager::expr(Box::new(expr)))
 }
 
 struct Assert {
-    cond_expr: Box<Expr>,
+    cond_expr: Expr,
     custom_message: Option<TokenStream>,
 }
 
 // if !{ ... } { ... } else { ... }
-fn expr_if_not(
-    cx: &ExtCtxt<'_>,
-    span: Span,
-    cond: Box<Expr>,
-    then: Box<Expr>,
-    els: Option<Box<Expr>>,
-) -> Box<Expr> {
-    cx.expr_if(span, cx.expr(span, ExprKind::Unary(UnOp::Not, cond)), then, els)
+fn expr_if_not(cx: &ExtCtxt<'_>, span: Span, cond: Expr, then: Expr, els: Option<Expr>) -> Expr {
+    cx.expr_if(span, cx.expr(span, ExprKind::Unary(UnOp::Not, Box::new(cond))), then, els)
 }
 
 fn parse_assert<'a>(cx: &ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PResult<'a, Assert> {

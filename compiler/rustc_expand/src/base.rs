@@ -574,8 +574,8 @@ impl DummyResult {
     }
 
     /// A plain dummy expression.
-    pub fn raw_expr(sp: Span, guar: Option<ErrorGuaranteed>) -> Box<ast::Expr> {
-        Box::new(ast::Expr {
+    pub fn raw_expr(sp: Span, guar: Option<ErrorGuaranteed>) -> ast::Expr {
+        ast::Expr {
             id: ast::DUMMY_NODE_ID,
             kind: if let Some(guar) = guar {
                 ast::ExprKind::Err(guar)
@@ -585,13 +585,13 @@ impl DummyResult {
             span: sp,
             attrs: ast::AttrVec::new(),
             tokens: None,
-        })
+        }
     }
 }
 
 impl MacResult for DummyResult {
     fn make_expr(self: Box<DummyResult>) -> Option<Box<ast::Expr>> {
-        Some(DummyResult::raw_expr(self.span, self.guar))
+        Some(Box::from(DummyResult::raw_expr(self.span, self.guar)))
     }
 
     fn make_pat(self: Box<DummyResult>) -> Option<Box<ast::Pat>> {
@@ -621,7 +621,7 @@ impl MacResult for DummyResult {
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
         Some(smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            kind: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.guar)),
+            kind: ast::StmtKind::Expr(Box::from(DummyResult::raw_expr(self.span, self.guar))),
             span: self.span,
         }])
     }

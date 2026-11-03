@@ -73,7 +73,7 @@ pub(crate) fn expand_option_env<'cx>(
             thin_vec![cx.expr_str(sp, value)],
         ),
     };
-    ExpandResult::Ready(MacEager::expr(e))
+    ExpandResult::Ready(MacEager::expr(Box::new(e)))
 }
 
 pub(crate) fn expand_env<'cx>(
@@ -157,7 +157,7 @@ pub(crate) fn expand_env<'cx>(
         }
         Ok(value) => cx.expr_str(span, value),
     };
-    ExpandResult::Ready(MacEager::expr(e))
+    ExpandResult::Ready(MacEager::expr(Box::from(e)))
 }
 
 /// Returns `true` if an environment variable from `env!` could be one used by Cargo.

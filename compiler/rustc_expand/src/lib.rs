@@ -6,6 +6,7 @@
 #![feature(macro_metavar_expr)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
+#![feature(smart_pointer_try_map)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
 // tidy-alphabetical-end

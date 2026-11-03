@@ -1248,7 +1248,7 @@ impl<'a> State<'a> {
         self.end(rb);
     }
 
-    fn commasep_exprs(&mut self, b: Breaks, exprs: &[Box<ast::Expr>]) {
+    fn commasep_exprs(&mut self, b: Breaks, exprs: &[ast::Expr]) {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e, FixupContext::default()), |e| e.span)
     }
 

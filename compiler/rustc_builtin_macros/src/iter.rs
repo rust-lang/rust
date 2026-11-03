@@ -16,14 +16,10 @@ pub(crate) fn expand<'cx>(
         }
     };
 
-    ExpandResult::Ready(base::MacEager::expr(closure))
+    ExpandResult::Ready(base::MacEager::expr(Box::new(closure)))
 }
 
-fn parse_closure<'a>(
-    cx: &mut ExtCtxt<'a>,
-    span: Span,
-    stream: TokenStream,
-) -> PResult<'a, Box<Expr>> {
+fn parse_closure<'a>(cx: &mut ExtCtxt<'a>, span: Span, stream: TokenStream) -> PResult<'a, Expr> {
     let mut closure_parser = cx.new_parser_from_tts(stream);
 
     let coroutine_marker = Some(CoroutineMarker::new(CoroutineKind::Gen, span));

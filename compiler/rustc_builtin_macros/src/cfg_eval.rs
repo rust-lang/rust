@@ -131,7 +131,7 @@ impl CfgEval<'_> {
                 Annotatable::Expr(_) => {
                     let mut expr = parser.parse_expr_force_collect()?;
                     self.visit_expr(&mut expr);
-                    Some(Annotatable::Expr(expr))
+                    Some(Annotatable::Expr(Box::from(expr)))
                 }
                 _ => unreachable!(),
             }
@@ -163,7 +163,7 @@ impl MutVisitor for CfgEval<'_> {
         mut_visit::walk_expr(self, expr);
     }
 
-    fn filter_map_expr(&mut self, expr: Box<ast::Expr>) -> Option<Box<ast::Expr>> {
+    fn filter_map_expr(&mut self, expr: ast::Expr) -> Option<ast::Expr> {
         let mut expr = configure!(self, expr);
         mut_visit::walk_expr(self, &mut expr);
         Some(expr)

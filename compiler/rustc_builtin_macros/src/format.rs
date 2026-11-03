@@ -135,7 +135,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
                 args.add(FormatArgument {
                     original_span: ident.span.to(expr.span),
                     kind: FormatArgumentKind::Named(ident),
-                    expr,
+                    expr: Box::new(expr),
                 });
             }
             _ => {
@@ -154,7 +154,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
                 args.add(FormatArgument {
                     original_span: expr.span,
                     kind: FormatArgumentKind::Normal,
-                    expr,
+                    expr: Box::new(expr),
                 });
             }
         }
@@ -163,7 +163,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
     // Only allow implicit captures for direct literals
     let is_direct_literal = matches!(fmtstr.kind, ExprKind::Lit(_));
 
-    Ok(MacroInput { fmtstr, args, is_direct_literal })
+    Ok(MacroInput { fmtstr: Box::new(fmtstr), args, is_direct_literal })
 }
 
 fn make_format_args(
@@ -452,13 +452,13 @@ fn make_format_args(
                     let span = span.unwrap_or(fmt_span);
                     let ident = Ident::new(name, span);
                     let expr = if is_direct_literal {
-                        ecx.expr_ident(span, ident)
+                        Box::new(ecx.expr_ident(span, ident))
                     } else {
                         // For the moment capturing variables from format strings expanded from macros is
                         // disabled (see RFC #2795)
                         let guar = ecx.dcx().emit_err(diagnostics::FormatNoArgNamed { span, name });
                         unnamed_arg_after_named_arg = true;
-                        DummyResult::raw_expr(span, Some(guar))
+                        Box::from(DummyResult::raw_expr(span, Some(guar)))
                     };
                     Ok(args.add(FormatArgument {
                         original_span: span,
@@ -1172,10 +1172,10 @@ fn expand_format_args_impl<'cx>(
                 return ExpandResult::Retry(());
             };
             match mac {
-                Ok(format_args) => {
-                    MacEager::expr(ecx.expr(sp, ExprKind::FormatArgs(Box::new(format_args))))
-                }
-                Err(guar) => MacEager::expr(DummyResult::raw_expr(sp, Some(guar))),
+                Ok(format_args) => MacEager::expr(Box::new(
+                    ecx.expr(sp, ExprKind::FormatArgs(Box::new(format_args))),
+                )),
+                Err(guar) => MacEager::expr(Box::new(DummyResult::raw_expr(sp, Some(guar)))),
             }
         }
         Err(err) => {

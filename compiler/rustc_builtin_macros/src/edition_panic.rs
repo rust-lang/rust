@@ -43,10 +43,10 @@ fn expand<'cx>(
 ) -> MacroExpanderResult<'cx> {
     let sp = cx.with_call_site_ctxt(sp);
 
-    ExpandResult::Ready(MacEager::expr(cx.expr_macro_call(
+    ExpandResult::Ready(MacEager::expr(Box::new(cx.expr_macro_call(
         sp,
         cx.macro_call(sp, cx.std_path(sp, &[sym::panic, mac]), Delimiter::Parenthesis, tts),
-    )))
+    ))))
 }
 
 pub(crate) fn use_panic_2021(mut span: Span) -> bool {
