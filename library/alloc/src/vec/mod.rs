@@ -1884,7 +1884,6 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[lint::as_ptr]
     #[lint::never_returns_null_ptr]
-
     pub const fn as_ptr(&self) -> *const T {
         // We shadow the slice method of the same name to avoid going through
         // `deref`, which creates an intermediate reference.

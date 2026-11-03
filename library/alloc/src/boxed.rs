@@ -1965,7 +1965,6 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[inline]
     #[lint::as_ptr]
     #[lint::never_returns_null_ptr]
-
     pub fn as_ptr(b: &Self) -> *const T {
         // This is a primitive deref, not going through `DerefMut`, and therefore not materializing
         // any references.
