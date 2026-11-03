@@ -51,8 +51,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
-    CG_OPTIONS, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType, Sysroot,
-    UnstableOptions, Z_OPTIONS, nightly_options, parse_target_triple,
+    CG_OPTIONS, ErrorOutputType, Input, OptionDesc, OutFileName, Sysroot, UnstableOptions,
+    Z_OPTIONS, nightly_options, parse_target_triple,
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::output::invalid_output_for_target;
@@ -323,15 +323,10 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
                 return None;
             }
 
-            tcx.ensure_ok().analysis(());
+            rustc_interface::passes::full_analysis(tcx);
 
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
                 return None;
-            }
-
-            if output_types.contains_key(&OutputType::FullAnalysis) {
-                let _metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
-                debug_assert!(_metadata.is_ok());
             }
 
             if output_types.needs_mir() {
@@ -341,6 +336,7 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
             }
 
             if output_types.stop_before_codegen() {
+                let _metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
                 return None;
             }
 

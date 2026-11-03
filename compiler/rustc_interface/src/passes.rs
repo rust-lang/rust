@@ -897,7 +897,7 @@ pub fn write_interface<'tcx>(tcx: TyCtxt<'tcx>) {
 
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
-    providers.queries.analysis = analysis;
+    providers.queries.required_analysis = run_required_analyses;
     providers.queries.resolver_for_lowering_raw = resolver_for_lowering_raw;
     providers.queries.stripped_cfg_items = |tcx, _| &tcx.resolutions(()).stripped_cfg_items[..];
     providers.queries.get_lang_items = |tcx, ()| &tcx.resolutions(()).lang_items;
@@ -1103,7 +1103,7 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
 
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
 /// This function never fails.
-fn run_required_analyses(tcx: TyCtxt<'_>) {
+fn run_required_analyses(tcx: TyCtxt<'_>, (): ()) {
     if tcx.sess.opts.unstable_opts.input_stats {
         rustc_passes::input_stats::print_hir_stats(tcx);
     }
@@ -1203,10 +1203,10 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     sess.time("abi_testing", || abi_test::test_abi(tcx));
 }
 
-/// Runs the type-checking, region checking and other miscellaneous analysis
-/// passes on the crate.
-fn analysis(tcx: TyCtxt<'_>, (): ()) {
-    run_required_analyses(tcx);
+/// Runs required analysis and a bunch of technically not necessary ones.
+/// Such as linting.
+pub fn full_analysis(tcx: TyCtxt<'_>) {
+    tcx.ensure_ok().required_analysis(());
 
     if !tcx.sess.opts.output_types.requires_full_analysis() {
         return;

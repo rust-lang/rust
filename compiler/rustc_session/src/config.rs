@@ -782,9 +782,9 @@ macro_rules! define_output_types {
 define_output_types! {
     Validation => {
         shorthand: "validation",
-        extension: "rmeta",
+        extension: "validation.rmeta",
         description: "Generates metadata and exits after doing only validation and required analysis",
-        default_filename: "validationCRATE_NAME.rmeta",
+        default_filename: "CRATE_NAME.validation.rmeta",
         is_text: false,
         compatible_with_cgus_and_single_output: true
     },
@@ -798,9 +798,9 @@ define_output_types! {
     },
     FullAnalysis => {
         shorthand: "full-analysis",
-        extension: "rmeta",
+        extension: "analysis.rmeta",
         description: "Generates metadata and exits after doing all analysis",
-        default_filename: "analysisCRATE_NAME.rmeta",
+        default_filename: "CRATE_NAME.analysis.rmeta",
         is_text: false,
         compatible_with_cgus_and_single_output: true
     },
@@ -1386,17 +1386,9 @@ impl OutputFilenames {
     fn output_path(&self, flavor: OutputType) -> PathBuf {
         let extension = flavor.extension();
         match flavor {
-            OutputType::Metadata => {
+            OutputType::Metadata | OutputType::Validation | OutputType::FullAnalysis => {
                 debug!("using crate_name={} for {extension}", self.crate_stem);
                 self.out_directory.join(format!("lib{}.{}", self.crate_stem, extension))
-            }
-            OutputType::Validation => {
-                debug!("using crate_name={} for {extension}", self.crate_stem);
-                self.out_directory.join(format!("validation{}.{}", self.crate_stem, extension))
-            }
-            OutputType::FullAnalysis => {
-                debug!("using crate_name={} for {extension}", self.crate_stem);
-                self.out_directory.join(format!("analysis{}.{}", self.crate_stem, extension))
             }
             _ => self.with_directory_and_extension(&self.out_directory, extension),
         }

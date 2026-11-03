@@ -1433,7 +1433,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> {
         // Depend on the `analysis` query to ensure compilation if finished.
-        self.ensure_ok().analysis(());
+        self.ensure_ok().required_analysis(());
 
         let definitions = &self.untracked.definitions;
         gen {
@@ -1454,7 +1454,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn definitions(self) -> &'tcx rustc_hir::definitions::Definitions {
         // Depend on the `analysis` query to ensure compilation if finished.
-        self.ensure_ok().analysis(());
+        self.ensure_ok().required_analysis(());
 
         // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
