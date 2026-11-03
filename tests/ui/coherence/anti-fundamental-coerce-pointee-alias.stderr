@@ -1,0 +1,31 @@
+error: cannot implement `CoerceUnsized` for the fundamental type `Pin<Wrap<T>>`
+  --> $DIR/anti-fundamental-coerce-pointee-alias.rs:17:68
+   |
+LL | impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Thing<U>> for Thing<T> {}
+   |                                                                    ^^^^^^^^ impl of `CoerceUnsized` not allowed for `Pin<Wrap<T>>`
+   |
+   = note: `CoerceUnsized` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error[E0277]: the trait bound `Wrap<T>: CoerceUnsized<Wrap<U>>` is not satisfied
+  --> $DIR/anti-fundamental-coerce-pointee-alias.rs:17:1
+   |
+LL | impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Thing<U>> for Thing<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the nightly-only, unstable trait `CoerceUnsized<Wrap<U>>` is not implemented for `Wrap<T>`
+  --> $DIR/anti-fundamental-coerce-pointee-alias.rs:13:1
+   |
+LL | pub struct Wrap<T: ?Sized>(Box<T>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot implement `DispatchFromDyn` for the fundamental type `Pin<Wrap<T>>`
+  --> $DIR/anti-fundamental-coerce-pointee-alias.rs:21:70
+   |
+LL | impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Thing<U>> for Thing<T> {}
+   |                                                                      ^^^^^^^^ impl of `DispatchFromDyn` not allowed for `Pin<Wrap<T>>`
+   |
+   = note: `DispatchFromDyn` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

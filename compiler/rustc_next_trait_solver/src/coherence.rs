@@ -13,8 +13,14 @@ use tracing::instrument;
 /// Whether we do the orphan check relative to this crate or to some remote crate.
 #[derive(Copy, Clone, Debug)]
 pub enum InCrate {
-    Local { mode: OrphanCheckMode },
+    Local { mode: OrphanCheckMode, anti_fundamental: AntiFundamentalRule },
     Remote,
+}
+
+impl InCrate {
+    pub fn def_id_is_local<I: Interner>(self, def_id: impl DefId<I>) -> bool {
+        matches!(self, InCrate::Local { .. }) && def_id.is_local()
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -30,6 +36,13 @@ pub enum OrphanCheckMode {
     /// [#124559]: https://github.com/rust-lang/rust/issues/124559
     /// [#99554]: https://github.com/rust-lang/rust/issues/99554
     Compat,
+}
+
+/// Whether to enforce the `#[rustc_anti_fundamental]` restriction; see [`orphan_check_trait_ref`].
+#[derive(Copy, Clone, Debug)]
+pub enum AntiFundamentalRule {
+    Apply,
+    Skip,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -79,10 +92,16 @@ where
     // and if we are an intermediate owner, then we don't care
     // about future-compatibility, which means that we're OK if
     // we are an owner.
+    //
+    // Skip `#[rustc_anti_fundamental]` here: it restricts what impls we may write, not whether we
+    // own the type parameters, so a goal like `Box<dyn LocalTrait>: Deref` is still knowable.
     if orphan_check_trait_ref(
         infcx,
         trait_ref,
-        InCrate::Local { mode: OrphanCheckMode::Proper },
+        InCrate::Local {
+            mode: OrphanCheckMode::Proper,
+            anti_fundamental: AntiFundamentalRule::Skip,
+        },
         &mut lazily_normalize_ty,
     )?
     .is_ok()
@@ -118,6 +137,7 @@ impl From<bool> for IsFirstInputType {
 pub enum OrphanCheckErr<I: Interner, T> {
     NonLocalInputType(Vec<(I::Ty, IsFirstInputType)>),
     UncoveredTyParams(UncoveredTyParams<I, T>),
+    AntiFundamentalForeignType { self_ty: I::Ty, fundamental_ty: I::Ty },
 }
 
 #[derive_where(Debug; I: Interner, T: Debug)]
@@ -160,6 +180,10 @@ pub struct UncoveredTyParams<I: Interner, T> {
 ///     - however, `LocalType<Vec<T>>` is OK, because `T` is a subtree of
 ///     `LocalType<Vec<T>>`, which is local and has no types between it and
 ///     the type parameter.
+/// 5. Unless `in_crate` is `InCrate::Local { anti_fundamental: AntiFundamentalRule::Skip, .. }`,
+///    if the trait is marked `#[rustc_anti_fundamental]`, `Self` must not be headed by a
+///    reference or by a non-local `#[fundamental]` type.
+///     - e.g., `Box<LocalType>`, `&LocalType` and `&Pin<LocalType>` are rejected.
 ///
 /// The orphan rules actually serve several different purposes:
 ///
@@ -216,6 +240,9 @@ pub struct UncoveredTyParams<I: Interner, T> {
 ///    the above requirement is sufficient, and is necessary in "open world"
 ///    cases).
 ///
+///    Since this checks ownership of a key parameter rather than permission to
+///    write an impl, it uses [`AntiFundamentalRule::Skip`].
+///
 /// Note that this function is never called for types that have both type
 /// parameters and inference variables.
 #[instrument(level = "trace", skip(infcx, lazily_normalize_ty), ret)]
@@ -223,7 +250,7 @@ pub fn orphan_check_trait_ref<Infcx, I, E: Debug>(
     infcx: &Infcx,
     trait_ref: ty::TraitRef<I>,
     in_crate: InCrate,
-    lazily_normalize_ty: impl FnMut(I::Ty) -> Result<I::Ty, E>,
+    mut lazily_normalize_ty: impl FnMut(I::Ty) -> Result<I::Ty, E>,
 ) -> Result<Result<(), OrphanCheckErr<I, I::Ty>>, E>
 where
     Infcx: InferCtxtLike<Interner = I>,
@@ -232,6 +259,18 @@ where
 {
     if trait_ref.has_param() {
         panic!("orphan check only expects inference variables: {trait_ref:?}");
+    }
+
+    let cx = infcx.cx();
+    if !matches!(in_crate, InCrate::Local { anti_fundamental: AntiFundamentalRule::Skip, .. })
+        && cx.trait_is_anti_fundamental(trait_ref.def_id)
+    {
+        let self_ty = trait_ref.self_ty();
+        if let Some(fundamental_ty) =
+            check_anti_fundamental_head(infcx, in_crate, &mut lazily_normalize_ty, self_ty)?
+        {
+            return Ok(Err(OrphanCheckErr::AntiFundamentalForeignType { self_ty, fundamental_ty }));
+        }
     }
 
     let mut checker = OrphanChecker::new(infcx, in_crate, lazily_normalize_ty);
@@ -253,6 +292,34 @@ where
             }
             OrphanCheckEarlyExit::LocalTy(_) => Ok(()),
         },
+    })
+}
+
+/// Returns `Some(ty)` if `ty` is headed by a non-local `#[fundamental]` type constructor,
+/// i.e. a reference or a `#[fundamental]` ADT from another crate, such as `&LocalType` or
+/// `Pin<LocalType>`.
+fn check_anti_fundamental_head<Infcx, I, E: Debug>(
+    infcx: &Infcx,
+    in_crate: InCrate,
+    mut lazily_normalize_ty: impl FnMut(I::Ty) -> Result<I::Ty, E>,
+    ty: I::Ty,
+) -> Result<Option<I::Ty>, E>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
+    let ty = infcx.shallow_resolve(ty);
+    let ty = match lazily_normalize_ty(ty)? {
+        norm if norm.is_ty_var() => ty,
+        norm => norm,
+    };
+
+    Ok(match ty.kind() {
+        ty::Ref(..) => Some(ty),
+        ty::Adt(def, _) if def.is_fundamental() && !in_crate.def_id_is_local(def.def_id()) => {
+            Some(ty)
+        }
+        _ => None,
     })
 }
 
@@ -296,11 +363,8 @@ where
         ControlFlow::Break(OrphanCheckEarlyExit::UncoveredTyParam(ty))
     }
 
-    fn def_id_is_local(&mut self, def_id: impl DefId<I>) -> bool {
-        match self.in_crate {
-            InCrate::Local { .. } => def_id.is_local(),
-            InCrate::Remote => false,
-        }
+    fn def_id_is_local(&self, def_id: impl DefId<I>) -> bool {
+        self.in_crate.def_id_is_local(def_id)
     }
 }
 
@@ -370,7 +434,7 @@ where
                         | ty::TypeFlags::HAS_TY_INFER,
                 ) {
                     match self.in_crate {
-                        InCrate::Local { mode } => match kind {
+                        InCrate::Local { mode, .. } => match kind {
                             ty::Projection { .. } => {
                                 if let OrphanCheckMode::Compat = mode {
                                     ControlFlow::Continue(())
