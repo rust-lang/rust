@@ -6,7 +6,7 @@ LL | #[pin_v2]
 LL | macro_def!();
    |
    = help: the `pin_v2` attribute can only be applied to data types
-   = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
+   = note: attributes on a macro invocation apply to the invocation itself and are not forwarded to its expansion
 
 error: the `pin_v2` attribute cannot be used on crates
   --> $DIR/pin_v2-attr.rs:10:4
