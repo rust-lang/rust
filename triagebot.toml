@@ -483,6 +483,11 @@ trigger_files = [
     "library/{core,alloc,std}/src/collections/vec_deque{.rs,}",
 ]
 
+[autolabel."A-rawvec"]
+trigger_files = [
+    "library/{core,alloc,std}/src/raw_vec{.rs,}",
+]
+
 [autolabel."A-env"]
 trigger_files = [
     "library/{core,alloc,std}/src/env{.rs,}",
