@@ -28,6 +28,8 @@ fn main() {
         .arg("-Zunstable-options")
         .run();
 
+    path_exists(["libaux.analysis.rmeta"]);
+
     rustc()
         .input("lib.rs")
         .crate_type("rlib")
@@ -36,13 +38,13 @@ fn main() {
         .arg("-Zunstable-options")
         .run();
 
-    invalid_utf8_contains("lib.d", "analysisaux.rmeta");
-    invalid_utf8_not_contains("lib.d", "analysisaux.rlib");
+    invalid_utf8_contains("lib.d", "libaux.analysis.rmeta");
+    invalid_utf8_not_contains("lib.d", "libaux.analysis.rlib");
 
     path_exists(["lib.d"]);
 
     rfs::remove_file("lib.d");
-    rfs::remove_file("analysisaux.rmeta");
+    rfs::remove_file("libaux.analysis.rmeta");
 
     rustc()
         .input("aux.rs")
@@ -58,9 +60,9 @@ fn main() {
         .arg("-Zunstable-options")
         .run();
 
-    path_exists(["analysislib.rmeta"]);
+    path_exists(["liblib.analysis.rmeta"]);
 
-    rfs::remove_file("analysislib.rmeta");
+    rfs::remove_file("liblib.analysis.rmeta");
 
     // With nameres it doesn't lint, with analysis it does
     let output = rustc()
@@ -77,9 +79,9 @@ fn main() {
     assert!(output.contains("named_asm_labels").not());
 
     // But the path still exists
-    path_exists(["validationnameres.rmeta"]);
+    path_exists(["libnameres.validation.rmeta"]);
 
-    rfs::remove_file("validationnameres.rmeta");
+    rfs::remove_file("libnameres.validation.rmeta");
 
     let output = rustc()
         .input("nameres.rs")
@@ -94,5 +96,5 @@ fn main() {
     assert!(output.contains("named_asm_labels"));
 
     // Won't exist because errors were emitted
-    path_not_exists(["analysisnameres.rmeta"]);
+    path_not_exists(["libnameres.analysis.rmeta"]);
 }

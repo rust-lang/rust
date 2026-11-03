@@ -4,9 +4,9 @@ error: Argument to option 'emit' missing
                                Comma separated list of types of output for the
                                compiler to emit.
                                Each TYPE has the default FILE name:
-                               * validation - validationCRATE_NAME.rmeta
+                               * validation - CRATE_NAME.validation.rmeta
                                * dep-info - CRATE_NAME.d
-                               * full-analysis - analysisCRATE_NAME.rmeta
+                               * full-analysis - CRATE_NAME.analysis.rmeta
                                * mir - CRATE_NAME.mir
                                * metadata - libCRATE_NAME.rmeta
                                * thin-link-bitcode - CRATE_NAME.indexing.o

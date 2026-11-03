@@ -15,7 +15,7 @@ query stack during panic:
 #0 [eval_to_allocation_raw] const-evaluating + checking `_`
 #1 [eval_to_const_value_raw] simplifying constant for the type system `_`
 #2 [eval_to_const_value_raw] simplifying constant for the type system `_`
-#3 [analysis] running analysis passes on crate `do_not_const_check`
+#3 [required_analysis] running only the required analysis passes on crate `do_not_const_check`
 end of query stack
 error: internal compiler error: compiler/rustc_const_eval/src/const_eval/machine.rs:LL:CC: calling non-const function `integer_min::<i32>`
   --> $DIR/do_not_const_check.rs:34:5
@@ -34,7 +34,7 @@ query stack during panic:
 #0 [eval_to_allocation_raw] const-evaluating + checking `_`
 #1 [eval_to_const_value_raw] simplifying constant for the type system `_`
 #2 [eval_to_const_value_raw] simplifying constant for the type system `_`
-#3 [analysis] running analysis passes on crate `do_not_const_check`
+#3 [required_analysis] running only the required analysis passes on crate `do_not_const_check`
 end of query stack
 error: aborting due to 2 previous errors
 
