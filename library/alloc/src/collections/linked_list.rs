@@ -20,7 +20,6 @@ use core::marker::PhantomData;
 use core::ptr::NonNull;
 use core::{fmt, mem};
 
-use super::SpecExtend;
 use crate::alloc::{Allocator, Global};
 use crate::boxed::Box;
 
@@ -2218,7 +2217,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut LinkedList<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> Extend<T> for LinkedList<T, A> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        <Self as SpecExtend<I>>::spec_extend(self, iter);
+        self.spec_extend(iter);
     }
 
     #[inline]
@@ -2227,15 +2226,29 @@ impl<T, A: Allocator> Extend<T> for LinkedList<T, A> {
     }
 }
 
-impl<I: IntoIterator, A: Allocator> SpecExtend<I> for LinkedList<I::Item, A> {
-    default fn spec_extend(&mut self, iter: I) {
-        iter.into_iter().for_each(move |elt| self.push_back(elt));
+// Identical to `T`
+trait Identical<T> {
+    fn as_mut(&mut self) -> &mut T;
+}
+
+impl<T> Identical<T> for T {
+    fn as_mut(&mut self) -> &mut T {
+        self
     }
 }
 
-impl<T> SpecExtend<LinkedList<T>> for LinkedList<T> {
-    fn spec_extend(&mut self, ref mut other: LinkedList<T>) {
-        self.append(other);
+impl<T, A: Allocator> LinkedList<T, A> {
+    fn spec_extend<I: IntoIterator<Item = T>>(&mut self, mut iter: I) {
+        if let Some(this) = core::any::try_as_dyn_mut::<_, dyn Identical<LinkedList<T>>>(self)
+            && let Some(other) =
+                core::any::try_as_dyn_mut::<_, dyn Identical<LinkedList<T>>>(&mut iter)
+        {
+            // Specialization for `LinkedList<T>`
+            this.as_mut().append(other.as_mut());
+        } else {
+            // Default implementation for `LinkedList<T, A>`
+            iter.into_iter().for_each(move |elt| self.push_back(elt));
+        }
     }
 }
 
