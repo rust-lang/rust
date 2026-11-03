@@ -15,7 +15,7 @@
 //! [^1]: This includes types, lifetimes / regions, constants in type positions,
 //! trait references and bounds.
 
-mod bounds;
+pub(crate) mod bounds;
 mod cmse;
 mod dyn_trait;
 pub mod errors;
@@ -43,9 +43,9 @@ use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
-    self, Const, FnSigKind, GenericArgKind, GenericParamDefKind, LitToConstInput, Ty, TyCtxt,
-    TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast, const_lit_matches_ty,
-    fold_regions,
+    self, Const, FnSigKind, GenericArgKind, GenericParamDefKind, IncludeSizedImplicitBounds,
+    LitToConstInput, Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized,
+    Upcast, const_lit_matches_ty, fold_regions,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{LocalModId, ModId};
@@ -3326,12 +3326,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     PredicateFilter::All,
                     OverlappingAsssocItemConstraints::Allowed,
                 );
-                self.add_implicit_sizedness_bounds(
+                self.add_implicit_bounds(
                     &mut bounds,
                     self_ty,
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     hir_ty.span,
+                    IncludeSizedImplicitBounds::Yes,
                 );
                 self.register_trait_ascription_bounds(bounds, hir_ty.hir_id, hir_ty.span);
                 self_ty
