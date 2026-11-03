@@ -818,13 +818,12 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(titlecase)]
     /// assert!('A'.is_cased());
     /// assert!('a'.is_cased());
     /// assert!(!'京'.is_cased());
     /// ```
     #[must_use]
-    #[unstable(feature = "titlecase", issue = "153892")]
+    #[stable(feature = "cased", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn is_cased(self) -> bool {
         match self {
@@ -1370,7 +1369,7 @@ impl char {
     /// [`to_lowercase()`]: Self::to_lowercase()
     #[must_use]
     #[inline]
-    #[unstable(feature = "case_ignorable", issue = "154848")]
+    #[stable(feature = "case_ignorable", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_case_ignorable(self) -> bool {
         if self.is_ascii() {
             matches!(self, '\'' | '.' | ':' | '^' | '`')

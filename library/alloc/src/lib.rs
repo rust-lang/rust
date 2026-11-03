@@ -99,7 +99,6 @@
 #![feature(byte_str)]
 #![feature(byte_str_internals)]
 #![feature(can_vector)]
-#![feature(case_ignorable)]
 #![feature(cast_maybe_uninit)]
 #![feature(cell_get_cloned)]
 #![feature(char_internals)]
