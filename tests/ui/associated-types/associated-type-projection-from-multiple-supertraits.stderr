@@ -41,8 +41,8 @@ help: consider introducing a new type parameter `T` and adding `where` constrain
    |
 LL ~ fn dent_object<COLOR, T>(c: &T) where
 LL +         T: BoxCar,
-LL +         T: Vehicle<Color = COLOR>,
-LL +         T: Box<Color = COLOR>
+LL +         T: Vehicle<Color=COLOR>,
+LL +         T: Box<Color=COLOR>
    |
 
 error[E0222]: ambiguous associated type `Color` in bounds of `BoxCar`
@@ -63,8 +63,8 @@ help: consider introducing a new type parameter `T` and adding `where` constrain
    |
 LL ~ fn other_dent_object<COLOR, T>(c: &T) where COLOR: std::fmt::Debug,
 LL +         T: BoxCar,
-LL +         T: Vehicle<Color = COLOR>,
-LL +         T: Box<Color = COLOR>
+LL +         T: Vehicle<Color=COLOR>,
+LL +         T: Box<Color=COLOR>
    |
 
 error[E0221]: ambiguous associated type `Color` in bounds of `C`

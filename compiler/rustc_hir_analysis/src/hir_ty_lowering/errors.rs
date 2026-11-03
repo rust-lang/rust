@@ -11,9 +11,8 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{HirTyCtxt, Visitor};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, HirId};
-use rustc_hir_pretty::PpAnn;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
 use rustc_middle::ty::{
@@ -504,71 +503,31 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 err.span_context(parent_span);
                 if let Some(constraint) = constraint {
-                    match constraint.kind {
-                        hir::AssocItemConstraintKind::Equality { term } => {
-                            let term: ty::Term<'_> = match term {
-                                hir::Term::Ty(ty) => self.lower_ty(ty).into(),
-                                hir::Term::Const(ct) => {
-                                    let assoc_item =
-                                        assoc_item.expect("assoc_item should be present");
-                                    let projection_term = bound.map_bound(|trait_ref| {
-                                        let item_segment = hir::PathSegment {
-                                            ident: constraint.ident,
-                                            hir_id: constraint.hir_id,
-                                            res: Res::Err,
-                                            args: Some(constraint.gen_args),
-                                            infer_args: false,
-                                            delegation_child_segment: false,
-                                        };
-
-                                        let alias_args = self.lower_generic_args_of_assoc_item(
-                                            constraint.ident.span,
-                                            assoc_item.def_id,
-                                            &item_segment,
-                                            trait_ref.args,
-                                        );
-                                        let kind = ty::AliasTermKind::ProjectionConst {
-                                            def_id: assoc_item.def_id,
-                                        };
-                                        ty::AliasTerm::new_from_args(tcx, kind, alias_args)
-                                    });
-
-                                    // FIXME(mgca): code duplication with other places we lower
-                                    // the rhs' of associated const bindings
-                                    let ty = projection_term.map_bound(|alias| {
-                                        alias.expect_ct().type_of(tcx).skip_norm_wip()
-                                    });
-                                    let ty = super::bounds::check_assoc_const_binding_type(
-                                        self,
-                                        constraint.ident,
-                                        ty,
-                                        constraint.hir_id,
-                                    );
-
-                                    self.lower_const_arg(ct, ty).into()
+                    // FIXME: come up with a better way to generate the snippet.
+                    let tr = bound.print_only_trait_path().to_string();
+                    let constraint =
+                        tcx.sess.source_map().span_to_snippet(constraint.span).unwrap_or_else(
+                            |_| match constraint.kind {
+                                hir::AssocItemConstraintKind::Equality { term } => {
+                                    let term = match term {
+                                        hir::Term::Ty(ty) => self.lower_ty(ty).to_string(),
+                                        hir::Term::Const(_) => "/* const */".to_string(),
+                                    };
+                                    format!("{assoc_ident} = {term}")
                                 }
-                            };
-                            if term.references_error() {
-                                continue;
-                            }
-                            // FIXME: come up with a better way to generate the snippet.
-                            let tr = bound.print_only_trait_path().to_string();
-                            let args = rustc_hir_pretty::generic_args_to_string(
-                                &(&tcx as &dyn HirTyCtxt<'_>) as &dyn PpAnn,
-                                constraint.gen_args,
-                            );
-                            let sugg = if tr.ends_with(">") {
-                                format!("{}, {assoc_ident}{args} = {term}>", &tr[..tr.len() - 1])
-                            } else {
-                                format!("{tr}<{assoc_ident}{args} = {term}>")
-                            };
-                            where_bounds.push(format!("        {param_name}: {sugg}"));
-                            if let ty::Param(_) = bound.self_ty().skip_binder().kind() {
-                                suggestions.push((outer_span.shrink_to_hi(), format!(" + {sugg}")));
-                            }
-                        }
-                        // FIXME: Provide a suggestion.
-                        hir::AssocItemConstraintKind::Bound { bounds: _ } => {}
+                                hir::AssocItemConstraintKind::Bound { bounds: _ } => {
+                                    format!("{assoc_ident}: /* bounds */")
+                                }
+                            },
+                        );
+                    let sugg = if tr.ends_with(">") {
+                        format!("{}, {constraint}>", &tr[..tr.len() - 1])
+                    } else {
+                        format!("{tr}<{constraint}>")
+                    };
+                    where_bounds.push(format!("        {param_name}: {sugg}"));
+                    if let ty::Param(_) = bound.self_ty().skip_binder().kind() {
+                        suggestions.push((outer_span.shrink_to_hi(), format!(" + {sugg}")));
                     }
                 } else {
                     err.span_suggestion_verbose(

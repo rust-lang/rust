@@ -37,7 +37,7 @@ LL | fn take1(_: impl Trait1<C = { gca!("?") }>) {}
 help: consider being explicit about the bounds
    |
 LL - fn take1(_: impl Trait1<C = { gca!("?") }>) {}
-LL + fn take1(_: impl Trait1 + Parent2<C = "?"> + Parent1<C = "?">) {}
+LL + fn take1(_: impl Trait1 + Parent2<C = { gca!("?") }> + Parent1<C = { gca!("?") }>) {}
    |
 
 error: aborting due to 2 previous errors
