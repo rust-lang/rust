@@ -34,6 +34,7 @@ fn main() {
     test_listen_listening();
 
     test_accept_connect();
+    test_accept_addr_nullptr();
     test_connect_error();
     test_connect_connected();
     test_connect_listening();
@@ -218,6 +219,25 @@ fn test_accept_connect() {
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
     server_thread.join().unwrap();
+}
+
+/// Test accepting an incoming connection where the `address` pointer
+/// of the `accept` function is null but the `address_len` pointer is valid.
+/// The `accept` should succeed and the `address_len` should be left unchanged.
+fn test_accept_addr_nullptr() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    unsafe {
+        errno_result(libc::accept(
+            server_sockfd,
+            ptr::null_mut::<libc::sockaddr_in>().cast(),
+            ptr::without_provenance_mut::<libc::socklen_t>(0x200),
+        ))
+        .unwrap();
+    }
 }
 
 /// Test connecting to an address where nothing is listening and ensure the error matches what
