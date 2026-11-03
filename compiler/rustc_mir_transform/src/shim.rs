@@ -126,7 +126,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
         }
         ty::ShimKind::ThreadLocal(..) => build_thread_local_shim(tcx, shim),
         ty::ShimKind::Clone(def_id, ty) => build_clone_shim(tcx, def_id, ty),
-        ty::ShimKind::FnPtrAsPtr(def_id, ty) => build_fn_ptr_as_ptr_shim(tcx, def_id, ty),
+        ty::ShimKind::FnAddrAsPtr(def_id, ty) => build_fn_addr_as_ptr_shim(tcx, def_id, ty),
         ty::ShimKind::FnPtrFromPtr(def_id, ty) => build_fn_ptr_from_ptr_shim(tcx, def_id, ty),
         ty::ShimKind::FutureDropPoll(def_id, proxy_ty, impl_ty) => {
             let mut body =
@@ -1095,7 +1095,7 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 ///     }
 /// }
 /// ```
-fn build_fn_ptr_as_ptr_shim<'tcx>(
+fn build_fn_addr_as_ptr_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     self_ty: Ty<'tcx>,
@@ -1116,7 +1116,7 @@ fn build_fn_ptr_as_ptr_shim<'tcx>(
     let Some(sig) =
         tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).skip_norm_wip().no_bound_vars()
     else {
-        span_bug!(span, "FnPtr::as_ptr with bound vars for `{self_ty}`");
+        span_bug!(span, "FnAddr::as_ptr with bound vars for `{self_ty}`");
     };
     let mut locals = local_decls_for_sig(&sig, span);
 
@@ -1146,7 +1146,7 @@ fn build_fn_ptr_as_ptr_shim<'tcx>(
         Some(Terminator { source_info, kind: TerminatorKind::Return }),
         false,
     );
-    let source = MirSource::from_shim(ty::ShimKind::FnPtrAsPtr(def_id, self_ty));
+    let source = MirSource::from_shim(ty::ShimKind::FnAddrAsPtr(def_id, self_ty));
     new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
 }
 

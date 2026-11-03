@@ -1,7 +1,7 @@
 #![feature(fn_static)]
 //@ run-pass
 
-use std::ops::FnPtr;
+use std::ops::{FnPtr, FnAddr};
 
 fn bar(a: u64) -> u64 {
     a

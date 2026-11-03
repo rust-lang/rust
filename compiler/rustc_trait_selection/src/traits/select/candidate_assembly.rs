@@ -126,6 +126,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Some(LangItem::FnPtrTrait) => {
                     self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
                 }
+                Some(LangItem::FnAddrTrait) => {
+                    self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
+                }
                 Some(LangItem::BikeshedGuaranteedNoDrop) => {
                     self.assemble_candidates_for_bikeshed_guaranteed_no_drop_trait(
                         obligation,
