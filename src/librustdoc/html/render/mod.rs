@@ -2329,7 +2329,6 @@ fn render_impl(
             )?;
         }
         if render_mode == RenderMode::Normal {
-            let toggled = !(impl_items.is_empty() && default_impl_items.is_empty());
             let deprecation_attr = if impl_.is_deprecated
                 || trait_.is_some_and(|trait_| trait_.is_deprecated(cx.tcx()))
             {
@@ -2337,15 +2336,6 @@ fn render_impl(
             } else {
                 ""
             };
-            if toggled {
-                close_tags.push("</details>");
-                write!(
-                    w,
-                    "<details class=\"toggle implementors-toggle{deprecation_attr}\"{}>\
-                        <summary>",
-                    if rendering_params.toggle_open_by_default { " open" } else { "" }
-                )?;
-            }
 
             let (before_dox, after_dox) = i
                 .impl_item
@@ -2363,6 +2353,18 @@ fn render_impl(
                     .split_summary_and_content()
                 })
                 .unwrap_or((None, None));
+
+            let toggled =
+                !(impl_items.is_empty() && default_impl_items.is_empty() && after_dox.is_none());
+            if toggled {
+                close_tags.push("</details>");
+                write!(
+                    w,
+                    "<details class=\"toggle implementors-toggle{deprecation_attr}\"{}>\
+                        <summary>",
+                    if rendering_params.toggle_open_by_default { " open" } else { "" }
+                )?;
+            }
 
             write!(
                 w,
