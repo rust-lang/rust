@@ -1,9 +1,9 @@
 use super::{TRANSMUTE_BYTES_TO_STR, TRANSMUTE_PTR_TO_PTR};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::{std_or_core, sugg};
+use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
-use rustc_lint::LateContext;
+use rustc_lint::{LateContext, std_or_core};
 use rustc_middle::ty::{self, Ty};
 
 /// Checks for `transmute_bytes_to_str` and `transmute_ptr_to_ptr` lints.

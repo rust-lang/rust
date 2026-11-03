@@ -2036,16 +2036,6 @@ pub fn is_expr_temporary_value(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     })
 }
 
-pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
-    if is_no_core_crate(cx) {
-        None
-    } else if is_no_std_crate(cx) {
-        Some("core")
-    } else {
-        Some("std")
-    }
-}
-
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
     find_attr!(cx.tcx, crate, NoStd)
 }
