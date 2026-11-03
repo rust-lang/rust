@@ -733,6 +733,14 @@ impl Target {
             }
         }
 
+        if let Some(standard_library_support) = &self.metadata.standard_library_support
+            && standard_library_support.default > standard_library_support.supported
+        {
+            return Err(format!(
+                "`standard_library_support.default` cannot be set to a value which is less than that of `supported`"
+            ));
+        }
+
         Ok(())
     }
 }
