@@ -263,6 +263,12 @@ pub(crate) fn add_global<'ll>(llmod: Module<'ll>, ty: &'ll Type, name_cstr: &CSt
 
 pub(crate) fn set_initializer(llglobal: &Value, constant_val: &Value) {
     unsafe {
+        assert_eq!(
+            crate::llvm::LLVMGlobalGetValueType(llglobal),
+            crate::llvm::LLVMTypeOf(constant_val)
+        );
+    }
+    unsafe {
         LLVMSetInitializer(llglobal, constant_val);
     }
 }

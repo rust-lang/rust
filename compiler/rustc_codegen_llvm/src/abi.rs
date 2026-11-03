@@ -251,7 +251,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Ignore => {}
             // Sized indirect arguments
             PassMode::Indirect { attrs, address_space: _, mode: _ } => {
-                let align = attrs.pointee_align.unwrap_or(self.layout.align.abi);
+                let align = attrs.pointee_align.unwrap_or(self.layout.align);
                 OperandValue::Ref(PlaceValue::new_sized(val, align)).store(bx, dst);
             }
             // Unsized indirect arguments cannot be stored
@@ -280,7 +280,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
                     dst.val.llval,
-                    self.layout.align.abi,
+                    self.layout.align,
                     llscratch,
                     scratch_align,
                     bx.const_usize(copy_bytes),

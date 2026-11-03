@@ -25,7 +25,7 @@ fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) {
     let layout = bx.layout_of(ty);
     let size = layout.size;
-    let align = layout.align.abi;
+    let align = layout.align;
     let size = bx.unchecked_sumul(bx.const_usize(size.bytes()), count);
     let flags = if volatile { MemFlags::VOLATILE } else { MemFlags::empty() };
     if allow_overlap {
@@ -45,7 +45,7 @@ fn memset_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) {
     let layout = bx.layout_of(ty);
     let size = layout.size;
-    let align = layout.align.abi;
+    let align = layout.align;
     let size = bx.mul(bx.const_usize(size.bytes()), count);
     let flags = if volatile { MemFlags::VOLATILE } else { MemFlags::empty() };
     bx.memset(dst, val, size, align, flags);
@@ -94,7 +94,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // into the (unoptimized) direct swapping implementation, so we disable it.
                 || bx.sess().target.arch == Arch::SpirV
             {
-                let align = pointee_layout.align.abi;
+                let align = pointee_layout.align;
                 let x_place = args[0].val.deref(align);
                 let y_place = args[1].val.deref(align);
                 bx.typed_place_swap(x_place, y_place, pointee_layout);

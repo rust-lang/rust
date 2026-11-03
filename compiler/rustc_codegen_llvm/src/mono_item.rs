@@ -20,7 +20,6 @@ use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::diagnostics::SymbolAlreadyDefined;
-use crate::type_of::LayoutLlvmExt;
 use crate::{base, llvm};
 
 impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
@@ -37,7 +36,7 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         // out the llvm type from the actual evaluated initializer.
         let ty =
             if nested { self.tcx.types.unit } else { instance.ty(self.tcx, self.typing_env()) };
-        let llty = self.layout_of(ty).llvm_type(self);
+        let llty = self.type_array(self.type_i8(), self.layout_of(ty).size.bytes());
 
         let g = self.define_global(symbol_name, llty).unwrap_or_else(|| {
             self.sess()

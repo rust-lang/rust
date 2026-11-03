@@ -233,7 +233,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
             sym::volatile_load | sym::unaligned_volatile_load => {
                 let ptr = args[0].immediate();
-                let abi_align = result_layout.align.abi;
+                let abi_align = result_layout.align;
                 let ptr_align = if name == sym::volatile_load { abi_align } else { Align::ONE };
                 let load = self.volatile_load(result.layout.gcc_type(self), ptr, ptr_align);
                 if let BackendRepr::Scalar(scalar) = result.layout.backend_repr {
@@ -720,7 +720,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             return;
         }
         if self.is_sized_indirect() {
-            OperandValue::Ref(PlaceValue::new_sized(val, self.layout.align.abi)).store(bx, dst)
+            OperandValue::Ref(PlaceValue::new_sized(val, self.layout.align)).store(bx, dst)
         } else if self.is_unsized_indirect() {
             bug!("unsized `ArgAbi` cannot be stored");
         } else if let PassMode::Cast { ref cast, .. } = self.mode {
@@ -730,7 +730,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             if can_store_through_cast_ptr {
                 let cast_ptr_llty = bx.type_ptr_to(cast.gcc_type(bx));
                 let cast_dst = bx.pointercast(dst.val.llval, cast_ptr_llty);
-                bx.store(val, cast_dst, self.layout.align.abi);
+                bx.store(val, cast_dst, self.layout.align);
             } else {
                 // The actual return type is a struct, but the ABI
                 // adaptation code has cast it into some scalar type.  The
@@ -758,7 +758,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
                     dst.val.llval,
-                    self.layout.align.abi,
+                    self.layout.align,
                     scratch,
                     scratch_align,
                     bx.const_usize(self.layout.size.bytes()),

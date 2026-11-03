@@ -535,6 +535,7 @@ fn clean_hir_term<'tcx>(
         hir::Term::Const(c) => {
             // FIXME(generic_const_items): this should instantiate with the alias item's args
             let ty = cx.tcx.type_of(assoc_item.unwrap()).instantiate_identity().skip_norm_wip();
+            // FIXME: Avoid re-HIR-ty-lowering.
             let ct = lower_const_arg_for_rustdoc(cx.tcx, c, ty);
             Term::Constant(clean_middle_const(ty::Binder::dummy(ct)))
         }
@@ -719,9 +720,13 @@ fn clean_generic_param<'tcx>(
             param.name.ident().name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
-                default: default.map(|ct| {
+                default: default.map(|_| {
                     Box::new(
-                        lower_const_arg_for_rustdoc(cx.tcx, ct, lower_ty(cx.tcx, ty)).to_string(),
+                        cx.tcx
+                            .const_param_default(param.def_id)
+                            .instantiate_identity()
+                            .skip_norm_wip()
+                            .to_string(),
                     )
                 }),
             },
@@ -1322,8 +1327,10 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                     generics,
                     bounds,
                     type_: ty.map(|ty| {
-                        let middle_ty = ty::Binder::dummy(lower_ty(cx.tcx, ty));
-                        let middle_type = Some(clean_middle_ty(middle_ty, cx, None, None));
+                        let middle_ty =
+                            cx.tcx.type_of(local_did).instantiate_identity().skip_norm_wip();
+                        let middle_type =
+                            Some(clean_middle_ty(ty::Binder::dummy(middle_ty), cx, None, None));
                         AliasedType { type_: clean_ty(ty, cx), middle_type }
                     }),
                 }))
@@ -1362,8 +1369,8 @@ pub(crate) fn clean_impl_item<'tcx>(
             hir::ImplItemKind::Type(ty) => {
                 let generics = clean_generics(impl_.generics, cx);
                 let type_ = clean_ty(ty, cx);
-                let middle_type =
-                    clean_middle_ty(ty::Binder::dummy(lower_ty(cx.tcx, ty)), cx, None, None);
+                let middle_ty = cx.tcx.type_of(local_did).instantiate_identity().skip_norm_wip();
+                let middle_type = clean_middle_ty(ty::Binder::dummy(middle_ty), cx, None, None);
                 ItemKind::AssocType(Box::new(AssocType {
                     generics,
                     bounds: Vec::new(),
@@ -1735,13 +1742,13 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Type {
             }
         }
         hir::QPath::Resolved(Some(qself), p) => {
-            // Try to normalize `<X as Y>::T` to a type
-            let ty = lower_ty(cx.tcx, hir_ty);
-            // `hir_to_ty` can return projection types with escaping vars for GATs, e.g. `<() as Trait>::Gat<'_>`
-            if !ty.has_escaping_bound_vars()
-                && let Some(normalized_value) = normalize(cx, ty::Binder::dummy(ty))
+            if cx.tcx.sess.opts.unstable_opts.normalize_docs
+                // FIXME: Avoid re-HIR-ty-lowering.
+                && let ty = lower_ty(cx.tcx, hir_ty)
+                && !ty.has_escaping_bound_vars()
+                && let Some(ty) = normalize(cx, ty::Binder::dummy(ty))
             {
-                return clean_middle_ty(normalized_value, cx, None, None);
+                return clean_middle_ty(ty, cx, None, None);
             }
 
             let trait_segments = &p.segments[..p.segments.len() - 1];
@@ -1763,10 +1770,11 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Type {
             }))
         }
         hir::QPath::TypeRelative(qself, segment) => {
-            let ty = lower_ty(cx.tcx, hir_ty);
             let self_type = clean_ty(qself, cx);
 
-            let (trait_, should_fully_qualify) = match ty.kind() {
+            // FIXME(#156711): Instead of re-HIR-ty-lowering the path, obtain the type dependent
+            //                 resolution instead.
+            let (trait_, should_fully_qualify) = match lower_ty(cx.tcx, hir_ty).kind() {
                 ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
                     let res = Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
                     let trait_ = clean_path(&hir::Path { span, res, segments: &[] }, cx);
@@ -1780,7 +1788,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Type {
                 ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }) => (None, false),
                 // Rustdoc handles `ty::Error`s by turning them into `Type::Infer`s.
                 ty::Error(_) => return Type::Infer,
-                _ => bug!("clean: expected associated type, found `{ty:?}`"),
+                ty => bug!("clean: expected associated type, found `{ty:?}`"),
             };
 
             Type::QPath(Box::new(QPathData {
@@ -1879,6 +1887,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Typ
         TyKind::Pat(inner_ty, pat) => {
             // Local HIR pattern types should print the same way as cross-crate inlined ones,
             // so lower to the canonical `rustc_middle::ty::Pattern` representation first.
+            // FIXME: Avoid re-HIR-ty-lowering.
             let pat = match lower_ty(cx.tcx, ty).kind() {
                 ty::Pat(_, pat) => format!("{pat:?}").into_boxed_str(),
                 _ => format!("{pat:?}").into(),
@@ -1904,6 +1913,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Typ
             let length = match const_arg.kind {
                 hir::ConstArgKind::Infer(..) | hir::ConstArgKind::Error(..) => "_".to_string(),
                 hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) => {
+                    // FIXME: Avoid re-HIR-ty-lowering.
                     let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, cx.tcx.types.usize);
                     let typing_env = ty::TypingEnv::post_analysis(cx.tcx, *def_id);
                     let ct =
@@ -1916,6 +1926,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'_>, cx: &mut DocContext<'tcx>) -> Typ
                 | hir::ConstArgKind::Tup(..)
                 | hir::ConstArgKind::Array(..)
                 | hir::ConstArgKind::Literal { .. } => {
+                    // FIXME: Avoid re-HIR-ty-lowering.
                     let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, cx.tcx.types.usize);
                     print_const(cx.tcx, ct)
                 }
@@ -2618,10 +2629,24 @@ fn clean_variant_data<'tcx>(
 }
 
 fn clean_path<'tcx>(path: &hir::Path<'_>, cx: &mut DocContext<'tcx>) -> Path {
-    Path {
+    let mut path = Path {
         res: path.res,
         segments: path.segments.iter().map(|x| clean_path_segment(x, cx)).collect(),
+    };
+    // It's possible to have `use x::self;`. To prevent rustdoc to display "self" as the name,
+    // we need to check if the path ends with `self` and remove it. To be noted: if the path is
+    // `x::self`, the first item is always removed and only the `self` is present. In such cases,
+    // we need to replace `self` with the resolution name instead.
+    if path.segments.last().is_some_and(|last| last.name == kw::SelfLower) {
+        if path.segments.len() > 1 {
+            path.segments.pop();
+        } else if let Some(def_id) = path.res.opt_def_id()
+            && let Some(name) = cx.tcx.opt_item_name(def_id)
+        {
+            path.segments.last_mut().unwrap().name = name;
+        }
     }
+    path
 }
 
 fn clean_generic_args<'tcx>(
@@ -3156,9 +3181,6 @@ fn clean_use_statement<'tcx>(
             for (tree, hir_id, def_id) in items {
                 let mut segments = path.segments.to_vec();
                 segments.extend(tree.prefix.segments.iter());
-                if segments.last().is_some_and(|seg| seg.ident.name == kw::SelfLower) {
-                    segments.pop();
-                }
                 let path = hir::UsePath {
                     segments: &segments,
                     res: tree.prefix.res,
