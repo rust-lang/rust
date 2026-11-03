@@ -740,7 +740,8 @@ impl EarlyLintPass for AnonymousParameters {
 }
 
 declare_lint! {
-    /// The `duplicate_parameter_names` lint detects duplicate parameter names.
+    /// The `duplicate_parameter_names` lint detects duplicate parameter names
+    /// in functions without bodies.
     ///
     /// ### Example
     ///
@@ -761,7 +762,7 @@ declare_lint! {
     /// is confusing and inconsistent behaviour, and is discouraged.
     pub DUPLICATE_PARAMETER_NAMES,
     Warn,
-    "detects duplicate parameter names",
+    "detects duplicate parameter names in functions without bodies",
 }
 
 declare_lint_pass!(
@@ -774,6 +775,10 @@ fn find_duplicated_parameters(cx: &EarlyContext<'_>, params: &[ast::Param]) {
 
     for param in params {
         if let ast::PatKind::Ident(_, ident, _) = param.pat.kind {
+            if ident.name == kw::SelfLower {
+                continue;
+            }
+
             let name = ident.normalize_to_macro_rules();
 
             if let Some(&prev_use) = map.get(&name) {

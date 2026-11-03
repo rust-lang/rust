@@ -11,6 +11,10 @@ trait Test {
     // Functions with a body should hard error, and should not show a warning
     fn fn_with_body(x: usize, x: u64) {}
     //~^ ERROR identifier `x` is bound more than once in this parameter list
+
+    fn three_args(x: usize, x: usize, x: u8);
+    //~^ WARN identifier `x` is bound more than once in this parameter list
+    //~| WARN identifier `x` is bound more than once in this parameter list
 }
 
 unsafe extern "C" {

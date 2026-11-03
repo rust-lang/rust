@@ -28,7 +28,6 @@ fn semantics<F>(
     self2: fn(self, self),
     //~^ ERROR `self` parameter is only allowed in associated functions
     //~| ERROR unexpected `self` parameter in function
-    //~| WARN identifier `self` is bound more than once in this parameter list
     self3: fn(bool, self),
     //~^ ERROR unexpected `self` parameter in function
 
