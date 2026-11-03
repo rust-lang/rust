@@ -2629,10 +2629,24 @@ fn clean_variant_data<'tcx>(
 }
 
 fn clean_path<'tcx>(path: &hir::Path<'_>, cx: &mut DocContext<'tcx>) -> Path {
-    Path {
+    let mut path = Path {
         res: path.res,
         segments: path.segments.iter().map(|x| clean_path_segment(x, cx)).collect(),
+    };
+    // It's possible to have `use x::self;`. To prevent rustdoc to display "self" as the name,
+    // we need to check if the path ends with `self` and remove it. To be noted: if the path is
+    // `x::self`, the first item is always removed and only the `self` is present. In such cases,
+    // we need to replace `self` with the resolution name instead.
+    if path.segments.last().is_some_and(|last| last.name == kw::SelfLower) {
+        if path.segments.len() > 1 {
+            path.segments.pop();
+        } else if let Some(def_id) = path.res.opt_def_id()
+            && let Some(name) = cx.tcx.opt_item_name(def_id)
+        {
+            path.segments.last_mut().unwrap().name = name;
+        }
     }
+    path
 }
 
 fn clean_generic_args<'tcx>(
@@ -3167,9 +3181,6 @@ fn clean_use_statement<'tcx>(
             for (tree, hir_id, def_id) in items {
                 let mut segments = path.segments.to_vec();
                 segments.extend(tree.prefix.segments.iter());
-                if segments.last().is_some_and(|seg| seg.ident.name == kw::SelfLower) {
-                    segments.pop();
-                }
                 let path = hir::UsePath {
                     segments: &segments,
                     res: tree.prefix.res,
