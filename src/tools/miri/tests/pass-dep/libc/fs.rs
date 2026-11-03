@@ -40,12 +40,16 @@ fn main() {
     test_ftruncate::<libc::off64_t>(libc::ftruncate64);
     test_create_read_write();
     test_read_and_uninit();
-    test_open_args();
+    test_open_args(libc::open);
+    #[cfg(target_os = "linux")]
+    test_open_args(libc::open64);
     test_open_nofollow();
     test_open_dangling_symlink();
     test_open_directory();
     test_open_exclusive();
-    test_openat();
+    test_openat(libc::openat);
+    #[cfg(target_os = "linux")]
+    test_openat(libc::openat64);
     #[cfg(target_os = "linux")]
     test_o_tmpfile_flag();
     test_posix_mkstemp();
@@ -334,13 +338,15 @@ fn test_statx_on_empty_path() {
     }
 }
 
-fn test_open_args() {
+fn test_open_args(
+    open: unsafe extern "C" fn(path: *const libc::c_char, oflag: libc::c_int, ...) -> libc::c_int,
+) {
     let path = utils::prepare_with_content("miri_test_open_args.txt", &[]);
     let name = utils::into_c_string(path);
 
     // Works with 2 or 3 arguments.
-    let _fd = errno_result(unsafe { libc::open(name.as_ptr(), libc::O_RDONLY) }).unwrap();
-    let _fd = errno_result(unsafe { libc::open(name.as_ptr(), libc::O_RDONLY, 42) }).unwrap();
+    let _fd = errno_result(unsafe { open(name.as_ptr(), libc::O_RDONLY) }).unwrap();
+    let _fd = errno_result(unsafe { open(name.as_ptr(), libc::O_RDONLY, 42) }).unwrap();
 }
 
 fn test_open_nofollow() {
@@ -487,7 +493,14 @@ fn test_open_exclusive() {
     assert_eq!(exist_err.raw_os_error().unwrap(), libc::EEXIST, "unexpected errno: {exist_err}");
 }
 
-fn test_openat() {
+fn test_openat(
+    openat: unsafe extern "C" fn(
+        dirfd: libc::c_int,
+        pathname: *const libc::c_char,
+        flags: libc::c_int,
+        ...
+    ) -> libc::c_int,
+) {
     let path = utils::prepare("miri_test_openat");
     fs::create_dir(&path).unwrap();
     fs::create_dir(&path.join("dir")).unwrap();
@@ -495,36 +508,31 @@ fn test_openat() {
     let cpath = utils::into_c_string(&path);
 
     // Absolute path, can use garbage dirfd.
-    let dirfd =
-        errno_result(unsafe { libc::openat(999, cpath.as_ptr(), libc::O_DIRECTORY) }).unwrap();
+    let dirfd = errno_result(unsafe { openat(999, cpath.as_ptr(), libc::O_DIRECTORY) }).unwrap();
 
     // Open file relative to dirfd.
-    let fd =
-        errno_result(unsafe { libc::openat(dirfd, c"file.txt".as_ptr(), libc::O_RDWR) }).unwrap();
+    let fd = errno_result(unsafe { openat(dirfd, c"file.txt".as_ptr(), libc::O_RDWR) }).unwrap();
     let data = libc_utils::read_exact_array::<4>(fd).unwrap();
     assert_eq!(&data, b"data");
     errno_check(unsafe { libc::close(fd) });
     // That should error with O_DIRECTORY.
-    let err = errno_result(unsafe { libc::openat(dirfd, c"file.txt".as_ptr(), libc::O_DIRECTORY) })
+    let err = errno_result(unsafe { openat(dirfd, c"file.txt".as_ptr(), libc::O_DIRECTORY) })
         .unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR);
 
     // Open dir relative to handle.
     let dirfd2 =
-        errno_result(unsafe { libc::openat(dirfd, c"dir".as_ptr(), libc::O_DIRECTORY) }).unwrap();
+        errno_result(unsafe { openat(dirfd, c"dir".as_ptr(), libc::O_DIRECTORY) }).unwrap();
     errno_check(unsafe { libc::close(dirfd2) });
 
     // Re-open dir relative to itself. Even without O_DIRECTORY.
-    let dirfd2 =
-        errno_result(unsafe { libc::openat(dirfd, c".".as_ptr(), libc::O_RDONLY) }).unwrap();
-    let fd =
-        errno_result(unsafe { libc::openat(dirfd2, c"file.txt".as_ptr(), libc::O_RDWR) }).unwrap();
+    let dirfd2 = errno_result(unsafe { openat(dirfd, c".".as_ptr(), libc::O_RDONLY) }).unwrap();
+    let fd = errno_result(unsafe { openat(dirfd2, c"file.txt".as_ptr(), libc::O_RDWR) }).unwrap();
     errno_check(unsafe { libc::close(fd) });
     errno_check(unsafe { libc::close(dirfd2) });
 
     // Empty path errors.
-    let err =
-        errno_result(unsafe { libc::openat(dirfd, c"".as_ptr(), libc::O_RDONLY) }).unwrap_err();
+    let err = errno_result(unsafe { openat(dirfd, c"".as_ptr(), libc::O_RDONLY) }).unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
 
     // Open things via symlink.
@@ -532,12 +540,10 @@ fn test_openat() {
         fs::symlink("dir", path.join("dirlink")).unwrap();
         fs::symlink("../file.txt", path.join("dir/filelink")).unwrap();
         let dirfd2 =
-            errno_result(unsafe { libc::openat(dirfd, c"dirlink".as_ptr(), libc::O_RDONLY) })
-                .unwrap();
+            errno_result(unsafe { openat(dirfd, c"dirlink".as_ptr(), libc::O_RDONLY) }).unwrap();
         // This link points to above `dirfd2` but that should still work.
         let fd =
-            errno_result(unsafe { libc::openat(dirfd2, c"filelink".as_ptr(), libc::O_RDONLY) })
-                .unwrap();
+            errno_result(unsafe { openat(dirfd2, c"filelink".as_ptr(), libc::O_RDONLY) }).unwrap();
         let data = libc_utils::read_exact_array::<4>(fd).unwrap();
         assert_eq!(&data, b"data");
         errno_check(unsafe { libc::close(fd) });
@@ -547,17 +553,15 @@ fn test_openat() {
         // See <https://github.com/rust-lang/miri/issues/5406>.
         if cfg!(not(windows_host)) {
             // That should fail with O_NOFOLLOW.
-            let err =
-                errno_result(unsafe { libc::openat(dirfd, c"dirlink".as_ptr(), libc::O_NOFOLLOW) })
-                    .unwrap_err();
+            let err = errno_result(unsafe { openat(dirfd, c"dirlink".as_ptr(), libc::O_NOFOLLOW) })
+                .unwrap_err();
             assert!(
                 matches!(err.raw_os_error().unwrap(), libc::ELOOP | libc::EMLINK),
                 "unexpected errno: {err}"
             );
-            let err = errno_result(unsafe {
-                libc::openat(dirfd, c"dir/filelink".as_ptr(), libc::O_NOFOLLOW)
-            })
-            .unwrap_err();
+            let err =
+                errno_result(unsafe { openat(dirfd, c"dir/filelink".as_ptr(), libc::O_NOFOLLOW) })
+                    .unwrap_err();
             assert!(
                 matches!(err.raw_os_error().unwrap(), libc::ELOOP | libc::EMLINK),
                 "unexpected errno: {err}"
@@ -565,7 +569,7 @@ fn test_openat() {
             // But if only the first component is a symlink, that works fine.
             fs::rename(path.join("file.txt"), path.join("dir/file.txt")).unwrap();
             let fd = errno_result(unsafe {
-                libc::openat(dirfd, c"dirlink/file.txt".as_ptr(), libc::O_NOFOLLOW)
+                openat(dirfd, c"dirlink/file.txt".as_ptr(), libc::O_NOFOLLOW)
             })
             .unwrap();
             let data = libc_utils::read_exact_array::<4>(fd).unwrap();

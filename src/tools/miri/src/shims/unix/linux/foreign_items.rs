@@ -40,7 +40,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match link_name.as_str() {
             // File related shims
             "open64" => {
-                // FIXME: This does not have a direct test (#3179).
                 // "open64" means that the file is opened with O_LARGEFILE, which we always do.
                 let ([path_raw, flag], varargs) = ecx.check_shim_sig_variadic(
                     shim_sig!(extern "C" fn(*_, i32, ...) -> i32),
@@ -50,7 +49,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ecx.write_scalar(result, dest)?;
             }
             "openat64" => {
-                // FIXME: This does not have a direct test (#3179).
                 // "openat64" means that the file is opened with O_LARGEFILE, which we always do.
                 let ([dirfd, path_raw, flag], varargs) = ecx.check_shim_sig_variadic(
                     shim_sig!(extern "C" fn(i32, *_, i32, ...) -> i32),
