@@ -469,6 +469,19 @@ impl Session {
 
                 t!(fs::create_dir_all(&snapshot_build_dir));
 
+                // Share the rustc-perf between snapshots.
+                let initial_rustc_perf_out_path = sess.out.join("tmp/rustc-perf");
+                if !t!(fs::exists(&initial_rustc_perf_out_path)) {
+                    t!(fs::create_dir_all(&initial_rustc_perf_out_path));
+                }
+                t!(fs::create_dir_all(snapshot_root.join("build/tmp/")));
+
+                t!(symlink_dir(
+                    &sess,
+                    &initial_rustc_perf_out_path,
+                    &snapshot_root.join("build/tmp/rustc-perf"),
+                ));
+
                 sess.config.src = snapshot_root;
                 sess.config.out = snapshot_build_dir;
             }
