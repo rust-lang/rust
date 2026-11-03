@@ -327,7 +327,7 @@ cfg_select! {
     any(true, /* comment */
         true, true, // true,
         true, )
-        // comment before arrow
+        /* comment before arrow */
         => {}
 
     not(false // comment
@@ -339,12 +339,12 @@ cfg_select! {
     ) => "any"
 }
 
-// comments before and after the `=>` get dropped right now
+// comments before and after the `=>` are kept
 cfg_select! {
     any(true,
         true, true,
         true, )
-        // commetn before arrow
+        /* comment before arrow */
         => {}
 
     not(false
@@ -355,6 +355,15 @@ cfg_select! {
     any(false
     ) => // comment before brace
     "any"
+}
+
+// FIXME: not formatted, a line comment before `=>` would comment out the `=>`
+cfg_select! {
+    any(true,
+        true, true,
+        true, )
+        // line comment before arrow
+        => {}
 }
 
 
@@ -752,7 +761,7 @@ cfg_select! {
     any(true, /* comment */
         true, true, // true,
         true, )
-        // comment before arrow
+        /* comment before arrow */
         => {}
 
     not(false // comment
@@ -764,12 +773,12 @@ cfg_select! {
     ) => "any"
 }
 
-// comments before and after the `=>` get dropped right now
+// comments before and after the `=>` are kept
 cfg_select! {
     any(true,
         true, true,
         true, )
-        // commetn before arrow
+        /* comment before arrow */
         => {}
 
     not(false
