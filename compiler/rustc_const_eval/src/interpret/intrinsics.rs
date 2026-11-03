@@ -1050,7 +1050,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx> {
         let count = self.read_target_usize(count)?;
         let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap())?;
-        let (size, align) = (layout.size, layout.align.abi);
+        let (size, align) = (layout.size, layout.align);
 
         let size = self.compute_size_in_bytes(size, count).ok_or_else(|| {
             err_ub_format!(
@@ -1122,7 +1122,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             .ok_or_else(|| err_ub_format!("overflow computing total size of `{name}`"))?;
 
         // Check alignment as well. We set the attribute in LLVM.
-        self.check_ptr_align(dst, layout.align.abi)?;
+        self.check_ptr_align(dst, layout.align)?;
 
         let bytes = std::iter::repeat_n(byte, len.bytes_usize());
         self.write_bytes_ptr(dst, bytes)
@@ -1158,7 +1158,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                          op: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>|
          -> InterpResult<'tcx, &[u8]> {
             let ptr = this.read_pointer(op)?;
-            this.check_ptr_align(ptr, layout.align.abi)?;
+            this.check_ptr_align(ptr, layout.align)?;
             let Some(alloc_ref) = self.get_ptr_alloc(ptr, layout.size)? else {
                 // zero-sized access
                 return interp_ok(&[]);

@@ -312,7 +312,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 // `MaybeUninint<&dyn Trait>` would load as `{ [i64x2] }` which gives assertions later
                 // (if we're lucky) from things not being pointers that ought to be.
                 let ptr = args[0].immediate();
-                let abi_align = result_layout.align.abi;
+                let abi_align = result_layout.align;
                 let ptr_align = if name == sym::volatile_load { abi_align } else { Align::ONE };
                 let need_black_box = llvm_version < (23, 0, 0);
                 if result_layout.is_zst() {
