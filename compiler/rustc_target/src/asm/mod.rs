@@ -711,13 +711,19 @@ impl InlineAsmRegClass {
         })
     }
 
-    /// Returns the list of template modifiers that can be used with this
-    /// register class.
-    pub fn valid_modifiers(self, arch: InlineAsmArch) -> &'static [char] {
+    /// Returns the list of template modifiers that can be used with this register class, as well as
+    /// whether the `asm_experimental_reg` feature is enabled: there can be template modifiers that
+    /// apply to currently unstable registers, and we don't want to make these modifiers usable
+    /// without the feature gate.
+    pub fn valid_modifiers(
+        self,
+        arch: InlineAsmArch,
+        allow_experimental_reg: bool,
+    ) -> &'static [char] {
         match self {
             Self::X86(r) => r.valid_modifiers(arch),
             Self::Arm(r) => r.valid_modifiers(arch),
-            Self::AArch64(r) => r.valid_modifiers(arch),
+            Self::AArch64(r) => r.valid_modifiers(arch, allow_experimental_reg),
             Self::Amdgpu(r) => r.valid_modifiers(arch),
             Self::RiscV(r) => r.valid_modifiers(arch),
             Self::Nvptx(r) => r.valid_modifiers(arch),
