@@ -269,7 +269,7 @@ fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let ty = cx.typeck_results().expr_ty(receiver)
         && owns_allocation(cx.tcx, ty)
         && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && find_attr!(cx.tcx, fn_id, RustcAsPtr)
+        && find_attr!(cx.tcx, fn_id, LintAsPtr)
     {
         cx.tcx.emit_node_span_lint(
             DANGLING_POINTERS_FROM_TEMPORARIES,
