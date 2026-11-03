@@ -7,15 +7,6 @@ use rustc_structures::CollapseMacroDebuginfo;
 use super::prelude::*;
 use crate::diagnostics::{MacroExportOnDeclMacro, MacroOnlyAttribute};
 
-pub(crate) struct MacroEscapeParser;
-impl NoArgsAttributeParser for MacroEscapeParser {
-    const PATH: &[Symbol] = &[sym::macro_escape];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets<'_> = MACRO_USE_ALLOWED_TARGETS;
-    const STABILITY: AttributeStability = AttributeStability::Stable;
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::MacroEscape;
-}
-
 /// `#[macro_use]` attributes can either:
 /// - Use all macros from a crate, if provided without arguments
 /// - Use specific macros from a crate, if provided with arguments `#[macro_use(macro1, macro2)]`
