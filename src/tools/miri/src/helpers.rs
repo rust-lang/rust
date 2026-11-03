@@ -832,7 +832,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else {
             this.libc_ty_layout("wchar_t")
         };
-        self.read_c_str_with_char_size(ptr, wchar_t.size, wchar_t.align.abi)
+        self.read_c_str_with_char_size(ptr, wchar_t.size, wchar_t.align)
     }
 
     fn frame_in_std(&self) -> bool {

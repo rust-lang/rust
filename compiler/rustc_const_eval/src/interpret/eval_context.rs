@@ -423,7 +423,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         layout: &TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         if layout.is_sized() {
-            return interp_ok(Some((layout.size, layout.align.abi)));
+            return interp_ok(Some((layout.size, layout.align)));
         }
         match layout.ty.kind() {
             ty::Adt(..) | ty::Tuple(..) => {
@@ -436,7 +436,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 trace!("DST layout: {:?}", layout);
 
                 let unsized_offset_unadjusted = layout.fields.offset(layout.fields.count() - 1);
-                let sized_align = layout.align.abi;
+                let sized_align = layout.align;
 
                 // Recurse to get the size of the dynamically sized field (must be
                 // the last field). Can't have foreign types here, how would we
@@ -496,7 +496,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 if size > self.max_size_of_val() {
                     throw_ub!(InvalidMeta(InvalidMetaKind::SliceTooBig));
                 }
-                interp_ok(Some((size, elem.align.abi)))
+                interp_ok(Some((size, elem.align)))
             }
 
             ty::Foreign(_) => interp_ok(None),

@@ -4,8 +4,7 @@ use rustc_hashes::Hash64;
 use rustc_index::{Idx, IndexVec};
 
 use crate::{
-    AbiAlign, BackendRepr, FieldsShape, HasDataLayout, LayoutData, Niche, Primitive, Scalar, Size,
-    Variants,
+    BackendRepr, FieldsShape, HasDataLayout, LayoutData, Niche, Primitive, Scalar, Size, Variants,
 };
 
 /// "Simple" layout constructors that cannot fail.
@@ -21,7 +20,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             backend_repr: BackendRepr::Memory { sized },
             largest_niche: None,
             uninhabited: false,
-            align: AbiAlign::new(dl.i8_align),
+            align: dl.i8_align,
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align,
@@ -39,7 +38,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             backend_repr: BackendRepr::Memory { sized: true },
             largest_niche: None,
             uninhabited: true,
-            align: AbiAlign::new(dl.i8_align),
+            align: dl.i8_align,
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align,
@@ -83,7 +82,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             largest_niche,
             uninhabited: false,
             size,
-            align: AbiAlign::new(align),
+            align,
             max_repr_align: None,
             unadjusted_abi_align: align,
             repr_c: false,
@@ -116,7 +115,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             backend_repr: BackendRepr::ScalarPair { a, b, b_offset },
             largest_niche,
             uninhabited: false,
-            align: AbiAlign::new(align),
+            align,
             size,
             max_repr_align: None,
             unadjusted_abi_align: align,
@@ -143,7 +142,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             backend_repr: BackendRepr::Memory { sized: true },
             largest_niche: None,
             uninhabited: true,
-            align: AbiAlign::new(dl.i8_align),
+            align: dl.i8_align,
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align,

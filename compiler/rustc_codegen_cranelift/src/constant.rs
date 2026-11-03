@@ -291,7 +291,6 @@ fn data_id_for_static(
             .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
             .unwrap()
             .align
-            .abi
             .bytes();
 
         let linkage = if import_linkage == rustc_attr_ir::Linkage::ExternalWeak

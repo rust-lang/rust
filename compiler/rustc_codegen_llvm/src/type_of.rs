@@ -74,7 +74,7 @@ fn uncached_llvm_type<'a, 'tcx>(
 
     match layout.fields {
         FieldsShape::Primitive | FieldsShape::Union(_) => {
-            let fill = cx.type_padding_filler(layout.size, layout.align.abi);
+            let fill = cx.type_padding_filler(layout.size, layout.align);
             match name {
                 None => cx.type_struct(&[fill]),
                 Some(ref name) => {
@@ -109,14 +109,14 @@ fn struct_llfields<'a, 'tcx>(
 
     let mut packed = false;
     let mut offset = Size::ZERO;
-    let mut prev_effective_align = layout.align.abi;
+    let mut prev_effective_align = layout.align;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
         let effective_field_align =
-            layout.align.abi.min(field.align.abi).restrict_for_offset(target_offset);
-        packed |= effective_field_align < field.align.abi;
+            layout.align.min(field.align).restrict_for_offset(target_offset);
+        packed |= effective_field_align < field.align;
 
         debug!(
             "struct_llfields: {}: {:?} offset: {:?} target_offset: {:?} \
@@ -161,7 +161,7 @@ fn struct_llfields<'a, 'tcx>(
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
     pub(crate) fn align_of(&self, ty: Ty<'tcx>) -> Align {
-        self.layout_of(ty).align.abi
+        self.layout_of(ty).align
     }
 
     pub(crate) fn size_of(&self, ty: Ty<'tcx>) -> Size {
@@ -174,7 +174,7 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
 
     pub(crate) fn spanned_size_and_align_of(&self, ty: Ty<'tcx>, span: Span) -> (Size, Align) {
         let layout = self.spanned_layout_of(ty, span);
-        (layout.size, layout.align.abi)
+        (layout.size, layout.align)
     }
 }
 

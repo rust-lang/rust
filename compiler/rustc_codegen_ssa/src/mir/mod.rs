@@ -571,7 +571,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     // FIXME: lifetimes
                     let mut needs_alloca = mode == IndirectMode::AmdgpuKernelArg;
                     if let Some(pointee_align) = attrs.pointee_align
-                        && pointee_align < arg.layout.align.abi
+                        && pointee_align < arg.layout.align
                     {
                         needs_alloca = true;
                     }
