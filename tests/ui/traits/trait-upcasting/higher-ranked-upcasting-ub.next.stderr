@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&dyn for<'a> Subtrait<'a, 'a>: CoerceUnsized<&dyn for<'a, 'b> Supertrait<'a, 'b>>` is not satisfied
+error[E0277]: the trait bound `dyn for<'a> Subtrait<'a, 'a>: Unsize<dyn for<'a, 'b> Supertrait<'a, 'b>>` is not satisfied
   --> $DIR/higher-ranked-upcasting-ub.rs:22:5
    |
 LL |     x
