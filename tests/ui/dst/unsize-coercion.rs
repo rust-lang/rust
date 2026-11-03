@@ -5,6 +5,5 @@
 trait Trait {}
 fn main() {
     let _ = &1_i32 as &dyn Trait;
-    //[old]~^ ERROR the trait bound `i32: Trait` is not satisfied
-    //[next]~^^ ERROR the trait bound `&i32: CoerceUnsized<&dyn Trait>` is not satisfied in `i32`
+    //~^ ERROR the trait bound `i32: Trait` is not satisfied
 }

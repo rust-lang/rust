@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `&i32: CoerceUnsized<&dyn Trait>` is not satisfied in `i32`
+error[E0277]: the trait bound `i32: Trait` is not satisfied in `i32`
   --> $DIR/unsize-coercion.rs:7:13
    |
 LL |     let _ = &1_i32 as &dyn Trait;
