@@ -8,6 +8,7 @@ use thin_vec::ThinVec;
 
 use crate::attributes::{AcceptMapping, AttributeParser, AttributeStability};
 use crate::context::{AcceptContext, ExpectStringLiteral, FinalizeContext};
+use crate::diagnostics::{MalformedLintAttributeInput, MalformedLintAttributeInputHelp};
 use crate::parser::{ArgParser, MetaItemOrLitParser};
 use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::{Allow, Warn};
@@ -36,9 +37,11 @@ impl LintParser {
                 let p = parsers.last()?.meta_item()?;
                 let nv = p.args().as_name_value()?;
                 if !p.path().word_is(sym::reason) {
-                    cx.emit_err(diagnostics::MalformedAttribute {
+                    // FIXME: We should recommend `reason` here
+                    cx.emit_err(MalformedLintAttributeInput {
                         span: p.span(),
-                        kind: diagnostics::MalformedAttributeKind::BadAttributeArgument(p.span()),
+                        help: MalformedLintAttributeInputHelp::Other { kind: kind.sym() },
+                        kind: kind.sym(),
                     });
                 } else {
                     parsers = &parsers[..(parsers.len() - 1)];
@@ -78,26 +81,28 @@ impl LintParser {
                                 nv.expect_string_literal(cx);
                             }
                             ArgParser::NameValue(_) | ArgParser::List(_) => {
-                                cx.emit_err(diagnostics::MalformedAttribute {
+                                cx.emit_err(MalformedLintAttributeInput {
                                     span: p.span(),
-                                    kind: diagnostics::MalformedAttributeKind::BadAttributeArgument(
-                                        item.span(),
-                                    ),
+                                    help: MalformedLintAttributeInputHelp::Other {
+                                        kind: kind.sym(),
+                                    },
+                                    kind: kind.sym(),
                                 });
                             }
                         }
                     }
                     MetaItemOrLitParser::Lit(lit) => {
-                        cx.emit_err(diagnostics::BadAttributeLit {
+                        cx.emit_err(MalformedLintAttributeInput {
                             span: item.span(),
                             help: if lit.kind.is_str() {
-                                diagnostics::BadAttributeLitHelp::StrLit {
+                                MalformedLintAttributeInputHelp::StrLit {
                                     sym: lit.symbol,
                                     kind: kind.sym(),
                                 }
                             } else {
-                                diagnostics::BadAttributeLitHelp::Other { kind: kind.sym() }
+                                MalformedLintAttributeInputHelp::Other { kind: kind.sym() }
                             },
+                            kind: kind.sym(),
                         });
                     }
                 }
