@@ -44,7 +44,7 @@ where
         Ty: TyAbiInterface<'a, C> + Copy,
         C: HasDataLayout,
     {
-        if !off.is_aligned(layout.align.abi) {
+        if !off.is_aligned(layout.align) {
             if !layout.is_zst() {
                 return Err(Memory);
             }

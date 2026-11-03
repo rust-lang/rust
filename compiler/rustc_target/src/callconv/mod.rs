@@ -436,7 +436,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             .set(ArgAttribute::NoUndef)
             .set(ArgAttribute::NoFree);
         attrs.pointee_size = layout.size;
-        attrs.pointee_align = Some(layout.align.abi);
+        attrs.pointee_align = Some(layout.align);
 
         if layout.is_unsized() {
             PassMode::IndirectUnsized { attrs, meta_attrs: ArgAttributes::new() }
