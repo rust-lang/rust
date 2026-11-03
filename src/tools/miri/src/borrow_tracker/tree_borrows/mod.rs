@@ -242,25 +242,25 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         new_perm: NewPermission,
         new_tag: BorTag,
     ) -> InterpResult<'tcx, Option<Provenance>> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        this.check_ptr_access(place.ptr(), ptr_size, CheckInAllocMsg::Dereferenceable("pointer"))?;
+        ecx.check_ptr_access(place.ptr(), ptr_size, CheckInAllocMsg::Dereferenceable("pointer"))?;
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
-        let log_creation = |this: &MiriInterpCx<'tcx>,
+        let log_creation = |ecx: &MiriInterpCx<'tcx>,
                             loc: Option<(AllocId, Size, ProvenanceExtra)>| // alloc_id, base_offset, orig_tag
          -> InterpResult<'tcx> {
-            let global = this.machine.borrow_tracker.as_ref().unwrap().borrow();
+            let global = ecx.machine.borrow_tracker.as_ref().unwrap().borrow();
             let ty = place.layout.ty;
             if global.tracked_pointer_tags.contains(&new_tag) {
-                 let ty_is_freeze = ty.is_freeze(*this.tcx, this.typing_env());
+                 let ty_is_freeze = ty.is_freeze(*ecx.tcx, ecx.typing_env());
                  let kind_str =
                      if ty_is_freeze {
                          format!("initial state {} (pointee type {ty})", new_perm.freeze_perm)
                      } else {
                          format!("initial state {}/{} outside/inside UnsafeCell (pointee type {ty})", new_perm.freeze_perm, new_perm.nonfreeze_perm)
                      };
-                this.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
+                ecx.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
                     new_tag.inner(),
                     Some(kind_str),
                     loc.map(|(alloc_id, base_offset, orig_tag)| (alloc_id, alloc_range(base_offset, ptr_size), orig_tag)),
@@ -273,20 +273,20 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         trace!("Reborrow of size {:?}", ptr_size);
         // Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
         // After all, the pointer may be lazily initialized outside this initial range.
-        let Ok((alloc_id, base_offset, parent_prov)) = this.ptr_try_get_alloc_id(place.ptr(), 0)
+        let Ok((alloc_id, base_offset, parent_prov)) = ecx.ptr_try_get_alloc_id(place.ptr(), 0)
         else {
             assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
             // This pointer doesn't come with an AllocId, so there's no
             // memory to do retagging in.
             let new_prov = place.ptr().provenance;
             trace!("reborrow of size 0: reusing {:?} (pointee {})", place.ptr(), place.layout.ty,);
-            log_creation(this, None)?;
+            log_creation(ecx, None)?;
             // Keep original provenance.
             return interp_ok(new_prov);
         };
         let new_prov = Provenance::Concrete { alloc_id, tag: new_tag };
 
-        log_creation(this, Some((alloc_id, base_offset, parent_prov)))?;
+        log_creation(ecx, Some((alloc_id, base_offset, parent_prov)))?;
 
         trace!(
             "reborrow: reference {:?} derived from {:?} (pointee {}): {:?}, size {}",
@@ -301,14 +301,14 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We register the protection in two different places.
             // This makes creating a protector slower, but checking whether a tag
             // is protected faster.
-            this.frame_mut()
+            ecx.frame_mut()
                 .extra
                 .borrow_tracker
                 .as_mut()
                 .unwrap()
                 .protected_tags
                 .push((alloc_id, new_tag));
-            this.machine
+            ecx.machine
                 .borrow_tracker
                 .as_mut()
                 .expect("We should have borrow tracking data")
@@ -317,7 +317,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 .insert(new_tag, protect);
         }
 
-        let alloc_kind = this.get_alloc_info(alloc_id).kind;
+        let alloc_kind = ecx.get_alloc_info(alloc_id).kind;
         if !matches!(alloc_kind, AllocKind::LiveData) {
             assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
             // There's not actually any bytes here where accesses could even be tracked.
@@ -326,7 +326,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let protected = new_perm.protector.is_some();
-        let precise_interior_mut = this.get_tree_borrows_params().precise_interior_mut;
+        let precise_interior_mut = ecx.get_tree_borrows_params().precise_interior_mut;
 
         // Compute initial "inside" permissions.
         let loc_state = |frozen: bool| -> LocationState {
@@ -341,7 +341,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let inside_perms = if !precise_interior_mut {
             // For `!Freeze` types, just pretend the entire thing is an `UnsafeCell`.
-            let ty_is_freeze = place.layout.ty.is_freeze(*this.tcx, this.typing_env());
+            let ty_is_freeze = place.layout.ty.is_freeze(*ecx.tcx, ecx.typing_env());
             DedupRangeMap::new(ptr_size, loc_state(ty_is_freeze))
         } else {
             // The initial state will be overwritten by the visitor below.
@@ -352,7 +352,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     IdempotentForeignAccess::None,
                 ),
             );
-            this.visit_freeze_sensitive(place, ptr_size, |range, frozen| {
+            ecx.visit_freeze_sensitive(place, ptr_size, |range, frozen| {
                 let state = loc_state(frozen);
                 for (_loc_range, loc) in perms_map.iter_mut(range.start, range.size) {
                     *loc = state;
@@ -362,7 +362,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             perms_map
         };
 
-        let alloc_extra = this.get_alloc_extra(alloc_id)?;
+        let alloc_extra = ecx.get_alloc_extra(alloc_id)?;
         let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
 
         for (perm_range, loc_state) in inside_perms.iter_all() {
@@ -372,7 +372,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // writing to an immutable allocation (static variables) is UB, check this here
                 if access == AccessKind::Write
-                    && this.get_alloc_mutability(alloc_id).unwrap().is_not()
+                    && ecx.get_alloc_mutability(alloc_id).unwrap().is_not()
                 {
                     throw_ub!(WriteToReadOnly(alloc_id))
                 }
@@ -388,9 +388,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     range_in_alloc,
                     access,
                     diagnostics::AccessCause::Reborrow(access),
-                    this.machine.borrow_tracker.as_ref().unwrap(),
+                    ecx.machine.borrow_tracker.as_ref().unwrap(),
                     alloc_id,
-                    this.machine.current_user_relevant_span(),
+                    ecx.machine.current_user_relevant_span(),
                 )?;
 
                 // Also inform the data race model (but only if any bytes are actually affected).
@@ -403,7 +403,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                     range_in_alloc,
                                     NaReadType::Retag,
                                     Some(place.layout.ty),
-                                    &this.machine,
+                                    &ecx.machine,
                                 )?,
                             AccessKind::Write =>
                                 data_race.write_non_atomic(
@@ -411,7 +411,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                     range_in_alloc,
                                     NaWriteType::Retag,
                                     Some(place.layout.ty),
-                                    &this.machine,
+                                    &ecx.machine,
                                 )?,
                         };
                     }
@@ -427,7 +427,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             inside_perms,
             new_perm.outside_perm,
             protected,
-            this.machine.current_user_relevant_span(),
+            ecx.machine.current_user_relevant_span(),
         )?;
 
         interp_ok(Some(new_prov))

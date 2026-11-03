@@ -15,7 +15,7 @@ use super::{AcceptMapping, AttributeParser, template};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
     DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd,
-    DocAttrNotCrateLevel, DocAttrNotTraitLevel, DocAttributeNotAttribute,
+    DocAttrNotCrateLevel, DocAttrNotParameters, DocAttrNotTraitLevel, DocAttributeNotAttribute,
     DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
     DocAutoCfgHideShowNoIdentBeforeValues, DocAutoCfgHideShowUnexpectedItem,
     DocAutoCfgHideShowUnexpectedItemAfterValues, DocAutoCfgHideShowValuesMix,
@@ -28,7 +28,7 @@ use crate::diagnostics::{
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
 };
-use crate::target_checking::Policy::Allow;
+use crate::target_checking::Policy::{Allow, AllowSilent};
 
 fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) -> bool {
     // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
@@ -286,7 +286,10 @@ impl DocParser {
 
                 cx.check_target(
                     sym::no_crate_inject.as_str(),
-                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
+                    &AllowedTargets::AllowListWarnRest(&[
+                        Allow(Target::Crate),
+                        AllowSilent(Target::Param),
+                    ]),
                 );
 
                 self.attribute.no_crate_inject = Some(path.span())
@@ -398,7 +401,7 @@ impl DocParser {
         }
 
         match cx.target {
-            Target::Use | Target::ExternCrate => {}
+            Target::Use | Target::ExternCrate | Target::Param => {} // Param has a custom error
             _ => {
                 let item_span = cx.target_span;
                 cx.emit_lint(
@@ -676,7 +679,10 @@ impl DocParser {
                 let span = path.span();
                 cx.check_target(
                     concat!("(", stringify!($ident), ")"),
-                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
+                    &AllowedTargets::AllowListWarnRest(&[
+                        Allow(Target::Crate),
+                        AllowSilent(Target::Param), // Param has a custom error
+                    ]),
                 );
                 self.attribute.$ident = Some(span);
             }};
@@ -695,7 +701,10 @@ impl DocParser {
 
                 cx.check_target(
                     s.as_str(),
-                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
+                    &AllowedTargets::AllowListWarnRest(&[
+                        Allow(Target::Crate),
+                        AllowSilent(Target::Param), // Param has a custom error
+                    ]),
                 );
 
                 // FIXME: It's errorring when the attribute is passed multiple times on the command
@@ -856,6 +865,9 @@ impl DocParser {
     }
 
     fn accept_single_doc_attr(&mut self, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
+        if cx.shared.target == Target::Param {
+            cx.emit_err(DocAttrNotParameters { span: cx.attr_span });
+        }
         match args {
             ArgParser::List(items) if !items.is_empty() => {
                 for i in items.mixed() {

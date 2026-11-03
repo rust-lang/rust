@@ -2,7 +2,6 @@ use genmc_sys::{GenmcHandlerResult, MemOrdering, RMWBinOp};
 use rustc_abi::Size;
 use rustc_const_eval::interpret::{InterpResult, interp_ok};
 use rustc_middle::mir::interpret;
-use rustc_middle::ty::ScalarInt;
 use rustc_middle::{mir, throw_ub_format};
 
 use super::GenmcScalar;
@@ -68,10 +67,7 @@ pub fn genmc_scalar_to_scalar<'tcx>(
 ) -> InterpResult<'tcx, Scalar> {
     // If `provenance` is zero, we have a regular integer.
     if scalar.provenance == 0 {
-        // NOTE: GenMC always returns 64 bit values, and the upper bits are not yet truncated.
-        // FIXME(genmc): GenMC should be doing the truncation, not Miri.
-        let (value_scalar_int, _got_truncated) = ScalarInt::truncate_from_uint(scalar.value, size);
-        return interp_ok(Scalar::from(value_scalar_int));
+        return interp_ok(Scalar::from_uint(scalar.value, size));
     }
     // `provenance` is non-zero, we have a pointer.
     // When we get a pointer from GenMC, then we must have sent it to GenMC before in the same

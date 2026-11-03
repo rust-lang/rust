@@ -1,11 +1,9 @@
-//! Test the Linux and macOS APIs for thread exit callbacks.
-//@only-target: linux darwin
+//@only-target: linux darwin # the only targets where we have thread_atexit handlers
 //@ignore-target: android
-//@run-native
-//@revisions: in_thread with_exit without_exit
 
-use std::{ffi, thread};
+use std::ffi;
 
+#[track_caller]
 fn register<F>(f: F)
 where
     F: FnOnce() + 'static,
@@ -51,35 +49,7 @@ where
     }
 }
 
-fn the_test() {
-    thread::spawn(|| {
-        register(|| println!("dtor 2"));
-        register(|| println!("dtor 1"));
-        println!("exiting thread");
-    })
-    .join()
-    .unwrap();
-
-    register(|| println!("dtor 5"));
-    register(|| {
-        println!("registering dtor in dtor 3");
-        register(|| println!("dtor 4"));
-    });
-
-    println!("exiting main");
-    if cfg!(with_exit) {
-        std::process::exit(0);
-    }
-}
-
 fn main() {
-    if cfg!(in_thread) {
-        return std::thread::spawn(the_test).join().unwrap();
-    }
-
-    the_test();
-
-    if cfg!(with_exit) {
-        std::process::exit(0);
-    }
+    register(|| unsafe { libc::exit(0) })
+    //~^ERROR: `exit` called more than once
 }

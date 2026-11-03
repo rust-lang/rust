@@ -61,14 +61,14 @@ macro_rules! shim_varargs {
 /// # Examples
 ///
 /// ```ignore
-/// shim_sig_args_sep!(this, [*_, i32, libc::off64_t]);
+/// shim_sig_args_sep!(ecx, [*_, i32, libc::off64_t]);
 /// // expands to:
 /// [shim_sig_arg!(*_), shim_sig_arg!(i32), shim_sig_arg!(libc::off64_t)];
 /// ```
 #[macro_export]
 macro_rules! shim_sig_args_sep {
-    ($this:ident, [$($tt:tt)*]) => {
-        shim_sig_args_sep!(@ $this [] [] $($tt)*)
+    ($ecx:ident, [$($tt:tt)*]) => {
+        shim_sig_args_sep!(@ $ecx [] [] $($tt)*)
     };
 
     // All below matchers form a fairly simple iterator over the input.
@@ -78,23 +78,23 @@ macro_rules! shim_sig_args_sep {
 
     // Handles `,` token - take collected type and call shim_sig_arg on it.
     // Append the result to the final output.
-    (@ $this:ident [$($final:tt)*] [$($collected:tt)*] , $($tt:tt)*) => {
-        shim_sig_args_sep!(@ $this [$($final)* shim_sig_arg!($this, $($collected)*), ] [] $($tt)*)
+    (@ $ecx:ident [$($final:tt)*] [$($collected:tt)*] , $($tt:tt)*) => {
+        shim_sig_args_sep!(@ $ecx [$($final)* shim_sig_arg!($ecx, $($collected)*), ] [] $($tt)*)
     };
     // Handle non-comma token - append to collected type.
-    (@ $this:ident [$($final:tt)*] [$($collected:tt)*] $first:tt $($tt:tt)*) => {
-        shim_sig_args_sep!(@ $this [$($final)*] [$($collected)* $first] $($tt)*)
+    (@ $ecx:ident [$($final:tt)*] [$($collected:tt)*] $first:tt $($tt:tt)*) => {
+        shim_sig_args_sep!(@ $ecx [$($final)*] [$($collected)* $first] $($tt)*)
     };
-    // No more tokens, trailing `...` - emit final output, indicate this is variadic.
-    (@ $this:ident [$($final:tt)*] [...] ) => {
+    // No more tokens, trailing `...` - emit final output, indicate ecx is variadic.
+    (@ $ecx:ident [$($final:tt)*] [...] ) => {
         ([$($final)*], true)
     };
     // No more tokens - emit final output, including final non-comma type.
-    (@ $this:ident [$($final:tt)*] [$($collected:tt)+] ) => {
-        ([$($final)* shim_sig_arg!($this, $($collected)*)], false)
+    (@ $ecx:ident [$($final:tt)*] [$($collected:tt)+] ) => {
+        ([$($final)* shim_sig_arg!($ecx, $($collected)*)], false)
     };
     // No more tokens, empty collector - emit final output.
-    (@ $this:ident [$($final:tt)*] [] ) => {
+    (@ $ecx:ident [$($final:tt)*] [] ) => {
         ([$($final)*], false)
     };
 }
@@ -104,89 +104,89 @@ macro_rules! shim_sig_args_sep {
 /// Converts a type
 #[macro_export]
 macro_rules! shim_sig_arg {
-    ($this:ident, i8) => {
-        $this.tcx.types.i8
+    ($ecx:ident, i8) => {
+        $ecx.tcx.types.i8
     };
-    ($this:ident, i16) => {
-        $this.tcx.types.i16
+    ($ecx:ident, i16) => {
+        $ecx.tcx.types.i16
     };
-    ($this:ident, i32) => {
-        $this.tcx.types.i32
+    ($ecx:ident, i32) => {
+        $ecx.tcx.types.i32
     };
-    ($this:ident, i64) => {
-        $this.tcx.types.i64
+    ($ecx:ident, i64) => {
+        $ecx.tcx.types.i64
     };
-    ($this:ident, i128) => {
-        $this.tcx.types.i128
+    ($ecx:ident, i128) => {
+        $ecx.tcx.types.i128
     };
-    ($this:ident, isize) => {
-        $this.tcx.types.isize
+    ($ecx:ident, isize) => {
+        $ecx.tcx.types.isize
     };
-    ($this:ident, u8) => {
-        $this.tcx.types.u8
+    ($ecx:ident, u8) => {
+        $ecx.tcx.types.u8
     };
-    ($this:ident, u16) => {
-        $this.tcx.types.u16
+    ($ecx:ident, u16) => {
+        $ecx.tcx.types.u16
     };
-    ($this:ident, u32) => {
-        $this.tcx.types.u32
+    ($ecx:ident, u32) => {
+        $ecx.tcx.types.u32
     };
-    ($this:ident, u64) => {
-        $this.tcx.types.u64
+    ($ecx:ident, u64) => {
+        $ecx.tcx.types.u64
     };
-    ($this:ident, u128) => {
-        $this.tcx.types.u128
+    ($ecx:ident, u128) => {
+        $ecx.tcx.types.u128
     };
-    ($this:ident, usize) => {
-        $this.tcx.types.usize
+    ($ecx:ident, usize) => {
+        $ecx.tcx.types.usize
     };
-    ($this:ident, f32) => {
-        $this.tcx.types.f32
+    ($ecx:ident, f32) => {
+        $ecx.tcx.types.f32
     };
-    ($this:ident, f64) => {
-        $this.tcx.types.f64
+    ($ecx:ident, f64) => {
+        $ecx.tcx.types.f64
     };
-    ($this:ident, ()) => {
-        $this.tcx.types.unit
+    ($ecx:ident, ()) => {
+        $ecx.tcx.types.unit
     };
-    ($this:ident, !) => {
-        $this.tcx.types.never
+    ($ecx:ident, !) => {
+        $ecx.tcx.types.never
     };
-    ($this:ident, bool) => {
-        $this.tcx.types.bool
+    ($ecx:ident, bool) => {
+        $ecx.tcx.types.bool
     };
-    ($this:ident, *_) => {
+    ($ecx:ident, *_) => {
         // Mutability does not matter for ABI.
-        $this.machine.layouts.void_ptr_mut.ty
+        $ecx.machine.layouts.void_ptr_mut.ty
     };
-    ($this:ident, *$($ty:tt)*) => {
+    ($ecx:ident, *$($ty:tt)*) => {
         // Pointee types matter for varargs so we support explicitly giving them.
         // Mutability does not matter for ABI.
         rustc_middle::ty::Ty::new_ptr(
-            *$this.tcx,
-            shim_sig_arg!($this, $($ty)*),
+            *$ecx.tcx,
+            shim_sig_arg!($ecx, $($ty)*),
             rustc_middle::mir::Mutability::Mut,
         )
     };
-    ($this:ident, fn(..) -> _) => {
+    ($ecx:ident, fn(..) -> _) => {
         // All function pointer types are the same on the ABI level so we don't care about arg/ret.
-        $this.machine.layouts.fn_ptr.ty
+        $ecx.machine.layouts.fn_ptr.ty
     };
-    ($this:ident, &[$($ty:tt)*]) => {
+    ($ecx:ident, &[$($ty:tt)*]) => {
         rustc_middle::ty::Ty::new_ref(
-            *$this.tcx,
-            $this.tcx.lifetimes.re_erased,
-            rustc_middle::ty::Ty::new_slice(*$this.tcx, shim_sig_arg!($this, $($ty)*)),
+            *$ecx.tcx,
+            $ecx.tcx.lifetimes.re_erased,
+            rustc_middle::ty::Ty::new_slice(*$ecx.tcx, shim_sig_arg!($ecx, $($ty)*)),
             rustc_middle::mir::Mutability::Not,
         )
     };
-    ($this:ident, winapi::$ty:ident) => {
-        $this.windows_ty_layout(stringify!($ty)).ty
+    ($ecx:ident, winapi::$ty:ident) => {
+        $ecx.windows_ty_layout(stringify!($ty)).ty
     };
-    ($this:ident, $krate:ident :: $($path:ident)::+) => {
-        helpers::path_ty_layout($this, &[stringify!($krate), $(stringify!($path)),*]).ty
+    ($ecx:ident, $krate:ident :: $($path:ident)::+) => {
+        helpers::path_ty_layout($ecx, &[stringify!($krate), $(stringify!($path)),*]).ty
     };
-    ($this:ident, $($other:tt)*) => {
+    ($ecx:ident, $($other:tt)*) => {
         compile_error!(concat!("unsupported signature type: ", stringify!($($other)*)))
     }
 }
@@ -206,7 +206,7 @@ impl<'tcx, const ARGS: usize> ShimSig<'tcx, ARGS> {
 
 /// Helper function to compare two ABIs.
 fn check_shim_abi<'tcx>(
-    this: &MiriInterpCx<'tcx>,
+    ecx: &MiriInterpCx<'tcx>,
     link_name: Symbol,
     callee_abi: &FnAbi<'tcx, Ty<'tcx>>,
     caller_abi: &FnAbi<'tcx, Ty<'tcx>>,
@@ -243,7 +243,7 @@ fn check_shim_abi<'tcx>(
         );
     }
 
-    if !this.check_argument_compat(&caller_abi.ret, &callee_abi.ret)? {
+    if !ecx.check_argument_compat(&caller_abi.ret, &callee_abi.ret)? {
         throw_ub!(AbiMismatchReturn {
             caller_ty: caller_abi.ret.layout.ty,
             callee_ty: callee_abi.ret.layout.ty
@@ -253,7 +253,7 @@ fn check_shim_abi<'tcx>(
     for (idx, (caller_arg, callee_arg)) in
         caller_abi.args.iter().zip(callee_abi.args.iter()).enumerate()
     {
-        if !this.check_argument_compat(caller_arg, callee_arg)? {
+        if !ecx.check_argument_compat(caller_arg, callee_arg)? {
             throw_ub!(AbiMismatchArgument {
                 arg_idx: idx,
                 caller_ty: caller_abi.args[idx].layout.ty,

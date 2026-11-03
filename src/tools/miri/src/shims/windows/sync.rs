@@ -3,7 +3,7 @@ use std::time::Duration;
 use rustc_abi::{FieldIdx, Size};
 
 use crate::concurrency::init_once::{EvalContextExt as _, InitOnceStatus};
-use crate::concurrency::sync::{AccessKind, FutexRef, SyncObj};
+use crate::concurrency::sync::FutexRef;
 use crate::*;
 
 #[derive(Clone)]
@@ -11,17 +11,17 @@ struct WindowsInitOnce {
     init_once: InitOnceRef,
 }
 
-impl SyncObj for WindowsInitOnce {
-    fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
+impl MetaObj for WindowsInitOnce {
+    fn on_access<'tcx>(&self) -> InterpResult<'tcx> {
         if !self.init_once.queue_is_empty() {
             throw_ub_format!(
-                "{access_kind} of `INIT_ONCE` is forbidden while the queue is non-empty"
+                "accessing the memory backing a `INIT_ONCE` is forbidden while the queue is non-empty"
             );
         }
         interp_ok(())
     }
 
-    fn delete_on_write(&self) -> bool {
+    fn opaque(&self) -> bool {
         true
     }
 }
@@ -30,7 +30,11 @@ struct WindowsFutex {
     futex: FutexRef,
 }
 
-impl SyncObj for WindowsFutex {}
+impl MetaObj for WindowsFutex {
+    fn opaque(&self) -> bool {
+        false
+    }
+}
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -40,23 +44,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn init_once_get_data<'a>(
         &'a mut self,
         init_once_ptr: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, &'a WindowsInitOnce>
+    ) -> InterpResult<'tcx, &'a mut WindowsInitOnce>
     where
         'tcx: 'a,
     {
         let ecx = self.eval_context_mut();
 
-        let init_once = ecx.deref_pointer_as(init_once_ptr, ecx.windows_ty_layout("INIT_ONCE"))?;
-        let init_offset = Size::ZERO;
+        let init_once = ecx.deref_pointer(init_once_ptr)?;
 
-        ecx.get_immovable_sync_with_static_init(
+        ecx.get_or_insert_meta(
             &init_once,
-            init_offset,
-            /* uninit_val */ 0,
-            /* init_val */ 1,
-            |this| {
-                let ptr_field = this.project_field(&init_once, FieldIdx::from_u32(0))?;
-                let val = this.read_target_usize(&ptr_field)?;
+            |ecx| {
+                let ptr_field = ecx.project_field(&init_once, FieldIdx::from_u32(0))?;
+                let val = ecx.read_target_usize(&ptr_field)?;
                 if val == 0 {
                     interp_ok(WindowsInitOnce { init_once: InitOnceRef::new() })
                 } else {
@@ -108,7 +108,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let init_once = ecx.init_once_get_data(init_once_op)?.init_once.clone();
         let flags = ecx.read_scalar(flags_op)?.to_u32()?;
         // PBOOL is int*
-        let pending_place = ecx.deref_pointer_as(pending_op, ecx.machine.layouts.i32)?;
+        let pending_place = ecx.deref_pointer(pending_op)?;
         let context = ecx.read_pointer(context_op)?;
 
         if flags != 0 {
@@ -219,17 +219,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
         let layout = ecx.machine.layouts.uint(size).unwrap();
-        let futex_val =
-            ecx.read_scalar_atomic(&ecx.ptr_to_mplace(ptr, layout), AtomicReadOrd::Acquire)?;
+        let futex_place = ecx.ptr_to_mplace(ptr, layout);
+        let futex_val = ecx.read_scalar_atomic(&futex_place, AtomicReadOrd::Acquire)?;
         let compare_val = ecx.read_scalar(&ecx.ptr_to_mplace(compare, layout))?;
 
         if futex_val == compare_val {
             // If the values are the same, we have to block.
 
-            // This cannot fail since we already did an atomic acquire read on that pointer.
             let futex_ref = ecx
-                .get_sync_or_init(ptr, |_| WindowsFutex { futex: Default::default() })
-                .unwrap()
+                .get_or_insert_meta(&futex_place, |_| {
+                    interp_ok(WindowsFutex { futex: Default::default() })
+                })?
                 .futex
                 .clone();
 
@@ -270,15 +270,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // See the Linux futex implementation for why this fence exists.
         ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
-        let Some(futex_ref) =
-            ecx.get_sync_or_init(ptr, |_| WindowsFutex { futex: Default::default() })
-        else {
+        let Ok(futex) = ecx.try_get_meta::<WindowsFutex>(ptr) else {
             // Seems like this cannot return an error, so we just wake nobody.
             return interp_ok(());
         };
-        let futex_ref = futex_ref.futex.clone();
-
-        ecx.futex_wake(&futex_ref, u32::MAX, 1)?;
+        ecx.futex_wake(&futex.futex.clone(), u32::MAX, 1)?;
 
         interp_ok(())
     }
@@ -290,15 +286,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // See the Linux futex implementation for why this fence exists.
         ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
-        let Some(futex_ref) =
-            ecx.get_sync_or_init(ptr, |_| WindowsFutex { futex: Default::default() })
-        else {
+        let Ok(futex) = ecx.try_get_meta::<WindowsFutex>(ptr) else {
             // Seems like this cannot return an error, so we just wake nobody.
             return interp_ok(());
         };
-        let futex_ref = futex_ref.futex.clone();
-
-        ecx.futex_wake(&futex_ref, u32::MAX, usize::MAX)?;
+        ecx.futex_wake(&futex.futex.clone(), u32::MAX, usize::MAX)?;
 
         interp_ok(())
     }

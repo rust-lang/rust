@@ -20,7 +20,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let node_ptr = this.read_pointer(node)?;
         let service_ptr = this.read_pointer(service)?;
         let hints_ptr = this.read_pointer(hints)?;
-        let res_mplace = this.deref_pointer_as(res, this.machine.layouts.void_ptr_mut)?;
+        let res_mplace = this.deref_pointer(res)?;
 
         if node_ptr == Pointer::null() {
             // We cannot get an address without the `node` part because
@@ -141,12 +141,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.read_scalar(address_len)?.to_int(socklen_layout.size)?.try_into().unwrap();
 
         // Initially, treat address as generic sockaddr just to extract the family field.
-        let sockaddr_layout = this.libc_ty_layout("sockaddr");
-        if address_len < sockaddr_layout.size.bytes() {
+        let address = this.deref_pointer(address)?;
+        if address_len < address.layout.size.bytes() {
             // Address length should be at least as big as the generic sockaddr
             return interp_ok(Err(LibcError("EINVAL")));
         }
-        let address = this.deref_pointer_as(address, sockaddr_layout)?;
 
         let family_field = this.project_field_named(&address, "sa_family")?;
         let family_layout = this.libc_ty_layout("sa_family_t");
@@ -160,7 +159,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Address length should be exactly the length of an IPv4 address.
                 return interp_ok(Err(LibcError("EINVAL")));
             }
-            let address = address.transmute(sockaddr_in_layout, this)?;
+            let address = this.ptr_to_mplace(address.ptr(), sockaddr_in_layout);
 
             let port_field = this.project_field_named(&address, "sin_port")?;
             // Read bytes and treat them as big endian since port is stored in network byte order.
@@ -186,8 +185,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Address length should be exactly the length of an IPv6 address.
                 return interp_ok(Err(LibcError("EINVAL")));
             }
-            // We cannot transmute since the `sockaddr_in6` layout is bigger than the `sockaddr` layout.
-            let address = address.offset(Size::ZERO, sockaddr_in6_layout, this)?;
+            let address = this.ptr_to_mplace(address.ptr(), sockaddr_in6_layout);
 
             let port_field = this.project_field_named(&address, "sin6_port")?;
             // Read bytes and treat them as big endian since port is stored in network byte order.
