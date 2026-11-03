@@ -3117,9 +3117,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         visit::walk_item(this, item);
                         // Maintain macro_rules scopes in the same way as during early resolution
                         // for diagnostics and doc links.
-                        if item.attrs.iter().all(|attr| {
-                            !attr.has_name(sym::macro_use) && !attr.has_name(sym::macro_escape)
-                        }) {
+                        if item.attrs.iter().all(|attr| !attr.has_name(sym::macro_use)) {
                             this.parent_scope.macro_rules = old_macro_rules;
                         }
                     })

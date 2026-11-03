@@ -96,7 +96,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // Macros:
     sym::automatically_derived,
     sym::macro_use,
-    sym::macro_escape, // Deprecated synonym for `macro_use`.
     sym::macro_export,
     sym::proc_macro,
     sym::proc_macro_derive,

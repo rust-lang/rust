@@ -275,7 +275,6 @@ attribute_parsers!(
         Single<WithoutArgs<FfiPureParser>>,
         Single<WithoutArgs<FundamentalParser>>,
         Single<WithoutArgs<LoopMatchParser>>,
-        Single<WithoutArgs<MacroEscapeParser>>,
         Single<WithoutArgs<MarkerParser>>,
         Single<WithoutArgs<MayDangleParser>>,
         Single<WithoutArgs<NeedsAllocatorParser>>,
