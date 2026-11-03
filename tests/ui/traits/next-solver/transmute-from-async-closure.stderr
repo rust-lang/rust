@@ -15,7 +15,6 @@ note: required because it appears within the type `Wrap<{async closure@$DIR/tran
    |
 LL | struct Wrap<F, P>(F, P);
    |        ^^^^
-   = note: required for `&Wrap<{async closure@$DIR/transmute-from-async-closure.rs:18:53: 18:73}, (i128,)>` to implement `CoerceUnsized<&dyn NodeImpl>`
    = note: required for the cast from `&Wrap<{async closure@$DIR/transmute-from-async-closure.rs:18:53: 18:73}, (i128,)>` to `&dyn NodeImpl`
 
 error: aborting due to 1 previous error
