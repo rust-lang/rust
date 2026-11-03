@@ -66,8 +66,8 @@ use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, WrapBinderMode, with_forced_trimmed_paths};
 use rustc_middle::ty::{
-    self, List, Mutability, ParamEnv, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, Unnormalized,
+    self, IsRigid, List, Mutability, ParamEnv, Region, Ty, TyCtxt, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, Unnormalized,
 };
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, bug, sym};
 use thin_vec::ThinVec;
@@ -2479,6 +2479,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// with the other type. A TyVar inference type is compatible with any type, and an IntVar or
     /// FloatVar inference type are compatible with themselves or their concrete types (Int and
     /// Float types, respectively). When comparing two ADTs, these rules apply recursively.
+    /// Non-rigid aliases are treated just like TyVar since normalization can be ambiguous here.
     pub fn same_type_modulo_infer<T: relate::Relate<TyCtxt<'tcx>>>(&self, a: T, b: T) -> bool {
         let (a, b) = self.deeply_resolve_ignoring_regions((a, b));
         SameTypeModuloInfer(self).relate(a, b).is_ok()
@@ -2528,7 +2529,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameTypeModuloInfer<'_, 'tcx> {
                 ty::Float(_) | ty::Infer(ty::InferTy::FloatVar(_)),
             )
             | (ty::Infer(ty::InferTy::TyVar(_)), _)
-            | (_, ty::Infer(ty::InferTy::TyVar(_))) => Ok(a),
+            | (_, ty::Infer(ty::InferTy::TyVar(_)))
+            | (ty::Alias(IsRigid::No, _), _)
+            | (_, ty::Alias(IsRigid::No, _)) => Ok(a),
             (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Mismatch),
             _ => relate::structurally_relate_tys(self, a, b),
         }
