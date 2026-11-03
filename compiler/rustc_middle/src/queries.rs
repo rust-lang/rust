@@ -2244,7 +2244,10 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Gets the name of the crate, taking into account `--extern` renames.
+    /// Gets the name of the crate, taking into account crate renames caused by `--extern`,
+    /// `extern crate foo as bar;` or from the extern prelude. A crate might be known by more than
+    /// one extern name, but we only keep track of one of them. This name should *only be used for
+    /// diagnostics*.
     query crate_name_with_rename(_: CrateNum) -> Symbol {
         desc { "fetching what name a crate is accessible under" }
     }
