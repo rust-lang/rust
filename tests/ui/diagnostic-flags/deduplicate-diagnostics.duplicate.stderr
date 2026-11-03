@@ -1,4 +1,4 @@
-error: expected a lint, found literal
+error: malformed `deny` attribute input
   --> $DIR/deduplicate-diagnostics.rs:10:8
    |
 LL | #[deny("literal")]
@@ -20,7 +20,7 @@ LL | #[derive(Unresolved)]
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: expected a lint, found literal
+error: malformed `deny` attribute input
   --> $DIR/deduplicate-diagnostics.rs:10:8
    |
 LL | #[deny("literal")]
@@ -29,7 +29,7 @@ LL | #[deny("literal")]
    = help: try using `#[deny(literal)]`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: expected a lint, found literal
+error: malformed `deny` attribute input
   --> $DIR/deduplicate-diagnostics.rs:10:8
    |
 LL | #[deny("literal")]
