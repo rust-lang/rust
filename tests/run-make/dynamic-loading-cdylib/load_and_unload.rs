@@ -48,6 +48,8 @@ mod libloading {
     use std::ffi::{c_char, c_int, c_void};
 
     const RTLD_NOW: c_int = 2;
+    #[cfg(target_os = "aix")]
+    const RTLD_MEMBER: c_int = 0x00040000;
 
     fn cstr_null(s: &str) -> Vec<c_char> {
         assert!(!s.as_bytes().contains(&0), "string must not contain interior NUL");
@@ -58,10 +60,17 @@ mod libloading {
         #[cfg(target_os = "macos")]
         let filename = cstr_null(&format!("lib{}.dylib", lib_name));
 
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(target_os = "aix")]
+        let filename = cstr_null(&format!("./lib{0}.a(lib{0}.so)", lib_name));
+
+        #[cfg(not(any(target_os = "macos", target_os = "aix")))]
         let filename = cstr_null(&format!("./lib{}.so", lib_name));
 
-        let handle = unsafe { dlopen(filename.as_ptr(), RTLD_NOW) };
+        let flags = RTLD_NOW;
+        #[cfg(target_os = "aix")]
+        let flags = flags | RTLD_MEMBER;
+
+        let handle = unsafe { dlopen(filename.as_ptr(), flags) };
         if handle.is_null() { None } else { Some(handle) }
     }
 
