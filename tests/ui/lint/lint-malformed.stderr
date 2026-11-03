@@ -1,31 +1,36 @@
-error[E0452]: malformed lint attribute input
+error: malformed `allow` attribute input
   --> $DIR/lint-malformed.rs:2:10
    |
 LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ bad attribute argument
+   |          ^^^^^^^^^^^ not the name of a lint
+   |
+   = help: for example, write `#[allow(dead_code)]` for `dead_code`
 
-error[E0452]: malformed lint attribute input
+error: malformed `allow` attribute input
   --> $DIR/lint-malformed.rs:2:10
    |
 LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ bad attribute argument
+   |          ^^^^^^^^^^^ not the name of a lint
    |
+   = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0452]: malformed lint attribute input
+error: malformed `allow` attribute input
   --> $DIR/lint-malformed.rs:2:10
    |
 LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ bad attribute argument
+   |          ^^^^^^^^^^^ not the name of a lint
    |
+   = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0452]: malformed lint attribute input
+error: malformed `allow` attribute input
   --> $DIR/lint-malformed.rs:2:10
    |
 LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ bad attribute argument
+   |          ^^^^^^^^^^^ not the name of a lint
    |
+   = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0539]: malformed `deny` attribute input
@@ -49,23 +54,24 @@ LL - #![deny = "foo"]
 LL + #![deny(lint1, lint2, lint3, reason = "...")]
    |
 
-error[E0452]: malformed lint attribute input
+error: malformed `allow` attribute input
   --> $DIR/lint-malformed.rs:2:10
    |
 LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ bad attribute argument
+   |          ^^^^^^^^^^^ not the name of a lint
    |
+   = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0452]: malformed lint attribute input
+error: malformed `allow` attribute input
   --> $DIR/lint-malformed.rs:2:10
    |
 LL | #![allow(bar = "baz")]
-   |          ^^^^^^^^^^^ bad attribute argument
+   |          ^^^^^^^^^^^ not the name of a lint
    |
+   = help: for example, write `#[allow(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0452, E0539.
-For more information about an error, try `rustc --explain E0452`.
+For more information about this error, try `rustc --explain E0539`.
