@@ -1011,7 +1011,7 @@ impl<'db> InferenceContext<'db> {
             | ValueNs::ImplSelf(_)
             | ValueNs::LocalBinding(_)
             | ValueNs::StaticId(_) => {
-                // FIXME: Emit an error.
+                self.push_diagnostic(InferenceDiagnostic::InvalidPatPathRes { pat, res });
                 return Err(());
             }
             ValueNs::ConstId(_) | ValueNs::EnumVariantId(_) | ValueNs::StructId(_) => {} // OK

@@ -540,6 +540,12 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         missed_fields: Vec<LocalFieldId>,
     },
+    InvalidPatPathRes {
+        #[type_visitable(ignore)]
+        pat: PatId,
+        #[type_visitable(ignore)]
+        res: ValueNs,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
