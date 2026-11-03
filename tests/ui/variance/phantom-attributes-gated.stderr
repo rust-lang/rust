@@ -1,0 +1,21 @@
+error[E0658]: use of an internal attribute
+  --> $DIR/phantom-attributes-gated.rs:1:21
+   |
+LL | struct Cov<#[unsafe(rustc_force_variance(covariant))] T>(T);
+   |                     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `rustc_force_variance` attribute is an internal implementation detail that will never be stable
+
+error[E0658]: use of an internal attribute
+  --> $DIR/phantom-attributes-gated.rs:4:3
+   |
+LL | #[rustc_phantom_marker]
+   |   ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `rustc_phantom_marker` attribute is an internal implementation detail that will never be stable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

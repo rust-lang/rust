@@ -69,6 +69,8 @@ bitflags::bitflags! {
         /// Note that this is not the only type with "maybe dangling" semantics!
         /// Use `ty.is_like_maybe_dangling()` to check for that.
         const IS_MAYBE_DANGLING             = 1 << 14;
+        /// Indicates whether the type has a `#[rustc_phantom_marker]` attribute.
+        const IS_PHANTOM_MARKER            = 1 << 15;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -397,6 +399,9 @@ impl AdtDefData {
         if find_attr!(tcx, did, Fundamental) {
             flags |= AdtFlags::IS_FUNDAMENTAL;
         }
+        if find_attr!(tcx, did, RustcPhantomMarker) {
+            flags |= AdtFlags::IS_PHANTOM_MARKER;
+        }
         flags |= match tcx.as_lang_item(did) {
             Some(LangItem::PhantomData) => AdtFlags::IS_PHANTOM_DATA,
             Some(LangItem::OwnedBox) => AdtFlags::IS_BOX,
@@ -505,6 +510,12 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_phantom_data(self) -> bool {
         self.flags().contains(AdtFlags::IS_PHANTOM_DATA)
+    }
+
+    /// Returns `true` if this type has the `#[rustc_phantom_marker]` attribute.
+    #[inline]
+    pub fn is_phantom_marker(self) -> bool {
+        self.flags().contains(AdtFlags::IS_PHANTOM_MARKER)
     }
 
     /// Returns `true` if this is `Box<T>`.

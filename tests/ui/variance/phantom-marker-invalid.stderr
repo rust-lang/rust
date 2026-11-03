@@ -1,0 +1,66 @@
+error: `rustc_phantom_marker` can only be used on a unit struct
+  --> $DIR/phantom-marker-invalid.rs:4:1
+   |
+LL | #[rustc_phantom_marker]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `rustc_phantom_marker` can only be used on a unit struct
+  --> $DIR/phantom-marker-invalid.rs:8:1
+   |
+LL | #[rustc_phantom_marker]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `rustc_phantom_marker` can only be used on a unit struct
+  --> $DIR/phantom-marker-invalid.rs:12:1
+   |
+LL | #[rustc_phantom_marker]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `rustc_phantom_marker` can only be used on a unit struct
+  --> $DIR/phantom-marker-invalid.rs:16:1
+   |
+LL | #[rustc_phantom_marker]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `rustc_phantom_marker` attribute cannot be used on enums
+  --> $DIR/phantom-marker-invalid.rs:20:3
+   |
+LL | #[rustc_phantom_marker]
+   |   ^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | enum Enum { Unit }
+   |
+   = help: the `rustc_phantom_marker` attribute can only be applied to structs
+
+error: the `rustc_phantom_marker` attribute cannot be used on unions
+  --> $DIR/phantom-marker-invalid.rs:24:3
+   |
+LL | #[rustc_phantom_marker]
+   |   ^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | union Union { field: u8 }
+   |
+   = help: the `rustc_phantom_marker` attribute can only be applied to structs
+
+error: the `rustc_phantom_marker` attribute cannot be used on type aliases
+  --> $DIR/phantom-marker-invalid.rs:28:3
+   |
+LL | #[rustc_phantom_marker]
+   |   ^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | type Alias = ();
+   |
+   = help: the `rustc_phantom_marker` attribute can only be applied to structs
+
+error: the `rustc_phantom_marker` attribute cannot be used on functions
+  --> $DIR/phantom-marker-invalid.rs:32:3
+   |
+LL | #[rustc_phantom_marker]
+   |   ^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn function() {}
+   |
+   = help: the `rustc_phantom_marker` attribute can only be applied to structs
+
+error: aborting due to 8 previous errors
+

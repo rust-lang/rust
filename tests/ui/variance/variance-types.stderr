@@ -1,56 +1,68 @@
 error: ['a: +, A: o, B: o]
-  --> $DIR/variance-types.rs:10:1
+  --> $DIR/variance-types.rs:11:1
    |
 LL | struct InvariantMut<'a,A:'a,B:'a> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [A: o]
-  --> $DIR/variance-types.rs:15:1
+  --> $DIR/variance-types.rs:16:1
    |
 LL | struct InvariantCell<A> {
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [A: o]
-  --> $DIR/variance-types.rs:20:1
+  --> $DIR/variance-types.rs:21:1
    |
 LL | struct InvariantIndirect<A> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [A: +]
-  --> $DIR/variance-types.rs:25:1
+  --> $DIR/variance-types.rs:26:1
    |
 LL | struct Covariant<A> {
    | ^^^^^^^^^^^^^^^^^^^
 
 error: [A: -]
-  --> $DIR/variance-types.rs:30:1
+  --> $DIR/variance-types.rs:31:1
    |
 LL | struct Contravariant<A> {
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [A: +, B: -, C: o]
-  --> $DIR/variance-types.rs:35:1
+  --> $DIR/variance-types.rs:36:1
    |
 LL | enum Enum<A,B,C> {
    | ^^^^^^^^^^^^^^^^
 
 error: [A: +]
-  --> $DIR/variance-types.rs:42:1
+  --> $DIR/variance-types.rs:43:1
    |
 LL | struct PhantomDataIsCovariant<A> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [A: o]
-  --> $DIR/variance-types.rs:47:1
+  --> $DIR/variance-types.rs:48:1
    |
 LL | struct UnsafeCellIsInvariant<A> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [A: +]
-  --> $DIR/variance-types.rs:52:1
+  --> $DIR/variance-types.rs:53:1
    |
 LL | struct CovariantUnsafeCellIsCovariant<A> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: [T: +, U: -, V: o]
+  --> $DIR/variance-types.rs:58:1
+   |
+LL | struct Types<T: ?Sized, U: ?Sized, V: ?Sized>(
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['a: +, 'b: -, 'c: o]
+  --> $DIR/variance-types.rs:63:1
+   |
+LL | struct Lifetimes<'a, 'b, 'c>(
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
 

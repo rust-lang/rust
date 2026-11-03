@@ -11,7 +11,7 @@ mod variance;
 #[unstable(feature = "phantom_variance_markers", issue = "135806")]
 pub use self::variance::{
     PhantomContravariant, PhantomContravariantLifetime, PhantomCovariant, PhantomCovariantLifetime,
-    PhantomInvariant, PhantomInvariantLifetime, Variance, variance,
+    PhantomInvariant, PhantomInvariantLifetime,
 };
 use crate::cell::UnsafeCell;
 use crate::clone::TrivialClone;
@@ -807,8 +807,9 @@ impl<T: PointeeSized> !Sync for *mut T {}
 ///
 /// [drop check]: Drop#drop-check
 #[lang = "phantom_data"]
+#[rustc_phantom_marker]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct PhantomData<T: PointeeSized>;
+pub struct PhantomData<#[unsafe(rustc_force_variance(covariant))] T: PointeeSized>;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PointeeSized> Hash for PhantomData<T> {
