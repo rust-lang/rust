@@ -356,6 +356,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let version = ecx.allocate_str_dedup(version)?;
                 ecx.write_pointer(version.ptr(), dest)?;
             }
+            "sendfile64" if ecx.frame_in_std() => {
+                let [_out_fd, _in_fd, _offset, _count] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, i32, *libc::off64_t, usize) -> isize),
+                    (link_name, abi, args),
+                )?;
+                // Force std to use a fallback path.
+                ecx.set_errno_and_return_neg1(LibcError("ENOSYS"), dest)?;
+            }
+            "splice" if ecx.frame_in_std() => {
+                let [_src_fd, _src_offset, _dst_fd, _dst_offset, _len, _flags] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *libc::off_t, i32, *libc::off_t, usize, u32) -> isize),
+                    (link_name, abi, args),
+                )?;
+                // Force std to use a fallback path.
+                ecx.set_errno_and_return_neg1(LibcError("ENOSYS"), dest)?;
+            }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),
         };

@@ -68,6 +68,9 @@ fn main() {
     }
     // Windows file handling is very incomplete.
     if cfg!(not(windows)) || cfg!(not(miri)) {
+        test_fs_set_permissions();
+        test_file_set_permissions();
+
         test_create_new_dangling_symlink();
         test_directory();
         test_canonicalize();
@@ -75,6 +78,10 @@ fn main() {
         test_flock();
         test_symlink();
         test_hard_link();
+        // Uses different shims on apple that we do not support.
+        if cfg!(not(all(miri, target_vendor = "apple"))) {
+            test_copy();
+        }
 
         test_readv_writev();
         #[cfg(unix)]
@@ -850,4 +857,59 @@ fn test_directory_handle() {
 
     fs::create_dir(dirname.join("subdir")).unwrap();
     let _subdir = dir.open_dir("subdir").unwrap();
+}
+
+fn test_fs_set_permissions() {
+    let file = utils::prepare("miri_test_fs_set_permissions.txt");
+    drop(File::create(&file).unwrap());
+
+    // Make file read-only
+    let mut p = fs::metadata(&file).unwrap().permissions();
+    assert!(!p.readonly());
+    p.set_readonly(true);
+    fs::set_permissions(&file, p.clone()).unwrap();
+    assert!(fs::metadata(&file).unwrap().permissions().readonly());
+
+    // Make it writable again
+    p.set_readonly(false);
+    fs::set_permissions(&file, p.clone()).unwrap();
+    assert!(!fs::metadata(&file).unwrap().permissions().readonly());
+
+    // Test error for non-existing file
+    match fs::set_permissions(&file.with_file_name("foo"), p) {
+        Ok(..) => panic!("wanted an error"),
+        Err(err) => assert_eq!(err.kind(), ErrorKind::NotFound),
+    }
+}
+
+fn test_file_set_permissions() {
+    let path = utils::prepare("miri_test_file_set_permissions.txt");
+
+    let file = File::create(&path).unwrap();
+    let attr = fs::metadata(&path).unwrap();
+    assert!(!attr.permissions().readonly());
+    let mut p = attr.permissions();
+    p.set_readonly(true);
+    file.set_permissions(p.clone()).unwrap();
+    let attr = fs::metadata(&path).unwrap();
+    assert!(attr.permissions().readonly());
+
+    p.set_readonly(false);
+    file.set_permissions(p).unwrap();
+}
+
+fn test_copy() {
+    // This efficiently allocates a lot of zeros, even in Miri.
+    let mut bytes = vec![0u8; 10_000];
+    // Make it not all-zero so we notice if some data goes missing.
+    for i in 0..200u8 {
+        bytes[(i as usize) * 47] = i;
+    }
+
+    let src_path = utils::prepare_with_content("miri_test_fs_copy_src.txt", &bytes);
+    let dst_path = utils::prepare("miri_test_fs_copy_dst.txt");
+    assert_eq!(fs::copy(&src_path, &dst_path).unwrap(), bytes.len() as u64);
+    assert_eq!(fs::read(&dst_path).unwrap(), bytes);
+    fs::remove_file(&src_path).unwrap();
+    fs::remove_file(&dst_path).unwrap();
 }

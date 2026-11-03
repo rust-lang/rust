@@ -424,15 +424,44 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })
     }
 
-    fn host_permissions_from_mode(&self, mode: u32) -> InterpResult<'tcx, fs::Permissions> {
+    fn host_permissions_from_mode(
+        &self,
+        mode: u32,
+        old_permissions: impl FnOnce() -> io::Result<fs::Permissions>,
+    ) -> InterpResult<'tcx, io::Result<fs::Permissions>> {
         cfg_select! {
             unix => {
                 use std::os::unix::fs::PermissionsExt;
-                interp_ok(fs::Permissions::from_mode(mode))
+
+                let _ = old_permissions;
+                interp_ok(Ok(fs::Permissions::from_mode(mode)))
             }
             _ => {
-                let _ = mode;
-                throw_unsup_format!("setting file permissions is only supported on Unix hosts")
+                let ecx = self.eval_context_ref();
+
+                let mut permissions = match old_permissions() {
+                    Ok(p) => p,
+                    Err(err) => return interp_ok(Err(err)),
+                };
+                // Only support default mode for non-UNIX (i.e. Windows) host.
+                // Ignore the "regular file" bit which is a NOP.
+                let s_ifreg = ecx.eval_libc("S_IFREG");
+                let s_ifreg = u32::try_from(s_ifreg.to_bits(s_ifreg.size())?).unwrap();
+                match mode & !s_ifreg {
+                    0o666 => {
+                        permissions.set_readonly(false);
+                    }
+                    0o444 => {
+                        permissions.set_readonly(true);
+                    }
+                    _ => {
+                        throw_unsup_format!(
+                            "changing permissions to mode 0o{:o} is not supported on non-Unix hosts",
+                            mode
+                        );
+                    }
+                }
+                interp_ok(Ok(permissions))
             }
         }
     }
@@ -497,8 +526,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 _ => {
                     let _unused = options;
 
-                    // Only support default mode for non-UNIX (i.e. Windows) host
-                    if mode != 0o666 {
+                    // Only support default mode for non-UNIX (i.e. Windows) host.
+                    // Ignore the "regular file" bit which is a NOP.
+                    let s_ifreg = ecx.eval_libc("S_IFREG");
+                    let s_ifreg = u32::try_from(s_ifreg.to_bits(s_ifreg.size())?).unwrap();
+                    if mode & !s_ifreg != 0o666 {
                         throw_unsup_format!(
                             "{open_name}: non-default mode 0o{:o} is not supported on non-Unix hosts",
                             mode
@@ -1214,8 +1246,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
-        let permissions = this.host_permissions_from_mode(mode.try_into().unwrap())?;
-        if let Err(err) = fs::set_permissions(path, permissions) {
+        let permissions = this.host_permissions_from_mode(mode.try_into().unwrap(), || {
+            // We get here if we need to read the old permissions before we can set new ones.
+            // This is fundamentally racy. We cannot even use a file handle to make it less racy:
+            // setting permissions requires opening for writing, but opening for writing fails
+            // if the file is not already writable... so how do we make a read-only file writable?
+            fs::metadata(&path).map(|m| m.permissions())
+        })?;
+        let res = permissions.and_then(|permissions| fs::set_permissions(path, permissions));
+        if let Err(err) = res {
             return this.set_errno_and_return_neg1_i32(err);
         }
 
@@ -1242,8 +1281,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        let permissions = this.host_permissions_from_mode(mode.try_into().unwrap())?;
-        if let Err(err) = file.file.set_permissions(permissions) {
+        let permissions = this.host_permissions_from_mode(mode.try_into().unwrap(), || {
+            // We get here if we need to read the old permissions before we can set new ones.
+            // This is fundamentally racy.
+            file.file.metadata().map(|m| m.permissions())
+        })?;
+        let res = permissions.and_then(|permissions| file.file.set_permissions(permissions));
+        if let Err(err) = res {
             return this.set_errno_and_return_neg1_i32(err);
         }
 

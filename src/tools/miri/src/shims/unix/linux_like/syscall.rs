@@ -29,6 +29,8 @@ pub fn syscall<'tcx>(
     let sys_eventfd2 = ecx.eval_libc("SYS_eventfd2").to_target_usize(ecx)?;
     let sys_gettid = ecx.eval_libc("SYS_gettid").to_target_usize(ecx)?;
     let sys_accept4 = ecx.eval_libc("SYS_accept4").to_target_usize(ecx)?;
+    let sys_copy_file_range = ecx.eval_libc("SYS_copy_file_range").to_target_usize(ecx)?;
+    let sys_splice = ecx.eval_libc("SYS_splice").to_target_usize(ecx)?;
 
     match ecx.read_target_usize(&op)? {
         // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
@@ -75,6 +77,10 @@ pub fn syscall<'tcx>(
                 "syscall(SYS_accept4, ...)",
             )?;
             ecx.accept4(&socket, &address, &address_len, Some(&flags), dest)?;
+        }
+        num if num == sys_copy_file_range || num == sys_splice => {
+            // Force std to use a fallback path.
+            ecx.set_errno_and_return_neg1(LibcError("ENOSYS"), dest)?;
         }
         num => {
             throw_unsup_format!("syscall: unsupported syscall number {num}");

@@ -51,6 +51,7 @@
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
 )]
+#![cfg_attr(not(unix), allow(clippy::permissions_set_readonly_false))]
 #![warn(
     rust_2018_idioms,
     unqualified_local_imports,
