@@ -278,7 +278,6 @@ attribute_parsers!(
         Single<WithoutArgs<LintNeverReturnsNullPtrParser>>,
         Single<WithoutArgs<LintShouldNotBeCalledOnConstItemsParser>>,
         Single<WithoutArgs<LoopMatchParser>>,
-        Single<WithoutArgs<MacroEscapeParser>>,
         Single<WithoutArgs<MarkerParser>>,
         Single<WithoutArgs<MayDangleParser>>,
         Single<WithoutArgs<NeedsAllocatorParser>>,
