@@ -9,6 +9,7 @@ LL |     ().f::<()>(());
 note: method defined here, with 0 generic parameters
   --> $DIR/issue-101421.rs:2:8
    |
+LL | pub trait Ice {
 LL |     fn f(&self, _: ());
    |        ^
 

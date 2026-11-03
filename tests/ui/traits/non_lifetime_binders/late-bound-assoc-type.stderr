@@ -29,6 +29,7 @@ LL | fn produce() -> impl for<T> Trait<(), Assoc = impl Trait<T>> {
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/late-bound-assoc-type.rs:8:10
    |
+LL | trait Trait<T: ?Sized> {
 LL |     type Assoc<'a> = i32;
    |          ^^^^^ --
 help: add missing lifetime argument
@@ -45,6 +46,7 @@ LL | fn produce() -> impl for<T> Trait<(), Assoc = impl Trait<T>> {
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/late-bound-assoc-type.rs:8:10
    |
+LL | trait Trait<T: ?Sized> {
 LL |     type Assoc<'a> = i32;
    |          ^^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
