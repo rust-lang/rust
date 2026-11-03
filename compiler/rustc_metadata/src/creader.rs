@@ -76,6 +76,8 @@ pub struct CStore {
 
     /// Names that were used to load the crates via `extern crate` or paths.
     resolved_externs: UnordMap<Symbol, CrateNum>,
+    /// Given a crate id, get their `--extern` name.
+    extern_crate_name: UnordMap<CrateNum, Symbol>,
 
     /// Unused externs of the crate
     unused_externs: Vec<Symbol>,
@@ -256,6 +258,7 @@ impl CStore {
     /// It's also not always the same as the `DefId`'s symbol due to renames `extern crate resolved_name as defid_name`.
     pub(crate) fn set_resolved_extern_crate_name(&mut self, name: Symbol, extern_crate: CrateNum) {
         self.resolved_externs.insert(name, extern_crate);
+        self.extern_crate_name.insert(extern_crate, name);
     }
 
     /// Crate resolved and loaded via the given extern name
@@ -264,6 +267,10 @@ impl CStore {
     /// May be `None` if the crate wasn't used
     pub fn resolved_extern_crate(&self, externs_name: Symbol) -> Option<CrateNum> {
         self.resolved_externs.get(&externs_name).copied()
+    }
+
+    pub fn opt_extern_crate_name(&self, c: CrateNum) -> Option<Symbol> {
+        self.extern_crate_name.get(&c).copied()
     }
 
     pub(crate) fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
@@ -609,6 +616,7 @@ impl CStore {
             has_alloc_error_handler: false,
             hash_to_cnum: UnordMap::default(),
             resolved_externs: UnordMap::default(),
+            extern_crate_name: UnordMap::default(),
             unused_externs: Vec::new(),
             used_extern_options: Default::default(),
             has_crate_resolve_with_fail: false,
