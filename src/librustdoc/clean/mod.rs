@@ -2677,6 +2677,10 @@ fn clean_path<'tcx>(path: &hir::Path<'_>, cx: &mut DocContext<'tcx>) -> Path {
         res: path.res,
         segments: path.segments.iter().map(|x| clean_path_segment(x, cx)).collect(),
     };
+    // It's possible to have `use x::self;`. To prevent rustdoc to display "self" as the name,
+    // we need to check if the path ends with `self` and remove it. To be noted: if the path is
+    // `x::self`, the first item is always removed and only the `self` is present. In such cases,
+    // we need to replace `self` with the resolution name instead.
     if path.segments.last().is_some_and(|last| last.name == kw::SelfLower) {
         if path.segments.len() > 1 {
             path.segments.pop();
