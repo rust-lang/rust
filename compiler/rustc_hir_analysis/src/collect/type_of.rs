@@ -575,7 +575,8 @@ pub(crate) fn type_alias_is_checked<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId)
     // FIXME(checked_type_aliases, type_alias_impl_trait):
     //     Should `#[rustc_unchecked_type_alias] type Tait = impl Trait;`
     //     actually be legal or is it beyond borked?
-    if find_attr!(tcx, def_id, UncheckedTypeAlias) {
+    if tcx.features().marked_unchecked_type_aliases() && find_attr!(tcx, def_id, UncheckedTypeAlias)
+    {
         return false;
     }
 
