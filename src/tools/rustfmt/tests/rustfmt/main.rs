@@ -359,18 +359,18 @@ fn rustfmt_emits_error_on_line_overflow_true() {
 #[test]
 #[allow(non_snake_case)]
 fn dont_emit_ICE() {
-    let files = [
-        "tests/target/issue_5728.rs",
-        "tests/target/issue_5729.rs",
-        "tests/target/issue-5885.rs",
-        "tests/target/issue_6082.rs",
-        "tests/target/issue_6069.rs",
-        "tests/target/issue-6105.rs",
+    let file_args_pairs = [
+        ("tests/target/issue_5728.rs", vec![]),
+        ("tests/target/issue_5729.rs", vec![]),
+        ("tests/target/issue-5885.rs", vec![]),
+        ("tests/target/issue_6082.rs", vec![]),
+        ("tests/target/issue_6069.rs", vec![]),
+        ("tests/target/issue-6105.rs", vec!["--edition=2021"]),
     ];
 
     let panic_re = regex::Regex::new("thread.*panicked").unwrap();
-    for file in files {
-        let args = [file];
+    for (file, mut args) in file_args_pairs {
+        args.push(file);
 
         let (_stdout, stderr, exit_code) = rustfmt(&args);
 
