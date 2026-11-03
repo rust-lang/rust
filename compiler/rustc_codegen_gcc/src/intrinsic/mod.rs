@@ -522,6 +522,14 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 self.bitcast(masked, void_ptr_type)
             }
 
+            sym::return_address => {
+                let func = self.context.get_builtin_function("__builtin_return_address");
+
+                let frame_num = self.context.new_rvalue_from_int(self.int_type, 0);
+
+                self.context.new_call(self.location, func, &[frame_num])
+            }
+
             _ if name_str.starts_with("simd_") => {
                 match generic_simd_intrinsic(
                     self,
