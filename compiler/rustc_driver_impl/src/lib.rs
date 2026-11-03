@@ -690,6 +690,15 @@ pub fn print_crate_info(
                 }
                 println_info!("{}", serde_json::to_string_pretty(&targets).unwrap());
             }
+            TargetStandardLibrarySupport => {
+                println_info!(
+                    "{}",
+                    serde_json::to_string_pretty(
+                        &sess.target.metadata.standard_library_support.to_json()
+                    )
+                    .unwrap()
+                );
+            }
             FileNames => {
                 let Some(attrs) = attrs.as_ref() else {
                     // no crate attributes, print out an error and exit

@@ -1,0 +1,4 @@
+{
+  "default": "core, alloc, std",
+  "supported": "core, alloc, std"
+}
