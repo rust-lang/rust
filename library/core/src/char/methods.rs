@@ -1367,6 +1367,21 @@ impl char {
     /// [specified]: https://www.unicode.org/reports/tr44/#Case_Ignorable
     /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     /// [`to_lowercase()`]: Self::to_lowercase()
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// assert!('.'.is_case_ignorable());
+    /// assert!('\u{AD}'.is_case_ignorable()); // SOFT HYPHEN
+    /// assert!('ʰ'.is_case_ignorable()); // MODIFIER LETTER SMALL H
+    /// assert!('\u{0300}'.is_case_ignorable()); // COMBINING GRAVE ACCENT
+    /// assert!('\u{0345}'.is_case_ignorable()); // COMBINING GREEK YPOGEGRAMMENI
+    /// assert!(!'a'.is_case_ignorable());
+    /// assert!(!' '.is_case_ignorable());
+    /// assert!(!';'.is_case_ignorable());
+    /// ```
     #[must_use]
     #[inline]
     #[stable(feature = "case_ignorable", since = "CURRENT_RUSTC_VERSION")]
