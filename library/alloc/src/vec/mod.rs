@@ -2545,6 +2545,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// consider using [`Vec::retain_mut`] instead. However, if no items are removed, then all items
     /// are left in their original positions.
     ///
+    /// Generally, this method is faster than [`Vec::retain_mut`] due to its weak ordering guarantees.
+    ///
     /// [`Vec::retain_mut`]: crate::vec::Vec::retain_mut
     ///
     /// Time complexity: *O*(*n*)
