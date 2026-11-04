@@ -123,8 +123,12 @@ impl<'tcx, T> DerivedTypeCodegenMethods<'tcx> for T where
 }
 
 pub trait LayoutTypeCodegenMethods<'tcx>: BackendTypes {
-    /// The backend type used for a rust type when it's in memory,
-    /// such as when it's stack-allocated or when it's being loaded or stored.
+    /// The backend type used for a Rust type when it is being loaded from or
+    /// stored to memory.
+    ///
+    /// Note that this type may be different from the type used for allocas.
+    /// For instance for x87_f80 the store size and allocation size is different,
+    /// so different types are used to represent it in memory versus on the stack.
     fn backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
     fn cast_backend_type(&self, ty: &CastTarget) -> Self::Type;
     fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Self::FunctionSignature;

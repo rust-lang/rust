@@ -209,12 +209,14 @@ pub(crate) trait LayoutLlvmExt<'tcx> {
 
 impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     /// Gets the LLVM type corresponding to a Rust type, i.e., `rustc_middle::ty::Ty`.
-    /// The pointee type of the pointer in `PlaceRef` is always this type.
-    /// For sized types, it is also the right LLVM type for an `alloca`
-    /// containing a value of that type, and most immediates (except `bool`).
+    ///
+    /// For sized types, this is the in-memory type that is used for stores and loads.
+    /// The type used for immediates may be different, see [`Self::immediate_llvm_type`].
+    ///
     /// Unsized types, however, are represented by a "minimal unit", e.g.
     /// `[T]` becomes `T`, while `str` and `Trait` turn into `i8` - this
     /// is useful for indexing slices, as `&[T]`'s data pointer is `T*`.
+    ///
     /// If the type is an unsized struct, the regular layout is generated,
     /// with the innermost trailing unsized field using the "minimal unit"
     /// of that field's type - this is useful for taking the address of
