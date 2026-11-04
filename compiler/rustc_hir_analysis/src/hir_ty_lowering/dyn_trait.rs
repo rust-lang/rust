@@ -5,6 +5,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, HirId};
 use rustc_lint_defs::builtin::{BARE_TRAIT_OBJECTS, UNUSED_ASSOCIATED_TYPE_BOUNDS};
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
@@ -762,6 +763,41 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             if !of_trait.trait_ref.trait_def_id().is_some_and(|def_id| def_id.is_local()) {
                 return;
             }
+
+            // The blanket impl replaces the trait object with a new type parameter, which means
+            // any parameter that was only being used in the trait object's generic arguments would
+            // become unconstrained and trigger E0207. Associated-type bindings like `Item = T` are
+            // skipped, since those are still constrained by the new bound and don't need to be
+            // handled separately.
+            #[derive(Default)]
+            struct ParamCollector(FxHashSet<DefId>);
+
+            impl<'v> Visitor<'v> for ParamCollector {
+                fn visit_path(&mut self, path: &hir::Path<'v>, _: HirId) {
+                    if let Res::Def(DefKind::TyParam | DefKind::ConstParam, def_id) = path.res {
+                        self.0.insert(def_id);
+                    }
+                    intravisit::walk_path(self, path);
+                }
+            }
+
+            let hir::TyKind::TraitObject(bounds, _) = impl_self_ty.kind else {
+                return;
+            };
+            let mut self_ty_params = ParamCollector::default();
+            for bound in bounds {
+                for segment in bound.trait_ref.path.segments {
+                    for arg in segment.args().args {
+                        self_ty_params.visit_generic_arg(arg);
+                    }
+                }
+            }
+            let mut trait_ref_params = ParamCollector::default();
+            trait_ref_params.visit_trait_ref(&of_trait.trait_ref);
+            if !self_ty_params.0.is_subset(&trait_ref_params.0) {
+                return;
+            }
+
             let of_trait_span = of_trait.trait_ref.path.span;
             // make sure that we are not calling unwrap to abort during the compilation
             let Ok(of_trait_name) = tcx.sess.source_map().span_to_snippet(of_trait_span) else {

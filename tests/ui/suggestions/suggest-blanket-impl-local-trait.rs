@@ -53,6 +53,21 @@ trait GenericTraitTwo<T> {}
 impl<T, E> GenericTraitTwo<E> for GenericTrait<T> {}
 //~^ ERROR expected a type, found a trait
 //~| HELP you can add the `dyn` keyword if you want a trait object
-//~| HELP alternatively use a blanket implementation to implement `GenericTraitTwo<E>` for all types that also implement `GenericTrait<T>`
+
+impl<T> GenericTraitTwo<T> for GenericTrait<T> {}
+//~^ ERROR expected a type, found a trait
+//~| HELP you can add the `dyn` keyword if you want a trait object
+//~| HELP alternatively use a blanket implementation to implement `GenericTraitTwo<T>` for all types that also implement `GenericTrait<T>`
+
+impl<T> LocalTraitOne for Iterator<Item = T> {}
+//~^ ERROR expected a type, found a trait
+//~| HELP you can add the `dyn` keyword if you want a trait object
+//~| HELP alternatively use a blanket implementation to implement `LocalTraitOne` for all types that also implement `Iterator<Item = T>`
+
+trait ConstTrait<const N: usize> {}
+
+impl<const N: usize> LocalTraitTwo for ConstTrait<N> {}
+//~^ ERROR expected a type, found a trait
+//~| HELP you can add the `dyn` keyword if you want a trait object
 
 fn main() {}

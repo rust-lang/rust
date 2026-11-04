@@ -31,6 +31,22 @@ LL + impl<T: fmt::Display + Send> LocalTraitOne for T {}
    |
 
 error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-blanket-impl-local-trait.rs:62:27
+   |
+LL | impl<T> LocalTraitOne for Iterator<Item = T> {}
+   |                           ^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | impl<T> LocalTraitOne for dyn Iterator<Item = T> {}
+   |                           +++
+help: alternatively use a blanket implementation to implement `LocalTraitOne` for all types that also implement `Iterator<Item = T>`
+   |
+LL - impl<T> LocalTraitOne for Iterator<Item = T> {}
+LL + impl<T, U: Iterator<Item = T>> LocalTraitOne for U {}
+   |
+
+error[E0782]: expected a type, found a trait
   --> $DIR/suggest-blanket-impl-local-trait.rs:13:24
    |
 LL | impl LocalTraitTwo for LocalTraitOne {}
@@ -45,6 +61,17 @@ help: alternatively use a blanket implementation to implement `LocalTraitTwo` fo
 LL - impl LocalTraitTwo for LocalTraitOne {}
 LL + impl<T: LocalTraitOne> LocalTraitTwo for T {}
    |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-blanket-impl-local-trait.rs:69:40
+   |
+LL | impl<const N: usize> LocalTraitTwo for ConstTrait<N> {}
+   |                                        ^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | impl<const N: usize> LocalTraitTwo for dyn ConstTrait<N> {}
+   |                                        +++
 
 error[E0782]: expected a type, found a trait
   --> $DIR/suggest-blanket-impl-local-trait.rs:46:29
@@ -94,12 +121,23 @@ help: you can add the `dyn` keyword if you want a trait object
    |
 LL | impl<T, E> GenericTraitTwo<E> for dyn GenericTrait<T> {}
    |                                   +++
-help: alternatively use a blanket implementation to implement `GenericTraitTwo<E>` for all types that also implement `GenericTrait<T>`
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-blanket-impl-local-trait.rs:57:32
    |
-LL - impl<T, E> GenericTraitTwo<E> for GenericTrait<T> {}
-LL + impl<T, E, U: GenericTrait<T>> GenericTraitTwo<E> for U {}
+LL | impl<T> GenericTraitTwo<T> for GenericTrait<T> {}
+   |                                ^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | impl<T> GenericTraitTwo<T> for dyn GenericTrait<T> {}
+   |                                +++
+help: alternatively use a blanket implementation to implement `GenericTraitTwo<T>` for all types that also implement `GenericTrait<T>`
+   |
+LL - impl<T> GenericTraitTwo<T> for GenericTrait<T> {}
+LL + impl<T, U: GenericTrait<T>> GenericTraitTwo<T> for U {}
    |
 
-error: aborting due to 7 previous errors
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0782`.
