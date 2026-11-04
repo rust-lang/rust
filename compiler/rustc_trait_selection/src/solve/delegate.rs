@@ -531,10 +531,17 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 // We do this in the decorator as that avoids the work
                 // if we don't actually emit the lint.
                 let goal = self.deeply_resolve_ignoring_regions(goal);
+                let recursion_limit = if let Some(specified_limit) = tcx.next_solver_overflow_fcw_limit()
+                {
+                    // Double default limit allows us to see the whole chain.
+                    usize::min(specified_limit, tcx.recursion_limit().0 * 2)
+                } else {
+                    usize::min(16, tcx.recursion_limit().0)
+                };
                 let mut visitor = OverflowedGoalChain {
                     span,
                     predicates: vec![],
-                    recursion_limit: usize::min(16, tcx.recursion_limit().0),
+                    recursion_limit,
                 };
 
                 let _ = self.with_disabled_next_solver_overflow_fcw(|| {

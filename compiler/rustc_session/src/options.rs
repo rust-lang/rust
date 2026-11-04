@@ -2710,6 +2710,9 @@ options! {
         "allow crates to be namespaced by other crates (default: no)"),
     next_solver: NextSolverConfig = (NextSolverConfig::default(), parse_next_solver_config, [TRACKED],
         "enable and configure the next generation trait solver used by rustc"),
+    next_solver_overflow_fcw_limit: Option<usize> = (None, parse_opt_number, [TRACKED_NO_CRATE_HASH],
+        "set the depth limit for displaying the overflow FCW chain \
+        (final limit = min(this, recursion_limit_from_crate * 2))"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
         "dump facts from NLL analysis into side files (default: no)"),
     nll_facts_dir: String = ("nll-facts".to_string(), parse_string, [UNTRACKED],
