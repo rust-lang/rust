@@ -74,7 +74,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     echo "$machine" >> $hash_key
 
     # Include cache version. Can be used to manually bust the Docker cache.
-    echo "3" >> $hash_key
+    echo "4" >> $hash_key
 
     echo "::group::Image checksum input"
     cat $hash_key
