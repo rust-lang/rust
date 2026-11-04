@@ -254,22 +254,31 @@ jobs:
           persist-credentials: false
       - name: install josh-sync
         run: cargo +stable install --locked --git https://github.com/rust-lang/josh-sync
-      - name: setup bot git name and email
-        run: |
-          git config --global user.name 'The Miri Cronjob Bot'
-          git config --global user.email 'miri@cron.bot'
       - name: Install nightly toolchain
         run: rustup toolchain install nightly --profile minimal
       - name: Install rustup-toolchain-install-master
         run: cargo install --locked -f rustup-toolchain-install-master
       # Create a token for the next step so it can create a PR that actually runs CI.
-      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+      - name: Create GitHub App Token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         id: app-token
         with:
           permission-contents: write # The cronjob needs to be able to push to the repo...
           permission-pull-requests: write # ... and create a PR.
           app-id: ${{ vars.APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
+        # This configures `git` to use `gh` as a credential helper, which will
+        # look for the `GH_TOKEN` environment variable. It also sets up the git user
+        # so that the new commits will be attributed to the app.
+      - name: Setup `git` as ${{ steps.app-token.outputs.app-slug }} bot
+        run: |
+            user_id=$(gh api "/users/${BOT_SLUG}[bot]" --jq .id)
+            git config --global user.name "${BOT_SLUG}[bot]"
+            git config --global user.email "${user_id}+${BOT_SLUG}[bot]@users.noreply.github.com"
+            gh auth setup-git
+        env:
+            BOT_SLUG: ${{ steps.app-token.outputs.app-slug }}
+            GH_TOKEN: ${{ steps.app-token.outputs.token }}
       - name: pull changes from rustc and create PR
         run: |
           # Make it easier to see what happens.
@@ -297,9 +306,6 @@ jobs:
           # Format changes
           ./miri toolchain
           ./miri fmt --check || (./miri fmt && git commit -am "fmt")
-          
-          # Configure remote URL to use the GitHub App token
-          git config remote.origin.url "https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
           # Create a PR
           BRANCH="rustup-$(date -u +%Y-%m-%d)"
@@ -307,7 +313,7 @@ jobs:
           git push -u origin $BRANCH
           gh pr create -B master --title 'Automatic Rustup' --body-file message.txt
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
   cron-fail-notify:
     name: cronjob failure notification
