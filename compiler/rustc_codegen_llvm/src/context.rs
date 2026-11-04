@@ -206,7 +206,13 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: ll
             target_data_layout = target_data_layout.replace("-S64", "");
         }
     }
-
+    if llvm_version < (24, 0, 0) {
+        if sess.target.arch == Arch::AmdGpu {
+            // LLVM 24 updated the amdgpu layout: http://github.com/llvm/llvm-project/pull/209746 Add BARRIER address space
+            target_data_layout = target_data_layout
+                .replace("-p10:32:32-p11:32:32-p12:32:32-p13:32:32-p14:32:32-p15:32:32", "");
+        }
+    }
     // Ensure the data-layout values hardcoded remain the defaults.
     {
         let tm = crate::back::write::create_informational_target_machine(sess);
