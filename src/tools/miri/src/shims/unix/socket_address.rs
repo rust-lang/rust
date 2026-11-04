@@ -1,4 +1,3 @@
-use std::iter;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 
 use rustc_abi::Size;
@@ -178,6 +177,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 .unwrap();
             let addr_bits = u32::from_be_bytes(addr_bytes);
 
+            // We entirely ignore the sin_zero field as it disappeared from modern POSIX.
+
             SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::from_bits(addr_bits), port))
         } else if family == this.eval_libc_i32("AF_INET6").into() {
             let sockaddr_in6_layout = this.libc_ty_layout("sockaddr_in6");
@@ -282,12 +283,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // We need a temporary buffer as `address_ptr` might not point to a large enough
                 // buffer, in which case we have to truncate.
                 let address_buffer = this.allocate(sockaddr_in_layout, MemoryKind::Stack)?;
-                // Zero the whole buffer as some libc targets have additional fields which we fill
-                // with zero bytes (just like the standard library does it).
-                this.write_bytes_ptr(
-                    address_buffer.ptr(),
-                    iter::repeat_n(0, address_buffer.layout.size.bytes_usize()),
-                )?;
 
                 let sin_family_field = this.project_field_named(&address_buffer, "sin_family")?;
                 // We cannot simply write the `AF_INET` scalar into the `sin_family_field` because on most
@@ -308,6 +303,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let s_addr_field = this.project_field_named(&sin_addr_field, "s_addr")?;
                 this.write_bytes_ptr(s_addr_field.ptr(), address_bytes)?;
 
+                // Zero out the reserved `sin_zero` field. It's unclear if we must do this: old
+                // POSIX explicitly specified the field, but it has been removed since. We aim for
+                // compatibilty with old code; in particular libstd relies on it being initialized.
+                let sin_zero_field = this.project_field_named(&address_buffer, "sin_zero")?;
+                let mut sin_zero_elems = this.project_array_fields(&sin_zero_field)?;
+                while let Some((_idx, elem)) = sin_zero_elems.next(this)? {
+                    this.write_null(&elem)?;
+                }
+
                 address_buffer
             }
             SocketAddr::V6(address) => {
@@ -325,12 +329,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // We need a temporary buffer as `address_ptr` might not point to a large enough
                 // buffer, in which case we have to truncate.
                 let address_buffer = this.allocate(sockaddr_in6_layout, MemoryKind::Stack)?;
-                // Zero the whole buffer as some libc targets have additional fields which we fill
-                // with zero bytes (just like the standard library does it).
-                this.write_bytes_ptr(
-                    address_buffer.ptr(),
-                    iter::repeat_n(0, address_buffer.layout.size.bytes_usize()),
-                )?;
 
                 let sin6_family_field = this.project_field_named(&address_buffer, "sin6_family")?;
                 // We cannot simply write the `AF_INET6` scalar into the `sin6_family_field` because on most
@@ -445,11 +443,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_int(sockaddr_layout.size.bytes(), &addrlen_mplace)?;
 
         let sockaddr_mplace = this.allocate(sockaddr_layout, MiriMemoryKind::Machine.into())?;
-        // Zero the newly allocated socket address struct.
-        this.write_bytes_ptr(
-            sockaddr_mplace.ptr(),
-            iter::repeat_n(0, sockaddr_mplace.layout.size.bytes_usize()),
-        )?;
         this.write_socket_address(
             &address,
             sockaddr_mplace.ptr(),
