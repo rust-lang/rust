@@ -895,6 +895,15 @@ pub fn write_interface<'tcx>(tcx: TyCtxt<'tcx>) {
     }
 }
 
+pub fn finish_and_emit_metadata<'tcx>(tcx: TyCtxt<'tcx>) {
+    // Hook for tests.
+    if let Some((def_id, _)) = tcx.entry_fn(())
+        && find_attr!(tcx, def_id, RustcDelayedBugFromInsideQuery)
+    {
+        tcx.ensure_ok().trigger_delayed_bug(def_id);
+    }
+}
+
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.queries.analysis = analysis;
@@ -1296,14 +1305,6 @@ pub(crate) fn start_codegen<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> (Box<dyn Any>, CrateInfo, EncodedMetadata) {
     tcx.sess.timings.start_section(tcx.sess.dcx(), TimingSection::Codegen);
-
-    // Hook for tests.
-    if let Some((def_id, _)) = tcx.entry_fn(())
-        && find_attr!(tcx, def_id, RustcDelayedBugFromInsideQuery)
-    {
-        tcx.ensure_ok().trigger_delayed_bug(def_id);
-    }
-
     // Don't run this test assertions when not doing codegen. Compiletest tries to build
     // build-fail tests in check mode first and expects it to not give an error in that case.
     if tcx.sess.opts.output_types.should_codegen() {
