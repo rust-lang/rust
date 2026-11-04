@@ -185,6 +185,7 @@
 #![feature(try_trait_v2)]
 #![feature(try_trait_v2_residual)]
 #![feature(tuple_trait)]
+#![feature(type_info)]
 #![feature(ub_checks)]
 #![feature(unicode_internals)]
 #![feature(unsize)]

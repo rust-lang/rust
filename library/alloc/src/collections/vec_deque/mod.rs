@@ -58,8 +58,6 @@ use self::spec_extend::{SpecExtend, SpecExtendFront};
 
 mod spec_extend;
 
-use self::spec_from_iter::SpecFromIter;
-
 mod spec_from_iter;
 
 #[cfg(not(no_global_oom_handling))]
@@ -3941,7 +3939,7 @@ impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for VecDeque<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {
-        SpecFromIter::spec_from_iter(iter.into_iter())
+        Self::spec_from_iter(iter.into_iter())
     }
 }
 
