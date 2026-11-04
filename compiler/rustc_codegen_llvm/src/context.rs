@@ -946,11 +946,10 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn apply_vcall_visibility_metadata(
         &self,
-        ty: Ty<'tcx>,
         poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
         vtable: Value<'ll>,
     ) {
-        apply_vcall_visibility_metadata(self, ty, poly_trait_ref, vtable);
+        apply_vcall_visibility_metadata(self, poly_trait_ref, vtable);
     }
 
     fn get_fn(&self, instance: Instance<'tcx>) -> Value<'ll> {
