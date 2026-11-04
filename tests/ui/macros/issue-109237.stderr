@@ -9,11 +9,10 @@ LL |     let _ = statement!();
    |             ------------ in this macro invocation
    |
    = note: the macro call doesn't expand to an expression, but it can expand to a statement
-help: surround the macro invocation with `{}` to interpret the expansion as a statement
+help: invoke the macro in a new block with a single statement to interpret the expansion as a statement
    |
-LL -     let _ = statement!();
-LL +     let _ = { statement!(); };
-   |
+LL |     let _ = { statement!(); };
+   |             +             +++
 
 error: aborting due to 1 previous error
 

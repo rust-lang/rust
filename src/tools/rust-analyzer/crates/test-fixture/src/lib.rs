@@ -1233,7 +1233,7 @@ impl ProcMacroExpander for GenerateSuffixedTypeProcMacroExpander {
         let generated_ident = tt::Ident {
             sym: Symbol::intern(&format!("{}Suffix", ident.sym)),
             span: ident.span,
-            is_raw: tt::IdentIsRaw::No,
+            kind: tt::IdentKind::Normal,
         };
 
         let ret = quote! { call_site =>

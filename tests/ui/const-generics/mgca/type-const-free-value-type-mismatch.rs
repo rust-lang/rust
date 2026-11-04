@@ -11,8 +11,5 @@ const N: usize = gca!("this isn't a usize");
 //~^ ERROR the constant `"this isn't a usize"` is not of type `usize`
 
 fn f() -> [u8; const { N }] {}
-//[current]~^ ERROR mismatched types [E0308]
-//[next]~^^ ERROR type annotations needed
-//[next]~| ERROR mismatched types [E0308]
 
 fn main() {}

@@ -86,7 +86,7 @@ pub(crate) fn create_static_alloc<'tcx>(
     let (size, align) =
         GlobalAlloc::Static(static_def_id.into()).size_and_align(*ecx.tcx, ecx.typing_env);
     assert_eq!(size, layout.size);
-    assert!(align >= layout.align.abi);
+    assert!(align >= layout.align);
 
     let alloc = Allocation::try_new(size, align, AllocInit::Uninit, ())?;
     let alloc_id = ecx.tcx.reserve_and_set_static_alloc(static_def_id.into());

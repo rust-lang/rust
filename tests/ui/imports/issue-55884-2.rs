@@ -1,4 +1,10 @@
 //@ edition:2015
+//@ run-rustfix
+
+// Suggest a usable import path instead of a shadowed or circular re-export.
+
+#![allow(unused_imports)]
+
 mod options {
     pub struct ParseOptions {}
 }

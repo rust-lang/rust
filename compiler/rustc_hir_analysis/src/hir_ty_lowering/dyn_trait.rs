@@ -9,8 +9,8 @@ use rustc_hir::{self as hir, HirId};
 use rustc_lint_defs::builtin::{BARE_TRAIT_OBJECTS, UNUSED_ASSOCIATED_TYPE_BOUNDS};
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{
-    self, BottomUpFolder, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
-    TypeVisitableExt, Upcast,
+    self, BottomUpFolder, ExistentialPredicateStableCmpExt as _, IncludeSizedImplicitBounds, Ty,
+    TyCtxt, TypeFoldable, TypeVisitableExt, Upcast,
 };
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{ErrorGuaranteed, Span};
@@ -75,7 +75,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        self.add_default_traits(
+        self.add_implicit_bounds(
             &mut user_written_bounds,
             dummy_self,
             &hir_bounds
@@ -84,6 +84,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .collect::<Vec<_>>(),
             ImpliedBoundsContext::AssociatedTypeOrImplTrait,
             span,
+            IncludeSizedImplicitBounds::No,
         );
 
         let (mut elaborated_trait_bounds, elaborated_projection_bounds) =

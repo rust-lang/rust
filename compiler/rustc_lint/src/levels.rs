@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use rustc_ast as ast;
 use rustc_ast::CRATE_NODE_ID;
 use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_ir::{Attribute, DocAttribute, find_attr};
 use rustc_attr_parsing::{AttributeParser, Recovery, ShouldEmit};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -699,7 +699,7 @@ where
                     || attr.path_matches(&[sym::expect]))
                     && attr.meta_item_list().is_some()
             }),
-            Target::Crate,
+            AstTarget::None(Target::Crate),
             DUMMY_SP,
             CRATE_NODE_ID,
             Some(self.features),

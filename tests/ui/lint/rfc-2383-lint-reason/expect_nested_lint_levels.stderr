@@ -1,5 +1,5 @@
 warning: variable does not need to be mutable
-  --> $DIR/expect_nested_lint_levels.rs:35:13
+  --> $DIR/expect_nested_lint_levels.rs:35:17
    |
 LL |         let mut v = 0;
    |             ----^

@@ -938,6 +938,7 @@ impl<'a> Builder<'a> {
                 test::HtmlCheck,
                 test::RustInstaller,
                 test::TestFloatParse,
+                test::CompilerBuiltins,
                 test::CollectLicenseMetadata,
                 test::RunMake,
                 test::RunMakeCargo,

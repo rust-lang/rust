@@ -143,7 +143,7 @@ where
             }
         }
 
-        let byval_align = if arg.layout.align.abi < align_4 {
+        let byval_align = if arg.layout.align < align_4 {
             // (1.)
             align_4
         } else if t.is_like_darwin && contains_vector(cx, arg.layout) {

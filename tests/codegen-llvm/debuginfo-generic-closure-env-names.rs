@@ -22,13 +22,13 @@
 //@ edition: 2021
 
 // non_generic_closure()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}", scope: ![[non_generic_closure_NAMESPACE:[0-9]+]],
-// MSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "closure_env$0", scope: ![[non_generic_closure_NAMESPACE:[0-9]+]],
-// CHECK: ![[non_generic_closure_NAMESPACE]] = !DINamespace(name: "non_generic_closure"
+// NONMSVC-DAG: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}", scope: ![[non_generic_closure_NAMESPACE:[0-9]+]],
+// MSVC-DAG: !DICompositeType(tag: DW_TAG_structure_type, name: "closure_env$0", scope: ![[non_generic_closure_NAMESPACE:[0-9]+]],
+// CHECK-DAG: ![[non_generic_closure_NAMESPACE]] = !DINamespace(name: "non_generic_closure"
 
-// CHECK: ![[function_containing_closure_NAMESPACE:[0-9]+]] = !DINamespace(name: "function_containing_closure"
-// CHECK: ![[generic_async_function_NAMESPACE:[0-9]+]] = !DINamespace(name: "generic_async_function"
-// CHECK: ![[generic_async_block_NAMESPACE:[0-9]+]] = !DINamespace(name: "generic_async_block"
+// CHECK-DAG: ![[function_containing_closure_NAMESPACE:[0-9]+]] = !DINamespace(name: "function_containing_closure"
+// CHECK-DAG: ![[generic_async_function_NAMESPACE:[0-9]+]] = !DINamespace(name: "generic_async_function"
+// CHECK-DAG: ![[generic_async_block_NAMESPACE:[0-9]+]] = !DINamespace(name: "generic_async_block"
 
 // function_containing_closure<u32>()
 // NONMSVC-DAG: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}<u32>", scope: ![[function_containing_closure_NAMESPACE]]
