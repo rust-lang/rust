@@ -169,6 +169,18 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         instance: Option<Instance<'tcx>>,
     ) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
+        // Use rustc's argument layouts for Windows calling-convention decoration
+        // instead of letting LLVM calculate the byte count from lowered arguments.
+        let decorated_name = rustc_codegen_ssa::common::windows_calling_convention_name(
+            name,
+            &self.tcx.sess.target,
+            fn_abi.conv,
+            &fn_abi.args,
+        )
+        .map(|name| format!("\x01{name}"));
+
+        // The `\x01` prefix tells LLVM not to remangle the name.
+        let name = decorated_name.as_deref().unwrap_or(name);
 
         // Function addresses in Rust are never significant, allowing functions to
         // be merged.
