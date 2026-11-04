@@ -14,6 +14,7 @@ use crate::utils::helpers::{self, t};
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct BootstrapToml {
     profile: Profile,
+    deny_warnings: bool,
 }
 
 impl CommandLineStep for BootstrapToml {
@@ -86,7 +87,21 @@ impl CommandLineStep for BootstrapToml {
                 .unwrap()
         };
 
-        run.builder.ensure(BootstrapToml { profile });
+        let deny_warnings = {
+            println!(
+                "\nRust CI fails when there are any warnings. It is possible to deny warnings locally too, \
+                 but that can hurt iteration cycle (forcing you to rebuild everything when there are warnings).\n"
+            );
+
+            prompt_user("Deny warnings? [y/N]", |input| match input {
+                "y" => Break(true),
+                "n" | "" => Break(false),
+                _ => Continue(()),
+            })
+            .unwrap()
+        };
+
+        run.builder.ensure(BootstrapToml { profile, deny_warnings });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -94,7 +109,7 @@ impl CommandLineStep for BootstrapToml {
     }
 }
 
-pub fn setup(config: &Config, BootstrapToml { profile }: BootstrapToml) {
+pub fn setup(config: &Config, BootstrapToml { profile, deny_warnings }: BootstrapToml) {
     let suggestions: &[&str] = match profile {
         Profile::Compiler | Profile::None => &["check", "build", "test"],
         Profile::Tools => &[
@@ -131,20 +146,23 @@ pub fn setup(config: &Config, BootstrapToml { profile }: BootstrapToml) {
     }
 
     let path = &config.config.clone().unwrap_or(PathBuf::from("bootstrap.toml"));
-    setup_bootstrap_toml(path, profile, config);
+    setup_bootstrap_toml(path, profile, deny_warnings, config);
 }
 
-fn setup_bootstrap_toml(path: &Path, profile: Profile, config: &Config) {
+fn setup_bootstrap_toml(path: &Path, profile: Profile, deny_warnings: bool, config: &Config) {
     if profile == Profile::None {
         return;
     }
 
     let latest_change_id = CONFIG_CHANGE_HISTORY.last().unwrap().change_id;
+    let rust_section = if deny_warnings { "" } else { "\n[rust]\ndeny-warnings = false\n" };
+
     let settings = format!(
         "# See bootstrap.example.toml for documentation of available options\n\
-    #\n\
-    profile = \"{profile}\"  # Includes one of the default files in {PROFILE_DIR}\n\
-    change-id = {latest_change_id}\n"
+         #\n\
+         profile = \"{profile}\"  # Includes one of the default files in {PROFILE_DIR}\n\
+         change-id = {latest_change_id}\n\
+         {rust_section}"
     );
 
     t!(fs::write(path, settings));
