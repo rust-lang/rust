@@ -1290,14 +1290,21 @@ pub struct Discriminant<T>(<T as DiscriminantKind>::Discriminant);
 pub struct DiscriminantOrd<T>(<T as DiscriminantKind>::Discriminant);
 
 impl<T> Discriminant<T> {
-    /// Returns an *unstable* ordering key for this [`Discriminant`].
+    /// Returns an ordering key for this [`Discriminant`] that has an unstable
+    /// implementation with regards to *semantic versioning*. This is not the be confused
+    /// with an [*"unstable sort"*].
     ///
-    /// [`Discriminant`] does not implement [`PartialOrd`] or [`Ord`] as we do
-    /// not guarantee a stable ordering of discriminant values.
-    /// This will _typically_ sort enum variants by their declaration order, but
-    /// this is *not* guaranteed.
-    /// Likewise, non-enum values (e.g., `struct`s) will _typically_ be trivially
-    /// ordered as equivalent.
+    /// Because all types have a publicly accessible [`Discriminant`], regardless
+    /// of whether the order of said type is a part of its stability guarantees,
+    /// the exact ordering of the returned [`DiscriminantOrd`] cannot be relied on
+    /// for stability across crates. This is similar to the stability of the size
+    /// of a type as returned by [`size_of`].
+    ///
+    /// Enum values will be ordered based on the source declaration and `repr` values
+    /// of their variants, consistent with derived implementations of [`PartialOrd`]
+    /// and [`Ord`]. Noting that only the discriminant and no field values are considered.
+    /// All other kinds of values have an *unspecified* ordering, but will _typically_
+    /// be trivially ordered as equivalent.
     ///
     /// Users of this function should instead rely on the [`Ord`] implementation
     /// of `T` wherever possible.
@@ -1344,6 +1351,8 @@ impl<T> Discriminant<T> {
     ///     Ordering::Less,
     /// );
     /// ```
+    ///
+    /// ["unstable sort"]: slice::sort_unstable
     #[unstable(feature = "discriminant_ord", issue = "165438")]
     #[must_use]
     #[inline]
