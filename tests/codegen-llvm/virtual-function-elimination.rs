@@ -2,7 +2,7 @@
 
 // CHECK: @vtable.0 = {{.*}}, !type ![[TYPE0:[0-9]+]], !vcall_visibility ![[VCALL_VIS0:[0-9]+]]
 // CHECK: @vtable.1 = {{.*}}, !type ![[TYPE1:[0-9]+]], !vcall_visibility ![[VCALL_VIS0]]
-// CHECK: @vtable.2 = {{.*}}, !type ![[TYPE2:[0-9]+]], !vcall_visibility ![[VCALL_VIS2:[0-9]+]]
+// CHECK: @vtable.2 = {{.*}}, !type ![[TYPE2:[0-9]+]], !vcall_visibility ![[VCALL_VIS0]]
 
 #![crate_type = "lib"]
 
@@ -98,8 +98,10 @@ pub fn main() {
     taking_v(&s);
 }
 
+// MetaSized is an implicit supertrait of all dyn-compatible traits.
+// CHECK: !0 = !{i64 0, !"[[MANGLED_CORE_MARKER:[0-9a-zA-Z_]+]]MetaSized"}
+//
 // CHECK: ![[TYPE0]] = !{i64 0, !"[[MANGLED_TYPE0]]"}
-// CHECK: ![[VCALL_VIS0]] = !{i64 2}
+// CHECK: ![[VCALL_VIS0]] = !{i64 1}
 // CHECK: ![[TYPE1]] = !{i64 0, !"[[MANGLED_TYPE1]]"}
 // CHECK: ![[TYPE2]] = !{i64 0, !"NtC[[CRATE_IDENT]]_28virtual_function_elimination1V"}
-// CHECK: ![[VCALL_VIS2]] = !{i64 1}
