@@ -64,22 +64,21 @@ pub(super) fn check_method<'tcx>(
     arg: &'tcx Expr<'tcx>,
     closure: &'tcx Closure<'tcx>,
 ) {
-    let body = cx.tcx.hir_body(closure.body);
-    if let [param] = body.params
-        && let [input] = closure.fn_decl.inputs
+    if let [param] = closure.fn_decl.inputs
         && !arg.span.from_expansion()
-        && !input.span.from_expansion()
+        && !param.ty.span.from_expansion()
         && !recv.span.from_expansion()
-        && !param.span.from_expansion()
+        && !param.param_span.from_expansion()
     {
-        let ty_spans = if let TyKind::Tup([_, inner]) = input.kind {
+        let ty_spans = if let TyKind::Tup([_, inner]) = param.ty.kind {
             let Some(inner) = walk_span_to_context(inner.span, SyntaxContext::root()) else {
                 return;
             };
-            Some((input.span, inner))
+            Some((param.ty.span, inner))
         } else {
             None
         };
+        let body = cx.tcx.hir_body(closure.body);
         check(cx, recv, param.pat, ty_spans, body.value);
     }
 }

@@ -126,7 +126,7 @@ fn check_fn_like<'tcx>(cx: &LateContext<'tcx>, fd: &'tcx hir::FnDecl<'tcx>) {
     }
 
     for input in fd.inputs {
-        LifetimeInfoCollector::collect(input, |info| {
+        LifetimeInfoCollector::collect(input.ty, |info| {
             if let Some(group) = map.get_mut(&info.lifetime.kind) {
                 group.inputs.push(info);
             }

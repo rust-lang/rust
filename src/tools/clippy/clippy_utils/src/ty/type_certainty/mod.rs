@@ -209,10 +209,10 @@ fn param_certainty(cx: &LateContext<'_>, param: &Param<'_>) -> Certainty {
         return Certainty::Uncertain;
     };
     let inputs = fn_decl.inputs;
-    let body_params = cx.tcx.hir_body_owned_by(owner_did).params;
-    std::iter::zip(body_params, inputs)
-        .find(|(p, _)| p.hir_id == param.hir_id)
-        .map_or(Certainty::Uncertain, |(_, ty)| type_certainty(cx, ty).clear_def_id())
+    inputs
+        .iter()
+        .find(|p| p.hir_id == param.hir_id)
+        .map_or(Certainty::Uncertain, |p| type_certainty(cx, p.ty).clear_def_id())
 }
 
 fn path_segment_certainty(

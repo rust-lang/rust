@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         &mut self,
         cx: &LateContext<'tcx>,
         fn_kind: intravisit::FnKind<'tcx>,
-        _: &'tcx FnDecl<'_>,
+        decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         _: Span,
         fn_def_id: LocalDefId,
@@ -106,8 +106,8 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
 
         // Seed the set with the `Box` parameters that could be unboxed. The `ExprUseVisitor` walk
         // below then removes any that escape by being moved or borrowed.
-        let set: HirIdSet = body
-            .params
+        let set: HirIdSet = decl
+            .inputs
             .iter()
             .filter_map(|param| {
                 // Only simple bindings (`x: Box<_>`) bind a local that the walk can track and report.
@@ -140,7 +140,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         let mut v = EscapeDelegate { set };
 
         ExprUseVisitor::for_clippy(cx, fn_def_id, &mut v)
-            .consume_body(body)
+            .consume_body(decl, body)
             .into_ok();
 
         for node in v.set {

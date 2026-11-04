@@ -7,7 +7,7 @@ use clippy_utils::usage::local_used_in;
 use rustc_ast::UnOp;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{BinOpKind, Body, Expr, ExprKind, HirId, QPath};
+use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Spanned;
@@ -20,8 +20,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, clos
     if !expr.span.from_expansion()
         // check if `iter().any()` can be replaced with `contains()`
         && let ExprKind::Closure(closure) = closure_arg.kind
-        && let Body{params: [param],value} = cx.tcx.hir_body(closure.body)
-        && let ExprKind::Binary(op, lhs, rhs) = value.kind
+        && let [param] = closure.fn_decl.inputs
+        && let ExprKind::Binary(op, lhs, rhs) = cx.tcx.hir_body(closure.body).value.kind
         && let (peeled_ref_pat, _) = peel_hir_pat_refs(param.pat)
         && let Some((snip,snip_expr)) = can_replace_with_contains(cx, op, lhs, rhs, peeled_ref_pat.hir_id, &mut app)
         && let ref_type = cx.typeck_results().expr_ty_adjusted(recv)

@@ -64,20 +64,19 @@ pub fn find_param_with_region<'tcx>(
         _ => {}
     }
 
-    let body = tcx.hir_maybe_body_owned_by(def_id)?;
-
-    let owner_id = tcx.hir_body_owner(body.id());
+    let owner_id = tcx.local_def_id_to_hir_id(def_id);
     let fn_decl = tcx.hir_fn_decl_by_hir_id(owner_id)?;
     let poly_fn_sig = tcx.fn_sig(id).instantiate_identity().skip_norm_wip();
 
     let fn_sig = tcx.liberate_late_bound_regions(id, poly_fn_sig);
-    body.params
+    fn_decl
+        .inputs
         .iter()
         .take(if fn_sig.c_variadic() {
             fn_sig.inputs().len()
         } else {
-            assert_eq!(fn_sig.inputs().len(), body.params.len());
-            body.params.len()
+            assert_eq!(fn_sig.inputs().len(), fn_decl.inputs.len());
+            fn_decl.inputs.len()
         })
         .enumerate()
         .find_map(|(index, param)| {
@@ -93,7 +92,7 @@ pub fn find_param_with_region<'tcx>(
                 }
             });
             found_anon_region.then(|| {
-                let ty_hir_id = fn_decl.inputs[index].hir_id;
+                let ty_hir_id = fn_decl.inputs[index].ty.hir_id;
                 let param_ty_span = tcx.hir_span(ty_hir_id);
                 let is_first = index == 0;
                 AnonymousParamInfo {

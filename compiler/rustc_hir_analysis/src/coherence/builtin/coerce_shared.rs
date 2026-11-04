@@ -171,6 +171,7 @@ fn first_explicit_lifetime_span_in_ty(ty: &hir::Ty<'_>) -> Option<Span> {
         hir::TyKind::InferDelegation(_)
         | hir::TyKind::Never
         | hir::TyKind::Infer(())
+        | hir::TyKind::CVarArgs
         | hir::TyKind::Err(_) => None,
     }
 }
