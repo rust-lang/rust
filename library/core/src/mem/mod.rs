@@ -1285,6 +1285,73 @@ pub const unsafe fn transmute_neo<Src, Dst>(src: Src) -> Dst {
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 pub struct Discriminant<T>(<T as DiscriminantKind>::Discriminant);
 
+/// Implementation detail for [`Discriminant::ord`].
+#[unstable(feature = "discriminant_ord", issue = "165438")]
+pub struct DiscriminantOrd<T>(<T as DiscriminantKind>::Discriminant);
+
+impl<T> Discriminant<T> {
+    /// Returns an *unstable* ordering key for this [`Discriminant`].
+    ///
+    /// [`Discriminant`] does not implement [`PartialOrd`] or [`Ord`] as we do
+    /// not guarantee a stable ordering of discriminant values.
+    /// This will _typically_ sort enum variants by their declaration order, but
+    /// this is *not* guaranteed.
+    /// Likewise, non-enum values (e.g., `struct`s) will _typically_ be trivially
+    /// ordered as equivalent.
+    ///
+    /// Users of this function should instead rely on the [`Ord`] implementation
+    /// of `T` wherever possible.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(discriminant_ord)]
+    ///
+    /// use std::cmp::Ordering;
+    /// use std::mem::discriminant;
+    /// # use std::assert_matches;
+    ///
+    /// enum Foo { A(i32), B(i32) }
+    ///
+    /// // Equivalent arms will compare equal regardless of contained data
+    /// assert_matches!(
+    ///     discriminant(&Foo::A(1)).ord().cmp(&discriminant(&Foo::A(2)).ord()),
+    ///     Ordering::Equal,
+    /// );
+    ///
+    /// // Inequivalent arms will compare not-equal
+    /// assert_matches!(
+    ///     discriminant(&Foo::A(1)).ord().cmp(&discriminant(&Foo::B(1)).ord()),
+    ///     Ordering::Less | Ordering::Greater,
+    /// );
+    /// ```
+    ///
+    /// Upstream libraries and the compiler are free to change the exact ordering
+    /// of discriminants. The below _may_ break at any time:
+    ///
+    /// ```should_panic
+    /// # #![feature(discriminant_ord)]
+    /// #
+    /// # use std::cmp::Ordering;
+    /// # use std::mem::discriminant;
+    /// # use std::assert_matches;
+    /// #
+    /// # enum Foo { B(i32), A(i32) } // Deliberately swapped so this example panics
+    /// #
+    /// // Foo::A is declared before Foo::B, but that ordering is not stable
+    /// assert_matches!(
+    ///     discriminant(&Foo::A(0)).ord().cmp(&discriminant(&Foo::B(0)).ord()),
+    ///     Ordering::Less,
+    /// );
+    /// ```
+    #[unstable(feature = "discriminant_ord", issue = "165438")]
+    #[must_use]
+    #[inline]
+    pub const fn ord(&self) -> DiscriminantOrd<T> {
+        DiscriminantOrd::<T>(self.0)
+    }
+}
+
 // N.B. These trait implementations cannot be derived because we don't want any bounds on T.
 
 #[stable(feature = "discriminant_value", since = "1.21.0")]
@@ -1322,6 +1389,58 @@ impl<T> hash::Hash for Discriminant<T> {
 impl<T> fmt::Debug for Discriminant<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_tuple("Discriminant").field(&self.0).finish()
+    }
+}
+
+#[unstable(feature = "discriminant_ord", issue = "165438")]
+impl<T> Copy for DiscriminantOrd<T> {}
+
+#[unstable(feature = "discriminant_ord", issue = "165438")]
+impl<T> clone::Clone for DiscriminantOrd<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trivial_clone", issue = "none")]
+unsafe impl<T> TrivialClone for DiscriminantOrd<T> {}
+
+#[unstable(feature = "discriminant_ord", issue = "165438")]
+impl<T> cmp::PartialEq for DiscriminantOrd<T> {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.0 == rhs.0
+    }
+}
+
+#[unstable(feature = "discriminant_ord", issue = "165438")]
+impl<T> cmp::Eq for DiscriminantOrd<T> {}
+
+#[unstable(feature = "discriminant_ord", issue = "165438")]
+impl<T> hash::Hash for DiscriminantOrd<T> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+#[unstable(feature = "discriminant_ord", issue = "165438")]
+impl<T> fmt::Debug for DiscriminantOrd<T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_tuple("DiscriminantOrd").field(&self.0).finish()
+    }
+}
+
+#[unstable(feature = "discriminant_ord", issue = "165438")]
+impl<T> cmp::PartialOrd for DiscriminantOrd<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+#[unstable(feature = "discriminant_ord", issue = "165438")]
+impl<T> cmp::Ord for DiscriminantOrd<T> {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.0.cmp(&other.0)
     }
 }
 
