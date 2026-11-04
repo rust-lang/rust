@@ -195,20 +195,20 @@ pub fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
 
 // Computes the extra flags that need to be passed to cargo to make it behave like the current
 // cargo invocation.
-fn cargo_extra_flags() -> Vec<String> {
+fn cargo_extra_flags(args: &Args) -> Vec<String> {
     let mut flags = Vec::new();
     // Forward `--config` flags.
     let config_flag = "--config";
-    for arg in get_arg_flag_values(config_flag) {
+    for arg in args.get_arg_flag_values(config_flag) {
         flags.push(config_flag.to_string());
-        flags.push(arg);
+        flags.push(arg.to_string());
     }
 
     // Forward `--manifest-path`.
     let manifest_flag = "--manifest-path";
-    if let Some(manifest) = get_arg_flag_value(manifest_flag) {
+    if let Some(manifest) = args.get_arg_flag_value(manifest_flag) {
         flags.push(manifest_flag.to_string());
-        flags.push(manifest);
+        flags.push(manifest.to_string());
     }
 
     // Forwarding `--target-dir` would make sense, but `cargo metadata` does not support that flag.
@@ -216,11 +216,11 @@ fn cargo_extra_flags() -> Vec<String> {
     flags
 }
 
-pub fn get_cargo_metadata() -> Metadata {
+pub fn get_cargo_metadata(args: &Args) -> Metadata {
     // This will honor the `CARGO` env var the same way our `cargo()` does.
     MetadataCommand::new()
         .no_deps()
-        .other_options(cargo_extra_flags())
+        .other_options(cargo_extra_flags(args))
         .exec()
         .unwrap_or_else(|err| show_error!("{}", err))
 }
@@ -251,8 +251,8 @@ pub fn debug_cmd(prefix: &str, verbose: usize, cmd: &Command) {
 /// Get the target directory for miri output.
 ///
 /// Either in an argument passed-in, or from cargo metadata.
-pub fn get_target_dir(meta: &Metadata) -> PathBuf {
-    let mut output = match get_arg_flag_value("--target-dir") {
+pub fn get_target_dir(args: &Args, meta: &Metadata) -> PathBuf {
+    let mut output = match args.get_arg_flag_value("--target-dir") {
         Some(dir) => PathBuf::from(dir),
         None => meta.target_directory.clone().into_std_path_buf(),
     };
@@ -302,8 +302,8 @@ pub fn clean_sysroot() {
 }
 
 /// Deletes the Miri target directory
-pub fn clean_target_dir(meta: &Metadata) {
-    let target_dir = get_target_dir(meta);
+pub fn clean_target_dir(args: &Args, meta: &Metadata) {
+    let target_dir = get_target_dir(args, meta);
 
     eprintln!("Cleaning target directory at {}", target_dir.display());
 
