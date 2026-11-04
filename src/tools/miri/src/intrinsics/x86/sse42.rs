@@ -154,7 +154,7 @@ fn compare_strings<'tcx>(
             } else if len1 <= len2 {
                 for i in 0..len2 {
                     // By default, assume that there is a match.
-                    result |= 1 << i;
+                    let mut has_match = true;
 
                     for j in 0..len1 {
                         let k = i + j;
@@ -166,7 +166,7 @@ fn compare_strings<'tcx>(
                         } else if k >= len2 {
                             // The string ends before the match is completed.
                             // Remove the match.
-                            result &= !(1 << i);
+                            has_match = false;
                             break;
                         } else {
                             let ch1 = ecx.read_immediate(&ecx.project_index(str1, j)?)?;
@@ -175,10 +175,14 @@ fn compare_strings<'tcx>(
 
                             if ne.to_scalar().to_bool()? {
                                 // Two characters are not equal, so there can't be a match.
-                                result &= !(1 << i);
+                                has_match = false;
                                 break;
                             }
                         }
+                    }
+
+                    if has_match {
+                        result |= 1 << i;
                     }
                 }
             }
