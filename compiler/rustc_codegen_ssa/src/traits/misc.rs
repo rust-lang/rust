@@ -13,7 +13,6 @@ pub trait MiscCodegenMethods<'tcx>: BackendTypes {
     ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), Self::Value>>;
     fn apply_vcall_visibility_metadata(
         &self,
-        _ty: Ty<'tcx>,
         _poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
         _vtable: Self::Value,
     ) {
