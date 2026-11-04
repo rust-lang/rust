@@ -210,6 +210,7 @@ diagnostics![AnyDiagnostic<'db> ->
     UnimplementedTrait<'db>,
     YieldOutsideCoroutine,
     ReturnOutsideFunction,
+    MatchInheritedImmRefWithMutRefPat,
 ];
 
 #[derive(Debug)]
@@ -716,6 +717,11 @@ pub struct YieldOutsideCoroutine {
 pub struct ReturnOutsideFunction {
     pub expr: InFile<ExprOrPatPtr>,
     pub kind: ReturnKind,
+}
+
+#[derive(Debug)]
+pub struct MatchInheritedImmRefWithMutRefPat {
+    pub pat: InFile<ExprOrPatPtr>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1931,6 +1937,10 @@ impl<'db> AnyDiagnostic<'db> {
                     }
                     _ => return None,
                 }
+            }
+            InferenceDiagnostic::MatchInheritedImmRefWithMutRefPat { pat } => {
+                let pat = pat_syntax(*pat)?.map(Into::into);
+                MatchInheritedImmRefWithMutRefPat { pat }.into()
             }
             InferenceDiagnostic::InvalidPatPathRes { pat, res } => {
                 let pat = pat_syntax(*pat)?.map(Into::into);

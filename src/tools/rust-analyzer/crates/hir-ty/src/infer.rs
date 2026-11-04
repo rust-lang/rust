@@ -546,6 +546,10 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         res: ValueNs,
     },
+    MatchInheritedImmRefWithMutRefPat {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
