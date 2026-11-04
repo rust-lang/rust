@@ -392,11 +392,11 @@ trait UnusedDelimLint {
         is_kw: bool,
     ) {
         let sm = cx.sess().source_map();
-        // Returns the delimiter itself, and whether there is a comment between it and the
-        // inner value.
-        let delim = |span: Span, open: bool| {
+        // The warning points at the delimiter alone. The help only does so if there is a comment
+        // between the delimiter and the inner value, so the comment is kept.
+        let shrink = |span: Span, open: bool, in_help: bool| -> Span {
             if span.is_empty() {
-                return None;
+                return span;
             }
             let (delim, gap) = if open {
                 let delim = span.with_hi(span.lo() + BytePos(1));
@@ -405,25 +405,22 @@ trait UnusedDelimLint {
                 let delim = span.with_lo(span.hi() - BytePos(1));
                 (delim, span.with_hi(delim.lo()))
             };
-            sm.span_to_snippet(delim).ok().filter(|s| matches!(&**s, "(" | ")" | "{" | "}"))?;
-            Some((delim, sm.span_to_snippet(gap).is_ok_and(|s| !s.trim().is_empty())))
+            let is_delim =
+                sm.span_to_snippet(delim).is_ok_and(|s| matches!(&*s, "(" | ")" | "{" | "}"));
+            let has_comment = sm.span_to_snippet(gap).is_ok_and(|s| !s.trim().is_empty());
+            if is_delim && (!in_help || has_comment) { delim } else { span }
         };
         let primary_span = if let Some((lo, hi)) = spans {
             if hi.is_empty() {
                 // do not point at delims that do not exist
                 return;
             }
-            let lo = delim(lo, true).map_or(lo, |(delim, _)| delim);
-            let hi = delim(hi, false).map_or(hi, |(delim, _)| delim);
-            MultiSpan::from(vec![lo, hi])
+            MultiSpan::from(vec![shrink(lo, true, false), shrink(hi, false, false)])
         } else {
             MultiSpan::from(value_span)
         };
         let suggestion = spans.map(|(lo, hi)| {
-            // Only remove the delimiter if there is a comment, so the comment is kept.
-            let lo = delim(lo, true).filter(|(_, comment)| *comment).map_or(lo, |(delim, _)| delim);
-            let hi =
-                delim(hi, false).filter(|(_, comment)| *comment).map_or(hi, |(delim, _)| delim);
+            let (lo, hi) = (shrink(lo, true, true), shrink(hi, false, true));
             let lo_replace = if (keep_space.0 || is_kw)
                 && let Ok(snip) = sm.span_to_prev_source(lo)
                 && !snip.ends_with(' ')
