@@ -80,6 +80,7 @@ jobs:
 
     env:
       RA_TARGET: ${{ matrix.target }}
+      CODE_TARGET: ${{ matrix.code-target }}
       ALLOCATOR_FLAG: ${{ matrix.allocator != 'system' && format('--{0}', matrix.allocator) || '' }}
 
     steps:
@@ -114,9 +115,8 @@ jobs:
           rustup update --no-self-update stable
           # llvm-tools contain the llvm-profdata tool which is needed for PGO
           rustup component add rust-src ${MAYBE_LLVM_TOOLS}
-          rustup target add ${TARGET}
+          rustup target add ${RA_TARGET}
         env:
-          TARGET: ${{ matrix.target }}
           MAYBE_LLVM_TOOLS: ${{ matrix.pgo && 'llvm-tools' || '' }}
 
       - name: Dist
@@ -130,15 +130,11 @@ jobs:
       - name: Package Extension (release)
         if: github.ref == 'refs/heads/release' && matrix.code-target
         run: npx vsce package -o "../../dist/rust-analyzer-${CODE_TARGET}.vsix" --target ${CODE_TARGET}
-        env:
-          CODE_TARGET: ${{ matrix.code-target }}
         working-directory: editors/code
 
       - name: Package Extension (nightly)
         if: github.ref != 'refs/heads/release' && matrix.code-target
         run: npx vsce package -o "../../dist/rust-analyzer-${CODE_TARGET}.vsix" --target ${CODE_TARGET} --pre-release
-        env:
-          CODE_TARGET: ${{ matrix.code-target }}
         working-directory: editors/code
 
       - if: matrix.target == 'x86_64-unknown-linux-gnu'
@@ -154,16 +150,13 @@ jobs:
 
       - name: Run analysis-stats on rust-analyzer
         if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: target/${TARGET}/release/rust-analyzer analysis-stats . -q
-        env:
-          TARGET: ${{ matrix.target }}
+        run: target/${RA_TARGET}/release/rust-analyzer analysis-stats . -q
 
       - name: Run analysis-stats on rust std library
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         env:
-          TARGET: ${{ matrix.target }}
           RUSTC_BOOTSTRAP: 1
-        run: target/${TARGET}/release/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/std -q
+        run: target/${RA_TARGET}/release/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/std -q
 
       - name: Upload artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
