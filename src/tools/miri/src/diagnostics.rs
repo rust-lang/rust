@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use rustc_abi::{Align, Size};
 use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
-use rustc_errors::{Diag, Level};
+use rustc_errors::{Diag, Level, MultiSpan, Sublevel};
 use rustc_span::{DUMMY_SP, Span, Symbol};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
@@ -157,19 +157,32 @@ pub enum NonHaltingDiagnostic {
 }
 
 /// Level of Miri specific diagnostics
-pub enum DiagLevel {
+enum DiagLevel {
     Error,
     Warning,
     Note,
 }
 
+/// The kind of extra annotations.
+enum ExtraKind {
+    Note,
+    Help,
+}
+
 /// Generate a note/help text without a span.
 macro_rules! note {
-    ($($tt:tt)*) => { (None, format!($($tt)*)) };
+    ($($tt:tt)*) => { (ExtraKind::Note, None, format!($($tt)*)) };
+}
+macro_rules! help {
+    ($($tt:tt)*) => { (ExtraKind::Help, None, format!($($tt)*)) };
 }
 /// Generate a note/help text with a span.
+#[allow(unused)]
 macro_rules! note_span {
-    ($span:expr, $($tt:tt)*) => { (Some($span), format!($($tt)*)) };
+    ($span:expr, $($tt:tt)*) => { (ExtraKind::Note, Some($span), format!($($tt)*)) };
+}
+macro_rules! help_span {
+    ($span:expr, $($tt:tt)*) => { (ExtraKind::Help, Some($span), format!($($tt)*)) };
 }
 
 /// Attempts to prune a stacktrace to omit the Rust runtime, and returns a bool indicating if any
@@ -240,9 +253,9 @@ pub fn report_result<'tcx>(
     use InterpErrorKind::*;
     use UndefinedBehaviorInfo::*;
 
-    let mut labels = vec![];
+    let mut main_span_labels = vec![];
 
-    let (title, helps) = if let MachineStop(info) = res.kind() {
+    let (title, extras) = if let MachineStop(info) = res.kind() {
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
         use TerminationInfo::*;
         let title = match info {
@@ -258,7 +271,7 @@ pub fn report_result<'tcx>(
                 return Some((0, false));
             }
             LocalDeadlock => {
-                labels.push(format!("thread got stuck here"));
+                main_span_labels.push(format!("thread got stuck here"));
                 None
             }
             GlobalDeadlock => {
@@ -273,7 +286,6 @@ pub fn report_result<'tcx>(
                         DiagLevel::Error,
                         format!("the evaluated program deadlocked"),
                         vec![format!("thread got stuck here")],
-                        vec![],
                         vec![],
                         &stacktrace,
                         Some(thread),
@@ -290,76 +302,76 @@ pub fn report_result<'tcx>(
             MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
         };
         #[rustfmt::skip]
-        let helps = match info {
+        let extras = match info {
             UnsupportedInIsolation(_) =>
                 vec![
-                    note!("set `MIRIFLAGS=-Zmiri-disable-isolation` to disable isolation;"),
-                    note!("or set `MIRIFLAGS=-Zmiri-isolation-error=warn` to make Miri return an error code from isolated operations (if supported for that operation) and continue with a warning"),
+                    help!("set `MIRIFLAGS=-Zmiri-disable-isolation` to disable isolation;"),
+                    help!("or set `MIRIFLAGS=-Zmiri-isolation-error=warn` to make Miri return an error code from isolated operations (if supported for that operation) and continue with a warning"),
                 ],
             UnsupportedForeignItem(_) => {
                 vec![
-                    note!("this means the program tried to do something Miri does not support; it does not indicate a bug in the program"),
+                    help!("this means the program tried to do something Miri does not support; it does not indicate a bug in the program"),
                 ]
             }
             StackedBorrowsUb { help, history, .. } => {
-                labels.extend(help.clone());
+                main_span_labels.extend(help.clone());
                 let mut helps = vec![
-                    note!("this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental"),
-                    note!("see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information"),
+                    help!("this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental"),
+                    help!("see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information"),
                 ];
                 if let Some(TagHistory {created, invalidated, protected}) = history.clone() {
-                    helps.push((Some(created.1), created.0));
+                    helps.push((ExtraKind::Help, Some(created.1), created.0));
                     if let Some((msg, span)) = invalidated {
-                        helps.push(note_span!(span, "{msg}"));
+                        helps.push(help_span!(span, "{msg}"));
                     }
                     if let Some((protector_msg, protector_span)) = protected {
-                        helps.push(note_span!(protector_span, "{protector_msg}"));
+                        helps.push(help_span!(protector_span, "{protector_msg}"));
                     }
                 }
                 helps
             },
             TreeBorrowsUb { title: _, details, history } => {
                 let mut helps = vec![
-                    note!("this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental"),
-                    note!("see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information"),
+                    help!("this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental"),
+                    help!("see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information"),
                 ];
                 for m in details {
-                    helps.push(note!("{m}"));
+                    helps.push(help!("{m}"));
                 }
-                for event in history.events.clone() {
-                    helps.push(event);
+                for (span, msg) in history.events.clone() {
+                    helps.push((ExtraKind::Help, span, msg));
                 }
                 helps
             }
             MultipleSymbolDefinitions { first, first_crate, second, second_crate, .. } =>
                 vec![
-                    note_span!(*first, "it's first defined here, in crate `{first_crate}`"),
-                    note_span!(*second, "then it's defined here again, in crate `{second_crate}`"),
+                    help_span!(*first, "it's first defined here, in crate `{first_crate}`"),
+                    help_span!(*second, "then it's defined here again, in crate `{second_crate}`"),
                 ],
             SymbolShimClashing { link_name, span } =>
-                vec![note_span!(*span, "the `{link_name}` symbol is defined here")],
+                vec![help_span!(*span, "the `{link_name}` symbol is defined here")],
             Int2PtrWithStrictProvenance =>
-                vec![note!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead")],
+                vec![help!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead")],
             DataRace { op1, extra, retag_explain, .. } => {
-                labels.push(format!("(2) just happened here"));
-                let mut helps = vec![note_span!(op1.span, "and (1) occurred earlier here")];
+                main_span_labels.push(format!("(2) just happened here"));
+                let mut helps = vec![help_span!(op1.span, "and (1) occurred earlier here")];
                 if let Some(extra) = extra {
-                    helps.push(note!("{extra}"));
-                    helps.push(note!("see https://doc.rust-lang.org/nightly/std/sync/atomic/index.html#memory-model-for-atomic-accesses for more information about the Rust memory model"));
+                    helps.push(help!("{extra}"));
+                    helps.push(help!("see https://doc.rust-lang.org/nightly/std/sync/atomic/index.html#memory-model-for-atomic-accesses for more information about the Rust memory model"));
                 }
                 if *retag_explain {
-                    helps.push(note!("retags occur on all (re)borrows and as well as when references are copied or moved"));
-                    helps.push(note!("retags permit optimizations that insert speculative reads or writes"));
-                    helps.push(note!("therefore from the perspective of data races, a retag has the same implications as a read or write"));
+                    helps.push(help!("retags occur on all (re)borrows and as well as when references are copied or moved"));
+                    helps.push(help!("retags permit optimizations that insert speculative reads or writes"));
+                    helps.push(help!("therefore from the perspective of data races, a retag has the same implications as a read or write"));
                 }
-                helps.push(note!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior"));
-                helps.push(note!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information"));
+                helps.push(help!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior"));
+                helps.push(help!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information"));
                 helps
             }
                 ,
             _ => vec![],
         };
-        (title, helps)
+        (title, extras)
     } else {
         let title = match res.kind() {
             UndefinedBehavior(UndefinedBehaviorInfo::ValidationError {
@@ -387,39 +399,39 @@ pub fn report_result<'tcx>(
             }
         };
         #[rustfmt::skip]
-        let helps = match res.kind() {
+        let extras = match res.kind() {
             Unsupported(_) =>
                 vec![
-                    note!("this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support"),
+                    help!("this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support"),
                 ],
             ResourceExhaustion(ResourceExhaustionInfo::AddressSpaceFull) if ecx.machine.data_race.as_genmc_ref().is_some() =>
                 vec![
-                    note!("in GenMC mode, the address space is limited to 4GB per thread, and addresses cannot be reused")
+                    help!("in GenMC mode, the address space is limited to 4GB per thread, and addresses cannot be reused")
                 ],
             UndefinedBehavior(AlignmentCheckFailed { .. })
                 if ecx.machine.check_alignment == AlignmentCheck::Symbolic
             =>
                 vec![
-                    note!("this usually indicates that your program performed an invalid operation and caused Undefined Behavior"),
-                    note!("but due to `-Zmiri-symbolic-alignment-check`, alignment errors can also be false positives"),
+                    help!("this usually indicates that your program performed an invalid operation and caused Undefined Behavior"),
+                    help!("but due to `-Zmiri-symbolic-alignment-check`, alignment errors can also be false positives"),
                 ],
             UndefinedBehavior(info) => {
                 let mut helps = vec![
-                    note!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior"),
-                    note!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information"),
+                    help!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior"),
+                    help!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information"),
                 ];
                 match info {
                     PointerUseAfterFree(alloc_id, _) | PointerOutOfBounds { alloc_id, .. } => {
                         if let Some(span) = ecx.machine.allocated_span(*alloc_id) {
-                            helps.push(note_span!(span, "{alloc_id} was allocated here:"));
+                            helps.push(help_span!(span, "{alloc_id} was allocated here:"));
                         }
                         if let Some(span) = ecx.machine.deallocated_span(*alloc_id) {
-                            helps.push(note_span!(span, "{alloc_id} was deallocated here:"));
+                            helps.push(help_span!(span, "{alloc_id} was deallocated here:"));
                         }
                     }
                     AbiMismatchArgument { .. } | AbiMismatchReturn { .. } => {
-                        helps.push(note!("this means these two types are not *guaranteed* to be ABI-compatible across all targets"));
-                        helps.push(note!("if you think this code should be accepted anyway, please report an issue with Miri"));
+                        helps.push(help!("this means these two types are not *guaranteed* to be ABI-compatible across all targets"));
+                        helps.push(help!("if you think this code should be accepted anyway, please report an issue with Miri"));
                     }
                     _ => {},
                 }
@@ -434,7 +446,7 @@ pub fn report_result<'tcx>(
             _ =>
                 vec![],
         };
-        (Some(title), helps)
+        (Some(title), extras)
     };
 
     let stacktrace = ecx.generate_stacktrace();
@@ -442,16 +454,16 @@ pub fn report_result<'tcx>(
 
     // We want to dump the allocation if this is `InvalidUninitBytes`.
     // Since `format_interp_error` consumes `e`, we compute the outut early.
-    let mut extra = String::new();
+    let mut extra_stderr = String::new();
     match res.kind() {
         UndefinedBehavior(InvalidUninitBytes(Some((alloc_id, access)))) => {
             writeln!(
-                extra,
+                extra_stderr,
                 "Uninitialized memory occurred at {alloc_id}{range}, in this allocation:",
                 range = access.bad,
             )
             .unwrap();
-            writeln!(extra, "{:?}", ecx.dump_alloc(*alloc_id)).unwrap();
+            writeln!(extra_stderr, "{:?}", ecx.dump_alloc(*alloc_id)).unwrap();
         }
         _ => {}
     }
@@ -462,8 +474,8 @@ pub fn report_result<'tcx>(
     }
     write!(primary_msg, "{}", res.to_string()).unwrap();
 
-    if labels.is_empty() {
-        labels.push(format!(
+    if main_span_labels.is_empty() {
+        main_span_labels.push(format!(
             "{} occurred {}",
             title.unwrap_or("error"),
             if stacktrace.is_empty() { "due to this code" } else { "here" }
@@ -473,15 +485,14 @@ pub fn report_result<'tcx>(
     report_msg(
         DiagLevel::Error,
         primary_msg,
-        labels,
-        vec![],
-        helps,
+        main_span_labels,
+        extras,
         &stacktrace,
         Some(ecx.active_thread()),
         &ecx.machine,
     );
 
-    eprint!("{extra}"); // newlines are already in the string
+    eprint!("{extra_stderr}"); // newlines are already in the string
 
     // Include a note like `std` does when we omit frames from a backtrace
     if pruned {
@@ -527,7 +538,6 @@ pub fn report_leaks<'tcx>(
             title,
             vec![],
             vec![],
-            vec![],
             &backtrace,
             None, // we don't know the thread this is from
             &ecx.machine,
@@ -548,9 +558,8 @@ pub fn report_leaks<'tcx>(
 fn report_msg<'tcx>(
     diag_level: DiagLevel,
     title: String,
-    span_msg: Vec<String>,
-    notes: Vec<(Option<Span>, String)>,
-    helps: Vec<(Option<Span>, String)>,
+    main_span_labels: Vec<String>,
+    extras: Vec<(ExtraKind, Option<Span>, String)>,
     stacktrace: &[FrameInfo<'tcx>],
     thread: Option<ThreadId>,
     machine: &MiriMachine<'tcx>,
@@ -571,24 +580,21 @@ fn report_msg<'tcx>(
     err.span(span);
 
     // Show main message.
-    for line in span_msg {
+    for line in main_span_labels {
         err.span_label(span, line);
     }
 
     // Show note and help messages.
-    for (span, note) in notes {
-        if let Some(span) = span {
-            err.span_note(span, note);
-        } else {
-            err.note(note);
-        }
-    }
-    for (span, help) in helps {
-        if let Some(span) = span {
-            err.span_help(span, help);
-        } else {
-            err.help(help);
-        }
+    for (kind, span, msg) in extras {
+        let sublevel = match kind {
+            ExtraKind::Note => Sublevel::Note,
+            ExtraKind::Help => Sublevel::Help,
+        };
+        let spans = match span {
+            Some(sp) => sp.into(),
+            None => MultiSpan::new(),
+        };
+        err.sub(sublevel, msg, spans);
     }
     // Only print thread name if there are multiple threads.
     if let Some(thread) = thread
@@ -638,31 +644,6 @@ impl<'tcx> MiriMachine<'tcx> {
             Frame::generate_stacktrace_from_stack(self.threads.active_thread_stack(), self.tcx);
         let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);
 
-        let (label, diag_level) = match &e {
-            RejectedIsolatedOp(_) =>
-                ("operation rejected by isolation".to_string(), DiagLevel::Warning),
-            Int2Ptr { .. } => ("integer-to-pointer cast".to_string(), DiagLevel::Warning),
-            NativeCallSharedMem { .. } =>
-                ("sharing memory with a native function".to_string(), DiagLevel::Warning),
-            ExternTypeReborrow =>
-                ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
-            GenmcCompareExchangeWeak =>
-                ("GenMC might miss possible behaviors of this code".to_string(), DiagLevel::Warning),
-            CreatedPointerTag(..)
-            | PoppedPointerTag(..)
-            | TrackingAlloc(..)
-            | AccessedAlloc(..)
-            | FreedAlloc(..)
-            | ProgressReport { .. }
-            | WeakMemoryOutdatedLoad { .. } =>
-                ("tracking was triggered here".to_string(), DiagLevel::Note),
-            FileInProcOpened => ("open a file in `/proc`".to_string(), DiagLevel::Warning),
-            ConnectingSocketGetsockname =>
-                ("Called `getsockname` on connecting socket".to_string(), DiagLevel::Warning),
-            SocketAddressResolution { .. } =>
-                ("error during address resolution".to_string(), DiagLevel::Warning),
-        };
-
         let title = match &e {
             CreatedPointerTag(tag, None, _) => format!("created base tag {tag:?}"),
             CreatedPointerTag(tag, Some(perm), None) =>
@@ -699,7 +680,32 @@ impl<'tcx> MiriMachine<'tcx> {
             SocketAddressResolution { error } => format!("address resolution failed: {error}"),
         };
 
-        let notes = match &e {
+        let (main_span_label, diag_level) = match &e {
+            RejectedIsolatedOp(_) =>
+                ("operation rejected by isolation".to_string(), DiagLevel::Warning),
+            Int2Ptr { .. } => ("integer-to-pointer cast".to_string(), DiagLevel::Warning),
+            NativeCallSharedMem { .. } =>
+                ("sharing memory with a native function".to_string(), DiagLevel::Warning),
+            ExternTypeReborrow =>
+                ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
+            GenmcCompareExchangeWeak =>
+                ("GenMC might miss possible behaviors of this code".to_string(), DiagLevel::Warning),
+            CreatedPointerTag(..)
+            | PoppedPointerTag(..)
+            | TrackingAlloc(..)
+            | AccessedAlloc(..)
+            | FreedAlloc(..)
+            | ProgressReport { .. }
+            | WeakMemoryOutdatedLoad { .. } =>
+                ("tracking was triggered here".to_string(), DiagLevel::Note),
+            FileInProcOpened => ("open a file in `/proc`".to_string(), DiagLevel::Warning),
+            ConnectingSocketGetsockname =>
+                ("Called `getsockname` on connecting socket".to_string(), DiagLevel::Warning),
+            SocketAddressResolution { .. } =>
+                ("error during address resolution".to_string(), DiagLevel::Warning),
+        };
+
+        let extras = match &e {
             ProgressReport { block_count } => {
                 vec![note!("so far, {block_count} basic blocks have been executed")]
             }
@@ -716,22 +722,18 @@ impl<'tcx> MiriMachine<'tcx> {
                 vec![note!(
                     "Miri cannot return proper error information from this call; only a generic error code is being returned"
                 )],
-            _ => vec![],
-        };
-
-        let helps = match &e {
             Int2Ptr { details: true } => {
                 let mut v = vec![
-                    note!(
+                    help!(
                         "this program is using integer-to-pointer casts or (equivalently) `ptr::with_exposed_provenance`, which means that Miri might miss pointer bugs in this program"
                     ),
-                    note!(
+                    help!(
                         "see https://doc.rust-lang.org/nightly/std/ptr/fn.with_exposed_provenance.html for more details on that operation"
                     ),
-                    note!(
+                    help!(
                         "to ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead"
                     ),
-                    note!(
+                    help!(
                         "you can then set `MIRIFLAGS=-Zmiri-strict-provenance` to ensure you are not relying on `with_exposed_provenance` semantics"
                     ),
                 ];
@@ -742,11 +744,11 @@ impl<'tcx> MiriMachine<'tcx> {
                     )
                 }) {
                     v.push(
-                        note!("Tree Borrows does not support integer-to-pointer casts, so the program is likely to go wrong when this pointer gets used")
+                        help!("Tree Borrows does not support integer-to-pointer casts, so the program is likely to go wrong when this pointer gets used")
                     );
                 } else {
                     v.push(
-                        note!("alternatively, `MIRIFLAGS=-Zmiri-permissive-provenance` disables this warning")
+                        help!("alternatively, `MIRIFLAGS=-Zmiri-permissive-provenance` disables this warning")
                     );
                 }
                 v
@@ -754,34 +756,34 @@ impl<'tcx> MiriMachine<'tcx> {
             NativeCallSharedMem { tracing } =>
                 if *tracing {
                     vec![
-                        note!(
+                        help!(
                             "when memory is shared with a native function call, Miri can only track initialisation and provenance on a best-effort basis"
                         ),
-                        note!(
+                        help!(
                             "in particular, Miri assumes that the native call initializes all memory it has written to"
                         ),
-                        note!(
+                        help!(
                             "Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory"
                         ),
-                        note!(
+                        help!(
                             "what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free"
                         ),
-                        note!(
+                        help!(
                             "tracing memory accesses in native code is not yet fully implemented, so there can be further imprecisions beyond what is documented here"
                         ),
                     ]
                 } else {
                     vec![
-                        note!(
+                        help!(
                             "when memory is shared with a native function call, Miri stops tracking initialization and provenance for that memory"
                         ),
-                        note!(
+                        help!(
                             "in particular, Miri assumes that the native call initializes all memory it has access to"
                         ),
-                        note!(
+                        help!(
                             "Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory"
                         ),
-                        note!(
+                        help!(
                             "what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free"
                         ),
                     ]
@@ -794,16 +796,16 @@ impl<'tcx> MiriMachine<'tcx> {
                     )
                 }));
                 vec![
-                    note!(
+                    help!(
                         "`extern type` are not compatible with the Stacked Borrows aliasing model implemented by Miri; Miri may miss bugs in this code"
                     ),
-                    note!(
+                    help!(
                         "try running with `MIRIFLAGS=-Zmiri-tree-borrows` to use the more permissive but also even more experimental Tree Borrows aliasing checks instead"
                     ),
                 ]
             }
             GenmcCompareExchangeWeak =>
-                vec![note!(
+                vec![help!(
                     "add `-Zmiri-genmc-weak-cas-spurious-failures` to MIRIFLAGS to explore spurious failures; all retry loops around `compare_exchange_weak` then need to be bounded"
                 )],
             _ => vec![],
@@ -812,9 +814,8 @@ impl<'tcx> MiriMachine<'tcx> {
         report_msg(
             diag_level,
             title,
-            vec![label],
-            notes,
-            helps,
+            vec![main_span_label],
+            extras,
             &stacktrace,
             Some(self.threads.active_thread()),
             self,
@@ -840,7 +841,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         report_msg(
             DiagLevel::Note,
             "the place in the program where the ICE was triggered".to_string(),
-            vec![],
             vec![],
             vec![],
             &stacktrace,
