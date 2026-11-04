@@ -1787,7 +1787,7 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);
     let typeid = cx.create_metadata(trait_ref_typeid.as_bytes());
 
-    let type_ = [llvm::LLVMValueAsMetadata(cx.const_usize(0)), typeid];
+    let type_ = [llvm::LLVMValueAsMetadata(cx.const_u64(0)), typeid];
     cx.global_add_metadata_node(vtable, llvm::MD_type, &type_);
 
     let vcall_visibility = [llvm::LLVMValueAsMetadata(cx.const_u64(vcall_visibility as u64))];
