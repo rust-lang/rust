@@ -230,6 +230,10 @@ impl ExitStatus {
     pub fn code(&self) -> Option<i32> {
         Some(self.0)
     }
+
+    pub fn exit_code(&self) -> Option<ExitCode> {
+        Some(ExitCode(self.0))
+    }
 }
 
 impl fmt::Display for ExitStatus {
