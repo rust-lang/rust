@@ -24,7 +24,6 @@ mod arch;
 
 // This module needs to be public because the `is_{arch}_feature_detected!`
 // macros expand calls to items within it in user crates.
-#[doc(hidden)]
 #[unstable(feature = "stdarch_internal", issue = "none")]
 pub use self::arch::__is_feature_detected;
 pub(crate) use self::arch::Feature;
@@ -111,15 +110,11 @@ pub fn features() -> impl Iterator<Item = (&'static str, bool)> {
             target_arch = "loongarch32",
             target_arch = "loongarch64",
             target_arch = "s390x",
-        ) => {
-            (0_u8..Feature::_last as u8).map(|discriminant: u8| {
-                #[allow(bindings_with_variant_name)] // RISC-V has Feature::f
-                let f: Feature = unsafe { core::mem::transmute(discriminant) };
-                let name: &'static str = f.to_str();
-                let enabled: bool = check_for(f);
-                (name, enabled)
-            })
-        }
+        ) => Feature::ALL.iter().copied().map(|feat| {
+            let name: &'static str = feat.to_str();
+            let enabled: bool = check_for(feat);
+            (name, enabled)
+        }),
         _ => None.into_iter(),
     }
 }
