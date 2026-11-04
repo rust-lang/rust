@@ -50,7 +50,6 @@ mod source_util;
 mod test;
 mod test_binder_constraints;
 mod trace_macros;
-mod view_type;
 
 pub mod asm;
 pub mod cmdline_attrs;
@@ -104,7 +103,6 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         test_binder_constraints: test_binder_constraints::expand,
         trace_macros: trace_macros::expand_trace_macros,
         unreachable: edition_panic::expand_unreachable,
-        view_type: view_type::expand,
         // tidy-alphabetical-end
     }
 

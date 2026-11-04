@@ -649,7 +649,7 @@ pub mod process;
 pub mod random;
 pub mod sync;
 pub mod time;
-#[unstable(feature = "view_type_macro", issue = "155938")]
+#[unstable(feature = "view_types", issue = "155938")]
 pub mod view;
 
 // Pull in `std_float` crate  into std. The contents of

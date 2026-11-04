@@ -350,7 +350,7 @@ mod bool;
 mod escape;
 mod tuple;
 mod unit;
-#[unstable(feature = "view_type_macro", issue = "155938")]
+#[unstable(feature = "view_types", issue = "155938")]
 pub mod view;
 
 #[stable(feature = "core_primitive", since = "1.43.0")]

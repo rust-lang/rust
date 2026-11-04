@@ -425,6 +425,8 @@ impl<'a> Parser<'a> {
             self.parse_ty_field_of(lo)?
         } else if self.eat_forced_keyword_noexpect(kw::PatternType) {
             self.parse_pat_ty(lo)?
+        } else if self.eat_forced_keyword_noexpect(kw::ViewType) {
+            self.parse_view_ty(lo)?
         } else {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
             let mut err = self.dcx().struct_span_err(lo, msg);
@@ -921,6 +923,19 @@ impl<'a> Parser<'a> {
 
     fn mk_ty_pat(kind: TyPatKind, span: Span) -> ast::TyPat {
         ast::TyPat { id: DUMMY_NODE_ID, kind, span }
+    }
+
+    fn parse_view_ty(&mut self, lo: Span) -> PResult<'a, ast::TyKind> {
+        self.expect(exp!(OpenParen))?;
+        let ty = self.parse_ty()?;
+        self.expect(exp!(Dot))?;
+        let (fields, _) = self
+            .parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |p| p.parse_field_name())?;
+        self.expect(exp!(CloseParen))?;
+
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.prev_token.span));
+
+        Ok(ast::TyKind::View(ty, fields))
     }
 
     /// Parses a function pointer type (`TyKind::FnPtr`).

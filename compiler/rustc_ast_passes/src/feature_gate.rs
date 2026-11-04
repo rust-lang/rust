@@ -241,9 +241,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 // Function pointers cannot be `const`
                 self.check_late_bound_lifetime_defs(&fn_ptr_ty.generic_params);
             }
-            ast::TyKind::View(..) => {
-                gate!(self, view_types, ty.span, "view types are unstable");
-            }
             _ => {}
         }
         visit::walk_ty(self, ty)
@@ -466,7 +463,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(unnamed_enum_variants, "unnamed enum variants are experimental");
     gate_all!(unsafe_binders, "unsafe binder types are experimental");
     gate_all!(unsafe_fields, "`unsafe` fields are experimental");
-    gate_all!(view_types, "view types are experimental");
     gate_all!(where_clause_attrs, "attributes in `where` clause are unstable");
     gate_all!(yeet_expr, "`do yeet` expression is experimental");
     // tidy-alphabetical-end

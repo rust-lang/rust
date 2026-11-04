@@ -1,11 +1,11 @@
 error[E0609]: no field `bar` on type `S`
-  --> $DIR/must-exist.rs:10:24
+  --> $DIR/must-exist.rs:9:24
    |
 LL | fn f(_: view_type!(S.{ bar })) {}
    |                        ^^^
 
 error[E0609]: no field `bar` on type `S`
-  --> $DIR/must-exist.rs:12:29
+  --> $DIR/must-exist.rs:11:29
    |
 LL | fn g(_: view_type!(S.{ foo, bar })) {}
    |                             ^^^
