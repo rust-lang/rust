@@ -212,6 +212,10 @@ impl LlvmType for CastTarget {
                 return rest_ll_unit;
             }
 
+            // The x87_f80 type has a store size of 10 bytes, but an allocation size of 12 or 16
+            // bytes. Ensure we don't cast to it, because that could have unintened behavior.
+            assert!(rest_ll_unit != cx.type_x87_f80());
+
             return cx.type_array(rest_ll_unit, rest_count);
         }
 
@@ -219,6 +223,11 @@ impl LlvmType for CastTarget {
         let prefix_args = self.prefix.iter().map(|reg| reg.llvm_type(cx));
         let rest_args = (0..rest_count).map(|_| rest_ll_unit);
         let args: Vec<_> = prefix_args.chain(rest_args).collect();
+
+        // The x87_f80 type has a store size of 10 bytes, but an allocation size of 12 or 16 bytes.
+        // Ensure we don't cast to it, because that could have unintened behavior.
+        assert!(args.iter().all(|a| *a != cx.type_x87_f80()));
+
         cx.type_struct(&args)
     }
 }
