@@ -3,8 +3,8 @@
 use rustc_abi::Endian;
 
 use crate::spec::{
-    Arch, Cc, CfgAbi, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target,
-    TargetMetadata, TargetOptions,
+    Arch, Cc, CfgAbi, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, StdCrates,
+    StdSupport, Target, TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -15,6 +15,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(false),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Alloc)),
         },
         pointer_width: 32,
         data_layout: "E-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),

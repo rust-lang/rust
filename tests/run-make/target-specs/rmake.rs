@@ -102,4 +102,27 @@ fn main() {
         .print("target-cpus")
         .run()
         .assert_stdout_not_contains("default target CPU");
+    rustc()
+        .arg("-Zunstable-options")
+        .input("foo.rs")
+        .crate_type("lib")
+        .target("std-crates-parsing-pass.json")
+        .run();
+    rustc()
+        .arg("-Zunstable-options")
+        .input("foo.rs")
+        .crate_type("lib")
+        .target("std-crates-parsing-error.json")
+        .run_fail()
+        .assert_stderr_contains("invalid standard library support");
+    rustc()
+        .arg("-Zunstable-options")
+        .input("foo.rs")
+        .crate_type("lib")
+        .target("std-crates-default-exceed.json")
+        .run_fail()
+        .assert_stderr_contains(
+            "`standard_library_support.default` cannot be set to a value \
+            which is less than that of `supported`",
+        );
 }

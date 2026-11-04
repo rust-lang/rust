@@ -11,7 +11,8 @@ pub(crate) fn target() -> Target {
             description: Some("RISC-V Xous (RV32IMAC ISA)".into()),
             tier: Some(3),
             host_tools: Some(false),
-            std: None, // ?
+            std: None,                      // ?
+            standard_library_support: None, // ?
         },
         pointer_width: 32,
         arch: Arch::RiscV32,

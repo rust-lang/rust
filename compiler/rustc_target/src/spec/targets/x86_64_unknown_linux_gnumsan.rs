@@ -1,4 +1,4 @@
-use crate::spec::{SanitizerSet, Target, TargetMetadata};
+use crate::spec::{SanitizerSet, StdCrates, StdSupport, Target, TargetMetadata};
 
 pub(crate) fn target() -> Target {
     let mut base = super::x86_64_unknown_linux_gnu::target();
@@ -9,6 +9,7 @@ pub(crate) fn target() -> Target {
         tier: Some(2),
         host_tools: Some(false),
         std: Some(true),
+        standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
     };
     base.supported_sanitizers = SanitizerSet::MEMORY;
     base.default_sanitizers = SanitizerSet::MEMORY;

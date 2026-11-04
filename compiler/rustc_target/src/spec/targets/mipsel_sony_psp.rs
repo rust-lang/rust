@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, LlvmAbi, Os, RelocModel, Target, TargetMetadata, TargetOptions,
-    cvs,
+    Arch, Cc, LinkerFlavor, Lld, LlvmAbi, Os, RelocModel, StdCrates, StdSupport, Target,
+    TargetMetadata, TargetOptions, cvs,
 };
 
 // The PSP has custom linker requirements.
@@ -19,6 +19,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(false),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Alloc)),
         },
         pointer_width: 32,
         data_layout: "e-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".into(),

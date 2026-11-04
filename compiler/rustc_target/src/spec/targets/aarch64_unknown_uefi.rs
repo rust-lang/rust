@@ -16,7 +16,8 @@ pub(crate) fn target() -> Target {
             description: Some("ARM64 UEFI".into()),
             tier: Some(2),
             host_tools: Some(false),
-            std: None, // ?
+            std: None,                      // ?
+            standard_library_support: None, // ?
         },
         pointer_width: 64,
         data_layout:

@@ -13,6 +13,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: None,
+            standard_library_support: None,
         },
         options: TargetOptions { link_script: Some(LINKER_SCRIPT.into()), ..base::qtee::opts() },
         ..targets::aarch64_unknown_none::target()

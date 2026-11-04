@@ -1,5 +1,6 @@
 use crate::spec::{
-    Arch, CfgAbi, FloatAbi, SanitizerSet, Target, TargetMetadata, TargetOptions, base,
+    Arch, CfgAbi, FloatAbi, SanitizerSet, StdCrates, StdSupport, Target, TargetMetadata,
+    TargetOptions, base,
 };
 
 // This target is for glibc Linux on ARMv7 without NEON or
@@ -13,6 +14,7 @@ pub(crate) fn target() -> Target {
             tier: Some(2),
             host_tools: Some(true),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),

@@ -1,6 +1,6 @@
 use crate::spec::{
     Arch, Cc, CfgAbi, CodeModel, Endian, FramePointer, LinkerFlavor, Lld, LlvmAbi, Os,
-    PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
+    PanicStrategy, RelocModel, StdCrates, StdSupport, Target, TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -48,6 +48,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(false),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Alloc)),
         },
 
         // We declare pointers to be 64-bit as the PPU _is_ a 64-bit core.

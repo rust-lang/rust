@@ -1,10 +1,13 @@
 use crate::spec::base::qnx_sdp;
-use crate::spec::{Arch, Env, RustcAbi, StackProbeType, Target, TargetOptions, base};
+use crate::spec::{
+    Arch, Env, RustcAbi, StackProbeType, StdCrates, StdSupport, Target, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     let mut meta = qnx_sdp::meta();
     meta.description = Some("32-bit x86 QNX SDP 7.0".into());
     meta.std = Some(false);
+    meta.standard_library_support = Some(StdSupport::from_crates(StdCrates::Alloc));
     Target {
         llvm_target: "i586-pc-unknown".into(),
         metadata: meta,

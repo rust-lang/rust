@@ -2,7 +2,7 @@ use rustc_abi::{Align, Endian};
 
 use crate::spec::{
     Arch, Cc, CfgAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, RustcAbi, SanitizerSet,
-    StackProbeType, Target, TargetMetadata, TargetOptions,
+    StackProbeType, StdCrates, StdSupport, Target, TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -31,6 +31,7 @@ pub(crate) fn target() -> Target {
             host_tools: Some(false),
             std: Some(false),
             tier: Some(2),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Alloc)),
         },
         arch: Arch::S390x,
         data_layout: "E-S64-m:e-i1:8:16-i8:8:16-i64:64-f128:64-v128:64-a:8:16-n32:64".into(),

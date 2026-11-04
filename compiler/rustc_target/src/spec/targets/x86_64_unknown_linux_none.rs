@@ -1,5 +1,6 @@
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, PanicStrategy, StackProbeType, Target, TargetMetadata, base,
+    Arch, Cc, LinkerFlavor, Lld, PanicStrategy, StackProbeType, StdCrates, StdSupport, Target,
+    TargetMetadata, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -19,6 +20,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: None,
             std: Some(false),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Core)),
         },
         pointer_width: 64,
         data_layout:

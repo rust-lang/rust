@@ -1,4 +1,4 @@
-use crate::spec::{Arch, CodeModel, LlvmAbi, Target, TargetMetadata, base};
+use crate::spec::{Arch, CodeModel, LlvmAbi, StdCrates, StdSupport, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::redox::opts();
@@ -16,6 +16,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 64,
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".into(),

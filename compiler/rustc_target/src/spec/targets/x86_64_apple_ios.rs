@@ -1,5 +1,5 @@
 use crate::spec::base::apple::{Arch, TargetEnv, base};
-use crate::spec::{Os, SanitizerSet, Target, TargetMetadata, TargetOptions};
+use crate::spec::{Os, SanitizerSet, StdCrates, StdSupport, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     // x86_64-apple-ios is a simulator target, even though it isn't declared
@@ -12,6 +12,7 @@ pub(crate) fn target() -> Target {
             tier: Some(2),
             host_tools: Some(false),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 64,
         data_layout:

@@ -1,4 +1,7 @@
-use crate::spec::{Arch, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, base};
+use crate::spec::{
+    Arch, Cc, LinkerFlavor, Lld, StackProbeType, StdCrates, StdSupport, Target, TargetMetadata,
+    base,
+};
 
 pub(crate) fn target() -> Target {
     let mut base = base::haiku::opts();
@@ -17,6 +20,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(true),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 64,
         data_layout:

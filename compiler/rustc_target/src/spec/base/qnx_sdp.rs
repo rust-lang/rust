@@ -1,5 +1,6 @@
 use crate::spec::{
-    Cc, LinkArgs, LinkerFlavor, Lld, Os, RelroLevel, Target, TargetMetadata, TargetOptions, cvs,
+    Cc, LinkArgs, LinkerFlavor, Lld, Os, RelroLevel, StdCrates, StdSupport, Target, TargetMetadata,
+    TargetOptions, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -23,7 +24,13 @@ pub(crate) fn opts() -> TargetOptions {
 }
 
 pub(crate) fn meta() -> TargetMetadata {
-    TargetMetadata { description: None, tier: Some(3), host_tools: Some(false), std: Some(true) }
+    TargetMetadata {
+        description: None,
+        tier: Some(3),
+        host_tools: Some(false),
+        std: Some(true),
+        standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
+    }
 }
 
 pub(crate) fn aarch64() -> Target {

@@ -2049,6 +2049,38 @@ pub struct TargetMetadata {
     /// Whether a target has the `std` library. This is usually true for targets running
     /// on an operating system.
     pub std: Option<bool>,
+    /// Determine which standard library crates are supported for a target. See [StdSupport] for
+    /// more details.
+    pub standard_library_support: Option<StdSupport>,
+}
+
+/// Information about standard library support. Was introduced in RFC 3874 (`build-std=always`).
+#[derive(PartialEq, Clone, Debug, schemars::JsonSchema, serde_derive::Deserialize)]
+pub struct StdSupport {
+    /// The standard library crates that can be built for this target
+    /// on a stable toolchain.
+    pub supported: StdCrates,
+    /// The standard library crates that are built by default on this target.
+    ///
+    /// Cannot exceed `supported` level.
+    pub default: StdCrates,
+}
+
+crate::target_spec_enum! {
+    /// An enum representing possible values for the fields of [`StdSupport`].
+    pub enum StdCrates {
+        Core = "core",
+        Alloc = "core, alloc",
+        Std = "core, alloc, std",
+    }
+
+    parse_error_type = "standard library support";
+}
+
+impl StdSupport {
+    pub fn from_crates(crates: StdCrates) -> StdSupport {
+        StdSupport { supported: crates, default: crates }
+    }
 }
 
 impl Target {

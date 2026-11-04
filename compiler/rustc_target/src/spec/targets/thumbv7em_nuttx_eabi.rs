@@ -9,7 +9,10 @@
 // To opt-in to hardware accelerated floating point operations, you can use, for example,
 // `-C target-feature=+vfp4` or `-C target-cpu=cortex-m4`.
 
-use crate::spec::{Arch, CfgAbi, FloatAbi, Os, Target, TargetMetadata, TargetOptions, base, cvs};
+use crate::spec::{
+    Arch, CfgAbi, FloatAbi, Os, StdCrates, StdSupport, Target, TargetMetadata, TargetOptions, base,
+    cvs,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -19,6 +22,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: None,
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),

@@ -1,6 +1,9 @@
 // Hyperlight Guest target for x86_64
 
-use crate::spec::{Arch, RelroLevel, SanitizerSet, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{
+    Arch, RelroLevel, SanitizerSet, StdCrates, StdSupport, Target, TargetMetadata, TargetOptions,
+    base,
+};
 
 pub(crate) fn target() -> Target {
     let opts = TargetOptions {
@@ -20,6 +23,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(false),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Alloc)),
         },
         pointer_width: 64,
         data_layout:

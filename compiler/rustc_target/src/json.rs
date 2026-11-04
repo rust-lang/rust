@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 pub use serde_json::Value as Json;
 use serde_json::{Map, Number, json};
 
-use crate::spec::TargetMetadata;
+use crate::spec::{StdSupport, TargetMetadata};
 
 pub trait ToJson {
     fn to_json(&self) -> Json;
@@ -99,6 +99,16 @@ impl ToJson for TargetMetadata {
             "tier": self.tier,
             "host_tools": self.host_tools,
             "std": self.std,
+            "standard_library_support": self.standard_library_support.to_json()
+        })
+    }
+}
+
+impl ToJson for StdSupport {
+    fn to_json(&self) -> Json {
+        json!({
+            "supported": self.supported.to_json(),
+            "default": self.default.to_json(),
         })
     }
 }

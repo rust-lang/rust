@@ -1,5 +1,5 @@
 use crate::spec::base::apple::{Arch, TargetEnv, base};
-use crate::spec::{Os, SanitizerSet, Target, TargetMetadata, TargetOptions};
+use crate::spec::{Os, SanitizerSet, StdCrates, StdSupport, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let (mut opts, llvm_target, arch) = base(Os::MacOs, Arch::X86_64h, TargetEnv::Normal);
@@ -32,6 +32,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(true),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 64,
         data_layout:

@@ -9,7 +9,9 @@
 //! The default link script is very likely wrong, so you should use
 //! `-Clink-arg=-Tmy_script.ld` to override that with a correct linker script.
 
-use crate::spec::{Arch, CfgAbi, FloatAbi, Target, TargetMetadata, TargetOptions, base, cvs};
+use crate::spec::{
+    Arch, CfgAbi, FloatAbi, StdCrates, StdSupport, Target, TargetMetadata, TargetOptions, base, cvs,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -19,6 +21,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(false),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Alloc)),
         },
         pointer_width: 32,
         arch: Arch::Arm,

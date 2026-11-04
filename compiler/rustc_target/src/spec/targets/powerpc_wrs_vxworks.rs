@@ -1,7 +1,8 @@
 use rustc_abi::Endian;
 
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, TargetOptions, base,
+    Arch, Cc, LinkerFlavor, Lld, StackProbeType, StdCrates, StdSupport, Target, TargetMetadata,
+    TargetOptions, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -17,6 +18,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 32,
         data_layout: "E-m:e-p:32:32-Fn32-i64:64-n32".into(),

@@ -1,8 +1,8 @@
 // Trusty OS target for X86_64.
 
 use crate::spec::{
-    Arch, LinkSelfContainedDefault, Os, PanicStrategy, RelroLevel, StackProbeType, Target,
-    TargetMetadata, TargetOptions,
+    Arch, LinkSelfContainedDefault, Os, PanicStrategy, RelroLevel, StackProbeType, StdCrates,
+    StdSupport, Target, TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -13,6 +13,7 @@ pub(crate) fn target() -> Target {
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
+            standard_library_support: Some(StdSupport::from_crates(StdCrates::Std)),
         },
         pointer_width: 64,
         data_layout:
