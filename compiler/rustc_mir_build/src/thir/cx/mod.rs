@@ -37,12 +37,12 @@ pub(crate) fn thir_body<'tcx>(
     let owner_id = tcx.local_def_id_to_hir_id(owner_def);
     if let Some(fn_decl) = tcx.hir_fn_decl_by_hir_id(owner_id) {
         let closure_env_param = cx.closure_env_param(owner_def, owner_id);
-        let explicit_params = cx.explicit_params(owner_id, fn_decl, &body);
+        let explicit_params = cx.explicit_params(owner_id, fn_decl);
         cx.thir.params = closure_env_param.into_iter().chain(explicit_params).collect();
 
         // The resume argument may be missing, in that case we need to provide it here.
         // It will always be `()` in this case.
-        if tcx.is_coroutine(owner_def.to_def_id()) && body.params.is_empty() {
+        if tcx.is_coroutine(owner_def.to_def_id()) && fn_decl.inputs.is_empty() {
             cx.thir.params.push(Param {
                 ty: tcx.types.unit,
                 pat: None,
@@ -179,16 +179,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
         &mut self,
         owner_id: HirId,
         fn_decl: &'tcx hir::FnDecl<'tcx>,
-        body: &'tcx hir::Body<'tcx>,
     ) -> impl Iterator<Item = Param<'tcx>> {
         let fn_sig = self.typeck_results.liberated_fn_sigs()[owner_id];
 
-        body.params.iter().enumerate().map(move |(index, param)| {
-            let ty_span = fn_decl
-                .inputs
-                .get(index)
-                // Make sure that inferred closure args have no type span
-                .and_then(|ty| if param.pat.span != ty.span { Some(ty.span) } else { None });
+        fn_decl.inputs.iter().enumerate().map(move |(index, param)| {
+            let ty_span = if param.ty.span != param.pat.span { Some(param.ty.span) } else { None };
 
             let self_kind = if index == 0 && fn_decl.implicit_self().has_implicit_self() {
                 Some(fn_decl.implicit_self())
@@ -198,8 +193,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
             // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
             // (as it's created inside the body itself, not passed in from outside).
-            let ty = if fn_decl.c_variadic() && index == fn_decl.inputs.len() {
-                let va_list_did = self.tcx.require_lang_item(LangItem::VaList, param.span);
+            let ty = if fn_decl.c_variadic() && index == fn_decl.inputs.len() - 1 {
+                let va_list_did = self.tcx.require_lang_item(LangItem::VaList, param.ty.span);
 
                 self.tcx
                     .type_of(va_list_did)

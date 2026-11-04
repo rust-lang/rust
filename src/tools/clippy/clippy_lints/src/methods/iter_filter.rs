@@ -94,10 +94,10 @@ fn is_method(
             }
             false
         },
-        ExprKind::Closure(&hir::Closure { body, .. }) => {
+        ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) => {
             let body = cx.tcx.hir_body(body);
             let closure_expr = peel_blocks(body.value);
-            let params = body.params.iter().map(|param| param.pat).collect::<Vec<_>>();
+            let params = fn_decl.inputs.iter().map(|param| param.pat).collect::<Vec<_>>();
             is_method(cx, closure_expr, type_symbol, method_name, params.as_slice())
         },
         _ => false,

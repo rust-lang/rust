@@ -84,15 +84,15 @@ fn is_valid_cmse_inputs<'tcx>(
     let fn_sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
     let fn_sig = tcx.erase_and_anonymize_regions(fn_sig);
 
-    for (ty, hir_ty) in fn_sig.inputs().iter().zip(fn_decl.inputs) {
+    for (ty, hir_param) in fn_sig.inputs().iter().zip(fn_decl.inputs) {
         if ty.has_infer_types() {
             let err = LayoutError::Unknown(*ty);
-            return Err((hir_ty.span, tcx.arena.alloc(err)));
+            return Err((hir_param.ty.span, tcx.arena.alloc(err)));
         }
 
         let layout = tcx
             .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(*ty))
-            .map_err(|e| (hir_ty.span, e))?;
+            .map_err(|e| (hir_param.ty.span, e))?;
 
         let align = layout.layout.align().bytes();
         let size = layout.layout.size().bytes();
@@ -102,7 +102,7 @@ fn is_valid_cmse_inputs<'tcx>(
 
         // i.e. exceeds 4 32-bit registers
         if accum > 16 {
-            excess_argument_spans.push(hir_ty.span);
+            excess_argument_spans.push(hir_param.ty.span);
         }
     }
 

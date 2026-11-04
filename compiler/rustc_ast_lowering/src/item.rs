@@ -246,7 +246,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         kind: hir::ExprKind::Block(self.lower_block(block, false), None),
                         span: self.lower_span(*span),
                     };
-                    self.record_body(&[], body)
+                    self.record_body(body)
                 }),
             ),
             ItemKind::Fn(Fn {
@@ -264,7 +264,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
                     let coroutine_marker = header.coroutine_marker;
-                    let body_id = this.lower_maybe_coroutine_body(
+                    let (params, body_id) = this.lower_maybe_coroutine_body(
                         *fn_sig_span,
                         span,
                         hir_id,
@@ -280,10 +280,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         this.lower_fn_decl(
                             decl,
                             id,
-                            hir_id,
                             FnDeclKind::Fn,
                             coroutine_marker,
                             if body.is_none() { DiscardParams::Yes } else { DiscardParams::No },
+                            params,
                         )
                     });
                     let sig = hir::FnSig {
@@ -319,8 +319,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             },
             ItemKind::GlobalAsm(asm) => {
                 let asm = self.lower_inline_asm(span, asm);
-                let fake_body =
-                    self.lower_body(|this| (&[], this.expr(span, hir::ExprKind::InlineAsm(asm))));
+                let (_, fake_body) = self.lower_body(|this| {
+                    (Vec::new(), this.expr(span, hir::ExprKind::InlineAsm(asm)))
+                });
                 hir::ItemKind::GlobalAsm { asm, fake_body }
             }
             ItemKind::TyAlias(TyAlias { ident, generics, after_where_clause, ty, .. }) => {
@@ -628,16 +629,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let fdec = &sig.decl;
                 let itctx = ImplTraitContext::Universal;
                 let (generics, (decl, fn_args)) = self.lower_generics(generics, itctx, |this| {
+                    let params = fdec
+                        .inputs
+                        .iter()
+                        .filter(|p| !p.is_const_param())
+                        .map(|x| this.lower_param(x))
+                        .collect();
                     (
                         // Disallow `impl Trait` in foreign items.
                         // Parameters are discarded because foreign functions don't have a body
                         this.lower_fn_decl(
                             fdec,
                             i.id,
-                            hir_id,
                             FnDeclKind::ExternFn,
                             None,
                             DiscardParams::Yes,
+                            params,
                         ),
                         this.lower_fn_params_to_idents(fdec),
                     )
@@ -856,16 +863,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // FIXME(contracts): Deny contract here since it won't apply to
                 // any impl method or callees.
                 let idents = self.lower_fn_params_to_idents(&sig.decl);
+                let params = sig
+                    .decl
+                    .inputs
+                    .iter()
+                    .filter(|p| !p.is_const_param())
+                    .map(|x| self.lower_param(x))
+                    .collect();
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
                     i.id,
-                    hir_id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_marker,
                     attrs,
                     // Parameters are discarded for functions without a body
                     DiscardParams::Yes,
+                    params,
                 );
                 if define_opaque.is_some() {
                     self.dcx().span_err(
@@ -889,7 +903,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 define_opaque,
                 ..
             }) => {
-                let body_id = self.lower_maybe_coroutine_body(
+                let (params, body_id) = self.lower_maybe_coroutine_body(
                     sig.span,
                     i.span,
                     hir_id,
@@ -903,11 +917,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generics,
                     sig,
                     i.id,
-                    hir_id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_marker,
                     attrs,
                     DiscardParams::No,
+                    params,
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
                 (
@@ -1104,7 +1118,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Fn(Fn {
                 sig, ident, generics, body, contract, define_opaque, ..
             }) => {
-                let body_id = self.lower_maybe_coroutine_body(
+                let (params, body_id) = self.lower_maybe_coroutine_body(
                     sig.span,
                     i.span,
                     hir_id,
@@ -1118,11 +1132,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generics,
                     sig,
                     i.id,
-                    hir_id,
                     if is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
                     sig.header.coroutine_marker,
                     attrs,
                     if body.is_none() { DiscardParams::Yes } else { DiscardParams::No },
+                    params,
                 );
                 self.lower_define_opaque(hir_id, &define_opaque);
 
@@ -1221,12 +1235,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn record_body(
-        &mut self,
-        params: &'hir [hir::Param<'hir>],
-        value: hir::Expr<'hir>,
-    ) -> hir::BodyId {
-        let body = hir::Body { params, value: self.arena.alloc(value) };
+    fn record_body(&mut self, value: hir::Expr<'hir>) -> hir::BodyId {
+        let body = hir::Body { value: self.arena.alloc(value) };
         let id = body.id();
         assert_eq!(id.hir_id.owner, self.curr_owner.owner_id());
         self.curr_owner.bodies.push((id.hir_id.local_id, self.arena.alloc(body)));
@@ -1235,25 +1245,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_body(
         &mut self,
-        f: impl FnOnce(&mut Self) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>),
-    ) -> hir::BodyId {
+        f: impl FnOnce(&mut Self) -> (Vec<PartialParam<'hir>>, hir::Expr<'hir>),
+    ) -> (Vec<PartialParam<'hir>>, hir::BodyId) {
         let prev_coroutine_kind = self.coroutine_kind.take();
         let task_context = self.task_context.take();
         let (parameters, result) = f(self);
-        let body_id = self.record_body(parameters, result);
+        let body_id = self.record_body(result);
         self.task_context = task_context;
         self.coroutine_kind = prev_coroutine_kind;
-        body_id
+        (parameters, body_id)
     }
 
-    fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
+    pub(super) fn lower_param(&mut self, param: &Param) -> PartialParam<'hir> {
         let hir_id = self.lower_node_id(param.id);
         self.lower_attrs(hir_id, &param.attrs, param.span, AstTarget::Param(param));
-        hir::Param {
+        PartialParam {
             hir_id,
             pat: self.lower_pat(&param.pat),
             ty_span: self.lower_span(param.ty.span),
-            span: self.lower_span(param.span),
+            param_span: self.lower_span(param.span),
         }
     }
 
@@ -1262,14 +1272,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         decl: &FnDecl,
         contract: Option<&FnContract>,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
-    ) -> hir::BodyId {
+    ) -> (Vec<PartialParam<'hir>>, hir::BodyId) {
         self.lower_body(|this| {
-            let params = this.arena.alloc_from_iter(
-                decl.inputs
-                    .iter()
-                    .filter(|param| !param.is_const_param())
-                    .map(|x| this.lower_param(x)),
-            );
+            let params = decl
+                .inputs
+                .iter()
+                .filter(|param| !param.is_const_param())
+                .map(|x| this.lower_param(x))
+                .collect();
 
             // Optionally lower the fn contract
             if let Some(contract) = contract {
@@ -1285,20 +1295,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         decl: &FnDecl,
         body: &Block,
         contract: Option<&FnContract>,
-    ) -> hir::BodyId {
+    ) -> (Vec<PartialParam<'hir>>, hir::BodyId) {
         self.lower_fn_body(decl, contract, |this| this.lower_block_expr(body))
     }
 
     pub(super) fn lower_const_body(&mut self, span: Span, expr: Option<&Expr>) -> hir::BodyId {
         self.lower_body(|this| {
             (
-                &[],
+                Vec::new(),
                 match expr {
                     Some(expr) => this.lower_expr_mut(expr),
                     None => this.expr_err(span, this.dcx().span_delayed_bug(span, "no block")),
                 },
             )
         })
+        .1
     }
 
     /// Takes what may be the body of an `async fn` or a `gen fn` and wraps it in an `async {}` or
@@ -1313,7 +1324,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: Option<&Block>,
         attrs: &'hir [rustc_attr_ir::Attribute],
         contract: Option<&FnContract>,
-    ) -> hir::BodyId {
+    ) -> (Vec<PartialParam<'hir>>, hir::BodyId) {
         let Some(body) = body else {
             // Functions without a body are an error, except if this is an intrinsic. For those we
             // create a fake body so that the entire rest of the compiler doesn't have to deal with
@@ -1376,8 +1387,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body_span: Span,
         coroutine_marker: CoroutineMarker,
         coroutine_source: hir::CoroutineSource,
-    ) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>) {
-        let mut parameters: Vec<hir::Param<'_>> = Vec::new();
+    ) -> (Vec<PartialParam<'hir>>, hir::Expr<'hir>) {
+        let mut parameters: Vec<PartialParam<'_>> = Vec::new();
         let mut statements: Vec<hir::Stmt<'_>> = Vec::new();
 
         // Async function parameters are lowered into the closure body so that they are
@@ -1445,11 +1456,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // original parameter, but with a different pattern id.
             let stmt_attrs = self.curr_owner.attrs.get(&parameter.hir_id.local_id).copied();
             let (new_parameter_pat, new_parameter_id) = self.pat_ident(desugared_span, ident);
-            let new_parameter = hir::Param {
+            let new_parameter = PartialParam {
                 hir_id: parameter.hir_id,
                 pat: new_parameter_pat,
                 ty_span: self.lower_span(parameter.ty_span),
-                span: self.lower_span(parameter.span),
+                param_span: self.lower_span(parameter.param_span),
             };
 
             if is_simple_parameter {
@@ -1564,7 +1575,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span: self.lower_span(body_span),
         };
 
-        (self.arena.alloc_from_iter(parameters), expr)
+        (parameters, expr)
     }
 
     fn lower_method_sig(
@@ -1572,16 +1583,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         generics: &Generics,
         sig: &FnSig,
         node_id: NodeId,
-        hir_id: HirId,
         kind: FnDeclKind,
         coroutine_marker: Option<CoroutineMarker>,
         attrs: &[rustc_attr_ir::Attribute],
         discard_params: DiscardParams,
+        inputs: Vec<PartialParam<'hir>>,
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, itctx, |this| {
-            this.lower_fn_decl(&sig.decl, node_id, hir_id, kind, coroutine_marker, discard_params)
+            this.lower_fn_decl(&sig.decl, node_id, kind, coroutine_marker, discard_params, inputs)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
@@ -2160,4 +2171,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             rhs,
         }
     }
+}
+
+/// A `hir::Param` without a `ty`, which exists after the `Param` is lowered, before the corresponding `ty` is lowered.
+#[derive(Clone, Debug)]
+pub(crate) struct PartialParam<'hir> {
+    pub hir_id: HirId,
+    pub pat: &'hir rustc_hir::Pat<'hir>,
+    pub param_span: Span,
+    pub ty_span: Span,
 }

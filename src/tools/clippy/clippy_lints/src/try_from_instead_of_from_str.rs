@@ -9,6 +9,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{BodyId, GenericArg, Impl, ImplItemKind, Item, ItemKind, LifetimeKind, TraitRef, Ty};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::symbol::kw;
+use rustc_hir::FnSig;
 
 use core::ops::ControlFlow;
 
@@ -131,14 +132,14 @@ fn check_lifetimes(ty: &Ty<'_>, imp: &Impl<'_>, trait_ref: &TraitRef<'_>) -> boo
         .all(|pred| rustc_hir::intravisit::walk_where_predicate(&mut visitor, pred).is_continue())
 }
 
-fn get_impl_items<'tcx>(cx: &LateContext<'tcx>, imp: &Impl<'_>) -> Option<(&'tcx Ty<'tcx>, BodyId)> {
+fn get_impl_items<'tcx>(cx: &LateContext<'tcx>, imp: &Impl<'_>) -> Option<(&'tcx Ty<'tcx>, FnSig<'tcx>, BodyId)> {
     let &[item1, item2] = &imp.items else { return None };
     match (
         cx.tcx.hir_expect_impl_item(item1.owner_id.def_id).kind,
         cx.tcx.hir_expect_impl_item(item2.owner_id.def_id).kind,
     ) {
-        (ImplItemKind::Type(ty), ImplItemKind::Fn(_, body_id))
-        | (ImplItemKind::Fn(_, body_id), ImplItemKind::Type(ty)) => Some((ty, body_id)),
+        (ImplItemKind::Type(ty), ImplItemKind::Fn(sig, body_id))
+        | (ImplItemKind::Fn(sig, body_id), ImplItemKind::Type(ty)) => Some((ty, sig, body_id)),
         _ => None,
     }
 }
@@ -167,7 +168,7 @@ impl<'tcx> LateLintPass<'tcx> for TryFromInsteadOfFromStr {
             && !item.span.in_external_macro(cx.sess().source_map())
             && let Some(of_trait) = imp.of_trait
             // It should only have an associated type (`Error`) and a method (`try_from`).
-            && let Some((err_ty, fn_body)) = get_impl_items(cx, imp)
+            && let Some((err_ty, fn_sig, fn_body)) = get_impl_items(cx, imp)
             && let Some(trait_def_id) = of_trait.trait_ref.trait_def_id()
             && let impl_def_id = item.owner_id.to_def_id()
             && let trait_ref = cx.tcx.impl_trait_ref(impl_def_id)
@@ -189,7 +190,7 @@ impl<'tcx> LateLintPass<'tcx> for TryFromInsteadOfFromStr {
                 })
             // We check that the lifetime used by `TryFrom::Error` is not used anywhere else.
             && check_lifetimes(err_ty, imp, &of_trait.trait_ref)
-            && let [param] = cx.tcx.hir_body(fn_body).params
+            && let [param] = fn_sig.decl.inputs
             // We retrieve all snippets for lint suggestion.
             // Only capture the pattern's span: the type is already guaranteed to be `&str`.
             && let Some(fn_arg) = snippet_opt(cx, param.pat.span)

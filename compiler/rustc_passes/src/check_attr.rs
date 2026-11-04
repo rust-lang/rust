@@ -1134,9 +1134,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             if let Some(hir_sig) = hir_sig {
                 match terr {
                     TypeError::ArgumentMutability(idx) | TypeError::ArgumentSorts(_, idx) => {
-                        if let Some(ty) = hir_sig.decl.inputs.get(idx) {
-                            diag.span(ty.span);
-                            cause.span = ty.span;
+                        if let Some(param) = hir_sig.decl.inputs.get(idx) {
+                            diag.span(param.ty.span);
+                            cause.span = param.ty.span;
                         } else if idx == hir_sig.decl.inputs.len() {
                             let span = hir_sig.decl.output.span();
                             diag.span(span);
@@ -1144,9 +1144,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                     }
                     TypeError::ArgCount => {
-                        if let Some(ty) = hir_sig.decl.inputs.get(expected_sig.inputs().len()) {
-                            diag.span(ty.span);
-                            cause.span = ty.span;
+                        if let Some(param) = hir_sig.decl.inputs.get(expected_sig.inputs().len()) {
+                            diag.span(param.ty.span);
+                            cause.span = param.ty.span;
                         }
                     }
                     TypeError::SafetyMismatch(_) => {
@@ -1477,7 +1477,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        self.check_attributes(param.hir_id, param.span, Target::Param, None);
+        self.check_attributes(param.hir_id, param.param_span, Target::Param, None);
 
         intravisit::walk_param(self, param);
     }

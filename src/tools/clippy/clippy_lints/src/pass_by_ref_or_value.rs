@@ -131,7 +131,6 @@ impl PassByRefOrValue {
         }
 
         let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
-        let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir_body(id));
 
         // Gather all the lifetimes found in the output type which may affect whether
         // `TRIVIALLY_COPY_PASS_BY_REF` should be linted.
@@ -149,7 +148,7 @@ impl PassByRefOrValue {
         {
             // All spans generated from a proc-macro invocation are the same...
             match span {
-                Some(s) if s == input.span => continue,
+                Some(s) if s == input.ty.span => continue,
                 _ => (),
             }
 
@@ -171,7 +170,7 @@ impl PassByRefOrValue {
                     if is_copy(cx, ty)
                         && let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes())
                         && size <= self.ref_min_size
-                        && let hir::TyKind::Ref(_, decl_ty, ..) = input.kind
+                        && let hir::TyKind::Ref(_, decl_ty, ..) = input.ty.kind
                     {
                         if let Some(typeck) = cx.typeck_results
                             // Don't lint if a raw pointer is created.
@@ -186,7 +185,7 @@ impl PassByRefOrValue {
                         {
                             continue;
                         }
-                        let value_type = if fn_body.and_then(|body| body.params.get(index)).is_some_and(is_self) {
+                        let value_type = if decl.inputs.get(index).is_some_and(is_self) {
                             "self".into()
                         } else {
                             snippet(cx, decl_ty.span, "_").into()
@@ -194,7 +193,7 @@ impl PassByRefOrValue {
                         span_lint_and_sugg(
                             cx,
                             TRIVIALLY_COPY_PASS_BY_REF,
-                            input.span,
+                            input.ty.span,
                             format!(
                                 "this argument ({size} byte) is passed by reference, but would be more efficient if passed by value (limit: {} byte)",
                                 self.ref_min_size
@@ -208,7 +207,7 @@ impl PassByRefOrValue {
 
                 ty::Adt(_, _) | ty::Array(_, _) | ty::Tuple(_) => {
                     // if function has a body and parameter is annotated with mut, ignore
-                    if let Some(param) = fn_body.and_then(|body| body.params.get(index)) {
+                    if let Some(param) = decl.inputs.get(index) {
                         match param.pat.kind {
                             PatKind::Binding(BindingMode::NONE, _, _, _) => {},
                             _ => continue,
@@ -217,20 +216,20 @@ impl PassByRefOrValue {
                     let ty = cx.tcx.instantiate_bound_regions_with_erased(ty);
 
                     if is_copy(cx, ty)
-                        && !is_self_ty(input)
+                        && !is_self_ty(input.ty)
                         && let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes())
                         && size > self.value_max_size
                     {
                         span_lint_and_sugg(
                             cx,
                             LARGE_TYPES_PASSED_BY_VALUE,
-                            input.span,
+                            input.ty.span,
                             format!(
                                 "this argument ({size} byte) is passed by value, but might be more efficient if passed by reference (limit: {} byte)",
                                 self.value_max_size
                             ),
                             "consider passing by reference instead",
-                            format!("&{}", snippet(cx, input.span, "_")),
+                            format!("&{}", snippet(cx, input.ty.span, "_")),
                             Applicability::MaybeIncorrect,
                         );
                     }
