@@ -157,7 +157,7 @@ pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     let vtable_allocation = tcx.global_alloc(vtable_alloc_id).unwrap_memory();
     let vtable = cx.static_addr_of(vtable_allocation, Some("vtable"));
 
-    cx.apply_vcall_visibility_metadata(trait_ref, vtable);
+    cx.apply_vcall_visibility_metadata(trait_ref.as_slice(), vtable);
     cx.create_vtable_debuginfo(self_ty, trait_ref, vtable);
     cx.vtables().borrow_mut().insert((self_ty, trait_ref), vtable);
     vtable
