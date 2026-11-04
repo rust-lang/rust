@@ -79,7 +79,7 @@ error: the constant `AHA` is not of type `usize`
 LL |     impl<const AHA: u32> Foo<AHA> {}
    |          --------------  ^^^^^^^^ expected `usize`, found `u32`
    |          |
-   |          found this const parameter
+   |          `AHA` defined here
    |
 note: required by a const generic parameter in `e::Foo`
   --> $DIR/impl-block-missing-const-generics.rs:28:16
@@ -137,7 +137,7 @@ error: the constant `AHA` is not of type `usize`
 LL |     impl<const AHA: u32> T<AHA> for Foo {}
    |          --------------  ^^^^^^ expected `usize`, found `u32`
    |          |
-   |          found this const parameter
+   |          `AHA` defined here
    |
 note: required by a const generic parameter in `k::T`
   --> $DIR/impl-block-missing-const-generics.rs:70:13

@@ -795,7 +795,6 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 }
                 debug!(?sugg);
                 err.multipart_suggestion(msg, sugg, Applicability::HasPlaceholders);
-                // err.note(format!("{:?}", self.cx_def_id));
             }
         }
     }

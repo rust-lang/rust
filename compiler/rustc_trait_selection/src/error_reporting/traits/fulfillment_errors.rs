@@ -879,15 +879,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .own_params
                         .iter()
                     {
-                        match param.kind {
-                            GenericParamDefKind::Const { .. }
-                                if param.index == param_const.index
-                                    && param.name == param_const.name =>
-                            {
-                                let span = self.tcx.def_span(param.def_id);
-                                diag.span_label(span, "found this const parameter");
-                            }
-                            _ => {}
+                        if let GenericParamDefKind::Const { .. } = param.kind
+                            && param.index == param_const.index
+                            && param.name == param_const.name
+                        {
+                            let span = self.tcx.def_span(param.def_id);
+                            diag.span_label(span, format!("`{}` defined here", param.name));
                         }
                     }
                 }

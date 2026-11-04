@@ -2,7 +2,7 @@ error: the constant `N` is not of type `u8`
   --> $DIR/adt_expr_fields_type_check.rs:23:19
    |
 LL | fn bar<const N: bool>() {
-   |        ------------- found this const parameter
+   |        ------------- `N` defined here
 LL |     accepts_1::<{ S1::<u8> { f1: N, f2: N } }>();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u8`, found `bool`
 
@@ -10,7 +10,7 @@ error: the constant `N` is not of type `isize`
   --> $DIR/adt_expr_fields_type_check.rs:23:19
    |
 LL | fn bar<const N: bool>() {
-   |        ------------- found this const parameter
+   |        ------------- `N` defined here
 LL |     accepts_1::<{ S1::<u8> { f1: N, f2: N } }>();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `isize`, found `bool`
 
@@ -18,7 +18,7 @@ error: the constant `N` is not of type `u8`
   --> $DIR/adt_expr_fields_type_check.rs:26:19
    |
 LL | fn bar<const N: bool>() {
-   |        ------------- found this const parameter
+   |        ------------- `N` defined here
 ...
 LL |     accepts_2::<{ S2::<u8>(N, N) }>();
    |                   ^^^^^^^^^^^^^^ expected `u8`, found `bool`
@@ -27,7 +27,7 @@ error: the constant `N` is not of type `isize`
   --> $DIR/adt_expr_fields_type_check.rs:26:19
    |
 LL | fn bar<const N: bool>() {
-   |        ------------- found this const parameter
+   |        ------------- `N` defined here
 ...
 LL |     accepts_2::<{ S2::<u8>(N, N) }>();
    |                   ^^^^^^^^^^^^^^ expected `isize`, found `bool`
@@ -36,7 +36,7 @@ error: the constant `N` is not of type `u8`
   --> $DIR/adt_expr_fields_type_check.rs:29:19
    |
 LL | fn bar<const N: bool>() {
-   |        ------------- found this const parameter
+   |        ------------- `N` defined here
 ...
 LL |     accepts_3::<{ En::Var1::<u8>(N, N) }>();
    |                   ^^^^^^^^^^^^^^^^^^^^ expected `u8`, found `bool`
@@ -45,7 +45,7 @@ error: the constant `N` is not of type `i64`
   --> $DIR/adt_expr_fields_type_check.rs:31:19
    |
 LL | fn bar<const N: bool>() {
-   |        ------------- found this const parameter
+   |        ------------- `N` defined here
 ...
 LL |     accepts_3::<{ En::Var2::<u8> { field: N } }>();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i64`, found `bool`

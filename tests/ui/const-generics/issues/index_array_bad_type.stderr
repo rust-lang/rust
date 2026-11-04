@@ -4,7 +4,7 @@ error: the constant `N` is not of type `usize`
 LL | struct Struct<const N: i128>(pub [u8; N]);
    |               -------------      ^^^^^^^ expected `usize`, found `i128`
    |               |
-   |               found this const parameter
+   |               `N` defined here
    |
    = note: the length of array `[u8; N]` must be type `usize`
 

@@ -4,7 +4,7 @@ error: the constant `B` is not of type `usize`
 LL | type ArrLen<const B: bool> = [(); B];
    |             -------------    ^^^^^^^ expected `usize`, found `bool`
    |             |
-   |             found this const parameter
+   |             `B` defined here
    |
    = note: the length of array `[(); B]` must be type `usize`
 
@@ -22,7 +22,7 @@ error: the constant `B` is not of type `usize`
 LL | type ConstArg<const B: bool> = Foo<B>;
    |               -------------    ^^^^^^ expected `usize`, found `bool`
    |               |
-   |               found this const parameter
+   |               `B` defined here
    |
 note: required by a const generic parameter in `Foo`
   --> $DIR/check_const_arg_type_in_free_alias.rs:12:12
@@ -48,7 +48,7 @@ error: the constant `B` is not of type `usize`
 LL | type Alias<const B: bool> = <() as IdentityWithUnused<B>>::This;
    |            -------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
    |            |
-   |            found this const parameter
+   |            `B` defined here
    |
 note: required for `()` to implement `IdentityWithUnused<B>`
   --> $DIR/check_const_arg_type_in_free_alias.rs:27:25
@@ -70,7 +70,7 @@ error: the constant `B` is not of type `usize`
 LL | type UseFree<const B: bool> = Free<B>;
    |              -------------    ^^^^^^^ expected `usize`, found `bool`
    |              |
-   |              found this const parameter
+   |              `B` defined here
    |
 note: required by a bound on the type alias `Free`
   --> $DIR/check_const_arg_type_in_free_alias.rs:36:11
@@ -96,7 +96,7 @@ error: the constant `N` is not of type `bool`
 LL | type UseFreeIndirectlyCorrect<const N: usize> = UseFree<N>;
    |                               --------------    ^^^^^^^^^^ expected `bool`, found `usize`
    |                               |
-   |                               found this const parameter
+   |                               `N` defined here
    |
 note: required by a bound on the type alias `UseFree`
   --> $DIR/check_const_arg_type_in_free_alias.rs:37:14
@@ -122,7 +122,7 @@ error: the constant `B` is not of type `usize`
 LL | type IndirectArr<const B: bool> = Wrap<Wrap<[(); B]>>;
    |                  -------------    ^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
    |                  |
-   |                  found this const parameter
+   |                  `B` defined here
    |
    = note: the length of array `[(); B]` must be type `usize`
 
@@ -140,7 +140,7 @@ error: the constant `B` is not of type `usize`
 LL | type IndirectConstArg<const B: bool> = Wrap<Wrap<Foo<B>>>;
    |                       -------------    ^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
    |                       |
-   |                       found this const parameter
+   |                       `B` defined here
    |
 note: required by a const generic parameter in `Foo`
   --> $DIR/check_const_arg_type_in_free_alias.rs:12:12

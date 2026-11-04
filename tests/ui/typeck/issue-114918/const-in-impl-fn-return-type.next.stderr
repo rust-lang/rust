@@ -10,7 +10,7 @@ error: the constant `N` is not of type `usize`
 LL |     fn func<const N: u32>() -> [(); N];
    |             ------------       ^^^^^^^ expected `usize`, found `u32`
    |             |
-   |             found this const parameter
+   |             `N` defined here
    |
    = note: the length of array `[(); N]` must be type `usize`
 

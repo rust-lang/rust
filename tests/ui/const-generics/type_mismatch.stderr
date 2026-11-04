@@ -4,7 +4,7 @@ error: the constant `N` is not of type `usize`
 LL | fn bar<const N: u8>() -> [u8; N] {}
    |        -----------       ^^^^^^^ expected `usize`, found `u8`
    |        |
-   |        found this const parameter
+   |        `N` defined here
    |
    = note: the length of array `[u8; N]` must be type `usize`
 
@@ -12,7 +12,7 @@ error: the constant `N` is not of type `u8`
   --> $DIR/type_mismatch.rs:2:11
    |
 LL | fn foo<const N: usize>() -> [u8; N] {
-   |        -------------- found this const parameter
+   |        -------------- `N` defined here
 LL |     bar::<N>()
    |           ^ expected `u8`, found `usize`
    |
