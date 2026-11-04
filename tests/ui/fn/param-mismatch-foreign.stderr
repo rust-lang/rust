@@ -8,7 +8,7 @@ note: function defined here
   --> $DIR/param-mismatch-foreign.rs:2:8
    |
 LL |     fn foo(x: i32, y: u32, z: i32);
-   |        ^^^         -
+   |        ^^^         ------
 help: provide the argument
    |
 LL |     foo(1i32, /* u32 */, 2i32);

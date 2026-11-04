@@ -54,7 +54,7 @@ note: function defined here
   --> $DIR/typeck-errors.rs:3:4
    |
 LL | fn foo(const N: usize) -> [u8; N] {
-   |    ^^^       -
+   |    ^^^ --------------
 
 error: aborting due to 5 previous errors
 
