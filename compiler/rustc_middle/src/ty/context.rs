@@ -972,6 +972,10 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(self.as_lang_item(def_id), Some(LangItem::Sized | LangItem::MetaSized))
     }
 
+    pub fn is_forget_trait(self, def_id: DefId) -> bool {
+        matches!(self.as_lang_item(def_id), Some(LangItem::Forget))
+    }
+
     pub fn lift<T: Lift<TyCtxt<'tcx>>>(self, value: T) -> T::Lifted {
         value.lift_to_interner(self)
     }
