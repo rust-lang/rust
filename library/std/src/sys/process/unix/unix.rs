@@ -59,7 +59,7 @@ impl Command {
     ) -> io::Result<(Process, StdioPipes)> {
         const CLOEXEC_MSG_FOOTER: [u8; 4] = *b"NOEX";
 
-        let envp = self.capture_env();
+        let envp = self.capture_env()?;
 
         if self.saw_nul() {
             return Err(io::const_error!(
@@ -227,7 +227,10 @@ impl Command {
     }
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
-        let envp = self.capture_env();
+        let envp = match self.capture_env() {
+            Ok(env) => env,
+            Err(err) => return err,
+        };
 
         if self.saw_nul() {
             return io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data");
