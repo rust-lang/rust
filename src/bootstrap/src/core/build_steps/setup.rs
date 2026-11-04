@@ -7,18 +7,17 @@
 
 use std::collections::BTreeMap;
 use std::env::consts::EXE_SUFFIX;
-use std::fmt::Write as _;
 use std::fs::File;
 use std::io::Write;
 use std::path::{MAIN_SEPARATOR_STR, Path, PathBuf};
-use std::str::FromStr;
 use std::sync::LazyLock;
-use std::{fmt, fs, io};
+use std::{fs, io};
 
 use serde_derive::{Deserialize, Serialize};
 use sha2::Digest;
 
 use crate::core::build_steps::format;
+use crate::core::build_steps::setup::profile::PROFILE_DIR;
 use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun};
 use crate::core::config::Config;
 use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
@@ -28,84 +27,17 @@ use crate::utils::helpers::{self, hex_encode, t};
 #[cfg(test)]
 mod tests;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum Profile {
-    Compiler,
-    Library,
-    Tools,
-    Dist,
-    None,
+mod profile;
+
+pub use profile::Profile;
+
+/// Create a `bootstrap.toml` with a profile specified by the user.
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct BootstrapToml {
+    profile: Profile,
 }
 
-static PROFILE_DIR: &str = "src/bootstrap/defaults";
-
-impl Profile {
-    fn include_path(&self, src_path: &Path) -> PathBuf {
-        PathBuf::from(format!("{}/{PROFILE_DIR}/bootstrap.{}.toml", src_path.display(), self))
-    }
-
-    pub fn all() -> impl Iterator<Item = Self> {
-        use Profile::*;
-        // N.B. these are ordered by how they are displayed, not alphabetically
-        [Library, Compiler, Tools, Dist, None].iter().copied()
-    }
-
-    pub fn purpose(&self) -> String {
-        use Profile::*;
-        match self {
-            Library => "Contribute to the standard library",
-            Compiler => "Contribute to the compiler itself",
-            Tools => "Contribute to tools which depend on the compiler, but do not modify it directly (e.g. rustdoc, clippy, miri)",
-            Dist => "Install Rust from source",
-            None => "Do not modify `bootstrap.toml`"
-        }
-        .to_string()
-    }
-
-    pub fn all_for_help(indent: &str) -> String {
-        let mut out = String::new();
-        for choice in Profile::all() {
-            writeln!(&mut out, "{}{}: {}", indent, choice, choice.purpose()).unwrap();
-        }
-        out
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Profile::Compiler => "compiler",
-            Profile::Library => "library",
-            Profile::Tools => "tools",
-            Profile::Dist => "dist",
-            Profile::None => "none",
-        }
-    }
-}
-
-impl FromStr for Profile {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "lib" | "library" => Ok(Profile::Library),
-            "compiler" => Ok(Profile::Compiler),
-            "maintainer" | "dist" | "user" => Ok(Profile::Dist),
-            "tools" | "tool" | "rustdoc" | "clippy" | "miri" | "rustfmt" => Ok(Profile::Tools),
-            "none" => Ok(Profile::None),
-            "llvm" | "codegen" => Err("the \"llvm\" and \"codegen\" profiles have been removed,\
-                use \"compiler\" instead which has the same functionality"
-                .to_string()),
-            _ => Err(format!("unknown profile: '{s}'")),
-        }
-    }
-}
-
-impl fmt::Display for Profile {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-impl CommandLineStep for Profile {
+impl CommandLineStep for BootstrapToml {
     type Output = ();
 
     fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -148,7 +80,7 @@ impl CommandLineStep for Profile {
             }
         }
 
-        // for Profile, `run.paths` will have 1 and only 1 element
+        // for BootstrapToml, `run.paths` will have 1 and only 1 element
         // this is because we only accept at most 1 path from user input.
         // If user calls `x.py setup` without arguments, the interactive TUI
         // will guide user to provide one.
@@ -169,7 +101,7 @@ impl CommandLineStep for Profile {
                 .unwrap()
         };
 
-        run.builder.ensure(profile);
+        run.builder.ensure(BootstrapToml { profile });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -177,7 +109,7 @@ impl CommandLineStep for Profile {
     }
 }
 
-pub fn setup(config: &Config, profile: Profile) {
+pub fn setup(config: &Config, BootstrapToml { profile }: BootstrapToml) {
     let suggestions: &[&str] = match profile {
         Profile::Compiler | Profile::None => &["check", "build", "test"],
         Profile::Tools => &[
@@ -214,10 +146,10 @@ pub fn setup(config: &Config, profile: Profile) {
     }
 
     let path = &config.config.clone().unwrap_or(PathBuf::from("bootstrap.toml"));
-    setup_config_toml(path, profile, config);
+    setup_bootstrap_toml(path, profile, config);
 }
 
-fn setup_config_toml(path: &Path, profile: Profile, config: &Config) {
+fn setup_bootstrap_toml(path: &Path, profile: Profile, config: &Config) {
     if profile == Profile::None {
         return;
     }
@@ -239,6 +171,7 @@ fn setup_config_toml(path: &Path, profile: Profile, config: &Config) {
 /// Creates a toolchain link for stage1 using `rustup`
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Link;
+
 impl CommandLineStep for Link {
     type Output = ();
 
