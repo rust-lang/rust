@@ -2891,6 +2891,10 @@ impl<'tcx> TyCtxt<'tcx> {
             && !self.features().generic_const_exprs()
     }
 
+    pub fn next_solver_overflow_fcw_limit(self) -> Option<usize> {
+        self.sess.opts.unstable_opts.next_solver_overflow_fcw_limit
+    }
+
     pub fn disable_trait_solver_fast_paths(self) -> bool {
         self.sess.opts.unstable_opts.disable_fast_paths
     }
