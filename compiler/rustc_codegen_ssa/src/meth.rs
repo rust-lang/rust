@@ -3,6 +3,7 @@ use rustc_session::config::Lto;
 use rustc_span::bug;
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::callconv::FnAbi;
+use rustc_trait_selection::traits::vtable;
 use tracing::{debug, instrument};
 
 use crate::traits::*;
@@ -157,8 +158,18 @@ pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     let vtable_allocation = tcx.global_alloc(vtable_alloc_id).unwrap_memory();
     let vtable = cx.static_addr_of(vtable_allocation, Some("vtable"));
 
-    cx.apply_vcall_visibility_metadata(trait_ref.as_slice(), vtable);
+    if let Some(trait_ref) = trait_ref
+        && cx.sess().opts.unstable_opts.virtual_function_elimination
+        && cx.sess().lto() == Lto::Fat
+    {
+        let key = trait_ref.with_self_ty(tcx, self_ty);
+        let trait_hierarchy = vtable::vtable_prefix_traits(tcx, key);
+
+        cx.apply_vcall_visibility_metadata(&trait_hierarchy, vtable);
+    }
+
     cx.create_vtable_debuginfo(self_ty, trait_ref, vtable);
     cx.vtables().borrow_mut().insert((self_ty, trait_ref), vtable);
+
     vtable
 }
