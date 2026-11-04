@@ -68,6 +68,6 @@ const REPR_COMPLETIONS: &[ReprCompletion] = &[
     attr("i16",    &["transparent", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i32", "i64", "i128", "isize"]),
     attr("i32",    &["transparent", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i64", "i128", "isize"]),
     attr("i64",    &["transparent", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i128", "isize"]),
-    attr("i28",    &["transparent", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "isize"]),
+    attr("i128",   &["transparent", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "isize"]),
     attr("isize",  &["transparent", "u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128"]),
 ];
