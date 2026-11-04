@@ -371,6 +371,7 @@ mod try_from_instead_of_from_str;
 mod tuple_array_conversions;
 mod types;
 mod unconditional_recursion;
+mod undocumented_may_panic_call;
 mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninhabited_references;
@@ -872,6 +873,7 @@ rustc_lint::late_lint_methods!(
         UnnecessaryBoxPin: unnecessary_box_pin::UnnecessaryBoxPin = unnecessary_box_pin::UnnecessaryBoxPin::new(conf),
         BufreaderStdin: bufreader_stdin::BufreaderStdin = bufreader_stdin::BufreaderStdin::new(),
         IfsAsLogicalOps: ifs_as_logical_ops::IfsAsLogicalOps = ifs_as_logical_ops::IfsAsLogicalOps,
+        UndocumentedMayPanicCall: undocumented_may_panic_call::UndocumentedMayPanicCall = undocumented_may_panic_call::UndocumentedMayPanicCall::new(tcx, conf),
         // add late passes here, used by `cargo dev new_lint`
     ]]
 );

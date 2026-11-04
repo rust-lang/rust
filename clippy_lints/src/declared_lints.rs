@@ -782,6 +782,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::types::TYPE_COMPLEXITY_INFO,
     crate::types::VEC_BOX_INFO,
     crate::unconditional_recursion::UNCONDITIONAL_RECURSION_INFO,
+    crate::undocumented_may_panic_call::UNDOCUMENTED_MAY_PANIC_CALL_INFO,
     crate::undocumented_unsafe_blocks::UNDOCUMENTED_UNSAFE_BLOCKS_INFO,
     crate::undocumented_unsafe_blocks::UNNECESSARY_SAFETY_COMMENT_INFO,
     crate::unicode::INVISIBLE_CHARACTERS_INFO,

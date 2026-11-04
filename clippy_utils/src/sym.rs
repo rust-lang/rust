@@ -440,6 +440,7 @@ generate! {
     max_by_key,
     max_value,
     maximum,
+    may_panic,
     mem_align_of,
     mem_replace,
     mem_size_of,

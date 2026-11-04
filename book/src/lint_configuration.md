@@ -864,6 +864,17 @@ The maximum number of bounds a trait can have to be linted
 * [`type_repetition_in_bounds`](https://clippy.rust-lang.org/main/index.html#type_repetition_in_bounds)
 
 
+## `may-panic-functions`
+List of function/method paths that may panic and should be documented with a `// Panic:` comment
+at call sites.
+
+**Default Value:** `[]`
+
+---
+**Affected lints:**
+* [`undocumented_may_panic_call`](https://clippy.rust-lang.org/main/index.html#undocumented_may_panic_call)
+
+
 ## `min-ident-chars-lint-trait-impl`
 Whether to lint idents that have too few chars even when following trait declaration.
 

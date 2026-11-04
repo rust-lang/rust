@@ -7750,6 +7750,7 @@ Released 2018-09-13
 [`unchecked_duration_subtraction`]: https://clippy.rust-lang.org/main/index.html#unchecked_duration_subtraction
 [`unchecked_time_subtraction`]: https://clippy.rust-lang.org/main/index.html#unchecked_time_subtraction
 [`unconditional_recursion`]: https://clippy.rust-lang.org/main/index.html#unconditional_recursion
+[`undocumented_may_panic_call`]: https://clippy.rust-lang.org/main/index.html#undocumented_may_panic_call
 [`undocumented_unsafe_blocks`]: https://clippy.rust-lang.org/main/index.html#undocumented_unsafe_blocks
 [`undropped_manually_drops`]: https://clippy.rust-lang.org/main/index.html#undropped_manually_drops
 [`unicode_not_nfc`]: https://clippy.rust-lang.org/main/index.html#unicode_not_nfc
@@ -7943,6 +7944,7 @@ Released 2018-09-13
 [`max-struct-bools`]: https://doc.rust-lang.org/clippy/lint_configuration.html#max-struct-bools
 [`max-suggested-slice-pattern-length`]: https://doc.rust-lang.org/clippy/lint_configuration.html#max-suggested-slice-pattern-length
 [`max-trait-bounds`]: https://doc.rust-lang.org/clippy/lint_configuration.html#max-trait-bounds
+[`may-panic-functions`]: https://doc.rust-lang.org/clippy/lint_configuration.html#may-panic-functions
 [`min-ident-chars-lint-trait-impl`]: https://doc.rust-lang.org/clippy/lint_configuration.html#min-ident-chars-lint-trait-impl
 [`min-ident-chars-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#min-ident-chars-threshold
 [`missing-docs-allow-unused`]: https://doc.rust-lang.org/clippy/lint_configuration.html#missing-docs-allow-unused

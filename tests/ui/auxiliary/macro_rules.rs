@@ -67,3 +67,11 @@ macro_rules! double_parens {
         InterruptMask((($a.union($b).union($c).union($d)).into_bits()) as u32)
     }};
 }
+
+/// Used for testing undocumented_may_panic_call
+#[macro_export]
+macro_rules! external_macro_may_panic {
+    ($func:path) => {
+        $func()
+    };
+}
