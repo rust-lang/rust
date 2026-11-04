@@ -1735,7 +1735,6 @@ fn find_vtable_behind_cast<'ll>(vtable: &'ll Value) -> &'ll Value {
 
 pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    ty: Ty<'tcx>,
     trait_ref: Option<ExistentialTraitRef<'tcx>>,
     vtable: &'ll Value,
 ) {
@@ -1755,9 +1754,7 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
 
     // Unwrap potential addrspacecast
     let vtable = find_vtable_behind_cast(vtable);
-    let trait_ref_self = trait_ref.with_self_ty(cx.tcx, ty);
-    let trait_def_id = trait_ref_self.def_id;
-    let trait_vis = cx.tcx.visibility(trait_def_id);
+    let trait_vis = cx.tcx.visibility(trait_ref.def_id);
 
     let cgus = cx.sess().codegen_units().as_usize();
     let single_cgu = cgus == 1;
