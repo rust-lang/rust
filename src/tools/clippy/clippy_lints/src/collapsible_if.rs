@@ -248,7 +248,7 @@ impl CollapsibleIf {
                         matches!(
                             lint,
                             LintCheck {
-                                lint_name: LintName {
+                                lint_name_normalized: LintName {
                                     tool: Some(sym::clippy),
                                     ..
                                 },
@@ -257,7 +257,7 @@ impl CollapsibleIf {
                             }
                         )
                     })
-                    .any(|lint| [expected_lint_name, sym::style, sym::all].contains(&lint.lint_name.name)) =>
+                    .any(|lint| [expected_lint_name, sym::style, sym::all].contains(&lint.lint_name_normalized.name)) =>
             {
                 let attr_span = lints.first().unwrap().attr_span.to(lints.last().unwrap().attr_span);
                 // There is an `expect` attribute -- check that there is no _other_ significant text

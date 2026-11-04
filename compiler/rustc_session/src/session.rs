@@ -20,6 +20,7 @@ use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, PResult, TerminalUrl,
 };
 use rustc_feature::UnstableFeatures;
+use rustc_lint_defs::{CheckLintNameResult, RegisteredTools};
 use rustc_macros::StableHash;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
@@ -82,6 +83,12 @@ pub struct CompilerIO {
 pub trait DynLintStore: Any + DynSync + DynSend {
     /// Provides a way to access lint groups without depending on `rustc_lint`
     fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_>;
+
+    fn check_lint_name(
+        &self,
+        lint_name: LintName,
+        registered_tools: &RegisteredTools,
+    ) -> CheckLintNameResult<'_>;
 }
 
 /// Hardware pointer-signing keys in ARM8.3.
