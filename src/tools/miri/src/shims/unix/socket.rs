@@ -367,7 +367,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let socket = this.read_scalar(socket)?.to_i32()?;
         let address_ptr = this.read_pointer(address)?;
-        let address_len_ptr = this.read_pointer(address_len)?;
+        let address_len_place = this.deref_pointer(address_len)?;
         let mut flags =
             if let Some(flags) = flags { this.read_scalar(flags)?.to_i32()? } else { 0 };
 
@@ -417,7 +417,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             callback!(
                 @capture<'tcx> {
                     address_ptr: Pointer,
-                    address_len_ptr: Pointer,
+                    address_len_place: MPlaceTy<'tcx>,
                     dest: MPlaceTy<'tcx>
                 } |this, result: Result<(FdNum, SocketAddr), IoError>| {
                     let (client_sockfd, address) = match result {
@@ -429,7 +429,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // We only attempt a write if the address pointer is not a null pointer.
                         // If the address pointer is a null pointer the user isn't interested in the
                         // address and we don't need to write anything.
-                        this.write_socket_address(&address, address_ptr, address_len_ptr, "accept4")?;
+                        this.write_socket_address(&address, address_ptr, &address_len_place)?;
                     }
 
                     // We need to create the scalar using the destination size since
@@ -778,7 +778,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let socket = this.read_scalar(socket)?.to_i32()?;
         let address_ptr = this.read_pointer(address)?;
-        let address_len_ptr = this.read_pointer(address_len)?;
+        let address_len_place = this.deref_pointer(address_len)?;
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
@@ -794,8 +794,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(e) => return this.set_errno_and_return_neg1_i32(e),
         };
 
-        this.write_socket_address(&address, address_ptr, address_len_ptr, "getsockname")
-            .map(|_| Scalar::from_i32(0))
+        this.write_socket_address(&address, address_ptr, &address_len_place)
+            .map(|()| Scalar::from_i32(0))
     }
 
     fn getpeername(
@@ -810,7 +810,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let socket = this.read_scalar(socket)?.to_i32()?;
         let address_ptr = this.read_pointer(address)?;
-        let address_len_ptr = this.read_pointer(address_len)?;
+        let address_len_place = this.deref_pointer(address_len)?;
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
@@ -829,7 +829,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             callback!(
                 @capture<'tcx> {
                     address_ptr: Pointer,
-                    address_len_ptr: Pointer,
+                    address_len_place: MPlaceTy<'tcx>,
                     dest: MPlaceTy<'tcx>,
                 } |this, result: Result<SocketAddr, IoError>| {
                     let address = match result {
@@ -840,8 +840,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_socket_address(
                         &address,
                         address_ptr,
-                        address_len_ptr,
-                        "getpeername",
+                        &address_len_place,
                     )?;
                    this.write_scalar(Scalar::from_i32(0), &dest)
                 }

@@ -660,14 +660,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "accept" => {
                 let [socket, address, address_len] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(i32, *libc::sockaddr, *libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.accept4(socket, address, address_len, /* flags */ None, dest)?;
             }
             "accept4" => {
                 let [socket, address, address_len, flags] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, *_, i32) -> i32),
+                    shim_sig!(extern "C" fn(i32, *libc::sockaddr, *libc::socklen_t, i32) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.accept4(socket, address, address_len, Some(flags), dest)?;
@@ -713,7 +713,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "getsockname" => {
                 let [socket, address, address_len] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(i32, *libc::sockaddr, *libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.getsockname(socket, address, address_len)?;
@@ -721,7 +721,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "getpeername" => {
                 let [socket, address, address_len] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(i32, *libc::sockaddr, *libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.getpeername(socket, address, address_len, dest)?;

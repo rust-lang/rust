@@ -1,7 +1,7 @@
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 
 use rustc_abi::Size;
-use rustc_target::spec::Env;
+use rustc_target::spec::{Env, Os};
 
 use crate::*;
 
@@ -133,11 +133,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Result<SocketAddr, IoError>> {
         let this = self.eval_context_ref();
 
-        let socklen_layout = this.libc_ty_layout("socklen_t");
         // We only support address lengths which can be stored in a u64 since the
         // size of a layout is also stored in a u64.
         let address_len: u64 =
-            this.read_scalar(address_len)?.to_int(socklen_layout.size)?.try_into().unwrap();
+            this.read_scalar(address_len)?.to_int(address_len.layout.size)?.try_into().unwrap();
 
         // Initially, treat address as generic sockaddr just to extract the family field.
         let address = this.deref_pointer(address)?;
@@ -248,26 +247,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         address: &SocketAddr,
         address_ptr: Pointer,
-        address_len_ptr: Pointer,
-        foreign_name: &'static str,
+        address_len_place: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        if address_ptr == Pointer::null() || address_len_ptr == Pointer::null() {
-            // The POSIX man page doesn't account for the cases where the `address_ptr` or
-            // `address_len_ptr` could be null pointers. Thus, this behavior is undefined!
-            throw_ub_format!(
-                "{foreign_name}: writing a socket address but the address or the length pointer is a null pointer"
-            )
-        }
-
-        let socklen_layout = this.libc_ty_layout("socklen_t");
-        let address_buffer_len_place = this.ptr_to_mplace(address_len_ptr, socklen_layout);
         // We only support buffer lengths which can be stored in a u64 since the
         // size of a layout in bytes is also stored in a u64.
         let address_buffer_len: u64 = this
-            .read_scalar(&address_buffer_len_place)?
-            .to_int(socklen_layout.size)?
+            .read_scalar(address_len_place)?
+            .to_int(address_len_place.layout.size)?
             .try_into()
             .unwrap();
 
@@ -309,7 +297,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let sin_zero_field = this.project_field_named(&address_buffer, "sin_zero")?;
                 let mut sin_zero_elems = this.project_array_fields(&sin_zero_field)?;
                 while let Some((_idx, elem)) = sin_zero_elems.next(this)? {
-                    this.write_null(&elem)?;
+                    this.write_int(0, &elem)?;
                 }
 
                 address_buffer
@@ -359,6 +347,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let s6_addr_field = this.project_field_named(&sin6_addr_field, "s6_addr")?;
                 this.write_bytes_ptr(s6_addr_field.ptr(), address_bytes)?;
 
+                // OS-specific fields. std assumes they are initialized, too.
+                if matches!(this.tcx.sess.target.os, Os::Solaris | Os::Illumos) {
+                    let sin6_src_id_field =
+                        this.project_field_named(&address_buffer, "__sin6_src_id")?;
+                    this.write_int(0, &sin6_src_id_field)?;
+                }
+
                 address_buffer
             }
         };
@@ -376,13 +371,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Deallocate the address buffer as it was only needed to construct the address and
         // copy it into the buffer pointed to by `address_ptr`.
         this.deallocate_ptr(address_buffer.ptr(), None, MemoryKind::Stack)?;
-        // Size of the non-truncated address.
-        let address_len = address_buffer.layout.size.bytes();
 
-        this.write_scalar(
-            Scalar::from_uint(address_len, socklen_layout.size),
-            &address_buffer_len_place,
-        )?;
+        // Store size of the non-truncated address.
+        this.write_int(address_buffer.layout.size.bytes(), address_len_place)?;
 
         interp_ok(())
     }
@@ -443,12 +434,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_int(sockaddr_layout.size.bytes(), &addrlen_mplace)?;
 
         let sockaddr_mplace = this.allocate(sockaddr_layout, MiriMemoryKind::Machine.into())?;
-        this.write_socket_address(
-            &address,
-            sockaddr_mplace.ptr(),
-            addrlen_mplace.ptr(),
-            "getaddrinfo",
-        )?;
+        this.write_socket_address(&address, sockaddr_mplace.ptr(), &addrlen_mplace)?;
         this.write_pointer(sockaddr_mplace.ptr(), &addr_mplace)?;
 
         let canonname_mplace = this.project_field_named(&addrinfo_mplace, "ai_canonname")?;
