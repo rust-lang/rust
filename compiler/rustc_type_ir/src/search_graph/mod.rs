@@ -19,11 +19,12 @@ use std::hash::Hash;
 use std::iter;
 use std::marker::PhantomData;
 use std::ops::Sub;
+use std::sync::Arc;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
-use rustc_type_ir::data_structures::HashMap;
+use rustc_type_ir::data_structures::{HashMap, HashSet};
 use tracing::{debug, instrument, trace};
 
 mod stack;
@@ -508,17 +509,21 @@ impl PathsToNested {
 /// We only start tracking nested goals once we've either encountered
 /// overflow or a solver cycle. This is a performance optimization to
 /// avoid tracking nested goals on the happy path.
-#[derive_where(Debug, Default, Clone; X: Cx)]
+#[derive_where(Debug, Default; X: Cx)]
 struct NestedGoals<X: Cx> {
-    nested_goals: HashMap<X::Input, PathsToNested>,
+    own: HashMap<X::Input, PathsToNested>,
+    children: Vec<(PathKind, Arc<NestedGoals<X>>)>,
 }
+
+const INLINE_NESTED_GOALS_LIMIT: usize = 8;
+
 impl<X: Cx> NestedGoals<X> {
     fn is_empty(&self) -> bool {
-        self.nested_goals.is_empty()
+        self.own.is_empty() && self.children.is_empty()
     }
 
     fn insert(&mut self, input: X::Input, paths_to_nested: PathsToNested) {
-        match self.nested_goals.entry(input) {
+        match self.own.entry(input) {
             Entry::Occupied(mut entry) => *entry.get_mut() |= paths_to_nested,
             Entry::Vacant(entry) => drop(entry.insert(paths_to_nested)),
         }
@@ -530,39 +535,82 @@ impl<X: Cx> NestedGoals<X> {
     /// If the path from this goal to the nested goal is inductive, the paths from this goal
     /// to all nested goals of that nested goal are also inductive. Otherwise the paths are
     /// the same as for the child.
-    fn extend_from_child(&mut self, step_kind: PathKind, nested_goals: &NestedGoals<X>) {
-        if nested_goals.is_empty() {
+    fn extend_from_child(&mut self, step_kind: PathKind, nested_goals: &SharedNestedGoals<X>) {
+        let Some(child) = &nested_goals.0 else {
             return;
-        }
+        };
 
-        // Each nested goal is updated independently, so traversal order cannot
-        // affect the result.
-        #[expect(rustc::potential_query_instability)]
-        if self.is_empty() {
-            // Manually avoid HashMap lookups for every input if there aren't
-            // any preexisting entries.
-            self.nested_goals.clone_from(&nested_goals.nested_goals);
-            for paths_to_nested in self.nested_goals.values_mut() {
-                *paths_to_nested = paths_to_nested.extend_with(step_kind);
+        if child.own.len() + child.children.len() <= INLINE_NESTED_GOALS_LIMIT {
+            // Each nested goal is updated independently, so traversal order cannot
+            // affect the result.
+            #[allow(rustc::potential_query_instability)]
+            for (&input, &paths_to_nested) in child.own.iter() {
+                self.insert(input, paths_to_nested.extend_with(step_kind));
             }
+            // Extending with `a` and then `b` is the same as extending with `a.extend(b)`.
+            self.children.extend(
+                child
+                    .children
+                    .iter()
+                    .map(|(step, nested)| (step_kind.extend(*step), nested.clone())),
+            );
         } else {
-            for (input, paths_to_nested) in nested_goals.iter() {
-                let paths_to_nested = paths_to_nested.extend_with(step_kind);
-                self.insert(input, paths_to_nested);
-            }
+            self.children.push((step_kind, child.clone()));
         }
     }
 
-    // This helper intentionally exposes unstable hash iteration so each caller must opt in
-    // locally and justify why its traversal is order-insensitive.
-    #[cfg_attr(feature = "nightly", rustc_lint_query_instability)]
-    #[allow(rustc::potential_query_instability)]
-    fn iter(&self) -> impl Iterator<Item = (X::Input, PathsToNested)> + '_ {
-        self.nested_goals.iter().map(|(i, p)| (*i, *p))
+    fn into_shared(mut self) -> SharedNestedGoals<X> {
+        if self.is_empty() {
+            return SharedNestedGoals(None);
+        }
+
+        // The same child often gets added multiple times, e.g. when a goal
+        // uses the same global cache entry repeatedly.
+        self.children
+            .sort_unstable_by_key(|(step, nested)| (Arc::as_ptr(nested).addr(), *step as u8));
+        self.children.dedup_by(|a, b| a.0 == b.0 && Arc::ptr_eq(&a.1, &b.1));
+        // These are kept alive by the global cache, so trim excess capacity.
+        self.children.shrink_to_fit();
+        self.own.shrink_to_fit();
+        SharedNestedGoals(Some(Arc::new(self)))
+    }
+}
+
+#[derive_where(Debug, Default, Clone; X: Cx)]
+struct SharedNestedGoals<X: Cx>(Option<Arc<NestedGoals<X>>>);
+
+impl<X: Cx> SharedNestedGoals<X> {
+    fn is_empty(&self) -> bool {
+        self.0.is_none()
     }
 
-    fn contains(&self, input: X::Input) -> bool {
-        self.nested_goals.contains_key(&input)
+    fn any(&self, mut f: impl FnMut(X::Input, PathsToNested) -> bool) -> bool {
+        let Some(root) = self.0.as_deref() else {
+            return false;
+        };
+
+        let mut visited = HashSet::default();
+        let mut worklist = vec![(root, None::<PathKind>)];
+        while let Some((node, step)) = worklist.pop() {
+            // We return as soon as `f` returns true, so the order doesn't matter.
+            #[allow(rustc::potential_query_instability)]
+            for (&input, &paths_to_nested) in node.own.iter() {
+                let paths_to_nested =
+                    step.map_or(paths_to_nested, |s| paths_to_nested.extend_with(s));
+                if f(input, paths_to_nested) {
+                    return true;
+                }
+            }
+
+            for (child_step, child) in &node.children {
+                let step = Some(step.map_or(*child_step, |s| s.extend(*child_step)));
+                if visited.insert((Arc::as_ptr(child), step)) {
+                    worklist.push((&**child, step));
+                }
+            }
+        }
+
+        false
     }
 }
 
@@ -596,7 +644,7 @@ struct EvaluationResult<X: Cx> {
     encountered_overflow: bool,
     required_depth: RequiredDepth,
     heads: CycleHeads,
-    nested_goals: NestedGoals<X>,
+    nested_goals: SharedNestedGoals<X>,
     result: X::Result,
 }
 
@@ -612,7 +660,7 @@ impl<X: Cx> EvaluationResult<X> {
             // and `nested_goals` between evaluations.
             required_depth: final_entry.required_depth(),
             heads: final_entry.heads,
-            nested_goals: final_entry.nested_goals,
+            nested_goals: final_entry.nested_goals.into_shared(),
             // We only care about the final result.
             result,
         }
@@ -641,7 +689,7 @@ pub struct SearchGraph<D: Delegate<Cx = X>, X: Cx = <D as Delegate>::Cx> {
 /// don't need to track the nested goals used while computing a provisional
 /// cache entry.
 enum UpdateParentGoalCtxt<'a, X: Cx> {
-    Ordinary { nested_goals: &'a NestedGoals<X> },
+    Ordinary { nested_goals: &'a SharedNestedGoals<X> },
     CycleOnStack { head: X::Input },
     ProvisionalCacheHit,
 }
@@ -1190,7 +1238,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
     fn candidate_is_applicable(
         &self,
         step_kind_from_parent: PathKind,
-        nested_goals: &NestedGoals<X>,
+        nested_goals: &SharedNestedGoals<X>,
     ) -> bool {
         // If the global cache entry didn't depend on any nested goals, it always
         // applies.
@@ -1198,21 +1246,19 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             return true;
         }
 
-        // If a nested goal of the global cache entry is on the stack, we would
-        // definitely encounter a cycle.
-        if self.stack.iter().any(|e| nested_goals.contains(e.input)) {
-            debug!("cache entry not applicable due to stack");
-            return false;
-        }
+        let on_stack: HashSet<X::Input> = self.stack.iter().map(|e| e.input).collect();
+        !nested_goals.any(|input, path_from_global_entry| {
+            // If a nested goal of the global cache entry is on the stack, we would
+            // definitely encounter a cycle.
+            if on_stack.contains(&input) {
+                debug!(?input, "cache entry not applicable due to stack");
+                return true;
+            }
 
-        // The global cache entry is also invalid if there's a provisional cache entry
-        // would apply for any of its nested goals.
-        // Any matching provisional entry rejects the candidate,
-        // so iteration order only affects when we return `false`, not the final answer.
-        #[allow(rustc::potential_query_instability)]
-        for (input, path_from_global_entry) in nested_goals.iter() {
+            // The global cache entry is also invalid if there's a provisional cache entry
+            // would apply for any of its nested goals.
             let Some(entries) = self.provisional_cache.get(&input) else {
-                continue;
+                return false;
             };
 
             debug!(?input, ?path_from_global_entry, ?entries, "candidate_is_applicable");
@@ -1246,12 +1292,12 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                         ?head_to_provisional,
                         "cache entry not applicable due to matching paths"
                     );
-                    return false;
+                    return true;
                 }
             }
-        }
 
-        true
+            false
+        })
     }
 
     /// Used when fuzzing the global cache. Accesses the global cache without
