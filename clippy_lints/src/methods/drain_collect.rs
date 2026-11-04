@@ -2,10 +2,10 @@ use crate::methods::DRAIN_COLLECT;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::snippet;
-use clippy_utils::{is_full_collection_range, std_or_core, sym};
+use clippy_utils::{is_full_collection_range, sym};
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
-use rustc_lint::LateContext;
+use rustc_lint::{LateContext, std_or_core};
 use rustc_middle::ty;
 
 pub(super) fn check(cx: &LateContext<'_>, arg: Option<&Expr<'_>>, expr: &Expr<'_>, recv: &Expr<'_>) {
