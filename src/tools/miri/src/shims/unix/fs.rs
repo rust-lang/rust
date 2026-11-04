@@ -1460,7 +1460,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`readdir`", reject_with)?;
             this.set_last_error(LibcError("EBADF"))?;
-            this.write_null(dest)?;
+            this.write_int(0, dest)?;
             return interp_ok(());
         }
 
@@ -1552,10 +1552,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // Write "optional" fields.
                 if let Some(d_off) = this.try_project_field_named(&entry, "d_off")? {
-                    this.write_null(&d_off)?;
+                    this.write_int(0, &d_off)?;
                 }
                 if let Some(d_seekoff) = this.try_project_field_named(&entry, "d_seekoff")? {
-                    this.write_null(&d_seekoff)?;
+                    this.write_int(0, &d_seekoff)?;
                 }
                 if let Some(d_namlen) = this.try_project_field_named(&entry, "d_namlen")? {
                     this.write_int(name_len.strict_sub(1), &d_namlen)?;

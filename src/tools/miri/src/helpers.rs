@@ -367,11 +367,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// Write a 0 of the appropriate size to `dest`.
-    fn write_null(&mut self, dest: &impl Writeable<'tcx, Provenance>) -> InterpResult<'tcx> {
-        self.write_int(0, dest)
-    }
-
     /// Test if this pointer equals 0.
     fn ptr_is_null(&self, ptr: Pointer) -> InterpResult<'tcx, bool> {
         interp_ok(ptr.addr().bytes() == 0)

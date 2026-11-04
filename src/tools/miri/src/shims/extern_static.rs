@@ -94,7 +94,7 @@ impl<'tcx> MiriMachine<'tcx> {
 
         // Also initialize `missing_weak_symbol`.
         let place = ecx.allocate(ecx.machine.layouts.usize, MiriMemoryKind::ExternStatic.into())?;
-        ecx.write_null(&place)?;
+        ecx.write_int(0, &place)?;
         ecx.machine.extern_static_weak_import_default =
             Some(place.ptr().into_pointer_or_addr().unwrap());
 
