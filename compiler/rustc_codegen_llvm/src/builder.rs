@@ -1838,10 +1838,6 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
 
         Cow::Owned(casted_args)
     }
-
-    pub(crate) fn va_arg(&mut self, list: Value<'ll>, ty: Type<'ll>) -> Value<'ll> {
-        unsafe { llvm::LLVMBuildVAArg(self.llbuilder(), list, ty, UNNAMED) }
-    }
 }
 
 impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
