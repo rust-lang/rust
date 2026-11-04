@@ -31,12 +31,14 @@
 //!    encoding.
 //!
 //! ### 2. Type encoding
+//!
 //!    The lowered representation is serialized into a byte stream using rules
 //!    intended to match Clang's implementation in:
 //!    `encodeTypeForFunctionPointerAuth`. The resulting encoding describes the
 //!    function signature in a target-independent form suitable for hashing.
 //!
 //! ### 3. Discriminator hashing
+//!
 //!    The encoded byte stream is hashed using LLVM's stable SipHash-2-4 based
 //!    discriminator algorithm. The implementation here is a direct translation
 //!    of LLVM/Clang's logic and must remain bit-for-bit compatible. See:
@@ -208,7 +210,7 @@ impl<'tcx> FnPtrTypeDiscriminatorInput<'tcx> {
         self.abi
     }
 
-    fn from_sig(sig: ty::FnSig<'tcx>) -> Self {
+    pub fn from_sig(sig: ty::FnSig<'tcx>) -> Self {
         FnPtrTypeDiscriminatorInput {
             inputs: sig.inputs(),
             output: sig.output(),
@@ -227,15 +229,13 @@ impl<'tcx> FnPtrTypeDiscriminatorInput<'tcx> {
     }
 }
 
-/// Computes the Clang-compatible function pointer type discriminator.
-///
-/// This is the low-level discriminator calculation function operating on
-/// `FnPtrTypeDiscriminatorInput`. Returns `None` for unsupported ABIs (see
-/// `is_ptrauth_signed_abi`).
-fn compute_fn_ptr_type_discriminator<'tcx>(
+/// Encodes the signature described by `input` the way Clang's
+/// `encodeTypeForFunctionPointerAuth` does, as the input to the discriminator
+/// hash. Returns `None` for unsupported ABIs (see `is_ptrauth_signed_abi`).
+fn encode_fn_ptr_type_discriminator<'tcx>(
     tcx: TyCtxt<'tcx>,
     input: &FnPtrTypeDiscriminatorInput<'tcx>,
-) -> Option<u16> {
+) -> Option<PtrauthEncoder> {
     if !is_ptrauth_signed_abi(input.abi) {
         return None;
     }
@@ -255,7 +255,31 @@ fn compute_fn_ptr_type_discriminator<'tcx>(
 
     enc.push(b'E');
 
-    Some(enc.finish())
+    Some(enc)
+}
+
+/// Computes the Clang-compatible function pointer type discriminator.
+///
+/// This is the low-level discriminator calculation function operating on
+/// `FnPtrTypeDiscriminatorInput`. Returns `None` for unsupported ABIs (see
+/// `is_ptrauth_signed_abi`).
+pub fn compute_fn_ptr_type_discriminator<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    input: &FnPtrTypeDiscriminatorInput<'tcx>,
+) -> Option<u16> {
+    encode_fn_ptr_type_discriminator(tcx, input).map(|enc| enc.finish())
+}
+
+/// Returns the raw Clang-compatible type encoding used as input to the
+/// discriminator hash.
+///
+/// This is primarily used for debugging and comparing Rust's encoding against
+/// Clang's `encodeTypeForFunctionPointerAuth`.
+pub fn debug_encode_fn_ptr_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    input: &FnPtrTypeDiscriminatorInput<'tcx>,
+) -> String {
+    encode_fn_ptr_type_discriminator(tcx, input).map(|enc| enc.debug_string()).unwrap_or_default()
 }
 
 // Clang disc type.
@@ -410,6 +434,10 @@ impl PtrauthEncoder {
 
     fn finish(&self) -> u16 {
         llvm_pointer_auth_stable_siphash(&self.buf)
+    }
+
+    fn debug_string(&self) -> String {
+        String::from_utf8_lossy(&self.buf).into_owned()
     }
 }
 
