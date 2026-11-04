@@ -1722,7 +1722,7 @@ fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt:
         fmt::from_fn(|f| {
             write!(
                 f,
-                " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
+                " <span tabindex=0 class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</span>",
                 ty = Escape(&format!("{:#}", print_type(ty, cx))),
             )
         })
