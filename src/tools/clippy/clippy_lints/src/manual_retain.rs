@@ -89,7 +89,7 @@ fn check_into_iter(
         && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = target_expr.kind
         && let hir::ExprKind::Closure(closure) = closure_expr.kind
         && let filter_body = cx.tcx.hir_body(closure.body)
-        && let [filter_params] = filter_body.params
+        && let [filter_params] = closure.fn_decl.inputs
     {
         if match_map_type(cx, left_expr) {
             if let hir::PatKind::Tuple([key_pat, value_pat], _) = filter_params.pat.kind
@@ -136,7 +136,7 @@ fn check_iter(
         && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = filter_expr.kind
         && let hir::ExprKind::Closure(closure) = closure_expr.kind
         && let filter_body = cx.tcx.hir_body(closure.body)
-        && let [filter_params] = filter_body.params
+        && let [filter_params] = closure.fn_decl.inputs
     {
         match filter_params.pat.kind {
             // hir::PatKind::Binding(_, _, _, None) => {
@@ -194,7 +194,7 @@ fn check_to_owned(
         && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = filter_expr.kind
         && let hir::ExprKind::Closure(closure) = closure_expr.kind
         && let filter_body = cx.tcx.hir_body(closure.body)
-        && let [filter_params] = filter_body.params
+        && let [filter_params] = closure.fn_decl.inputs
         && msrv.meets(cx, msrvs::STRING_RETAIN)
         && let hir::PatKind::Ref(pat, _, _) = filter_params.pat.kind
     {

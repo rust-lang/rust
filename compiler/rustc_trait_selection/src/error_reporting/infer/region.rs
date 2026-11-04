@@ -1676,7 +1676,7 @@ fn name_anon_lifetimes_suggestion<'tcx>(
 
     let mut collector = AnonLifetimeCollector { tcx, anon_lifetimes: Default::default() };
     for input in fn_sig.decl.inputs {
-        collector.visit_ty_unambig(input);
+        collector.visit_ty_unambig(input.ty);
     }
     // With a single anonymous lifetime in the signature `'_` resolves to it, so leave that case
     // to the caller.

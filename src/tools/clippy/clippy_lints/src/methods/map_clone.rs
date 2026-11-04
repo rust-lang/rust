@@ -47,10 +47,10 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
         && should_run_lint(cx, e, parent_id)
     {
         match arg.kind {
-            hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
+            hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) => {
                 let closure_body = cx.tcx.hir_body(body);
                 let closure_expr = peel_blocks(closure_body.value);
-                match closure_body.params[0].pat.kind {
+                match fn_decl.inputs[0].pat.kind {
                     hir::PatKind::Ref(inner, Pinnedness::Not, Mutability::Not) => {
                         if let hir::PatKind::Binding(hir::BindingMode::NONE, .., name, None) = inner.kind
                             && ident_eq(name, closure_expr)

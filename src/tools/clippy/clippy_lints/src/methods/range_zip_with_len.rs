@@ -103,8 +103,7 @@ fn methods_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option
                 | sym::try_for_each
         )
         && let ExprKind::Closure(closure) = arg.kind
-        && let body = cx.tcx.hir_body(closure.body)
-        && let [param] = body.params
+        && let [param] = closure.fn_decl.inputs
     {
         Some(param.pat)
     } else {

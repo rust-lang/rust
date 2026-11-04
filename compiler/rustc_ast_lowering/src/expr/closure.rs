@@ -133,7 +133,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             binder,
             capture_clause,
             closure_id,
-            expr_hir_id,
             constness,
             movability,
             decl,
@@ -160,7 +159,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
-        closure_hir_id: HirId,
         constness: Const,
         movability: Movability,
         decl: &FnDecl,
@@ -171,7 +169,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
-        let ((body_id, closure_kind), move_expr_state) =
+        let (((params, body_id), closure_kind), move_expr_state) =
             self.with_new_scopes(fn_decl_span, move |this| {
                 let mut coroutine_kind = find_attr!(
                     attrs,
@@ -210,10 +208,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let fn_decl = self.lower_fn_decl(
             decl,
             closure_id,
-            closure_hir_id,
             FnDeclKind::Closure,
             None,
             DiscardParams::No,
+            params,
         );
 
         let c = self.arena.alloc(hir::Closure {
@@ -310,15 +308,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         };
 
-        let body = self.with_new_scopes(fn_decl_span, |this| {
-            let inner_decl =
-                FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
-
+        let (parameters, body) = self.with_new_scopes(fn_decl_span, |this| {
             // Transform `async |x: u8| -> X { ... }` into
             // `|x: u8| || -> X { ... }`.
             let body_id = this.lower_body(|this| {
                 let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
-                    &inner_decl,
+                    &decl,
                     |this| this.with_new_scopes(fn_decl_span, |this| this.lower_expr_mut(body)),
                     fn_decl_span,
                     body.span,
@@ -340,10 +335,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let fn_decl = self.lower_fn_decl(
             &decl,
             closure_id,
-            closure_hir_id,
             FnDeclKind::Closure,
             None,
             DiscardParams::No,
+            parameters,
         );
 
         if let Const::Yes(span) = constness {

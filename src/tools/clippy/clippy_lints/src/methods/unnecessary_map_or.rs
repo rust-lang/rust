@@ -50,10 +50,10 @@ fn closure_bool_constant(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<bool> 
     let ExprKind::Closure(closure) = expr.kind else {
         return None;
     };
-    let body = cx.tcx.hir_body(closure.body);
-    let [_] = body.params else {
+    let [_] = closure.fn_decl.inputs else {
         return None;
     };
+    let body = cx.tcx.hir_body(closure.body);
     bool_constant(cx, body.value)
 }
 
@@ -158,7 +158,7 @@ pub(super) fn check<'tcx>(
             && let closure_body = cx.tcx.hir_body(map_closure.body)
             && let closure_body_value = closure_body.value.peel_blocks()
             && let ExprKind::Binary(op, l, r) = closure_body_value.kind
-            && let [param] = closure_body.params
+            && let [param] = map_closure.fn_decl.inputs
             && let PatKind::Binding(_, hir_id, _, _) = param.pat.kind
             // checking that map_or is one of the following:
             // .map_or(false, |x| x == y)

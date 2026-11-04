@@ -155,9 +155,9 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
             } => {
                 let body = cx.tcx.hir_body(body_id);
 
-                for ty in sig.decl.inputs {
+                for param in sig.decl.inputs {
                     let mut vis = ImplicitHasherTypeVisitor::new(cx);
-                    vis.visit_ty_unambig(ty);
+                    vis.visit_ty_unambig(param.ty);
 
                     for target in &vis.found {
                         if generics.span.from_expansion() {
@@ -165,7 +165,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                         }
                         let generics_suggestion_span = generics.span.substitute_dummy({
                             let range =
-                                (item.span.lo()..body.params[0].pat.span.lo()).map_range(cx, |_, src, range| {
+                                (item.span.lo()..sig.decl.inputs[0].pat.span.lo()).map_range(cx, |_, src, range| {
                                     let (pre, post) = src.get(range.clone())?.split_once("fn")?;
                                     let pos = post.find('(')? + pre.len() + 2;
                                     Some(pos..pos)

@@ -907,6 +907,7 @@ impl TyCoercionStability {
                     Self::for_hir_ty(ty)
                 },
                 TyKind::UnsafeBinder(..) => Self::None,
+                TyKind::CVarArgs => unreachable!(), // Removed before type checking
             };
         }
     }

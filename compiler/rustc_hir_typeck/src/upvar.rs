@@ -94,6 +94,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             capture_clause,
             body: body_id,
             explicit_captures,
+            fn_decl,
             ..
         }) = expr.kind
         else {
@@ -128,7 +129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fake_reads: Default::default(),
         };
 
-        let _ = euv::ExprUseVisitor::new(&closure_fcx, &mut delegate).consume_body(body);
+        let _ = euv::ExprUseVisitor::new(&closure_fcx, &mut delegate).consume_body(fn_decl, body);
 
         for capture in explicit_captures {
             let place = closure_fcx.place_for_root_variable(closure_def_id, capture.var_hir_id);
@@ -220,10 +221,22 @@ struct InferBorrowKindVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
-            hir::ExprKind::Closure(&hir::Closure { capture_clause, body: body_id, .. }) => {
+            hir::ExprKind::Closure(&hir::Closure {
+                capture_clause,
+                body: body_id,
+                fn_decl,
+                ..
+            }) => {
                 let body = self.fcx.tcx.hir_body(body_id);
                 self.visit_body(body);
-                self.fcx.analyze_closure(expr.hir_id, expr.span, body_id, body, capture_clause);
+                self.fcx.analyze_closure(
+                    expr.hir_id,
+                    expr.span,
+                    fn_decl,
+                    body_id,
+                    body,
+                    capture_clause,
+                );
             }
             _ => {}
         }
@@ -244,6 +257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         closure_hir_id: HirId,
         span: Span,
+        fn_decl: &'tcx hir::FnDecl<'tcx>,
         body_id: hir::BodyId,
         body: &'tcx hir::Body<'tcx>,
         mut capture_clause: hir::CaptureBy,
@@ -288,7 +302,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // First collect the captures implied by the operations in the closure
         // body. This records how each place is actually used: borrowed, modified,
         // moved, and so on.
-        let _ = euv::ExprUseVisitor::new(&closure_fcx, &mut delegate).consume_body(body);
+        let _ = euv::ExprUseVisitor::new(&closure_fcx, &mut delegate).consume_body(fn_decl, body);
 
         // Save the captures that must be upgraded to by-value after inferring
         // the closure kind from the operations in the body.

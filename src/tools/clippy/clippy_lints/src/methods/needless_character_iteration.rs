@@ -1,6 +1,6 @@
 use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _};
 use rustc_errors::Applicability;
-use rustc_hir::{Closure, Expr, ExprKind, HirId, StmtKind, UnOp};
+use rustc_hir::{Closure, Expr, ExprKind, HirId, StmtKind, UnOp, FnDecl};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Span;
@@ -96,9 +96,8 @@ fn handle_expr(
 }
 
 pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>, closure_arg: &Expr<'_>, is_all: bool) {
-    if let ExprKind::Closure(&Closure { body, .. }) = closure_arg.kind
+    if let ExprKind::Closure(&Closure { fn_decl: FnDecl { inputs: [first_param], .. }, body, .. }) = closure_arg.kind
         && let body = cx.tcx.hir_body(body)
-        && let Some(first_param) = body.params.first()
         && let ExprKind::MethodCall(method, mut recv, [], _) = recv.kind
         && method.ident.name == sym::chars
         && let str_ty = cx.typeck_results().expr_ty_adjusted(recv).peel_refs()

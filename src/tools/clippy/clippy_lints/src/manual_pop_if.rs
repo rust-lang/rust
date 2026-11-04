@@ -210,12 +210,12 @@ fn check_is_some_and_pattern<'tcx>(
         && check_path.ident.name == peek_method
         && kind.is_diag_item(cx, collection_expr)
         && let ExprKind::Closure(closure) = closure_arg.kind
-        && let body = cx.tcx.hir_body(closure.body)
         && let Some((pop_collection, pop_span, suggestable)) = check_pop_unwrap(cx, then_block, pop_method)
         && eq_expr_value(cx, if_expr_span.ctxt(), collection_expr, pop_collection)
-        && let Some(param) = body.params.first()
+        && let Some(param) = closure.fn_decl.inputs.first()
         && let Some(ident) = param.pat.simple_ident()
     {
+        let body = cx.tcx.hir_body(closure.body);
         return Some(ManualPopIfPattern {
             kind,
             collection_expr,
@@ -373,7 +373,7 @@ fn check_map_unwrap_or_pattern<'tcx>(
         && cx.typeck_results().expr_ty(body.value).is_bool()
         && let Some((pop_collection, pop_span, suggestable)) = check_pop_unwrap(cx, then_block, pop_method)
         && eq_expr_value(cx, if_expr_span.ctxt(), collection_expr, pop_collection)
-        && let Some(param) = body.params.first()
+        && let Some(param) = closure.fn_decl.inputs.first()
         && let Some(ident) = param.pat.simple_ident()
     {
         return Some(ManualPopIfPattern {

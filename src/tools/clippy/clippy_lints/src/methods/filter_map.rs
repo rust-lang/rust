@@ -21,7 +21,7 @@ fn is_method(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol) -> bool
         ExprKind::Path(QPath::TypeRelative(_, mname)) => mname.ident.name == method_name,
         ExprKind::Path(QPath::Resolved(_, segments)) => segments.segments.last().unwrap().ident.name == method_name,
         ExprKind::MethodCall(segment, _, _, _) => segment.ident.name == method_name,
-        ExprKind::Closure(Closure { body, .. }) => {
+        ExprKind::Closure(Closure { fn_decl, body, .. }) => {
             let body = cx.tcx.hir_body(*body);
             let closure_expr = peel_blocks(body.value);
             match closure_expr.kind {
@@ -29,9 +29,9 @@ fn is_method(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol) -> bool
                     if ident.name == method_name
                         && let ExprKind::Path(path) = &receiver.kind
                         && let Res::Local(ref local) = cx.qpath_res(path, receiver.hir_id)
-                        && !body.params.is_empty()
+                        && !fn_decl.inputs.is_empty()
                     {
-                        let arg_id = body.params[0].pat.hir_id;
+                        let arg_id = fn_decl.inputs[0].pat.hir_id;
                         return arg_id == *local;
                     }
                     false
@@ -407,9 +407,9 @@ fn is_find_or_filter<'a>(
 ) -> Option<(Ident, CheckResult<'a>)> {
     if cx.ty_based_def(map_recv).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         // filter(|x| ...is_some())...
-        && let ExprKind::Closure(&Closure { body: filter_body_id, .. }) = filter_arg.kind
+        && let ExprKind::Closure(&Closure { fn_decl, body: filter_body_id, .. }) = filter_arg.kind
         && let filter_body = cx.tcx.hir_body(filter_body_id)
-        && let [filter_param] = filter_body.params
+        && let [filter_param] = fn_decl.inputs
         // optional ref pattern: `filter(|&x| ..)`
         && let (filter_pat, is_filter_param_ref) = if let PatKind::Ref(ref_pat, _, _) = filter_param.pat.kind {
             (ref_pat, true)
@@ -420,9 +420,9 @@ fn is_find_or_filter<'a>(
         && let PatKind::Binding(_, filter_param_id, _, None) = filter_pat.kind
         && let Some(offending_expr) = OffendingFilterExpr::hir(cx, filter_body.value, filter_param_id)
 
-        && let ExprKind::Closure(&Closure { body: map_body_id, .. }) = map_arg.kind
+        && let ExprKind::Closure(&Closure { fn_decl, body: map_body_id, .. }) = map_arg.kind
         && let map_body = cx.tcx.hir_body(map_body_id)
-        && let [map_param] = map_body.params
+        && let [map_param] = fn_decl.inputs
         && let PatKind::Binding(_, map_param_id, map_param_ident, None) = map_param.pat.kind
 
         && let Some(check_result) =

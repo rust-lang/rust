@@ -24,11 +24,11 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = arg.kind {
+    if let hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) = arg.kind {
         let body = cx.tcx.hir_body(body);
-        let arg_id = body.params[0].pat.hir_id;
+        let arg_id = fn_decl.inputs[0].pat.hir_id;
         let mutates_arg = mutated_variables(body.value, cx).is_none_or(|used_mutably| used_mutably.contains(&arg_id));
-        let (clone_or_copy_needed, _) = clone_or_copy_needed(cx, body.params[0].pat, body.value);
+        let (clone_or_copy_needed, _) = clone_or_copy_needed(cx, fn_decl.inputs[0].pat, body.value);
 
         let (mut found_mapping, mut found_filtering) = check_expression(cx, arg_id, body.value);
 
@@ -42,7 +42,7 @@ pub(super) fn check<'tcx>(
                 ControlFlow::Continue(Descend::Yes)
             }
         });
-        let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
+        let in_ty = cx.typeck_results().node_type(fn_decl.inputs[0].hir_id);
         let sugg = if !found_filtering {
             // Check if the closure is .filter_map(|x| Some(x))
             if kind.is_filter_map()

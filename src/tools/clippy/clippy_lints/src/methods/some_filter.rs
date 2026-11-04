@@ -18,10 +18,8 @@ pub(super) fn check<'tcx>(
 ) {
     let (condition, value) = if let Some(value) = as_some_expr(cx, recv)
         && let ExprKind::Closure(c) = arg.kind
-        && let Body {
-            params: [p],
-            value: condition,
-        } = cx.tcx.hir_body(c.body)
+        && let [p] = c.fn_decl.inputs
+        && let Body { value: condition } = cx.tcx.hir_body(c.body)
         && pat_is_wild(cx, &p.pat.kind, arg)
         && msrv.meets(cx, msrvs::BOOL_THEN_SOME)
     {

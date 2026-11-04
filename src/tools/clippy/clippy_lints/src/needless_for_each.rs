@@ -95,7 +95,7 @@ fn check_expr(cx: &LateContext<'_>, expr: &Expr<'_>, outer_span: Span) {
         if fn_decl
             .inputs
             .iter()
-            .any(|input| matches!(input.kind, TyKind::Infer(..)))
+            .any(|input| matches!(input.ty.kind, TyKind::Infer(..)))
         {
             applicability = Applicability::MaybeIncorrect;
         }
@@ -121,7 +121,7 @@ fn check_expr(cx: &LateContext<'_>, expr: &Expr<'_>, outer_span: Span) {
             )
         };
 
-        let body_param_sugg = snippet_with_applicability(cx, body.params[0].pat.span, "..", &mut applicability);
+        let body_param_sugg = snippet_with_applicability(cx, fn_decl.inputs[0].pat.span, "..", &mut applicability);
         let for_each_rev_sugg = snippet_with_applicability(cx, for_each_recv.span, "..", &mut applicability);
         let (body_value_sugg, is_macro_call) =
             snippet_with_context(cx, body.value.span, for_each_recv.span.ctxt(), "..", &mut applicability);

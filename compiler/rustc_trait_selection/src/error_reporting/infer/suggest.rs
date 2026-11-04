@@ -726,13 +726,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) {
         // 0. Extract fn_decl from hir
         let hir::Node::Expr(hir::Expr {
-            kind: hir::ExprKind::Closure(hir::Closure { body, fn_decl, .. }),
+            kind: hir::ExprKind::Closure(hir::Closure { fn_decl, .. }),
             ..
         }) = hir
         else {
             return;
         };
-        let hir::Body { params, .. } = self.tcx.hir_body(*body);
 
         // 1. Get the args of the closure.
         // 2. Assume exp_found is FnOnce / FnMut / Fn, we can extract function parameters from [1].
@@ -755,8 +754,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let mut is_first = true;
             let mut has_suggestion = false;
 
-            for (((expected, found), param_hir), arg_hir) in
-                expected.iter().zip(found.iter()).zip(params.iter()).zip(fn_decl.inputs.iter())
+            for ((expected, found), param_hir) in
+                expected.iter().zip(found.iter()).zip(fn_decl.inputs.iter())
             {
                 if is_first {
                     is_first = false;
@@ -768,7 +767,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     && let ty::Ref(found_region, _, _) = found.kind()
                     && expected_region.is_bound()
                     && !found_region.is_bound()
-                    && let hir::TyKind::Infer(()) = arg_hir.kind
+                    && let hir::TyKind::Infer(()) = param_hir.ty.kind
                 {
                     // If the expected region is late bound, the found region is not, and users are asking compiler
                     // to infer the type, we can suggest adding `: &_`.
@@ -795,7 +794,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     has_suggestion = true;
                 } else {
-                    let Ok(arg) = self.tcx.sess.source_map().span_to_snippet(param_hir.span) else {
+                    let Ok(arg) = self.tcx.sess.source_map().span_to_snippet(param_hir.param_span)
+                    else {
                         return;
                     };
                     // Otherwise, keep it as-is.
@@ -951,19 +951,23 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     pat.walk(&mut find_compatible_candidates);
                 }
 
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { body, .. }, .. })
+                hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Fn { sig: hir::FnSig { decl, .. }, .. },
+                    ..
+                })
                 | hir::Node::ImplItem(hir::ImplItem {
-                    kind: hir::ImplItemKind::Fn(_, body), ..
+                    kind: hir::ImplItemKind::Fn(hir::FnSig { decl, .. }, _),
+                    ..
                 })
                 | hir::Node::TraitItem(hir::TraitItem {
-                    kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body)),
+                    kind: hir::TraitItemKind::Fn(hir::FnSig { decl, .. }, _),
                     ..
                 })
                 | hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
+                    kind: hir::ExprKind::Closure(hir::Closure { fn_decl: decl, .. }),
                     ..
                 }) => {
-                    for param in self.tcx.hir_body(*body).params {
+                    for param in decl.inputs {
                         param.pat.walk(&mut find_compatible_candidates);
                     }
                 }

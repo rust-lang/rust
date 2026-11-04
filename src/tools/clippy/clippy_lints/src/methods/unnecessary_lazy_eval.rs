@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(
         let body = cx.tcx.hir_body(body);
         let body_expr = &body.value;
 
-        if usage::BindingUsageFinder::are_params_used(cx, body) || is_from_proc_macro(cx, expr) {
+        if usage::BindingUsageFinder::are_params_used(cx, fn_decl, body) || is_from_proc_macro(cx, expr) {
             return false;
         }
 
@@ -49,8 +49,8 @@ pub(super) fn check<'tcx>(
             };
 
             let mut applicability = Applicability::MachineApplicable;
-            if body
-                .params
+            if fn_decl
+                .inputs
                 .iter()
                 // bindings are checked to be unused above
                 .any(|param| !matches!(param.pat.kind, hir::PatKind::Binding(..) | hir::PatKind::Wild))
@@ -132,14 +132,14 @@ pub(super) fn check_map_or_else<'tcx>(
     }) = def_arg.kind
         && let body = cx.tcx.hir_body(body)
         && let body_expr = body.value
-        && !usage::BindingUsageFinder::are_params_used(cx, body)
+        && !usage::BindingUsageFinder::are_params_used(cx, fn_decl, body)
         && eager_or_lazy::switch_to_eager_eval(cx, body_expr)
         && !is_from_proc_macro(cx, expr)
         && !is_from_proc_macro(cx, map_arg)
         && !is_from_proc_macro(cx, body_expr)
     {
-        let mut applicability = if body
-            .params
+        let mut applicability = if fn_decl
+            .inputs
             .iter()
             .all(|param| matches!(param.pat.kind, hir::PatKind::Binding(..) | hir::PatKind::Wild))
             && matches!(
@@ -153,7 +153,7 @@ pub(super) fn check_map_or_else<'tcx>(
             && fn_decl
                 .inputs
                 .iter()
-                .all(|ty| matches!(ty.kind, hir::TyKind::Infer(())))
+                .all(|param| matches!(param.ty.kind, hir::TyKind::Infer(())))
         {
             Applicability::MachineApplicable
         } else {
