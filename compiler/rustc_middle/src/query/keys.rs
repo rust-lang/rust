@@ -346,24 +346,6 @@ impl<'tcx, T: QueryKeyBounds> QueryKey for (CanonicalQueryInput<'tcx, T>, bool) 
     }
 }
 
-impl<'tcx, T: QueryKeyBounds> QueryKey for (CanonicalQueryInput<'tcx, T>, usize) {
-    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
-        DUMMY_SP
-    }
-}
-
-impl<'tcx> QueryKey for crate::traits::solve::CanonicalInput<'tcx> {
-    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
-        DUMMY_SP
-    }
-}
-
-impl<'tcx> QueryKey for (crate::traits::solve::CanonicalInput<'tcx>, bool) {
-    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
-        DUMMY_SP
-    }
-}
-
 impl<'tcx> QueryKey for (crate::traits::solve::CanonicalInput<'tcx>, usize) {
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
         DUMMY_SP
