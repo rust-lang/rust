@@ -8,6 +8,7 @@ LL |         let r = access_struct_ptr(structs[1]);
    = help: in particular, Miri assumes that the native call initializes all memory it has access to
    = help: Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory
    = help: what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free
+   = note: this warning is only shown once per program execution
 
 error: Undefined Behavior: memory access failed: attempting to access 1 byte, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
   --> tests/native-lib/fail/pass_struct_expose_only_range.rs:LL:CC
