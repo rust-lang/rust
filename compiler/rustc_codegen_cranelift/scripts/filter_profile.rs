@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             stack = &stack[index..];
         } else if let Some(index) = stack.find("rustc_interface::passes::analysis") {
             stack = &stack[index..];
-        } else if let Some(index) = stack.find("rustc_interface::passes::start_codegen") {
+        } else if let Some(index) = stack.find("rustc_interface::passes::run_codegen") {
             stack = &stack[index..];
         } else if let Some(index) = stack.find("rustc_interface::queries::Linker::link") {
             stack = &stack[index..];

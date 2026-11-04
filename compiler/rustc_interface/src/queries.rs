@@ -30,7 +30,7 @@ impl Linker {
         tcx: TyCtxt<'_>,
         codegen_backend: &dyn CodegenBackend,
     ) -> Linker {
-        let (ongoing_codegen, crate_info, metadata) = passes::start_codegen(codegen_backend, tcx);
+        let (ongoing_codegen, crate_info) = passes::run_codegen(codegen_backend, tcx);
 
         Linker {
             dep_graph: tcx.dep_graph.clone(),
@@ -66,8 +66,6 @@ impl Linker {
                 ),
             }
         });
-
-        sess.timings.end_section(sess.dcx(), TimingSection::Codegen);
 
         if sess.opts.incremental.is_some()
             && let Some(path) = self.metadata.path()

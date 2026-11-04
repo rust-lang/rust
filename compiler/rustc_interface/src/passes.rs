@@ -1300,7 +1300,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 
 /// Runs the codegen backend, after which the AST and analysis can
 /// be discarded.
-pub(crate) fn start_codegen<'tcx>(
+pub(crate) fn run_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
 ) -> (Box<dyn Any>, CrateInfo, EncodedMetadata) {
@@ -1360,6 +1360,8 @@ pub(crate) fn start_codegen<'tcx>(
     }
 
     let crate_info = CrateInfo::new(tcx, codegen_backend.target_cpu(tcx.sess));
+
+    tcx.sess.timings.end_section(tcx.sess.dcx(), TimingSection::Codegen);
 
     (codegen, crate_info, metadata)
 }
