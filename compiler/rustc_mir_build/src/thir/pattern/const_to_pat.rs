@@ -322,9 +322,12 @@ impl<'tcx> ConstToPat<'tcx> {
                         }) => {
                             if let_expr.pat.span == self.span {
                                 // `if let CONST = expr` -> `if CONST == expr`.
-                                Some(SuggestEq::ReplaceWithEq {
+                                let matching_initializer =
+                                    let_expr.init.span.find_ancestor_in_same_ctxt(self.span);
+
+                                matching_initializer.map(|init_span| SuggestEq::ReplaceWithEq {
                                     removal: span.until(self.span),
-                                    eq: self.span.between(let_expr.init.span),
+                                    eq: self.span.between(init_span),
                                     ty,
                                     manual_partialeq_impl,
                                 })
