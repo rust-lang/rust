@@ -1,54 +1,37 @@
-// We need this feature as it changes `dylib` linking behavior and allows us to link to
-// `rustc_driver`.
+// We need this feature as it changes `dylib` linking behavior.
 #![feature(rustc_private)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-extern crate rustc_driver;
-
 use std::env;
 use std::io::Write as _;
 use std::path::PathBuf;
-use std::process::{self, Command, exit};
+use std::process::{Command, ExitCode, Termination as _};
 
-fn show_help() {
-    if writeln!(&mut anstream::stdout().lock(), "{}", help_message()).is_err() {
-        exit(rustc_driver::EXIT_FAILURE);
-    }
+fn show_help() -> ExitCode {
+    writeln!(&mut anstream::stdout().lock(), "{}", help_message()).report()
 }
 
-fn show_version() {
+fn show_version() -> ExitCode {
     let version_info = rustc_tools_util::get_version_info!();
-    if writeln!(&mut anstream::stdout().lock(), "{version_info}").is_err() {
-        exit(rustc_driver::EXIT_FAILURE);
-    }
+    writeln!(&mut anstream::stdout().lock(), "{version_info}").report()
 }
 
-pub fn main() {
+pub fn main() -> ExitCode {
     // Check for version and help flags even when invoked as 'cargo-clippy'
     if env::args().any(|a| a == "--help" || a == "-h") {
-        show_help();
-        return;
-    }
-
-    if env::args().any(|a| a == "--version" || a == "-V") {
-        show_version();
-        return;
-    }
-
-    if let Some(pos) = env::args().position(|a| a == "--explain") {
+        show_help()
+    } else if env::args().any(|a| a == "--version" || a == "-V") {
+        show_version()
+    } else if let Some(pos) = env::args().position(|a| a == "--explain") {
         if let Some(mut lint) = env::args().nth(pos + 1) {
             lint.make_ascii_lowercase();
-            process::exit(clippy_lints::explain(
-                &lint.strip_prefix("clippy::").unwrap_or(&lint).replace('-', "_"),
-            ));
+            clippy_lints::explain(&lint.strip_prefix("clippy::").unwrap_or(&lint).replace('-', "_"))
+        } else {
+            show_help()
         }
-        show_help();
-        return;
-    }
-
-    if let Err(code) = process(env::args().skip(2)) {
-        process::exit(code);
+    } else {
+        process(env::args().skip(2))
     }
 }
 
@@ -123,7 +106,7 @@ impl ClippyCmd {
     }
 }
 
-fn process(old_args: impl Iterator<Item = String>) -> Result<(), i32> {
+fn process(old_args: impl Iterator<Item = String>) -> ExitCode {
     let mut cmd = ClippyCmd::new(old_args).into_std_cmd();
 
     let exit_status = cmd
@@ -133,9 +116,21 @@ fn process(old_args: impl Iterator<Item = String>) -> Result<(), i32> {
         .expect("failed to wait for cargo?");
 
     if exit_status.success() {
-        Ok(())
+        ExitCode::SUCCESS
     } else {
-        Err(exit_status.code().unwrap_or(-1))
+        let code = exit_status.code().unwrap_or(-1);
+        cfg_select! {
+            // Unlike unix platforms, Windows uses the full 32-bits for exit codes.
+            windows => {
+                use std::os::windows::process::ExitCodeExt;
+                ExitCode::from_raw(code as u32)
+            },
+            _ =>
+            {
+                #[expect(clippy::cast_possible_truncation)]
+                ExitCode::from(code.cast_unsigned() as u8)
+            },
+        }
     }
 }
 
