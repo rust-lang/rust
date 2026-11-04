@@ -1,8 +1,8 @@
+use std::ops::ControlFlow::*;
 use std::path::PathBuf;
 use std::{fs, io};
 
-
-use crate::core::build_steps::setup::{PromptResult, prompt_user};
+use crate::core::build_steps::setup::prompt_user;
 use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun};
 use crate::core::config::Config;
 use crate::utils::helpers::{self, t};
@@ -62,10 +62,18 @@ pushing your code to ensure your code is up to par. If you decide later that thi
 undesirable, simply delete the `pre-push` file from .git/hooks."
     );
 
-    if prompt_user("Would you like to install the git hook?: [y/N]")? != Some(PromptResult::Yes) {
+    let install =
+        prompt_user("Would you like to install the git hook?: [y/N]", |input| match input {
+            "y" => Break(true),
+            "n" | "" => Break(false),
+            _ => Continue(()),
+        })?;
+
+    if !install {
         println!("Ok, skipping installation!");
         return Ok(());
     }
+
     if !hooks_dir.exists() {
         // We need to (try to) create the hooks directory first.
         let _ = fs::create_dir(hooks_dir);

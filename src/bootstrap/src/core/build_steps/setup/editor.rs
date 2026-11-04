@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::io::Write;
+use std::ops::ControlFlow::*;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 use std::{fs, io};
@@ -8,7 +9,7 @@ use serde_derive::{Deserialize, Serialize};
 use sha2::Digest;
 
 use crate::core::build_steps::format;
-use crate::core::build_steps::setup::{PromptResult, prompt_user};
+use crate::core::build_steps::setup::prompt_user;
 use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun};
 use crate::core::config::Config;
 use crate::utils::helpers::{hex_encode, t};
@@ -212,42 +213,59 @@ fn create_editor_settings_maybe(config: &Config, editor: &EditorKind) -> io::Res
         ),
         _ => (),
     }
-    let should_create = match prompt_user(&format!(
-        "Would you like to create/update `{settings_filename}`? (Press 'p' to preview values): [y/N]"
-    ))? {
-        Some(PromptResult::Yes) => true,
-        Some(PromptResult::Print) => false,
-        _ => {
+
+    enum Action {
+        Create,
+        Print,
+        Exit,
+    }
+
+    let action = prompt_user(
+        &format!(
+            "Would you like to create/update `{settings_filename}`? (Press 'p' to preview values): [y/p/N]"
+        ),
+        |input| match input {
+            "y" => Break(Action::Create),
+            "p" => Break(Action::Print),
+            "n" | "" => Break(Action::Exit),
+            _ => Continue(()),
+        },
+    )?;
+
+    match action {
+        Action::Create => {
+            let settings_folder_path = config.src.join(editor.settings_folder());
+            if !settings_folder_path.exists() {
+                fs::create_dir(settings_folder_path)?;
+            }
+            let verb = match mismatched_settings {
+                // exists but outdated, we can replace this
+                Some(true) => "Updated",
+                // exists but user modified, back it up
+                Some(false) => {
+                    // exists and is not current version or outdated, so back it up
+                    let backup = settings_path.with_extension(editor.backup_extension());
+                    eprintln!(
+                        "WARNING: copying `{}` to `{}`",
+                        settings_path.file_name().unwrap().to_str().unwrap(),
+                        backup.file_name().unwrap().to_str().unwrap(),
+                    );
+                    fs::copy(&settings_path, &backup)?;
+                    "Updated"
+                }
+                _ => "Created",
+            };
+            fs::write(&settings_path, editor.settings_template())?;
+            println!("{verb} `{settings_filename}`");
+            Ok(true)
+        }
+        Action::Print => {
+            println!("\n{}", editor.settings_template());
+            Ok(false)
+        }
+        Action::Exit => {
             println!("Ok, skipping settings!");
             return Ok(true);
         }
-    };
-    if should_create {
-        let settings_folder_path = config.src.join(editor.settings_folder());
-        if !settings_folder_path.exists() {
-            fs::create_dir(settings_folder_path)?;
-        }
-        let verb = match mismatched_settings {
-            // exists but outdated, we can replace this
-            Some(true) => "Updated",
-            // exists but user modified, back it up
-            Some(false) => {
-                // exists and is not current version or outdated, so back it up
-                let backup = settings_path.with_extension(editor.backup_extension());
-                eprintln!(
-                    "WARNING: copying `{}` to `{}`",
-                    settings_path.file_name().unwrap().to_str().unwrap(),
-                    backup.file_name().unwrap().to_str().unwrap(),
-                );
-                fs::copy(&settings_path, &backup)?;
-                "Updated"
-            }
-            _ => "Created",
-        };
-        fs::write(&settings_path, editor.settings_template())?;
-        println!("{verb} `{settings_filename}`");
-    } else {
-        println!("\n{}", editor.settings_template());
     }
-    Ok(should_create)
 }

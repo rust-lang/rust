@@ -1,9 +1,10 @@
 use std::io::Write;
+use std::ops::ControlFlow::{Break, Continue};
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use crate::core::build_steps::setup::profile::PROFILE_DIR;
-use crate::core::build_steps::setup::{Profile, PromptResult, prompt_user};
+use crate::core::build_steps::setup::{Profile, prompt_user};
 use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun};
 use crate::core::config::Config;
 use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
@@ -45,16 +46,22 @@ impl CommandLineStep for BootstrapToml {
                 t!(path.canonicalize()).display()
             );
 
-            match prompt_user(
-                "Do you wish to override the existing configuration (which will allow the setup process to continue)?: [y/N]",
-            ) {
-                Ok(Some(PromptResult::Yes)) => {
-                    t!(fs::remove_file(path));
-                }
-                _ => {
-                    println!("Exiting.");
-                    helpers::exit_process(1);
-                }
+            let override_ = prompt_user(
+                "Do you wish to override the existing configuration \
+                (which will allow the setup process to continue)?: [y/N]",
+                |input| match input {
+                    "y" => Break(true),
+                    "n" | "" => Break(false),
+                    _ => Continue(()),
+                },
+            )
+            .unwrap_or(false);
+
+            if override_ {
+                t!(fs::remove_file(path));
+            } else {
+                println!("Exiting.");
+                helpers::exit_process(1);
             }
         }
 

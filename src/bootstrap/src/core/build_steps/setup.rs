@@ -7,6 +7,7 @@
 
 use std::io;
 use std::io::Write;
+use std::ops::ControlFlow::{self, *};
 
 mod profile;
 
@@ -21,27 +22,22 @@ pub use hook::Hook;
 pub use link::Link;
 pub use profile::Profile;
 
-#[derive(PartialEq)]
-enum PromptResult {
-    Yes,   // y/Y/yes
-    No,    // n/N/no
-    Print, // p/P/print
-}
-
-/// Prompt a user for a answer, looping until they enter an accepted input or nothing
-fn prompt_user(prompt: &str) -> io::Result<Option<PromptResult>> {
-    let mut input = String::new();
+/// Prompt a user for a answer, looping until they enter an accepted input
+/// (one for which `f` returns [`Break`]).
+fn prompt_user<R>(prompt: &str, f: impl Fn(&str) -> ControlFlow<R>) -> io::Result<R> {
+    let mut buf = String::new();
     loop {
         print!("{prompt} ");
         io::stdout().flush()?;
-        input.clear();
-        io::stdin().read_line(&mut input)?;
-        match input.trim().to_lowercase().as_str() {
-            "y" | "yes" => return Ok(Some(PromptResult::Yes)),
-            "n" | "no" => return Ok(Some(PromptResult::No)),
-            "p" | "print" => return Ok(Some(PromptResult::Print)),
-            "" => return Ok(None),
-            _ => {
+
+        io::stdin().read_line(&mut buf)?;
+        let input = buf.trim().to_lowercase();
+
+        match f(&input) {
+            Break(r) => break Ok(r),
+            Continue(()) => {
+                buf.clear();
+
                 eprintln!("ERROR: unrecognized option '{}'", input.trim());
                 eprintln!("NOTE: press Ctrl+C to exit");
             }
