@@ -129,6 +129,8 @@ impl<'sess> AttributeParser<'sess> {
         let allowed_targets = allowed_targets.allowed_targets();
         let (applied, only) = allowed_targets_applied(allowed_targets, cx.target, cx.features);
         let is_diagnostic_attr = cx.attr_path.segments[0] == sym::diagnostic;
+        let is_lint_check_attr = [sym::allow, sym::expect, sym::deny, sym::warn, sym::forbid]
+            .contains(&cx.attr_path.segments[0]);
 
         let span = if attribute_args.is_empty() {
             // Example: for the attribute `#[inline]`, name+attribute_args gives "inline",
@@ -159,7 +161,9 @@ impl<'sess> AttributeParser<'sess> {
             applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
             attribute_args: attribute_args.to_string(),
             help: Self::target_checking_help(attribute_args, cx),
-            previously_accepted: matches!(result, AllowedResult::Warn) && !is_diagnostic_attr,
+            previously_accepted: matches!(result, AllowedResult::Warn)
+                && !is_diagnostic_attr
+                && !is_lint_check_attr,
             on_macro_call: matches!(cx.target, Target::MacroCall),
         };
 
