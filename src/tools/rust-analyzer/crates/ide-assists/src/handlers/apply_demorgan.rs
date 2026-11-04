@@ -748,4 +748,13 @@ fn main() {
             "fn f() { (!(!a && !b)).then_some(42).or(Some(0)) }",
         );
     }
+
+    #[test]
+    fn regression_23609() {
+        check_assist(
+            apply_demorgan,
+            "fn f() { $0!(2 * x as usize >= 5 && y) }",
+            "fn f() { (2 * x as usize) < 5 || !y }",
+        );
+    }
 }

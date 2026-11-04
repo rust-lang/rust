@@ -243,7 +243,7 @@ impl Expr {
         }
 
         // Special-case `2 as x < 3`
-        if let ast::Expr::CastExpr(it) = self
+        if let Some(it) = self.right_side_cast_expr()
             && let Some(ty) = it.ty()
             && ty.syntax().last_token().and_then(|it| ast::NameLike::cast(it.parent()?)).is_some()
             && let Some(node) = place_of_parent()
@@ -574,6 +574,13 @@ impl Expr {
             }
             _ => false,
         }
+    }
+
+    fn right_side_cast_expr(&self) -> Option<ast::CastExpr> {
+        std::iter::successors(Some(self.syntax().clone()), |it| {
+            it.last_child_or_token()?.into_node()
+        })
+        .find_map(ast::CastExpr::cast)
     }
 }
 
