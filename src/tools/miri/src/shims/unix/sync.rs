@@ -588,7 +588,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         } else {
             this.rwlock_reader_lock(&rwlock.rwlock_ref)?;
-            this.write_null(dest)?;
+            this.write_int(0, dest)?;
         }
 
         interp_ok(())
@@ -636,7 +636,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         } else {
             this.rwlock_writer_lock(&rwlock.rwlock_ref)?;
-            this.write_null(dest)?;
+            this.write_int(0, dest)?;
         }
 
         interp_ok(())
@@ -873,7 +873,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         sem_create(this, sem_op, value)?;
 
-        this.write_null(dest)?; // we always succeed
+        this.write_int(0, dest)?; // we always succeed
         interp_ok(())
     }
 
@@ -895,7 +895,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 |this, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
-                    this.write_null(&dest)?;
+                    this.write_int(0,&dest)?;
                     interp_ok(())
                 }
             ),
@@ -932,7 +932,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 |this, unblock: UnblockKind| {
                     match unblock {
                         UnblockKind::Ready =>
-                            this.write_null(&dest),
+                            this.write_int(0,&dest),
                         UnblockKind::TimedOut =>
                             this.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest),
                     }
@@ -953,7 +953,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let data = sem_get_data(this, sem_op)?.clone();
         this.semaphore_increment(&data.sem_ref)?;
 
-        this.write_null(dest)?; // we always succeed
+        this.write_int(0, dest)?; // we always succeed
         interp_ok(())
     }
 
@@ -974,7 +974,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let sem_place = this.deref_pointer(sem_op)?;
         this.write_uninit(&sem_place)?;
 
-        this.write_null(dest)?; // we always succeed
+        this.write_int(0, dest)?; // we always succeed
         interp_ok(())
     }
 }

@@ -280,7 +280,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ecx.machine.current_user_relevant_span(),
                 )?;
 
-                ecx.write_null(dest)?;
+                ecx.write_int(0, dest)?;
             }
 
             // Dynamically invoked syscalls
@@ -340,7 +340,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(libc::pthread_t, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                ecx.write_null(dest)?;
+                ecx.write_int(0, dest)?;
             }
             "gnu_get_libc_version"
                 if ecx.frame_in_std()

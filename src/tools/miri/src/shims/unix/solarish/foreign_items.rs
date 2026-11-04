@@ -177,7 +177,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     &stack,
                 )?;
 
-                this.write_null(dest)?;
+                this.write_int(0, dest)?;
             }
 
             "pset_info" => {
@@ -210,7 +210,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let cpus = this.deref_pointer(cpus)?;
                 this.write_scalar(Scalar::from_u32(this.machine.num_cpus), &cpus)?;
-                this.write_null(dest)?;
+                this.write_int(0, dest)?;
             }
 
             "__sysconf_xpg7" => {
