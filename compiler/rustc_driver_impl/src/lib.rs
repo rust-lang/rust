@@ -337,6 +337,13 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
             let metadata = passes::finish_and_emit_metadata(tcx);
 
+            // Don't do code generation if there were any errors. Likewise if
+            // there were any delayed bugs, because codegen will likely cause
+            // more ICEs, obscuring the original problem.
+            if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
+                guar.raise_fatal();
+            }
+
             let linker = Linker::codegen_and_build_linker(tcx, codegen_backend, metadata);
 
             if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {

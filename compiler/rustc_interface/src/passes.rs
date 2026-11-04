@@ -1318,13 +1318,6 @@ pub(crate) fn run_codegen<'tcx>(
         rustc_symbol_mangling::test::dump_symbol_names_and_def_paths(tcx);
     }
 
-    // Don't do code generation if there were any errors. Likewise if
-    // there were any delayed bugs, because codegen will likely cause
-    // more ICEs, obscuring the original problem.
-    if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
-        guar.raise_fatal();
-    }
-
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
     let is_host_metadata = tcx
