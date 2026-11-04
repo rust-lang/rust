@@ -1,0 +1,20 @@
+error: symbol-name(_RNvXCsCRATE_HASH_24maybe_move_trait_objectsRDNtB<REF>_3FooNtNtNtCsCRATE_HASH_4core6marker4Move1?EL_B<REF>_6method)
+  --> $DIR/maybe-move-trait-objects.rs:19:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<&dyn maybe_move_trait_objects[ac4b2f059ef390c2]::Foo + core[HASH]::marker::Move::? as maybe_move_trait_objects[ac4b2f059ef390c2]::Foo>::method)
+  --> $DIR/maybe-move-trait-objects.rs:19:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<&dyn maybe_move_trait_objects::Foo + core::marker::Move::? as maybe_move_trait_objects::Foo>::method)
+  --> $DIR/maybe-move-trait-objects.rs:19:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
