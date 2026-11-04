@@ -14,7 +14,7 @@ use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_targ
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::{Symbol, bug, span_bug, sym};
+use rustc_span::{Symbol, bug, kw, span_bug, sym};
 use tracing::trace;
 
 use super::memory::MemoryKind;
@@ -231,7 +231,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let val = layout.align.bytes();
                 self.write_scalar(Scalar::from_target_usize(val, self), dest)?;
             }
-            sym::offset_of => {
+            kw::OffsetOf => {
                 let tp_ty = instance.args.type_at(0);
 
                 let variant = self.read_scalar(&args[0])?.to_u32()?;
@@ -1050,7 +1050,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx> {
         let count = self.read_target_usize(count)?;
         let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap())?;
-        let (size, align) = (layout.size, layout.align.abi);
+        let (size, align) = (layout.size, layout.align);
 
         let size = self.compute_size_in_bytes(size, count).ok_or_else(|| {
             err_ub_format!(
@@ -1122,7 +1122,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             .ok_or_else(|| err_ub_format!("overflow computing total size of `{name}`"))?;
 
         // Check alignment as well. We set the attribute in LLVM.
-        self.check_ptr_align(dst, layout.align.abi)?;
+        self.check_ptr_align(dst, layout.align)?;
 
         let bytes = std::iter::repeat_n(byte, len.bytes_usize());
         self.write_bytes_ptr(dst, bytes)
@@ -1158,7 +1158,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                          op: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>|
          -> InterpResult<'tcx, &[u8]> {
             let ptr = this.read_pointer(op)?;
-            this.check_ptr_align(ptr, layout.align.abi)?;
+            this.check_ptr_align(ptr, layout.align)?;
             let Some(alloc_ref) = self.get_ptr_alloc(ptr, layout.size)? else {
                 // zero-sized access
                 return interp_ok(&[]);

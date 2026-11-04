@@ -568,7 +568,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let layout = dispatch_semaphore_layout(this);
         this.deallocate_ptr(
             sem_ptr,
-            Some((layout.size, layout.align.abi)),
+            Some((layout.size, layout.align)),
             MiriMemoryKind::Runtime.into(),
         )?;
 

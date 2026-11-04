@@ -110,7 +110,7 @@ fn get_param_type_alignment<'ll, 'tcx>(
         _ => { /* fall through */ }
     }
 
-    layout.align.abi
+    layout.align
 }
 
 enum PassMode {
@@ -274,7 +274,7 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
         reg_addr = bx.ptradd(reg_addr, offset);
     }
     let reg_type = layout.llvm_type(bx);
-    let reg_value = bx.load(reg_type, reg_addr, layout.align.abi);
+    let reg_value = bx.load(reg_type, reg_addr, layout.align);
     bx.br(end);
 
     // On Stack block
@@ -286,7 +286,10 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
         PassMode::Direct,
         SlotSize::Bytes8,
         AllowHigherAlign::Yes,
-        ForceRightAdjust::No,
+        match bx.tcx().sess.target.endian {
+            Endian::Big => ForceRightAdjust::Yes,
+            Endian::Little => ForceRightAdjust::No,
+        },
     );
     bx.br(end);
 
@@ -540,7 +543,7 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     let val_type = layout.llvm_type(bx);
     let val_addr =
         if indirect { bx.load(bx.cx.type_ptr(), val_addr, ptr_align_abi) } else { val_addr };
-    bx.load(val_type, val_addr, layout.align.abi)
+    bx.load(val_type, val_addr, layout.align)
 }
 
 fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
@@ -622,7 +625,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
         }
         BackendRepr::Memory { .. } => {
             let mem_addr = x86_64_sysv64_va_arg_from_memory(bx, va_list_addr, layout);
-            return bx.load(layout.llvm_type(bx), mem_addr, layout.align.abi);
+            return bx.load(layout.llvm_type(bx), mem_addr, layout.align);
         }
     };
 
@@ -707,7 +710,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
                     let reg_hi_addr = bx.inbounds_ptradd(reg_lo_addr, bx.const_i32(16));
 
                     let align = layout.layout.align();
-                    let tmp = bx.alloca(layout.size, layout.align.abi);
+                    let tmp = bx.alloca(layout.size, layout.align);
 
                     let reg_lo = bx.load(ty_lo, reg_lo_addr, align_lo);
                     let reg_hi = bx.load(ty_hi, reg_hi_addr, align_hi);
@@ -729,7 +732,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
                         Primitive::Int(_, _) | Primitive::Pointer(_) => (gp_addr, fp_addr),
                     };
 
-                    let tmp = bx.alloca(layout.size, layout.align.abi);
+                    let tmp = bx.alloca(layout.size, layout.align);
 
                     let reg_lo = bx.load(ty_lo, reg_lo_addr, align_lo);
                     let reg_hi = bx.load(ty_hi, reg_hi_addr, align_hi);
@@ -785,7 +788,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
     let val_type = layout.llvm_type(bx);
     let val_addr = bx.phi(bx.type_ptr(), &[reg_addr, mem_addr], &[in_reg, in_mem]);
 
-    bx.load(val_type, val_addr, layout.align.abi)
+    bx.load(val_type, val_addr, layout.align)
 }
 
 /// Copy into a temporary if the type is more aligned than the register save area.
@@ -795,13 +798,13 @@ fn copy_to_temporary_if_more_aligned<'ll, 'tcx>(
     layout: TyAndLayout<'tcx>,
     src_align: Align,
 ) -> &'ll Value {
-    if layout.layout.align.abi > src_align {
+    if layout.layout.align > src_align {
         assert!(layout.ty.is_integral());
 
         // A memcpy below optimizes poorly for 128-bit integers.
-        let tmp = bx.alloca(layout.size, layout.align.abi);
+        let tmp = bx.alloca(layout.size, layout.align);
         let val = bx.load(layout.llvm_type(bx), reg_addr, src_align);
-        bx.store(val, tmp, layout.align.abi);
+        bx.store(val, tmp, layout.align);
         tmp
     } else {
         reg_addr
@@ -827,7 +830,7 @@ fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
     // this behavior for 32+ alignment matches clang.
     // It currently (2026 July) can only occur for 16-byte-aligned types.
     let overflow_arg_area_v = if layout.layout.align.bytes() > 8 {
-        round_pointer_up_to_alignment(bx, overflow_arg_area_v, layout.layout.align.abi)
+        round_pointer_up_to_alignment(bx, overflow_arg_area_v, layout.layout.align)
     } else {
         overflow_arg_area_v
     };
@@ -923,7 +926,7 @@ fn emit_hexagon_va_arg_musl<'ll, 'tcx>(
     bx.switch_to_block(end);
     let value_addr =
         bx.phi(bx.type_ptr(), &[reg_value_addr, overflow_value_addr], &[maybe_reg, from_overflow]);
-    bx.load(layout.llvm_type(bx), value_addr, layout.align.abi)
+    bx.load(layout.llvm_type(bx), value_addr, layout.align)
 }
 
 fn emit_hexagon_va_arg_bare_metal<'ll, 'tcx>(
@@ -942,7 +945,7 @@ fn emit_hexagon_va_arg_bare_metal<'ll, 'tcx>(
     let current_ptr = bx.load(bx.type_ptr(), va_list_addr, ptr_align_abi);
 
     // Handle address alignment for types with alignment > 4 bytes
-    let ty_align = layout.align.abi;
+    let ty_align = layout.align;
     let aligned_ptr = if ty_align.bytes() > 4 {
         // Ensure alignment is a power of 2
         debug_assert!(ty_align.bytes().is_power_of_two(), "Alignment is not power of 2!");
@@ -960,7 +963,7 @@ fn emit_hexagon_va_arg_bare_metal<'ll, 'tcx>(
     bx.store(next_ptr, va_list_addr, ptr_align_abi);
 
     // Load and return the argument value
-    bx.load(layout.llvm_type(bx), aligned_ptr, layout.align.abi)
+    bx.load(layout.llvm_type(bx), aligned_ptr, layout.align)
 }
 
 fn emit_xtensa_va_arg<'ll, 'tcx>(
@@ -997,7 +1000,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     let offset_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(va_ndx_offset));
 
     let offset = bx.load(bx.type_i32(), offset_ptr, bx.tcx().data_layout.i32_align);
-    let offset = round_up_to_alignment(bx, offset, layout.align.abi);
+    let offset = round_up_to_alignment(bx, offset, layout.align);
 
     let slot_size = layout.size.align_to(Align::FOUR).bytes() as i32;
 
@@ -1057,7 +1060,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     assert!(bx.tcx().sess.target.endian == Endian::Little);
     let value_ptr =
         bx.phi(bx.type_ptr(), &[regsave_value_ptr, stack_value_ptr], &[from_regsave, from_stack]);
-    return bx.load(layout.llvm_type(bx), value_ptr, layout.align.abi);
+    return bx.load(layout.llvm_type(bx), value_ptr, layout.align);
 }
 
 /// Determine the va_arg implementation to use. The LLVM va_arg instruction

@@ -519,34 +519,13 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_decl_attrs(&self, fn_inputs: &[Param]) {
-        use SyntheticAttr::*;
-        fn_inputs
-            .iter()
-            .flat_map(|i| i.attrs.as_ref())
-            .filter(|attr| match &attr.kind {
-                AttrKind::Normal(normal) => {
-                    let arr = [
-                        sym::allow,
-                        sym::deny,
-                        sym::expect,
-                        sym::forbid,
-                        sym::rustc_splat,
-                        sym::warn,
-                    ];
-                    !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
-                }
-                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) | AttrKind::Generated(..) => {
-                    false
-                }
-                AttrKind::DocComment(..) => true,
-            })
-            .for_each(|attr| {
+        for param in fn_inputs {
+            for attr in &param.attrs {
                 if attr.is_doc_comment() {
                     self.dcx().emit_err(diagnostics::FnParamDocComment { span: attr.span });
-                } else {
-                    self.dcx().emit_err(diagnostics::FnParamForbiddenAttr { span: attr.span });
                 }
-            });
+            }
+        }
     }
 
     fn check_decl_self_param(&self, fn_inputs: &[Param], self_semantic: SelfSemantic) {

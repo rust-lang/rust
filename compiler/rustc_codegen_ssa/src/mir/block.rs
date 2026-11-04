@@ -628,10 +628,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         scratch.val.llval
                     }
                     Ref(place_val) => {
-                        assert_eq!(
-                            place_val.align, op.layout.align.abi,
-                            "return place is unaligned!"
-                        );
+                        assert_eq!(place_val.align, op.layout.align, "return place is unaligned!");
                         place_val.llval
                     }
                     ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
@@ -644,7 +641,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     self.clear_padding_cmse(bx, llslot, ret_layout.size, ret_layout);
                 }
 
-                load_cast(bx, cast_ty, llslot, self.fn_abi.ret.layout.align.abi)
+                load_cast(bx, cast_ty, llslot, self.fn_abi.ret.layout.align)
             }
             PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
         };
@@ -1037,7 +1034,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             };
 
                         if let Some(place) = result_place
-                            && place.align < result_layout.align.abi
+                            && place.align < result_layout.align
                         {
                             // Currently, MIR code generation does not create calls
                             // that store directly to fields of packed structs (in
@@ -1943,7 +1940,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let discr_ty = layout.ty.discriminant_ty(bx.tcx());
         let enum_ptr = bx.inbounds_ptradd(base_ptr, bx.const_usize(base_offset.bytes()));
         let operand = OperandRef {
-            val: OperandValue::Ref(PlaceValue::new_sized(enum_ptr, layout.align.abi)),
+            val: OperandValue::Ref(PlaceValue::new_sized(enum_ptr, layout.align)),
             layout,
             move_annotation: None,
         };
@@ -2010,8 +2007,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // alignment. This can happen, e.g. when passing types with <4 byte alignment
                         // on the stack on x86.
                         let required_align = match attrs.pointee_align {
-                            Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
-                            None => arg.layout.align.abi,
+                            Some(pointee_align) => cmp::max(pointee_align, arg.layout.align),
+                            None => arg.layout.align,
                         };
                         let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
                         bx.lifetime_start(scratch.llval, arg.layout.size);
@@ -2027,8 +2024,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // alignment requirements may be higher than the type's alignment, so copy
                         // to a higher-aligned alloca.
                         let required_align = match attrs.pointee_align {
-                            Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
-                            None => arg.layout.align.abi,
+                            Some(pointee_align) => cmp::max(pointee_align, arg.layout.align),
+                            None => arg.layout.align,
                         };
                         // Copy to an alloca when the argument is neither by-val nor by-move.
                         if op_place_val.align < required_align
@@ -2473,7 +2470,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.codegen_place(bx, dest.as_ref())
         };
         if fn_ret.is_indirect() {
-            if dest.val.align < dest.layout.align.abi {
+            if dest.val.align < dest.layout.align {
                 // Currently, MIR code generation does not create calls
                 // that store directly to fields of packed structs (in
                 // fact, the calls it creates write only to temps).

@@ -132,11 +132,10 @@ fn infer_async_gen_closure() {
 fn test() {
     let f = async gen move |x: i32| {
         yield x + 42;
-            //^^^^^^ expected Poll<Option<{unknown}>>, got i32
     };
     let a = f(4);
     a;
-//  ^ type: impl AsyncIterator<Item = {unknown}>
+//  ^ type: impl AsyncIterator<Item = i32>
 }
 "#,
     );

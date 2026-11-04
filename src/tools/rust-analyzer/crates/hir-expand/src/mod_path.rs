@@ -361,8 +361,7 @@ fn convert_path_tt(db: &dyn SourceDatabase, tt: tt::TokenTreesView<'_>) -> Optio
         tt::Leaf::Ident(tt::Ident { sym: text, .. }) if text == sym::self_ => PathKind::SELF,
         tt::Leaf::Ident(tt::Ident { sym: text, .. }) if text == sym::super_ => {
             let mut deg = 1;
-            while let Some(tt::Leaf::Ident(tt::Ident { sym: text, span, is_raw: _ })) =
-                leaves.next()
+            while let Some(tt::Leaf::Ident(tt::Ident { sym: text, span, kind: _ })) = leaves.next()
             {
                 if text != sym::super_ {
                     segments.push(Name::new_symbol(text.clone(), span.ctx));

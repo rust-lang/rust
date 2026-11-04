@@ -25,7 +25,7 @@ where
     let unsized_tail = || tcx.struct_tail_for_codegen(ty, typing_env);
     match tcx.layout_of(typing_env.as_query_input(ty)) {
         Ok(layout)
-            if layout.align.abi <= pack
+            if layout.align <= pack
                 && (layout.is_sized()
                     || matches!(unsized_tail().kind(), ty::Slice(..) | ty::Str)) =>
         {

@@ -506,6 +506,8 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
   Error CodeGenError =
       runCodeGenPipeline(*unwrap(Target), *unwrap(M), BOS, BDwoOS.get(),
                          FileType, !VerifyIR, DisableSimplifyLibCalls);
+  if (CodeGenError)
+    return LLVMRustResult::Failure;
 #else
   std::unique_ptr<llvm::legacy::PassManager> PM =
       std::make_unique<llvm::legacy::PassManager>();

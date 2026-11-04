@@ -55,6 +55,43 @@ impl fmt::Display for AllocError {
 /// allocator does not support this (like jemalloc) or responds by returning a null pointer
 /// (such as `libc::malloc`), this must be caught by the implementation.
 ///
+/// # Examples
+///
+/// Sample that keeps track of the number of existing allocations:
+///
+/// ```
+/// use std::alloc::{AllocError, Allocator, Layout, System};
+/// use std::ptr::NonNull;
+/// use std::sync::atomic::{AtomicUsize, Ordering};
+///
+/// static LIVE_ALLOCATIONS: AtomicUsize = AtomicUsize::new(0);
+///
+/// struct CountingAllocator;
+///
+/// unsafe impl Allocator for CountingAllocator {
+///     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+///         let ptr = System.allocate(layout)?;
+///         LIVE_ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
+///         Ok(ptr)
+///     }
+///
+///     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+///         // SAFETY: the caller guarantees `ptr` was allocated by this allocator with `layout`,
+///         // and every block from this allocator was allocated by `System` with the same layout.
+///         unsafe { System.deallocate(ptr, layout) };
+///         LIVE_ALLOCATIONS.fetch_sub(1, Ordering::Relaxed);
+///     }
+/// }
+///
+/// // The Box allocates through our allocator.
+/// let new_box = Box::new_in(10, CountingAllocator);
+/// assert_eq!(LIVE_ALLOCATIONS.load(Ordering::Relaxed), 1);
+/// drop(new_box);
+/// assert_eq!(LIVE_ALLOCATIONS.load(Ordering::Relaxed), 0);
+/// ```
+///
+/// ## Implementation Requirements
+///
 /// In order to be usable in a flexible manner while still being sound, implementors of the trait
 /// must uphold very detailed semantics as explained below; the following terms are thus provided
 /// as vocabulary for allocator safety and implementation requirements:
@@ -686,6 +723,11 @@ where
     }
 }
 
+/// Defers to the pinned allocator. Requires that the smart pointer inside the
+/// [`Pin`](core::pin::Pin) is well-behaved.
+///
+/// This trait impl is unstable and only usable on nightly with `feature(allocator_ext)`.
+/// It may be changed or removed in the future.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 #[unstable_feature_bound(allocator_ext)]
@@ -743,6 +785,7 @@ where
     }
 }
 
+/// This trait impl is unstable and only usable on nightly with `feature(allocator_ext)`.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[unstable_feature_bound(allocator_ext)]
 impl<P> AllocatorNightly for core::pin::Pin<P> where
@@ -763,6 +806,9 @@ unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &mut A {}
 
 /// Allocator marker trait that is only implemented stably for `Global`.
 ///
+/// Enabling `feature(allocator_ext)` causes this trait to be implemented for all
+/// allocators in std, and for any downstream allocator that explicitly implements it.
+///
 /// This trait is used as a bound whenever a function constructing
 /// a type with an `#[unstable] A: Allocator = Global` parameter
 /// may be callable for `A != Global`.
@@ -772,14 +818,16 @@ unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &mut A {}
 ///
 /// Note that this trait *will* be removed in the future, but downstream
 /// allocators should still feel free to implement it on nightly, to
-/// allow use of all containers with unstable allocator support.
+/// allow their allocator to be used with all unstable allocator APIs.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 pub trait AllocatorNightly: Allocator {}
 
+/// This trait impl is unstable and only usable on nightly with `feature(allocator_ext)`.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[unstable_feature_bound(allocator_ext)]
 impl<A: Allocator + ?Sized> AllocatorNightly for &A {}
 
+/// This trait impl is unstable and only usable on nightly with `feature(allocator_ext)`.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[unstable_feature_bound(allocator_ext)]
 impl<A: Allocator + ?Sized> AllocatorNightly for &mut A {}

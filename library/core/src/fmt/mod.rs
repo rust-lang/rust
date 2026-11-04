@@ -2497,10 +2497,7 @@ impl<'a> Formatter<'a> {
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field1_finish<'b>(&'b mut self, names: &str, value1: &dyn Debug) -> Result {
-        let mut names = names.split(' ');
-        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
-        builder.field(names.next().unwrap(), value1);
-        builder.finish()
+        self.debug_struct_fields_finish(names, &[value1])
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller
@@ -2514,11 +2511,7 @@ impl<'a> Formatter<'a> {
         value1: &dyn Debug,
         value2: &dyn Debug,
     ) -> Result {
-        let mut names = names.split(' ');
-        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
-        builder.field(names.next().unwrap(), value1);
-        builder.field(names.next().unwrap(), value2);
-        builder.finish()
+        self.debug_struct_fields_finish(names, &[value1, value2])
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller
@@ -2533,12 +2526,7 @@ impl<'a> Formatter<'a> {
         value2: &dyn Debug,
         value3: &dyn Debug,
     ) -> Result {
-        let mut names = names.split(' ');
-        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
-        builder.field(names.next().unwrap(), value1);
-        builder.field(names.next().unwrap(), value2);
-        builder.field(names.next().unwrap(), value3);
-        builder.finish()
+        self.debug_struct_fields_finish(names, &[value1, value2, value3])
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller
@@ -2554,13 +2542,7 @@ impl<'a> Formatter<'a> {
         value3: &dyn Debug,
         value4: &dyn Debug,
     ) -> Result {
-        let mut names = names.split(' ');
-        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
-        builder.field(names.next().unwrap(), value1);
-        builder.field(names.next().unwrap(), value2);
-        builder.field(names.next().unwrap(), value3);
-        builder.field(names.next().unwrap(), value4);
-        builder.finish()
+        self.debug_struct_fields_finish(names, &[value1, value2, value3, value4])
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller
@@ -2577,14 +2559,7 @@ impl<'a> Formatter<'a> {
         value4: &dyn Debug,
         value5: &dyn Debug,
     ) -> Result {
-        let mut names = names.split(' ');
-        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
-        builder.field(names.next().unwrap(), value1);
-        builder.field(names.next().unwrap(), value2);
-        builder.field(names.next().unwrap(), value3);
-        builder.field(names.next().unwrap(), value4);
-        builder.field(names.next().unwrap(), value5);
-        builder.finish()
+        self.debug_struct_fields_finish(names, &[value1, value2, value3, value4, value5])
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller binaries.
@@ -2597,13 +2572,26 @@ impl<'a> Formatter<'a> {
         names: &str,
         values: &[&dyn Debug],
     ) -> Result {
-        let mut names = names.split(' ');
-        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
-        for value in values.into_iter() {
-            let name = names.next().unwrap();
-            builder.field(name, value);
+        // the macro generates either "Point x y" for a struct like `Point { x: u32, y: u32, }`
+        // or just "Point" for a tuple struct like `Point(u32, u32)`. If there are no field names
+        // (and therefore no space separator), we assume we format a tuple struct.
+        // `.as_bytes()` is to avoid bringing in UTF-8 code bloat
+        let is_tuple = !names.as_bytes().contains(&b' ');
+        if is_tuple {
+            let mut builder = builders::debug_tuple_new(self, names);
+            for value in values {
+                builder.field(value);
+            }
+            builder.finish()
+        } else {
+            let mut names = split_str_by_space(names);
+            let mut builder = builders::debug_struct_new(self, names.next().unwrap());
+            for value in values.into_iter() {
+                let name = names.next().unwrap();
+                builder.field(name, value);
+            }
+            builder.finish()
         }
-        builder.finish()
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller binaries.
@@ -2616,7 +2604,9 @@ impl<'a> Formatter<'a> {
         names: &str,
         start_index: usize,
     ) -> Result {
-        self.write_str(names[start_index..].split(' ').next().unwrap())
+        // we use `get().unwrap()` instead of indexing to avoid binary size
+        // bloat from the error path (`slice_error_fail_rt`)
+        self.write_str(split_str_by_space(names.get(start_index..).unwrap()).next().unwrap())
     }
 
     /// Creates a `DebugTuple` builder designed to assist with creation of
@@ -2648,113 +2638,6 @@ impl<'a> Formatter<'a> {
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_tuple<'b>(&'b mut self, name: &str) -> DebugTuple<'b, 'a> {
         builders::debug_tuple_new(self, name)
-    }
-
-    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
-    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
-    /// for 1 field.
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_tuple_field1_finish<'b>(&'b mut self, name: &str, value1: &dyn Debug) -> Result {
-        let mut builder = builders::debug_tuple_new(self, name);
-        builder.field(value1);
-        builder.finish()
-    }
-
-    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
-    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
-    /// for 2 fields.
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_tuple_field2_finish<'b>(
-        &'b mut self,
-        name: &str,
-        value1: &dyn Debug,
-        value2: &dyn Debug,
-    ) -> Result {
-        let mut builder = builders::debug_tuple_new(self, name);
-        builder.field(value1);
-        builder.field(value2);
-        builder.finish()
-    }
-
-    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
-    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
-    /// for 3 fields.
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_tuple_field3_finish<'b>(
-        &'b mut self,
-        name: &str,
-        value1: &dyn Debug,
-        value2: &dyn Debug,
-        value3: &dyn Debug,
-    ) -> Result {
-        let mut builder = builders::debug_tuple_new(self, name);
-        builder.field(value1);
-        builder.field(value2);
-        builder.field(value3);
-        builder.finish()
-    }
-
-    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
-    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
-    /// for 4 fields.
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_tuple_field4_finish<'b>(
-        &'b mut self,
-        name: &str,
-        value1: &dyn Debug,
-        value2: &dyn Debug,
-        value3: &dyn Debug,
-        value4: &dyn Debug,
-    ) -> Result {
-        let mut builder = builders::debug_tuple_new(self, name);
-        builder.field(value1);
-        builder.field(value2);
-        builder.field(value3);
-        builder.field(value4);
-        builder.finish()
-    }
-
-    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
-    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
-    /// for 5 fields.
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_tuple_field5_finish<'b>(
-        &'b mut self,
-        name: &str,
-        value1: &dyn Debug,
-        value2: &dyn Debug,
-        value3: &dyn Debug,
-        value4: &dyn Debug,
-        value5: &dyn Debug,
-    ) -> Result {
-        let mut builder = builders::debug_tuple_new(self, name);
-        builder.field(value1);
-        builder.field(value2);
-        builder.field(value3);
-        builder.field(value4);
-        builder.field(value5);
-        builder.finish()
-    }
-
-    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
-    /// binaries. For the cases not covered by `debug_tuple_field[12345]_finish`.
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_tuple_fields_finish<'b>(
-        &'b mut self,
-        name: &str,
-        values: &[&dyn Debug],
-    ) -> Result {
-        let mut builder = builders::debug_tuple_new(self, name);
-        for value in values {
-            builder.field(value);
-        }
-        builder.finish()
     }
 
     /// Creates a `DebugList` builder designed to assist with creation of
@@ -2875,6 +2758,15 @@ impl<'a> Formatter<'a> {
     pub const fn options(&self) -> FormattingOptions {
         self.options
     }
+}
+
+/// Like `.split(' ')`, but doesn't bloat binary size
+fn split_str_by_space(s: &str) -> impl Iterator<Item = &str> {
+    s.as_bytes()
+        .split(|&b| b == b' ')
+        // SAFETY:
+        // splitting a valid UTF-8 string on an ASCII byte results in valid UTF-8 substrings
+        .map(|bytes| unsafe { str::from_utf8_unchecked(bytes) })
 }
 
 #[stable(since = "1.2.0", feature = "formatter_write")]

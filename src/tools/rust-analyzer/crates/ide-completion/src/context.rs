@@ -488,12 +488,7 @@ pub(crate) struct CompletionContext<'a, 'db> {
     // FIXME: This should probably be the crate of the current token?
     pub(crate) edition: Edition,
 
-    /// The expected name of what we are completing.
-    /// This is usually the parameter name of the function argument we are completing.
-    pub(crate) expected_name: Option<NameOrNameRef>,
-    /// The expected type of what we are completing.
-    pub(crate) expected_type: Option<Type<'db>>,
-    pub(crate) expected_func: Option<hir::Callable<'db>>,
+    pub(crate) expected: ExpectedInfo<'db>,
 
     pub(crate) qualifier_ctx: QualifierCtx,
 
@@ -524,9 +519,14 @@ pub(crate) struct CompletionContext<'a, 'db> {
 
 #[derive(Debug, Default)]
 pub(crate) struct ExpectedInfo<'db> {
-    expected_type: Option<Type<'db>>,
-    expected_name: Option<NameOrNameRef>,
-    expected_func: Option<hir::Callable<'db>>,
+    /// The expected type of what we are completing.
+    pub(crate) ty: Option<Type<'db>>,
+    /// If `refs_level > 0`, exists `&...place`, if `refs_level < 0`, exists `*...place`
+    pub(crate) refs_level: i32,
+    /// The expected name of what we are completing.
+    /// This is usually the parameter name of the function argument we are completing.
+    pub(crate) name: Option<NameOrNameRef>,
+    pub(crate) func: Option<hir::Callable<'db>>,
 }
 
 #[derive(Debug)]
@@ -801,19 +801,14 @@ impl<'a, 'db> CompletionContext<'a, 'db> {
             }
         }
 
-        let AnalysisResult {
-            analysis,
-            expected: ExpectedInfo { expected_type, expected_name, expected_func },
-            qualifier_ctx,
-            token,
-            original_offset,
-        } = expand_and_analyze(
-            &sema,
-            InFile::new(editioned_file_id.into(), original_file.syntax().clone()),
-            file_with_fake_ident.syntax().clone(),
-            offset,
-            &original_token,
-        )?;
+        let AnalysisResult { analysis, expected, qualifier_ctx, token, original_offset } =
+            expand_and_analyze(
+                &sema,
+                InFile::new(editioned_file_id.into(), original_file.syntax().clone()),
+                file_with_fake_ident.syntax().clone(),
+                offset,
+                &original_token,
+            )?;
 
         // adjust for macro input, this still fails if there is no token written yet
         let scope = sema.scope_at_offset(&token.parent()?, original_offset)?;
@@ -942,9 +937,7 @@ impl<'a, 'db> CompletionContext<'a, 'db> {
             containing_function,
             is_nightly,
             edition,
-            expected_name,
-            expected_type,
-            expected_func,
+            expected,
             qualifier_ctx,
             locals,
             depth_from_crate_root,

@@ -497,7 +497,7 @@ impl<'a> State<'a> {
                 self.print_type(ty);
             }
             ast::ExprKind::Type(expr, ty) => {
-                self.word("builtin # type_ascribe");
+                self.word("k#type_ascribe");
                 self.popen();
                 let ib = self.ibox(0);
                 self.print_expr(expr, FixupContext::default());
@@ -777,12 +777,12 @@ impl<'a> State<'a> {
                 self.print_expr(result, fixup.rightmost_subexpression());
             }
             ast::ExprKind::InlineAsm(a) => {
-                // FIXME: Print `builtin # asm` once macro `asm` uses `builtin_syntax`.
+                // FIXME: Print `k#asm` once macro `asm` uses `internal_syntax`.
                 self.word(format!("{}!", a.asm_macro.macro_name()));
                 self.print_inline_asm(a);
             }
             ast::ExprKind::FormatArgs(fmt) => {
-                // FIXME: Print `builtin # format_args` once macro `format_args` uses `builtin_syntax`.
+                // FIXME: Print `k#format_args` once macro `format_args` uses `internal_syntax`.
                 self.word("format_args!");
                 self.popen();
                 let ib = self.ibox(0);
@@ -795,7 +795,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             ast::ExprKind::OffsetOf(container, fields) => {
-                self.word("builtin # offset_of");
+                self.word("k#offset_of");
                 self.popen();
                 let ib = self.ibox(0);
                 self.print_type(container);
@@ -855,10 +855,9 @@ impl<'a> State<'a> {
                 self.print_block_with_attrs(blk, attrs, cb, ib)
             }
             ast::ExprKind::UnsafeBinderCast(kind, expr, ty) => {
-                self.word("builtin # ");
                 match kind {
-                    ast::UnsafeBinderCastKind::Wrap => self.word("wrap_binder"),
-                    ast::UnsafeBinderCastKind::Unwrap => self.word("unwrap_binder"),
+                    ast::UnsafeBinderCastKind::Wrap => self.word("k#wrap_binder"),
+                    ast::UnsafeBinderCastKind::Unwrap => self.word("k#unwrap_binder"),
                 }
                 self.popen();
                 let ib = self.ibox(0);

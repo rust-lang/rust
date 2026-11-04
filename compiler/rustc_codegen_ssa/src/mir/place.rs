@@ -94,7 +94,7 @@ pub struct PlaceRef<'tcx, V> {
 
 impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     pub fn new_sized(llval: V, layout: TyAndLayout<'tcx>) -> PlaceRef<'tcx, V> {
-        PlaceRef::new_sized_aligned(llval, layout, layout.align.abi)
+        PlaceRef::new_sized_aligned(llval, layout, layout.align)
     }
 
     pub fn new_sized_aligned(
@@ -127,7 +127,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         layout: TyAndLayout<'tcx>,
     ) -> Self {
         assert!(layout.is_sized(), "tried to statically allocate unsized place");
-        PlaceValue::alloca(bx, size, layout.align.abi).with_type(layout)
+        PlaceValue::alloca(bx, size, layout.align).with_type(layout)
     }
 
     /// Returns a place for an indirect reference to an unsized place.
@@ -164,7 +164,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             // FIXME why is this peeling at all? The LLVM type should be the same for the
             // transparent wrapper and the inner type.
             bx.alloca_with_ty(layout.peel_transparent_wrappers_from_non_1zst(bx)),
-            layout.align.abi,
+            layout.align,
         )
         .with_type(layout)
     }

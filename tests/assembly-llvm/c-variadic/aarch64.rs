@@ -120,12 +120,12 @@ unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
     // AARCH64_BE-NEXT: ldr x8, [x0]
     // AARCH64_BE-NEXT: add x9, x8, #8
     // AARCH64_BE-NEXT: str x9, [x0]
-    // AARCH64_BE-NEXT: ldr w0, [x8]
+    // AARCH64_BE-NEXT: ldr w0, [x8, #4]
     // AARCH64_BE-NEXT: ret
     // AARCH64_BE-NEXT: .LBB1_3:
     // AARCH64_BE-NEXT: ldr x9, [x0, #8]
     // AARCH64_BE-NEXT: add x8, x9, x8
-    // AARCH64_BE-NEXT: ldr w0, [x8, #4]!
+    // AARCH64_BE-NEXT: ldr w0, [x8, #4]
     // AARCH64_BE-NEXT: ret
 
     // ARM64EC_MSVC-LABEL: read_i32 = "#read_i32"

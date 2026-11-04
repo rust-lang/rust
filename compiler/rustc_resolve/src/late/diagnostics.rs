@@ -45,12 +45,18 @@ use crate::{
     ScopeSet, Segment, diagnostics, path_names_to_string,
 };
 
+#[derive(PartialEq, Eq, Clone, Copy)]
+enum AssocFrom {
+    Trait,
+    Impl,
+}
+
 /// A field or associated item from self type suggested in case of resolution failure.
 enum AssocSuggestion {
     Field,
-    MethodWithSelf { called: bool },
-    AssocFn { called: bool },
-    AssocType,
+    MethodWithSelf { called: bool, from: AssocFrom },
+    AssocFn { called: bool, from: AssocFrom },
+    AssocType { from: AssocFrom },
     AssocConst,
 }
 
@@ -58,16 +64,16 @@ impl AssocSuggestion {
     fn action(&self) -> &'static str {
         match self {
             AssocSuggestion::Field => "use the available field",
-            AssocSuggestion::MethodWithSelf { called: true } => {
+            AssocSuggestion::MethodWithSelf { called: true, .. } => {
                 "call the method with the fully-qualified path"
             }
-            AssocSuggestion::MethodWithSelf { called: false } => {
+            AssocSuggestion::MethodWithSelf { called: false, .. } => {
                 "refer to the method with the fully-qualified path"
             }
-            AssocSuggestion::AssocFn { called: true } => "call the associated function",
-            AssocSuggestion::AssocFn { called: false } => "refer to the associated function",
-            AssocSuggestion::AssocConst => "use the associated `const`",
-            AssocSuggestion::AssocType => "use the associated type",
+            AssocSuggestion::AssocFn { called: true, .. } => "call the associated function",
+            AssocSuggestion::AssocFn { called: false, .. } => "refer to the associated function",
+            AssocSuggestion::AssocConst { .. } => "use the associated `const`",
+            AssocSuggestion::AssocType { .. } => "use the associated type",
         }
     }
 }
@@ -971,7 +977,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     }
 
     fn suggest_self_or_self_ref(&mut self, err: &mut Diag<'_>, path: &[Segment], span: Span) {
-        if !self.self_type_is_available() {
+        if self.self_type_is_available().is_none() {
             return;
         }
         let Some(path_last_segment) = path.last() else { return };
@@ -1109,7 +1115,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             .filter(|sugg| !suggested_candidates.contains(sugg.candidate.as_str()));
         if let [segment] = path
             && !matches!(source, PathSource::Delegation)
-            && self.self_type_is_available()
+            && let Some(def_id) = self.self_type_is_available()
         {
             if let Some((candidate, def_span)) =
                 self.lookup_assoc_candidate(ident, ns, is_expected, source.is_call())
@@ -1146,12 +1152,30 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 );
                             }
                         } else {
-                            err.span_label(def_span, "a field by that name exists in `Self`");
+                            // Show the `impl` in the main subdiagnostic.
+                            err.span_context(self.r.def_span(def_id).shrink_to_lo());
+                            if let Some(item) = self.diag_metadata.current_impl_item {
+                                // Show the current assoc item.
+                                err.span_context(item.span.shrink_to_lo());
+                            }
+                            let mut span: MultiSpan = def_span.into();
+                            if let Some(ty) = self.diag_metadata.current_self_type
+                                && let Some(res) = self.r.partial_res_map.get(&ty.id)
+                                && let Some(res) = res.full_res()
+                                && let Res::Def(
+                                    DefKind::Struct | DefKind::Union | DefKind::Enum,
+                                    def_id,
+                                ) = res
+                            {
+                                span.push_span_context(self.r.def_span(def_id).shrink_to_lo());
+                            }
+
+                            err.span_note(span, "a field by that name exists in `Self`");
                         }
                     }
-                    AssocSuggestion::MethodWithSelf { .. }
-                    | AssocSuggestion::AssocFn { .. }
-                    | AssocSuggestion::AssocType
+                    AssocSuggestion::MethodWithSelf { from, .. }
+                    | AssocSuggestion::AssocFn { from, .. }
+                    | AssocSuggestion::AssocType { from, .. }
                         if matches!(
                             source,
                             PathSource::Expr(Some(Expr { kind: ExprKind::FormatArgs(_), .. }))
@@ -1160,15 +1184,31 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         let kind = match candidate {
                             AssocSuggestion::MethodWithSelf { .. } => "a method",
                             AssocSuggestion::AssocFn { .. } => "an associated function",
-                            AssocSuggestion::AssocType => "an associated type",
+                            AssocSuggestion::AssocType { .. } => "an associated type",
                             _ => unreachable!(),
                         };
-                        err.span_label(
-                            def_span,
-                            format!("{kind} by that name is available on `Self` here"),
-                        );
+                        let msg = format!("{kind} by that name is available on `Self`");
+                        // Show the `impl` in the main subdiagnostic.
+                        err.span_context(self.r.def_span(def_id).shrink_to_lo());
+                        if let Some(item) = self.diag_metadata.current_impl_item {
+                            // Show the current assoc item.
+                            err.span_context(item.span.shrink_to_lo());
+                        }
+                        if let AssocFrom::Trait = from
+                            && let Some((module, _)) = &self.current_trait_ref
+                        {
+                            // The item with the same name comes from the `trait` and not the
+                            // `impl`, so we show the assoc item in a note.
+                            let mut span: MultiSpan = def_span.into();
+                            span.push_span_context(module.span.shrink_to_lo());
+                            err.span_note(span, msg);
+                        } else {
+                            // The item with the same name comes from the current `impl`, so we
+                            // point at it in a label.
+                            err.span_label(def_span, msg);
+                        }
                     }
-                    AssocSuggestion::MethodWithSelf { called } if self_is_available => {
+                    AssocSuggestion::MethodWithSelf { called, .. } if self_is_available => {
                         let msg = if called {
                             "you might have meant to call the method"
                         } else {
@@ -1183,9 +1223,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     }
                     AssocSuggestion::MethodWithSelf { .. }
                     | AssocSuggestion::AssocFn { .. }
-                    | AssocSuggestion::AssocConst
-                    | AssocSuggestion::AssocType => {
-                        if !matches!(candidate, AssocSuggestion::AssocConst)
+                    | AssocSuggestion::AssocConst { .. }
+                    | AssocSuggestion::AssocType { .. } => {
+                        if !matches!(candidate, AssocSuggestion::AssocConst { .. })
                             || !self.suggest_named_format_argument(
                                 err,
                                 source,
@@ -1252,8 +1292,25 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 &path_str,
                 &base_error.fallback_label,
             ) {
-                // We do this to avoid losing a secondary span when we override the main error span.
-                self.r.add_typo_suggestion(err, typo_sugg, ident_span, None);
+                if let Some(sugg) = &typo_sugg
+                    && let Res::Local(_) = sugg.res
+                {
+                    if let PathSource::Expr(Some(expr)) = source
+                        && let ExprKind::Call(..) = expr.kind
+                    {
+                        // Do not suggest typo changes for calling a local. This would only be valid
+                        // for closures, but during resolve we can't check the bindings type. This
+                        // avoids cases like the one in #66067.
+                    } else if path.len() == 1 {
+                        // Only paths with a single segment would realistically be a typo of a
+                        // local binding.
+                        // We add a suggestion to avoid losing a secondary span when we override
+                        // the main error span.
+                        self.r.add_typo_suggestion(err, typo_sugg, ident_span, None);
+                    }
+                } else {
+                    self.r.add_typo_suggestion(err, typo_sugg, ident_span, None);
+                }
                 return (true, suggested_candidates, candidates);
             }
         }
@@ -1648,7 +1705,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             return true;
         }
 
-        let is_assoc_fn = self.self_type_is_available();
+        let is_assoc_fn = self.self_type_is_available().is_some();
         let self_from_macro = "a `self` parameter, but a macro invocation can only \
                                access identifiers it receives from parameters";
         if let Some((fn_kind, fn_span)) = &self.diag_metadata.current_function {
@@ -2539,6 +2596,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
                     let span = find_span(&source, err);
                     err.span_label(this.r.def_span(def_id), format!("`{path_str}` defined here"));
+                    if this.r.tcx.def_kind(def_id) == DefKind::Variant {
+                        err.span_context(this.r.def_span(this.r.tcx.parent(def_id)).shrink_to_lo());
+                    }
 
                     let (tail, descr, applicability, old_fields) = match source {
                         PathSource::Pat => ("", "pattern", Applicability::MachineApplicable, None),
@@ -2646,7 +2706,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 &expression,
                                 applicability,
                             ) {
-                                err.span_suggestion(
+                                err.span_suggestion_verbose(
                                     span,
                                     format!("use struct {descr} syntax instead"),
                                     expression,
@@ -2833,7 +2893,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             (Res::Def(DefKind::Union | DefKind::Variant, def_id), _) if ns == ValueNS => {
                 bad_struct_syntax_suggestion(self, err, def_id);
             }
-            (Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id), _) if ns == ValueNS => {
+            (Res::Def(DefKind::Ctor(of, CtorKind::Const), def_id), _) if ns == ValueNS => {
                 match source {
                     PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
                         let span = find_span(&source, err);
@@ -2841,9 +2901,16 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             self.r.def_span(def_id),
                             format!("`{path_str}` defined here"),
                         );
-                        err.span_suggestion(
+                        if of == CtorOf::Variant {
+                            err.span_context(
+                                self.r
+                                    .def_span(self.r.tcx.parent(self.r.tcx.parent(def_id)))
+                                    .shrink_to_lo(),
+                            );
+                        }
+                        err.span_suggestion_verbose(
                             span,
-                            "use this syntax instead",
+                            "use the unit struct syntax instead",
                             path_str,
                             Applicability::MaybeIncorrect,
                         );
@@ -2851,14 +2918,17 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     _ => return false,
                 }
             }
-            (Res::Def(DefKind::Ctor(_, CtorKind::Fn), ctor_def_id), _) if ns == ValueNS => {
+            (Res::Def(DefKind::Ctor(of, CtorKind::Fn), ctor_def_id), _) if ns == ValueNS => {
                 let def_id = self.r.tcx.parent(ctor_def_id);
                 err.span_label(self.r.def_span(def_id), format!("`{path_str}` defined here"));
+                if of == CtorOf::Variant {
+                    err.span_context(self.r.def_span(self.r.tcx.parent(def_id)).shrink_to_lo());
+                }
                 let fields = self.r.field_idents(def_id).map_or_else(
                     || "/* fields */".to_string(),
                     |field_ids| vec!["_"; field_ids.len()].join(", "),
                 );
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     span,
                     "use the tuple variant pattern syntax instead",
                     format!("{path_str}({fields})"),
@@ -3150,13 +3220,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 if let Some(assoc_ident) = assoc_item.kind.ident()
                     && assoc_ident == ident
                 {
+                    let from = AssocFrom::Impl;
                     let candidate = match &assoc_item.kind {
                         ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,
                         ast::AssocItemKind::Fn(ast::Fn { sig, .. }) if sig.decl.has_self() => {
-                            AssocSuggestion::MethodWithSelf { called }
+                            AssocSuggestion::MethodWithSelf { called, from }
                         }
-                        ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn { called },
-                        ast::AssocItemKind::Type(..) => AssocSuggestion::AssocType,
+                        ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn { called, from },
+                        ast::AssocItemKind::Type(..) => AssocSuggestion::AssocType { from },
                         ast::AssocItemKind::Delegation(..)
                             if self
                                 .r
@@ -3165,9 +3236,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 .and_then(|o| self.r.delegation_fn_sigs.get(&o.def_id))
                                 .is_some_and(|sig| sig.has_self) =>
                         {
-                            AssocSuggestion::MethodWithSelf { called }
+                            AssocSuggestion::MethodWithSelf { called, from }
                         }
-                        ast::AssocItemKind::Delegation(..) => AssocSuggestion::AssocFn { called },
+                        ast::AssocItemKind::Delegation(..) => {
+                            AssocSuggestion::AssocFn { called, from }
+                        }
                         ast::AssocItemKind::MacCall(_) | ast::AssocItemKind::DelegationMac(..) => {
                             continue;
                         }
@@ -3189,6 +3262,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         {
             let res = binding.res();
             if filter_fn(res) {
+                let from = AssocFrom::Trait;
                 match res {
                     Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) => {
                         let has_self = match def_id.as_local() {
@@ -3205,18 +3279,18 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         };
                         if has_self {
                             return Some((
-                                AssocSuggestion::MethodWithSelf { called },
+                                AssocSuggestion::MethodWithSelf { called, from },
                                 binding.span,
                             ));
                         } else {
-                            return Some((AssocSuggestion::AssocFn { called }, binding.span));
+                            return Some((AssocSuggestion::AssocFn { called, from }, binding.span));
                         }
                     }
                     Res::Def(DefKind::AssocConst, _) => {
                         return Some((AssocSuggestion::AssocConst, binding.span));
                     }
                     Res::Def(DefKind::AssocTy, _) => {
-                        return Some((AssocSuggestion::AssocType, binding.span));
+                        return Some((AssocSuggestion::AssocType { from }, binding.span));
                     }
                     _ => {}
                 }

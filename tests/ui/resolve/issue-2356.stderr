@@ -1,11 +1,17 @@
 error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:39:5
    |
-LL |   whiskers: isize,
-   |   -------- a field by that name exists in `Self`
-...
+LL | impl Groom for Cat {
+LL |   fn shave(other: usize) {
 LL |     whiskers -= other;
    |     ^^^^^^^^
+   |
+note: a field by that name exists in `Self`
+  --> $DIR/issue-2356.rs:6:3
+   |
+LL | pub struct Cat {
+LL |   whiskers: isize,
+   |   ^^^^^^^^
 
 error[E0424]: cannot find value `self` in this scope
   --> $DIR/issue-2356.rs:65:8
@@ -35,11 +41,18 @@ LL |     self.whiskers = 0;
 error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:84:5
    |
-LL |   whiskers: isize,
-   |   -------- a field by that name exists in `Self`
+LL | impl Cat {
 ...
+LL |   pub fn grow_older(other:usize) {
 LL |     whiskers = 4;
    |     ^^^^^^^^
+   |
+note: a field by that name exists in `Self`
+  --> $DIR/issue-2356.rs:6:3
+   |
+LL | pub struct Cat {
+LL |   whiskers: isize,
+   |   ^^^^^^^^
 
 error[E0424]: cannot find value `self` in this scope
   --> $DIR/issue-2356.rs:92:5

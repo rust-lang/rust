@@ -14,6 +14,84 @@ macro_rules! test_mask_api {
             use wasm_bindgen_test::*;
 
             use core_simd::simd::Mask;
+            use core_simd::simd::cmp::{SimdOrd, SimdPartialOrd};
+
+            test_helpers::test_lanes! {
+                fn simd_lt<const LANES: usize>() {
+                    test_helpers::test_binary_mask_elementwise(
+                        &Mask::<$type, LANES>::simd_lt,
+                        &|x: bool, y: bool| x.lt(&y),
+                        &|_, _| true,
+                    );
+                }
+
+                fn simd_le<const LANES: usize>() {
+                    test_helpers::test_binary_mask_elementwise(
+                        &Mask::<$type, LANES>::simd_le,
+                        &|x: bool, y: bool| x.le(&y),
+                        &|_, _| true,
+                    );
+                }
+
+                fn simd_gt<const LANES: usize>() {
+                    test_helpers::test_binary_mask_elementwise(
+                        &Mask::<$type, LANES>::simd_gt,
+                        &|x: bool, y: bool| x.gt(&y),
+                        &|_, _| true,
+                    );
+                }
+
+                fn simd_ge<const LANES: usize>() {
+                    test_helpers::test_binary_mask_elementwise(
+                        &Mask::<$type, LANES>::simd_ge,
+                        &|x: bool, y: bool| x.ge(&y),
+                        &|_, _| true,
+                    );
+                }
+
+                fn simd_min<const LANES: usize>() {
+                    test_helpers::test_binary_elementwise(
+                        &Mask::<$type, LANES>::simd_min,
+                        &core::cmp::min,
+                        &|_, _| true,
+                    );
+                }
+
+                fn simd_max<const LANES: usize>() {
+                    test_helpers::test_binary_elementwise(
+                        &Mask::<$type, LANES>::simd_max,
+                        &core::cmp::max,
+                        &|_, _| true,
+                    );
+                }
+            }
+
+            // LLVM can crash compiling this test on Windows x86-64 with AVX-512.
+            // https://github.com/llvm/llvm-project/issues/231707
+            #[cfg(not(all(
+                target_arch = "x86_64",
+                target_os = "windows",
+                target_feature = "avx512f",
+            )))]
+            test_helpers::test_lanes! {
+                fn simd_clamp<const LANES: usize>() {
+                    test_helpers::test_ternary_elementwise(
+                        &|value: Mask<$type, LANES>, a: Mask<$type, LANES>, b: Mask<$type, LANES>| {
+                            value.simd_clamp(a.simd_min(b), a.simd_max(b))
+                        },
+                        &|value: bool, a: bool, b: bool| value.clamp(a.min(b), a.max(b)),
+                        &|_, _, _| true,
+                    );
+                }
+            }
+
+            test_helpers::test_lanes_panic! {
+                fn simd_clamp_invalid_bounds<const LANES: usize>() {
+                    let mut min = Mask::<$type, LANES>::splat(false);
+                    min.set(LANES - 1, true);
+                    let _ = Mask::<$type, LANES>::splat(false).simd_clamp(min, Mask::splat(false));
+                }
+            }
 
             #[test]
             #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
