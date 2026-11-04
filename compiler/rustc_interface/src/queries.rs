@@ -68,6 +68,11 @@ impl Linker {
             }
         });
 
+        // Backends could raise an error, do not continue if that's the case.
+        if let Some(guar) = sess.dcx().has_errors_or_delayed_bugs() {
+            guar.raise_fatal();
+        }
+
         if sess.opts.incremental.is_some()
             && let Some(path) = self.metadata.path()
         {
@@ -78,10 +83,6 @@ impl Linker {
                 &[(OutputType::Metadata.extension(), path)],
             );
             work_products.insert(id, product);
-        }
-
-        if let Some(guar) = sess.dcx().has_errors_or_delayed_bugs() {
-            guar.raise_fatal();
         }
 
         let _timer = sess.timer("link");
