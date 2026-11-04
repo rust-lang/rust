@@ -717,6 +717,7 @@ impl<'tcx> MiriMachine<'tcx> {
                     note!(
                         "an unspecified socket address (e.g. `0.0.0.0:0`) will be returned instead"
                     ),
+                    note!("this warning is only shown once per program execution"),
                 ],
             SocketAddressResolution { .. } =>
                 vec![note!(
@@ -771,6 +772,7 @@ impl<'tcx> MiriMachine<'tcx> {
                         help!(
                             "tracing memory accesses in native code is not yet fully implemented, so there can be further imprecisions beyond what is documented here"
                         ),
+                        note!("this warning is only shown once per program execution"),
                     ]
                 } else {
                     vec![
@@ -786,6 +788,7 @@ impl<'tcx> MiriMachine<'tcx> {
                         help!(
                             "what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free"
                         ),
+                        note!("this warning is only shown once per program execution"),
                     ]
                 },
             ExternTypeReborrow => {
@@ -802,6 +805,7 @@ impl<'tcx> MiriMachine<'tcx> {
                     help!(
                         "try running with `MIRIFLAGS=-Zmiri-tree-borrows` to use the more permissive but also even more experimental Tree Borrows aliasing checks instead"
                     ),
+                    note!("this warning is only shown once per program execution"),
                 ]
             }
             GenmcCompareExchangeWeak =>
