@@ -189,7 +189,7 @@ fn check_final_expr<'tcx>(
                         matches!(
                             lint,
                             LintCheck {
-                                lint_name: LintName {
+                                lint_name_normalized: LintName {
                                     tool: Some(sym::clippy),
                                     name: sym::needless_return | sym::style | sym::all | sym::warnings
                                 },
