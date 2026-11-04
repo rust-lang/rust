@@ -18,11 +18,14 @@
 //! The computation is structured into three conceptual stages:
 //!
 //! ### 1. Type normalization and lowering
-//!    Rust types are converted into a language-independent representation
-//!    (`ClangDiscTy`) that mirrors the type categories used by Clang when computing
-//!    function pointer discriminators. This includes canonicalization such as
-//!    treating all pointer-like types uniformly and mapping Rust constructs onto
-//!    their closest C equivalents.
+//!
+//!    Rust types are first canonicalized according to ABI representation
+//!    (treating ABI-equivalent wrappers and niche representations as their
+//!    underlying representation, and treating pointer-like types uniformly),
+//!    then converted into a language-independent representation (`ClangDiscTy`)
+//!    that mirrors the type categories used by Clang when computing function
+//!    pointer discriminators.
+//!
 //!    One notable exception is C `_Complex`. Rust has no corresponding native type,
 //!    so there is no canonical Rust representation to map onto Clang's `_Complex`
 //!    type category. Rather than infer one (for example, by treating `(f32, f32)`
@@ -61,7 +64,7 @@
 //!
 //! - Clang-compatible type model
 //!   - `ClangDiscTy`
-//!   - `canonicalize_c_type`
+//!   - `canonicalize_abi_compatible_type`
 //!   - `to_clang_disc_ty`
 //!
 //! - Encoding
@@ -78,12 +81,12 @@
 //! `extern "C"` and `extern "system"` function types only. It does NOT attempt
 //! to model full Rust type system rules.
 
-use rustc_abi::ExternAbi;
+use rustc_abi::{ExternAbi, TagEncoding, Variants};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, Unnormalized};
 use rustc_session::{PointerAuthDiscrimination, PointerAuthSchema};
-use rustc_span::sym;
 
 use crate::ptrauth::llvm_siphash::llvm_pointer_auth_stable_siphash;
+use crate::ty::layout::LayoutCx;
 
 /// Types that can serve as a source for function pointer type discrimination.
 ///
@@ -295,6 +298,9 @@ enum ClangDiscTy<'tcx> {
     // - raw pointers (`*const T`, `*mut T`)
     // - Rust references (`&T`, `&mut T`)
     // - function pointers
+    // - `Box<T, Global>` (canonicalized to a raw pointer)
+    // - `NonNull<T>` (canonicalized through its transparent representation)
+    // - DST pointer-like types (`dyn Trait`, slices, `str`)
     // All collapse to a single Clang-compatible 'P' node.
     Pointer,
 
@@ -312,35 +318,67 @@ enum ClangDiscTy<'tcx> {
     Void,
 }
 
-// Canonicalize Option-wrapped pointer types used to model C nullable pointers.
-//
-// Rust and Clang should compute identical discriminators for equivalent C APIs.
-// Clang does not distinguish nullable from non-nullable pointer types when
-// computing function pointer authentication discriminators, so
-// `Option<fn>` and `Option<*mut T>` are encoded identically to their
-// underlying pointer types.
-//
-// Although `Option<*mut T>` is not considered FFI-safe by Rust and triggers the
-// `improper_ctypes`/`improper_ctypes_definitions` lints, this is a warning
-// rather than a hard error. Canonicalizing it here preserves Clang-compatible
-// discriminator computation.
-//
-// Please see the following tests for sample use cases:
-// pauth-fn-ptr-type-discrimination-option-callback.rs,
-// pauth-fn-ptr-type-discrimination-option-return.rs and pauth-fn-ptr-type-discrimination-option.rs
-fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    if let ty::Adt(def, args) = ty.kind()
-        && tcx.is_diagnostic_item(sym::Option, def.did())
-    {
-        let inner = args.type_at(0);
+/// Canonicalizes Rust types that have the same ABI representation as a simpler
+/// C-compatible type for discriminator purposes.
+///
+/// As a result ABI-compatible types get the same discriminator:
+/// - a pattern type becomes its base type;
+/// - `Box<T, Global>` becomes `*const T`;
+/// - a size-0, alignment-1 type becomes `()`;
+/// - a `repr(transparent)` wrapper becomes its non-1-ZST field;
+/// - a two-variant enum with a niche becomes its payload.
+///
+/// The work is done on layouts, so it also merges some types that Rust does not
+/// guarantee to be ABI-compatible, for example: `Option<bool>` and `bool`. That
+/// only makes discriminators coarser, while still correct.
+///
+/// The steps repeat until nothing changes, as one can enable another:
+/// `Option<Box<T>>` becomes `Box<T>`, then `*const T`.
+fn canonicalize_abi_compatible_type<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    let typing_env = ty::TypingEnv::fully_monomorphized();
 
-        match inner.kind() {
-            ty::FnPtr(..) | ty::RawPtr(..) => return inner,
-            _ => {}
+    loop {
+        let before = ty;
+
+        if let ty::Pat(base, _) = ty.kind() {
+            ty = *base;
+        }
+
+        if ty.is_box_global(tcx) {
+            ty = Ty::new_imm_ptr(
+                tcx,
+                ty.boxed_ty().expect("is_box_global() returned true, so this must be a Box"),
+            );
+        }
+
+        if let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) {
+            if layout.is_zst() && layout.align.bytes() == 1 {
+                ty = tcx.types.unit;
+            } else if matches!(ty.kind(), ty::Adt(..)) {
+                let cx = LayoutCx::new(tcx, typing_env);
+                ty = layout.peel_transparent_wrappers_from_non_1zst(&cx).ty;
+            }
+        }
+
+        if let ty::Adt(def, args) = ty.kind()
+            && def.is_enum()
+            && def.variants().len() == 2
+            && let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty))
+            && let Variants::Multiple {
+                tag_encoding: TagEncoding::Niche { untagged_variant, .. },
+                ..
+            } = layout.variants
+        {
+            let variant = def.variant(untagged_variant);
+            if let [field] = &variant.fields.raw[..] {
+                ty = tcx.normalize_erasing_regions(typing_env, field.ty(tcx, *args));
+            }
+        }
+
+        if ty == before {
+            return ty;
         }
     }
-
-    ty
 }
 
 /// Lowers a Rust type into a Clang-compatible discriminator type.
@@ -363,10 +401,10 @@ fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 ///   `_Complex` types.
 /// This must remain in sync with Clang's `encodeTypeForFunctionPointerAuth`.
 fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> {
-    let ty = canonicalize_c_type(tcx, ty);
+    let ty = canonicalize_abi_compatible_type(tcx, ty);
     match ty.kind() {
         // C void / Rust ()
-        _ if ty.is_unit() => ClangDiscTy::Void,
+        _ if ty.is_unit() || ty.is_never() => ClangDiscTy::Void,
 
         // scalars
         ty::Bool => ClangDiscTy::Bool,
@@ -375,7 +413,8 @@ fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> 
         ty::Int(_) | ty::Uint(_) => ClangDiscTy::Int,
         ty::Float(f) => ClangDiscTy::Float(f),
 
-        // everything pointer-like collapses
+        // Pointer-like types form a discriminator boundary: the pointee type
+        // does not participate in the encoding.
         ty::RawPtr(..) | ty::Ref(..) | ty::FnPtr(..) | ty::Dynamic(..) | ty::Slice(_) | ty::Str => {
             ClangDiscTy::Pointer
         }
@@ -383,8 +422,13 @@ fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> 
         // arrays ignore size
         ty::Array(elem, _) => ClangDiscTy::Array { elem: *elem },
 
-        // enums to integer collapse
-        ty::Adt(def, _) if def.is_enum() => ClangDiscTy::EnumLikeInt,
+        // enums to integer collapse - mirrors Clang's Type::Enum handling,
+        // which recurses into the enum's underlying integer type.
+        // A non-niche, data-carrying enum (e.g. Option<*mut T>) is not an
+        // "enumerated type" in the C11 sense, such enums fall through to the
+        // general Adt(_) => AdtName(..) arm below instead.
+        ty::Adt(def, _) if def.is_enum() && def.is_payloadfree() => ClangDiscTy::EnumLikeInt,
+
         // simd vectors
         ty::Adt(def, args) if def.repr().simd() => {
             // Clang encodes SIMD vectors by their total size

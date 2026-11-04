@@ -1,0 +1,1022 @@
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:107:1
+   |
+LL | extern "C" fn p1_a(_: *const i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:107:1
+   |
+LL | extern "C" fn p1_a(_: *const i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:111:1
+   |
+LL | extern "C" fn p1_b(_: *mut i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:111:1
+   |
+LL | extern "C" fn p1_b(_: *mut i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:115:1
+   |
+LL | extern "C" fn p1_c(_: &i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:115:1
+   |
+LL | extern "C" fn p1_c(_: &i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:119:1
+   |
+LL | extern "C" fn p1_d(_: &mut i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:119:1
+   |
+LL | extern "C" fn p1_d(_: &mut i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:123:1
+   |
+LL | extern "C" fn p1_e(_: Box<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:123:1
+   |
+LL | extern "C" fn p1_e(_: Box<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:127:1
+   |
+LL | extern "C" fn p1_f(_: NonNull<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:127:1
+   |
+LL | extern "C" fn p1_f(_: NonNull<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:131:1
+   |
+LL | extern "C" fn p1_g(_: *const SomeStruct) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:131:1
+   |
+LL | extern "C" fn p1_g(_: *const SomeStruct) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:137:1
+   |
+LL | extern "C" fn p2_a(_: *const [i32]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:137:1
+   |
+LL | extern "C" fn p2_a(_: *const [i32]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:141:1
+   |
+LL | extern "C" fn p2_b(_: &[u8]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:141:1
+   |
+LL | extern "C" fn p2_b(_: &[u8]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:145:1
+   |
+LL | extern "C" fn p2_c(_: *const str) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:145:1
+   |
+LL | extern "C" fn p2_c(_: *const str) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:149:1
+   |
+LL | extern "C" fn p2_d(_: Box<[u16]>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:149:1
+   |
+LL | extern "C" fn p2_d(_: Box<[u16]>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:157:1
+   |
+LL | extern "C" fn i1_a(_: usize) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:157:1
+   |
+LL | extern "C" fn i1_a(_: usize) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:161:1
+   |
+LL | extern "C" fn i1_b(_: u64) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:161:1
+   |
+LL | extern "C" fn i1_b(_: u64) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:165:1
+   |
+LL | extern "C" fn i1_c(_: isize) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:165:1
+   |
+LL | extern "C" fn i1_c(_: isize) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:169:1
+   |
+LL | extern "C" fn i1_d(_: i64) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:169:1
+   |
+LL | extern "C" fn i1_d(_: i64) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:173:1
+   |
+LL | extern "C" fn i1_e(_: char) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:173:1
+   |
+LL | extern "C" fn i1_e(_: char) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:177:1
+   |
+LL | extern "C" fn i1_f(_: u32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:177:1
+   |
+LL | extern "C" fn i1_f(_: u32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat.rs:184:1
+   |
+LL | extern "C" fn z1_a(_: ()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat.rs:184:1
+   |
+LL | extern "C" fn z1_a(_: ()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat.rs:188:1
+   |
+LL | extern "C" fn z1_b(_: Unit) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat.rs:188:1
+   |
+LL | extern "C" fn z1_b(_: Unit) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat.rs:192:1
+   |
+LL | extern "C" fn z1_c(_: PhantomData<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat.rs:192:1
+   |
+LL | extern "C" fn z1_c(_: PhantomData<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat.rs:196:1
+   |
+LL | extern "C" fn z1_d(_: [u8; 0]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat.rs:196:1
+   |
+LL | extern "C" fn z1_d(_: [u8; 0]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat.rs:200:1
+   |
+LL | extern "C" fn z1_e(_: OneVariant) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat.rs:200:1
+   |
+LL | extern "C" fn z1_e(_: OneVariant) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat.rs:204:1
+   |
+LL | extern "C" fn z1_f(_: ((), PhantomData<u8>)) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat.rs:204:1
+   |
+LL | extern "C" fn z1_f(_: ((), PhantomData<u8>)) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat.rs:208:1
+   |
+LL | extern "C" fn z1_g(_: [(); 3]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat.rs:208:1
+   |
+LL | extern "C" fn z1_g(_: [(); 3]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat.rs:212:1
+   |
+LL | extern "C" fn z1_h(_: TrivialWrapper) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat.rs:212:1
+   |
+LL | extern "C" fn z1_h(_: TrivialWrapper) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvvE"
+  --> $DIR/discriminator-abi-compat.rs:216:1
+   |
+LL | extern "C" fn z1_i(_: !) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61000 (0xee48)
+  --> $DIR/discriminator-abi-compat.rs:216:1
+   |
+LL | extern "C" fn z1_i(_: !) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:223:1
+   |
+LL | extern "C" fn w1_a(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:223:1
+   |
+LL | extern "C" fn w1_a(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:227:1
+   |
+LL | extern "C" fn w1_b(_: Wrapper) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:227:1
+   |
+LL | extern "C" fn w1_b(_: Wrapper) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:231:1
+   |
+LL | extern "C" fn w1_c(_: WrapperWithZst) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:231:1
+   |
+LL | extern "C" fn w1_c(_: WrapperWithZst) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:235:1
+   |
+LL | extern "C" fn w1_d(_: NonZero<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:235:1
+   |
+LL | extern "C" fn w1_d(_: NonZero<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:242:1
+   |
+LL | extern "C" fn o1_a(_: Option<&i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:242:1
+   |
+LL | extern "C" fn o1_a(_: Option<&i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:246:1
+   |
+LL | extern "C" fn o1_b(_: Option<NonNull<i32>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:246:1
+   |
+LL | extern "C" fn o1_b(_: Option<NonNull<i32>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:250:1
+   |
+LL | extern "C" fn o1_c(_: MyOption<NonNull<i32>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:250:1
+   |
+LL | extern "C" fn o1_c(_: MyOption<NonNull<i32>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:254:1
+   |
+LL | extern "C" fn o1_d(_: Option<Box<i32>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:254:1
+   |
+LL | extern "C" fn o1_d(_: Option<Box<i32>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:258:1
+   |
+LL | extern "C" fn o1_e(_: Option<fn()>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:258:1
+   |
+LL | extern "C" fn o1_e(_: Option<fn()>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:264:1
+   |
+LL | extern "C" fn o2_a(_: NonZero<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:264:1
+   |
+LL | extern "C" fn o2_a(_: NonZero<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:268:1
+   |
+LL | extern "C" fn o2_b(_: Option<NonZero<i32>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:268:1
+   |
+LL | extern "C" fn o2_b(_: Option<NonZero<i32>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:276:1
+   |
+LL | extern "C" fn f1_a(_: fn()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:276:1
+   |
+LL | extern "C" fn f1_a(_: fn()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:280:1
+   |
+LL | extern "C" fn f1_b(_: fn(i32) -> i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:280:1
+   |
+LL | extern "C" fn f1_b(_: fn(i32) -> i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:284:1
+   |
+LL | extern "C" fn f1_c(_: extern "C" fn()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:284:1
+   |
+LL | extern "C" fn f1_c(_: extern "C" fn()) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:288:1
+   |
+LL | extern "C" fn f1_d(_: extern "C-unwind" fn(i32)) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:288:1
+   |
+LL | extern "C" fn f1_d(_: extern "C-unwind" fn(i32)) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvE"
+  --> $DIR/discriminator-abi-compat.rs:294:1
+   |
+LL | extern "C" fn r1_a() {}
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 18983 (0x4a27)
+  --> $DIR/discriminator-abi-compat.rs:294:1
+   |
+LL | extern "C" fn r1_a() {}
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvE"
+  --> $DIR/discriminator-abi-compat.rs:298:1
+   |
+LL | extern "C" fn r1_b() -> () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 18983 (0x4a27)
+  --> $DIR/discriminator-abi-compat.rs:298:1
+   |
+LL | extern "C" fn r1_b() -> () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvE"
+  --> $DIR/discriminator-abi-compat.rs:302:1
+   |
+LL | extern "C" fn r1_c() -> ! { loop {} }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 18983 (0x4a27)
+  --> $DIR/discriminator-abi-compat.rs:302:1
+   |
+LL | extern "C" fn r1_c() -> ! { loop {} }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvE"
+  --> $DIR/discriminator-abi-compat.rs:306:1
+   |
+LL | extern "C" fn r1_d() -> Unit { Unit }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 18983 (0x4a27)
+  --> $DIR/discriminator-abi-compat.rs:306:1
+   |
+LL | extern "C" fn r1_d() -> Unit { Unit }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvE"
+  --> $DIR/discriminator-abi-compat.rs:310:1
+   |
+LL | extern "C" fn r1_e() -> PhantomData<u8> { PhantomData }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 18983 (0x4a27)
+  --> $DIR/discriminator-abi-compat.rs:310:1
+   |
+LL | extern "C" fn r1_e() -> PhantomData<u8> { PhantomData }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FPE"
+  --> $DIR/discriminator-abi-compat.rs:316:1
+   |
+LL | extern "C" fn r2_a() -> *const i32 { std::ptr::null() }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 34128 (0x8550)
+  --> $DIR/discriminator-abi-compat.rs:316:1
+   |
+LL | extern "C" fn r2_a() -> *const i32 { std::ptr::null() }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FPE"
+  --> $DIR/discriminator-abi-compat.rs:320:1
+   |
+LL | extern "C" fn r2_b() -> Option<&'static i32> { None }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 34128 (0x8550)
+  --> $DIR/discriminator-abi-compat.rs:320:1
+   |
+LL | extern "C" fn r2_b() -> Option<&'static i32> { None }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FPE"
+  --> $DIR/discriminator-abi-compat.rs:324:1
+   |
+LL | extern "C" fn r2_c() -> Option<NonNull<i32>> { None }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 34128 (0x8550)
+  --> $DIR/discriminator-abi-compat.rs:324:1
+   |
+LL | extern "C" fn r2_c() -> Option<NonNull<i32>> { None }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FPE"
+  --> $DIR/discriminator-abi-compat.rs:328:1
+   |
+LL | extern "C" fn r2_d() -> Option<Box<i32>> { None }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 34128 (0x8550)
+  --> $DIR/discriminator-abi-compat.rs:328:1
+   |
+LL | extern "C" fn r2_d() -> Option<Box<i32>> { None }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FiE"
+  --> $DIR/discriminator-abi-compat.rs:334:1
+   |
+LL | extern "C" fn r3_a() -> u32 { 0 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 42271 (0xa51f)
+  --> $DIR/discriminator-abi-compat.rs:334:1
+   |
+LL | extern "C" fn r3_a() -> u32 { 0 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FiE"
+  --> $DIR/discriminator-abi-compat.rs:338:1
+   |
+LL | extern "C" fn r3_b() -> char { 'a' }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 42271 (0xa51f)
+  --> $DIR/discriminator-abi-compat.rs:338:1
+   |
+LL | extern "C" fn r3_b() -> char { 'a' }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FiE"
+  --> $DIR/discriminator-abi-compat.rs:342:1
+   |
+LL | extern "C" fn r3_c() -> NonZero<u32> { NonZero::new(1).unwrap() }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 42271 (0xa51f)
+  --> $DIR/discriminator-abi-compat.rs:342:1
+   |
+LL | extern "C" fn r3_c() -> NonZero<u32> { NonZero::new(1).unwrap() }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:348:1
+   |
+LL | extern "C" fn a1_a(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:348:1
+   |
+LL | extern "C" fn a1_a(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:352:1
+   |
+LL | extern "C-unwind" fn a1_b(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:352:1
+   |
+LL | extern "C-unwind" fn a1_b(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:356:1
+   |
+LL | extern "system" fn a1_c(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:356:1
+   |
+LL | extern "system" fn a1_c(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:360:1
+   |
+LL | extern "system-unwind" fn a1_d(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:360:1
+   |
+LL | extern "system-unwind" fn a1_d(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:366:1
+   |
+LL | extern "C" fn s1_a(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:366:1
+   |
+LL | extern "C" fn s1_a(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:370:1
+   |
+LL | unsafe extern "C" fn s1_b(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:370:1
+   |
+LL | unsafe extern "C" fn s1_b(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:380:1
+   |
+LL | extern "C" fn c1_a(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:380:1
+   |
+LL | extern "C" fn c1_a(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:384:1
+   |
+LL | extern "C" fn c1_b(_: bool) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:384:1
+   |
+LL | extern "C" fn c1_b(_: bool) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:388:1
+   |
+LL | extern "C" fn c1_c(_: u8) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:388:1
+   |
+LL | extern "C" fn c1_c(_: u8) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:392:1
+   |
+LL | extern "C" fn c1_d(_: i16) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:392:1
+   |
+LL | extern "C" fn c1_d(_: i16) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:396:1
+   |
+LL | extern "C" fn c1_e(_: NonZero<i16>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:396:1
+   |
+LL | extern "C" fn c1_e(_: NonZero<i16>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:402:1
+   |
+LL | extern "C" fn c2_a(_: *const i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:402:1
+   |
+LL | extern "C" fn c2_a(_: *const i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:406:1
+   |
+LL | extern "C" fn c2_b(_: *const [i32]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:406:1
+   |
+LL | extern "C" fn c2_b(_: *const [i32]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvAiE"
+  --> $DIR/discriminator-abi-compat.rs:412:1
+   |
+LL | extern "C" fn c3_a(_: [i32; 4]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 35183 (0x896f)
+  --> $DIR/discriminator-abi-compat.rs:412:1
+   |
+LL | extern "C" fn c3_a(_: [i32; 4]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvAiE"
+  --> $DIR/discriminator-abi-compat.rs:416:1
+   |
+LL | extern "C" fn c3_b(_: [i32; 8]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 35183 (0x896f)
+  --> $DIR/discriminator-abi-compat.rs:416:1
+   |
+LL | extern "C" fn c3_b(_: [i32; 8]) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv1SE"
+  --> $DIR/discriminator-abi-compat.rs:422:1
+   |
+LL | extern "C" fn c4_a(_: m1::S) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61901 (0xf1cd)
+  --> $DIR/discriminator-abi-compat.rs:422:1
+   |
+LL | extern "C" fn c4_a(_: m1::S) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv1SE"
+  --> $DIR/discriminator-abi-compat.rs:426:1
+   |
+LL | extern "C" fn c4_b(_: m2::S) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 61901 (0xf1cd)
+  --> $DIR/discriminator-abi-compat.rs:426:1
+   |
+LL | extern "C" fn c4_b(_: m2::S) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvE"
+  --> $DIR/discriminator-abi-compat.rs:435:1
+   |
+LL | extern "C" fn d1_a() {}
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 18983 (0x4a27)
+  --> $DIR/discriminator-abi-compat.rs:435:1
+   |
+LL | extern "C" fn d1_a() {}
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FviE"
+  --> $DIR/discriminator-abi-compat.rs:439:1
+   |
+LL | extern "C" fn d1_b(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+  --> $DIR/discriminator-abi-compat.rs:439:1
+   |
+LL | extern "C" fn d1_b(_: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FiE"
+  --> $DIR/discriminator-abi-compat.rs:443:1
+   |
+LL | extern "C" fn d1_c() -> i32 { 0 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 42271 (0xa51f)
+  --> $DIR/discriminator-abi-compat.rs:443:1
+   |
+LL | extern "C" fn d1_c() -> i32 { 0 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:447:1
+   |
+LL | extern "C" fn d1_d(_: *const i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:447:1
+   |
+LL | extern "C" fn d1_d(_: *const i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvfE"
+  --> $DIR/discriminator-abi-compat.rs:451:1
+   |
+LL | extern "C" fn d1_e(_: f32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 21613 (0x546d)
+  --> $DIR/discriminator-abi-compat.rs:451:1
+   |
+LL | extern "C" fn d1_e(_: f32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvdE"
+  --> $DIR/discriminator-abi-compat.rs:455:1
+   |
+LL | extern "C" fn d1_f(_: f64) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 7718 (0x1e26)
+  --> $DIR/discriminator-abi-compat.rs:455:1
+   |
+LL | extern "C" fn d1_f(_: f64) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv3BoxE"
+  --> $DIR/discriminator-abi-compat.rs:468:1
+   |
+LL | extern "C" fn n1_a(_: Box<i32, MyAlloc>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 3916 (0xf4c)
+  --> $DIR/discriminator-abi-compat.rs:468:1
+   |
+LL | extern "C" fn n1_a(_: Box<i32, MyAlloc>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv13AlignedMarkerE"
+  --> $DIR/discriminator-abi-compat.rs:472:1
+   |
+LL | extern "C" fn n1_b(_: AlignedMarker) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 49590 (0xc1b6)
+  --> $DIR/discriminator-abi-compat.rs:472:1
+   |
+LL | extern "C" fn n1_b(_: AlignedMarker) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv14NotTransparentE"
+  --> $DIR/discriminator-abi-compat.rs:476:1
+   |
+LL | extern "C" fn n1_c(_: NotTransparent) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 37756 (0x937c)
+  --> $DIR/discriminator-abi-compat.rs:476:1
+   |
+LL | extern "C" fn n1_c(_: NotTransparent) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv6OptionE"
+  --> $DIR/discriminator-abi-compat.rs:480:1
+   |
+LL | extern "C" fn n1_d(_: Option<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 20395 (0x4fab)
+  --> $DIR/discriminator-abi-compat.rs:480:1
+   |
+LL | extern "C" fn n1_d(_: Option<i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv6OptionE"
+  --> $DIR/discriminator-abi-compat.rs:484:1
+   |
+LL | extern "C" fn n1_e(_: Option<*mut i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 20395 (0x4fab)
+  --> $DIR/discriminator-abi-compat.rs:484:1
+   |
+LL | extern "C" fn n1_e(_: Option<*mut i32>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv14WithExtraFieldE"
+  --> $DIR/discriminator-abi-compat.rs:488:1
+   |
+LL | extern "C" fn n1_f(_: WithExtraField) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 34575 (0x870f)
+  --> $DIR/discriminator-abi-compat.rs:488:1
+   |
+LL | extern "C" fn n1_f(_: WithExtraField) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv13ThreeVariantsE"
+  --> $DIR/discriminator-abi-compat.rs:492:1
+   |
+LL | extern "C" fn n1_g(_: ThreeVariants) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 9871 (0x268f)
+  --> $DIR/discriminator-abi-compat.rs:492:1
+   |
+LL | extern "C" fn n1_g(_: ThreeVariants) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "FvPE"
+  --> $DIR/discriminator-abi-compat.rs:500:1
+   |
+LL | extern "C" fn q1_a(_: Option<extern "C" fn()>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 10942 (0x2abe)
+  --> $DIR/discriminator-abi-compat.rs:500:1
+   |
+LL | extern "C" fn q1_a(_: Option<extern "C" fn()>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator encoding: "Fv6OptionE"
+  --> $DIR/discriminator-abi-compat.rs:504:1
+   |
+LL | extern "C" fn q1_b(_: Option<Option<extern "C" fn()>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 20395 (0x4fab)
+  --> $DIR/discriminator-abi-compat.rs:504:1
+   |
+LL | extern "C" fn q1_b(_: Option<Option<extern "C" fn()>>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 170 previous errors
+
