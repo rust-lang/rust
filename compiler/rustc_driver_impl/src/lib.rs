@@ -335,9 +335,9 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
                 }
             }
 
-            passes::finish_and_emit_metadata(tcx);
+            let metadata = passes::finish_and_emit_metadata(tcx);
 
-            let linker = Linker::codegen_and_build_linker(tcx, codegen_backend);
+            let linker = Linker::codegen_and_build_linker(tcx, codegen_backend, metadata);
 
             if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
                 dump_feature_usage_metrics(tcx, metrics_dir);

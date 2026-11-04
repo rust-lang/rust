@@ -29,8 +29,9 @@ impl Linker {
     pub fn codegen_and_build_linker(
         tcx: TyCtxt<'_>,
         codegen_backend: &dyn CodegenBackend,
+        metadata: EncodedMetadata,
     ) -> Linker {
-        let (ongoing_codegen, crate_info, metadata) = passes::start_codegen(codegen_backend, tcx);
+        let (ongoing_codegen, crate_info) = passes::start_codegen(codegen_backend, tcx);
 
         Linker {
             dep_graph: tcx.dep_graph.clone(),
