@@ -707,7 +707,7 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     #[unstable(feature = "btreemap_alloc", issue = "163177")]
     #[inline]
     pub fn allocator(&self) -> &A {
-        &*self.alloc
+        &self.alloc
     }
 }
 
