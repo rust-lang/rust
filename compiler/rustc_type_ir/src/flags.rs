@@ -282,6 +282,10 @@ impl<I: Interner> FlagComputation<I> {
         Self { flags, ..Self::new() }
     }
 
+    pub fn for_empty_flags() -> Self {
+        Self { flags: TypeFlags::empty(), ..Self::new() }
+    }
+
     pub fn for_args(args: I::GenericArgs) -> Self {
         let mut result = Self::new();
         result.add_args(args.as_slice());
