@@ -756,5 +756,10 @@ fn main() {
             "fn f() { $0!(2 * x as usize >= 5 && y) }",
             "fn f() { (2 * x as usize) < 5 || !y }",
         );
+        check_assist(
+            apply_demorgan,
+            "fn f() { $0!(x as usize >= 5 && y) }",
+            "fn f() { (x as usize) < 5 || !y }",
+        );
     }
 }
