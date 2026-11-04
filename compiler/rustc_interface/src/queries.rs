@@ -29,6 +29,7 @@ impl Linker {
     pub fn codegen_and_build_linker(
         tcx: TyCtxt<'_>,
         codegen_backend: &dyn CodegenBackend,
+        metadata: EncodedMetadata,
     ) -> Linker {
         let (ongoing_codegen, crate_info) = passes::run_codegen(codegen_backend, tcx);
 
