@@ -161,11 +161,12 @@ fn compare_strings<'tcx>(
 
                         if k >= default_len {
                             // The string ends before the match is completed, but the end
-                            // is defined by the register size, not the string. The match is kept.
+                            // is defined by the register size, not the string.
+                            // This situation counts as a match.
                             break;
                         } else if k >= len2 {
                             // The string ends before the match is completed.
-                            // Remove the match.
+                            // This means that there is no match.
                             has_match = false;
                             break;
                         } else {
@@ -181,6 +182,7 @@ fn compare_strings<'tcx>(
                         }
                     }
 
+                    // Accumulate the match result inside the bit mask.
                     if has_match {
                         result |= 1 << i;
                     }
