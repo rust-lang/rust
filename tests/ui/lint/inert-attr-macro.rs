@@ -16,7 +16,6 @@ fn main() {
     //~^ WARN the `allow` attribute cannot be used on macro calls
     //~| WARN previously accepted
     //~| WARN the `inline` attribute cannot be used on macro calls
-    //~| WARN previously accepted
 
     // This does work, since the attribute is on a parent
     // of the macro invocation.
