@@ -2354,6 +2354,93 @@ impl Expr<'_> {
         }
     }
 
+    /// Returns true if mir building would consider this expression a constant for the purposes of
+    /// lowering `[CONST; 0]` as `[]`.
+    pub fn is_constant_for_zero_repeat(&self) -> bool {
+        // NB: This needs to be kept in sync with `rustc_mir_build::builder::expr::category::Category::of`
+
+        match self.kind {
+            ExprKind::ConstBlock(_) | ExprKind::Lit(_) => true,
+            ExprKind::Cast(inner, _) | ExprKind::Type(inner, _) => {
+                inner.is_constant_for_zero_repeat()
+            }
+
+            ExprKind::Path(qpath) => {
+                match qpath {
+                    QPath::Resolved(_, Path { res: Res::Def(def_kind, _), .. }) => match def_kind {
+                        DefKind::Const | DefKind::ConstParam | DefKind::AssocConst => true,
+
+                        DefKind::Mod
+                        | DefKind::Struct
+                        | DefKind::Union
+                        | DefKind::Enum
+                        | DefKind::Variant
+                        | DefKind::Trait
+                        | DefKind::TyAlias
+                        | DefKind::ForeignTy
+                        | DefKind::TraitAlias
+                        | DefKind::AssocTy
+                        | DefKind::TyParam
+                        | DefKind::Fn
+                        | DefKind::Static { .. }
+                        | DefKind::Ctor(..)
+                        | DefKind::AssocFn
+                        | DefKind::Macro(_)
+                        | DefKind::ExternCrate
+                        | DefKind::Use
+                        | DefKind::ForeignMod
+                        | DefKind::AnonConst
+                        | DefKind::OpaqueTy
+                        | DefKind::Field
+                        | DefKind::LifetimeParam
+                        | DefKind::GlobalAsm
+                        | DefKind::Impl { .. }
+                        | DefKind::Closure
+                        | DefKind::SyntheticCoroutineBody
+                        | DefKind::TestBinderConstraints => false,
+                    },
+
+                    // A path that resolved to something other than a definition cannot be a const
+                    QPath::Resolved(..) => false,
+
+                    // A type relative expression can only be a const
+                    QPath::TypeRelative(..) => true,
+                }
+            }
+
+            ExprKind::Array(_)
+            | ExprKind::Call(..)
+            | ExprKind::MethodCall(..)
+            | ExprKind::Use(..)
+            | ExprKind::Tup(_)
+            | ExprKind::Binary(..)
+            | ExprKind::Unary(..)
+            | ExprKind::DropTemps(_)
+            | ExprKind::Let(_)
+            | ExprKind::If(..)
+            | ExprKind::Loop(..)
+            | ExprKind::Match(..)
+            | ExprKind::Closure(_)
+            | ExprKind::Block(..)
+            | ExprKind::Assign(..)
+            | ExprKind::AssignOp(..)
+            | ExprKind::Field(..)
+            | ExprKind::Index(..)
+            | ExprKind::AddrOf(..)
+            | ExprKind::Break(..)
+            | ExprKind::Continue(_)
+            | ExprKind::Ret(_)
+            | ExprKind::Become(_)
+            | ExprKind::InlineAsm(_)
+            | ExprKind::OffsetOf(..)
+            | ExprKind::Struct(..)
+            | ExprKind::Repeat(..)
+            | ExprKind::Yield(..)
+            | ExprKind::UnsafeBinderCast(..)
+            | ExprKind::Err(_) => false,
+        }
+    }
+
     /// If this is a desugared range expression,
     /// returns the span of the range without desugaring context.
     pub fn range_span(&self) -> Option<Span> {

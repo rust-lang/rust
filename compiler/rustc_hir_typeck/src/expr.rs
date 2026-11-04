@@ -1739,10 +1739,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
         );
 
+        let count_is_zero = {
+            if let Ok(count) = tcx.try_normalize_erasing_regions(
+                self.typing_env(self.param_env),
+                Unnormalized::new_wip(count),
+            ) {
+                count.try_to_value().and_then(|c| c.try_to_target_usize(tcx)) == Some(0)
+            } else {
+                false
+            }
+        };
+
         let uty = match expected {
             ExpectHasType(uty) => uty.builtin_index(),
             _ => None,
         };
+
+        let old_diverges = self.diverges.get();
 
         let (element_ty, t) = match uty {
             Some(uty) => {
@@ -1755,6 +1768,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (element_ty, ty)
             }
         };
+
+        // FIXME: remove this workaround for an unsoundness (#165323) once it's no longer needed.
+        //
+        // MIR building lowers `[CONST; 0]` to `[]`, making `CONST` not evaluated.
+        //
+        // This is a problem, because it means if `CONST` is `const { panic!() }`, the side effect
+        // of panic / failing compilation never happens. In such cases we need to ignore divergence
+        // from the `CONST`, as otherwise we can end up executing code that was assumed unreachable.
+        if count_is_zero && element.is_constant_for_zero_repeat() {
+            self.diverges.set(old_diverges);
+        }
 
         if let Err(guar) = element_ty.error_reported() {
             return Ty::new_error(tcx, guar);
