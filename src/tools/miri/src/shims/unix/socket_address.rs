@@ -177,6 +177,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let addr_bits = u32::from_be_bytes(addr_bytes);
 
             // We entirely ignore the sin_zero field as it disappeared from modern POSIX.
+            // We ignore the `sin_len` field as it isn't respected by any of the supported targets.
 
             SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::from_bits(addr_bits), port))
         } else if family == this.eval_libc_i32("AF_INET6").into() {
@@ -215,6 +216,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // scope_id doesn't get the big endian treatment as this field is stored in native byte order
             // and not in network byte order.
             let scope_id = this.read_scalar(&scope_id_field)?.to_u32()?;
+
+            // We ignore the `sin6_len` field as it isn't respected by any of the supported targets.
 
             SocketAddr::V6(SocketAddrV6::new(
                 Ipv6Addr::from_bits(addr_bits),
@@ -300,6 +303,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_int(0, &elem)?;
                 }
 
+                // OS-specific fields. std assumes they are initialized, too.
+                if matches!(this.tcx.sess.target.os, Os::FreeBsd | Os::MacOs) {
+                    let sin_len_field = this.project_field_named(&address_buffer, "sin_len")?;
+                    this.write_int(sockaddr_in_layout.size.bytes(), &sin_len_field)?;
+                }
+
                 address_buffer
             }
             SocketAddr::V6(address) => {
@@ -352,6 +361,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let sin6_src_id_field =
                         this.project_field_named(&address_buffer, "__sin6_src_id")?;
                     this.write_int(0, &sin6_src_id_field)?;
+                } else if matches!(this.tcx.sess.target.os, Os::FreeBsd | Os::MacOs) {
+                    let sin6_len_field = this.project_field_named(&address_buffer, "sin6_len")?;
+                    this.write_int(sockaddr_in6_layout.size.bytes(), &sin6_len_field)?;
                 }
 
                 address_buffer
