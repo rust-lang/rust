@@ -283,9 +283,14 @@ jobs:
         run: |
           # Make it easier to see what happens.
           set -x
+
+          if [[ "${GH_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            PULL_FLAGS="--allow-noop"
+          fi
+
           # Temporarily disable early exit to examine the status code of rustc-josh-sync
           set +e
-          rustc-josh-sync pull
+          rustc-josh-sync pull $PULL_FLAGS
           exitcode=$?
           set -e
 
@@ -314,6 +319,7 @@ jobs:
           gh pr create -B master --title 'Automatic Rustup' --body-file message.txt
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_EVENT_NAME: ${{ github.event_name }}
 
   cron-fail-notify:
     name: cronjob failure notification
