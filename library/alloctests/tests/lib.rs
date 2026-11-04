@@ -13,6 +13,7 @@
 #![feature(byte_str_to_string)]
 #![feature(can_vector)]
 #![feature(casefold)]
+#![feature(clone_from_ref)]
 #![feature(const_cmp)]
 #![feature(const_heap)]
 #![feature(const_trait_impl)]
