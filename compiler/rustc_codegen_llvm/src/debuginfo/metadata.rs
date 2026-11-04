@@ -1780,9 +1780,13 @@ impl VCallVisibility {
     }
 }
 
+/// Apply the virtual call visibility metadata to the vtable.
+///
+/// Adds a !type annotation for every trait in the trait hierarchy, and a !vcall_visibility
+/// annotation based on the most visible trait in the hierarchy.
 pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    trait_ref: Option<ExistentialTraitRef<'tcx>>,
+    trait_hierarchy: &[ExistentialTraitRef<'tcx>],
     vtable: Value<'ll>,
 ) {
     // FIXME(flip1995): The virtual function elimination optimization only works with full LTO in
@@ -1791,19 +1795,29 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
         return;
     }
 
-    let Some(trait_ref) = trait_ref else { return };
+    // Find the smallest "scope" from which virtual calls using this vtable can be made.
+    let Some(vcall_visibility) =
+        trait_hierarchy.iter().map(|trait_ref| VCallVisibility::for_trait(cx, trait_ref)).min()
+    else {
+        return;
+    };
 
-    // Unwrap potential addrspacecast
+    // Unwrap a potential addrspacecast.
     let vtable = find_vtable_behind_cast(vtable);
 
-    let vcall_visibility = VCallVisibility::for_def_id(cx, trait_ref.def_id);
+    // The start of a Rust vtable is at offset 0 of a `&dyn T`'s address.
+    let vtable_offset = 0;
 
-    let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);
-    let typeid = cx.create_metadata(trait_ref_typeid.as_bytes());
+    // Add `!type !{i64 0, !"typeid"}` to the vtable for each trait in the hierarchy.
+    for trait_ref in trait_hierarchy {
+        let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, *trait_ref);
+        let typeid = cx.create_metadata(trait_ref_typeid.as_bytes());
 
-    let type_ = [llvm::LLVMValueAsMetadata(cx.const_u64(0)), typeid];
-    cx.global_add_metadata_node(vtable, llvm::MD_type, &type_);
+        let type_ = [llvm::LLVMValueAsMetadata(cx.const_u64(vtable_offset)), typeid];
+        cx.global_add_metadata_node(vtable, llvm::MD_type, &type_);
+    }
 
+    // Add `!vcall_visibility !{i64 vis}` to the vtable.
     let vcall_visibility = [llvm::LLVMValueAsMetadata(cx.const_u64(vcall_visibility as u64))];
     cx.global_set_metadata_node(vtable, llvm::MD_vcall_visibility, &vcall_visibility);
 }
