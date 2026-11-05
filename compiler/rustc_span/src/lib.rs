@@ -16,11 +16,13 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![allow(incomplete_features)]
 #![allow(internal_features)]
 #![cfg_attr(all(bootstrap, target_arch = "loongarch64"), feature(stdarch_loongarch))]
 #![feature(core_io_borrowed_buf)]
 #![feature(decl_macro)]
 #![feature(diagnostic_on_unknown)]
+#![feature(extern_item_impls)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
@@ -33,8 +35,8 @@
 // this crate without this line making `rustc_span` available.
 extern crate self as rustc_span;
 
+use rustc_data_structures::outline;
 use rustc_data_structures::stable_hash::{DummyStableHashCtxt, StableHashCtxt};
-use rustc_data_structures::{AtomicRef, outline};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_serialize::opaque::mem_encoder::MemEncoder;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
@@ -2835,7 +2837,8 @@ pub struct FileLines {
     pub lines: Vec<LineInfo>,
 }
 
-pub static SPAN_TRACK: AtomicRef<fn(LocalDefId)> = AtomicRef::new(&((|_| {}) as fn(_)));
+#[eii]
+fn track_span_parent(def_id: LocalDefId);
 
 // _____________________________________________________________________________
 // SpanLinesError, SpanSnippetError, DistinctSources, MalformedSourceMapPositions

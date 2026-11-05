@@ -9,7 +9,7 @@ use rustc_serialize::int_overflow::DebugStrictAdd;
 
 use crate::def_id::{DefIndex, LocalDefId};
 use crate::hygiene::SyntaxContext;
-use crate::{BytePos, SPAN_TRACK, SpanData};
+use crate::{BytePos, SpanData, track_span_parent};
 
 /// A compressed span.
 ///
@@ -450,7 +450,7 @@ impl Span {
     pub fn data(self) -> SpanData {
         let data = self.data_untracked();
         if let Some(parent) = data.parent {
-            (*SPAN_TRACK)(parent);
+            track_span_parent(parent);
         }
         data
     }
@@ -548,7 +548,7 @@ impl Span {
         };
 
         if let Some(old_parent) = data.parent {
-            (*SPAN_TRACK)(old_parent);
+            track_span_parent(old_parent);
         }
         data.with_parent(parent)
     }
