@@ -646,20 +646,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     io_status_info: MPlaceTy<'tcx>,
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, result: Result<usize, IoError>| {
+                |ecx, result: Result<usize, IoError>| {
                     match result {
                         Ok(read_size) => {
                             assert!(read_size <= count.try_into().unwrap());
                             // This must fit since `count` fits.
-                            this.write_int(u64::try_from(read_size).unwrap(), &io_status_info)?;
-                            this.write_int(0, &io_status)?;
-                            this.write_int(0, &dest)
+                            ecx.write_int(u64::try_from(read_size).unwrap(), &io_status_info)?;
+                            ecx.write_int(0, &io_status)?;
+                            ecx.write_int(0, &dest)
                         }
                         Err(e) => {
-                            this.write_int(0, &io_status_info)?;
+                            ecx.write_int(0, &io_status_info)?;
                             let status = e.into_ntstatus();
-                            this.write_int(status, &io_status)?;
-                            this.write_int(status, &dest)
+                            ecx.write_int(status, &io_status)?;
+                            ecx.write_int(status, &dest)
                         }
                 }}
             )
@@ -746,20 +746,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     io_status_info: MPlaceTy<'tcx>,
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, result: Result<usize, IoError>| {
+                |ecx, result: Result<usize, IoError>| {
                     match result {
                         Ok(read_size) => {
                             assert!(read_size <= count.try_into().unwrap());
                             // This must fit since `count` fits.
-                            this.write_int(u64::try_from(read_size).unwrap(), &io_status_info)?;
-                            this.write_int(0, &io_status)?;
-                            this.write_int(0, &dest)
+                            ecx.write_int(u64::try_from(read_size).unwrap(), &io_status_info)?;
+                            ecx.write_int(0, &io_status)?;
+                            ecx.write_int(0, &dest)
                         }
                         Err(e) => {
-                            this.write_int(0, &io_status_info)?;
+                            ecx.write_int(0, &io_status_info)?;
                             let status = e.into_ntstatus();
-                            this.write_int(status, &io_status)?;
-                            this.write_int(status, &dest)
+                            ecx.write_int(status, &io_status)?;
+                            ecx.write_int(status, &dest)
                         }
                 }}
             )

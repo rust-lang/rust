@@ -419,24 +419,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     address_ptr: Pointer,
                     address_len_place: MPlaceTy<'tcx>,
                     dest: MPlaceTy<'tcx>
-                } |this, result: Result<(FdNum, SocketAddr), IoError>| {
+                } |ecx, result: Result<(FdNum, SocketAddr), IoError>| {
                     let (client_sockfd, address) = match result {
                         Ok(data) => data,
-                        Err(e) => return this.set_errno_and_return_neg1(e, &dest),
+                        Err(e) => return ecx.set_errno_and_return_neg1(e, &dest),
                     };
 
                     if address_ptr != Pointer::null() {
                         // We only attempt a write if the address pointer is not a null pointer.
                         // If the address pointer is a null pointer the user isn't interested in the
                         // address and we don't need to write anything.
-                        this.write_socket_address(&address, address_ptr, &address_len_place)?;
+                        ecx.write_socket_address(&address, address_ptr, &address_len_place)?;
                     }
 
                     // We need to create the scalar using the destination size since
                     // `syscall(SYS_accept4, ...)` returns a long which doesn't match
                     // the int returned from the `accept`/`accept4` syscalls.
                     // See <https://man7.org/linux/man-pages/man2/syscall.2.html>.
-                    this.write_scalar(Scalar::from_int(client_sockfd, dest.layout.size), &dest)
+                    ecx.write_scalar(Scalar::from_int(client_sockfd, dest.layout.size), &dest)
                 }
             ),
         )
@@ -476,10 +476,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             callback!(
                 @capture<'tcx> {
                     dest: MPlaceTy<'tcx>
-                 } |this, result: Result<(), IoError>| {
+                 } |ecx, result: Result<(), IoError>| {
                      match result {
-                         Ok(()) => this.write_int(0,&dest),
-                         Err(e) => this.set_errno_and_return_neg1(e, &dest)
+                         Ok(()) => ecx.write_int(0,&dest),
+                         Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
                      }
                  }
             ),
@@ -554,11 +554,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             callback!(
                 @capture<'tcx> {
                     dest: MPlaceTy<'tcx>,
-                } |this, result: Result<usize, IoError>| {
+                } |ecx, result: Result<usize, IoError>| {
                     match result {
                         Ok(bytes_sent) =>
-                            this.write_scalar(Scalar::from_target_usize(bytes_sent.try_into().unwrap(), this), &dest),
-                        Err(e) => this.set_errno_and_return_neg1(e, &dest)
+                            ecx.write_scalar(Scalar::from_target_usize(bytes_sent.try_into().unwrap(), ecx), &dest),
+                        Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
                     }
                 }
             )
@@ -646,11 +646,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             callback!(
                 @capture<'tcx> {
                     dest: MPlaceTy<'tcx>,
-                } |this, result: Result<usize, IoError>| {
+                } |ecx, result: Result<usize, IoError>| {
                     match result {
                         Ok(bytes_sent) =>
-                            this.write_scalar(Scalar::from_target_usize(bytes_sent.try_into().unwrap(), this), &dest),
-                        Err(e) => this.set_errno_and_return_neg1(e, &dest)
+                            ecx.write_scalar(Scalar::from_target_usize(bytes_sent.try_into().unwrap(), ecx), &dest),
+                        Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
                     }
                 }
             ),
@@ -831,18 +831,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     address_ptr: Pointer,
                     address_len_place: MPlaceTy<'tcx>,
                     dest: MPlaceTy<'tcx>,
-                } |this, result: Result<SocketAddr, IoError>| {
+                } |ecx, result: Result<SocketAddr, IoError>| {
                     let address = match result {
                         Ok(address) => address,
-                        Err(e) => return this.set_errno_and_return_neg1(e, &dest)
+                        Err(e) => return ecx.set_errno_and_return_neg1(e, &dest)
                     };
 
-                    this.write_socket_address(
+                    ecx.write_socket_address(
                         &address,
                         address_ptr,
                         &address_len_place,
                     )?;
-                   this.write_scalar(Scalar::from_i32(0), &dest)
+                   ecx.write_scalar(Scalar::from_i32(0), &dest)
                 }
             ),
         )

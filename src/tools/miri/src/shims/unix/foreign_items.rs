@@ -53,31 +53,31 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Querying system information
     fn sysconf(&self, val: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
 
-        let name = this.read_scalar(val)?.to_i32()?;
+        let name = ecx.read_scalar(val)?.to_i32()?;
         // FIXME: Which of these are POSIX, and which are GNU/Linux?
         // At least the names seem to all also exist on macOS.
         static SYSCONFS: &[(&str, fn(&MiriInterpCx<'_>) -> i64)] = &[
-            ("_SC_PAGESIZE", |this| this.machine.page_size.try_into().unwrap()),
-            ("_SC_PAGE_SIZE", |this| this.machine.page_size.try_into().unwrap()),
-            ("_SC_NPROCESSORS_CONF", |this| this.machine.num_cpus.into()),
-            ("_SC_NPROCESSORS_ONLN", |this| this.machine.num_cpus.into()),
+            ("_SC_PAGESIZE", |ecx| ecx.machine.page_size.try_into().unwrap()),
+            ("_SC_PAGE_SIZE", |ecx| ecx.machine.page_size.try_into().unwrap()),
+            ("_SC_NPROCESSORS_CONF", |ecx| ecx.machine.num_cpus.into()),
+            ("_SC_NPROCESSORS_ONLN", |ecx| ecx.machine.num_cpus.into()),
             // 512 seems to be a reasonable default. The value is not critical, in
             // the sense that getpwuid_r takes and checks the buffer length.
-            ("_SC_GETPW_R_SIZE_MAX", |_this| 512),
+            ("_SC_GETPW_R_SIZE_MAX", |_ecx| 512),
             // Miri doesn't have a fixed limit on FDs, but we may be limited in terms of how
             // many *host* FDs we can open. Just use some arbitrary, pretty big value;
             // this can be adjusted if it causes problems.
             // The spec imposes a minimum of `_POSIX_OPEN_MAX` (20).
-            ("_SC_OPEN_MAX", |_this| 2_i32.pow(16).into()),
+            ("_SC_OPEN_MAX", |_ecx| 2_i32.pow(16).into()),
             // Our hard-coded hostname is just 4 bytes so we don't need anything big here.
-            ("_SC_HOST_NAME_MAX", |_this| 255),
+            ("_SC_HOST_NAME_MAX", |_ecx| 255),
         ];
         for &(sysconf_name, value) in SYSCONFS {
-            let sysconf_name = this.eval_libc_i32(sysconf_name);
+            let sysconf_name = ecx.eval_libc_i32(sysconf_name);
             if sysconf_name == name {
-                let value = Scalar::from_target_isize(value(this), this);
+                let value = Scalar::from_target_isize(value(ecx), ecx);
                 return interp_ok(value);
             }
         }
@@ -1377,7 +1377,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     BlockReason::Pause,
                     None,
                     callback!(@capture<'tcx> {}
-                    |_this, _unblock: UnblockKind| {
+                    |_ecx, _unblock: UnblockKind| {
                         panic!("should never unblock")
                     }),
                 );

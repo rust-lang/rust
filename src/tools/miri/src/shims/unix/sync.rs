@@ -893,9 +893,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 @capture<'tcx> {
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, unblock: UnblockKind| {
+                |ecx, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
-                    this.write_int(0,&dest)?;
+                    ecx.write_int(0,&dest)?;
                     interp_ok(())
                 }
             ),
@@ -929,12 +929,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 @capture<'tcx> {
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, unblock: UnblockKind| {
+                |ecx, unblock: UnblockKind| {
                     match unblock {
                         UnblockKind::Ready =>
-                            this.write_int(0,&dest),
+                            ecx.write_int(0,&dest),
                         UnblockKind::TimedOut =>
-                            this.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest),
+                            ecx.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest),
                     }
                 }
             ),
