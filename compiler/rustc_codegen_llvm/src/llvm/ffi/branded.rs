@@ -9,6 +9,7 @@ type PhantomInvariantLifetime<'a> = PhantomData<fn(&'a ()) -> &'a ()>;
 /// Corresponds to `LLVMContextRef`.
 #[derive(Clone, Copy)]
 #[repr(transparent)]
+#[rustc_pass_by_value]
 pub(crate) struct Context<'ll> {
     llcx_raw: ptr::NonNull<ContextRaw>,
     _invariant_ll: PhantomInvariantLifetime<'ll>,
@@ -17,13 +18,14 @@ pub(crate) struct Context<'ll> {
 /// Corresponds to `LLVMModuleRef`.
 #[derive(Clone, Copy)]
 #[repr(transparent)]
+#[rustc_pass_by_value]
 pub(crate) struct Module<'ll> {
     llmod_raw: ptr::NonNull<ModuleRaw>,
     _invariant_ll: PhantomInvariantLifetime<'ll>,
 }
 
 impl<'ll> Module<'ll> {
-    pub(crate) fn llmod_raw(&self) -> ptr::NonNull<ModuleRaw> {
+    pub(crate) fn llmod_raw(self) -> ptr::NonNull<ModuleRaw> {
         self.llmod_raw
     }
 }
@@ -63,6 +65,7 @@ pub(crate) unsafe fn wrap_llmod<'ll>(
 /// can be compared for equality (and hashed) based on their pointer address.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
+#[rustc_pass_by_value]
 pub(crate) struct Type<'ll> {
     llty_raw: ptr::NonNull<TypeRaw>,
     _invariant_ll: PhantomInvariantLifetime<'ll>,
