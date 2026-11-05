@@ -153,6 +153,7 @@ impl LlvmType for Reg {
                 // But providing a more accurate type means fewer casts in LLVM IR,
                 // which helps with optimization.
                 let ty = match hint_vector_elem {
+                    Primitive::Bool => cx.type_i8(),
                     Primitive::Int(integer, _) => match integer {
                         Integer::I8 => cx.type_ix(8),
                         Integer::I16 => cx.type_ix(16),
@@ -493,10 +494,6 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         let apply_range_attr = |idx: AttributePlace, scalar: rustc_abi::Scalar| {
             if cx.sess().opts.optimize != config::OptLevel::No
                 && matches!(scalar.primitive(), Primitive::Int(..))
-                // If the value is a boolean, the range is 0..2 and that ultimately
-                // become 0..0 when the type becomes i1, which would be rejected
-                // by the LLVM verifier.
-                && !scalar.is_bool()
                 // LLVM also rejects full range.
                 && !scalar.is_always_valid(cx)
             {

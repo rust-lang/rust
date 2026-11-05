@@ -542,19 +542,24 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn extend_integer_width_to(&mut self, bits: u64) {
-        // Only integers have signedness
         if let BackendRepr::Scalar(scalar) = self.layout.backend_repr
-            && let Primitive::Int(i, signed) = scalar.primitive()
-            // bools are i1 but their primitive is i8. Unlike other types,
-            // bools can be extended to their primitive size.
-            && (i.size().bits() < bits || self.layout.backend_repr.is_bool())
             && let PassMode::Direct(ref mut attrs) = self.mode
         {
-            if signed {
-                attrs.ext(ArgExtension::Sext)
-            } else {
-                attrs.ext(ArgExtension::Zext)
-            };
+            match scalar.primitive() {
+                Primitive::Int(i, signed) => {
+                    if i.size().bits() < bits {
+                        if signed {
+                            attrs.ext(ArgExtension::Sext);
+                        } else {
+                            attrs.ext(ArgExtension::Zext);
+                        }
+                    }
+                }
+                Primitive::Bool => {
+                    attrs.ext(ArgExtension::Zext);
+                }
+                Primitive::Float(..) | Primitive::Pointer(..) => {}
+            }
         }
     }
 

@@ -15,13 +15,13 @@ error: layout_of(Aligned1) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: u8,
+                   value: bool,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: u8 is 0..=1,
+               tag: bool is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
@@ -63,7 +63,7 @@ error: layout_of(Aligned2) = Layout {
            size: Size(1 bytes),
            align: Align(1 bytes),
            backend_repr: Scalar(
-               u8 is 0..=1,
+               bool is 0..=1,
            ),
            fields: Arbitrary {
                offsets: [
@@ -76,13 +76,13 @@ error: layout_of(Aligned2) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: u8,
+                   value: bool,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: u8 is 0..=1,
+               tag: bool is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [

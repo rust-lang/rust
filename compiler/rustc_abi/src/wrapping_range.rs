@@ -99,7 +99,7 @@ impl WrappingRange {
     }
 
     /// The wrapping distance from `self.start` to `self.end`.
-    fn width(&self, size: Size) -> u128 {
+    pub fn width(&self, size: Size) -> u128 {
         size.truncate(u128::wrapping_sub(self.end, self.start))
     }
 

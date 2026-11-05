@@ -65,7 +65,9 @@ fn classify<'a, Ty, C>(
                     /* pass unaligned floats in integer registers */
                 }
             }
-            Primitive::Int(_, _) | Primitive::Pointer(_) => { /* pass in integer registers */ }
+            Primitive::Bool | Primitive::Int(_, _) | Primitive::Pointer(_) => {
+                /* pass in integer registers */
+            }
         },
         BackendRepr::SimdVector { .. } => {}
         BackendRepr::SimdScalableVector { .. } => {}

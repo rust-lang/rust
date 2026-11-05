@@ -460,6 +460,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Primitive {
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match self {
+            rustc_abi::Primitive::Bool => Primitive::Bool,
             rustc_abi::Primitive::Int(length, signed) => {
                 Primitive::Int { length: length.stable(tables, cx), signed: *signed }
             }

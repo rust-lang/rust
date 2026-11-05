@@ -99,6 +99,7 @@ pub trait DerivedTypeCodegenMethods<'tcx>:
     fn type_from_primitive(&self, p: Primitive) -> Self::Type {
         use Primitive::*;
         match p {
+            Bool => self.type_i8(),
             Int(i, _) => self.type_from_integer(i),
             Float(f) => self.type_from_float(f),
             Pointer(address_space) => self.type_ptr_ext(address_space),
