@@ -366,6 +366,13 @@ impl<T, A: AllocatorClone> BTreeSet<T, A> {
         BTreeSet { map: BTreeMap::new_in(alloc) }
     }
 
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "btreemap_alloc", issue = "163177")]
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        self.map.allocator()
+    }
+
     /// Constructs a double-ended iterator over a sub-range of elements in the set.
     /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
     /// yield elements from min (inclusive) to max (exclusive).
