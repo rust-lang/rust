@@ -2,5 +2,5 @@
 //@ rustfmt-wrap_comments: true
 
 fn main() {} /* first
-//second
-//third
+second
+  third */

@@ -3,4 +3,4 @@
 
 fn main() {} /* first
 second
-third */
+  third */

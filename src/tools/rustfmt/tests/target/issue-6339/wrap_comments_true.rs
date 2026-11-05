@@ -2,6 +2,6 @@
 //@ rustfmt-wrap_comments: true
 
 use rustc_middle::ty::{self, Region, Ty, TyCtxt}; /* xx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-// xxxxxxxxxxxxx
+ * xxxxxxxxxxxxx */
 
 fn main() {}

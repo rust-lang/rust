@@ -2,6 +2,6 @@
 //@ rustfmt-wrap_comments: false
 //@ rustfmt-normalize_comments: true
 
-fn main() {} /* first
+fn main() {} // first
 // second
 // third
