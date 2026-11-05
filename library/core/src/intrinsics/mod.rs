@@ -592,7 +592,6 @@ pub trait CodeViewAnnotationArgs {
 ///
 /// Works only with targets that use PDB debuginfo and with the LLVM backend.
 /// Is a no-op on other targets and backends.
-#[unstable(feature = "codeview_annotation", issue = "163964")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
@@ -659,7 +658,6 @@ pub const unsafe fn unreachable() -> !;
 /// The stabilized version of this intrinsic is [`core::hint::assert_unchecked`].
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 pub const unsafe fn assume(b: bool) {
     if !b {
@@ -693,7 +691,6 @@ pub const fn cold_path() {}
 /// any safety invariants.
 ///
 /// This intrinsic does not have a stable counterpart.
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
 #[inline(always)]
 pub const fn likely(b: bool) -> bool {
@@ -716,7 +713,6 @@ pub const fn likely(b: bool) -> bool {
 /// any safety invariants.
 ///
 /// This intrinsic does not have a stable counterpart.
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
 #[inline(always)]
 pub const fn unlikely(b: bool) -> bool {
@@ -742,8 +738,7 @@ pub const fn unlikely(b: bool) -> bool {
 /// The public form of this intrinsic is [`core::hint::select_unpredictable`].
 /// However unlike the public form, the intrinsic will not drop the value that
 /// is not selected.
-#[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "const_select_unpredictable", issue = "145938")]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
@@ -2013,8 +2008,7 @@ pub const fn mul_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 ///
 /// This currently supports unsigned integers *only*, no signed ones.
 /// The stabilized versions of this intrinsic are available on integers.
-#[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "const_carrying_mul_add", issue = "152015")]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[miri::intrinsic_fallback_is_spec]
@@ -2278,8 +2272,7 @@ pub const unsafe fn unchecked_funnel_shr<T: fallback::FunnelShift>(a: T, b: T, s
 /// via the `carryless_mul` method. For example, [`u32::carryless_mul`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "uint_carryless_mul", issue = "152080")]
-#[unstable(feature = "uint_carryless_mul", issue = "152080")]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[miri::intrinsic_fallback_is_spec]
 pub const fn carryless_mul<T: [const] fallback::CarrylessMul>(a: T, b: T) -> T {
     a.carryless_mul(b)
@@ -2627,7 +2620,6 @@ pub(crate) macro const_eval_select {
 /// ```
 #[rustc_const_stable_indirect]
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
     false
@@ -2741,8 +2733,7 @@ pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
 ///    - At runtime, it is not checked.
 /// - If the `ptr` is created in an another const, this intrinsic doesn't deallocate it.
 /// - If the `ptr` is pointing to a local variable, this intrinsic doesn't deallocate it.
-#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[miri::intrinsic_fallback_is_spec]
@@ -2830,7 +2821,6 @@ pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(
 ///
 /// `ptr` must point to a vtable.
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 pub unsafe fn vtable_size(ptr: *const ()) -> usize;
 
@@ -2840,7 +2830,6 @@ pub unsafe fn vtable_size(ptr: *const ()) -> usize;
 ///
 /// `ptr` must point to a vtable.
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 pub unsafe fn vtable_align(ptr: *const ()) -> usize;
 
@@ -2861,7 +2850,6 @@ pub unsafe fn vtable_align(ptr: *const ()) -> usize;
 ///
 /// The stabilized version of this intrinsic is [`core::mem::size_of`].
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_comptime]
@@ -2881,7 +2869,6 @@ pub fn size_of<T>() -> usize;
 ///
 /// The stabilized version of this intrinsic is [`core::mem::align_of`].
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_comptime]
@@ -2900,8 +2887,6 @@ pub fn align_of<T>() -> usize;
 /// The stabilized version of this intrinsic is [`core::mem::offset_of`].
 /// This intrinsic is also a lang item so `offset_of!` can desugar to calls to it.
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[lang = "offset_of"]
@@ -2918,8 +2903,6 @@ pub fn offset_of<T: PointeeSized>(variant: u32, field: u32) -> usize;
 /// There should be no need to call this intrinsic manually, as its value is used to define
 /// [`Field::OFFSET`](crate::field::Field::OFFSET), which is publicly accessible.
 #[rustc_intrinsic]
-#[unstable(feature = "field_projections", issue = "145383")]
-#[rustc_const_unstable(feature = "field_projections", issue = "145383")]
 #[rustc_comptime]
 pub fn field_offset<F: crate::field::Field>() -> usize;
 
@@ -2933,7 +2916,6 @@ pub fn field_offset<F: crate::field::Field>() -> usize;
 ///
 /// The to-be-stabilized version of this intrinsic is [`crate::mem::variant_count`].
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_comptime]
 pub fn variant_count<T>() -> usize;
@@ -2946,7 +2928,6 @@ pub fn variant_count<T>() -> usize;
 ///
 /// See [`crate::mem::size_of_val_raw`] for safety conditions.
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
 pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
@@ -2959,7 +2940,6 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 ///
 /// See [`crate::mem::align_of_val_raw`] for safety conditions.
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
 pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
@@ -2973,7 +2953,6 @@ pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 ///
 /// The stabilized version of this intrinsic is [`core::any::type_name`].
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_comptime]
 pub fn type_name<T: ?Sized>() -> &'static str;
@@ -2984,7 +2963,6 @@ pub fn type_name<T: ?Sized>() -> &'static str;
 ///
 /// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
 #[rustc_intrinsic]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
 pub fn field_representing_type_actual_type_id(
     _frt_type_id: crate::any::TypeId,
@@ -2996,7 +2974,6 @@ pub fn field_representing_type_actual_type_id(
 ///
 /// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
 #[rustc_intrinsic]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
 pub fn field_representing_type_name(_frt_type_id: crate::any::TypeId) -> &'static str;
 
@@ -3006,7 +2983,6 @@ pub fn field_representing_type_name(_frt_type_id: crate::any::TypeId) -> &'stati
 ///
 /// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
 #[rustc_intrinsic]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
 pub fn field_representing_type_offset(_frt_type_id: crate::any::TypeId) -> usize;
 
@@ -3016,7 +2992,6 @@ pub fn field_representing_type_offset(_frt_type_id: crate::any::TypeId) -> usize
 /// `ptr::from_raw_parts` in a way compatible with the compiler being able to
 /// change the possible layouts of pointers.
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 pub const fn aggregate_raw_ptr<P: bounds::BuiltinDeref, D, M>(data: D, meta: M) -> P
@@ -3027,7 +3002,6 @@ where
 ///
 /// This is used to implement functions like `ptr::metadata`.
 #[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + PointeeSized, M>(ptr: *const P) -> M;
