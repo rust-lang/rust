@@ -21,7 +21,7 @@ pub const ALLOC_ERROR_HANDLER: Symbol = sym::alloc_error_handler;
 pub const NO_ALLOC_SHIM_IS_UNSTABLE: &str = "__rust_no_alloc_shim_is_unstable_v2";
 
 /// Argument or return type for methods in the allocator shim
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum AllocatorTy {
     Layout,
     Never,
@@ -44,7 +44,7 @@ pub enum SpecialAllocatorMethod {
 }
 
 /// A method that will be codegened in the allocator shim.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct AllocatorMethod {
     pub name: Symbol,
     pub special: Option<SpecialAllocatorMethod>,
@@ -52,6 +52,7 @@ pub struct AllocatorMethod {
     pub output: AllocatorTy,
 }
 
+#[derive(Debug)]
 pub struct AllocatorMethodInput {
     pub name: &'static str,
     pub ty: AllocatorTy,
