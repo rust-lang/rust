@@ -303,23 +303,24 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             ExprKind::Block { block } => &self.thir[*block],
         );
 
-        let mut data = BasicBlockData::new(None, is_cleanup);
+        let mut statements = vec![];
         for stmt_id in &*block.stmts {
             let stmt = self.statement_as_expr(*stmt_id)?;
             let span = self.thir[stmt].span;
             let statement = self.parse_statement(stmt)?;
-            data.statements
+            statements
                 .push(Statement::new(SourceInfo { span, scope: self.source_scope }, statement));
         }
 
         let Some(trailing) = block.expr else { return Err(self.expr_error(expr_id, "terminator")) };
         let span = self.thir[trailing].span;
         let terminator = self.parse_terminator(trailing)?;
-        data.terminator = Some(Terminator {
+
+        let terminator = Terminator {
             source_info: SourceInfo { span, scope: self.source_scope },
             kind: terminator,
-        });
+        };
 
-        Ok(data)
+        Ok(BasicBlockData::new_stmts(statements, Some(terminator), is_cleanup))
     }
 }
