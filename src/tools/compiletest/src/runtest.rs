@@ -19,6 +19,7 @@ use crate::common::{
     UI_WINDOWS_SVG, expected_output_path, incremental_dir, output_base_dir, output_base_name,
 };
 use crate::directives::{AuxCrate, TestProps};
+use crate::edition::Edition;
 use crate::errors::{Error, ErrorKind, load_errors};
 use crate::executor::TestVariant;
 use crate::output_capture::ConsoleOut;
@@ -222,6 +223,14 @@ struct TestCx<'test> {
     props: &'test TestProps,
     testpaths: &'test TestPaths,
     variant: &'test TestVariant,
+}
+
+impl TestCx<'_> {
+    fn edition(self) -> Edition {
+        // We're always explicitly defaulting to rustc's default to suppress the
+        // warning that rustc emits when no edition gets specified.
+        self.props.edition.or(self.config.edition).unwrap_or(Edition::RUSTC_DEFAULT)
+    }
 }
 
 enum ReadFrom {
@@ -456,6 +465,7 @@ impl<'test> TestCx<'test> {
             .arg(&aux_dir)
             .arg("-A")
             .arg("internal_features")
+            .arg(self.edition().to_flag())
             .args(&self.props.compile_flags)
             .envs(self.props.rustc_env.clone());
         self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
@@ -570,6 +580,7 @@ impl<'test> TestCx<'test> {
             .arg("internal_features");
         self.set_revision_flags(&mut rustc);
         self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
+        rustc.arg(self.edition().to_flag());
         rustc.args(&self.props.compile_flags);
 
         self.compose_and_run_compiler(rustc, Some(src))
@@ -1065,6 +1076,7 @@ impl<'test> TestCx<'test> {
             // FIXME(#160895): While the new solver is enabled by default on nightly,
             // we don't want to use it in our tests for now.
             .arg("-Znext-solver=coherence")
+            .arg(self.edition().to_flag())
             .args(&self.props.compile_flags)
             .args(&self.props.doc_flags);
 
@@ -1105,6 +1117,7 @@ impl<'test> TestCx<'test> {
             rustdoc_merge
                 .arg("-o")
                 .arg(out_dir.as_ref())
+                .arg(self.edition().to_flag())
                 .args(&self.props.compile_flags)
                 .args(&self.props.doc_flags)
                 .arg("--read-doc-meta-dir")
@@ -1383,6 +1396,7 @@ impl<'test> TestCx<'test> {
     /// directory.
     fn build_minicore(&self) -> Utf8PathBuf {
         let output_file_path = self.output_base_dir().join("libminicore.rlib");
+
         let mut rustc = self.make_compile_args(
             CompilerKind::Rustc,
             &self.config.minicore_path,
@@ -2041,6 +2055,7 @@ impl<'test> TestCx<'test> {
             compiler.arg("-Cforce-unwind-tables=yes");
         }
 
+        compiler.arg(self.edition().to_flag());
         compiler.args(&self.props.compile_flags);
 
         compiler
