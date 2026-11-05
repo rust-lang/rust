@@ -313,14 +313,9 @@ fn fn_abi_of_instance_raw<'tcx>(
         } else {
             fn_abi
         };
-        // The proof is about the body that will be emitted; a shim has one too, just not one
-        // reachable through a `DefId`.
+        // Only the instance knows the body behind a generic parameter or a generic type's drop.
         let proven = fn_abi.can_unwind
-            && match params.instance.map(|instance| instance.def) {
-                Some(InstanceKind::Item(fn_def_id)) => tcx.cannot_unwind(fn_def_id),
-                Some(InstanceKind::Shim(shim)) => tcx.cannot_unwind_shim(shim),
-                _ => false,
-            };
+            && params.instance.is_some_and(|instance| tcx.cannot_unwind_instance(instance));
         if proven {
             let mut fn_abi = fn_abi.clone();
             fn_abi.can_unwind = false;

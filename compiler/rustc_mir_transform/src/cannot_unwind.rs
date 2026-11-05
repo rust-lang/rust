@@ -9,13 +9,16 @@
 //!
 //! The answer comes from `optimized_mir`, so it must agree with what codegen emits; anything
 //! changing a body afterwards invalidates it, as for `deduce_param_attrs`.
+//!
+//! `cannot_unwind_instance` asks the same question of one monomorphization, where a generic
+//! parameter is concrete.
 
 use rustc_abi::ExternAbi;
 use rustc_ast::InlineAsmOptions;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -28,6 +31,86 @@ use rustc_session::config::OptLevel;
 pub(super) fn provide(providers: &mut Providers) {
     providers.cannot_unwind = cannot_unwind;
     providers.cannot_unwind_shim = cannot_unwind_shim;
+    providers.cannot_unwind_instance = cannot_unwind_instance;
+}
+
+/// The same question about one monomorphization of the body.
+fn cannot_unwind_instance<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::Instance<'tcx>) -> bool {
+    if tcx.sess.opts.optimize == OptLevel::No {
+        return false;
+    }
+
+    // Under `panic=abort` `fn_can_unwind` already answers "cannot unwind" without a body.
+    if !tcx.sess.panic_strategy().unwinds() {
+        return false;
+    }
+
+    match instance.def {
+        ty::InstanceKind::Item(def_id) => {
+            match tcx.def_kind(def_id) {
+                // A closure is always `extern "Rust"`.
+                DefKind::Closure => {}
+                DefKind::Fn | DefKind::AssocFn => {
+                    if !tcx.fn_sig(def_id).skip_binder().abi().is_rustic_abi() {
+                        return false;
+                    }
+                }
+                // A tuple constructor is always `extern "Rust"`.
+                DefKind::Ctor(_, CtorKind::Fn) => {}
+                // Not a function; codegen emits no body for it.
+                _ => return false,
+            }
+            // Comptime functions never reach codegen.
+            if let hir::Constness::Const { always: true } = tcx.constness(def_id) {
+                return false;
+            }
+            // No MIR: a foreign item was answered when its own crate was compiled.
+            if !tcx.is_mir_available(def_id) {
+                return tcx.cannot_unwind(def_id);
+            }
+            // The emitted code need not be the MIR body (see `cannot_unwind`).
+            if tcx.intrinsic(def_id).is_some() {
+                return false;
+            }
+            // Empty placeholder bodies in `core` (see `cannot_unwind`).
+            if tcx.is_lang_item(def_id, LangItem::DropGlue)
+                || tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace)
+            {
+                return false;
+            }
+            // A naked function's body is a single `asm!` block that can jump anywhere.
+            if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
+                return false;
+            }
+        }
+        ty::InstanceKind::Shim(shim) => {
+            let abi = match tcx.def_kind(shim.def_id()) {
+                DefKind::Fn | DefKind::AssocFn => tcx.fn_sig(shim.def_id()).skip_binder().abi(),
+                _ => return false,
+            };
+            if !abi.is_rustic_abi() {
+                return false;
+            }
+        }
+        // No body to read, or more than one.
+        ty::InstanceKind::Intrinsic(_)
+        | ty::InstanceKind::LlvmIntrinsic(_)
+        | ty::InstanceKind::Virtual(..) => return false,
+    }
+
+    let body = tcx.instance_mir(instance.def);
+    if body.tainted_by_errors.is_some() {
+        return false;
+    }
+
+    let mut analyzer = Analyzer {
+        tcx,
+        instance: Some(instance),
+        typing_env: ty::TypingEnv::fully_monomorphized(),
+        drop_glue_in_progress: FxHashSet::default(),
+        drop_glue_cache: FxHashMap::default(),
+    };
+    analyzer.body_cannot_unwind(body)
 }
 
 /// The same analysis, on a body the compiler writes for itself.
@@ -63,6 +146,8 @@ fn cannot_unwind_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> bool
 
     let mut analyzer = Analyzer {
         tcx,
+        instance: None,
+        typing_env: body.typing_env(tcx),
         drop_glue_in_progress: FxHashSet::default(),
         drop_glue_cache: FxHashMap::default(),
     };
@@ -131,6 +216,8 @@ fn cannot_unwind<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
 
     let mut analyzer = Analyzer {
         tcx,
+        instance: None,
+        typing_env: body.typing_env(tcx),
         drop_glue_in_progress: FxHashSet::default(),
         drop_glue_cache: FxHashMap::default(),
     };
@@ -139,8 +226,12 @@ fn cannot_unwind<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
 
 struct Analyzer<'tcx> {
     tcx: TyCtxt<'tcx>,
+    /// The monomorphization being analysed, if any.
+    instance: Option<ty::Instance<'tcx>>,
+    /// The environment the body's types are read in.
+    typing_env: ty::TypingEnv<'tcx>,
     /// Types whose drop glue is currently being analysed, to break recursive types. Meeting one
-    /// again means "no proof", which is the safe answer.
+    /// again means "no proof".
     drop_glue_in_progress: FxHashSet<Ty<'tcx>>,
     /// Answers already computed for a type's drop glue. Without this the work is exponential in
     /// the nesting depth.
@@ -197,10 +288,8 @@ impl<'tcx> Analyzer<'tcx> {
                         return false;
                     }
                 }
-                // `Unreachable` is written by passes that consult `fn_can_unwind` of the
-                // declaration rather than of the body that will run, so it is not a proof. A
-                // call the ABI or an attribute does rule out never gets this far, so reaching
-                // here means the callee's own answer disagrees and must not be taken on trust.
+                // `Unreachable` is written from the declaration's answer, not the body's, so it is
+                // not a proof.
                 UnwindAction::Unreachable => return false,
             }
         }
@@ -316,22 +405,32 @@ impl<'tcx> Analyzer<'tcx> {
 
     fn callee_can_unwind(&mut self, body: &Body<'tcx>, func: &Operand<'tcx>) -> bool {
         let ty = func.ty(&body.local_decls, self.tcx);
+        let ty = self.concretize(ty);
         let (def_id, args) = match *ty.kind() {
             // An indirect call could go anywhere.
             ty::FnPtr(..) => return true,
             ty::FnDef(def_id, args) => (def_id, args),
             _ => return true,
         };
-
-        // A callee whose arguments still mention late-bound generics or generic parameters of
-        // this body cannot be named without instantiating it, and resolution would then go
-        // through the trait solver with a non-concrete type, which assumes monomorphization.
-        let callee = args
-            .no_bound_vars()
-            .filter(|args| !args.has_non_region_param() && !args.has_aliases())
-            .and_then(|args| self.resolved_callee(body.typing_env(self.tcx), def_id, args));
-
         let abi = ty.fn_sig(self.tcx).abi();
+
+        // The trait solver assumes monomorphization, so a callee that still mentions a parameter
+        // of this body is not named.
+        let args =
+            args.no_bound_vars().filter(|args| !args.has_non_region_param() && !args.has_aliases());
+
+        let resolved = args.and_then(|args| self.resolved_instance(def_id, args));
+
+        // Inside a monomorphization this names the one body codegen emits.
+        if self.instance.is_some()
+            && let Some(instance) = resolved
+            && !matches!(instance.def, ty::InstanceKind::Virtual(..))
+        {
+            return layout::fn_can_unwind(self.tcx, Some(instance.def.def_id()), abi)
+                && !self.tcx.cannot_unwind_instance(instance);
+        }
+
+        let callee = self.resolved_callee(def_id, resolved);
         match callee {
             // One body is known: ask the same question codegen asks about it.
             Some(Callee::Item(callee)) => {
@@ -342,11 +441,26 @@ impl<'tcx> Analyzer<'tcx> {
                 layout::fn_can_unwind(self.tcx, Some(shim.def_id()), abi)
                     && !self.tcx.cannot_unwind_shim(shim)
             }
-            // No single body to name, which is the position codegen is in for a virtual call.
-            // The declaration's `#[rustc_nounwind]` is deliberately not relayed: it is a promise
-            // about one body, and the body that runs belongs to an impl this crate may not see.
+            // No single body to name, as for a virtual call. The declaration's `#[rustc_nounwind]`
+            // is deliberately not relayed: it is a promise about one body.
             None => layout::fn_can_unwind(self.tcx, None, abi),
         }
+    }
+
+    /// The instance `try_resolve` names for a direct call through this `FnDef`.
+    fn resolved_instance(
+        &self,
+        def_id: DefId,
+        args: ty::GenericArgs<'tcx>,
+    ) -> Option<ty::Instance<'tcx>> {
+        // `try_resolve` asserts on the kinds it answers for.
+        if !matches!(
+            self.tcx.def_kind(def_id),
+            DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Ctor(_, CtorKind::Fn)
+        ) {
+            return None;
+        }
+        ty::Instance::try_resolve(self.tcx, self.typing_env, def_id, args).ok().flatten()
     }
 
     /// The body codegen will emit for a direct call through this `FnDef`, if there is exactly
@@ -356,33 +470,16 @@ impl<'tcx> Analyzer<'tcx> {
     /// not the body that runs: a trait method, where `Self` picks the impl, and a lang item the
     /// compiler substitutes wholesale (`drop_glue`, `async_drop_in_place`, whose empty
     /// placeholder bodies must never be read).
-    ///
-    /// When resolution fails, a trait method has no body to name, while anything else is its own
-    /// body for every instantiation.
     fn resolved_callee(
         &self,
-        typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
-        args: ty::GenericArgs<'tcx>,
+        resolved: Option<ty::Instance<'tcx>>,
     ) -> Option<Callee<'tcx>> {
-        // `Instance::try_resolve` asserts on the kinds it will answer for; anything else is not
-        // a `FnDef` callee in the first place.
-        let resolved = if matches!(
-            self.tcx.def_kind(def_id),
-            DefKind::Fn
-                | DefKind::AssocFn
-                | DefKind::Closure
-                | DefKind::Ctor(_, rustc_hir::def::CtorKind::Fn)
-        ) {
-            ty::Instance::try_resolve(self.tcx, typing_env, def_id, args).ok().flatten()
-        } else {
-            None
-        };
         match resolved.map(|instance| instance.def) {
             Some(ty::InstanceKind::Item(callee)) => Some(Callee::Item(callee)),
             Some(ty::InstanceKind::Shim(shim)) => Some(Callee::Shim(shim)),
-            // Nothing one body can be named for: a trait method's impl is still open. For
-            // anything else the `DefId` is the body for every instantiation.
+            // A trait method's impl is still open. For anything else the `DefId` is the body
+            // for every instantiation.
             _ if self.tcx.trait_of_assoc(def_id).is_some() => None,
             _ => Some(Callee::Item(def_id)),
         }
@@ -390,17 +487,18 @@ impl<'tcx> Analyzer<'tcx> {
 
     fn drop_can_unwind(&mut self, body: &Body<'tcx>, place: &Place<'tcx>) -> bool {
         let ty = place.ty(&body.local_decls, self.tcx).ty;
-        self.ty_drop_can_unwind(body.typing_env(self.tcx), ty)
+        let ty = self.concretize(ty);
+        self.ty_drop_can_unwind(ty)
     }
 
     /// Whether dropping a value of this type can unwind.
-    fn ty_drop_can_unwind(&mut self, typing_env: ty::TypingEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-        if !ty.needs_drop(self.tcx, typing_env) {
+    fn ty_drop_can_unwind(&mut self, ty: Ty<'tcx>) -> bool {
+        if !ty.needs_drop(self.tcx, self.typing_env) {
             return false;
         }
 
-        // Resolving drop glue needs a concrete type, and a generic body is analysed before
-        // monomorphization. An alias hides the type that will actually be dropped.
+        // Resolving drop glue needs a concrete type. An alias hides the type that will actually
+        // be dropped, and a generic parameter names none.
         if ty.has_non_region_param() || ty.has_aliases() {
             return true;
         }
@@ -421,16 +519,32 @@ impl<'tcx> Analyzer<'tcx> {
             self.drop_glue_cache.insert(ty, false);
             return true;
         };
-        let cannot_unwind = match glue.def {
-            // Going through the query lets the cycle handler stop the recursion, rather than
-            // this set having to reason about shim identities as well as types.
-            ty::InstanceKind::Shim(shim) => self.tcx.cannot_unwind_shim(shim),
-            _ => false,
+        let cannot_unwind = match (self.instance.is_some(), glue.def) {
+            // Within a monomorphization the glue is one instance, whose own body may drop
+            // further types.
+            (true, _) => self.tcx.cannot_unwind_instance(glue),
+            // The cycle handler ends the recursion on shim identity.
+            (false, ty::InstanceKind::Shim(shim)) => self.tcx.cannot_unwind_shim(shim),
+            (false, _) => false,
         };
         self.drop_glue_in_progress.remove(&ty);
         self.drop_glue_cache.insert(ty, cannot_unwind);
 
         !cannot_unwind
+    }
+
+    /// The concrete form of `ty` in the monomorphization being analysed, or `ty` itself outside one.
+    fn concretize(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let Some(instance) = self.instance else { return ty };
+        // The round trip would only erase regions, which nothing below reads.
+        if !ty.has_non_region_param() && !ty.has_aliases() {
+            return ty;
+        }
+        instance.instantiate_mir_and_normalize_erasing_regions(
+            self.tcx,
+            self.typing_env,
+            ty::EarlyBinder::bind(self.tcx, ty),
+        )
     }
 
     /// The drop glue instance for `ty`, or `None` if it does not resolve.

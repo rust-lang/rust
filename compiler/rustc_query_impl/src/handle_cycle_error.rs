@@ -117,6 +117,16 @@ pub(crate) fn cannot_unwind_shim<'tcx>(
     false
 }
 
+pub(crate) fn cannot_unwind_instance<'tcx>(
+    _tcx: TyCtxt<'tcx>,
+    _instance: ty::Instance<'tcx>,
+    _cycle: QueryCycle<'tcx>,
+    err: Diag<'_>,
+) -> bool {
+    err.cancel();
+    false
+}
+
 pub(crate) fn variances_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,

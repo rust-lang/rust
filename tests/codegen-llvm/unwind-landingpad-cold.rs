@@ -7,7 +7,7 @@
 
 // CHECK-LABEL: @check_cold
 // CHECK: {{(call|invoke) void .+}}drop_glue{{.+}} [[ATTRIBUTES:#[0-9]+]]
-// CHECK: attributes [[ATTRIBUTES]] = { cold }
+// CHECK: attributes [[ATTRIBUTES]] = { cold{{[^}]*}} }
 #[no_mangle]
 pub fn check_cold(f: fn(), x: Box<u32>) {
     // this may unwind

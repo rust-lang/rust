@@ -2814,6 +2814,17 @@ rustc_queries! {
         handle_cycle_error
     }
 
+    /// Whether the body codegen will emit for this monomorphization is proven never to unwind.
+    ///
+    /// The same question as `cannot_unwind`, for one instance rather than a declaration: only
+    /// here are the types behind a generic parameter or a generic type's drop concrete.
+    ///
+    /// `false` means "no proof was found", not "this unwinds".
+    query cannot_unwind_instance(instance: ty::Instance<'tcx>) -> bool {
+        desc { "checking whether instance `{}` never unwinds", instance }
+        handle_cycle_error
+    }
+
     /// Perform monomorphization-time checking on this item.
     /// This is used for lints/errors that can only be checked once the instance is fully
     /// monomorphized.

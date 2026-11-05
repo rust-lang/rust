@@ -8,7 +8,7 @@
 // `call`s even in a function with a live `Drop` local, which otherwise forces an `invoke`.
 //
 // CHECK-DAG: define {{.*}} @quiet(i32 noundef %x) unnamed_addr [[QUIET_DEF:#[0-9]+]]
-// CHECK-DAG: attributes [[QUIET_DEF]] = { {{[^}]*}}nounwind{{.*}} }
+// CHECK-DAG: attributes [[QUIET_DEF]] = { {{[^}]*}}nounwind{{[^}]*}} }
 // CHECK-DAG: call noundef i32 @quiet(i32 noundef %x) [[QUIET_CALL:#[0-9]+]]
 // CHECK-DAG: attributes [[QUIET_CALL]] = { {{[^}]*}}nounwind{{[^}]*}} }
 //
