@@ -45,6 +45,10 @@ note: function defined here
    |
 LL | fn t1(_: (), _: impl Fn(bool) -> bool) {}
    |    ^^        ------------------------
+help: add a comma
+   |
+LL |     t1((), |c| c);
+   |          +
 help: provide the argument
    |
 LL |     t1(() |c| c, /* _ */);
@@ -61,6 +65,10 @@ note: function defined here
    |
 LL | fn t1(_: (), _: impl Fn(bool) -> bool) {}
    |    ^^        ------------------------
+help: add a comma
+   |
+LL |     t1((()), |c| c);
+   |            +
 help: provide the argument
    |
 LL |     t1((()) |c| c, /* _ */);
@@ -85,12 +93,40 @@ note: function defined here
    |
 LL | fn t1(_: (), _: impl Fn(bool) -> bool) {}
    |    ^^        ------------------------
+help: add a comma
+   |
+LL |     t1((), |a| c);
+   |          +
 help: provide the argument
    |
 LL |     t1(() |a| c, /* _ */);
    |                +++++++++
 
-error: aborting due to 9 previous errors
+error[E0369]: no implementation for `() | ()`
+  --> $DIR/missing-comma-before-closure.rs:17:11
+   |
+LL |     t1(() | a);
+   |        -- ^ - ()
+   |        |
+   |        ()
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/missing-comma-before-closure.rs:17:5
+   |
+LL |     t1(() | a);
+   |     ^^-------- argument #2 is missing
+   |
+note: function defined here
+  --> $DIR/missing-comma-before-closure.rs:1:4
+   |
+LL | fn t1(_: (), _: impl Fn(bool) -> bool) {}
+   |    ^^        ------------------------
+help: provide the argument
+   |
+LL |     t1(() | a, /* _ */);
+   |              +++++++++
+
+error: aborting due to 11 previous errors
 
 Some errors have detailed explanations: E0061, E0369, E0425.
 For more information about an error, try `rustc --explain E0061`.

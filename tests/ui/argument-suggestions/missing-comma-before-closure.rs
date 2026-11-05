@@ -14,4 +14,7 @@ fn main() {
     //~^ ERROR no implementation for `() | ()`
     //~| ERROR cannot find value `c` in this scope
     //~| ERROR this function takes 2 arguments but 1 argument was supplied
+    t1(() | a);
+    //~^ ERROR no implementation for `() | ()`
+    //~| ERROR this function takes 2 arguments but 1 argument was supplied
 }
