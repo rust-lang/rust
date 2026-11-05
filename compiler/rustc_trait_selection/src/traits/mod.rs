@@ -32,8 +32,8 @@ use rustc_macros::TypeVisitable;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, Clause, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode,
+    self, BottomUpFolder, CallerBoundsIterator, Clause, GenericArgs, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode,
     Unnormalized, Upcast,
 };
 use rustc_span::Span;
@@ -349,15 +349,18 @@ fn do_normalize_clauses<'tcx>(
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     // FIXME: `elaborated_env` is not really rigid. We do this to be
     // consistent with the old solver.
-    let elaborated_env = if tcx.next_trait_solver_globally()
-        && !tcx.disable_param_env_normalization_hack()
-    {
-        let elaborated_env = ty::set_type_aliases_to_rigid(tcx, elaborated_env);
-        let elaborated_env = set_projection_term_to_non_rigid(tcx, elaborated_env.caller_bounds());
-        ty::ParamEnv::new(tcx, elaborated_env)
-    } else {
-        elaborated_env
-    };
+    let elaborated_env =
+        if tcx.next_trait_solver_globally() && !tcx.disable_param_env_normalization_hack() {
+            let elaborated_env = ty::set_type_aliases_to_rigid(tcx, elaborated_env);
+            let elaborated_env = set_projection_term_to_non_rigid(
+                tcx,
+                elaborated_env.caller_bounds().all_clauses(tcx).iter(),
+            );
+
+            ty::ParamEnv::new(tcx, elaborated_env)
+        } else {
+            elaborated_env
+        };
     let clauses = ocx.normalize(&cause, elaborated_env, Unnormalized::new_wip(clauses));
     let clauses = if tcx.next_trait_solver_globally() {
         if !tcx.disable_param_env_normalization_hack() {
@@ -453,7 +456,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // can be sure that no errors should occur.
     let mut clauses: Vec<_> = util::elaborate(
         tcx,
-        unnormalized_env.caller_bounds().into_iter().map(|clause| {
+        unnormalized_env.caller_bounds().all_clauses(tcx).iter().map(|clause| {
             if tcx.features().generic_const_exprs() || tcx.next_trait_solver_globally() {
                 return clause;
             }

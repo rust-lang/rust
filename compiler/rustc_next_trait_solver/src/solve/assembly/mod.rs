@@ -14,9 +14,9 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind, StalledOnCoroutines,
 };
 use rustc_type_ir::{
-    self as ty, AliasTy, Const, Interner, MayBeErased, Region, TypeFlags, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    TypingMode, Unnormalized, Upcast, elaborate,
+    self as ty, AliasTy, CallerBoundsIterator, Const, Interner, MayBeErased, Region, TypeFlags,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized, Upcast, elaborate,
 };
 use tracing::{debug, instrument};
 
@@ -739,7 +739,7 @@ where
     ) -> Result<(), RerunNonErased> {
         let goal_lang_item = self.cx().as_trait_lang_item(goal.predicate.trait_def_id(self.cx()));
 
-        for assumption in goal.param_env.caller_bounds() {
+        for assumption in goal.param_env.caller_bounds().all_clauses(self.cx()).iter() {
             match G::fast_reject_assumption(self, goal, goal_lang_item, assumption) {
                 Ok(()) => {
                     match G::probe_and_consider_param_env_candidate(self, goal, assumption)? {
