@@ -645,12 +645,12 @@ mod trait_filter {
     {
         #[inline]
         fn allow_clause(&self, clause: TraitClause<I>) -> bool {
-            // When looking for a compressed trait, any normal clause can never match so we
-            // return false unconditionally.
-            if self.lang_item_compressed.is_some() {
-                return false;
-            }
-
+            // When looking for a compressed trait, you'd think no normal clause
+            // can ever match so we could return false unconditionally when
+            // self.lang_item_compressed is `None`. However, bound clauses are
+            // never compressed, so in cases where we have `for<'a> T: Send`,
+            // a `Send` bound which would otherwise be compressed is actually not,
+            // and we should return it.
             clause.def_id() == self.def_id
         }
 
