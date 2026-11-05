@@ -1138,18 +1138,14 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         )
     }
 
-    pub(crate) fn warn_empty_attribute(&mut self, span: Span) {
+    pub(crate) fn empty_attribute(&mut self, span: Span) {
         let attr_path = self.attr_path.to_string();
         let valid_without_list = self.template.word;
-        self.emit_lint(
-            UNUSED_ATTRIBUTES,
-            crate::diagnostics::EmptyAttributeList {
-                attr_span: span,
-                attr_path,
-                valid_without_list,
-            },
-            span,
-        );
+        self.emit_err(crate::diagnostics::EmptyAttributeList {
+            attr_span: span,
+            attr_path,
+            valid_without_list,
+        });
     }
 
     pub(crate) fn warn_ill_formed_attribute_input(&mut self, lint: &'static Lint) {

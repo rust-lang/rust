@@ -1,7 +1,6 @@
 use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::{MacroUseArgs, find_attr};
 use rustc_feature::AttributeStability;
-use rustc_lint_defs::builtin::INVALID_MACRO_EXPORT_ARGUMENTS;
 use rustc_structures::CollapseMacroDebuginfo;
 
 use super::prelude::*;
@@ -26,12 +25,8 @@ const MACRO_USE_TEMPLATE: AttributeTemplate = template!(
     Word, List: &["name1, name2, ..."],
     "https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute"
 );
-const MACRO_USE_ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-    Allow(Target::Mod),
-    Allow(Target::ExternCrate),
-    Error(Target::WherePredicate),
-    Error(Target::Param),
-]);
+const MACRO_USE_ALLOWED_TARGETS: AllowedTargets<'_> =
+    AllowedTargets::AllowList(&[Allow(Target::Mod), Allow(Target::ExternCrate)]);
 
 impl AttributeParser for MacroUseParser {
     const ATTRIBUTES: AcceptMapping<Self> = &[(
@@ -63,7 +58,7 @@ impl AttributeParser for MacroUseParser {
                 }
                 ArgParser::List(list) => {
                     if list.is_empty() {
-                        cx.adcx().warn_empty_attribute(list.span);
+                        cx.adcx().empty_attribute(list.span);
                         return;
                     }
 
@@ -137,29 +132,22 @@ pub(crate) struct MacroExportParser;
 
 impl SingleAttributeParser for MacroExportParser {
     const PATH: &[Symbol] = &[sym::macro_export];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
+
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["local_inner_macros"]);
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-        Allow(Target::MacroDef),
-        Error(Target::WherePredicate),
-        Error(Target::Crate),
-        Error(Target::Param),
-    ]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let local_inner_macros = match args {
             ArgParser::NoArgs => false,
             ArgParser::List(list) => {
-                let Some(l) = list.as_single() else {
-                    cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
-                    return None;
-                };
+                let l = cx.expect_single_element_list(args, list.span)?;
                 if l.meta_item_no_args().is_some_and(|m| m.path().word_is(sym::local_inner_macros))
                 {
                     true
                 } else {
-                    cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
+                    cx.adcx().expected_specific_argument(l.span(), &[sym::local_inner_macros]);
                     return None;
                 }
             }

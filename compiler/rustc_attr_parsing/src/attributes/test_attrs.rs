@@ -1,19 +1,15 @@
 use rustc_attr_ir::RustcAbiAttrKind;
 use rustc_feature::AttributeStability;
-use rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 
 use super::prelude::*;
+use crate::context::ExpectStringLiteral;
 
 pub(crate) struct IgnoreParser;
 
 impl SingleAttributeParser for IgnoreParser {
     const PATH: &[Symbol] = &[sym::ignore];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-        Allow(Target::Fn),
-        Error(Target::WherePredicate),
-        Error(Target::Param),
-    ]);
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-ignore-attribute"
@@ -21,27 +17,17 @@ impl SingleAttributeParser for IgnoreParser {
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let span = cx.attr_span;
         Some(AttributeKind::Ignore {
-            span: cx.attr_span,
+            span,
             reason: match args {
                 ArgParser::NoArgs => None,
-                ArgParser::NameValue(name_value) => {
-                    let Some(str_value) = name_value.value_as_str() else {
-                        cx.adcx().warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
-                        return None;
-                    };
+                ArgParser::NameValue(nv) => {
+                    let str_value = nv.expect_string_literal(cx)?;
                     Some(str_value)
                 }
-                ArgParser::List(list) => {
-                    let help =
-                        list.as_single().and_then(|item| item.meta_item()).and_then(|item| {
-                            item.args().as_no_args().ok()?;
-                            Some(item.path().to_string())
-                        });
-                    cx.adcx().warn_ill_formed_attribute_input_with_help(
-                        ILL_FORMED_ATTRIBUTE_INPUT,
-                        help,
-                    );
+                ArgParser::List(_) => {
+                    cx.adcx().expected_no_args(span);
                     return None;
                 }
             },
@@ -53,12 +39,8 @@ pub(crate) struct ShouldPanicParser;
 
 impl SingleAttributeParser for ShouldPanicParser {
     const PATH: &[Symbol] = &[sym::should_panic];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-        Allow(Target::Fn),
-        Error(Target::WherePredicate),
-        Error(Target::Param),
-    ]);
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, List: &[r#"expected = "reason""#], NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute"

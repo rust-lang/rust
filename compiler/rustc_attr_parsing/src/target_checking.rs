@@ -100,6 +100,14 @@ impl<'sess> AttributeParser<'sess> {
         attribute_args: &str,
         cx: &mut AcceptContext<'_, 'sess>,
     ) {
+        // bootstrapping crimes
+        //
+        // std: https://github.com/rust-lang/backtrace-rs/pull/787
+        // zerocopy: https://github.com/google/zerocopy/pull/3915
+        // subtle: https://github.com/dalek-cryptography/subtle/pull/158
+        if matches!(cx.sess.opts.crate_name, Some("std" | "subtle" | "zerocopy")) {
+            return;
+        }
         if matches!(cx.should_emit, ShouldEmit::Nothing) {
             return;
         }

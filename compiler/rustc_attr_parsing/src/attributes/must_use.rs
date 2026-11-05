@@ -6,8 +6,8 @@ pub(crate) struct MustUseParser;
 
 impl SingleAttributeParser for MustUseParser {
     const PATH: &[Symbol] = &[sym::must_use];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Enum),
         Allow(Target::Struct),
@@ -20,8 +20,7 @@ impl SingleAttributeParser for MustUseParser {
         // `unused_must_use` if `Trait` is marked as
         // `#[must_use]`
         Allow(Target::Trait),
-        Error(Target::WherePredicate),
-        Error(Target::Param),
+        Warn(Target::Method(MethodKind::TraitImpl)), // affects tinyvec (alloc feature) 1.0.0..=1.13.3
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, NameValueStr: "reason",

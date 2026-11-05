@@ -1,6 +1,5 @@
 use rustc_attr_ir::{Attribute, AttributeKind, InlineAttr, find_attr};
 use rustc_feature::AttributeStability;
-use rustc_lint_defs::builtin::{ILL_FORMED_ATTRIBUTE_INPUT, UNUSED_ATTRIBUTES};
 
 use super::prelude::*;
 use crate::diagnostics::{DuplicateAttribute, InlineForceInlineConflict, InlineIgnoredForExported};
@@ -28,15 +27,8 @@ impl AttributeParser for InlineParser {
                         Allow(Target::Method(MethodKind::TraitImpl)),
                         Allow(Target::Closure),
                         Allow(Target::Delegation { mac: false }),
-                        Warn(Target::Method(MethodKind::Trait { body: false })),
-                        Warn(Target::ForeignFn),
-                        Warn(Target::Field),
-                        Warn(Target::MacroDef),
-                        Warn(Target::Arm),
-                        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
-                        Warn(Target::AssocConst(AssocCtxt::Trait)),
-                        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
-                        Warn(Target::MacroCall),
+                        Warn(Target::MacroCall), // #158816: ~13k regressions from many old versions of `itertools`, `hashbrown`, `cgmath`, `ndarray`, `rkyv` etc
+                                                 // Warn(Target::Method(MethodKind::Trait { body: false })), // #165441 `subtle`
                     ]),
                 );
 
@@ -59,7 +51,8 @@ impl AttributeParser for InlineParser {
                         }
                     }
                     ArgParser::NameValue(_) => {
-                        cx.adcx().warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
+                        cx.adcx()
+                            .expected_specific_argument(inline_span, &[sym::always, sym::never]);
                         return;
                     }
                 };
@@ -150,7 +143,7 @@ impl AttributeParser for InlineParser {
                 ) && !find_attr!(cx.parsed_attrs, Inline(InlineAttr::Never, _))
                     && exported
                 {
-                    cx.emit_lint(UNUSED_ATTRIBUTES, InlineIgnoredForExported, span);
+                    cx.emit_err(InlineIgnoredForExported { span });
                 }
             },
             self.0?.1,

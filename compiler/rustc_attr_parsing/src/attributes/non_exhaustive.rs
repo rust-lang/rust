@@ -9,15 +9,12 @@ pub(crate) struct NonExhaustiveParser;
 
 impl NoArgsAttributeParser for NonExhaustiveParser {
     const PATH: &[Symbol] = &[sym::non_exhaustive];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
+
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Enum),
         Allow(Target::Struct),
         Allow(Target::Variant),
-        Warn(Target::Field),
-        Warn(Target::Arm),
-        Warn(Target::MacroDef),
-        Warn(Target::MacroCall),
+        Warn(Target::MacroCall), // #158816: 600+ regressions from crossterm 0.18..=0.21
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NonExhaustive;
