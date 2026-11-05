@@ -117,12 +117,7 @@ impl Linker {
             return;
         }
 
-        if !sess
-            .opts
-            .output_types
-            .keys()
-            .any(|&i| i == OutputType::Exe || i == OutputType::Metadata)
-        {
+        if !sess.opts.output_types.keys().any(|&i| i == OutputType::Exe) {
             return;
         }
 
