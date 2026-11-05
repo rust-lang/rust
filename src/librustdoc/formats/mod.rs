@@ -28,11 +28,11 @@ impl Impl {
     }
 
     pub(crate) fn is_deref_trait(&self, tcx: TyCtxt<'_>) -> bool {
-        self.trait_did() == tcx.lang_items().deref_trait()
+        self.trait_did().is_some_and(|did| Some(did) == tcx.lang_items().deref_trait())
     }
 
     pub(crate) fn is_deref_mut_trait(&self, tcx: TyCtxt<'_>) -> bool {
-        self.trait_did() == tcx.lang_items().deref_mut_trait()
+        self.trait_did().is_some_and(|did| Some(did) == tcx.lang_items().deref_mut_trait())
     }
 
     /// This function is used to extract a `DefId` to be used as a key for the `Cache::impls` field.
