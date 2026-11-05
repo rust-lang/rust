@@ -190,7 +190,18 @@ fn test_accept_connect() {
 
     // Spawn the server thread.
     let server_thread = thread::spawn(move || {
-        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+        let (peerfd, peeraddr) = net::accept_ipv4(server_sockfd).unwrap();
+
+        // IP should match the server, it's all localhost. Port will be different of course.
+        assert_eq!(addr.sin_family, peeraddr.sin_family);
+        assert_ne!(addr.sin_port, peeraddr.sin_port);
+        assert_eq!(addr.sin_addr.s_addr, peeraddr.sin_addr.s_addr);
+        #[cfg(any(target_os = "freebsd", target_vendor = "apple"))]
+        {
+            // Ensure that the `sin_len` field is populated on a socket address
+            // and that it matches `sizeof(sockaddr_in)`.
+            assert_eq!(peeraddr.sin_len as usize, size_of::<libc::sockaddr_in>());
+        }
 
         let flags = unsafe { errno_result(libc::fcntl(peerfd, libc::F_GETFL, 0)).unwrap() };
 
@@ -501,6 +512,12 @@ fn test_getpeername_ipv4() {
     assert_eq!(addr.sin_family, peer_addr.sin_family);
     assert_eq!(addr.sin_port, peer_addr.sin_port);
     assert_eq!(addr.sin_addr.s_addr, peer_addr.sin_addr.s_addr);
+    #[cfg(any(target_os = "freebsd", target_vendor = "apple"))]
+    {
+        // Ensure that the `sin_len` field is populated on a socket address
+        // and that it matches `sizeof(sockaddr_in)`.
+        assert_eq!(peer_addr.sin_len as usize, size_of::<libc::sockaddr_in>());
+    }
 }
 
 /// Test the `getpeername` syscall on an IPv6 socket.
@@ -524,6 +541,12 @@ fn test_getpeername_ipv6() {
     assert_eq!(addr.sin6_flowinfo, peer_addr.sin6_flowinfo);
     assert_eq!(addr.sin6_scope_id, peer_addr.sin6_scope_id);
     assert_eq!(addr.sin6_addr.s6_addr, peer_addr.sin6_addr.s6_addr);
+    #[cfg(any(target_os = "freebsd", target_vendor = "apple"))]
+    {
+        // Ensure that the `sin6_len` field is populated on a socket address
+        // and that it matches `sizeof(sockaddr_in6)`.
+        assert_eq!(peer_addr.sin6_len as usize, size_of::<libc::sockaddr_in6>());
+    }
 }
 
 /// Test shutting down TCP streams.

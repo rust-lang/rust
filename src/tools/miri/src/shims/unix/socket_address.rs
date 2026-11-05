@@ -1,8 +1,7 @@
-use std::iter;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 
 use rustc_abi::Size;
-use rustc_target::spec::Env;
+use rustc_target::spec::{Env, Os};
 
 use crate::*;
 
@@ -134,11 +133,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Result<SocketAddr, IoError>> {
         let this = self.eval_context_ref();
 
-        let socklen_layout = this.libc_ty_layout("socklen_t");
         // We only support address lengths which can be stored in a u64 since the
         // size of a layout is also stored in a u64.
         let address_len: u64 =
-            this.read_scalar(address_len)?.to_int(socklen_layout.size)?.try_into().unwrap();
+            this.read_scalar(address_len)?.to_int(address_len.layout.size)?.try_into().unwrap();
 
         // Initially, treat address as generic sockaddr just to extract the family field.
         let address = this.deref_pointer(address)?;
@@ -178,6 +176,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 .unwrap();
             let addr_bits = u32::from_be_bytes(addr_bytes);
 
+            // We entirely ignore the sin_zero field as it disappeared from modern POSIX.
+            // We ignore the `sin_len` field as it isn't respected by any of the supported targets.
+
             SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::from_bits(addr_bits), port))
         } else if family == this.eval_libc_i32("AF_INET6").into() {
             let sockaddr_in6_layout = this.libc_ty_layout("sockaddr_in6");
@@ -216,6 +217,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // and not in network byte order.
             let scope_id = this.read_scalar(&scope_id_field)?.to_u32()?;
 
+            // We ignore the `sin6_len` field as it isn't respected by any of the supported targets.
+
             SocketAddr::V6(SocketAddrV6::new(
                 Ipv6Addr::from_bits(addr_bits),
                 port,
@@ -247,26 +250,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         address: &SocketAddr,
         address_ptr: Pointer,
-        address_len_ptr: Pointer,
-        foreign_name: &'static str,
+        address_len_place: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        if address_ptr == Pointer::null() || address_len_ptr == Pointer::null() {
-            // The POSIX man page doesn't account for the cases where the `address_ptr` or
-            // `address_len_ptr` could be null pointers. Thus, this behavior is undefined!
-            throw_ub_format!(
-                "{foreign_name}: writing a socket address but the address or the length pointer is a null pointer"
-            )
-        }
-
-        let socklen_layout = this.libc_ty_layout("socklen_t");
-        let address_buffer_len_place = this.ptr_to_mplace(address_len_ptr, socklen_layout);
         // We only support buffer lengths which can be stored in a u64 since the
         // size of a layout in bytes is also stored in a u64.
         let address_buffer_len: u64 = this
-            .read_scalar(&address_buffer_len_place)?
-            .to_int(socklen_layout.size)?
+            .read_scalar(address_len_place)?
+            .to_int(address_len_place.layout.size)?
             .try_into()
             .unwrap();
 
@@ -282,12 +274,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // We need a temporary buffer as `address_ptr` might not point to a large enough
                 // buffer, in which case we have to truncate.
                 let address_buffer = this.allocate(sockaddr_in_layout, MemoryKind::Stack)?;
-                // Zero the whole buffer as some libc targets have additional fields which we fill
-                // with zero bytes (just like the standard library does it).
-                this.write_bytes_ptr(
-                    address_buffer.ptr(),
-                    iter::repeat_n(0, address_buffer.layout.size.bytes_usize()),
-                )?;
 
                 let sin_family_field = this.project_field_named(&address_buffer, "sin_family")?;
                 // We cannot simply write the `AF_INET` scalar into the `sin_family_field` because on most
@@ -308,6 +294,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let s_addr_field = this.project_field_named(&sin_addr_field, "s_addr")?;
                 this.write_bytes_ptr(s_addr_field.ptr(), address_bytes)?;
 
+                // Zero out the reserved `sin_zero` field. It's unclear if we must do this: old
+                // POSIX explicitly specified the field, but it has been removed since. We aim for
+                // compatibilty with old code; in particular libstd relies on it being initialized.
+                let sin_zero_field = this.project_field_named(&address_buffer, "sin_zero")?;
+                let mut sin_zero_elems = this.project_array_fields(&sin_zero_field)?;
+                while let Some((_idx, elem)) = sin_zero_elems.next(this)? {
+                    this.write_int(0, &elem)?;
+                }
+
+                // OS-specific fields. std assumes they are initialized, too.
+                if matches!(this.tcx.sess.target.os, Os::FreeBsd | Os::MacOs) {
+                    let sin_len_field = this.project_field_named(&address_buffer, "sin_len")?;
+                    this.write_int(sockaddr_in_layout.size.bytes(), &sin_len_field)?;
+                }
+
                 address_buffer
             }
             SocketAddr::V6(address) => {
@@ -325,12 +326,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // We need a temporary buffer as `address_ptr` might not point to a large enough
                 // buffer, in which case we have to truncate.
                 let address_buffer = this.allocate(sockaddr_in6_layout, MemoryKind::Stack)?;
-                // Zero the whole buffer as some libc targets have additional fields which we fill
-                // with zero bytes (just like the standard library does it).
-                this.write_bytes_ptr(
-                    address_buffer.ptr(),
-                    iter::repeat_n(0, address_buffer.layout.size.bytes_usize()),
-                )?;
 
                 let sin6_family_field = this.project_field_named(&address_buffer, "sin6_family")?;
                 // We cannot simply write the `AF_INET6` scalar into the `sin6_family_field` because on most
@@ -361,6 +356,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let s6_addr_field = this.project_field_named(&sin6_addr_field, "s6_addr")?;
                 this.write_bytes_ptr(s6_addr_field.ptr(), address_bytes)?;
 
+                // OS-specific fields. std assumes they are initialized, too.
+                if matches!(this.tcx.sess.target.os, Os::Solaris | Os::Illumos) {
+                    let sin6_src_id_field =
+                        this.project_field_named(&address_buffer, "__sin6_src_id")?;
+                    this.write_int(0, &sin6_src_id_field)?;
+                } else if matches!(this.tcx.sess.target.os, Os::FreeBsd | Os::MacOs) {
+                    let sin6_len_field = this.project_field_named(&address_buffer, "sin6_len")?;
+                    this.write_int(sockaddr_in6_layout.size.bytes(), &sin6_len_field)?;
+                }
+
                 address_buffer
             }
         };
@@ -378,13 +383,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Deallocate the address buffer as it was only needed to construct the address and
         // copy it into the buffer pointed to by `address_ptr`.
         this.deallocate_ptr(address_buffer.ptr(), None, MemoryKind::Stack)?;
-        // Size of the non-truncated address.
-        let address_len = address_buffer.layout.size.bytes();
 
-        this.write_scalar(
-            Scalar::from_uint(address_len, socklen_layout.size),
-            &address_buffer_len_place,
-        )?;
+        // Store size of the non-truncated address.
+        this.write_int(address_buffer.layout.size.bytes(), address_len_place)?;
 
         interp_ok(())
     }
@@ -445,17 +446,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_int(sockaddr_layout.size.bytes(), &addrlen_mplace)?;
 
         let sockaddr_mplace = this.allocate(sockaddr_layout, MiriMemoryKind::Machine.into())?;
-        // Zero the newly allocated socket address struct.
-        this.write_bytes_ptr(
-            sockaddr_mplace.ptr(),
-            iter::repeat_n(0, sockaddr_mplace.layout.size.bytes_usize()),
-        )?;
-        this.write_socket_address(
-            &address,
-            sockaddr_mplace.ptr(),
-            addrlen_mplace.ptr(),
-            "getaddrinfo",
-        )?;
+        this.write_socket_address(&address, sockaddr_mplace.ptr(), &addrlen_mplace)?;
         this.write_pointer(sockaddr_mplace.ptr(), &addr_mplace)?;
 
         let canonname_mplace = this.project_field_named(&addrinfo_mplace, "ai_canonname")?;
