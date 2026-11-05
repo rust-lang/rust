@@ -217,6 +217,7 @@ pub(crate) enum OnDuplicate {
     Warn,
 
     /// Duplicates will be a warning, with a note that this will be an error in the future.
+    #[expect(unused)]
     WarnButFutureError,
 
     /// Give a default error
@@ -234,8 +235,8 @@ impl OnDuplicate {
         unused: Span,
     ) {
         match self {
-            OnDuplicate::Warn => cx.warn_unused_duplicate(used, unused),
-            OnDuplicate::WarnButFutureError => cx.warn_unused_duplicate_future_error(used, unused),
+            OnDuplicate::Warn => cx.unused_duplicate(used, unused),
+            OnDuplicate::WarnButFutureError => cx.unused_duplicate(used, unused),
             OnDuplicate::Error => {
                 cx.emit_err(UnusedMultiple {
                     this: unused,

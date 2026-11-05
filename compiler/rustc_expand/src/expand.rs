@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::{iter, mem, slice};
+use std::{iter, mem};
 
 use rustc_ast::mut_visit::*;
 use rustc_ast::tokenstream::TokenStream;
@@ -14,6 +14,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_attr_ir::target::{AstTarget, Target};
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
     AttributeParser, AttributeSafety, CFG_TEMPLATE, EvalConfigResult, ShouldEmit,
@@ -23,7 +24,6 @@ use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_hir::def::MacroKinds;
-use rustc_lint_defs::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_parse::parser::{
     AllowConstBlockItems, AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser,
     RecoverColon, RecoverComma, Recovery, token_descr,
@@ -2231,66 +2231,43 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     // Run attributes through the attribute parser
     // since they will not be detected after macro expansion.
     fn check_attributes(&self, attrs: &[ast::Attribute], call: &ast::MacCall) {
-        use SyntheticAttr::*;
-        let mut attrs = attrs.iter().peekable();
-        let mut span: Option<Span> = None;
-        while let Some(attr) = attrs.next() {
-            validate_attr::check_attr(&self.cx.sess.psess, attr);
-            AttributeParser::parse_limited_all(
-                self.cx.sess,
-                slice::from_ref(attr),
-                None,
-                AstTarget::MacroCall,
-                call.span(),
-                self.cx.current_expansion.lint_node_id,
-                Some(self.cx.ecfg.features),
-                ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
-                Some(self.cx.resolver.registered_attr_tools()),
-            );
-
-            let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
-            span = Some(current_span);
-
-            if attrs.peek().is_some_and(|next_attr| next_attr.doc_str().is_some()) {
-                continue;
+        let attrs = AttributeParser::parse_limited_all(
+            self.cx.sess,
+            attrs,
+            None,
+            AstTarget::MacroCall,
+            call.span(),
+            self.cx.current_expansion.lint_node_id,
+            Some(self.cx.ecfg.features),
+            ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+            Some(self.cx.resolver.registered_attr_tools()),
+        );
+        let first_doc_span = attrs.iter().find_map(|attr| {
+            if let Attribute::Parsed(AttributeKind::DocComment { span, .. }) = attr {
+                Some(span)
+            } else {
+                None
             }
+        });
 
-            if match &attr.kind {
-                AttrKind::Normal(normal) => normal.item.name() == Some(sym::doc),
-                AttrKind::DocComment(..) => true,
-                _ => false,
-            } {
-                self.cx.sess.psess.buffer_lint(
-                    UNUSED_DOC_COMMENTS,
-                    current_span,
-                    self.cx.current_expansion.lint_node_id,
-                    crate::diagnostics::MacroCallUnusedDocComment { span: attr.span },
-                );
-                continue;
-            }
-
-            match &attr.kind {
-                AttrKind::Normal(normal)
-                    if rustc_attr_parsing::is_builtin_attr(&normal.item)
-                        && !AttributeParser::is_parsed_attribute(&attr.path()) =>
-                {
-                    let attr_name = attr.name().unwrap();
-                    self.cx.sess.psess.buffer_lint(
-                        UNUSED_ATTRIBUTES,
-                        attr.span,
-                        self.cx.current_expansion.lint_node_id,
-                        crate::diagnostics::UnusedBuiltinAttribute {
-                            attr_name,
-                            macro_name: pprust::path_to_string(&call.path),
-                            invoc_span: call.path.span,
-                            attr_span: attr.span,
-                        },
-                    );
-                }
-                AttrKind::Normal(_) => {}
-                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) | AttrKind::Generated(..) => {}
-                AttrKind::DocComment(..) => unreachable!(), // handled above
-            }
+        if let Some(first_doc_span) = first_doc_span {
+            let last_doc_span = attrs
+                .iter()
+                .rev()
+                .find_map(|attr| {
+                    if let Attribute::Parsed(AttributeKind::DocComment { span, .. }) = attr {
+                        Some(span)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap();
+            let span = first_doc_span.to(*last_doc_span);
+            self.cx
+                .sess
+                .psess
+                .dcx()
+                .emit_err(crate::diagnostics::MacroCallUnusedDocComment { span });
         }
     }
 
