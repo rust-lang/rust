@@ -3,7 +3,6 @@
 
 use std::cell::Cell;
 use std::clone::TrivialClone;
-use std::vec::from_elem;
 
 #[derive(Clone)]
 struct DropCounter<'a>(&'a Cell<i32>);
@@ -44,16 +43,16 @@ fn main() {
     // TrivialClone
     let c = Cell::new(0);
 
-    let mut vec = from_elem(DropCounter(&c), 3);
+    let mut vec = vec![DropCounter(&c); 3];
     vec.clear();
 
     assert_eq!(c.get(), 3);
-    vec = from_elem(DropCounter(&c), 6);
+    vec = vec![DropCounter(&c); 6];
     vec.clear();
 
     assert_eq!(c.get(), 9);
 
-    vec = from_elem(DropCounter(&c), 0);
+    vec = vec![DropCounter(&c); 0];
     assert_eq!(c.get(), 10);
     vec.clear();
     assert_eq!(c.get(), 10);
@@ -62,21 +61,21 @@ fn main() {
     let clones = Cell::new(0);
     let drops = Cell::new(0);
 
-    let mut vec = from_elem(CloneCounter::new(&clones, &drops), 3);
+    let mut vec = vec![CloneCounter::new(&clones, &drops); 3];
     assert_eq!(clones.get(), 2);
     assert_eq!(drops.get(), 0);
     vec.clear();
     assert_eq!(clones.get(), 2);
     assert_eq!(drops.get(), 3);
 
-    vec = from_elem(CloneCounter::new(&clones, &drops), 6);
+    vec = vec![CloneCounter::new(&clones, &drops); 6];
     assert_eq!(clones.get(), 7);
     assert_eq!(drops.get(), 3);
     vec.clear();
     assert_eq!(clones.get(), 7);
     assert_eq!(drops.get(), 9);
 
-    vec = from_elem(CloneCounter::new(&clones, &drops), 0);
+    vec = vec![CloneCounter::new(&clones, &drops); 0];
     assert_eq!(clones.get(), 7);
     assert_eq!(drops.get(), 10);
     vec.clear();
