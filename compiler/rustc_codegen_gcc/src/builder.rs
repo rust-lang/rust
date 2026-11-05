@@ -1204,17 +1204,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // FIXME(antoyo)
     }
 
-    fn store(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
-        self.store_with_flags(val, ptr, align, MemFlags::empty())
-    }
-
     fn store_with_flags(
         &mut self,
         val: RValue<'gcc>,
         ptr: RValue<'gcc>,
         align: Align,
         flags: MemFlags,
-    ) -> RValue<'gcc> {
+    ) {
         let ptr = self.check_store(val, ptr);
         let destination = ptr.dereference(self.location);
         // NOTE: libgccjit does not support specifying the alignment on the assignment, so we cast
@@ -1231,10 +1227,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let modified_destination = modified_ptr.dereference(self.location);
         self.llbb().add_assignment(self.location, modified_destination, val);
         // FIXME(antoyo): handle `MemFlags::NONTEMPORAL`.
-        // NOTE: dummy value here since it's never used. FIXME(antoyo): API should not return a value here?
         // When adding support for NONTEMPORAL, make sure to not just emit MOVNT on x86; see the
         // LLVM backend for details.
-        self.cx.context.new_rvalue_zero(self.type_i32())
     }
 
     fn atomic_store(
