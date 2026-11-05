@@ -3943,7 +3943,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }
-            ObligationCauseCode::ArrayLen(array_ty) => {
+            ObligationCauseCode::ArrayLen(array_ty, _) => {
                 err.note(format!("the length of array `{array_ty}` must be type `usize`"));
             }
             ObligationCauseCode::TupleElem => {
