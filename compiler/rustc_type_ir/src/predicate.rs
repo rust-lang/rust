@@ -856,11 +856,13 @@ impl CompressedTraitRefs {
     #[inline]
     pub fn trait_clause_from_def_id<I: Interner>(
         cx: I,
-        self_ty: I::Ty,
+        self_ty: I::GenericArgs,
         def_id: I::TraitId,
     ) -> Binder<I, TraitClause<I>> {
+        // Note that `self_ty` is a GenericArgs, but only contains a single
+        // argument which is the trait's self_ty. This is done for perf.
         Binder::dummy(TraitClause {
-            trait_ref: TraitRef::new(cx, def_id, [self_ty]),
+            trait_ref: TraitRef::new_from_args(cx, def_id, self_ty),
             polarity: ClausePolarity::Positive,
         })
     }
@@ -869,7 +871,7 @@ impl CompressedTraitRefs {
     pub fn trait_clause_from_single_bit<I: Interner>(
         self,
         cx: I,
-        self_ty: I::Ty,
+        self_ty: I::GenericArgs,
     ) -> Binder<I, TraitClause<I>> {
         Self::trait_clause_from_def_id(
             cx,
@@ -899,7 +901,12 @@ impl CompressedTraitRefs {
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub struct CompressedTraitClause<I: Interner> {
-    pub self_ty: I::Ty,
+    // Note: always only contains a single self ty.
+    // Storing it as `GenericArgs` makes decompression faster.
+    // Note that some of the folds and visits we do over compressed traits
+    // ignore the trait ref and only recurses into self_ty. This is *incorrect*
+    // if `self_ty` ever contained more than one generic arg.
+    pub self_ty: I::GenericArgs,
 
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
@@ -932,7 +939,10 @@ impl<I: Interner> CompressedTraitClause<I> {
                 let compressed_trait_refs =
                     CompressedTraitRefs::from_lang_item(cx.as_trait_lang_item(trait_ref.def_id)?)?;
 
-                Some(Self { self_ty: trait_ref.self_ty(), compressed_trait_refs })
+                // The args of the trait ref should *only* contain a self ty
+                // when used in a compressed clause.
+                debug_assert_eq!(trait_ref.args.len(), 1);
+                Some(Self { self_ty: trait_ref.args, compressed_trait_refs })
             }
             ClauseKind::RegionOutlives(_) => None,
             ClauseKind::TypeOutlives(_) => None,
