@@ -94,7 +94,7 @@ fn add_move_for_packed_drop<'tcx>(
 
     let storage_dead_block = patch.new_block(BasicBlockData::new_stmts(
         vec![Statement::new(source_info, StatementKind::StorageDead(temp))],
-        Some(Terminator { source_info, kind: TerminatorKind::goto(target) }),
+        Terminator { source_info, kind: TerminatorKind::goto(target) },
         is_cleanup,
     ));
 
