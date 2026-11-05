@@ -2,7 +2,7 @@ error: layout_of(MissingPayloadField) = Layout {
            size: Size(2 bytes),
            align: Align(1 bytes),
            backend_repr: ScalarPair {
-               a: u8 is 0..=1,
+               a: bool is 0..=1,
                b: union u8,
                b_offset: Size(1 bytes),
            },
@@ -17,20 +17,20 @@ error: layout_of(MissingPayloadField) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: u8,
+                   value: bool,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: u8 is 0..=1,
+               tag: bool is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
                        backend_repr: ScalarPair {
-                           a: u8 is 0..=1,
+                           a: bool is 0..=1,
                            b: union u8,
                            b_offset: Size(1 bytes),
                        },
@@ -69,7 +69,7 @@ error: layout_of(CommonPayloadField) = Layout {
            size: Size(2 bytes),
            align: Align(1 bytes),
            backend_repr: ScalarPair {
-               a: u8 is 0..=1,
+               a: bool is 0..=1,
                b: u8 is ..,
                b_offset: Size(1 bytes),
            },
@@ -84,20 +84,20 @@ error: layout_of(CommonPayloadField) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: u8,
+                   value: bool,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: u8 is 0..=1,
+               tag: bool is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
                        backend_repr: ScalarPair {
-                           a: u8 is 0..=1,
+                           a: bool is 0..=1,
                            b: u8 is ..,
                            b_offset: Size(1 bytes),
                        },
@@ -113,7 +113,7 @@ error: layout_of(CommonPayloadField) = Layout {
                    VariantLayout {
                        size: Size(2 bytes),
                        backend_repr: ScalarPair {
-                           a: u8 is 0..=1,
+                           a: bool is 0..=1,
                            b: u8 is ..,
                            b_offset: Size(1 bytes),
                        },
@@ -142,7 +142,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
            size: Size(2 bytes),
            align: Align(1 bytes),
            backend_repr: ScalarPair {
-               a: u8 is 0..=1,
+               a: bool is 0..=1,
                b: union u8,
                b_offset: Size(1 bytes),
            },
@@ -157,20 +157,20 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: u8,
+                   value: bool,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: u8 is 0..=1,
+               tag: bool is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
                        backend_repr: ScalarPair {
-                           a: u8 is 0..=1,
+                           a: bool is 0..=1,
                            b: union u8,
                            b_offset: Size(1 bytes),
                        },
@@ -186,7 +186,7 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                    VariantLayout {
                        size: Size(2 bytes),
                        backend_repr: ScalarPair {
-                           a: u8 is 0..=1,
+                           a: bool is 0..=1,
                            b: union u8,
                            b_offset: Size(1 bytes),
                        },

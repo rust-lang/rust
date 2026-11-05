@@ -465,6 +465,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
             (Int(_, is_signed), Int(..)) => bx.intcast(imm, to_backend_ty, is_signed),
+            (Bool, Int(..)) | (Int(..), Bool) | (Bool, Bool) => {
+                bx.intcast(imm, to_backend_ty, false)
+            }
             (Float(src), Float(dst)) => match dst.size().cmp(&src.size()) {
                 Ordering::Greater => bx.fpext(imm, to_backend_ty),
                 Ordering::Less => bx.fptrunc(imm, to_backend_ty),
@@ -483,7 +486,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.inttoptr(usize_imm, to_backend_ty)
             }
             (Float(_), Int(_, is_signed)) => bx.cast_float_to_int(is_signed, imm, to_backend_ty),
-            _ => return None,
+            (Bool, Float(..))
+            | (Float(..), Bool)
+            | (Bool, Pointer(..))
+            | (Pointer(..), Bool)
+            | (Pointer(..), Float(..))
+            | (Pointer(..), Int(..))
+            | (Float(..), Pointer(..)) => {
+                return None;
+            }
         };
         Some(imm)
     }
@@ -1118,10 +1129,10 @@ pub(super) fn transmute_scalar<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     assume_scalar_range(bx, imm, from_scalar, from_backend_ty, Some(&to_scalar));
 
     imm = match (from_scalar.primitive(), to_scalar.primitive()) {
-        (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
+        (Bool | Int(..) | Float(_), Bool | Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
         (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
-        (Int(..), Pointer(..)) => bx.inttoptr(imm, to_backend_ty),
-        (Pointer(..), Int(..)) => {
+        (Bool | Int(..), Pointer(..)) => bx.inttoptr(imm, to_backend_ty),
+        (Pointer(..), Bool | Int(..)) => {
             // FIXME: this exposes the provenance, which shouldn't be necessary.
             bx.ptrtoint(imm, to_backend_ty)
         }
@@ -1180,7 +1191,7 @@ fn assume_scalar_range<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 
     match scalar.primitive() {
-        abi::Primitive::Int(..) => {
+        abi::Primitive::Bool | abi::Primitive::Int(..) => {
             let range = scalar.valid_range(bx.cx());
             bx.assume_integer_range(imm, backend_ty, range);
         }

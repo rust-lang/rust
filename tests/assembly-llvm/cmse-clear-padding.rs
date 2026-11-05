@@ -242,7 +242,7 @@ impl Copy for VariantsDifferentSize {}
 // CHECK: mov r7, sp
 // CHECK-NEXT: ldrh r1, [r0, #2]
 // CHECK-NEXT: ldrb r0, [r0]
-// CHECK-NEXT: lsls r2, r0, #31
+// CHECK-NEXT: cmp r0, #0
 // CHECK-NEXT: it eq
 // CHECK-NEXT: uxtbeq r1, r1
 // CHECK-NEXT: orr.w r0, r0, r1, lsl #16
@@ -292,7 +292,7 @@ extern "cmse-nonsecure-entry" fn variants_same_size_array(
 // CHECK: mov r7, sp
 // CHECK-NEXT: ldrh r1, [r0, #2]
 // CHECK-NEXT: ldrb r0, [r0]
-// CHECK-NEXT: lsls r2, r0, #31
+// CHECK-NEXT: cmp r0, #0
 // CHECK-NEXT: it eq
 // CHECK-NEXT: uxtbeq r1, r1
 // CHECK-NEXT: orr.w r0, r0, r1, lsl #16
@@ -321,7 +321,7 @@ extern "cmse-nonsecure-entry" fn variants_same_size_tuple(
 // CHECK: mov r7, sp
 // CHECK-NEXT: ldrh r1, [r0, #2]
 // CHECK-NEXT: ldrb r0, [r0]
-// CHECK-NEXT: lsls r2, r0, #31
+// CHECK-NEXT: cmp r0, #0
 // CHECK-NEXT: it eq
 // CHECK-NEXT: uxtbeq r1, r1
 // CHECK-NEXT: orr.w r0, r0, r1, lsl #16

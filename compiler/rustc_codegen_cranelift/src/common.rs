@@ -26,6 +26,7 @@ pub(crate) fn pointer_ty(tcx: TyCtxt<'_>) -> types::Type {
 
 pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
     match scalar.primitive() {
+        Primitive::Bool => types::I8,
         Primitive::Int(int, _sign) => match int {
             Integer::I8 => types::I8,
             Integer::I16 => types::I16,

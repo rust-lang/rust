@@ -176,6 +176,8 @@ fn main() {
     test_abi_newtype::<Zst>(Default::default());
     test_abi_newtype::<ReprAlignZst>(Default::default());
     test_abi_newtype::<ReprCZst>(Default::default());
+    // FIXME (ABI): this should work, but doesn't - see https://github.com/rust-lang/rust/issues/165800
+    // test_abi_newtype::<bool>(Default::default());
     test_abi_newtype::<u32>(Default::default());
     test_abi_newtype::<f32>(Default::default());
     test_abi_newtype::<num::Complex<f16>>(Default::default());

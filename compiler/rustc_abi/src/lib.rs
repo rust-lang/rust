@@ -1496,6 +1496,7 @@ impl Numeric {
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Primitive {
+    Bool,
     /// The `bool` is the signedness of the `Integer` type.
     ///
     /// One would think we would not care about such details this low down,
@@ -1511,6 +1512,7 @@ pub enum Primitive {
 impl fmt::Debug for Primitive {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = match *self {
+            Primitive::Bool => "bool",
             Primitive::Int(integer, is_signed) => {
                 if is_signed {
                     integer.int_ty_str()
@@ -1537,6 +1539,7 @@ impl Primitive {
         let dl = cx.data_layout();
 
         match self {
+            Bool => Size::from_bits(1),
             Int(i, _) => i.size(),
             Float(f) => f.size(),
             Pointer(a) => dl.pointer_size_in(a),
@@ -1552,6 +1555,7 @@ impl Primitive {
         let dl = cx.data_layout();
 
         match self {
+            Bool => dl.i1_align,
             Int(i, _) => i.align(dl),
             Float(f) => f.align(dl),
             Pointer(a) => dl.pointer_align_in(a),
@@ -1586,6 +1590,7 @@ impl fmt::Debug for Scalar {
         match self {
             Scalar::Initialized { value, valid_range } => {
                 let (size, is_signed) = match *value {
+                    Primitive::Bool => (Size::from_bits(1), false),
                     Primitive::Int(integer, is_signed) => (integer.size(), is_signed),
                     Primitive::Float(float) => (float.size(), false),
                     Primitive::Pointer(_) => (Size::from_bits(128), false),
@@ -1602,14 +1607,7 @@ impl fmt::Debug for Scalar {
 impl Scalar {
     #[inline]
     pub fn is_bool(&self) -> bool {
-        use Integer::*;
-        matches!(
-            self,
-            Scalar::Initialized {
-                value: Primitive::Int(I8, false),
-                valid_range: WrappingRange { start: 0, end: 1 }
-            }
-        )
+        matches!(self, Scalar::Initialized { value: Primitive::Bool, valid_range: _ })
     }
 
     /// Get the primitive representation of this type, ignoring the valid range and whether the
@@ -2152,14 +2150,33 @@ impl Niche {
         // In practice this means that enums with `count > 1` are unlikely to claim niche zero,
         // since they have to fit perfectly. If niche zero is already reserved, the selection of
         // bounds are of little interest.
+        //
+        // Because bools still have a size of 1 byte, we may need to potentially adjust the scalar
+        // here to compensate for reserving more space than the single bit. Niche reservation will
+        // never try to go larger than the in-memory size though, so it's always an adjustment
+        // bool -> u8.
         let move_start = |v: WrappingRange| {
             let start = v.start.wrapping_sub(count) & max_value;
-            Some((start, Scalar::Initialized { value, valid_range: v.with_start(start) }))
+            let valid_range = v.with_start(start);
+            let mut value = value;
+            if let Primitive::Bool = value
+                && valid_range.end.wrapping_sub(valid_range.start) >= 2
+            {
+                value = Primitive::Int(Integer::I8, false);
+            }
+            Some((start, Scalar::Initialized { value, valid_range }))
         };
         let move_end = |v: WrappingRange| {
             let start = v.end.wrapping_add(1) & max_value;
             let end = v.end.wrapping_add(count) & max_value;
-            Some((start, Scalar::Initialized { value, valid_range: v.with_end(end) }))
+            let valid_range = v.with_end(end);
+            let mut value = value;
+            if let Primitive::Bool = value
+                && valid_range.end.wrapping_sub(valid_range.start) >= 2
+            {
+                value = Primitive::Int(Integer::I8, false);
+            }
+            Some((start, Scalar::Initialized { value, valid_range }))
         };
         let distance_end_zero = max_value - v.end;
         // FIXME: this ought to work for `bool` too, but that seems to be hitting a miscompilation
@@ -2475,8 +2492,6 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
         *size == other.size
             && *align == other.align
             && backend_repr.eq_up_to_validity(&other.backend_repr)
-            // `is_bool` checks validity and is ABI-relevant, so we need to consider it.
-            && backend_repr.is_bool() == other.backend_repr.is_bool()
     }
 }
 

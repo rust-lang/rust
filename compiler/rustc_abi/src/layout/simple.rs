@@ -68,11 +68,12 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
                     Primitive::Int(_, false) => 2,
                     Primitive::Float(_) => 3,
                     Primitive::Pointer(_) => 4,
+                    Primitive::Bool => 5,
                 } << 32,
             )
             // distinguishes references from pointers
             .wrapping_add((range.start as u64).rotate_right(16))
-            // distinguishes char from u32 and bool from u8
+            // distinguishes char from u32 (and mixes bool up a bit too, even though it shouldn't be needed)
             .wrapping_add((range.end as u64).rotate_right(16));
 
         LayoutData {

@@ -44,7 +44,7 @@ where
 {
     match arg_layout.backend_repr {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
-            Primitive::Int(..) | Primitive::Pointer(_) => {
+            Primitive::Bool | Primitive::Int(..) | Primitive::Pointer(_) => {
                 if arg_layout.size.bits() > xlen {
                     return Err(CannotUseFpConv);
                 }

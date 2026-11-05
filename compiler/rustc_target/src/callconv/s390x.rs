@@ -21,7 +21,7 @@ where
         return match layout.backend_repr {
             BackendRepr::Scalar(scalar) => match scalar.primitive() {
                 Primitive::Float(_) => true,
-                Primitive::Int(_, _) | Primitive::Pointer(_) => false,
+                Primitive::Bool | Primitive::Int(_, _) | Primitive::Pointer(_) => false,
             },
             BackendRepr::Memory { .. } => {
                 // A single-element array or union does not qualify.
