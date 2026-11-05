@@ -28,7 +28,7 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, AdtKind, ConstKind, GenericArgsRef, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
@@ -1739,17 +1739,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
         );
 
-        let count_is_zero = {
-            if let Ok(count) = tcx.try_normalize_erasing_regions(
-                self.typing_env(self.param_env),
-                Unnormalized::new_wip(count),
-            ) {
-                count.try_to_value().and_then(|c| c.try_to_target_usize(tcx)) == Some(0)
-            } else {
-                false
-            }
-        };
-
         let uty = match expected {
             ExpectHasType(uty) => uty.builtin_index(),
             _ => None,
@@ -1776,6 +1765,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This is a problem, because it means if `CONST` is `const { panic!() }`, the side effect
         // of panic / failing compilation never happens. In such cases we need to ignore divergence
         // from the `CONST`, as otherwise we can end up executing code that was assumed unreachable.
+        let count_is_zero = match count.kind() {
+            // This is the exact check that mir building does
+            ConstKind::Value(v) => v.try_to_target_usize(tcx) == Some(0),
+
+            // An infer const can get inferred to 0.
+            //
+            // We could check the expectation here to do ad-hoc inference, but that feels quite
+            // error prone and annoying.
+            ConstKind::Infer(_) => true,
+
+            // While const generic params can be substituted with 0, mir building specifically
+            // checks for value 0 before monomorphization, so they (alongside aliases, etc) cannot
+            // trigger the bug.
+            ConstKind::Param(_)
+            | ConstKind::Placeholder(_)
+            | ConstKind::Alias(..)
+            | ConstKind::Error(_)
+            | ConstKind::Expr(_) => false,
+
+            ConstKind::Bound(..) => bug!(),
+        };
+
         if count_is_zero && element.is_constant_for_zero_repeat() {
             self.diverges.set(old_diverges);
         }
