@@ -105,50 +105,34 @@ When using the AccessSoftek scripts to build the sysroot, the result includes a
 Clang-based toolchain. In this case, no wrapper script is required,
 `<toolchain_root>/bin/aarch64-linux-pauthtest-clang` can be used directly.
 
+Whichever compiler is used, define the following environment variables before running
+`x.py`:
+
+```sh
+export PAUTHTEST_SYSROOT=<toolchain_root>/aarch64-linux-pauthtest/usr
+export PAUTHTEST_RESOURCE_DIR=<toolchain_root>/lib/clang/<version>
+```
+
 ## Building the target
 
 Introduction of `aarch64-unknown-linux-pauthtest` target needs to be propagated
 to various crates/repos, so that they can correctly recognise and handle it.
-Specifically:
-* `cc-rs`: https://github.com/jchlanda/cc-rs/tree/jakub/cc-v1.2.28-pauthtest
-* `libc`: https://github.com/jchlanda/libc/tree/jakub/0.2.183-pauthtest
+At the time of writing this document the following require changes:
+* `cc-rs`: `bootstrap` pins `cc` 1.2.62, which does not know the target. `cc` 1.4.3, the
+  version `rustc_llvm` already uses, supports it.
 * `backtrace`: https://github.com/jchlanda/backtrace-rs/tree/jakub/backtrace-v0.3.76-pauthtest
 
-The patched versions of `cc-rs` and `libc` will have to be registered through
-`[patch.crates-io]` section of `Cargo.toml` files both in:
-`<rust_root>/src/bootstrap/` and `<rust_root>/library/`. Check out `cc-rs` and
-`libc` to `<rust_root>/patches` and update config files. See attached diff for
-details:
-
-<details>
+Update the `cc` pin in `<rust_root>/src/bootstrap/Cargo.toml`, then run
+`cargo update --manifest-path src/bootstrap/Cargo.toml -p cc --precise 1.4.3`:
 
 ```diff
-diff --git a/library/Cargo.toml b/library/Cargo.toml
-index e30e6240942..fb5a12f0065 100644
---- a/library/Cargo.toml
-+++ b/library/Cargo.toml
-@@ -59,3 +59,4 @@ rustflags = ["-Cpanic=abort"]
- rustc-std-workspace-core = { path = 'rustc-std-workspace-core' }
- rustc-std-workspace-alloc = { path = 'rustc-std-workspace-alloc' }
- rustc-std-workspace-std = { path = 'rustc-std-workspace-std' }
-+libc = { path = '<rust_root>/patches/libc' }
-diff --git a/src/bootstrap/Cargo.toml b/src/bootstrap/Cargo.toml
-index e1725db60cf..46763cdf9a4 100644
---- a/src/bootstrap/Cargo.toml
-+++ b/src/bootstrap/Cargo.toml
-@@ -94,3 +94,6 @@ debug = 0
- [profile.dev.package]
- # Only use debuginfo=1 to further reduce compile times.
- bootstrap.debug = 1
-+
-+[patch.crates-io]
-+cc = { path = '<rust_root>/patches/cc-rs' }
+-cc = "=1.2.62"
++cc = "=1.4.3"
 ```
 
-</details>
+With `cc` 1.4.3, `bootstrap` finds the sysroot through the environment variables described
+above.
 
-In contrast to `cc-rs` and `libc`, which are external crates resolved from
-[crates.io](https://crates.io/) and can be overridden using `[patch.crates-io]`,
 `backtrace` is included in the Rust repository as a git submodule under
 `<rust_root>/library/backtrace`. At the time of writing, the necessary change
 has not yet been committed there, which means an in-tree patch is currently
@@ -474,6 +458,7 @@ The following categories are supported (all present in tree):
   * pauth-signed-abi.rs
   * pauth-init-fini.rs
   * pauth-attr-special-funcs.rs
+  * pauth-attr-cli-flags.rs
   * pauth-fn-ptr-type-discrimination-const-aggregate.rs
   * pauth-fn-ptr-type-discrimination-const-scalar.rs
   * pauth-fn-ptr-type-discrimination-deeply-nested.rs
