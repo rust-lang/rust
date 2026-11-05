@@ -115,7 +115,7 @@ mod iterator {
     fn filter_compressed_trait_helper<I, T>(
         trait_filter: &T,
         cx: I,
-        self_ty: I::Ty,
+        self_ty: I::GenericArgs,
         trait_ref_single_bit: CompressedTraitRefs,
     ) -> Option<Binder<I, TraitClause<I>>>
     where
@@ -144,7 +144,7 @@ mod iterator {
         decompression_in_progress: CompressedTraitRefs,
         // self ty of the currently decompression-in-progress trait ref,
         // if applicable.
-        self_ty: Option<I::Ty>,
+        self_ty: Option<I::GenericArgs>,
     }
 
     impl<I, Iter, P, S, T, O> Iterator
@@ -198,7 +198,7 @@ mod iterator {
                         }
                         // If we find a compressed trait clause, and it matches, store it in `self.compressed_elem`
                         ClauseKind::CompressedTrait(ct)
-                            if filter.self_type_filter.allow_self_ty(ct.self_ty)
+                            if filter.self_type_filter.allow_self_ty(ct.self_ty.type_at(0))
                                 && filter
                                     .polarity_filter
                                     .allow_polarity(ClausePolarity::Positive) =>
