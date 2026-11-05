@@ -164,7 +164,6 @@ impl LlvmType for Reg {
                 // NOTE: it is valid to ignore the element type hint (and always pick i8).
                 // But providing a more accurate type means fewer casts in LLVM IR,
                 // which helps with optimization.
-
                 assert!(
                     !matches!(hint_vector_elem, Primitive::Float(Float::PpcF128 | Float::X87F80)),
                     "Unsupported vector element type"
@@ -682,10 +681,6 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         let apply_range_attr = |idx: AttributePlace, scalar: rustc_abi::Scalar| {
             if cx.sess().opts.optimize != config::OptLevel::No
                 && matches!(scalar.primitive(), Primitive::Int(..))
-                // If the value is a boolean, the range is 0..2 and that ultimately
-                // become 0..0 when the type becomes i1, which would be rejected
-                // by the LLVM verifier.
-                && !scalar.is_bool()
                 // LLVM also rejects full range.
                 && !scalar.is_always_valid(cx)
             {

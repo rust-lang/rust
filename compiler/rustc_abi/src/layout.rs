@@ -12,8 +12,8 @@ use tracing::debug;
 
 use crate::{
     Align, BackendLaneCount, BackendRepr, FieldsShape, HasDataLayout, IndexSlice, IndexVec,
-    Integer, LayoutData, NicheOptimizations, NumScalableVectors, ReprOptions, Scalar, Size,
-    StructKind, TargetDataLayout, Variants, WrappingRange,
+    Integer, LayoutData, NicheOptimizations, NumScalableVectors, Primitive, ReprOptions, Scalar,
+    Size, StructKind, TargetDataLayout, Variants, WrappingRange,
 };
 
 mod coroutine;
@@ -566,7 +566,12 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         if niche_optimizations == NicheOptimizations::Disabled {
             let hide_niches = |scalar: &mut _| match scalar {
                 Scalar::Initialized { value, valid_range } => {
-                    *valid_range = WrappingRange::full(value.size(dl))
+                    // FIXME: things still seem to work if you let Bool stay here, but that
+                    // creates bool is 0..=255 which is not well formed and probably sketchy.
+                    if *value == Primitive::Bool {
+                        *value = Primitive::Int(Integer::I8, false);
+                    }
+                    *valid_range = WrappingRange::full(value.size(dl));
                 }
                 // Already doesn't have any niches
                 Scalar::Union { .. } => {}
