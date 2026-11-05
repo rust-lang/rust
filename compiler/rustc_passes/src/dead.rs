@@ -73,14 +73,6 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     }
 }
 
-/// Determines whether an item was only used in a trivial usage site (and should
-/// therefore not be considered live) or whether it was used non-trivially.
-#[derive(Clone, Debug, StableHash, PartialEq, Eq, Hash)]
-pub enum LiveKind {
-    Trivial,
-    NonTrivial,
-}
-
 /// Determine if a work from the worklist is coming from a `#[allow]`
 /// or a `#[expect]` of `dead_code`
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -134,7 +126,7 @@ enum ImplItemCheckResult {
 struct ScannedItem {
     id: LocalDefId,
     propagated: ComesFromAllowExpect,
-    live_kind: LiveKind,
+    trivial_usage_site: Option<TrivialUsageSiteId>,
 }
 
 #[derive(Default, Clone)]
@@ -184,7 +176,7 @@ struct MarkSymbolVisitor<'tcx> {
     live_symbols: LiveSymbols,
     repr_unconditionally_treats_fields_as_live: bool,
     repr_has_repr_simd_or_scalable: bool,
-    inside_trivial_usage_site: Option<TrivialUsageSiteId>,
+    trivial_usage_sites: Vec<TrivialUsageSiteId>,
     in_pat: bool,
     ignore_variant_stack: Vec<DefId>,
     propagated_comes_from_allow_expect: ComesFromAllowExpect,
@@ -224,7 +216,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     id: def_id,
                     propagated: self.propagated_comes_from_allow_expect,
                     own: own_comes_from_allow_expect,
-                    propagated_trivial_usage_site: self.inside_trivial_usage_site,
+                    propagated_trivial_usage_site: self.trivial_usage_sites.last().copied(),
                 });
             }
 
@@ -443,7 +435,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         while let Some(work) = self.worklist.pop() {
             let WorkItem { mut id, propagated, own, propagated_trivial_usage_site } = work;
             self.propagated_comes_from_allow_expect = propagated;
-            self.inside_trivial_usage_site = propagated_trivial_usage_site;
+            self.trivial_usage_sites.clear();
+            self.trivial_usage_sites.extend(propagated_trivial_usage_site.into_iter());
 
             // in the case of tuple struct constructors we want to check the item,
             // not the generated tuple struct constructor function
@@ -482,11 +475,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             if !self.scanned.insert(ScannedItem {
                 id,
                 propagated,
-                live_kind: if self.inside_trivial_usage_site.is_some() {
-                    LiveKind::Trivial
-                } else {
-                    LiveKind::NonTrivial
-                },
+                trivial_usage_site: self.trivial_usage_sites.last().copied(),
             }) {
                 continue;
             } else if propagated == ComesFromAllowExpect::No {
@@ -496,11 +485,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 self.scanned.insert(ScannedItem {
                     id,
                     propagated: ComesFromAllowExpect::Yes,
-                    live_kind: if self.inside_trivial_usage_site.is_some() {
-                        LiveKind::Trivial
-                    } else {
-                        LiveKind::NonTrivial
-                    },
+                    trivial_usage_site: self.trivial_usage_sites.last().copied(),
                 });
             }
 
@@ -511,7 +496,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
 
             let hir_id = self.tcx.local_def_id_to_hir_id(id);
-            self.visit_node(hir_id, propagated_trivial_usage_site)?;
+            self.visit_node(hir_id)?;
         }
 
         ControlFlow::Continue(())
@@ -530,24 +515,20 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         find_attr!(self.tcx, id, RustcTrivialFieldReads(span) => *span)
     }
 
-    fn visit_node(
-        &mut self,
-        hir_id: HirId,
-        trivial: Option<TrivialUsageSiteId>,
-    ) -> <MarkSymbolVisitor<'tcx> as Visitor<'tcx>>::Result {
+    fn visit_node(&mut self, hir_id: HirId) -> <MarkSymbolVisitor<'tcx> as Visitor<'tcx>>::Result {
         let node = self.tcx.hir_node(hir_id);
-        let inside_trivial_usage_site = self.inside_trivial_usage_site.clone();
         let unconditionally_treated_fields_as_live =
             self.repr_unconditionally_treats_fields_as_live;
         let had_repr_simd_or_scalable = self.repr_has_repr_simd_or_scalable;
-        // If we are looking at a `WorkItem` created from a trivial usage
-        // site, keep the usage site, otherwise check for the attr
-        self.inside_trivial_usage_site = trivial.or_else(|| {
-            self.get_trivial_field_reads_attr(hir_id, &node).map(|attr_span| {
+        let has_trivial_attr =
+            if let Some(attr_span) = self.get_trivial_field_reads_attr(hir_id, &node) {
                 let site = TrivialUsageSite { attr_span, hir_id };
-                self.live_symbols.sites.add_trivial_usage_site(site)
-            })
-        });
+                let site_id = self.live_symbols.sites.add_trivial_usage_site(site);
+                self.trivial_usage_sites.push(site_id);
+                true
+            } else {
+                false
+            };
         self.repr_unconditionally_treats_fields_as_live = false;
         self.repr_has_repr_simd_or_scalable = false;
         let walk_result = match node {
@@ -608,7 +589,9 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         };
         self.repr_has_repr_simd_or_scalable = had_repr_simd_or_scalable;
         self.repr_unconditionally_treats_fields_as_live = unconditionally_treated_fields_as_live;
-        self.inside_trivial_usage_site = inside_trivial_usage_site;
+        if has_trivial_attr {
+            self.trivial_usage_sites.pop();
+        }
 
         walk_result
     }
@@ -763,7 +746,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     }
 
     fn mark_live_symbol(&mut self, def_id: LocalDefId) {
-        self.live_symbols.insert(def_id, self.inside_trivial_usage_site);
+        self.live_symbols.insert(def_id, self.trivial_usage_sites.last().copied());
     }
 }
 
@@ -949,7 +932,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                         id: local_def_id,
                         propagated: ComesFromAllowExpect::No,
                         own: ComesFromAllowExpect::No,
-                        propagated_trivial_usage_site: self.inside_trivial_usage_site,
+                        propagated_trivial_usage_site: self.trivial_usage_sites.last().copied(),
                     });
                 }
             }
@@ -1163,7 +1146,7 @@ fn live_symbols_and_trivial_usage_sites(
         live_symbols: Default::default(),
         repr_unconditionally_treats_fields_as_live: false,
         repr_has_repr_simd_or_scalable: false,
-        inside_trivial_usage_site: None,
+        trivial_usage_sites: vec![],
         in_pat: false,
         ignore_variant_stack: vec![],
         propagated_comes_from_allow_expect: ComesFromAllowExpect::No,
