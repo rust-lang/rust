@@ -128,15 +128,22 @@ impl<'tcx> FnPtrDiscriminatorSource<'tcx> for Ty<'tcx> {
 /// normalized before constructing the canonical discriminator input.
 impl<'tcx> FnPtrDiscriminatorSource<'tcx> for Instance<'tcx> {
     fn discriminator_input(self, tcx: TyCtxt<'tcx>) -> Option<FnPtrTypeDiscriminatorInput<'tcx>> {
-        let sig = tcx
-            .instantiate_and_normalize_erasing_regions(
-                self.args,
-                ty::TypingEnv::fully_monomorphized(),
-                tcx.fn_sig(self.def_id()),
-            )
-            .skip_binder();
+        let typing_env = ty::TypingEnv::fully_monomorphized();
 
-        Some(FnPtrTypeDiscriminatorInput::from_sig(sig))
+        match self.ty(tcx, typing_env).kind() {
+            ty::FnDef(def_id, args) => {
+                let sig = tcx
+                    .instantiate_and_normalize_erasing_regions(
+                        args.skip_binder(),
+                        typing_env,
+                        tcx.fn_sig(*def_id),
+                    )
+                    .skip_binder();
+                Some(FnPtrTypeDiscriminatorInput::from_sig(sig))
+            }
+            // Closures, coroutines, etc. are never called via an `extern "C"` function pointer.
+            _ => None,
+        }
     }
 }
 /// Enables discriminator computation directly from instantiated function
@@ -180,7 +187,9 @@ pub fn is_ptrauth_signed_abi(abi: ExternAbi) -> bool {
 /// does not support function pointer authentication.
 ///
 /// With function pointer type discrimination this is the discriminator
-/// calculated for the `source`, otherwise `schema`'s constant discriminator.
+/// calculated for the `source` (for a function instance, the function's own
+/// signature, whatever type the pointer is later stored as), otherwise
+/// `schema`'s constant discriminator.
 pub fn ptrauth_signing_discriminator_for<'tcx, S>(
     tcx: TyCtxt<'tcx>,
     schema: &PointerAuthSchema,
