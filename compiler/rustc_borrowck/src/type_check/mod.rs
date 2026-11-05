@@ -132,6 +132,9 @@ pub(crate) fn type_check<'tcx>(
             pre_assumptions.is_empty(),
             "there should be no incoming region assumptions = {pre_assumptions:#?}",
         );
+        if let Some(constraint) = infcx.take_solver_region_constraints() {
+            assert!(constraint.is_true(), "incoming solver constraints: {constraint:?}");
+        }
     }
 
     debug!(?normalized_inputs_and_output);
@@ -170,24 +173,10 @@ pub(crate) fn type_check<'tcx>(
 
     let polonius_context = typeck.polonius_context;
 
-    if infcx.tcx.assumptions_on_binders() {
-        let mut converter = constraint_conversion::ConstraintConversion::new(
-            typeck.infcx,
-            typeck.universal_regions,
-            typeck.region_bound_pairs,
-            typeck.known_type_outlives_obligations,
-            Locations::All(rustc_span::DUMMY_SP),
-            rustc_span::DUMMY_SP,
-            ConstraintCategory::Boring,
-            typeck.constraints,
-        );
-        typeck.infcx.destructure_solver_region_constraints_for_borrowck(
-            &mut converter,
-            typeck.known_type_outlives_obligations,
-            typeck.region_bound_pairs,
-            universal_region_relations.outlives.clone(),
-        );
-    }
+    assert!(
+        infcx.take_solver_region_constraints().is_none(),
+        "solver constraints remain after MIR type checking",
+    );
 
     // In case type check encountered an error region, we suppress unhelpful extra
     // errors in by clearing out all outlives bounds that we may end up checking.

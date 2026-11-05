@@ -4,7 +4,7 @@ use std::iter;
 
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::traits::query::OutlivesBound;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, TyCtxt};
 use tracing::instrument;
 
 use self::env::OutlivesEnvironment;
@@ -120,6 +120,18 @@ impl<'tcx> InferCtxt<'tcx> {
         );
 
         self.inner.borrow_mut().unwrap_region_constraints().take_and_reset_data()
+    }
+
+    pub fn take_solver_region_constraints(
+        &self,
+    ) -> Option<Box<rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>>> {
+        assert!(!self.in_snapshot(), "cannot take solver region constraints in a snapshot");
+        if !self.tcx.assumptions_on_binders() {
+            return None;
+        }
+        let constraint =
+            self.inner.borrow_mut().unwrap_region_constraints().take_and_reset_solver_data();
+        if constraint.is_true() { None } else { Some(Box::new(constraint.without_spans())) }
     }
 
     /// Gives temporary access to the region constraint data.
