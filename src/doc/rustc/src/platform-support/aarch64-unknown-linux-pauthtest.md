@@ -465,6 +465,8 @@ The following categories are supported (all present in tree):
   * pauth-signed-abi.rs
   * pauth-init-fini.rs
   * pauth-attr-special-funcs.rs
+  * pauth-fn-ptr-type-discrimination-const-aggregate.rs
+  * pauth-fn-ptr-type-discrimination-const-scalar.rs
 * End-to-end execution tests
   * Rust-driven quicksort (pauth-quicksort-rust-driver)
   * C-driven quicksort (pauth-quicksort-c-driver)
@@ -499,6 +501,8 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/codegen-llvm/pauth/pauth-extern-weak-global.rs \
   tests/codegen-llvm/pauth/pauth-signed-abi.rs \
   tests/codegen-llvm/pauth/pauth-init-fini.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-const-aggregate.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-const-scalar.rs \
   tests/run-make/pauth-quicksort-rust-driver \
   tests/run-make/pauth-quicksort-c-driver \
   tests/run-make/pauth-static-link-warning \
