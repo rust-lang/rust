@@ -14,17 +14,17 @@ pub(super) enum EdgeDirection {
 
 /// Type alias for the pairs stored in [`RegionConstraintData::constraints`],
 /// which we are indexing.
-type ConstraintPair<'tcx> = (Constraint<'tcx>, SubregionOrigin<'tcx>);
+type ConstraintPair<'data, 'tcx> = (Constraint<'tcx>, &'data SubregionOrigin<'tcx>);
 
 /// An index from region variables to their corresponding constraint edges,
 /// used on some error paths.
-pub(super) struct IndexedConstraintEdges<'tcx> {
-    out_edges: IndexVec<RegionVid, Vec<ConstraintPair<'tcx>>>,
-    in_edges: IndexVec<RegionVid, Vec<ConstraintPair<'tcx>>>,
+pub(super) struct IndexedConstraintEdges<'data, 'tcx> {
+    out_edges: IndexVec<RegionVid, Vec<ConstraintPair<'data, 'tcx>>>,
+    in_edges: IndexVec<RegionVid, Vec<ConstraintPair<'data 'tcx>>>,
 }
 
-impl<'tcx> IndexedConstraintEdges<'tcx> {
-    pub(super) fn build_index<D: Data<'tcx>>(num_vars: usize, data: &D) -> Self {
+impl<'data, 'tcx> IndexedConstraintEdges<'data, 'tcx> {
+    pub(super) fn build_index<D: Data<'tcx>>(num_vars: usize, data: &'data D) -> Self {
         let mut out_edges = IndexVec::from_fn_n(|_| vec![], num_vars);
         let mut in_edges = IndexVec::from_fn_n(|_| vec![], num_vars);
 

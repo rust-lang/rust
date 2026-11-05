@@ -1,6 +1,7 @@
 //! Lexical region resolution.
 
 use std::fmt;
+use std::borrow::Borrow;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
@@ -134,7 +135,7 @@ pub(crate) trait Data<'tcx> {
     fn dedupe_constraints(&mut self);
     fn constraints(
         &self,
-    ) -> impl DoubleEndedIterator<Item = (Constraint<'tcx>, SubregionOrigin<'tcx>)>;
+    ) -> impl DoubleEndedIterator<Item = impl Borrow<(Constraint<'tcx>, SubregionOrigin<'tcx>)>>;
     fn verifys<'a>(&'a self) -> impl Iterator<Item = &'a Verify<'tcx>>
     where
         'tcx: 'a;
@@ -152,8 +153,8 @@ impl<'tcx> Data<'tcx> for RegionConstraintData<'tcx> {
 
     fn constraints(
         &self,
-    ) -> impl DoubleEndedIterator<Item = (Constraint<'tcx>, SubregionOrigin<'tcx>)> {
-        self.constraints.iter().cloned()
+    ) -> impl DoubleEndedIterator<Item = &(Constraint<'tcx>, SubregionOrigin<'tcx>)> {
+        self.constraints.iter()
     }
 
     fn verifys<'a>(&'a self) -> impl Iterator<Item = &'a Verify<'tcx>>
@@ -725,7 +726,7 @@ impl<'cx, 'tcx, D: Data<'tcx>> LexicalResolver<'cx, 'tcx, D> {
         let mut dup_vec = IndexVec::from_elem_n(None, self.num_vars());
 
         // Only construct the edge index when necessary, because it's moderately expensive.
-        let mut edges: Option<IndexedConstraintEdges<'tcx>> = None;
+        let mut edges: Option<IndexedConstraintEdges<'data, 'tcx>> = None;
 
         for (node_vid, value) in var_data.values.iter_enumerated() {
             match *value {
@@ -770,7 +771,7 @@ impl<'cx, 'tcx, D: Data<'tcx>> LexicalResolver<'cx, 'tcx, D> {
 
     fn collect_error_for_expanding_node(
         &self,
-        edges: &IndexedConstraintEdges<'tcx>,
+        edges: &IndexedConstraintEdges<'data, 'tcx>,
         dup_vec: &mut IndexSlice<RegionVid, Option<RegionVid>>,
         node_idx: RegionVid,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
@@ -888,7 +889,7 @@ impl<'cx, 'tcx, D: Data<'tcx>> LexicalResolver<'cx, 'tcx, D> {
     ///   those returned by a previous call for another region.
     fn collect_bounding_regions(
         &self,
-        edges: &IndexedConstraintEdges<'tcx>,
+        edges: &IndexedConstraintEdges<'data, 'tcx>,
         orig_node_idx: RegionVid,
         dir: EdgeDirection,
         mut dup_vec: Option<&mut IndexSlice<RegionVid, Option<RegionVid>>>,
@@ -932,9 +933,9 @@ impl<'cx, 'tcx, D: Data<'tcx>> LexicalResolver<'cx, 'tcx, D> {
         let WalkState { result, dup_found, set, .. } = state;
         return (result, set, dup_found);
 
-        fn process_edges<'tcx>(
+        fn process_edges<'data, 'tcx>(
             state: &mut WalkState<'tcx>,
-            edges: &IndexedConstraintEdges<'tcx>,
+            edges: &IndexedConstraintEdges<'data, 'tcx>,
             source_vid: RegionVid,
             dir: EdgeDirection,
         ) {
