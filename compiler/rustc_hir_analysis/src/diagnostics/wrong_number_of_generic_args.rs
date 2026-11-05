@@ -746,8 +746,8 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 }
             }
             if !impl_args.is_empty() {
-                impl_sugg = Some(match i.generics.span_for_lifetime_suggestion() {
-                    Some(span) => (span, format!("{}, ", impl_args.join(", "))),
+                impl_sugg = Some(match i.generics.span_for_param_suggestion() {
+                    Some(span) => (span, format!(", {}", impl_args.join(", "))),
                     None => (i.generics.span, format!("<{}>", impl_args.join(", "))),
                 });
             }
