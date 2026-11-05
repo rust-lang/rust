@@ -1,8 +1,6 @@
 error[E0080]: evaluation panicked: explicit panic
   --> $DIR/zero_assoc_diverging_consts.rs:23:14
    |
-LL | fn ex_nihilo<T: Trait>() -> u32
-...
 LL |     [const { panic!() } as !; T::ZERO];
    |              ^^^^^^^^ evaluation of `ex_nihilo::<()>::{constant#1}` failed here
 

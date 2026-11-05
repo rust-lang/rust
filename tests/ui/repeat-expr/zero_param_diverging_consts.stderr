@@ -1,7 +1,6 @@
 error[E0080]: evaluation panicked: explicit panic
   --> $DIR/zero_param_diverging_consts.rs:11:14
    |
-LL | fn ex_nihilo<const N: usize>() -> u32 {
 LL |     [const { panic!() } as !; N];
    |              ^^^^^^^^ evaluation of `ex_nihilo::<0>::{constant#0}` failed here
 
