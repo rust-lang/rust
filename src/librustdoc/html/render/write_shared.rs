@@ -917,14 +917,8 @@ impl TraitAliasPart {
             // for any value of `B`, because `!` is less than any identifier-starting char.
             implementors.sort_unstable_by(|a, b| compare_names(&a.cmp_text, &b.cmp_text));
 
-            let part = OrderedJson::array_unsorted(
-                implementors
-                    .iter()
-                    .map(OrderedJson::serialize)
-                    .collect::<Result<Vec<_>, _>>()
-                    .unwrap(),
-            );
-            path_parts.push(path, OrderedJson::array_unsorted([crate_name_json, &part]));
+            path_parts
+                .push(path, OrderedJson::serialize((crate_name_json, &implementors)).unwrap());
         }
         Ok(path_parts)
     }
