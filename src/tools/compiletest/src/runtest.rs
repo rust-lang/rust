@@ -993,6 +993,7 @@ impl<'test> TestCx<'test> {
             emit,
             allow_unused,
             LinkToAux::Yes,
+            self.edition(),
             passes,
         );
 
@@ -1397,6 +1398,8 @@ impl<'test> TestCx<'test> {
     fn build_minicore(&self) -> Utf8PathBuf {
         let output_file_path = self.output_base_dir().join("libminicore.rlib");
 
+        // We want to inherit *all* `TestProps` from the test that added minicore *except*
+        // for the edition which we want to keep fixed to the latest stable one.
         let mut rustc = self.make_compile_args(
             CompilerKind::Rustc,
             &self.config.minicore_path,
@@ -1404,6 +1407,7 @@ impl<'test> TestCx<'test> {
             Emit::None,
             AllowUnused::Yes,
             LinkToAux::No,
+            Edition::LATEST_STABLE,
             vec![],
         );
 
@@ -1485,6 +1489,7 @@ impl<'test> TestCx<'test> {
             Emit::None,
             AllowUnused::No,
             LinkToAux::No,
+            aux_cx.edition(),
             Vec::new(),
         );
         aux_cx.build_all_auxiliary(&aux_dir, &mut aux_rustc);
@@ -1671,6 +1676,7 @@ impl<'test> TestCx<'test> {
         emit: Emit,
         allow_unused: AllowUnused,
         link_to_aux: LinkToAux,
+        edition: Edition,
         passes: Vec<String>, // Vec of passes under mir-opt test to be dumped
     ) -> Command {
         // FIXME(Zalathar): We should have a cleaner distinction between
@@ -2055,7 +2061,7 @@ impl<'test> TestCx<'test> {
             compiler.arg("-Cforce-unwind-tables=yes");
         }
 
-        compiler.arg(self.edition().to_flag());
+        compiler.arg(edition.to_flag());
         compiler.args(&self.props.compile_flags);
 
         compiler
@@ -2282,6 +2288,7 @@ impl<'test> TestCx<'test> {
             Emit::LlvmIr,
             AllowUnused::No,
             LinkToAux::Yes,
+            self.edition(),
             Vec::new(),
         );
 

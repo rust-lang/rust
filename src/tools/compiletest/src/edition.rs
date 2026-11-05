@@ -12,6 +12,7 @@ pub(crate) enum Edition {
 
 impl Edition {
     pub(crate) const RUSTC_DEFAULT: Self = Self::Year(2015);
+    pub(crate) const LATEST_STABLE: Self = Self::Year(2024);
 
     pub(crate) fn to_flag(self) -> String {
         format!("--edition={self}")
