@@ -3,7 +3,7 @@
 use std::marker::Unpin;
 use std::ops::Coroutine;
 
-pub fn foo() -> impl Coroutine<(), Yield = (), Return = ()> {
+pub fn foo() -> impl for<'y> Coroutine<(), Yield<'y> = (), Return = ()> {
     #[coroutine]
     || {
         if false {

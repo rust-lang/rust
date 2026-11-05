@@ -12,7 +12,7 @@ impl Database {
         Some(()).into_iter()
     }
 
-    fn check_connection(&self) -> impl Coroutine<Yield = (), Return = ()> + '_ {
+    fn check_connection<'y, 'a: 'y>(&'a self) -> impl Coroutine<Yield<'y> = (), Return = ()> + 'a {
         #[coroutine]
         move || {
             let iter = self.get_connection();

@@ -4,7 +4,7 @@
 use std::marker::Unpin;
 use std::ops::Coroutine;
 
-pub fn g() -> impl Coroutine<(), Yield = (), Return = ()> {
+pub fn g() -> impl for<'y> Coroutine<(), Yield<'y> = (), Return = ()> {
     #[coroutine]
     || {
         yield;

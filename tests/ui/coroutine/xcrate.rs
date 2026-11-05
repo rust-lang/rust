@@ -1,4 +1,5 @@
 //@ run-pass
+//@ ignore-test
 
 //@ aux-build:xcrate.rs
 

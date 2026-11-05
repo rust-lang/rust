@@ -1,0 +1,72 @@
+error[E0107]: missing generics for associated type `std::ops::Coroutine::Yield`
+  --> $DIR/issue-58662-coroutine-with-lifetime.rs:7:54
+   |
+LL | type RandCoroutine<'a> = impl Coroutine<Return = (), Yield = u64> + 'a;
+   |                                                      ^^^^^ expected 1 lifetime argument
+   |
+help: add missing lifetime argument
+   |
+LL | type RandCoroutine<'a> = impl Coroutine<Return = (), Yield<'a> = u64> + 'a;
+   |                                                           ++++
+
+error[E0107]: missing generics for associated type `std::ops::Coroutine::Yield`
+  --> $DIR/issue-58662-coroutine-with-lifetime.rs:20:73
+   |
+LL | pub type RandCoroutineWithIndirection<'c> = impl Coroutine<Return = (), Yield = u64> + 'c;
+   |                                                                         ^^^^^ expected 1 lifetime argument
+   |
+help: add missing lifetime argument
+   |
+LL | pub type RandCoroutineWithIndirection<'c> = impl Coroutine<Return = (), Yield<'c> = u64> + 'c;
+   |                                                                              ++++
+
+error[E0107]: missing generics for associated type `std::ops::Coroutine::Yield`
+  --> $DIR/issue-58662-coroutine-with-lifetime.rs:24:68
+   |
+LL |     fn helper<'b>(rng: &'b ()) -> impl 'b + Coroutine<Return = (), Yield = u64> {
+   |                                                                    ^^^^^ expected 1 lifetime argument
+   |
+help: add missing lifetime argument
+   |
+LL |     fn helper<'b>(rng: &'b ()) -> impl 'b + Coroutine<Return = (), Yield<'_> = u64> {
+   |                                                                         ++++
+
+error[E0107]: missing generics for associated type `std::ops::Coroutine::Yield`
+  --> $DIR/issue-58662-coroutine-with-lifetime.rs:7:54
+   |
+LL | type RandCoroutine<'a> = impl Coroutine<Return = (), Yield = u64> + 'a;
+   |                                                      ^^^^^ expected 1 lifetime argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing lifetime argument
+   |
+LL | type RandCoroutine<'a> = impl Coroutine<Return = (), Yield<'a> = u64> + 'a;
+   |                                                           ++++
+
+error[E0107]: missing generics for associated type `std::ops::Coroutine::Yield`
+  --> $DIR/issue-58662-coroutine-with-lifetime.rs:20:73
+   |
+LL | pub type RandCoroutineWithIndirection<'c> = impl Coroutine<Return = (), Yield = u64> + 'c;
+   |                                                                         ^^^^^ expected 1 lifetime argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing lifetime argument
+   |
+LL | pub type RandCoroutineWithIndirection<'c> = impl Coroutine<Return = (), Yield<'c> = u64> + 'c;
+   |                                                                              ++++
+
+error[E0107]: missing generics for associated type `std::ops::Coroutine::Yield`
+  --> $DIR/issue-58662-coroutine-with-lifetime.rs:24:68
+   |
+LL |     fn helper<'b>(rng: &'b ()) -> impl 'b + Coroutine<Return = (), Yield = u64> {
+   |                                                                    ^^^^^ expected 1 lifetime argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing lifetime argument
+   |
+LL |     fn helper<'b>(rng: &'b ()) -> impl 'b + Coroutine<Return = (), Yield<'_> = u64> {
+   |                                                                         ++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

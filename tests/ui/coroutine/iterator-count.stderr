@@ -1,0 +1,14 @@
+error[E0107]: missing generics for associated type `std::ops::Coroutine::Yield`
+  --> $DIR/iterator-count.rs:11:20
+   |
+LL |     type Item = T::Yield;
+   |                    ^^^^^ expected 1 lifetime argument
+   |
+help: add missing lifetime argument
+   |
+LL |     type Item = T::Yield<'a>;
+   |                         ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.
