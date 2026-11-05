@@ -32,7 +32,6 @@ fn semantics<F>(
     self2: impl Fn(self, self),
     //~^ ERROR `self` parameter is only allowed in associated functions
     //~| ERROR unexpected `self` parameter in function
-    //~| WARN identifier `self` is bound more than once in this parameter list
     self3: impl Fn(bool, self),
     //~^ ERROR unexpected `self` parameter in function
 

@@ -775,7 +775,7 @@ fn find_duplicated_parameters(cx: &EarlyContext<'_>, params: &[ast::Param]) {
 
     for param in params {
         if let ast::PatKind::Ident(_, ident, _) = param.pat.kind {
-            if ident.name == kw::SelfLower {
+            if param.is_self() {
                 continue;
             }
 
