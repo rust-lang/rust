@@ -1,0 +1,25 @@
+// This test ensures that we don't add a border on a focused anchor if it's empty.
+// Regression test for <https://github.com/rust-lang/rust/issues/163345>.
+
+define-function: ("check-no-target-colors", [selector], block {
+    assert-css: (
+        |selector|,
+        {
+            "border-right-width": "0px",
+            "background-color": "transparent",
+        },
+    )
+})
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/notable/index.html"
+click: 'a[href="#short-anchor"]'
+wait-for: "#short-anchor:target"
+
+call-function: ("check-no-target-colors", {"selector": "#short-anchor:target"})
+call-function: ("check-no-target-colors", {"selector": ".docblock h2"})
+
+move-cursor-to: ".docblock h2"
+click: ".docblock h2 .doc-anchor"
+
+assert-css: (".docblock h2:target", { "border-right-width": "3px" })
+assert-css-false: (".docblock h2:target", { "background-color": "transparent" })
