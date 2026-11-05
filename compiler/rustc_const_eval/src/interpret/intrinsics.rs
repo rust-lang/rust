@@ -213,6 +213,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ensure_monomorphic_enough(tp_ty)?;
                 self.write_type_id(tp_ty, dest)?;
             }
+            sym::ptrauth_fn_ptr_discriminator => {
+                let tp_ty = instance.args.type_at(0);
+                ensure_monomorphic_enough(tp_ty)?;
+                let discriminator = match rustc_middle::ptrauth::ptrauth_c_encoding(tcx, tp_ty) {
+                    rustc_middle::ptrauth::PtrauthCEncoding::FnPtr(discriminator) => discriminator,
+                    _ => 0,
+                };
+                self.write_scalar(Scalar::from_u64(discriminator.into()), dest)?;
+            }
             sym::type_id_eq => {
                 let a_ty = self.read_type_id(&args[0])?;
                 let b_ty = self.read_type_id(&args[1])?;

@@ -1288,6 +1288,18 @@ impl Session {
     pub fn pointer_authentication_init_fini(&self) -> Option<&PointerAuthSchema> {
         self.pointer_auth_config.as_ref().and_then(|cfg| cfg.init_fini.as_ref())
     }
+
+    /// True if function pointers are signed with function pointer type discrimination.
+    pub fn pointer_authentication_fn_ptr_type_discrimination(&self) -> bool {
+        self.pointer_authentication_functions().is_some_and(|schema| {
+            matches!(schema.discrimination_kind, PointerAuthDiscrimination::Type)
+        })
+    }
+
+    /// The key function pointers are signed with, if they are signed.
+    pub fn pointer_authentication_fn_ptr_key(&self) -> Option<PointerAuthARM8_3Key> {
+        self.pointer_authentication_functions().map(|schema| schema.key)
+    }
 }
 
 // JUSTIFICATION: part of session construction

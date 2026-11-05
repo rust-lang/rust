@@ -425,6 +425,27 @@ type work, and calls that are UB fail authentication. Function pointers of other
 ABIs are neither signed nor authenticated. Init/fini entries keep their own
 discriminator.
 
+C signs a code address with the discriminator of the type of the slot that holds
+it, and a cast to another type resigns it for the new type. Rust signs a
+function pointer with the discriminator of the function it points to, and never
+resigns it. So whether a code address needs resigning when it passes between
+Rust and C depends on the type of the slot on the C side:
+
+* a function pointer of the function's own type: C and Rust use the same
+  discriminator, so the pointer is passed as is;
+* a function pointer of another type, such as a generic callback type (for
+  example GLib's `GCallback`): C uses the discriminator of that type, so the
+  pointer must be resigned for it;
+* a `void *` or an integer (`dlsym`, user data): C uses discriminator 0, so the
+  pointer must be resigned for 0.
+
+A code address crossing one of the last two kinds of slot needs an explicit
+conversion, `core::intrinsics::ptrauth_c_cast::<Src, Dst>`, the Rust
+equivalent of the C cast. `core::intrinsics::ptrauth_fn_ptr_discriminator::<F>()`
+gives the discriminator of a function pointer type, as Clang's
+`__builtin_ptrauth_type_discriminator` does, and `core::intrinsics::ptrauth_strip`
+removes the signature, to compare code addresses.
+
 ## Cross-compilation toolchains and C code
 
 This target supports interoperability with C code. A
@@ -466,6 +487,7 @@ The following categories are supported (all present in tree):
   * pauth-fn-ptr-type-discrimination-encoder.rs
   * pauth-fn-ptr-type-discrimination-fn-ptr-return-type.rs
   * pauth-fn-ptr-type-discrimination-instance-signing.rs
+  * pauth-fn-ptr-type-discrimination-intrinsics.rs
   * pauth-fn-ptr-type-discrimination-no-resign.rs
   * pauth-fn-ptr-type-discrimination-option-callback.rs
   * pauth-fn-ptr-type-discrimination-option-return.rs
@@ -483,6 +505,8 @@ The following categories are supported (all present in tree):
 * End-to-end execution tests
   * Rust-driven quicksort (pauth-quicksort-rust-driver)
   * C-driven quicksort (pauth-quicksort-c-driver)
+  * C/Rust interop under function pointer type discrimination
+    (pauth-fn-ptr-type-discrimination-interop-ir)
 * UI error/warning reporting
   * crt-static-pauthtest.rs
   * pauth-static-link-warning
@@ -521,6 +545,7 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-encoder.rs \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-fn-ptr-return-type.rs \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-instance-signing.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-intrinsics.rs \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-no-resign.rs \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-option-callback.rs \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-option-return.rs \
@@ -538,6 +563,7 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/run-make/pauth-quicksort-c-driver \
   tests/run-make/pauth-static-link-warning \
   tests/run-make/pauth-drop-terminator \
+  tests/run-make/pauth-fn-ptr-type-discrimination-interop-ir \
   tests/ui/statics/crt-static-pauthtest.rs \
   tests/ui/pointer_authentication/enable_pointer_authentication_validation.rs \
   tests/ui/pointer_authentication/invalid_target_pointer_authentication.rs \
