@@ -9,6 +9,8 @@ LL |     type FErr1 = Self::E<'static, 'static>;
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/parameter_number_and_kind.rs:8:10
    |
+LL | trait Foo {
+...
 LL |     type E<'a, T>;
    |          ^ --
 
@@ -21,6 +23,8 @@ LL |     type FErr1 = Self::E<'static, 'static>;
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/parameter_number_and_kind.rs:8:10
    |
+LL | trait Foo {
+...
 LL |     type E<'a, T>;
    |          ^     -
 help: add missing generic argument
@@ -39,6 +43,8 @@ LL |     type FErr2<T> = Self::E<'static, T, u32>;
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/parameter_number_and_kind.rs:8:10
    |
+LL | trait Foo {
+...
 LL |     type E<'a, T>;
    |          ^     -
 

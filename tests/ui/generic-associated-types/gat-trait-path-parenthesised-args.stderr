@@ -38,6 +38,7 @@ LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/gat-trait-path-parenthesised-args.rs:3:8
    |
+LL | trait X {
 LL |   type Y<'a>;
    |        ^ --
 help: add missing lifetime argument
@@ -56,6 +57,7 @@ LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
 note: associated type defined here, with 0 generic parameters
   --> $DIR/gat-trait-path-parenthesised-args.rs:3:8
    |
+LL | trait X {
 LL |   type Y<'a>;
    |        ^
 
@@ -68,6 +70,7 @@ LL | fn bar<'a>(arg: Box<dyn X<Y() = ()>>) {}
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/gat-trait-path-parenthesised-args.rs:3:8
    |
+LL | trait X {
 LL |   type Y<'a>;
    |        ^ --
 help: add missing lifetime argument
