@@ -97,6 +97,7 @@ mod handlers {
     pub(crate) mod union_pat_must_have_exactly_one_field;
     pub(crate) mod unreachable_label;
     pub(crate) mod unresolved_assoc_item;
+    pub(crate) mod unresolved_associated_type;
     pub(crate) mod unresolved_extern_crate;
     pub(crate) mod unresolved_field;
     pub(crate) mod unresolved_ident;
@@ -554,7 +555,8 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::MatchInheritedImmRefWithMutRefPat(d) => {
         handlers::match_inherited_imm_ref_with_mut_ref_pat::match_inherited_imm_ref_with_mut_ref_pat(&ctx, &d)
     }
-            AnyDiagnostic::InvalidPatPathRes(d) => handlers::invalid_pat_path_res::invalid_pat_path_res(&ctx, &d)
+            AnyDiagnostic::InvalidPatPathRes(d) => handlers::invalid_pat_path_res::invalid_pat_path_res(&ctx, &d),
+            AnyDiagnostic::UnresolvedAssociatedType(d) => handlers::unresolved_associated_type::unresolved_associated_type(&ctx, &d),
         };
         res.push(d)
     }
