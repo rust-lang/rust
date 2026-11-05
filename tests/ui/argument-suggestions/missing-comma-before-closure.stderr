@@ -1,0 +1,96 @@
+error[E0425]: cannot find value `c` in this scope
+  --> $DIR/missing-comma-before-closure.rs:4:12
+   |
+LL |     t1(() |c| c);
+   |            ^ not found in this scope
+
+error[E0425]: cannot find value `c` in this scope
+  --> $DIR/missing-comma-before-closure.rs:4:15
+   |
+LL |     t1(() |c| c);
+   |               ^ not found in this scope
+
+error[E0425]: cannot find value `c` in this scope
+  --> $DIR/missing-comma-before-closure.rs:8:14
+   |
+LL |     t1((()) |c| c);
+   |              ^ not found in this scope
+
+error[E0425]: cannot find value `c` in this scope
+  --> $DIR/missing-comma-before-closure.rs:8:17
+   |
+LL |     t1((()) |c| c);
+   |                 ^ not found in this scope
+
+error[E0425]: cannot find value `c` in this scope
+  --> $DIR/missing-comma-before-closure.rs:13:15
+   |
+LL |     t1(() |a| c);
+   |               ^ not found in this scope
+   |
+help: a local variable with a similar name exists
+   |
+LL -     t1(() |a| c);
+LL +     t1(() |a| a);
+   |
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/missing-comma-before-closure.rs:4:5
+   |
+LL |     t1(() |c| c);
+   |     ^^---------- argument #2 is missing
+   |
+note: function defined here
+  --> $DIR/missing-comma-before-closure.rs:1:4
+   |
+LL | fn t1(_: (), _: impl Fn(bool) -> bool) {}
+   |    ^^        ------------------------
+help: provide the argument
+   |
+LL |     t1(() |c| c, /* _ */);
+   |                +++++++++
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/missing-comma-before-closure.rs:8:5
+   |
+LL |     t1((()) |c| c);
+   |     ^^------------ argument #2 is missing
+   |
+note: function defined here
+  --> $DIR/missing-comma-before-closure.rs:1:4
+   |
+LL | fn t1(_: (), _: impl Fn(bool) -> bool) {}
+   |    ^^        ------------------------
+help: provide the argument
+   |
+LL |     t1((()) |c| c, /* _ */);
+   |                  +++++++++
+
+error[E0369]: no implementation for `() | ()`
+  --> $DIR/missing-comma-before-closure.rs:13:11
+   |
+LL |     t1(() |a| c);
+   |        -- ^- ()
+   |        |
+   |        ()
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/missing-comma-before-closure.rs:13:5
+   |
+LL |     t1(() |a| c);
+   |     ^^---------- argument #2 is missing
+   |
+note: function defined here
+  --> $DIR/missing-comma-before-closure.rs:1:4
+   |
+LL | fn t1(_: (), _: impl Fn(bool) -> bool) {}
+   |    ^^        ------------------------
+help: provide the argument
+   |
+LL |     t1(() |a| c, /* _ */);
+   |                +++++++++
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0061, E0369, E0425.
+For more information about an error, try `rustc --explain E0061`.
