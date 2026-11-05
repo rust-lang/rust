@@ -45,11 +45,13 @@ impl DeadCodeLivenessSnapshot {
     pub fn trivial_usage_sites(
         &self,
         def_id: &LocalDefId,
-    ) -> impl Iterator<Item = TrivialUsageSite> {
-        self.sites_by_defid.get(def_id).into_iter().flatten().map(|site_id| {
-            let (hir_id, attr_span) = self.sites.0.get_index(site_id.0).unwrap();
-            TrivialUsageSite { hir_id: *hir_id, attr_span: *attr_span }
-        })
+    ) -> impl Iterator<Item = TrivialUsageSiteId> {
+        self.sites_by_defid.get(def_id).into_iter().flatten().copied()
+    }
+
+    pub fn trivial_usage_site_by_id(&self, site_id: TrivialUsageSiteId) -> TrivialUsageSite {
+        let (hir_id, attr_span) = self.sites.0.get_index(site_id.0).unwrap();
+        TrivialUsageSite { hir_id: *hir_id, attr_span: *attr_span }
     }
 }
 

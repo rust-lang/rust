@@ -1329,7 +1329,7 @@ impl<'tcx> DeadVisitor<'tcx> {
             ParentInfo { num, descr, parent_descr, span }
         });
 
-        let trivial_usage_sites = self.trivial_usage_sites(first_item);
+        let trivial_usage_sites = self.trivial_usage_sites(dead_codes);
 
         let diag = match report_on {
             ReportOn::TupleField => {
@@ -1422,26 +1422,40 @@ impl<'tcx> DeadVisitor<'tcx> {
 
     fn trivial_usage_sites(
         &self,
-        first_item: &DeadItem,
+        dead_items: &[&DeadItem],
     ) -> Vec<crate::diagnostics::TrivialUsageSite> {
-        self.live_symbols
-            .trivial_usage_sites(&first_item.def_id)
-            .map(|usage_site| {
-                let name = self.tcx.item_name(first_item.def_id);
-                let mut spans = MultiSpan::new();
-                let usage_kind = if usage_site.attr_span.in_derive_expansion() {
-                    spans.push_primary_span(usage_site.attr_span);
-                    "in this derive macro"
+        // For grouped diagnostics, we emit one note per usage site
+        // wherein we point to all the items which are ignored due to the site.
+        // Here, we invert the mapping from DefId -> [SiteId] to SiteId -> [DefId]
+        let mut sites: FxHashMap<TrivialUsageSiteId, Vec<LocalDefId>> = FxHashMap::default();
+        for item in dead_items {
+            for site_id in self.live_symbols.trivial_usage_sites(&item.def_id) {
+                sites.entry(site_id).or_default().push(item.def_id);
+            }
+        }
+        // We immediately sort these by span afterwards, so
+        // the instability does not matter
+        #[allow(rustc::potential_query_instability)]
+        let mut notes: Vec<_> = sites
+            .into_iter()
+            .map(|(usage_site, def_ids)| {
+                let usage_site = self.live_symbols.trivial_usage_site_by_id(usage_site);
+                let names: Vec<_> =
+                    def_ids.iter().map(|def_id| self.tcx.item_name(*def_id)).collect();
+                let multiple = names.len() > 1;
+                let names = names.into();
+                let (span, usage_kind) = if usage_site.attr_span.in_derive_expansion() {
+                    (usage_site.attr_span, "in this derive macro")
                 } else if usage_site.attr_span.in_external_macro(self.tcx.sess.source_map()) {
-                    spans.push_primary_span(usage_site.attr_span);
-                    "in this macro invocation"
+                    (usage_site.attr_span, "in this macro invocation")
                 } else {
-                    spans.push_primary_span(self.tcx.hir_span(usage_site.hir_id));
-                    "here"
+                    (self.tcx.hir_span(usage_site.hir_id), "here")
                 };
-                crate::diagnostics::TrivialUsageSite { name, spans, usage_kind }
+                crate::diagnostics::TrivialUsageSite { names, span, usage_kind, multiple }
             })
-            .collect()
+            .collect();
+        notes.sort_unstable_by_key(|note| note.span.lo_hi());
+        notes
     }
 
     fn warn_multiple(

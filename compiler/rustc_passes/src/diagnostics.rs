@@ -2,7 +2,7 @@ use std::io::Error;
 use std::path::{Path, PathBuf};
 
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, Level, MultiSpan, msg};
+use rustc_errors::{Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, Level, msg};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::middle::resolve::MainDefinition;
 use rustc_middle::ty::Ty;
@@ -607,12 +607,16 @@ pub(crate) struct ParentInfo<'tcx> {
 
 #[derive(Subdiagnostic)]
 #[note(
-    "`{$name}` is used {$usage_kind}, but this is intentionally ignored during dead code analysis"
+    "{$names} { $multiple ->
+        *[true] are
+        [false] is
+    } used {$usage_kind}, but this is intentionally ignored during dead code analysis"
 )]
 pub(crate) struct TrivialUsageSite {
     #[primary_span]
-    pub spans: MultiSpan,
-    pub name: Symbol,
+    pub span: Span,
+    pub names: DiagSymbolList,
+    pub multiple: bool,
     pub usage_kind: &'static str,
 }
 
