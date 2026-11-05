@@ -396,10 +396,6 @@ struct CFG<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 }
 
-rustc_index::newtype_index! {
-    struct ScopeId {}
-}
-
 #[derive(Debug)]
 enum NeedsTemporary {
     /// Use this variant when whatever you are converting with `as_operand`
