@@ -1,7 +1,13 @@
 //@ignore-target: windows # No libc
 //@compile-flags: -Zmiri-disable-isolation
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+
 use std::ffi::CStr;
+use std::os::unix::ffi::OsStrExt;
+
+use libc_utils::{errno, errno_check, errno_result};
 
 fn test_getenv() {
     let s = unsafe { libc::getenv(c"MIRI_ENV_VAR_TEST".as_ptr()) };
@@ -83,8 +89,44 @@ fn test_unsetenv() {
     assert_eq!(result, -1);
 }
 
+fn test_getcwd() {
+    // Filling the buffer with `1` prevents the null terminator check from passing by mistake
+    let mut buf = [1u8; libc::PATH_MAX as usize];
+
+    let result = unsafe { libc::getcwd(buf.as_mut_ptr().cast(), buf.len()) };
+    assert_eq!(result, buf.as_mut_ptr().cast());
+
+    let cstr = CStr::from_bytes_until_nul(&buf).unwrap();
+    assert_eq!(cstr.to_bytes(), std::env::current_dir().unwrap().as_os_str().as_bytes());
+
+    let len = cstr.count_bytes();
+
+    // ERANGE: The pathname fits into the buffer,
+    // but there isn't enough space for the `\0` terminator
+    let result = unsafe { libc::getcwd(buf.as_mut_ptr().cast(), len) };
+    assert!(result.is_null());
+    assert_eq!(errno(), libc::ERANGE);
+}
+
+fn test_chdir() {
+    let old_cwd = std::env::current_dir().unwrap();
+
+    errno_check(unsafe { libc::chdir(c"..".as_ptr()) });
+
+    let parent = old_cwd.parent().unwrap_or(&old_cwd);
+    assert_eq!(std::env::current_dir().unwrap(), parent);
+
+    // If the cwd isn't restored, subsequent tests would run in the wrong directory
+    std::env::set_current_dir(old_cwd).unwrap();
+
+    let err = errno_result(unsafe { libc::chdir(c"thisdoesnotexist".as_ptr()) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+}
+
 fn main() {
     test_getenv();
     test_setenv();
     test_unsetenv();
+    test_getcwd();
+    test_chdir();
 }
