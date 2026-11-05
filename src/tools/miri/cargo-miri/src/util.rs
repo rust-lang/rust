@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::env;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{self, BufWriter, Read, Write};
 use std::ops::Not;
@@ -260,6 +260,10 @@ pub fn get_target_dir(args: &Args, meta: &Metadata) -> PathBuf {
     output
 }
 
+fn sysroot_cache_root() -> PathBuf {
+    directories::ProjectDirs::from("org", "rust-lang", "miri").unwrap().cache_dir().to_owned()
+}
+
 /// Determines where the sysroot of this execution is
 ///
 /// Either in a user-specified spot by an envar, or in a default cache location.
@@ -267,8 +271,14 @@ pub fn get_sysroot_dir() -> PathBuf {
     match std::env::var_os("MIRI_SYSROOT") {
         Some(dir) => PathBuf::from(dir),
         None => {
-            let user_dirs = directories::ProjectDirs::from("org", "rust-lang", "miri").unwrap();
-            user_dirs.cache_dir().to_owned()
+            let toolchain = std::env::var_os("RUSTUP_TOOLCHAIN");
+            // Toolchain can be an absolute path. Keep just the basename.
+            let toolchain =
+                toolchain.as_ref().and_then(|toolchain| Path::new(toolchain).file_name());
+
+            let mut path = sysroot_cache_root();
+            path.push(toolchain.unwrap_or(OsStr::new("non-rustup")));
+            path
         }
     }
 }
@@ -293,12 +303,12 @@ pub fn clean_sysroot() {
         )
     }
 
-    let sysroot_dir = get_sysroot_dir();
+    let sysroot_cache = sysroot_cache_root();
 
-    eprintln!("Cleaning sysroot cache at {}", sysroot_dir.display());
+    eprintln!("Cleaning sysroot cache at {}", sysroot_cache.display());
 
     // Keep it simple, just remove the directory.
-    remove_dir_all_idem(&sysroot_dir).unwrap_or_else(|err| show_error!("{}", err));
+    remove_dir_all_idem(&sysroot_cache).unwrap_or_else(|err| show_error!("{}", err));
 }
 
 /// Deletes the Miri target directory
