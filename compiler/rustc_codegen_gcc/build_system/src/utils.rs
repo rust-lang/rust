@@ -471,6 +471,44 @@ pub fn run_tool_and_install_it_if_not_present(cmd: &[&dyn AsRef<OsStr>]) -> Resu
     run_command_with_output(cmd, Some(Path::new(".")))
 }
 
+pub fn setup_rustc_folder(env: &mut HashMap<String, String>) -> Result<PathBuf, String> {
+    let rust_dir_path = Path::new(crate::BUILD_DIR).join("rust");
+    // If the repository was already cloned, command will fail, so doesn't matter.
+    let _ = git_clone("https://github.com/rust-lang/rust.git", Some(&rust_dir_path), false);
+    let rust_dir: Option<&Path> = Some(&rust_dir_path);
+    run_command(&[&"git", &"checkout", &"--", &"tests/"], rust_dir)?;
+    let rustc_commit = match rustc_version_info(env.get("RUSTC").map(|s| s.as_str()))?.commit_hash {
+        Some(commit_hash) => commit_hash,
+        None => return Err("Couldn't retrieve rustc commit hash".to_string()),
+    };
+    if rustc_commit != "unknown" {
+        // GitHub rate-limits a fetch right after a full clone, so only fetch a missing commit.
+        let commit_object = format!("{rustc_commit}^{{commit}}");
+        let has_commit = run_command_with_output_and_env_no_err(
+            &[&"git", &"rev-parse", &"--quiet", &"--verify", &commit_object],
+            rust_dir,
+            Some(env),
+        )
+        .is_ok();
+        if !has_commit {
+            run_command_with_output_and_env(
+                &[&"git", &"fetch", &"origin", &rustc_commit],
+                rust_dir,
+                Some(env),
+            )?;
+        }
+        run_command_with_output_and_env(
+            &[&"git", &"checkout", &rustc_commit],
+            rust_dir,
+            Some(env),
+        )?;
+    } else {
+        run_command_with_output_and_env(&[&"git", &"fetch"], rust_dir, Some(env))?;
+        run_command_with_output_and_env(&[&"git", &"checkout"], rust_dir, Some(env))?;
+    }
+    Ok(rust_dir_path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
