@@ -1774,16 +1774,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
         );
 
-        let count_is_zero = {
-            if let Ok(count) = tcx.try_normalize_erasing_regions(
-                self.typing_env(self.param_env),
-                Unnormalized::new_wip(count),
-            ) {
-                count.try_to_value().and_then(|c| c.try_to_target_usize(tcx)) == Some(0)
-            } else {
-                false
-            }
-        };
+        let count_is_zero =
+            count.try_to_value().and_then(|c| c.try_to_target_usize(tcx)) == Some(0);
 
         let uty = match expected {
             ExpectHasType(uty) => uty.builtin_index(),
