@@ -631,21 +631,6 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, StableHash)]
-pub enum RiscvInterruptKind {
-    Machine,
-    Supervisor,
-}
-
-impl RiscvInterruptKind {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Machine => "machine",
-            Self::Supervisor => "supervisor",
-        }
-    }
-}
-
 /// Metadata describing how the arguments to a native function
 /// should be passed in order to respect the native ABI.
 ///

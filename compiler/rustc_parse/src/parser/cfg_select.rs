@@ -7,12 +7,6 @@ use rustc_span::Span;
 use crate::exp;
 use crate::parser::{AttrWrapper, ForceCollect, Parser, Restrictions, Trailing, UsePreAttrPos};
 
-#[derive(Default)]
-pub struct CfgSelectBranchAttrSpans {
-    pub attrs: Vec<Span>,
-    pub doc_comments: Vec<Span>,
-}
-
 impl<'a> Parser<'a> {
     /// Parses the right-hand side of a `cfg_select!` branch,
     /// which can be either a braced block or an expression.

@@ -163,11 +163,6 @@ pub enum ReprAttr {
     ReprAlign(Align),
 }
 
-pub enum TransparencyError {
-    UnknownTransparency(Symbol, Span),
-    MultipleTransparencyAttrs(Span, Span),
-}
-
 #[derive(Eq, PartialEq, Debug, Copy, Clone, PartialOrd, Ord)]
 #[derive(Encodable, Decodable, StableHash, PrintAttribute)]
 pub enum IntType {
