@@ -1113,6 +1113,13 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let msg = {
             let def_kind = self.tcx.def_descr(self.def_id);
             let (quantifier, bound) = self.get_quantifier_and_bound();
+            if let hir::def::DefKind::AssocFn | hir::def::DefKind::AssocTy =
+                self.tcx.def_kind(self.def_id)
+            {
+                spans.push_span_context(
+                    self.tcx.def_span(self.tcx.parent(self.def_id)).shrink_to_lo(),
+                );
+            }
 
             let params = if bound == 0 {
                 String::new()

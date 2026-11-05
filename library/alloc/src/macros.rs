@@ -45,7 +45,7 @@ macro_rules! vec {
         $crate::vec::Vec::new()
     );
     ($elem:expr; $n:expr) => (
-        $crate::vec::from_elem($elem, $n)
+        $crate::vec::from_elem_global($elem, $n)
     );
     ($($x:expr),+ $(,)?) => (
         // Using `write_box_via_move` produces a dramatic improvement in stack usage for unoptimized

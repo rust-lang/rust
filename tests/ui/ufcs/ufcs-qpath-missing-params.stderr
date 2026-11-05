@@ -41,6 +41,7 @@ LL |     <String as IntoCow>::into_cow::<str>("foo".to_string());
 note: method defined here, with 0 generic parameters
   --> $DIR/ufcs-qpath-missing-params.rs:4:8
    |
+LL | pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
 LL |     fn into_cow(self) -> Cow<'a, B>;
    |        ^^^^^^^^
 
