@@ -11,6 +11,9 @@
 //! even if it is stabilized or removed, *do not remove it*. Instead, move the
 //! symbol to the `accepted` or `removed` modules respectively.
 
+#![allow(incomplete_features)]
+#![feature(extern_item_impls)]
+
 mod accepted;
 mod builtin_attrs;
 mod removed;
@@ -178,5 +181,5 @@ pub use builtin_attrs::{
 pub use removed::REMOVED_LANG_FEATURES;
 pub use unstable::{
     DEPENDENT_FEATURES, DependentFeature, EnabledLangFeature, EnabledLibFeature, Features,
-    INCOMPATIBLE_FEATURES, TRACK_FEATURE, UNSTABLE_LANG_FEATURES,
+    INCOMPATIBLE_FEATURES, UNSTABLE_LANG_FEATURES, track_feature,
 };

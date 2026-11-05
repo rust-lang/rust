@@ -14,6 +14,7 @@ use std::fmt::Arguments;
 use std::panic::Location;
 
 use rustc_errors::{DiagInner, DiagLocation, Level};
+use rustc_feature::track_feature;
 use rustc_middle::dep_graph::{QuerySideEffect, TaskDepsRef};
 use rustc_middle::ty::tls;
 use rustc_span::{Span, Symbol, track_span_parent};
@@ -55,6 +56,7 @@ fn track_diagnostic<R>(diagnostic: DiagInner, f: &mut dyn FnMut(DiagInner) -> R)
     })
 }
 
+#[track_feature]
 fn track_feature(feature: Symbol) {
     tls::with_context_opt(|icx| {
         let Some(icx) = icx else {
@@ -116,6 +118,5 @@ fn emit_bug_diagnostic(
 pub fn setup_callbacks() {
     rustc_hir::def_id::DEF_ID_DEBUG.swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     rustc_errors::TRACK_DIAGNOSTIC.swap(&(track_diagnostic as _));
-    rustc_feature::TRACK_FEATURE.swap(&(track_feature as _));
     rustc_span::macros::EMIT_BUG_DIAGNOSTIC.swap(&(emit_bug_diagnostic as _));
 }
