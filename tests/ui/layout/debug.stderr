@@ -524,7 +524,7 @@ error: layout_of(Option<bool>) = Layout {
                    VariantLayout {
                        size: Size(1 bytes),
                        backend_repr: Scalar(
-                           u8 is 0..=1,
+                           bool is 0..=1,
                        ),
                        field_offsets: [
                            Size(0 bytes),
@@ -535,7 +535,7 @@ error: layout_of(Option<bool>) = Layout {
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),
-                               value: u8,
+                               value: bool,
                                valid_range: 0..=1,
                            },
                        ),

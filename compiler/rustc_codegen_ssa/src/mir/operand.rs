@@ -509,14 +509,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         // Decode the discriminant (specifically if it's niche-encoded).
         match *tag_encoding {
             TagEncoding::Direct => {
-                let signed = match tag_scalar.primitive() {
-                    // We use `i1` for bytes that are always `0` or `1`,
-                    // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
-                    // let LLVM interpret the `i1` as signed, because
-                    // then `i1 1` (i.e., `E::B`) is effectively `i8 -1`.
-                    Primitive::Int(_, signed) => !tag_scalar.is_bool() && signed,
-                    _ => false,
-                };
+                let signed = matches!(tag_scalar.primitive(), Primitive::Int(_, true));
                 if bx.cx().sess().opts.optimize != OptLevel::No {
                     let vals: Vec<u128> = variants
                         .iter_enumerated()

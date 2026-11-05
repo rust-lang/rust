@@ -770,7 +770,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             }
 
             match scalar.primitive() {
-                abi::Primitive::Int(..) => {
+                abi::Primitive::Bool | abi::Primitive::Int(..) => {
                     if !scalar.is_always_valid(bx) {
                         bx.range_metadata(load, scalar.valid_range(bx));
                     }

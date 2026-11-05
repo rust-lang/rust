@@ -45,6 +45,8 @@ pub(crate) fn document_type_layout(cx: &Context<'_>, ty_def_id: DefId) -> impl f
                 0
             } else if let Primitive::Int(i, _) = tag.primitive() {
                 i.size().bytes()
+            } else if let Primitive::Bool = tag.primitive() {
+                1
             } else {
                 span_bug!(tcx.def_span(ty_def_id), "tag is neither niche nor int")
             };

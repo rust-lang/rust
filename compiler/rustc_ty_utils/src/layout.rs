@@ -411,7 +411,7 @@ fn layout_of_uncached<'tcx>(
         ty::Bool => tcx.mk_layout(LayoutData::scalar(
             cx,
             Scalar::Initialized {
-                value: Int(I8, false),
+                value: Primitive::Bool,
                 valid_range: WrappingRange { start: 0, end: 1 },
             },
         )),

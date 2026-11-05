@@ -499,14 +499,20 @@ impl Scalar {
 /// A primitive scalar type: integer, float, or pointer.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize)]
 pub enum Primitive {
+    Bool,
     /// An integer type with a given length and signedness.
     ///
     /// Signedness matters because some calling conventions require small integers
     /// to be sign-extended or zero-extended when passed, and using the wrong
     /// extension produces incorrect values in the callee.
-    Int { length: IntegerLength, signed: bool },
+    Int {
+        length: IntegerLength,
+        signed: bool,
+    },
     /// A floating-point type with a given length.
-    Float { length: FloatLength },
+    Float {
+        length: FloatLength,
+    },
     /// A pointer in the given address space.
     Pointer(AddressSpace),
 }
@@ -514,6 +520,7 @@ pub enum Primitive {
 impl Primitive {
     pub fn size(self, target: &MachineInfo) -> Size {
         match self {
+            Primitive::Bool => Size::from_bits(1),
             Primitive::Int { length, .. } => Size::from_bits(length.bits()),
             Primitive::Float { length } => Size::from_bits(length.bits()),
             Primitive::Pointer(_) => target.pointer_width,

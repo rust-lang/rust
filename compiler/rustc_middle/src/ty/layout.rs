@@ -174,6 +174,7 @@ impl Primitive {
     #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
+            Primitive::Bool => tcx.types.u8,
             Primitive::Int(i, signed) => i.to_ty(tcx, signed),
             Primitive::Float(f) => f.to_ty(tcx),
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
@@ -186,6 +187,7 @@ impl Primitive {
     #[inline]
     fn to_int_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
+            Primitive::Bool => tcx.types.u8,
             Primitive::Int(i, signed) => i.to_ty(tcx, signed),
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
             Primitive::Pointer(_) => {

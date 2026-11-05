@@ -115,6 +115,9 @@ where
                 // Allow integers of the same size with differing signedness.
                 // We arbitrarily choose the signedness of the first variant.
                 (p @ Primitive::Int(x, _), Primitive::Int(y, _)) if x == y => p,
+                // Allow booleans to unify with integers of size 1
+                (p @ Primitive::Int(Integer::I8, _), Primitive::Bool)
+                | (Primitive::Bool, p @ Primitive::Int(Integer::I8, _)) => p,
                 // Allow integers mixed with pointers of the same layout.
                 // We must represent this using a pointer, to avoid
                 // roundtripping pointers through ptrtoint/inttoptr.
@@ -287,8 +290,10 @@ where
     // won't be so conservative.
 
     // Use the initial field alignment
-    let ity = if repr.c() || repr.int.is_some() {
+    let ity = if repr.c() {
         min_ity
+    } else if let Some(ity) = repr.int {
+        Integer::from_attr(dl, ity)
     } else {
         Integer::for_align(dl, start_align)
             .unwrap_or(min_ity)
@@ -324,7 +329,17 @@ where
             // We might have no inhabited variants, so pretend there's at least one.
             .unwrap_or(WrappingRange { start: 0, end: 0 })
     };
-    Scalar::Initialized { value: Primitive::Int(ity, signed), valid_range: tag_valid_range }
+
+    // for an enum that does NOT have an explicit repr, and only has discriminants 0..=1, use Bool for it
+    if repr.int.is_none()
+        && !repr.c()
+        && matches!(tag_valid_range, WrappingRange { start: 0, end: 1 })
+        && ity == Integer::I8
+    {
+        Scalar::Initialized { value: Primitive::Bool, valid_range: tag_valid_range }
+    } else {
+        Scalar::Initialized { value: Primitive::Int(ity, signed), valid_range: tag_valid_range }
+    }
 }
 
 fn variant_is_inhabited<'a, VariantIdx, FieldIdx, F>(variant: &IndexSlice<FieldIdx, F>) -> bool

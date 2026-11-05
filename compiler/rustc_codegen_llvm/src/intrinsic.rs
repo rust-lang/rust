@@ -267,6 +267,18 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     Primitive::Pointer(_) => {
                         // Pointers are always OK.
                     }
+                    Primitive::Bool => {
+                        let target_c_int_width = self.cx().sess().target.options.c_int_width;
+                        if 1 < u64::from(target_c_int_width) {
+                            // Smaller integer types are automatically promototed and `va_arg`
+                            // should not be called on them.
+                            bug!(
+                                "va_arg got i{} but needs at least c_int (an i{})",
+                                1,
+                                target_c_int_width
+                            );
+                        }
+                    }
                     Primitive::Int(..) => {
                         let int_width = self.cx().size_of(result_layout.ty).bits();
                         let target_c_int_width = self.cx().sess().target.options.c_int_width;
