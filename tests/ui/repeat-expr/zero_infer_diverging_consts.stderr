@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/zero_infer_diverging_consts.rs:6:19
+   |
+LL | fn ex_nihilo() -> u32 {
+   |    ---------      ^^^ expected `u32`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+
+error[E0308]: mismatched types
+  --> $DIR/zero_infer_diverging_consts.rs:11:20
+   |
+LL | fn ex_nihilo2() -> u32 {
+   |    ----------      ^^^ expected `u32`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
