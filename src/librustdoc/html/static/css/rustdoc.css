@@ -2021,7 +2021,16 @@ instead, we check that it's not a "finger" cursor.
 	}
 }
 
-:target:not([data-nosnippet]) {
+/* The `:not(:empty)` is because of cases like:
+
+/// [check here](#short-anchor)
+///
+/// <a id="short-anchor"></a>
+/// # Some header with a long text that I don't want type in full every time I want to refer to it
+
+Without this extra selector, an empty line with a weird border appears out of nowhere.
+*/
+:target:not([data-nosnippet]):not(:empty) {
 	background-color: var(--target-background-color);
 	border-right: 3px solid var(--target-border-color);
 }
