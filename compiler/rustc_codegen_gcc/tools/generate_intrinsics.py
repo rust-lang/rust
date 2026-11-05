@@ -12,24 +12,28 @@ def run_command(command, cwd=None):
         sys.exit(1)
 
 
-def clone_repository(repo_name, path, repo_url, sub_paths):
+def clone_repository_and_checkout_right_commit(repo_name, path, repo_url, sub_paths):
     if os.path.exists(path):
-        while True:
-            choice = input("There is already a `{}` folder, do you want to update it? [y/N]".format(path))
-            if choice == "" or choice.lower() == "n":
-                print("Skipping repository update.")
-                return
-            elif choice.lower() == "y":
-                print("Updating repository...")
-                run_command(["git", "pull", "origin", "main"], cwd=path)
-                return
-            else:
-                print("Didn't understand answer...")
-    print("Cloning {} repository...".format(repo_name))
-    run_command(["git", "clone", repo_url, "--filter=tree:0", "--no-checkout", path])
-    run_command(["git", "sparse-checkout", "init"], cwd=path)
-    run_command(["git", "sparse-checkout", "set", *sub_paths], cwd=path)
-    run_command(["git", "checkout"], cwd=path)
+        run_command(["git", "fetch", "origin"], cwd=path)
+    else:
+        print("Cloning {} repository...".format(repo_name))
+        run_command(["git", "clone", repo_url, "--filter=tree:0", "--no-checkout", path])
+        run_command(["git", "sparse-checkout", "init"], cwd=path)
+        run_command(["git", "sparse-checkout", "set", *sub_paths], cwd=path)
+        run_command(["git", "checkout"], cwd=path)
+    p = subprocess.Popen(["./y.sh", "info", "--llvm-commit"], stdout=subprocess.PIPE)
+    output, err = p.communicate()
+    output = convert_to_string(output)
+    commit = None
+    for line in output.splitlines():
+        if not line.startswith("LLVM commit:"):
+            continue
+        commit = line.split(':')[1].strip()
+        break
+    if commit is None:
+        print("Failed to find LLVM commit in:\n=======\n{}\n=======".format(output))
+        sys.exit(1)
+    run_command(["git", "checkout", commit], cwd=path)
 
 
 def append_intrinsic(array, intrinsic_name, translation):
@@ -137,8 +141,9 @@ def main():
         "llvm-project",
     )
 
-    # First, we clone the LLVM repository if it's not already here.
-    clone_repository(
+    # First, we clone the LLVM repository if it's not already here and checkout the same commit
+    # as rustc's submodule.
+    clone_repository_and_checkout_right_commit(
         "llvm-project",
         llvm_path,
         "https://github.com/llvm/llvm-project",
