@@ -1,10 +1,10 @@
 use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
-use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::{SpanExt as _, snippet, snippet_with_context};
-use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_and_count_ty_refs};
+use clippy_utils::ty::{expr_type_is_certain, get_iterator_item_ty, implements_trait, is_copy, peel_and_count_ty_refs};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{fn_def_id, get_parent_expr, is_expr_temporary_value, return_ty, sym};
 use rustc_attr_ir::lang_items::LangItem;
@@ -19,7 +19,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind, Overload
 use rustc_middle::ty::{
     self, ClauseKind, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionClause, TraitClause, Ty,
 };
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 
@@ -29,10 +29,74 @@ pub fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
     method_name: Symbol,
+    call_span: Span,
     receiver: &'tcx Expr<'_>,
     args: &'tcx [Expr<'_>],
     msrv: Msrv,
 ) {
+    // check for `linear_collection.contains(&str.to_string())`
+    if sym::contains == method_name
+        && let [arg] = args
+        && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, item) = arg.kind
+        && let ExprKind::MethodCall(str_method, str_receiver, [], str_span) = item.kind
+        && str_method.ident.name == sym::to_string
+        && call_span.ctxt() == str_receiver.span.ctxt()
+        && str_receiver.span.ctxt() == str_span.ctxt()
+        && !call_span.from_expansion()
+        && !str_receiver.span.from_expansion()
+    {
+        let res = cx.typeck_results();
+        let recv = match res.expr_ty(receiver).peel_refs().kind() {
+            ty::Adt(def, _args) => cx
+                .tcx
+                .get_diagnostic_name(def.did())
+                .is_some_and(|s| s == rustc_span::sym::Vec || s == sym::VecDeque),
+            ty::Array(..) | ty::Slice(_) => true,
+            _ => false,
+        };
+
+        if recv && res.expr_ty(str_receiver).is_imm_ref_str() {
+            let receiver_snippet = if let Some(i) = rustc_span::sym::ascii_letter_digit('i') {
+                let name = if clippy_utils::contains_name(i, str_receiver, cx) {
+                    "j"
+                } else {
+                    "i"
+                };
+                Some(if expr_type_is_certain(cx, receiver) {
+                    format!("iter().any(|{name}| {name} == ")
+                } else {
+                    format!("iter().any(|{name}: &String| {name} == ")
+                })
+            } else {
+                None
+            };
+            span_lint_hir_and_then(
+                cx,
+                UNNECESSARY_TO_OWNED,
+                expr.hir_id,
+                call_span,
+                "unnecessary use of `.to_string()`",
+                |diag| {
+                    if let Some(receiver_snippet) = receiver_snippet {
+                        // vec.contains(           elem.to_string())
+                        //     ^^^^^^^^^               ^^^^^^^^^^^^
+                        //    "iter().any(|i| i =="    ""
+                        diag.multipart_suggestion(
+                            "use an iterator instead of `.contains(_)` to avoid cloning via `.to_string()`",
+                            vec![
+                                (call_span.with_hi(str_receiver.span.lo()), receiver_snippet),
+                                (str_span.with_lo(str_receiver.span.hi()), String::new()),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        diag.note("Use `.iter().any(|i| i == _)` instead of `.contains(&_.tostring()) ");
+                    }
+                },
+            );
+        }
+    }
+
     if let Some(method_parent_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id).opt_parent(cx)
         && args.is_empty()
     {
