@@ -180,9 +180,13 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             ExprKind::Block { block } => &self.thir[*block].stmts,
         );
         for (i, block_def) in block_defs.iter().enumerate() {
-            let is_cleanup = self.body.basic_blocks_mut()[BasicBlock::from_usize(i)].is_cleanup;
+            let bb = BasicBlock::from_usize(i);
+            let is_cleanup = self.block_decls[bb];
             let block = self.parse_block_def(self.statement_as_expr(*block_def)?, is_cleanup)?;
-            self.body.basic_blocks_mut()[BasicBlock::from_usize(i)] = block;
+            let inserted_bb = self.body.basic_blocks_mut().push(block);
+            // just a sanity check to make sure that we inserted the block
+            // to the correct position (basic block idx)
+            assert_eq!(inserted_bb, bb);
         }
 
         Ok(())
@@ -199,14 +203,11 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         match &self.thir[stmt].kind {
             StmtKind::Let { pattern, initializer: Some(initializer), .. } => {
                 let (var, ..) = self.parse_var(pattern)?;
-                let data = BasicBlockData::maybe_unterminated(
-                    None,
-                    parse_by_kind!(self, *initializer, _, "basic block declaration",
-                        @variant(mir_basic_block, Normal) => false,
-                        @variant(mir_basic_block, Cleanup) => true,
-                    ),
+                let is_cleanup = parse_by_kind!(self, *initializer, _, "basic block declaration",
+                    @variant(mir_basic_block, Normal) => false,
+                    @variant(mir_basic_block, Cleanup) => true,
                 );
-                let block = self.body.basic_blocks_mut().push(data);
+                let block = self.block_decls.push(is_cleanup);
                 self.block_map.insert(var, block);
                 Ok(())
             }
