@@ -17,7 +17,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind, OverloadedDeref};
 use rustc_middle::ty::{
-    self, ClauseKind, GenericArg, GenericArgKind, GenericArgs, ParamTy, ProjectionClause, TraitClause, Ty,
+    self, ClauseKind, GenericArg, GenericArgKind, GenericArgs, ParamTy, ProjectionClause, TraitClause, Ty, CallerBoundsIterator
 };
 use rustc_span::Symbol;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -476,7 +476,7 @@ fn get_input_traits_and_projections<'tcx>(
 ) -> (Vec<TraitClause<'tcx>>, Vec<ProjectionClause<'tcx>>) {
     let mut trait_predicates = Vec::new();
     let mut projection_predicates = Vec::new();
-    for clause in cx.tcx.param_env(callee_def_id).caller_bounds() {
+    for clause in cx.tcx.param_env(callee_def_id).caller_bounds().all_clauses(cx.tcx).iter() {
         match clause.kind().skip_binder() {
             ClauseKind::Trait(trait_predicate) if trait_predicate.trait_ref.self_ty() == input => {
                 trait_predicates.push(trait_predicate);
@@ -538,7 +538,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                             return false;
                         }
 
-                        let mut trait_clauses = cx.tcx.param_env(callee_def_id).caller_bounds().filter(|clause| {
+                        let mut trait_clauses = cx.tcx.param_env(callee_def_id).caller_bounds().all_clauses(cx.tcx).iter().filter(|clause| {
                             if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
                                 && trait_predicate.trait_ref.self_ty() == param_ty
                             {
