@@ -1,0 +1,23 @@
+error[E0658]: use of unstable library feature `forget_trait`
+  --> $DIR/feature-gate-forget-trait.rs:4:5
+   |
+LL | use std::marker::Forget;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #165370 <https://github.com/rust-lang/rust/issues/165370> for more information
+   = help: add `#![feature(forget_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `forget_trait`
+  --> $DIR/feature-gate-forget-trait.rs:11:7
+   |
+LL | impl !Forget for B {}
+   |       ^^^^^^
+   |
+   = note: see issue #165370 <https://github.com/rust-lang/rust/issues/165370> for more information
+   = help: add `#![feature(forget_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

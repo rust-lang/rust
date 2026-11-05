@@ -7,8 +7,6 @@ use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHashe
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::{AttrId, DUMMY_SP, Ident, Span, Symbol};
-use smallvec::SmallVec;
-use thin_vec::ThinVec;
 
 use crate::AttributeKind;
 
@@ -149,26 +147,8 @@ impl Attribute {
 
 impl AttributeExt for Attribute {
     #[inline]
-    fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
-        match &self {
-            Attribute::Tool(n) | Attribute::DeriveHelper(n) => match n.as_ref() {
-                AttrItem { args: AttrArgs::Delimited(d), .. } => {
-                    ast::MetaItemKind::list_from_tokens(d.tokens.clone())
-                }
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-
-    #[inline]
     fn value_str(&self) -> Option<Symbol> {
         self.value_lit().and_then(|x| x.value_as_str())
-    }
-
-    #[inline]
-    fn value_span(&self) -> Option<Span> {
-        self.value_lit().map(|i| i.span)
     }
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
@@ -197,50 +177,6 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn is_doc_comment(&self) -> Option<Span> {
-        if let Attribute::Parsed(AttributeKind::DocComment { span, .. }) = self {
-            Some(*span)
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    fn is_word(&self) -> bool {
-        match &self {
-            Attribute::Tool(n) | Attribute::DeriveHelper(n) => {
-                matches!(n.args, AttrArgs::Empty)
-            }
-            _ => false,
-        }
-    }
-
-    #[inline]
-    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
-        match &self {
-            Attribute::Tool(n) | Attribute::DeriveHelper(n) => {
-                Some(n.path.segments.iter().copied().collect())
-            }
-            _ => None,
-        }
-    }
-
-    fn path_span(&self) -> Option<Span> {
-        match &self {
-            Attribute::Tool(attr) | Attribute::DeriveHelper(attr) => Some(attr.path.span),
-            Attribute::Parsed(_) => None,
-        }
-    }
-
-    #[inline]
-    fn doc_str(&self) -> Option<Symbol> {
-        match &self {
-            Attribute::Parsed(AttributeKind::DocComment { comment, .. }) => Some(*comment),
-            _ => None,
-        }
-    }
-
-    #[inline]
     fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind, Span)> {
         match &self {
             Attribute::Parsed(AttributeKind::DocComment { kind, comment, span, .. }) => {
@@ -255,16 +191,5 @@ impl AttributeExt for Attribute {
             Attribute::Parsed(AttributeKind::DocComment { style, .. }) => Some(*style),
             _ => None,
         }
-    }
-
-    fn is_proc_macro_attr(&self) -> bool {
-        matches!(
-            self,
-            Attribute::Parsed(
-                AttributeKind::ProcMacro
-                    | AttributeKind::ProcMacroAttribute
-                    | AttributeKind::ProcMacroDerive { .. }
-            )
-        )
     }
 }

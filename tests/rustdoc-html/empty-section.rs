@@ -1,5 +1,6 @@
 #![crate_name = "foo"]
-#![feature(negative_impls, freeze_impls, freeze, unsafe_unpin)]
+#![feature(negative_impls, freeze_impls, freeze, unsafe_unpin, forget_trait, min_specialization)]
+#![allow(incomplete_features)]
 
 pub struct Foo;
 
@@ -13,3 +14,4 @@ impl !std::marker::UnsafeUnpin for Foo {}
 impl !std::marker::Unpin for Foo {}
 impl !std::panic::RefUnwindSafe for Foo {}
 impl !std::panic::UnwindSafe for Foo {}
+impl !std::marker::Forget for Foo {}
