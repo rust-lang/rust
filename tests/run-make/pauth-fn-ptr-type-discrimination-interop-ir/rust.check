@@ -1,0 +1,28 @@
+// Rust side: every boundary uses the discriminators Clang uses on the C side. `BINOP` is the
+// discriminator of `int (*)(int, int)`, `GENERIC` the one of `void (*)(void)`, both read from
+// Clang's IR. Functions are not emitted in source order, so each has its own prefix and FileCheck
+// runs once per prefix.
+
+TO_C-LABEL: define {{.*}}@typed_to_c(
+TO_C-NOT: llvm.ptrauth.resign
+TO_C: @apply{{.*}}(ptr ptrauth (ptr @{{.*}}add, i32 0, i64 [[BINOP]])
+
+FROM_C-LABEL: define {{.*}}@typed_from_c(
+FROM_C-NOT: llvm.ptrauth.resign
+FROM_C: call i32 %{{.*}}(i32 9, i32 4) {{.*}}[ "ptrauth"(i32 0, i64 [[BINOP]]) ]
+
+FROM_VOID-LABEL: define {{.*}}@from_void_ptr(
+FROM_VOID: call i64 @llvm.ptrauth.resign(i64 %{{.*}}, i32 0, i64 0, i32 0, i64 [[BINOP]])
+
+TO_GENERIC-LABEL: define {{.*}}@to_generic_slot(
+TO_GENERIC: call i64 @llvm.ptrauth.resign(i64 {{.*}}, i32 0, i64 [[BINOP]], i32 0, i64 [[GENERIC]])
+
+FROM_GENERIC-LABEL: define {{.*}}@from_generic_slot(
+FROM_GENERIC: call i64 @llvm.ptrauth.resign(i64 %{{.*}}, i32 0, i64 [[GENERIC]], i32 0, i64 [[BINOP]])
+
+TO_VOID-LABEL: define {{.*}}@to_void_ptr(
+TO_VOID: call i64 @llvm.ptrauth.resign(i64 {{.*}}, i32 0, i64 [[BINOP]], i32 0, i64 0)
+
+ROUND_TRIP-LABEL: define {{.*}}@rust_round_trip(
+ROUND_TRIP-NOT: llvm.ptrauth.resign
+ROUND_TRIP: call i32 {{.*}}(i32 1, i32 1) {{.*}}[ "ptrauth"(i32 0, i64 [[BINOP]]) ]

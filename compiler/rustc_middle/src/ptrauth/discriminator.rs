@@ -62,6 +62,10 @@
 //!     through `abi()`)
 //!   - `compute_fn_ptr_type_discriminator`
 //!
+//! - C encoding of a value's type
+//!   - `PtrauthCEncoding`
+//!   - `ptrauth_c_encoding`
+//!
 //! - Clang-compatible type model
 //!   - `ClangDiscTy`
 //!   - `canonicalize_abi_compatible_type`
@@ -106,7 +110,8 @@ pub trait FnPtrDiscriminatorSource<'tcx>: Sized {
 /// Enables discriminator computation for function pointer types.
 ///
 /// Only `FnPtr` is accepted: function items (`FnDef`) have no runtime code
-/// address, and wrappers such as `Option<fn()>` must be handled separately.
+/// address, and wrappers such as `Option<fn()>` are handled by
+/// `ptrauth_c_encoding`, which peels them based on their layout.
 impl<'tcx> FnPtrDiscriminatorSource<'tcx> for Ty<'tcx> {
     fn discriminator_input(self, tcx: TyCtxt<'tcx>) -> Option<FnPtrTypeDiscriminatorInput<'tcx>> {
         let ty = tcx.normalize_erasing_regions(
@@ -205,6 +210,55 @@ where
     match schema.discrimination_kind {
         PointerAuthDiscrimination::Type => compute_fn_ptr_type_discriminator(tcx, &input),
         _ => Some(schema.constant_discriminator),
+    }
+}
+
+/// How a value of a given type holds a code address under C's pointer authentication encoding.
+///
+/// Rust signs a function pointer with the discriminator of the function it points to, whatever
+/// type it is stored as. C encodes a code address according to the type of the slot holding it.
+/// Explicit resigns, `ptrauth_c_cast` intrinsic, can be used to convert between the encodings of
+/// two types, the way a C type-cast does.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PtrauthCEncoding {
+    /// An `extern "C"`/`"system"` function pointer, also behind `Option` or a `repr(transparent)`
+    /// wrapper: signed with the discriminator of the function pointer type.
+    FnPtr(u16),
+    /// A raw pointer, reference or integer: Clang signs a code address held in one with
+    /// zero-discrimination.
+    Opaque,
+    /// A function pointer with an ABI that pointer authentication does not sign (e.g. `"Rust"`).
+    UnsignedFnPtr,
+    /// Any other type.
+    Unsupported,
+}
+
+impl PtrauthCEncoding {
+    /// The discriminator of this encoding, or `None` if it cannot hold a signed code address.
+    pub fn discriminator(self) -> Option<u16> {
+        match self {
+            PtrauthCEncoding::FnPtr(discriminator) => Some(discriminator),
+            PtrauthCEncoding::Opaque => Some(0),
+            PtrauthCEncoding::UnsignedFnPtr | PtrauthCEncoding::Unsupported => None,
+        }
+    }
+}
+
+/// Returns how a value of type `ty` holds a code address under C's pointer authentication
+/// encoding. See `PtrauthCEncoding`.
+///
+/// Works on a canonicalized type, to honor the ABI rules. For example: `Option<fn()>` and
+/// `repr(transparent)` wrappers are peeled off, because their layout is that of the underlying
+/// function pointer.
+pub fn ptrauth_c_encoding<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> PtrauthCEncoding {
+    let ty = canonicalize_abi_compatible_type(tcx, ty);
+    match ty.kind() {
+        ty::FnPtr(..) => ty
+            .discriminator_input(tcx)
+            .and_then(|input| compute_fn_ptr_type_discriminator(tcx, &input))
+            .map_or(PtrauthCEncoding::UnsignedFnPtr, PtrauthCEncoding::FnPtr),
+        ty::RawPtr(..) | ty::Ref(..) | ty::Int(_) | ty::Uint(_) => PtrauthCEncoding::Opaque,
+        _ => PtrauthCEncoding::Unsupported,
     }
 }
 

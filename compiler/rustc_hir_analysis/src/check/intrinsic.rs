@@ -137,6 +137,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::ptr_guaranteed_cmp
         | sym::ptr_mask
         | sym::ptr_metadata
+        | sym::ptrauth_fn_ptr_discriminator
+        | sym::ptrauth_strip
         | sym::resumable_breakpoint
         | sym::return_address
         | sym::rotate_left
@@ -637,6 +639,10 @@ pub(crate) fn check_intrinsic_type(
         // on the definition in `core` do the heavy lifting for checking it.
         sym::aggregate_raw_ptr => (3, 0, vec![param(1), param(2)], param(0)),
         sym::ptr_metadata => (2, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(1)),
+
+        sym::ptrauth_c_cast => (2, 0, vec![param(0)], param(1)),
+        sym::ptrauth_fn_ptr_discriminator => (1, 0, vec![], tcx.types.u64),
+        sym::ptrauth_strip => (1, 0, vec![param(0)], tcx.types.usize),
 
         sym::ub_checks | sym::overflow_checks => (0, 0, Vec::new(), tcx.types.bool),
 
