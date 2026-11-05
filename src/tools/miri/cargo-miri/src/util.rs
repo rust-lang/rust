@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::env;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{self, BufWriter, Read, Write};
 use std::ops::Not;
@@ -260,12 +260,6 @@ pub fn get_target_dir(args: &Args, meta: &Metadata) -> PathBuf {
     output
 }
 
-fn toolchain_key() -> Option<OsString> {
-    let toolchain = std::env::var_os("RUSTUP_TOOLCHAIN")?;
-    // Toolchain can be an absolute path. Keep just the basename.
-    Path::new(&toolchain).file_name().map(|s| s.to_os_string())
-}
-
 fn sysroot_cache_root() -> PathBuf {
     directories::ProjectDirs::from("org", "rust-lang", "miri").unwrap().cache_dir().to_owned()
 }
@@ -277,8 +271,13 @@ pub fn get_sysroot_dir() -> PathBuf {
     match std::env::var_os("MIRI_SYSROOT") {
         Some(dir) => PathBuf::from(dir),
         None => {
+            let toolchain = std::env::var_os("RUSTUP_TOOLCHAIN");
+            // Toolchain can be an absolute path. Keep just the basename.
+            let toolchain =
+                toolchain.as_ref().and_then(|toolchain| Path::new(toolchain).file_name());
+
             let mut path = sysroot_cache_root();
-            path.push(toolchain_key().unwrap_or("non-rustup".into()));
+            path.push(toolchain.unwrap_or(OsStr::new("non-rustup")));
             path
         }
     }
