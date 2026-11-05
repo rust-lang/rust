@@ -665,6 +665,8 @@ pub(crate) fn transform_instance<'tcx>(
             instance
         }
 
+        ty::InstanceKind::Shim(ty::ShimKind::FnStaticInstance(..)) => instance,
+
         // AsyncDropGlueCtorShims (i.e., `core::future::async_drop::async_drop_in_place::<'_,
         // T>`, the constructors of the async drop glue coroutines): do not implement any trait
         // method and are not closure-likes, so they are not transformed (i.e., type ids are

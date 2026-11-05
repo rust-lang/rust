@@ -1033,6 +1033,7 @@ symbols! {
         fn_ptr_from_ptr,
         fn_ptr_trait,
         fn_static,
+        fn_static_instance,
         forall,
         forbid,
         force_target_feature,

@@ -130,6 +130,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
                     self.assemble_candidates_for_fn_static_trait(obligation, &mut candidates);
                 }
+                Some(LangItem::FnStatic) => {
+                    self.assemble_candidates_for_fn_static_trait(obligation, &mut candidates);
+                }
                 Some(LangItem::BikeshedGuaranteedNoDrop) => {
                     self.assemble_candidates_for_bikeshed_guaranteed_no_drop_trait(
                         obligation,
@@ -1429,6 +1432,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match *self_ty.skip_binder().kind() {
             ty::FnDef(_, _) => candidates.vec.push(BuiltinCandidate),
+            ty::Closure(_, args) => {
+                let resolved_upvars =
+                    self.infcx.shallow_resolve(args.as_closure().tupled_upvars_ty());
+                if let ty::Tuple(upvars) = resolved_upvars.kind()
+                    && upvars.is_empty()
+                {
+                    candidates.vec.push(BuiltinCandidate);
+                } else if resolved_upvars.is_ty_var() {
+                    candidates.ambiguous = true
+                }
+            }
             ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)) => {
                 candidates.ambiguous = true;
             }

@@ -36,7 +36,9 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
         | InstanceKind::Shim(ShimKind::Clone(..)) => {}
 
         // This shim does not call any other functions, thus there can be no recursion.
-        InstanceKind::Shim(ShimKind::FnAddrAsPtr(..) | ShimKind::FnPtrFromPtr(..)) => return false,
+        InstanceKind::Shim(
+            ShimKind::FnAddrAsPtr(..) | ShimKind::FnPtrFromPtr(..) | ShimKind::FnStaticInstance(..),
+        ) => return false,
 
         // FIXME: A not fully instantiated drop shim can cause ICEs if one attempts to
         // have its MIR built. Likely oli-obk just screwed up the `ParamEnv`s, so this
