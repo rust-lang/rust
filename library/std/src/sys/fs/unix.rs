@@ -1058,6 +1058,7 @@ impl DirEntry {
                 target_os = "horizon",
                 target_os = "vxworks",
                 target_os = "rtems",
+                target_os = "l4re",
             )) => {
                 let fd = cvt(unsafe { libc::dirfd(self.dir.dirp.0) })?;
 
