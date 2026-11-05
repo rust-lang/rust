@@ -7,7 +7,6 @@ LL |     let u: &dyn Foo = t;
    |                       ^ doesn't have a size known at compile-time
    |
    = note: required because it appears within the type `T`
-   = note: required for `&T` to implement `CoerceUnsized<&dyn Foo>`
    = note: required for the cast from `&T` to `&dyn Foo`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
@@ -24,7 +23,6 @@ LL |     let v: &dyn Foo = t as &dyn Foo;
    |                       ^ doesn't have a size known at compile-time
    |
    = note: required because it appears within the type `T`
-   = note: required for `&T` to implement `CoerceUnsized<&dyn Foo>`
    = note: required for the cast from `&T` to `&dyn Foo`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
@@ -40,7 +38,6 @@ LL |     let _: &[&dyn Foo] = &["hi"];
    |
    = help: within `str`, the trait `Sized` is not implemented for `str`
    = note: `str` is considered to contain a `[u8]` slice for auto trait purposes
-   = note: required for `&str` to implement `CoerceUnsized<&dyn Foo>`
    = note: required for the cast from `&'static str` to `&dyn Foo`
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
@@ -51,7 +48,6 @@ LL |     let _: &dyn Foo = x as &dyn Foo;
    |
    = help: within `[u8]`, the trait `Sized` is not implemented for `[u8]`
    = note: required because it appears within the type `[u8]`
-   = note: required for `&[u8]` to implement `CoerceUnsized<&dyn Foo>`
    = note: required for the cast from `&[u8]` to `&dyn Foo`
 
 error: aborting due to 4 previous errors

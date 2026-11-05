@@ -3894,6 +3894,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
             }
         };
+
         match *cause_code {
             ObligationCauseCode::ExprAssignable
             | ObligationCauseCode::MatchExpressionArm { .. }
@@ -4740,7 +4741,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         );
                     }
                     _ => {
-                        err.note(msg);
+                        if !tcx.is_lang_item(parent_trait_pred.def_id(), LangItem::CoerceUnsized) {
+                            err.note(msg);
+                        }
                     }
                 };
 

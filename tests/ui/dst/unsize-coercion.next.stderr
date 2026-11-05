@@ -10,7 +10,6 @@ help: this trait has no implementations, consider adding one
 LL | trait Trait {}
    | ^^^^^^^^^^^
    = note: required because it appears within the type `i32`
-   = note: required for `&i32` to implement `CoerceUnsized<&dyn Trait>`
    = note: required for the cast from `&i32` to `&dyn Trait`
 
 error: aborting due to 1 previous error
