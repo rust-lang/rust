@@ -28,9 +28,8 @@ use rustc_hir::{
     ItemKind, Mod, Node, ParamName, TraitItem,
 };
 use rustc_lint_defs::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS, MISPLACED_DIAGNOSTIC_ATTRIBUTES, REPEATED_REPRS,
-    UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+    MISPLACED_DIAGNOSTIC_ATTRIBUTES, REPEATED_REPRS, UNUSED_ATTRIBUTES,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
@@ -425,15 +424,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         }
 
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            span,
-            diagnostics::Unused {
-                attr_span: span,
-                note: diagnostics::UnusedNote::PathOnInlineModule,
-            },
-        );
+        self.tcx.dcx().emit_err(diagnostics::Unused {
+            attr_span: span,
+            note: diagnostics::UnusedNote::PathOnInlineModule,
+        });
     }
 
     fn has_nested_module_path_dependency(&self, module: &Mod<'tcx>) -> bool {
@@ -849,28 +843,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     fn check_doc_masked(&self, span: Span, hir_id: HirId, target: Target) {
         if target != Target::ExternCrate {
-            self.tcx.emit_node_span_lint(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                span,
-                diagnostics::DocMaskedOnlyExternCrate {
-                    attr_span: span,
-                    item_span: self.tcx.hir_span(hir_id),
-                },
-            );
+            self.tcx.dcx().emit_err(diagnostics::DocMaskedOnlyExternCrate {
+                attr_span: span,
+                item_span: self.tcx.hir_span(hir_id),
+            });
             return;
         }
 
         if self.tcx.extern_mod_stmt_cnum(hir_id.owner.def_id).is_none() {
-            self.tcx.emit_node_span_lint(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                span,
-                diagnostics::DocMaskedNotExternCrateSelf {
-                    attr_span: span,
-                    item_span: self.tcx.hir_span(hir_id),
-                },
-            );
+            self.tcx.dcx().emit_err(diagnostics::DocMaskedNotExternCrateSelf {
+                attr_span: span,
+                item_span: self.tcx.hir_span(hir_id),
+            });
         }
     }
 
@@ -1212,7 +1196,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_mix_no_mangle_export(&self, hir_id: HirId, attrs: &[Attribute]) {
+    fn check_mix_no_mangle_export(&self, _: HirId, attrs: &[Attribute]) {
         if let Some(export_name_span) =
             find_attr!(attrs, ExportName { span: export_name_span, .. } => *export_name_span)
             && let Some(no_mangle_span) =
@@ -1229,17 +1213,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 "#[export_name]"
             };
 
-            self.tcx.emit_node_span_lint(
-                UNUSED_ATTRIBUTES,
-                hir_id,
+            self.tcx.dcx().emit_err(diagnostics::MixedExportNameAndNoMangle {
                 no_mangle_span,
-                diagnostics::MixedExportNameAndNoMangle {
-                    no_mangle_span,
-                    export_name_span,
-                    no_mangle_attr,
-                    export_name_attr,
-                },
-            );
+                export_name_span,
+                no_mangle_attr,
+                export_name_attr,
+            });
         }
     }
 

@@ -98,6 +98,10 @@ impl<'sess> AttributeParser<'sess> {
         attribute_args: &str,
         cx: &mut AcceptContext<'_, 'sess>,
     ) {
+        // bootstrapping crimes
+        if matches!(cx.sess.opts.crate_name, Some("std" | "subtle" | "zerocopy")) {
+            return;
+        }
         if matches!(cx.should_emit, ShouldEmit::Nothing) {
             return;
         }

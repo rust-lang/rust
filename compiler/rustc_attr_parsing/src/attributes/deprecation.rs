@@ -1,7 +1,6 @@
 use rustc_ast::LitKind;
 use rustc_attr_ir::{DeprecatedSince, Deprecation, RustcVersion, VERSION_PLACEHOLDER};
 use rustc_feature::AttributeStability;
-use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
 
 use super::prelude::*;
 use super::util::parse_version;
@@ -34,7 +33,7 @@ fn get(
 pub(crate) struct DeprecatedParser;
 impl SingleAttributeParser for DeprecatedParser {
     const PATH: &[Symbol] = &[sym::deprecated];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Mod),
         Allow(Target::Struct),
@@ -62,8 +61,7 @@ impl SingleAttributeParser for DeprecatedParser {
         Allow(Target::Variant),
         Allow(Target::Impl { of_trait: false }),
         Allow(Target::Crate),
-        Error(Target::WherePredicate),
-        Error(Target::Param),
+        Warn(Target::MacroCall), // #158816: ~100 regressions from `raw-cpuid`, `gtk`, `trust-dns-resolver`
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         Word,
@@ -201,11 +199,7 @@ impl SingleAttributeParser for DeprecatedParser {
                 | Target::AssocTy(AssocCtxt::Impl { of_trait: true })
         ) {
             let attr_span = cx.attr_span;
-            cx.emit_lint(
-                UNUSED_ATTRIBUTES,
-                DeprecatedAnnotationHasNoEffect { span: attr_span },
-                attr_span,
-            );
+            cx.emit_err(DeprecatedAnnotationHasNoEffect { span: attr_span });
         }
 
         Some(AttributeKind::Deprecated {
