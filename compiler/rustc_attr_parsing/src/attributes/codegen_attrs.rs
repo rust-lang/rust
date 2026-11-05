@@ -15,6 +15,7 @@ use crate::diagnostics::{
     ObjcSelectorExpectedStringLiteral, SanitizeInvalidStatic, TargetFeatureOnLangItem,
     TrackCallerOnLangItem,
 };
+use crate::target_checking::AllowedResult;
 use crate::target_checking::Policy::AllowSilent;
 
 pub(crate) struct OptimizeParser;
@@ -53,8 +54,8 @@ pub(crate) struct ColdParser;
 
 impl NoArgsAttributeParser for ColdParser {
     const PATH: &[Symbol] = &[sym::cold];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
@@ -113,7 +114,7 @@ pub(crate) struct ExportNameParser;
 
 impl SingleAttributeParser for ExportNameParser {
     const PATH: &[rustc_span::Symbol] = &[sym::export_name];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
         note: "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them",
         unsafe_since: Some(Edition2024),
@@ -221,7 +222,7 @@ impl AttributeParser for NakedParser {
 
             if let Some(earlier) = this.span {
                 let span = cx.attr_span;
-                cx.warn_unused_duplicate(earlier, span);
+                cx.unused_duplicate(earlier, span);
             } else {
                 this.span = Some(cx.attr_span);
             }
@@ -235,10 +236,18 @@ impl AttributeParser for NakedParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Warn(Target::MacroCall),
     ]);
 
     fn finalize(self, cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
+        let span = self.span?;
+
+        if !matches!(NakedParser::ALLOWED_TARGETS.is_allowed(cx.target), AllowedResult::Allowed) {
+            cx.dcx().span_delayed_bug(
+                span,
+                "skipping `naked` attribute incompatibility check for disallowed target",
+            );
+            return None;
+        }
         // FIXME(jdonszelmann): upgrade this list to *parsed* attributes
         // once all of these have parsed forms. That'd make the check much nicer...
         //
@@ -281,8 +290,6 @@ impl AttributeParser for NakedParser {
             // documentation
             sym::doc,
         ];
-
-        let span = self.span?;
 
         let Some(tools) = cx.attr_tools else {
             unreachable!("tools required while parsing attributes");
@@ -368,7 +375,7 @@ impl AttributeParser for NakedParser {
 pub(crate) struct TrackCallerParser;
 impl NoArgsAttributeParser for TrackCallerParser {
     const PATH: &[Symbol] = &[sym::track_caller];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
+
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -377,10 +384,6 @@ impl NoArgsAttributeParser for TrackCallerParser {
         Allow(Target::Method(MethodKind::Trait { body: false })), // `#[track_caller]` is inherited from trait methods
         Allow(Target::ForeignFn),
         Allow(Target::Closure),
-        Warn(Target::MacroDef),
-        Warn(Target::Arm),
-        Warn(Target::Field),
-        Warn(Target::MacroCall),
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::TrackCaller;
@@ -417,7 +420,7 @@ impl NoArgsAttributeParser for TrackCallerParser {
 pub(crate) struct NoMangleParser;
 impl NoArgsAttributeParser for NoMangleParser {
     const PATH: &[Symbol] = &[sym::no_mangle];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
+
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
         note: "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them",
         unsafe_since: Some(Edition2024),
@@ -505,14 +508,14 @@ impl AttributeParser for UsedParser {
                 UsedBy::Compiler => &mut group.first_compiler,
                 UsedBy::Linker => {
                     if let Some(prev) = group.first_default {
-                        cx.warn_unused_duplicate(prev, attr_span);
+                        cx.unused_duplicate(prev, attr_span);
                         return;
                     }
                     &mut group.first_linker
                 }
                 UsedBy::Default => {
                     if let Some(prev) = group.first_linker {
-                        cx.warn_unused_duplicate(prev, attr_span);
+                        cx.unused_duplicate(prev, attr_span);
                         return;
                     }
                     &mut group.first_default
@@ -520,14 +523,13 @@ impl AttributeParser for UsedParser {
             };
 
             if let Some(prev) = *target {
-                cx.warn_unused_duplicate(prev, attr_span);
+                cx.unused_duplicate(prev, attr_span);
             } else {
                 *target = Some(attr_span);
             }
         },
     )];
-    const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowList(&[Allow(Target::Static), Warn(Target::MacroCall)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Static)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         // If a specific form of `used` is specified, it takes precedence over generic `#[used]`.
@@ -551,7 +553,7 @@ fn parse_tf_attribute(
     };
     if list.is_empty() {
         let attr_span = cx.attr_span;
-        cx.adcx().warn_empty_attribute(attr_span);
+        cx.adcx().empty_attribute(attr_span);
         return features;
     }
     for item in list.mixed() {
@@ -593,11 +595,7 @@ impl CombineAttributeParser for TargetFeatureParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Warn(Target::Statement),
-        Warn(Target::Field),
-        Warn(Target::Arm),
-        Warn(Target::MacroDef),
-        Warn(Target::MacroCall),
+        Warn(Target::MacroCall), // #158816: 181 regressions from old versions of `v_escape`
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
