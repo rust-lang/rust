@@ -10,8 +10,8 @@ use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_sanitizers::ignorelist::SanitizerIgnoreList;
 use rustc_session::Session;
 use rustc_session::config::{
-    BranchProtection, FunctionReturn, InstrumentMcount, InstrumentMcountOpts, OptLevel, PAuthKey,
-    PacRet,
+    BranchProtection, CFProtection, FunctionReturn, InstrumentMcount, InstrumentMcountOpts,
+    OptLevel, PAuthKey, PacRet,
 };
 use rustc_span::sym;
 use rustc_symbol_mangling::mangle_internal_symbol;
@@ -19,7 +19,9 @@ use rustc_target::spec::{Arch, FramePointer, SanitizerSet, StackProbeType, Stack
 use smallvec::SmallVec;
 
 use crate::context::SimpleCx;
-use crate::diagnostics::{PackedStackBackchainNeedsSoftfloat, SanitizerMemtagRequiresMte};
+use crate::diagnostics::{
+    CfProtectionReturnRequiresZimop, PackedStackBackchainNeedsSoftfloat, SanitizerMemtagRequiresMte,
+};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{
     self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects, Value,
@@ -573,6 +575,28 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
             instance,
             sanitizer_ignorelist,
         ));
+
+        // On RISC-V, the hardware shadow stack (Zicfiss) is enabled per function, like Clang
+        // does for `-fcf-protection=return`.
+        if matches!(sess.target.arch, Arch::RiscV32 | Arch::RiscV64)
+            && matches!(
+                sess.opts.unstable_opts.cf_protection,
+                CFProtection::Return | CFProtection::Full
+            )
+        {
+            // The shadow stack instructions are encoded as Zimop instructions, so like Clang,
+            // refuse to emit them without Zimop. It can be enabled with `-Ctarget-feature` or
+            // with `#[target_feature]`.
+            let have_zimop = sess.internal_target_features.contains(&sym::zimop)
+                || codegen_fn_attrs
+                    .target_features
+                    .iter()
+                    .any(|feature| feature.name == sym::zimop);
+            if !have_zimop {
+                sess.dcx().emit_err(CfProtectionReturnRequiresZimop);
+            }
+            to_add.push(llvm::CreateAttrString(cx.llcx, "hw-shadow-stack"));
+        }
 
         // For non-naked functions, set branch protection attributes on aarch64.
         if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.branch_protection() {
