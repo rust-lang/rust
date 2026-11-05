@@ -373,25 +373,35 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let self_ty = goal.predicate.self_ty();
+        // `FnStatic` is implemented for all `FnDef`s and all `Closure`s that do not capture any
+        // variables.
+        let is_static_fn = match self_ty.kind() {
+            ty::FnDef(_, _) => true,
+            ty::Closure(_, args) => {
+                let resolved_upvars = args.as_closure().tupled_upvars_ty();
+                if let ty::Tuple(upvars) = resolved_upvars.kind()
+                    && upvars.is_empty()
+                {
+                    true
+                } else if resolved_upvars.is_ty_var() {
+                    return ecx.forced_ambiguity(MaybeInfo::AMBIGUOUS);
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        };
+
         match goal.predicate.polarity {
-            // impl FnStatic for FnDef {}
-            ty::ClausePolarity::Positive => match self_ty.kind() {
-                ty::FnDef(_, _) => {
-                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    })
-                }
-                _ => Err(NoSolution.into()),
-            },
-            //  impl !FnStatic for T where T != FnDef && T is rigid {}
-            ty::ClausePolarity::Negative => match self_ty.kind() {
-                ty::FnDef(_, _) if self_ty.is_known_rigid() => {
-                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    })
-                }
-                _ => Err(NoSolution.into()),
-            },
+            // impl FnStatic for FnDef/Closure {}
+            ty::ClausePolarity::Positive if is_static_fn => ecx
+                .probe_builtin_trait_candidate(BuiltinImplSource::Misc)
+                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)),
+            //  impl !FnStatic for T where T != FnDef/Closure && T is rigid {}
+            ty::ClausePolarity::Negative if !is_static_fn && self_ty.is_known_rigid() => ecx
+                .probe_builtin_trait_candidate(BuiltinImplSource::Misc)
+                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)),
+            _ => Err(NoSolution.into()),
         }
     }
 

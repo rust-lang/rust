@@ -845,6 +845,7 @@ bidirectional_lang_item_map! {
     FnMut,
     FnOnce,
     FnPtrTrait,
+    FnStaticTrait,
     Freeze,
     FusedIterator,
     Future,

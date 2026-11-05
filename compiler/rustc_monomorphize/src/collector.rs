@@ -1066,6 +1066,7 @@ fn visit_instance_use<'tcx>(
         | ty::InstanceKind::Shim(ty::ShimKind::FnPtr(..))
         | ty::InstanceKind::Shim(ty::ShimKind::Clone(..))
         | ty::InstanceKind::Shim(ty::ShimKind::FnAddrAsPtr(..))
+        | ty::InstanceKind::Shim(ty::ShimKind::FnStaticInstance(..))
         | ty::InstanceKind::Shim(ty::ShimKind::FnPtrFromPtr(..)) => {
             output.push(create_fn_mono_item(tcx, instance, source));
         }

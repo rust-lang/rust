@@ -362,3 +362,15 @@ pub unsafe trait FnPtr: FnAddr {
     #[lang = "fn_ptr_from_ptr"]
     unsafe fn from_ptr(ptr: NonNull<Code>) -> Self;
 }
+
+/// Implemented for all function definitions and non-capturing closures.
+#[unstable(feature = "fn_static", issue = "148768")]
+#[lang = "fn_static"]
+#[rustc_deny_explicit_impl]
+#[rustc_dyn_incompatible_trait]
+pub unsafe trait FnStatic: FnAddr {
+    /// The function instance.
+    #[lang = "fn_static_instance"]
+    #[unstable(feature = "fn_static", issue = "148768")]
+    const INSTANCE: Self;
+}

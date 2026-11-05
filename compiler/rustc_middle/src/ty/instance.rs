@@ -191,6 +191,14 @@ pub enum ShimKind<'tcx> {
     /// The `DefId` is for `FnPtr::from_ptr`, the `Ty` is the type `T`.
     FnPtrFromPtr(DefId, Ty<'tcx>),
 
+    /// Compiler-generated `<T as FnStatic>::INSTANCE` implementation.
+    ///
+    /// Automatically generated for all function definition and closure types that do not capture
+    /// any variables.
+    ///
+    /// The `DefId` is for `FnStatic::INSTANCE`, the `Ty` is the type `T`.
+    FnStaticInstance(DefId, Ty<'tcx>),
+
     /// `core::future::async_drop::async_drop_in_place::<'_, T>`.
     ///
     /// The `DefId` is for `core::future::async_drop::async_drop_in_place`, the `Ty`
@@ -353,6 +361,7 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::Clone(def_id, _)
             | ShimKind::FnAddrAsPtr(def_id, _)
             | ShimKind::FnPtrFromPtr(def_id, _)
+            | ShimKind::FnStaticInstance(def_id, _)
             | ShimKind::FutureDropPoll(def_id, _, _)
             | ShimKind::AsyncDropGlue(def_id, _)
             | ShimKind::AsyncDropGlueCtor(def_id, _) => def_id,
@@ -375,6 +384,7 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::DropGlue(..)
             | ShimKind::Clone(..)
             | ShimKind::FnAddrAsPtr(..)
+            | ShimKind::FnStaticInstance(..)
             | ShimKind::FnPtrFromPtr(..) => None,
         }
     }
@@ -397,6 +407,7 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::FnPtr(..)
             | ShimKind::FnAddrAsPtr(..)
             | ShimKind::FnPtrFromPtr(..)
+            | ShimKind::FnStaticInstance(..)
             | ShimKind::DropGlue(_, Some(_))
             | ShimKind::FutureDropPoll(..)
             | ShimKind::AsyncDropGlue(_, _) => false,
