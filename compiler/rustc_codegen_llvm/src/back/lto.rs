@@ -13,12 +13,12 @@ use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, SharedEmitter, TargetMachineFactoryFn, ThinLtoInput,
 };
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
+use rustc_codegen_ssa::{CachedModuleCodegen, CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
-use rustc_middle::dep_graph::{BorrowedIncrCompSession, WorkProduct};
+use rustc_middle::dep_graph::BorrowedIncrCompSession;
 use rustc_session::config;
 use rustc_span::bug;
 use rustc_structures::SanitizerSet;
@@ -191,7 +191,7 @@ pub(crate) fn run_thin(
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<ThinLtoInput<LlvmCodegenBackend>>,
-) -> (Vec<ThinModule<LlvmCodegenBackend>>, Vec<WorkProduct>) {
+) -> (Vec<ThinModule<LlvmCodegenBackend>>, Vec<CachedModuleCodegen>) {
     let (symbols_below_threshold, upstream_modules) =
         prepare_lto(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, dcx);
     let symbols_below_threshold =
@@ -375,7 +375,7 @@ fn thin_lto(
     modules: Vec<ThinLtoInput<LlvmCodegenBackend>>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     symbols_below_threshold: &[*const libc::c_char],
-) -> (Vec<ThinModule<LlvmCodegenBackend>>, Vec<WorkProduct>) {
+) -> (Vec<ThinModule<LlvmCodegenBackend>>, Vec<CachedModuleCodegen>) {
     let _timer = prof.generic_activity("LLVM_thin_lto_global_analysis");
     unsafe {
         info!("going for that thin, thin LTO");
@@ -383,8 +383,8 @@ fn thin_lto(
         let green_modules: FxHashMap<_, _> = modules
             .iter()
             .filter_map(|module| {
-                if let ThinLtoInput::Green { wp, .. } = module {
-                    Some((wp.cgu_name.clone(), wp.clone()))
+                if let ThinLtoInput::Green { cached_module, .. } = module {
+                    Some((cached_module.name.clone(), cached_module.clone()))
                 } else {
                     None
                 }
@@ -399,8 +399,8 @@ fn thin_lto(
         for (i, module) in modules.into_iter().enumerate() {
             let (name, buffer) = match module {
                 ThinLtoInput::Red { name, buffer } => (name, buffer),
-                ThinLtoInput::Green { wp, bitcode_path } => {
-                    (wp.cgu_name, SerializedModule::from_file(&bitcode_path))
+                ThinLtoInput::Green { bitcode_path, cached_module } => {
+                    (cached_module.name, SerializedModule::from_file(&bitcode_path))
                 }
             };
             info!("local module: {} - {}", i, name);
@@ -508,8 +508,7 @@ fn thin_lto(
                 // If a module exists in both the current and the previous session,
                 // and has the same LTO cache key in both sessions, then we can re-use it
                 if prev_key_map.keys.get(module_name) == curr_key_map.keys.get(module_name) {
-                    let work_product = green_modules[module_name].clone();
-                    copy_jobs.push(work_product);
+                    copy_jobs.push(green_modules[module_name].clone());
                     info!(" - {}: re-used", module_name);
                     continue;
                 }

@@ -85,11 +85,13 @@ use rustc_codegen_ssa::back::write::{
 use rustc_codegen_ssa::base::codegen_crate;
 use rustc_codegen_ssa::target_features::{self, internal_target_features};
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
-use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
+use rustc_codegen_ssa::{
+    CachedModuleCodegen, CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig,
+};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
-use rustc_middle::dep_graph::{BorrowedIncrCompSession, IncrCompSession, WorkProduct};
+use rustc_middle::dep_graph::{BorrowedIncrCompSession, IncrCompSession};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames};
 use rustc_session::{CodegenBackendInit, EarlySession, Session};
@@ -443,7 +445,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         _exported_symbols_for_lto: &[String],
         _each_linked_rlib_for_lto: &[PathBuf],
         _modules: Vec<ThinLtoInput<Self>>,
-    ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>) {
+    ) -> (Vec<ThinModule<Self>>, Vec<CachedModuleCodegen>) {
         unreachable!()
     }
 

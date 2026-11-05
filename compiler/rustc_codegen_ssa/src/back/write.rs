@@ -378,12 +378,9 @@ fn generate_thin_lto_work<B: WriteBackendMethods>(
             let cost = module.cost();
             (ThinLtoWorkItem::ThinLto(module), cost)
         })
-        .chain(copy_jobs.into_iter().map(|wp| {
+        .chain(copy_jobs.into_iter().map(|module| {
             (
-                ThinLtoWorkItem::CopyPostLtoArtifacts(CachedModuleCodegen {
-                    name: wp.cgu_name.clone(),
-                    source: wp,
-                }),
+                ThinLtoWorkItem::CopyPostLtoArtifacts(module),
                 0, // copying is very cheap
             )
         }))
@@ -774,7 +771,7 @@ pub enum FatLtoInput<B: WriteBackendMethods> {
 
 pub enum ThinLtoInput<B: WriteBackendMethods> {
     Red { name: String, buffer: SerializedModule<B::ModuleBuffer> },
-    Green { wp: WorkProduct, bitcode_path: PathBuf },
+    Green { bitcode_path: PathBuf, cached_module: CachedModuleCodegen },
 }
 
 /// Actual LTO type we end up choosing based on multiple factors.
@@ -1739,7 +1736,10 @@ fn start_executing_work<B: WriteBackendMethods>(
             assert!(needs_fat_lto.is_empty());
 
             for (bitcode_path, wp) in lto_import_only_modules {
-                needs_thin_lto.push(ThinLtoInput::Green { wp, bitcode_path })
+                needs_thin_lto.push(ThinLtoInput::Green {
+                    bitcode_path,
+                    cached_module: CachedModuleCodegen { name: wp.cgu_name.clone(), source: wp },
+                })
             }
 
             let allocator_module = if let Some(allocator_module) = allocator_module {
