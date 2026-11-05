@@ -118,5 +118,4 @@ pub fn setup_callbacks() {
     rustc_errors::TRACK_DIAGNOSTIC.swap(&(track_diagnostic as _));
     rustc_feature::TRACK_FEATURE.swap(&(track_feature as _));
     rustc_span::macros::EMIT_BUG_DIAGNOSTIC.swap(&(emit_bug_diagnostic as _));
-    rustc_expand_queries::setup_callbacks();
 }

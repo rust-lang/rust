@@ -1,6 +1,5 @@
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_data_structures::AtomicRef;
 use rustc_data_structures::profiling::TimingGuard;
 use rustc_errors::ErrorGuaranteed;
 use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser};
@@ -113,7 +112,7 @@ impl MultiItemModifier for DeriveProcMacro {
         let res = if ecx.sess.opts.incremental.is_some()
             && ecx.sess.opts.unstable_opts.cache_proc_macros
         {
-            (*EXPAND_DERIVE_MACRO_CACHED)(invoc_id, input, ecx, self.client)
+            expand_derive_macro_cached(invoc_id, input, ecx, self.client)
         } else {
             expand_derive_macro(invoc_id, input, ecx, self.client)
         };
@@ -194,12 +193,10 @@ pub fn expand_derive_macro(
     }
 }
 
-pub static EXPAND_DERIVE_MACRO_CACHED: AtomicRef<
-    fn(LocalExpnId, TokenStream, &mut ExtCtxt<'_>, DeriveClient) -> Result<TokenStream, ()>,
-> = AtomicRef::new(
-    &(|_, _, _: &mut ExtCtxt<'_>, _| -> Result<_, _> {
-        panic!(
-            "`EXPAND_DERIVE_MACRO_CACHED` callback was not setup; it must be set in `rustc_interface::callbacks`"
-        )
-    } as _),
-);
+#[eii]
+fn expand_derive_macro_cached(
+    invoc_id: LocalExpnId,
+    input: TokenStream,
+    ecx: &mut ExtCtxt<'_>,
+    client: DeriveClient,
+) -> Result<TokenStream, ()>;
