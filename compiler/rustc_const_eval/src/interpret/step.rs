@@ -608,11 +608,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     },
                 )?;
 
-                // Sanity-check that `eval_fn_call` either pushed a new frame or
-                // did a jump to another block. We disable the sanity check for functions that
-                // can't return, since Miri sometimes does have to keep the location the same
-                // for those (which is fine since execution will continue on a different thread).
-                if target.is_some() && self.frame_idx() == old_stack && self.frame().loc == old_loc
+                // Sanity-check that if `eval_fn_call` returns, then it either cleared the entire
+                // stack (Miri does this for `exit`), pushed a new frame, or did a jump to another
+                // block.
+                if !self.stack().is_empty()
+                    && self.frame_idx() == old_stack
+                    && self.frame().loc == old_loc
                 {
                     span_bug!(terminator.source_info.span, "evaluating this call made no progress");
                 }
