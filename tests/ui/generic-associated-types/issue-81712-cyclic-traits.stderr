@@ -7,6 +7,7 @@ LL |     type CType: C<DType = Self>;
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/issue-81712-cyclic-traits.rs:11:10
    |
+LL | trait C {
 LL |     type DType<T>: D<T, CType = Self>;
    |          ^^^^^ -
 help: add missing generic argument
@@ -23,6 +24,7 @@ LL |     type CType: C<DType = Self>;
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/issue-81712-cyclic-traits.rs:11:10
    |
+LL | trait C {
 LL |     type DType<T>: D<T, CType = Self>;
    |          ^^^^^ -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`

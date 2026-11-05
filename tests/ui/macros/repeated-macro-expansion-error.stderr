@@ -14,6 +14,7 @@ LL | impl_add!(a b);
 note: associated function defined here, with 0 generic parameters
   --> $DIR/repeated-macro-expansion-error.rs:5:8
    |
+LL | impl S {
 LL |     fn f() {}
    |        ^
 
@@ -33,6 +34,7 @@ LL | impl_add!(a b);
 note: associated function defined here, with 0 generic parameters
   --> $DIR/repeated-macro-expansion-error.rs:5:8
    |
+LL | impl S {
 LL |     fn f() {}
    |        ^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`

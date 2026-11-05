@@ -13,6 +13,7 @@ LL |     T1: for<T> Foo<usize, Bar = Bar<T>>,
 note: associated type defined here, with 1 generic parameter: `K`
   --> $DIR/normalized-param-env-unconstrained-type-120033.rs:11:10
    |
+LL | pub trait Foo<T> {
 LL |     type Bar<K>;
    |          ^^^ -
 help: add missing generic argument
@@ -29,6 +30,7 @@ LL |     T1: for<T> Foo<usize, Bar = Bar<T>>,
 note: associated type defined here, with 1 generic parameter: `K`
   --> $DIR/normalized-param-env-unconstrained-type-120033.rs:11:10
    |
+LL | pub trait Foo<T> {
 LL |     type Bar<K>;
    |          ^^^ -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
