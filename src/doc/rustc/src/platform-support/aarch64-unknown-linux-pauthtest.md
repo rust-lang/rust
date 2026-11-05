@@ -392,9 +392,6 @@ Authentication ELF ABI. Rust does not implement C++ virtual dispatch semantics,
 authenticated C++ member function pointers, or authenticated virtual table
 pointers.
 
-Similarly, `function-pointer-type-discrimination` is recognized for ABI
-compatibility purposes, but full support is not yet implemented in Rust.
-
 Even when these features do not directly affect generated Rust code, they still
 contribute to the emitted PAuth ABI metadata through the LLVM module flags:
 `aarch64-elf-pauthabi-platform`, `aarch64-elf-pauthabi-version`. These flags are
@@ -432,6 +429,18 @@ precedence, matching Clang's behavior. For example, the following would leave
 -Zpointer-authentication=+init-fini,-init-fini
 ```
 
+### Function pointer type discrimination
+
+Under `function-pointer-type-discrimination`, Rust signs an `extern "C"` or
+`extern "system"` function pointer with the discriminator of the function it
+points to, computed from its signature as Clang computes it for the
+corresponding C function type. It never resigns it: transmutes, `as` casts,
+union reads and copies keep its bits. A call authenticates with the
+discriminator of the type it is made through, so calls through an ABI-compatible
+type work, and calls that are UB fail authentication. Function pointers of other
+ABIs are neither signed nor authenticated. Init/fini entries keep their own
+discriminator.
+
 ## Cross-compilation toolchains and C code
 
 This target supports interoperability with C code. A
@@ -467,6 +476,24 @@ The following categories are supported (all present in tree):
   * pauth-attr-special-funcs.rs
   * pauth-fn-ptr-type-discrimination-const-aggregate.rs
   * pauth-fn-ptr-type-discrimination-const-scalar.rs
+  * pauth-fn-ptr-type-discrimination-deeply-nested.rs
+  * pauth-fn-ptr-type-discrimination-encoder.rs
+  * pauth-fn-ptr-type-discrimination-fn-ptr-return-type.rs
+  * pauth-fn-ptr-type-discrimination-instance-signing.rs
+  * pauth-fn-ptr-type-discrimination-no-resign.rs
+  * pauth-fn-ptr-type-discrimination-option-callback.rs
+  * pauth-fn-ptr-type-discrimination-option-return.rs
+  * pauth-fn-ptr-type-discrimination-option.rs
+  * pauth-fn-ptr-type-discrimination-recursive-statics.rs
+  * pauth-fn-ptr-type-discrimination-running-test.rs
+  * pauth-fn-ptr-type-discrimination-rust-array.rs
+  * pauth-fn-ptr-type-discrimination-simd.rs
+  * pauth-fn-ptr-type-discrimination-static-allocs.rs
+  * pauth-fn-ptr-type-discrimination-struct-members.rs
+  * pauth-fn-ptr-type-discrimination-struct-name.rs
+  * pauth-fn-ptr-type-discrimination-transparent-wrapper.rs
+  * pauth-fn-ptr-type-discrimination-vtable.rs
+  * pauth-drop-terminator (implemented in run-make)
 * End-to-end execution tests
   * Rust-driven quicksort (pauth-quicksort-rust-driver)
   * C-driven quicksort (pauth-quicksort-c-driver)
@@ -475,7 +502,6 @@ The following categories are supported (all present in tree):
   * pauth-static-link-warning
   * enable_pointer_authentication_validation.rs
   * invalid_target_pointer_authentication.rs
-  * type_discrimination_not_supported_pointer_authentication.rs
   * discriminator-abi-compat.rs
   * discriminator-float-encoding.rs
   * incompatible_pauth.rs
@@ -503,13 +529,30 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/codegen-llvm/pauth/pauth-init-fini.rs \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-const-aggregate.rs \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-const-scalar.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-deeply-nested.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-encoder.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-fn-ptr-return-type.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-instance-signing.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-no-resign.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-option-callback.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-option-return.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-option.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-recursive-statics.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-running-test.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-rust-array.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-simd.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-static-allocs.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-struct-members.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-struct-name.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-transparent-wrapper.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-vtable.rs \
   tests/run-make/pauth-quicksort-rust-driver \
   tests/run-make/pauth-quicksort-c-driver \
   tests/run-make/pauth-static-link-warning \
+  tests/run-make/pauth-drop-terminator \
   tests/ui/statics/crt-static-pauthtest.rs \
   tests/ui/pointer_authentication/enable_pointer_authentication_validation.rs \
   tests/ui/pointer_authentication/invalid_target_pointer_authentication.rs \
-  tests/ui/pointer_authentication/type_discrimination_not_supported_pointer_authentication.rs \
   tests/ui/pointer_authentication/discriminator-abi-compat.rs \
   tests/ui/pointer_authentication/discriminator-float-encoding.rs \
   tests/ui/target_modifiers/incompatible_pauth.rs

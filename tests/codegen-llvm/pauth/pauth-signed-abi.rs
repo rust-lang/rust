@@ -1,8 +1,12 @@
 // ignore-tidy-file-linelength
 //@ add-minicore
-//@ needs-llvm-components: aarch64
 // Run it at O0, so that the compiler doesn't optimise the calls away.
-//@ compile-flags: --target=aarch64-unknown-linux-pauthtest --crate-type=lib -C opt-level=0
+//@ revisions: DISC NO_DISC
+
+//@ [DISC] needs-llvm-components: aarch64
+//@ [DISC] compile-flags: --target=aarch64-unknown-linux-pauthtest --crate-type=lib -Zpointer-authentication=+function-pointer-type-discrimination -C opt-level=0
+//@ [NO_DISC] needs-llvm-components: aarch64
+//@ [NO_DISC] compile-flags: --target=aarch64-unknown-linux-pauthtest --crate-type=lib -Zpointer-authentication=-function-pointer-type-discrimination -C opt-level=0
 
 // Function pointers are signed, and calls through them authenticated, for the same set of ABIs:
 // `extern "C"` and `extern "system"` (see `is_ptrauth_signed_abi`).
@@ -25,7 +29,8 @@ extern "efiapi" fn efi_fn(_: i32) {}
 // CHECK-LABEL: @reify_c(
 #[no_mangle]
 pub fn reify_c() -> extern "C" fn(i32) {
-    // CHECK: ret ptr ptrauth (ptr @{{.*}}c_fn{{.*}}, i32 0)
+    // DISC: ret ptr ptrauth (ptr @{{.*}}c_fn{{.*}}, i32 0, i64 2712)
+    // NO_DISC: ret ptr ptrauth (ptr @{{.*}}c_fn{{.*}}, i32 0)
     c_fn
 }
 
@@ -40,7 +45,8 @@ pub fn reify_efiapi() -> extern "efiapi" fn(i32) {
 // CHECK-LABEL: @call_c(
 #[no_mangle]
 pub fn call_c(f: extern "C" fn(i32)) {
-    // CHECK: call void %{{.*}}(i32 1) {{.*}}[ "ptrauth"(i32 0, i64 0) ]
+    // DISC: call void %{{.*}}(i32 1) {{.*}}[ "ptrauth"(i32 0, i64 2712) ]
+    // NO_DISC: call void %{{.*}}(i32 1) {{.*}}[ "ptrauth"(i32 0, i64 0) ]
     f(1)
 }
 
