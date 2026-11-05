@@ -445,9 +445,9 @@ impl<I: Interner> FlagComputation<I> {
 
             ty::PredicateKind::Clause(ty::ClauseKind::CompressedTrait(c)) => {
                 // NOTE: this is correct as long as compressed trait clauses represnt trait clauses
-                // that don't have generic parameters, in which case only computing flags of the self_ty
-                // is correct.
-                self.add_args(&[c.self_ty.into()]);
+                // that don't have generic parameters other than the self_ty, in which case only computing
+                // flags of the self_ty is correct.
+                self.add_args(c.self_ty.as_slice());
             }
         }
     }
