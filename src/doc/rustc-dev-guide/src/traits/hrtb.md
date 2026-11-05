@@ -52,7 +52,7 @@ replace the bound region in the obligation with a placeholder, yielding
 Note that we now have no quantifiers;
 in terms of the compiler type, this changes from a `ty::PolyTraitRef`
 to a `TraitRef`. We would then create the `TraitRef` from the impl,
-using fresh variables for it's bound regions (and thus getting
+using fresh variables for its bound regions (and thus getting
 `Foo<&'$a isize>`, where `'$a` is the inference variable for `'a`).
 
 2. Next

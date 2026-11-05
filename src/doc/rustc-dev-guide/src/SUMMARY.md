@@ -123,6 +123,9 @@
     - [How to debug](./autodiff/debugging.md)
     - [Autodiff flags](./autodiff/flags.md)
     - [Type Trees](./autodiff/type-trees.md)
+- [TPDE internals](./tpde/internals.md)
+    - [Installation](./tpde/installation.md)
+    - [How to debug](./tpde/debugging.md)
 
 # Source code representation
 
