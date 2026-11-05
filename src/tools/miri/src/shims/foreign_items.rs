@@ -76,14 +76,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
         let res = ecx.emulate_foreign_item_inner(link_name, abi, args, &dest)?;
-        res.jump_to_next_block(ecx, &dest.clone().into(), ret, Some(unwind), |this| {
-            if let Some(body) = this.lookup_exported_fn(link_name)? {
+        res.jump_to_next_block(ecx, &dest.clone().into(), ret, Some(unwind), |ecx| {
+            if let Some(body) = ecx.lookup_exported_fn(link_name)? {
                 return interp_ok(Some(body));
             }
 
             throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
                 "can't call foreign function `{link_name}` on OS `{os}`",
-                os = this.tcx.sess.target.os,
+                os = ecx.tcx.sess.target.os,
             )));
         })
     }

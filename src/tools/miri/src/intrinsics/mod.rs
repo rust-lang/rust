@@ -54,12 +54,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let intrinsic_name = intrinsic_name.as_str();
 
         let res = this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest, ret)?;
-        res.jump_to_next_block(this, dest, ret, Some(unwind), |this| {
+        res.jump_to_next_block(this, dest, ret, Some(unwind), |ecx| {
             // We haven't handled the intrinsic, let's see if we can use a fallback body.
-            if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
+            if ecx.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
                 throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
             }
-            let intrinsic_fallback_is_spec = this
+            let intrinsic_fallback_is_spec = ecx
                 .tcx
                 .tool_attrs(
                     instance.def_id(),
@@ -249,10 +249,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
-        res.jump_to_next_block(this, &dest.clone().into(), ret, None, |this| {
+        res.jump_to_next_block(this, &dest.clone().into(), ret, None, |ecx| {
             throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
                 "can't call LLVM intrinsic `{link_name}` on architecture `{arch}`",
-                arch = this.tcx.sess.target.arch,
+                arch = ecx.tcx.sess.target.arch,
             )));
         })
     }

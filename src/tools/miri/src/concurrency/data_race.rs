@@ -779,7 +779,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         // Only metadata on the location itself is used.
 
         if let Some(genmc_ctx) = ecx.machine.data_race.as_genmc_ref() {
-            let old_val = ecx.ghost_run(|this| this.read_scalar(place)).discard_err();
+            let old_val = ecx.ghost_run(|ecx| ecx.read_scalar(place)).discard_err();
             return genmc_ctx.atomic_load(
                 ecx,
                 place.ptr().addr(),
@@ -791,7 +791,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
 
         trace!("read_scalar_atomic({:?}, {} bytes)", place.ptr(), place.layout.size.bytes());
 
-        let scalar = ecx.allow_data_races_ref(move |this| this.read_scalar(place))?;
+        let scalar = ecx.allow_data_races_ref(move |ecx| ecx.read_scalar(place))?;
         let buffered_scalar = ecx.buffered_atomic_read(place, atomic, scalar, |sync_clock| {
             ecx.validate_atomic_load(place, atomic, sync_clock)
         })?;
@@ -811,7 +811,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         // Read the previous value so we can put it in the store buffer later.
         // Both GenMC and Miri need this. This value is nonsense if there are concurrent writes
         // but the code consuming the value is aware of that.
-        let old_val = ecx.ghost_run(|this| this.read_scalar(dest)).discard_err();
+        let old_val = ecx.ghost_run(|ecx| ecx.read_scalar(dest)).discard_err();
 
         // Inform GenMC about the atomic store.
         if let Some(genmc_ctx) = ecx.machine.data_race.as_genmc_ref() {
@@ -825,14 +825,14 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             )? {
                 // The store might be the latest store in coherence order (determined by GenMC).
                 // If it is, we need to update the value in Miri's memory:
-                ecx.allow_data_races_mut(|this| this.write_scalar(val, dest))?;
+                ecx.allow_data_races_mut(|ecx| ecx.write_scalar(val, dest))?;
             }
             return interp_ok(());
         }
 
         trace!("write_scalar_atomic({:?}, {} bytes)", dest.ptr(), dest.layout.size.bytes());
 
-        ecx.allow_data_races_mut(move |this| this.write_scalar(val, dest))?;
+        ecx.allow_data_races_mut(move |ecx| ecx.write_scalar(val, dest))?;
         ecx.validate_atomic_store(dest, atomic)?;
         ecx.buffered_atomic_write(val, dest, atomic, old_val)
     }
@@ -848,7 +848,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         let ecx = self.eval_context_mut();
         ecx.atomic_access_check(place, AtomicAccessType::Rmw)?;
 
-        let old = ecx.allow_data_races_mut(|this| this.read_immediate(place))?;
+        let old = ecx.allow_data_races_mut(|ecx| ecx.read_immediate(place))?;
 
         // Inform GenMC about the atomic rmw operation.
         if let Some(genmc_ctx) = ecx.machine.data_race.as_genmc_ref() {
@@ -863,7 +863,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
                 old.to_scalar(),
             )?;
             if let Some(new_val) = new_val {
-                ecx.allow_data_races_mut(|this| this.write_scalar(new_val, place))?;
+                ecx.allow_data_races_mut(|ecx| ecx.write_scalar(new_val, place))?;
             }
             return interp_ok(old_val);
         }
@@ -872,7 +872,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
 
         let val = ecx.atomic_rmw_op(atomic_op, &old, rhs)?;
 
-        ecx.allow_data_races_mut(|this| this.write_immediate(*val, place))?;
+        ecx.allow_data_races_mut(|ecx| ecx.write_immediate(*val, place))?;
         ecx.validate_atomic_rmw(place, ord)?;
         ecx.buffered_atomic_rmw(val.to_scalar(), place, ord, old.to_scalar())?;
         interp_ok(old.to_scalar())
@@ -897,7 +897,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         ecx.atomic_access_check(place, AtomicAccessType::Rmw)?;
 
         // Read as immediate for the sake of `binary_op()`
-        let old = ecx.allow_data_races_mut(|this| this.read_immediate(place))?;
+        let old = ecx.allow_data_races_mut(|ecx| ecx.read_immediate(place))?;
 
         // Inform GenMC about the atomic atomic compare exchange.
         if let Some(genmc_ctx) = ecx.machine.data_race.as_genmc_ref() {
@@ -915,7 +915,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             // The store might be the latest store in coherence order (determined by GenMC).
             // If it is, we need to update the value in Miri's memory:
             if let Some(new_value) = new_value {
-                ecx.allow_data_races_mut(|this| this.write_scalar(new_value, place))?;
+                ecx.allow_data_races_mut(|ecx| ecx.write_scalar(new_value, place))?;
             }
             return interp_ok((old_value, cmpxchg_success));
         }
@@ -944,7 +944,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         // if successful, perform a full rw-atomic validation
         // otherwise treat this as an atomic load with the fail ordering.
         if cmpxchg_success {
-            ecx.allow_data_races_mut(|this| this.write_scalar(new, place))?;
+            ecx.allow_data_races_mut(|ecx| ecx.write_scalar(new, place))?;
             ecx.validate_atomic_rmw(place, success)?;
             ecx.buffered_atomic_rmw(new, place, success, old.to_scalar())?;
         } else {

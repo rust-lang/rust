@@ -30,11 +30,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         timeout: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let nfds: u64 = this.read_scalar(nfds)?.to_int(nfds.layout.size)?.try_into().unwrap();
-        let timeout = this.read_scalar(timeout)?.to_i32()?;
-        let fds_arr = this.deref_pointer(fds)?;
+        let nfds: u64 = ecx.read_scalar(nfds)?.to_int(nfds.layout.size)?.try_into().unwrap();
+        let timeout = ecx.read_scalar(timeout)?.to_i32()?;
+        let fds_arr = ecx.deref_pointer(fds)?;
 
         // The provided interests indexed by the file descriptor they're for.
         let mut interests = BTreeMap::<FdNum, PollInterest<'tcx>>::new();
@@ -47,16 +47,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // We iterate over the fds array of the `poll` syscall. For each fd, we check its
         // output field, the relevant events, and whether they are currently fulfilled.
         for idx in 0..nfds {
-            let pollfd = this.project_c_array_field(&fds_arr, idx)?;
-            let fd_field = this.project_field_named(&pollfd, "fd")?;
-            let fd_num = this.read_scalar(&fd_field)?.to_i32()?;
-            let events_field = this.project_field_named(&pollfd, "events")?;
-            let events = this.read_scalar(&events_field)?.to_u16()?;
-            let revents_field = this.project_field_named(&pollfd, "revents")?;
+            let pollfd = ecx.project_c_array_field(&fds_arr, idx)?;
+            let fd_field = ecx.project_field_named(&pollfd, "fd")?;
+            let fd_num = ecx.read_scalar(&fd_field)?.to_i32()?;
+            let events_field = ecx.project_field_named(&pollfd, "events")?;
+            let events = ecx.read_scalar(&events_field)?.to_u16()?;
+            let revents_field = ecx.project_field_named(&pollfd, "revents")?;
 
-            let relevant_events = this.poll_bitflag_to_readiness(events)?;
+            let relevant_events = ecx.poll_bitflag_to_readiness(events)?;
 
-            let revents = if this.machine.fds.get(fd_num).is_some() {
+            let revents = if ecx.machine.fds.get(fd_num).is_some() {
                 // A file description for this file descriptor exists; the interest is thus not ignored.
                 let interest = PollInterest { revents_place: revents_field.clone() };
                 if interests.try_insert(fd_num, interest).is_err() {
@@ -70,7 +70,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         relevant_events,
                         /* is_edge_triggered */ false,
                         u64::try_from(fd_num).unwrap(),
-                        this,
+                        ecx,
                     )?
                     // We just ensured that no file descriptor is registered twice.
                     .unwrap();
@@ -90,37 +90,37 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // and thus returns from the `poll` invocation.
                 invalid_interests = invalid_interests.strict_add(1);
 
-                this.eval_libc_u16("POLLNVAL")
+                ecx.eval_libc_u16("POLLNVAL")
             };
 
-            this.write_scalar(Scalar::from_u16(revents), &revents_field)?;
+            ecx.write_scalar(Scalar::from_u16(revents), &revents_field)?;
         }
 
         if timeout == 0 || invalid_interests > 0 || watcher.ready_count() > 0 {
             // Some interests are already fulfilled or a zero timeout was provided.
             // We thus don't need to block the thread and can just return here.
 
-            let count = this.write_ready_events(watcher, interests)?;
+            let count = ecx.write_ready_events(watcher, interests)?;
             // The Linux implementation also counts invalid interests as fulfilled.
             let total = count.strict_add(invalid_interests);
 
-            return this.write_scalar(Scalar::from_u32(total), dest);
+            return ecx.write_scalar(Scalar::from_u32(total), dest);
         }
 
         // None of the interests are currently fulfilled; we thus need to
         // block the thread until any interest gets fulfilled.
-        watcher.add_blocked_thread(this.machine.threads.active_thread());
+        watcher.add_blocked_thread(ecx.machine.threads.active_thread());
 
         let deadline = if timeout.is_positive() {
             let timeout_duration = Duration::from_millis(u64::try_from(timeout).unwrap());
-            Some(this.machine.monotonic_clock.now().add_lossy(timeout_duration).into())
+            Some(ecx.machine.monotonic_clock.now().add_lossy(timeout_duration).into())
         } else {
             // Negative timeout means block indefinitely.
             None
         };
 
         let dest = dest.clone();
-        this.block_thread(
+        ecx.block_thread(
             BlockReason::Readiness,
             deadline,
             callback!(
@@ -128,13 +128,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     watcher: Rc<ReadinessWatcher>,
                     interests: BTreeMap<FdNum, PollInterest<'tcx>>,
                     dest: MPlaceTy<'tcx>,
-                } |this, reason: UnblockKind| {
+                } |ecx, reason: UnblockKind| {
                     if let UnblockKind::TimedOut = reason {
-                        return this.write_scalar(Scalar::from_u32(0), &dest);
+                        return ecx.write_scalar(Scalar::from_u32(0), &dest);
                     }
 
-                    let count = this.write_ready_events(watcher, interests)?;
-                    this.write_scalar(Scalar::from_u32(count), &dest)
+                    let count = ecx.write_ready_events(watcher, interests)?;
+                    ecx.write_scalar(Scalar::from_u32(count), &dest)
                 }
             ),
         );

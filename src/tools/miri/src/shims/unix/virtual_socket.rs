@@ -352,9 +352,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             is_non_block: bool,
                             finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
                         }
-                        |this, unblock: UnblockKind| {
+                        |ecx, unblock: UnblockKind| {
                             assert_eq!(unblock, UnblockKind::Ready);
-                            this.virtual_socket_write(socket, ptr, len, is_non_block, finish)
+                            ecx.virtual_socket_write(socket, ptr, len, is_non_block, finish)
                         }
                     ),
                 );
@@ -443,9 +443,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             is_non_block: bool,
                             finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
                         }
-                        |this, unblock: UnblockKind| {
+                        |ecx, unblock: UnblockKind| {
                             assert_eq!(unblock, UnblockKind::Ready);
-                            this.virtual_socket_read(socket, ptr, len, is_non_block, finish)
+                            ecx.virtual_socket_read(socket, ptr, len, is_non_block, finish)
                         }
                     ),
                 );
