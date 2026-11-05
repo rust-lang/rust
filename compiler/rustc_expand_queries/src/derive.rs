@@ -1,5 +1,6 @@
 use rustc_ast::tokenstream::TokenStream;
 use rustc_expand::base::ExtCtxt;
+use rustc_expand::proc_macro::expand_derive_macro_cached;
 use rustc_middle::ty::{TyCtxt, tls};
 use rustc_proc_macro as pm;
 use rustc_span::LocalExpnId;
@@ -51,6 +52,7 @@ impl QueryDeriveExpandCtx {
 // context and derive Client. We do that using a thread-local.
 scoped_tls::scoped_thread_local!(static DERIVE_EXPAND_CTX: QueryDeriveExpandCtx);
 
+#[expand_derive_macro_cached]
 pub(crate) fn expand_derive_macro_cached(
     invoc_id: LocalExpnId,
     input: TokenStream,

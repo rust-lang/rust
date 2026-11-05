@@ -1,8 +1,10 @@
 // tidy-alphabetical-start
+#![allow(incomplete_features)]
 #![allow(internal_features)]
 #![feature(associated_type_defaults)]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
+#![feature(extern_item_impls)]
 #![feature(macro_metavar_expr)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
