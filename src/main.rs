@@ -65,28 +65,27 @@ impl ClippyCmd {
     {
         let mut cargo_subcommand = "check";
         let mut args = vec![];
-        let mut clippy_args: Vec<String> = vec![];
+        let mut clippy_args = vec![];
 
         for arg in old_args.by_ref() {
             match arg.as_str() {
                 "--fix" => {
                     cargo_subcommand = "fix";
-                    continue;
                 },
                 "--no-deps" => {
-                    clippy_args.push("--no-deps".into());
-                    continue;
+                    clippy_args = vec!["--no-deps".to_string()];
                 },
                 "--" => break,
-                _ => {},
+                _ => {
+                    args.push(arg);
+                },
             }
-
-            args.push(arg);
         }
 
-        clippy_args.append(&mut (old_args.collect()));
+        clippy_args.extend(old_args);
+
         if cargo_subcommand == "fix" && !clippy_args.iter().any(|arg| arg == "--no-deps") {
-            clippy_args.push("--no-deps".into());
+            clippy_args.push("--no-deps".to_string());
         }
 
         Self {
@@ -109,7 +108,7 @@ impl ClippyCmd {
     }
 
     fn into_std_cmd(self) -> Command {
-        let mut cmd = Command::new(env::var("CARGO").unwrap_or_else(|_| "cargo".into()));
+        let mut cmd = Command::new(env::var("CARGO").unwrap_or_else(|_| "cargo".to_string()));
         let clippy_args: String = self
             .clippy_args
             .iter()
@@ -124,13 +123,8 @@ impl ClippyCmd {
     }
 }
 
-fn process<I>(old_args: I) -> Result<(), i32>
-where
-    I: Iterator<Item = String>,
-{
-    let cmd = ClippyCmd::new(old_args);
-
-    let mut cmd = cmd.into_std_cmd();
+fn process(old_args: impl Iterator<Item = String>) -> Result<(), i32> {
+    let mut cmd = ClippyCmd::new(old_args).into_std_cmd();
 
     let exit_status = cmd
         .spawn()
@@ -203,7 +197,7 @@ mod tests {
 
     #[test]
     fn no_deps_not_duplicated_with_fix() {
-        let args = "cargo clippy --fix -- --no-deps"
+        let args = "cargo clippy --fix --no-deps --no-deps"
             .split_whitespace()
             .map(ToString::to_string);
         let cmd = ClippyCmd::new(args);
