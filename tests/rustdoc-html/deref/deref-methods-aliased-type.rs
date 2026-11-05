@@ -85,3 +85,30 @@ pub type Word = Wrapper<u16>;
 //@ count - '//*[@class="section-header"]' 1
 //@ has - '//*[@class="section-header"]' 'Aliased Type'
 pub type Dword = Wrapper<u32>;
+
+pub struct Foo<T>(T);
+
+impl<T> Foo<T> {
+    pub fn tada(&self) {}
+}
+
+impl<T> Deref for Foo<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.0
+    }
+}
+
+// Checks that traversal `Deref` is working.
+//@ has 'foo/struct.FooBar.html'
+//@ has - '//*[@id="deref-methods-Foo%3CFoo%3CT%3E%3E-1"]//*[@class="code-header"]' \
+//        'pub fn tada(&self)'
+//@ has - '//*[@id="deref-methods-Foo%3CFoo%3CT%3E%3E"]' 'Methods from Deref<Target = Foo<Foo<T>>>'
+pub struct FooBar<T>(Foo<Foo<T>>);
+
+impl<T> Deref for FooBar<T> {
+    type Target = Foo<Foo<T>>;
+    fn deref(&self) -> &Foo<Foo<T>> {
+        &self.0
+    }
+}
