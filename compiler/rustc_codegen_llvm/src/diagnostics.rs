@@ -18,6 +18,39 @@ pub(crate) struct SymbolAlreadyDefined<'a> {
 #[diag("`-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`")]
 pub(crate) struct SanitizerMemtagRequiresMte;
 
+#[derive(Diagnostic)]
+#[diag(
+    "`#[ptrauth_c_discriminator]` on a static needs a pointer or a pointer-sized integer, or an array of them, not `{$ty}`"
+)]
+#[help(
+    "put `#[ptrauth_c_discriminator]` on the fields of `{$ty}` that hold code addresses instead"
+)]
+pub(crate) struct PtrauthCDiscriminatorStaticNotSlot {
+    #[primary_span]
+    pub span: Span,
+    pub ty: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "`#[ptrauth_c_discriminator]` needs a field that is a pointer or a pointer-sized integer, or an array of them, not `{$ty}`"
+)]
+pub(crate) struct PtrauthCDiscriminatorFieldNotSlot {
+    #[primary_span]
+    pub span: Span,
+    pub ty: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "fields marked `#[ptrauth_c_discriminator]` with different discriminators overlap at offset {$offset}"
+)]
+pub(crate) struct PtrauthCDiscriminatorConflict {
+    #[primary_span]
+    pub span: Span,
+    pub offset: u64,
+}
+
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
 impl Diagnostic<'_> for ParseTargetMachineConfig<'_> {

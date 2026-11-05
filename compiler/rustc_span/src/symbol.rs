@@ -1689,6 +1689,7 @@ symbols! {
         ptr_write_unaligned,
         ptr_write_volatile,
         ptrauth_c_cast,
+        ptrauth_c_discriminator,
         ptrauth_encoding,
         ptrauth_fn_ptr_discriminator,
         ptrauth_hash,

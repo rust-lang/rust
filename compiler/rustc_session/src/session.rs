@@ -96,6 +96,7 @@ pub enum PointerAuthARM8_3Key {
 }
 
 /// Forms of extra discrimination.
+#[derive(Clone)]
 pub enum PointerAuthDiscrimination {
     /// No additional discrimination.
     None,
@@ -108,6 +109,7 @@ pub enum PointerAuthDiscrimination {
 }
 
 /// Types of address discrimination.
+#[derive(Clone)]
 pub enum PointerAuthAddressDiscriminator {
     /// Enable/disable hardware address discrimination.
     HardwareAddress(bool),
@@ -116,6 +118,7 @@ pub enum PointerAuthAddressDiscriminator {
     Synthetic(u64),
 }
 
+#[derive(Clone)]
 pub struct PointerAuthSchema {
     pub is_address_discriminated: PointerAuthAddressDiscriminator,
     pub discrimination_kind: PointerAuthDiscrimination,

@@ -153,6 +153,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::proc_macro_attribute,
     sym::proc_macro_derive,
     sym::profiler_runtime,
+    sym::ptrauth_c_discriminator,
     sym::recursion_limit,
     sym::reexport_test_harness_main,
     sym::register_attribute_tool,

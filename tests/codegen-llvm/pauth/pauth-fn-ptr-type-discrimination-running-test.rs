@@ -12,7 +12,7 @@
 // https://github.com/llvm/llvm-project/blob/main/clang/test/CodeGen/ptrauth-function-type-discriminator.c
 // Variable and function names match the original C test.
 
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, ptrauth_c_discriminator)]
 #![no_std]
 #![no_core]
 #![crate_type = "lib"]
@@ -94,7 +94,7 @@ static TEST_ENUM_FUNC_PTR_1: unsafe extern "C" fn(Enum1) = enum_func_1;
 // ```
 // Clang signs a function address held in a `void *` with discriminator 0. Rust signs it with the
 // discriminator of `f` (18983): reinterpreting a function pointer never resigns it. Exporting it to C
-// as a `void *` requires an explicit resign.
+// as a `void *` requires an explicit resign, or, in a static, `#[ptrauth_c_discriminator(0)]` (below).
 #[used]
 // DISC-DAG: @{{.*}}TEST_OPAQUE = {{.*}} ptr ptrauth (ptr @{{.*}}f, i32 0, i64 18983), align 8
 // NO_DISC-DAG: @{{.*}}TEST_OPAQUE = {{.*}} ptr ptrauth (ptr @{{.*}}f, i32 0), align 8
@@ -107,6 +107,22 @@ static mut TEST_OPAQUE: *const c_void = unsafe {
 // DISC-DAG: @{{.*}}TEST_OPAQUE_1 = {{.*}} ptr ptrauth (ptr @{{.*}}f, i32 0, i64 18983), align 8
 // NO_DISC-DAG: @{{.*}}TEST_OPAQUE_1 = {{.*}} ptr ptrauth (ptr @{{.*}}f, i32 0), align 8
 static mut TEST_OPAQUE_1: *const c_void = f as *const () as *const c_void;
+
+// The same two statics, marked as holding the code address in C's encoding for a `void *`: signed
+// with discriminator 0, as Clang does.
+#[used]
+#[ptrauth_c_discriminator(0)]
+// DISC-DAG: @{{.*}}TEST_OPAQUE_C = {{.*}} ptr ptrauth (ptr @{{.*}}f, i32 0), align 8
+// NO_DISC-DAG: @{{.*}}TEST_OPAQUE_C = {{.*}} ptr ptrauth (ptr @{{.*}}f, i32 0), align 8
+static mut TEST_OPAQUE_C: *const c_void = unsafe {
+    let p: extern "C" fn(f64) -> f64 = transmute::<extern "C" fn(), extern "C" fn(f64) -> f64>(f);
+    transmute::<extern "C" fn(f64) -> f64, *const c_void>(p)
+};
+#[used]
+#[ptrauth_c_discriminator(0)]
+// DISC-DAG: @{{.*}}TEST_OPAQUE_1_C = {{.*}} ptr ptrauth (ptr @{{.*}}f, i32 0), align 8
+// NO_DISC-DAG: @{{.*}}TEST_OPAQUE_1_C = {{.*}} ptr ptrauth (ptr @{{.*}}f, i32 0), align 8
+static mut TEST_OPAQUE_1_C: *const c_void = f as *const () as *const c_void;
 
 // 5
 // ```c

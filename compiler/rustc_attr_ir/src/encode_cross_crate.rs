@@ -100,6 +100,8 @@ impl AttributeKind {
             ProcMacroAttribute => No,
             ProcMacroDerive { .. } => No,
             ProfilerRuntime => No,
+            // Fields of a type are read by the crate that codegens a static of that type.
+            PtrauthCDiscriminator { .. } => Yes,
             RecursionLimit { .. } => No,
             ReexportTestHarnessMain(..) => No,
             RegisterTool { .. } => No,
@@ -320,6 +322,7 @@ impl AttributeKind {
             ProcMacroAttribute => false,
             ProcMacroDerive { .. } => false,
             ProfilerRuntime => false,
+            PtrauthCDiscriminator { .. } => false,
             RecursionLimit { .. } => false,
             ReexportTestHarnessMain(..) => false,
             RegisterTool { .. } => false,

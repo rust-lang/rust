@@ -238,7 +238,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             }
         };
 
-        let init = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No);
+        let init = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No, &[]);
         let alloc = alloc.inner();
 
         let value = match alloc.mutability {
