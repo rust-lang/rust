@@ -84,6 +84,7 @@
 use rustc_abi::{ExternAbi, TagEncoding, Variants};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, Unnormalized};
 use rustc_session::{PointerAuthDiscrimination, PointerAuthSchema};
+use rustc_target::spec::Arch;
 
 use crate::ptrauth::llvm_siphash::llvm_pointer_auth_stable_siphash;
 use crate::ty::layout::LayoutCx;
@@ -497,10 +498,17 @@ fn encode_ty<'tcx>(enc: &mut PtrauthEncoder, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
         ClangDiscTy::Bool | ClangDiscTy::Char | ClangDiscTy::Int => enc.push(b'i'),
 
         ClangDiscTy::Float(f) => match f.bit_width() {
-            16 => enc.push_str("Dh"),
+            16 => enc.push_str("DF16_"),
             32 => enc.push(b'f'),
             64 => enc.push(b'd'),
-            128 => enc.push(b'g'),
+            128 => match tcx.sess.target.arch {
+                Arch::AArch64
+                    if !tcx.sess.target.is_like_darwin && !tcx.sess.target.is_like_windows =>
+                {
+                    enc.push(b'e')
+                }
+                _ => enc.push(b'g'),
+            },
             _ => enc.push(b'?'),
         },
 
