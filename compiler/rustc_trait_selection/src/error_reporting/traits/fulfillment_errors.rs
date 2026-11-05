@@ -47,8 +47,8 @@ use crate::diagnostics::{
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
-use crate::error_reporting::traits::report_dyn_incompatibility;
 use crate::error_reporting::traits::suggestions::ReturnsVisitor;
+use crate::error_reporting::traits::{FindExprBySpan, report_dyn_incompatibility};
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{
@@ -868,8 +868,30 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SelectionError::ConstArgHasWrongType { ct, ct_ty, expected_ty } => {
                 let expected_ty_str = self.tcx.short_string(expected_ty, &mut long_ty_file);
                 let ct_str = self.tcx.short_string(ct, &mut long_ty_file);
+                let mut diag_span = span;
+                let mut is_array_len = false;
+                if let ObligationCauseCode::ArrayLen(_, span) = obligation.cause.code() {
+                    let mut finder = FindExprBySpan::new(*span, self.tcx);
+                    match self.infcx.tcx.hir_node_by_def_id(obligation.cause.body_def_id) {
+                        hir::Node::Item(item) => finder.visit_item(item),
+                        hir::Node::ImplItem(item) => finder.visit_impl_item(item),
+                        hir::Node::TraitItem(item) => finder.visit_trait_item(item),
+                        _ => {}
+                    }
+                    if let Some(arr_ty) = finder.ty_result
+                        && let hir::TyKind::Array(_, len) = arr_ty.kind
+                    {
+                        diag_span = len.span;
+                        is_array_len = true;
+                    } else if let Some(arr) = finder.result
+                        && let hir::ExprKind::Repeat(_, len) = arr.kind
+                    {
+                        diag_span = len.span;
+                        is_array_len = true;
+                    }
+                }
                 let mut diag = self.dcx().struct_span_err(
-                    span,
+                    diag_span,
                     format!("the constant `{ct_str}` is not of type `{expected_ty_str}`"),
                 );
                 diag.long_ty_path = long_ty_file;
@@ -890,15 +912,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
 
-                self.note_type_err(
-                    &mut diag,
-                    &obligation.cause,
-                    None,
-                    None,
-                    TypeError::Sorts(ty::error::ExpectedFound::new(expected_ty, ct_ty)),
-                    false,
-                    None,
-                );
+                if is_array_len {
+                    let ty = self.tcx.short_string(ct_ty, &mut diag.long_ty_path);
+                    diag.span_label(
+                        diag_span,
+                        format!("array length expected `{expected_ty_str}`, found `{ty}`"),
+                    );
+                } else {
+                    self.note_type_err(
+                        &mut diag,
+                        &obligation.cause,
+                        None,
+                        None,
+                        TypeError::Sorts(ty::error::ExpectedFound::new(expected_ty, ct_ty)),
+                        false,
+                        None,
+                    );
+                }
                 diag
             }
         };
