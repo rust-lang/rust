@@ -56,6 +56,7 @@ use crate::attributes::path::PathParser as PathAttributeParser;
 use crate::attributes::pin_v2::*;
 use crate::attributes::proc_macro_attrs::*;
 use crate::attributes::prototype::*;
+use crate::attributes::ptrauth_c_discriminator::*;
 use crate::attributes::repr::*;
 use crate::attributes::rustc_allocator::*;
 use crate::attributes::rustc_dump::*;
@@ -231,6 +232,7 @@ attribute_parsers!(
         Single<PathAttributeParser>,
         Single<PatternComplexityLimitParser>,
         Single<ProcMacroDeriveParser>,
+        Single<PtrauthCDiscriminatorParser>,
         Single<RecursionLimitParser>,
         Single<ReexportTestHarnessMainParser>,
         Single<RustcAbiParser>,

@@ -439,12 +439,15 @@ Rust and C depends on the type of the slot on the C side:
 * a `void *` or an integer (`dlsym`, user data): C uses discriminator 0, so the
   pointer must be resigned for 0.
 
-A code address crossing one of the last two kinds of slot needs an explicit
-conversion, `core::intrinsics::ptrauth_c_cast::<Src, Dst>`, the Rust
-equivalent of the C cast. `core::intrinsics::ptrauth_fn_ptr_discriminator::<F>()`
-gives the discriminator of a function pointer type, as Clang's
-`__builtin_ptrauth_type_discriminator` does, and `core::intrinsics::ptrauth_strip`
-removes the signature, to compare code addresses.
+At runtime, `core::intrinsics::ptrauth_c_cast::<Src, Dst>` does the resign, as
+the C cast would. A static's initializer is evaluated at compile time, so for
+code addresses in a static,
+[`#[rustc_ptrauth_c_discriminator(N)]`](../../unstable-book/language-features/ptrauth-c-discriminator.html)
+on the static or on one of its fields sets the discriminator instead.
+`core::intrinsics::ptrauth_fn_ptr_discriminator::<F>()` gives the discriminator
+of a function pointer type, as Clang's `__builtin_ptrauth_type_discriminator`
+does, and `core::intrinsics::ptrauth_strip` removes the signature, to compare
+code addresses.
 
 ## Cross-compilation toolchains and C code
 
@@ -488,6 +491,7 @@ The following categories are supported (all present in tree):
   * pauth-fn-ptr-type-discrimination-fn-ptr-return-type.rs
   * pauth-fn-ptr-type-discrimination-instance-signing.rs
   * pauth-fn-ptr-type-discrimination-intrinsics.rs
+  * pauth-fn-ptr-type-discrimination-c-discriminator.rs
   * pauth-fn-ptr-type-discrimination-no-resign.rs
   * pauth-fn-ptr-type-discrimination-option-callback.rs
   * pauth-fn-ptr-type-discrimination-option-return.rs
@@ -515,6 +519,8 @@ The following categories are supported (all present in tree):
   * discriminator-abi-compat.rs
   * discriminator-complex-encoding.rs
   * discriminator-float-encoding.rs
+  * ptrauth-c-discriminator-misplaced.rs
+  * ptrauth-c-discriminator-range.rs
   * incompatible_pauth.rs
 * Unit tests for siphash function:
   * compiler/rustc_middle/src/ptrauth/llvm_siphash/tests.rs
@@ -546,6 +552,7 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-fn-ptr-return-type.rs \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-instance-signing.rs \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-intrinsics.rs \
+  tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-c-discriminator.rs \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-no-resign.rs \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-option-callback.rs \
   tests/codegen-llvm/pauth/pauth-fn-ptr-type-discrimination-option-return.rs \
@@ -570,6 +577,8 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/ui/pointer_authentication/discriminator-abi-compat.rs \
   tests/ui/pointer_authentication/discriminator-complex-encoding.rs \
   tests/ui/pointer_authentication/discriminator-float-encoding.rs \
+  tests/ui/pointer_authentication/ptrauth-c-discriminator-misplaced.rs \
+  tests/ui/pointer_authentication/ptrauth-c-discriminator-range.rs \
   tests/ui/target_modifiers/incompatible_pauth.rs
 ```
 

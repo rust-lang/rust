@@ -251,6 +251,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_preserve_ub_checks,
     sym::rustc_proc_macro_decls,
     sym::rustc_promotable,
+    sym::rustc_ptrauth_c_discriminator,
     sym::rustc_pub_transparent,
     sym::rustc_reallocator,
     sym::rustc_regions,
