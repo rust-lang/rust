@@ -905,17 +905,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.set_metadata_node(load, llvm::MD_nonnull, &[]);
     }
 
-    fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align) -> &'ll Value {
-        self.store_with_flags(val, ptr, align, MemFlags::empty())
-    }
-
     fn store_with_flags(
         &mut self,
         val: &'ll Value,
         ptr: &'ll Value,
         align: Align,
         flags: MemFlags,
-    ) -> &'ll Value {
+    ) {
         debug!("Store {:?} -> {:?} ({:?})", val, ptr, flags);
         assert_eq!(self.cx.type_kind(self.cx.val_ty(ptr)), TypeKind::Pointer);
         unsafe {
@@ -966,7 +962,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, args.as_ptr(), args.len());
                 self.set_metadata(store, id, md);
             }
-            store
         }
     }
 
