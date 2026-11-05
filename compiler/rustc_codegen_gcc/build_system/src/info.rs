@@ -38,7 +38,7 @@ impl Info {
                 "--gcc-path" => info.gcc_path = true,
                 "--llvm-commit" => info.llvm_commit = true,
                 arg => {
-                    if !info.config.parse_argument(&arg, &mut args)? {
+                    if !info.config.parse_argument(arg, &mut args)? {
                         eprintln!(
                             "Unknown argument {arg:?}. Use `--help` to see the available options"
                         );
@@ -62,7 +62,7 @@ fn show_llvm_commit() -> Result<(), String> {
     let Some(mut commit) = output
         .lines()
         .find(|line| line.contains("src/llvm-project"))
-        .and_then(|line| line.rsplit(' ').last())
+        .and_then(|line| line.rsplit(' ').next_back())
     else {
         return Err(format!("Didn't find llvm submodule in output:\n=======\n{output}\n======="));
     };
@@ -71,7 +71,7 @@ fn show_llvm_commit() -> Result<(), String> {
         commit = &commit[1..];
     }
     println!("LLVM commit: {commit}");
-    return Ok(());
+    Ok(())
 }
 
 pub fn run() -> Result<(), String> {
