@@ -391,8 +391,15 @@ fn generate_thin_lto_work<B: WriteBackendMethods>(
 
 enum MaybeLtoModules<B: WriteBackendMethods> {
     NoLto(CompiledModules),
-    FatLto { cgcx: CodegenContext, needs_fat_lto: Vec<FatLtoInput<B>> },
-    ThinLto { cgcx: CodegenContext, needs_thin_lto: Vec<ThinLtoInput<B>> },
+    FatLto {
+        cgcx: CodegenContext,
+        needs_fat_lto: Vec<FatLtoInput<B>>,
+    },
+    ThinLto {
+        cgcx: CodegenContext,
+        needs_thin_lto: Vec<ThinLtoInput<B>>,
+        allocator_module: Option<CompiledModule>,
+    },
 }
 
 fn need_bitcode_in_object(tcx: TyCtxt<'_>) -> bool {
@@ -1215,10 +1222,6 @@ fn start_executing_work<B: WriteBackendMethods>(
     let incr_comp_session =
         tcx.incr_comp_session.map(|incr_comp_session| incr_comp_session.borrow());
 
-    // Compute the set of symbols we need to retain when doing thin local LTO (if we need to)
-    let exported_symbols_for_lto =
-        if sess.lto() == Lto::ThinLocal { lto::exported_symbols_for_lto(tcx, &[]) } else { vec![] };
-
     // First up, convert our jobserver into a helper thread so we can use normal
     // mpsc channels to manage our messages and such.
     // After we've requested tokens then we'll, when we can,
@@ -1239,8 +1242,6 @@ fn start_executing_work<B: WriteBackendMethods>(
             })
             .expect("failed to spawn helper thread")
     });
-
-    let tm_factory = backend.target_machine_factory(tcx.sess);
 
     let remark_dir = if let Some(ref dir) = sess.opts.unstable_opts.remark_dir {
         let result = fs::create_dir_all(dir).and_then(|_| dir.canonicalize());
@@ -1740,29 +1741,29 @@ fn start_executing_work<B: WriteBackendMethods>(
                 needs_thin_lto.push(ThinLtoInput::Green { wp, bitcode_path })
             }
 
-            if cgcx.lto == Lto::ThinLocal {
-                compiled_modules.extend(do_thin_lto::<B>(
-                    &cgcx,
-                    &prof,
-                    incr_comp_session,
-                    shared_emitter.clone(),
-                    tm_factory,
-                    &exported_symbols_for_lto,
-                    &[],
-                    needs_thin_lto,
-                    stack_size,
-                ));
-            } else {
-                if let Some(allocator_module) = allocator_module.take() {
+            let allocator_module = if let Some(allocator_module) = allocator_module {
+                if cgcx.lto == Lto::ThinLocal {
+                    Some(B::codegen(
+                        &cgcx,
+                        &prof,
+                        &shared_emitter,
+                        allocator_module,
+                        &allocator_config,
+                    ))
+                } else {
                     let thin_buffer = B::serialize_module(allocator_module.module_llvm, true);
                     needs_thin_lto.push(ThinLtoInput::Red {
                         name: allocator_module.name,
                         buffer: SerializedModule::Local(thin_buffer),
                     });
-                }
 
-                return Ok(MaybeLtoModules::ThinLto { cgcx, needs_thin_lto });
-            }
+                    None
+                }
+            } else {
+                None
+            };
+
+            return Ok(MaybeLtoModules::ThinLto { cgcx, needs_thin_lto, allocator_module });
         }
 
         Ok(MaybeLtoModules::NoLto(CompiledModules {
@@ -2161,7 +2162,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                     allocator_module: None,
                 }
             }
-            MaybeLtoModules::ThinLto { cgcx, needs_thin_lto } => {
+            MaybeLtoModules::ThinLto { cgcx, needs_thin_lto, allocator_module } => {
                 let tm_factory = self.backend.target_machine_factory(sess);
 
                 let compiled_modules = CompiledModules {
@@ -2176,7 +2177,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                         needs_thin_lto,
                         sess.opts.recommended_stack_size,
                     ),
-                    allocator_module: None,
+                    allocator_module,
                 };
 
                 // FIXME include pre-LTO bitcode in workproduct tracking
