@@ -158,6 +158,16 @@ pub fn run_command_with_output_and_env_no_err(
     check_exit_status(input, cwd, exit_status, None, false)
 }
 
+pub fn run_command_with_env_no_err(
+    input: &[&dyn AsRef<OsStr>],
+    cwd: Option<&Path>,
+    env: Option<&HashMap<String, String>>,
+) -> Result<(), String> {
+    let output =
+        get_command_inner(input, cwd, env).output().map_err(|e| command_error(input, &cwd, e))?;
+    check_exit_status(input, cwd, output.status, None, false)
+}
+
 pub fn cargo_install(to_install: &str) -> Result<(), String> {
     let output = run_command(&[&"cargo", &"install", &"--list"], None)?;
 
@@ -484,7 +494,7 @@ pub fn setup_rustc_folder(env: &mut HashMap<String, String>) -> Result<PathBuf, 
     if rustc_commit != "unknown" {
         // GitHub rate-limits a fetch right after a full clone, so only fetch a missing commit.
         let commit_object = format!("{rustc_commit}^{{commit}}");
-        let has_commit = run_command_with_output_and_env_no_err(
+        let has_commit = run_command_with_env_no_err(
             &[&"git", &"rev-parse", &"--quiet", &"--verify", &commit_object],
             rust_dir,
             Some(env),
@@ -503,8 +513,8 @@ pub fn setup_rustc_folder(env: &mut HashMap<String, String>) -> Result<PathBuf, 
             Some(env),
         )?;
     } else {
-        run_command_with_output_and_env(&[&"git", &"fetch"], rust_dir, Some(env))?;
-        run_command_with_output_and_env(&[&"git", &"checkout"], rust_dir, Some(env))?;
+        run_command(&[&"git", &"fetch"], rust_dir)?;
+        run_command(&[&"git", &"checkout"], rust_dir)?;
     }
     Ok(rust_dir_path)
 }
