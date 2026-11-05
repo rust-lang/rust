@@ -1,15 +1,15 @@
-error: function `foo` is never used
-  --> $DIR/ordering-source.rs:6:4
+warning: function `foo` is never used
+  --> $DIR/ordering-source.rs:7:4
    |
 LL | fn foo() {}
    |    ^^^
    |
 note: the lint level is defined here
-  --> <crate attribute>:1:9
+  --> $DIR/ordering-source.rs:5:9
    |
-LL | #![deny(unused)]
+LL | #![warn(unused)]
    |         ^^^^^^
-   = note: `#[deny(dead_code)]` implied by `#[deny(unused)]`
+   = note: `#[warn(dead_code)]` implied by `#[warn(unused)]`
 
-error: aborting due to 1 previous error
+warning: 1 warning emitted
 
