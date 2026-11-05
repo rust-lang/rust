@@ -99,10 +99,6 @@ Stabilized APIs
 - [`Vec::from_fn`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.from_fn)
 - [`os::windows::process::CommandExt::show_window`](https://doc.rust-lang.org/stable/std/os/windows/process/trait.CommandExt.html#tymethod.show_window)
 
-These previously stable APIs are now stable in const contexts:
-
-
-
 <a id="1.100.0-Cargo"></a>
 
 Cargo
