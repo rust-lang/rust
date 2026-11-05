@@ -702,6 +702,13 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     pub const fn new_in(alloc: A) -> BTreeMap<K, V, A> {
         BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(alloc), _marker: PhantomData }
     }
+
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "btreemap_alloc", issue = "163177")]
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        &self.alloc
+    }
 }
 
 impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
