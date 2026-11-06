@@ -220,6 +220,23 @@ enum FieldAccessError {
     OutOfRange { field_count: usize },
 }
 
+enum RelateUserTyError {
+    NoSolution(NoSolution),
+    Errored(ErrorGuaranteed),
+}
+
+impl From<NoSolution> for RelateUserTyError {
+    fn from(err: NoSolution) -> Self {
+        RelateUserTyError::NoSolution(err)
+    }
+}
+
+impl From<ErrorGuaranteed> for RelateUserTyError {
+    fn from(guar: ErrorGuaranteed) -> Self {
+        RelateUserTyError::Errored(guar)
+    }
+}
+
 /// The MIR type checker. Visits the MIR and enforces all the
 /// constraints needed for it to be valid and well-typed. Along the
 /// way, it accrues region constraints -- these can later be used by
@@ -453,7 +470,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         user_ty: &UserTypeProjection,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
-    ) -> Result<(), NoSolution> {
+    ) -> Result<(), RelateUserTyError> {
         let annotated_type = self.user_type_annotations[user_ty.base].inferred_ty;
         trace!(?annotated_type);
         let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
@@ -476,14 +493,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 tcx,
                 proj,
                 |ty, variant_index, field_index, ()| {
-                    self.normalize(
+                    self.deeply_normalize(
                         PlaceTy::field_ty(tcx, ty, variant_index, field_index),
                         locations,
                     )
+                    .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
                 },
                 |_| unreachable!(),
             );
             curr_projected_ty = projected_ty;
+
+            if let ty::Error(guar) = *curr_projected_ty.ty.kind() {
+                return Err(guar.into());
+            }
         }
         trace!(?curr_projected_ty);
 
@@ -496,8 +518,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let mut a = a;
         let mut ty = curr_projected_ty.ty;
         if !self.infcx.next_trait_solver() {
-            a = self.normalize(ty::Unnormalized::new_wip(a), locations);
-            ty = self.normalize(ty::Unnormalized::new_wip(ty), locations);
+            a = self.deeply_normalize(ty::Unnormalized::new_wip(a), locations)?;
+            ty = self.deeply_normalize(ty::Unnormalized::new_wip(ty), locations)?;
         }
         self.relate_types(ty, v.xform(ty::Contravariant), a, locations, category)?;
 
@@ -666,13 +688,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
 
                 if let Some(annotation_index) = self.rvalue_user_ty(rv)
-                    && let Err(terr) = self.relate_type_and_user_type(
-                        rv_ty,
-                        ty::Invariant,
-                        &UserTypeProjection { base: annotation_index, projs: vec![] },
-                        location.to_locations(),
-                        ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg),
-                    )
+                    && let Err(RelateUserTyError::NoSolution(terr)) = self
+                        .relate_type_and_user_type(
+                            rv_ty,
+                            ty::Invariant,
+                            &UserTypeProjection { base: annotation_index, projs: vec![] },
+                            location.to_locations(),
+                            ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg),
+                        )
                 {
                     let annotation = &self.user_type_annotations[annotation_index];
                     span_mirbug!(
@@ -700,7 +723,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             StatementKind::AscribeUserType((place, projection), variance) => {
                 let place_ty = place.ty(self.body, tcx).ty;
-                if let Err(terr) = self.relate_type_and_user_type(
+                if let Err(RelateUserTyError::NoSolution(terr)) = self.relate_type_and_user_type(
                     place_ty,
                     *variance,
                     projection,
@@ -946,7 +969,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
             };
 
-            if let Err(terr) = self.relate_type_and_user_type(
+            if let Err(RelateUserTyError::NoSolution(terr)) = self.relate_type_and_user_type(
                 ty,
                 ty::Invariant,
                 user_ty,
@@ -1743,7 +1766,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
         let locations = location.to_locations();
         if let Some(annotation_index) = constant.user_ty {
-            if let Err(terr) = self.relate_type_and_user_type(
+            if let Err(RelateUserTyError::NoSolution(terr)) = self.relate_type_and_user_type(
                 constant.const_.ty(),
                 ty::Invariant,
                 &UserTypeProjection { base: annotation_index, projs: vec![] },
