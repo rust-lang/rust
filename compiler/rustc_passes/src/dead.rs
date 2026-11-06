@@ -472,21 +472,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 }
             }
 
-            if !self.scanned.insert(ScannedItem {
-                id,
-                propagated,
-                trivial_usage_site: self.trivial_usage_sites.last().copied(),
-            }) {
+            if !self.should_scan_id(id, propagated, self.trivial_usage_sites.last().copied()) {
                 continue;
-            } else if propagated == ComesFromAllowExpect::No {
-                // If the item is not coming from an `#[allow]` or `#[expect]`,
-                // we also mark it as scanned with `ComesFromAllowExpect::Yes`
-                // to avoid re-scanning it in the future.
-                self.scanned.insert(ScannedItem {
-                    id,
-                    propagated: ComesFromAllowExpect::Yes,
-                    trivial_usage_site: self.trivial_usage_sites.last().copied(),
-                });
             }
 
             // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
@@ -500,6 +487,38 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
 
         ControlFlow::Continue(())
+    }
+
+    fn should_scan_id(
+        &mut self,
+        id: LocalDefId,
+        propagated: ComesFromAllowExpect,
+        trivial_usage_site: Option<TrivialUsageSiteId>,
+    ) -> bool {
+        // If the item was previously scanned from a normal live seed,
+        // we don't need to scan it again.
+        if self.scanned.contains(&ScannedItem {
+            id,
+            propagated: ComesFromAllowExpect::No,
+            trivial_usage_site: None,
+        }) {
+            return false;
+        }
+        // If the item was scanned from the same allow/expect context and the same
+        // trivial usage site, we don't need to scan it again
+        if !self.scanned.insert(ScannedItem { id, propagated, trivial_usage_site }) {
+            return false;
+        } else if propagated == ComesFromAllowExpect::No {
+            // If the item is not coming from an `#[allow]` or `#[expect]`,
+            // we also mark it as scanned with `ComesFromAllowExpect::Yes`
+            // to avoid re-scanning it in the future.
+            self.scanned.insert(ScannedItem {
+                id,
+                propagated: ComesFromAllowExpect::Yes,
+                trivial_usage_site,
+            });
+        }
+        true
     }
 
     fn get_trivial_field_reads_attr(&mut self, id: HirId, node: &Node<'_>) -> Option<Span> {
