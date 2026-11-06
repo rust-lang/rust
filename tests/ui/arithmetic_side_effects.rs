@@ -3,6 +3,8 @@
 #![feature(f128)]
 #![feature(f16)]
 #![expect(
+    arithmetic_overflow,
+    unconditional_panic,
     clippy::assign_op_pattern,
     clippy::erasing_op,
     clippy::identity_op,

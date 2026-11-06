@@ -7280,6 +7280,7 @@ Released 2018-09-13
 [`large_stack_arrays`]: https://clippy.rust-lang.org/main/index.html#large_stack_arrays
 [`large_stack_frames`]: https://clippy.rust-lang.org/main/index.html#large_stack_frames
 [`large_types_passed_by_value`]: https://clippy.rust-lang.org/main/index.html#large_types_passed_by_value
+[`large_unopt_stack_frames`]: https://clippy.rust-lang.org/main/index.html#large_unopt_stack_frames
 [`legacy_numeric_constants`]: https://clippy.rust-lang.org/main/index.html#legacy_numeric_constants
 [`len_without_is_empty`]: https://clippy.rust-lang.org/main/index.html#len_without_is_empty
 [`len_zero`]: https://clippy.rust-lang.org/main/index.html#len_zero

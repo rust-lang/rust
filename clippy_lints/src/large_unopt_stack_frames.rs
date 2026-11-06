@@ -7,88 +7,112 @@ use clippy_utils::{fn_has_unsatisfiable_clauses, is_entrypoint_fn, is_in_test};
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, FnDecl};
+use rustc_hir::{Body, Constness, FnDecl};
 use rustc_lexer::is_ident;
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for functions that use a lot of stack space.
-    ///
-    /// This often happens when constructing a large type, such as an array with a lot of elements,
-    /// or constructing *many* smaller-but-still-large structs, or copying around a lot of large types.
-    ///
-    /// This lint is a more general version of [`large_stack_arrays`](https://rust-lang.github.io/rust-clippy/main/#large_stack_arrays)
-    /// that is intended to look at functions as a whole instead of only individual array expressions inside of a function.
+    /// Checks for functions that use a lot of stack space when optimizations are disabled
+    /// (e.g. debug builds).
     ///
     /// ### Why is this bad?
-    /// The stack region of memory is very limited in size (usually *much* smaller than the heap) and attempting to
-    /// use too much will result in a stack overflow and crash the program.
-    /// To avoid this, you should consider allocating large types on the heap instead (e.g. by boxing them).
+    /// The stack region of memory is normally very limited in size (measuring a few MBs) and any
+    /// attempt to allocate beyond that will cause a stack overflow and crash the program. Due to
+    /// how rustc creates a function's stack frame, it's easy to end up with surprisingly large
+    /// stack frames when optimizations are disabled.
     ///
-    /// Keep in mind that the code path to construction of large types does not even need to be reachable;
-    /// it purely needs to *exist* inside of the function to contribute to the stack size.
-    /// For example, this causes a stack overflow even though the branch is unreachable:
+    /// With `opt-level` set to zero (the default for debug builds) rustc creates stack frames large
+    /// enough to hold all named and temporary values simultaneously. Because this doesn't take the
+    /// lifetimes of the individual values into account, stack frames will almost always be larger
+    /// than needed. In more extreme cases they can be over a megabyte larger.
+    ///
+    /// ### Examples
     /// ```rust,ignore
-    /// fn main() {
-    ///     if false {
-    ///         let x = [0u8; 10000000]; // 10 MB stack array
-    ///         black_box(&x);
-    ///     }
-    /// }
+    /// let a = Box::new(mk_large_value1());
+    /// let b = Box::new(mk_large_value2());
+    /// let c = Box::new(mk_large_value3());
+    /// let d = Box::new(mk_large_value4());
     /// ```
     ///
-    /// ### Known issues
-    /// False positives. The stack size that clippy sees is an estimated value and can be vastly different
-    /// from the actual stack usage after optimizations passes have run (especially true in release mode).
-    /// Modern compilers are very smart and are able to optimize away a lot of unnecessary stack allocations.
-    /// In debug mode however, it is usually more accurate.
+    /// The unoptimized stack frame will be large enough to hold all four temporaries simultaneously
+    /// even though this function only ever needs to hold at most one on the stack at any time. For
+    /// box allocation in particular this can be fixed with a helper function. e.g.
     ///
-    /// This lint works by summing up the size of all variables that the user typed, variables that were
-    /// implicitly introduced by the compiler for temporaries, function arguments and the return value,
-    /// and comparing them against a (configurable, but high-by-default).
-    ///
-    /// ### Example
-    /// This function creates four 500 KB arrays on the stack. Quite big but just small enough to not trigger `large_stack_arrays`.
-    /// However, looking at the function as a whole, it's clear that this uses a lot of stack space.
-    /// ```no_run
-    /// struct QuiteLargeType([u8; 500_000]);
-    /// fn foo() {
-    ///     // ... some function that uses a lot of stack space ...
-    ///     let _x1 = QuiteLargeType([0; 500_000]);
-    ///     let _x2 = QuiteLargeType([0; 500_000]);
-    ///     let _x3 = QuiteLargeType([0; 500_000]);
-    ///     let _x4 = QuiteLargeType([0; 500_000]);
+    /// ```rust,ignore
+    /// fn mk_box<T>(f: impl FnOnce() -> T) -> Box<T> {
+    ///     Box::new(f())
     /// }
+    ///
+    /// let a = mk_box(|| mk_large_value1());
+    /// let b = mk_box(|| mk_large_value2());
+    /// let c = mk_box(|| mk_large_value3());
+    /// let d = mk_box(|| mk_large_value4());
     /// ```
     ///
-    /// Instead of doing this, allocate the arrays on the heap.
-    /// This currently requires going through a `Vec` first and then converting it to a `Box`:
-    /// ```no_run
-    /// struct NotSoLargeType(Box<[u8]>);
+    /// This will split the single large frame into multiple smaller and shorter-lived frames. More
+    /// generally any function can be split such that the large values are distributed amongst the
+    /// sub functions.
     ///
-    /// fn foo() {
-    ///     let _x1 = NotSoLargeType(vec![0; 500_000].into_boxed_slice());
-    /// //                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  Now heap allocated.
-    /// //                                                                The size of `NotSoLargeType` is 16 bytes.
-    /// //  ...
-    /// }
+    /// ---
+    ///
+    /// ```rust,ignore
+    /// const X: LargeType = mk_large_value();
+    ///
+    /// foo(X.field1);
+    /// foo(X.field2);
+    /// foo(X.field3);
+    /// foo(X.field4);
     /// ```
+    ///
+    /// Unoptimized builds will always materialize the entire constant every time it's referenced,
+    /// even if only a small portion of it is needed. In this case the stack frame will be large
+    /// enough to fit four instances simultaneously. When only a small subset of the constant is
+    /// required, the access can be wrapped in a const block to force it to happen during constant
+    /// evaluation. e.g.
+    ///
+    /// ```rust,ignore
+    /// const X: LargeType = mk_large_value();
+    ///
+    /// foo(const { x.field1 });
+    /// foo(const { x.field2 });
+    /// foo(const { x.field3 });
+    /// foo(const { x.field4 });
+    /// ```
+    ///
+    /// This will cause the stack frame to only contain the four fields rather than four instances
+    /// of the entire constant. Alternatively, the constant could be made a static which would also
+    /// avoid the duplicate values on the stack.
+    ///
+    /// ---
+    ///
+    /// If the stack size ultimately cannot be sufficiently reduced and the program is crashing due
+    /// to a stack overflow then minimal optimizations can be enabled. This will, however, result in
+    /// a slightly degraded debug experience and longer build times. This can be done with cargo by
+    /// setting the appropriate field in `cargo.toml`. e.g.
+    ///
+    /// ```toml
+    /// [profile.dev]
+    /// opt-level = 1
+    /// ```
+    ///
+    /// When doing so you may wish to disable this lint as the size calculated will no longer
+    /// represent the actual size of a function's stack frame.
     #[clippy::version = "1.72.0"]
-    pub LARGE_STACK_FRAMES,
-    nursery,
+    pub LARGE_UNOPT_STACK_FRAMES,
+    suspicious,
     "checks for functions that allocate a lot of stack space"
 }
 
-impl_lint_pass!(LargeStackFrames => [LARGE_STACK_FRAMES]);
+impl_lint_pass!(LargeUnoptStackFrames => [LARGE_UNOPT_STACK_FRAMES]);
 
-pub struct LargeStackFrames {
+pub struct LargeUnoptStackFrames {
     maximum_allowed_size: u64,
     allow_large_stack_frames_in_tests: bool,
 }
 
-impl LargeStackFrames {
+impl LargeUnoptStackFrames {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             maximum_allowed_size: conf.stack_size_threshold,
@@ -135,7 +159,8 @@ impl ops::Add<u64> for Space {
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
+impl<'tcx> LateLintPass<'tcx> for LargeUnoptStackFrames {
+    #[expect(clippy::too_many_lines)]
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -147,7 +172,9 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
     ) {
         let def_id = local_def_id.to_def_id();
         // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-        if fn_has_unsatisfiable_clauses(cx, def_id) {
+        if fn_has_unsatisfiable_clauses(cx, def_id)
+            || matches!(cx.tcx.constness(def_id), Constness::Const { always: true })
+        {
             return;
         }
 
@@ -234,7 +261,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
                 let is_from_external_macro = fn_span.in_external_macro(cx.tcx.sess.source_map());
                 span_lint_and_then(
                     cx,
-                    LARGE_STACK_FRAMES,
+                    LARGE_UNOPT_STACK_FRAMES,
                     fn_span.source_callsite(),
                     format!(
                         "{} generated by this macro may allocate a lot of stack space",
@@ -265,7 +292,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
 
             span_lint_and_then(
                 cx,
-                LARGE_STACK_FRAMES,
+                LARGE_UNOPT_STACK_FRAMES,
                 fn_span,
                 format!("this function may allocate {frame_size} on the stack"),
                 |diag| {

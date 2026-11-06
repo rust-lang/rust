@@ -1,4 +1,4 @@
-#![warn(clippy::large_stack_frames)]
+#![warn(clippy::large_unopt_stack_frames)]
 
 // We use this helper function instead of writing [0; 4294967297] directly to represent a
 // case that large_stack_arrays can't catch
