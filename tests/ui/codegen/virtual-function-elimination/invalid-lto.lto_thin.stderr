@@ -1,0 +1,4 @@
+error: `-Zvirtual-function-elimination` requires `-Clto=fat`
+
+error: aborting due to 1 previous error
+
