@@ -131,7 +131,6 @@ const CONTEXTUAL_BUILTIN_KEYWORDS: &[&str] = &[
     "naked_asm",
     "global_asm",
     "att_syntax",
-    "builtin",
     "clobber_abi",
     "format_args",
     // "in",

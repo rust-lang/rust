@@ -14,9 +14,7 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           ASM_EXPR
-            BUILTIN_KW "builtin"
-            POUND "#"
-            ASM_KW "asm"
+            ASM_KW "k#asm"
             L_PAREN "("
             LITERAL
               STRING "\"\""
@@ -25,9 +23,7 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           FORMAT_ARGS_EXPR
-            BUILTIN_KW "builtin"
-            POUND "#"
-            FORMAT_ARGS_KW "format_args"
+            FORMAT_ARGS_KW "k#format_args"
             L_PAREN "("
             LITERAL
               STRING "\"\""
@@ -79,9 +75,7 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           OFFSET_OF_EXPR
-            BUILTIN_KW "builtin"
-            POUND "#"
-            OFFSET_OF_KW "offset_of"
+            OFFSET_OF_KW "k#offset_of"
             L_PAREN "("
             PATH_TYPE
               PATH
@@ -103,9 +97,7 @@ SOURCE_FILE
         WHITESPACE "\n    "
         EXPR_STMT
           CFG_PRED_EXPR
-            BUILTIN_KW "builtin"
-            POUND "#"
-            CFG_KW "cfg"
+            CFG_KW "k#cfg"
             L_PAREN "("
             CFG_COMPOSITE
               IDENT "any"

@@ -8,9 +8,7 @@ SOURCE_FILE
     EQ "="
     WHITESPACE " "
     PATTERN_TYPE
-      BUILTIN_KW "builtin"
-      POUND "#"
-      PATTERN_TYPE_KW "pattern_type"
+      PATTERN_TYPE_KW "k#pattern_type"
       WHITESPACE " "
       L_PAREN "("
       PATH_TYPE

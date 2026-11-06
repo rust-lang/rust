@@ -16,11 +16,7 @@ SOURCE_FILE
           LET_KW "let"
           WHITESPACE " "
           DEREF_PAT
-            BUILTIN_KW "builtin"
-            WHITESPACE " "
-            POUND "#"
-            WHITESPACE " "
-            DEREF_KW "deref"
+            DEREF_KW "k#deref"
             L_PAREN "("
             WILDCARD_PAT
               UNDERSCORE "_"

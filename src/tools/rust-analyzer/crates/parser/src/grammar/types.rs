@@ -59,6 +59,7 @@ fn type_with_bounds_cond(p: &mut Parser<'_>, allow_bounds: bool) {
         T![ident] if !p.current_edition().at_least_2018() && is_dyn_weak(p) => {
             dyn_trait_type_weak(p)
         }
+        T![pattern_type] => pattern_type(p),
         _ if paths::is_path_start(p) => path_or_macro_type(p, allow_bounds),
         LIFETIME_IDENT if p.nth_at(1, T![+]) => bare_dyn_trait_type(p),
         T!['{'] => {
@@ -343,10 +344,6 @@ fn bare_dyn_trait_type(p: &mut Parser<'_>) {
 // type B = crate::foo!();
 fn path_or_macro_type(p: &mut Parser<'_>, allow_bounds: bool) {
     assert!(paths::is_path_start(p));
-    if p.at_contextual_kw(T![builtin]) && p.nth_at(1, T![#]) {
-        pattern_type(p);
-        return;
-    }
     let r = p.start();
     let m = p.start();
 
@@ -425,12 +422,10 @@ pub(super) fn opt_type_bounds_as_dyn_trait_type(
 }
 
 // test pattern_type
-// type T = builtin#pattern_type (u8 is 0..10);
+// type T = k#pattern_type (u8 is 0..10);
 fn pattern_type(p: &mut Parser<'_>) {
     let m = p.start();
-    p.bump_remap(T![builtin]);
-    p.bump(T![#]);
-    if p.eat_contextual_kw(T![pattern_type]) {
+    if p.eat(T![pattern_type]) {
         p.expect(T!['(']);
         type_(p);
         if !p.eat_contextual_kw(T![is]) {
