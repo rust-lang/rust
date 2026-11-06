@@ -504,10 +504,6 @@ impl ConfigInfo {
         Ok(())
     }
 
-    pub fn show_usage() {
-        crate::utils::show_help_with_indent(Self::usage(), false);
-    }
-
     pub fn usage() -> Vec<(&'static str, &'static str)> {
         vec![
             ("--features [arg]", "Add a new feature [arg]"),
