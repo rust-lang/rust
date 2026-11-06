@@ -3921,6 +3921,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::AlwaysApplicableImpl
             | ObligationCauseCode::ConstParam(_)
             | ObligationCauseCode::ConstItemTy(_)
+            | ObligationCauseCode::ReturnType
             | ObligationCauseCode::ReferenceOutlivesReferent(..)
             | ObligationCauseCode::ObjectTypeBound(..) => {}
             ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id, .. } => {
@@ -5972,7 +5973,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ///    |     | `Iterator::Item` is `&mut Vec<u8>` here
     ///    |     this expression has type `Vec<Vec<u8>>`
     /// ```
-    fn point_at_chain_in_return_position(
+    pub fn point_at_chain_in_return_position(
         &self,
         body_def_id: LocalDefId,
         expr: &hir::Expr<'_>,
