@@ -1,5 +1,7 @@
 use std::{env, process};
 
+#[macro_use]
+mod macros;
 mod abi_test;
 mod build;
 mod clean;
@@ -16,62 +18,6 @@ mod test;
 mod todo;
 mod utils;
 const BUILD_DIR: &str = "build";
-
-macro_rules! arg_error {
-    ($($err:tt)*) => {{
-        eprintln!($($err)*);
-        eprintln!();
-        usage();
-        std::process::exit(1);
-    }};
-}
-
-macro_rules! commands_decl {
-    ($($variant:ident: $doc_name:literal => $doc:literal ,)+) => {
-        enum Command {
-            $($variant),+
-        }
-
-        impl<'a> From<Option<&'a str>> for Command {
-            fn from(arg: Option<&'a str>) -> Self {
-                match arg {
-                    $(Some($doc_name) => Self::$variant,)+
-                    Some("--help") => {
-                        usage();
-                        process::exit(0);
-                    }
-                    Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
-                    Some(command) => arg_error!("Unknown command {}", command),
-                    None => {
-                        usage();
-                        process::exit(0);
-                    }
-                }
-            }
-        }
-
-        fn usage() {
-            println!("\
-rustc_codegen_gcc build system
-
-Usage: build_system [command] [options]
-
-Options:
-    --help     : Displays this help message.
-
-Commands:",
-            );
-            let mut commands = vec![$(($doc_name, $doc),)+];
-            let longest = commands.iter().map(|(name, _)| name.len()).max().unwrap();
-
-            commands.sort_unstable_by(|a, b| a.0.cmp(b.0));
-            for (name, doc) in commands {
-                let spacing = std::iter::repeat(' ').take(longest - name.len() + 1).collect::<String>();
-                eprintln!("    {name}{spacing}: {doc}.");
-            }
-        }
-    }
-}
 
 commands_decl! {
     Cargo: "cargo" => "Executes a cargo command",
