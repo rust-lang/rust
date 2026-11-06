@@ -82,25 +82,24 @@ These are often referred to as "LLVM target names"[^list].
 
 First we generate the manifest from the host code:
 ```
-RUSTFLAGS="--emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=HostMetadata=/absolute/path/to/offload.manifest -Zunstable-options" cargo +offload build -r
+RUSTFLAGS="-Zoffload=HostMetadata=/absolute/path/to/offload.manifest -Zunstable-options" cargo +offload build -r
 ```
 This pass only writes the manifest.
 
 Now we generate the device (GPU) code, passing the manifest:
 ```
-RUSTFLAGS="-Ctarget-cpu=gfx90a --emit=llvm-bc,llvm-ir -Zoffload=Device=/absolute/path/to/offload.manifest -Csave-temps -Zunstable-options" cargo +offload build -Zunstable-options -r -v --target amdgcn-amd-amdhsa -Zbuild-std=core
+RUSTFLAGS="-Ctarget-cpu=gfx90a -Zoffload=Device=/absolute/path/to/offload.manifest -Zunstable-options" cargo +offload build -Zunstable-options -r -v --target amdgcn-amd-amdhsa -Zbuild-std=core
 ```
 
 Next we generate the host (CPU) code.
 ```
-DEVICE_BC=$(find $PWD/target/amdgcn-amd-amdhsa/release/build -name '<crate_name>.bc')
-RUSTFLAGS="-C lto=fat -C embed-bitcode=yes --emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=Host=$DEVICE_BC -Zunstable-options" cargo +offload build -r
+RUSTFLAGS="-C lto=fat -C embed-bitcode=yes -Zoffload=Host=$PWD/target/amdgcn-amd-amdhsa/release/<crate_name>.elf -Zunstable-options" cargo +offload build -r
 ```
 
 In the final step, you can now run your binary
 
 ```
-./target/x86_64-unknown-linux-gnu/release/binary-name
+./target/release/binary-name
 all checks passed!
 ```
 
