@@ -12,7 +12,7 @@ macro_rules! sub_command_decl {
         $instance.$field = true;
     }};
     (__inner, $doc_name:literal, $instance:ident, $args:ident, $field:ident, Option<String>) => {{
-        if let Some(value) = $args.next() {
+        if let Some(value) = $args.next() && !value.is_empty() {
             $instance.$field = Some(value);
         } else {
             return Err(
@@ -73,18 +73,13 @@ macro_rules! sub_command_decl {
                 Ok(Some(instance))
             }
 
+            #[allow(unused_mut)]
             fn usage() {
                 println!(concat!("`", $command_name, "` command help:\n"));
 
                 let mut commands = vec![$(($doc_name, $doc),)+];
-                commands.sort_unstable_by(|a, b| a.0.cmp(b.0));
-                let longest = commands.iter().map(|(name, _)| name.len()).max().unwrap();
-                for (name, doc) in commands {
-                    let spacing = std::iter::repeat(' ').take(longest - name.len() + 1).collect::<String>();
-                    println!("    {name}{spacing}: {doc}");
-                }
-                $($extra_ty::show_usage();)?
-                println!("    --help : Show this help");
+                $(commands.extend($extra_ty::usage());)?
+                crate::utils::show_help_with_indent(commands, true);
             }
         }
     }
@@ -132,14 +127,7 @@ Commands:");
 
         fn usage() {
             commands_decl!(__inner, $($command_name)?);
-            let mut commands = vec![$(($doc_name, $doc),)+];
-            let longest = commands.iter().map(|(name, _)| name.len()).max().unwrap();
-
-            commands.sort_unstable_by(|a, b| a.0.cmp(b.0));
-            for (name, doc) in commands {
-                let spacing = std::iter::repeat(' ').take(longest - name.len() + 1).collect::<String>();
-                println!("    {name}{spacing}: {doc}.");
-            }
+            crate::utils::show_help_with_indent(vec![$(($doc_name, $doc),)+], false);
         }
     }
 }
