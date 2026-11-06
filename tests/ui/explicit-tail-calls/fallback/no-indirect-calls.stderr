@@ -1,0 +1,12 @@
+error: `become` through a function pointer is not supported on this target
+  --> $DIR/no-indirect-calls.rs:14:5
+   |
+LL |     become f(x)
+   |     ^^^^^^^^^^^
+   |
+   = note: `-Zforce-tail-call-fallback` is enabled, and lowers `become` to a trampoline
+   = note: the trampoline can only guarantee a tail call when the callee is known at compile time
+   = help: use `become` with a function item directly
+
+error: aborting due to 1 previous error
+

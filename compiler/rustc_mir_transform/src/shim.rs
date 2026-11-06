@@ -174,6 +174,23 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
             debug!("make_shim({:?}) = {:?}", shim, body);
             return body;
         }
+
+        ty::ShimKind::TailCall(def_id) => {
+            let mut body = build_tail_call_shim(tcx, def_id);
+            pm::run_passes_no_validate(
+                tcx,
+                &mut body,
+                &[
+                    &mentioned_items::MentionedItems,
+                    &abort_unwinding_calls::AbortUnwindingCalls,
+                    &add_call_guards::CriticalCallEdges,
+                    &simplify::SimplifyCfg::MakeShim,
+                ],
+                None,
+            );
+            run_optimization_passes(tcx, &mut body);
+            return body;
+        }
     };
     debug!("make_shim({:?}) = untransformed {:?}", shim, result);
 
@@ -1293,6 +1310,239 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
     if let Some(dumper) = MirDumper::new(tcx, pass_name, &body) {
         dumper.dump_mir(&body);
     }
+
+    body
+}
+
+/// Shifts every local reference up by a constant amount, to make space for fresh locals.
+///
+/// In `build_tail_call_shim` this is used to create space for a new return place and single tuple
+/// argument. The old return place (now _2) has the right type still, and is used in constructing
+/// the return value. All old arguments are assigned to when destructuring the single tuple
+/// argument. This means we can reuse the incoming MIR structure, and only need to touch the
+/// function entry and the return/become sites.
+struct ShiftLocals<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    amount: usize,
+}
+
+impl<'tcx> MutVisitor<'tcx> for ShiftLocals<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
+        *local = Local::from_usize(local.as_usize() + self.amount);
+    }
+
+    fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
+        // The implicit `_0` access of a `return` terminator must stay `_0` (it becomes our new
+        // `TailNext` return place), so don't let the generic visitor renumber it.
+        if !matches!(terminator.kind, TerminatorKind::Return) {
+            self.super_terminator(terminator, location);
+        }
+    }
+}
+
+/// Desugar a function that uses explicit tail calls into a function that returns a continuation.
+fn build_tail_call_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Body<'tcx> {
+    debug!("build_tail_call_shim(def_id={def_id:?})");
+
+    let span = tcx.def_span(def_id);
+    let source_info = SourceInfo::outermost(span);
+
+    let Some(mut body) = tcx.tail_call_shim_source(def_id).cloned() else {
+        span_bug!(span, "missing original body, cannot generate TailCall shim")
+    };
+
+    // Store the argument and return types, before we renumber its locals below.
+    let inputs: Vec<Ty<'tcx>> = body.args_iter().map(|local| body.local_decls[local].ty).collect();
+    let ret = body.return_ty();
+    let args_tuple = Ty::new_tup(tcx, &inputs);
+
+    // `TailNext<args_tuple, ret>` and the indices of its `Done` / `Call` variants.
+    let tail_next_did = tcx.require_lang_item(LangItem::TailNext, span);
+    let tail_next_adt = tcx.adt_def(tail_next_did);
+    let tail_next_args = tcx.mk_args(&[args_tuple.into(), ret.into()]);
+    let tail_next_ty = Ty::new_tail_next(tcx, args_tuple, ret);
+    let done_variant =
+        tail_next_adt.variant_index_with_id(tcx.require_lang_item(LangItem::TailNextDone, span));
+    let call_variant =
+        tail_next_adt.variant_index_with_id(tcx.require_lang_item(LangItem::TailNextCall, span));
+
+    // Builds a `TailNext::<variant>(fields..)` aggregate rvalue.
+    let tail_next = |variant, fields: Vec<Operand<'tcx>>| {
+        Rvalue::Aggregate(
+            Box::new(AggregateKind::Adt(tail_next_did, variant, tail_next_args, None, None)),
+            fields.into_iter().collect(),
+        )
+    };
+
+    // Shift every local up by 2 to free:
+    //
+    // - _0, the new `TailNext` return place
+    // - _1, the incoming argument tuple.
+    //
+    // The old return place is now _2, the old arguments correspondingly shift up. These locals are
+    // still useful and will be used below.
+    ShiftLocals { tcx, amount: 2 }.visit_body(&mut body);
+
+    // Add the new return place and single (tuple) argument to the list of locals.
+    let mut local_decls = IndexVec::with_capacity(body.local_decls.len() + 2);
+    local_decls.push(LocalDecl::new(tail_next_ty, span));
+    local_decls.push(LocalDecl::new(args_tuple, span));
+    local_decls.extend(body.local_decls.iter().cloned());
+    body.local_decls = local_decls;
+    body.arg_count = 1;
+
+    // Destructure the tuple argument `_1` into the (shifted) original argument locals at the entry.
+    let tuple_place = Place::from(Local::from_usize(1));
+    let destructure = inputs.iter().enumerate().map(|(i, &input_ty)| {
+        let dest = Place::from(Local::from_usize(2 + 1 + i));
+        let field = tcx.mk_place_field(tuple_place, FieldIdx::from_usize(i), input_ty);
+        Statement::new(
+            source_info,
+            StatementKind::Assign(Box::new((
+                dest,
+                Rvalue::Use(Operand::Move(field), WithRetag::Yes),
+            ))),
+        )
+    });
+    body.basic_blocks_mut()[START_BLOCK].statements.splice(0..0, destructure);
+
+    enum Rewrite<'tcx> {
+        /// A `return` turns into a TailNext::Done.
+        Done,
+        /// A `become` turns into a TailNext::Call.
+        Call { callee: DefId, callee_args: ty::GenericArgsRef<'tcx>, arg_ops: Vec<Operand<'tcx>> },
+    }
+
+    // Gather the updates that we need to make to returns and becomes.
+    let mut rewrites: Vec<(BasicBlock, Rewrite<'tcx>)> = Vec::new();
+    for (bb, data) in body.basic_blocks.iter_enumerated() {
+        match &data.terminator().kind {
+            TerminatorKind::Return => rewrites.push((bb, Rewrite::Done)),
+            TerminatorKind::TailCall { func, args: call_args, .. } => {
+                let Some((callee, callee_args)) = func.const_fn_def() else {
+                    // `become` through a function pointer is not supported by this fallback.
+                    span_bug!(span, "tail call through a non-`FnDef` callee is not supported");
+                };
+                let arg_ops = call_args.iter().map(|a| a.node.clone()).collect();
+                rewrites.push((bb, Rewrite::Call { callee, callee_args, arg_ops }));
+            }
+            _ => {}
+        }
+    }
+
+    let typing_env = body.typing_env(tcx);
+    let emit_tail_call =
+        |callee, callee_args| match ty::Instance::try_resolve(tcx, typing_env, callee, callee_args)
+        {
+            Ok(Some(ty::Instance { def: ty::InstanceKind::Item(def_id), .. })) => {
+                tcx.contains_tail_call(def_id)
+            }
+            Ok(Some(_)) => false,
+            Ok(None) => true, // too generic, defer till after monomorphization
+            Err(_) => false,
+        };
+
+    for (bb, rewrite) in rewrites {
+        match rewrite {
+            Rewrite::Done => {
+                // Return the result wrapped in TailNext::Done.
+                let old_ret_place = Place::from(Local::from_usize(2));
+                let rvalue = tail_next(done_variant, vec![Operand::Move(old_ret_place)]);
+                body.basic_blocks_mut()[bb].statements.push(Statement::new(
+                    source_info,
+                    StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
+                ));
+            }
+            Rewrite::Call { callee, callee_args, arg_ops }
+                if emit_tail_call(callee, callee_args) =>
+            {
+                // Return TailNext::Call calling the callee's shim.
+                //
+                // We do that when:
+                //
+                // - the callee itself also uses `become`
+                // - the callee is still unresolved (e.g. a trait method) and might use `become`
+
+                // Get the shim.
+                let (shim_ptr_local, shim_stmt) = crate::tail_call::reify_tail_call_shim(
+                    tcx,
+                    &mut body.local_decls,
+                    callee,
+                    callee_args,
+                    args_tuple,
+                    ret,
+                    span,
+                );
+
+                // Build the argument tuple.
+                let tuple_local = body.local_decls.push(LocalDecl::new(args_tuple, span));
+                let tuple_stmt = Statement::new(
+                    source_info,
+                    StatementKind::Assign(Box::new((
+                        Place::from(tuple_local),
+                        Rvalue::Aggregate(
+                            Box::new(AggregateKind::Tuple),
+                            arg_ops.into_iter().collect(),
+                        ),
+                    ))),
+                );
+
+                // Build the call.
+                let call_rvalue = tail_next(
+                    call_variant,
+                    vec![
+                        Operand::Move(Place::from(shim_ptr_local)),
+                        Operand::Move(Place::from(tuple_local)),
+                    ],
+                );
+                let call_stmt = Statement::new(
+                    source_info,
+                    StatementKind::Assign(Box::new((Place::return_place(), call_rvalue))),
+                );
+
+                let block = &mut body.basic_blocks_mut()[bb];
+                block.statements.push(shim_stmt);
+                block.statements.push(tuple_stmt);
+                block.statements.push(call_stmt);
+                block.terminator_mut().kind = TerminatorKind::Return;
+            }
+            Rewrite::Call { callee, callee_args, arg_ops } => {
+                // The callee does not use `become`, so return TailNext::Done with the result of
+                // the call.
+
+                // Construct a new basic block with the return.
+                let result_local = body.local_decls.push(LocalDecl::new(ret, span));
+                let done = tail_next(done_variant, vec![Operand::Move(Place::from(result_local))]);
+                let done_block = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
+                    vec![Statement::new(
+                        source_info,
+                        StatementKind::Assign(Box::new((Place::return_place(), done))),
+                    )],
+                    Some(Terminator { source_info, kind: TerminatorKind::Return }),
+                    false,
+                ));
+
+                // And perform the call in the original basic block.
+                let callee_op = Operand::function_handle(tcx, callee, callee_args, span);
+                let call_args = arg_ops.into_iter().map(|op| Spanned { node: op, span }).collect();
+                body.basic_blocks_mut()[bb].terminator_mut().kind = TerminatorKind::Call {
+                    func: callee_op,
+                    args: call_args,
+                    destination: Place::from(result_local),
+                    target: Some(done_block),
+                    unwind: UnwindAction::Continue,
+                    call_source: CallSource::Misc,
+                    fn_span: span,
+                };
+            }
+        }
+    }
+
+    body.source = MirSource::from_shim(ty::ShimKind::TailCall(def_id));
 
     body
 }

@@ -848,6 +848,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(..))
             | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(..))
             | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::TailCall(..))
             | ty::InstanceKind::Item(_) => {
                 // We need MIR for this fn.
                 // Note that this can be an intrinsic, if we are executing its fallback body.

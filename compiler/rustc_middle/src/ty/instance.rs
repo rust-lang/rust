@@ -202,6 +202,14 @@ pub enum ShimKind<'tcx> {
     /// async_drop_in_place poll function implementation (for generated coroutine).
     /// `Ty` here is `async_drop_in_place<T>::{closure}` coroutine type, not just `T`
     AsyncDropGlue(DefId, Ty<'tcx>),
+
+    /// Variant of a tail-calling function (a function using `become`) that returns a continuation
+    /// instead of making the tail call.
+    ///
+    /// This shim type is used on targets that do not support tail calls, e.g. powerpc.
+    ///
+    /// The `DefId` is the tail caller.
+    TailCall(DefId),
 }
 
 impl<'tcx> Instance<'tcx> {
@@ -355,7 +363,8 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::FnPtrFromPtr(def_id, _)
             | ShimKind::FutureDropPoll(def_id, _, _)
             | ShimKind::AsyncDropGlue(def_id, _)
-            | ShimKind::AsyncDropGlueCtor(def_id, _) => def_id,
+            | ShimKind::AsyncDropGlueCtor(def_id, _)
+            | ShimKind::TailCall(def_id) => def_id,
         }
     }
 
@@ -375,7 +384,8 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::DropGlue(..)
             | ShimKind::Clone(..)
             | ShimKind::FnPtrAsPtr(..)
-            | ShimKind::FnPtrFromPtr(..) => None,
+            | ShimKind::FnPtrFromPtr(..)
+            | ShimKind::TailCall(..) => None,
         }
     }
 
@@ -386,6 +396,7 @@ impl<'tcx> ShimKind<'tcx> {
             ShimKind::FutureDropPoll(_, _, _) => false,
             ShimKind::AsyncDropGlue(_, _) => false,
             ShimKind::ThreadLocal(_) => false,
+            ShimKind::TailCall(_) => false,
             _ => true,
         }
     }
@@ -405,6 +416,7 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::ConstructCoroutineInClosure { .. }
             | ShimKind::DropGlue(..)
             | ShimKind::Reify(..)
+            | ShimKind::TailCall(..)
             | ShimKind::VTable(..) => true,
         }
     }

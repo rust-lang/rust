@@ -29,15 +29,21 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
 
-        // A shim created by `#[track_caller]` should not inherit any attributes
-        // that modify the symbol name. Failing to remove these attributes from
-        // the shim leads to errors like `symbol `foo` is already defined`.
+        // A shim created by `#[track_caller]` or by lowering `become` should not inherit any
+        // attributes that modify the symbol name. Failing to remove these attributes from the
+        // shim leads to errors like `symbol `foo` is already defined`.
         //
         // A `ClosureOnceShim` with the track_caller attribute does not have a symbol,
         // and therefore can be skipped here.
-        if let InstanceKind::Shim(ShimKind::Reify(_, _)) = instance_kind
-            && attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
-        {
+        let strip_symbol_attributes = match instance_kind {
+            InstanceKind::Shim(ShimKind::Reify(..)) => {
+                attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
+            }
+            InstanceKind::Shim(ShimKind::TailCall(..)) => true,
+            _ => false,
+        };
+
+        if strip_symbol_attributes {
             if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
                 attrs.to_mut().flags.remove(CodegenFnAttrFlags::NO_MANGLE);
             }
