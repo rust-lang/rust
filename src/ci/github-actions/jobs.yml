@@ -623,6 +623,7 @@ auto:
           --host=aarch64-apple-darwin
           --target=aarch64-apple-darwin
           src/tools/cargo
+          --jobs 1
       RUST_CONFIGURE_ARGS: >-
         --set build.allocator=jemalloc
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
