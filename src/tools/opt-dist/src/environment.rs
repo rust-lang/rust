@@ -82,9 +82,13 @@ impl Environment {
         self.prebuilt_rustc_perf.clone()
     }
 
-    /// Path to the built rustc-perf benchmark suite.
+    /// Path to the rustc-perf benchmark suite, either built locally, or provided in a prebuilt
+    /// form.
     pub fn rustc_perf_dir(&self) -> Utf8PathBuf {
-        self.artifact_dir.join("rustc-perf")
+        match &self.prebuilt_rustc_perf {
+            Some(prebuilt_rustc_perf) => prebuilt_rustc_perf.clone(),
+            None => self.artifact_dir.join("rustc-perf"),
+        }
     }
 
     pub fn host_llvm_dir(&self) -> Utf8PathBuf {
