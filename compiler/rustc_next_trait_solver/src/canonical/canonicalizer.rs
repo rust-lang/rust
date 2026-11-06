@@ -100,20 +100,19 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         Canonical { max_universe, var_kinds, value }
     }
 
-    // The return value is the canonicalized `param_env`, plus a canonicalizer suitable for
-    // canonicalizing the rest of the input. (For efficiency, and when appropriate, the returned
-    // canonicalizer will be the same one used on `param_env`, with suitable modifications.)
-    fn canonicalize_param_env(delegate: &'a D, param_env: I::ParamEnv) -> (I::ParamEnv, Self) {
-        if !param_env.has_type_flags(NEEDS_CANONICAL) {
-            let rest_canonicalizer = Canonicalizer::new(
-                delegate,
-                CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
-                    param_env_var_kinds: None,
-                }),
-            );
-
-            return (param_env, rest_canonicalizer);
-        }
+    /// When canonicalizing query inputs, we keep `'static` in the `param_env`
+    /// but erase it everywhere else. We generally don't want to depend on region
+    /// identity, so while it should not matter whether `'static` is kept in the
+    /// value or opaque type storage as well, this prevents us from accidentally
+    /// relying on it in the future.
+    ///
+    /// We want to keep the option of canonicalizing `'static` to an existential
+    /// variable in the future by changing the way we detect global where-bounds.
+    pub(super) fn canonicalize_input<P: TypeFoldable<I>>(
+        delegate: &'a D,
+        input: QueryInput<I, P>,
+    ) -> (Vec<I::GenericArg>, ty::Canonical<I, QueryInput<I, P>>) {
+        let param_env = input.goal.param_env;
 
         // Do the `env` canonicalization, and then convert the canonicalizer to `rest` form for
         // subsequent use, also returning the optionally interned (i.e., uniquely identified)
@@ -151,14 +150,27 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             (param_env, rest_canonicalizer, param_env_var_kinds)
         };
 
-        // Check whether we can use the global cache for this param_env. As we only use
+        // First canonicalize the `param_env` while keeping `'static`. This produces a
+        // canonicalizer that can canonicalize the rest of the input without keeping `'static`.
+        //
+        // For this, we first check if `param_env` even needs canonicalization. If it does, then
+        // we check whether we can use the global cache for this param_env. As we only use
         // the `param_env` itself as the cache key, considering any additional information
         // during its canonicalization would be incorrect. We always canonicalize region
         // inference variables in a separate universe, so these are fine. However, we do
         // track the universe of type and const inference variables so these must not be
         // globally cached. We don't rely on any additional information when canonicalizing
         // placeholders.
-        if !param_env.has_non_region_infer() {
+        let (param_env, mut rest_canonicalizer) = if !param_env.has_type_flags(NEEDS_CANONICAL) {
+            let rest_canonicalizer = Canonicalizer::new(
+                delegate,
+                CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
+                    param_env_var_kinds: None,
+                }),
+            );
+
+            (param_env, rest_canonicalizer)
+        } else if !param_env.has_non_region_infer() {
             delegate.cx().with_canonical_param_env_cache(|cache| match cache.0.entry(param_env) {
                 Entry::Vacant(e) => {
                     // Cache miss. Do `env` canonicalization and get `rest_canonicalizer`, and
@@ -201,25 +213,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             // Do `env` canonicalization and get `rest_canonicalizer`.
             let (param_env, rest_canonicalizer, _) = do_env_and_make_rest(false);
             (param_env, rest_canonicalizer)
-        }
-    }
-
-    /// When canonicalizing query inputs, we keep `'static` in the `param_env`
-    /// but erase it everywhere else. We generally don't want to depend on region
-    /// identity, so while it should not matter whether `'static` is kept in the
-    /// value or opaque type storage as well, this prevents us from accidentally
-    /// relying on it in the future.
-    ///
-    /// We want to keep the option of canonicalizing `'static` to an existential
-    /// variable in the future by changing the way we detect global where-bounds.
-    pub(super) fn canonicalize_input<P: TypeFoldable<I>>(
-        delegate: &'a D,
-        input: QueryInput<I, P>,
-    ) -> (Vec<I::GenericArg>, ty::Canonical<I, QueryInput<I, P>>) {
-        // First canonicalize the `param_env` while keeping `'static`. This produces a
-        // canonicalizer that can canonicalize the rest of the input without keeping `'static`.
-        let (param_env, mut rest_canonicalizer) =
-            Self::canonicalize_param_env(delegate, input.goal.param_env);
+        };
 
         let predicate = input.goal.predicate;
         let predicate = predicate.fold_with(&mut rest_canonicalizer);
