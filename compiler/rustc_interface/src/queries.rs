@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::sync::Arc;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -7,7 +6,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_errors::timings::TimingSection;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::{DepGraph, WorkProduct, WorkProductMap};
+use rustc_middle::dep_graph::{DepGraph, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 use rustc_session::{IncrCompSession, Session};
@@ -22,7 +21,8 @@ pub struct Linker {
     crate_hash: Option<Svh>,
     crate_info: CrateInfo,
     metadata: EncodedMetadata,
-    ongoing_codegen: Box<dyn Any>,
+    compiled_modules: CompiledModules,
+    work_products: WorkProductMap,
 }
 
 impl Linker {
@@ -31,7 +31,8 @@ impl Linker {
         codegen_backend: &dyn CodegenBackend,
         metadata: EncodedMetadata,
     ) -> Linker {
-        let (ongoing_codegen, crate_info) = passes::run_codegen(codegen_backend, tcx);
+        let (compiled_modules, work_products, crate_info) =
+            passes::run_codegen(codegen_backend, tcx, metadata.path().clone());
 
         Linker {
             dep_graph: tcx.dep_graph.clone(),
@@ -43,7 +44,8 @@ impl Linker {
             },
             crate_info,
             metadata,
-            ongoing_codegen,
+            compiled_modules,
+            work_products,
         }
     }
 
@@ -53,36 +55,9 @@ impl Linker {
         incr_comp_session: Option<IncrCompSession>,
         codegen_backend: &dyn CodegenBackend,
     ) {
-        let (compiled_modules, mut work_products) = sess.time("finish_ongoing_codegen", || {
-            match self.ongoing_codegen.downcast::<CompiledModules>() {
-                // This was a check only build
-                Ok(compiled_modules) => (*compiled_modules, WorkProductMap::default()),
-
-                Err(ongoing_codegen) => codegen_backend.join_codegen(
-                    ongoing_codegen,
-                    sess,
-                    incr_comp_session.as_ref(),
-                    &self.output_filenames,
-                    &self.crate_info,
-                ),
-            }
-        });
-
         // Backends could raise an error, do not continue if that's the case.
         if let Some(guar) = sess.dcx().has_errors_or_delayed_bugs() {
             guar.raise_fatal();
-        }
-
-        if sess.opts.incremental.is_some()
-            && let Some(path) = self.metadata.path()
-        {
-            let (id, product) = rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
-                sess,
-                incr_comp_session.as_ref().unwrap(),
-                WorkProduct::METADATA_WORKPRODUCT_CGU_NAME,
-                &[(OutputType::Metadata.extension(), path)],
-            );
-            work_products.insert(id, product);
         }
 
         let _timer = sess.timer("link");
@@ -92,7 +67,7 @@ impl Linker {
                 sess,
                 incr_comp_session.as_ref(),
                 &self.dep_graph,
-                work_products,
+                self.work_products,
             )
         });
 
@@ -124,7 +99,7 @@ impl Linker {
             CompiledModules::serialize_rlink(
                 sess,
                 &rlink_file,
-                &compiled_modules,
+                &self.compiled_modules,
                 &self.crate_info,
                 &self.metadata,
                 &self.output_filenames,
@@ -139,7 +114,7 @@ impl Linker {
         let _timing = sess.timings.section_guard(sess.dcx(), TimingSection::Linking);
         codegen_backend.link(
             sess,
-            compiled_modules,
+            self.compiled_modules,
             self.crate_info,
             self.metadata,
             &self.output_filenames,

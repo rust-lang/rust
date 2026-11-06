@@ -79,7 +79,8 @@ fn compile(code: String, output: PathBuf, sysroot: Sysroot, linker: Option<&Path
         let (linker, incr_comp_session) =
             rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
                 let _ = tcx.analysis(());
-                Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend)
+                let metadata = rustc_interface::passes::finish_and_emit_metadata(tcx);
+                Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend, metadata)
             });
         linker.link(&compiler.sess, incr_comp_session, &*compiler.codegen_backend);
     });

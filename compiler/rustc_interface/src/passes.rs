@@ -29,6 +29,7 @@ use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_sto
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
+use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::middle::resolve::{ResolverAstLowering, ResolverGlobalCtxt};
 use rustc_middle::ty::{self, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
@@ -1310,7 +1311,8 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 pub(crate) fn run_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-) -> (Box<dyn Any>, CrateInfo) {
+    metadata_path: Option<&Path>,
+) -> (CompiledModules, WorkProductMap, CrateInfo) {
     tcx.sess.timings.start_section(tcx.sess.dcx(), TimingSection::Codegen);
     // Don't run this test assertions when not doing codegen. Compiletest tries to build
     // build-fail tests in check mode first and expects it to not give an error in that case.
@@ -1328,7 +1330,10 @@ pub(crate) fn run_codegen<'tcx>(
         .iter()
         .any(|o| matches!(o, rustc_session::config::Offload::HostMetadata(_)));
 
-    let codegen = tcx.sess.time("codegen_crate", || {
+    let crate_info = CrateInfo::new(tcx, codegen_backend.target_cpu(tcx.sess));
+
+    // This is the main place where codegen is done
+    let (compiled_modules, work_products) = tcx.sess.time("codegen_crate", || {
         if tcx.sess.opts.unstable_opts.no_codegen
             || !tcx.sess.opts.output_types.should_codegen()
             || is_host_metadata
@@ -1340,9 +1345,32 @@ pub(crate) fn run_codegen<'tcx>(
             }
 
             // Linker::link will skip join_codegen in case of a `CompiledModules` Any value.
-            Box::new(CompiledModules { modules: vec![], allocator_module: None })
+            (CompiledModules { modules: vec![], allocator_module: None }, WorkProductMap::default())
         } else {
-            codegen_backend.codegen_crate(tcx)
+            let ongoing_codegen = codegen_backend.codegen_crate(tcx);
+
+            let (compiled_modules, mut work_products) = codegen_backend.join_codegen(
+                ongoing_codegen,
+                tcx.sess,
+                tcx.incr_comp_session,
+                &tcx.output_filenames(()),
+                &crate_info,
+            );
+
+            // Also add incrementals to work products, these are serialized
+            if tcx.sess.opts.incremental.is_some()
+                && let Some(path) = metadata_path
+            {
+                let (id, product) = rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
+                    tcx.sess,
+                    tcx.incr_comp_session.as_ref().unwrap(),
+                    WorkProduct::METADATA_WORKPRODUCT_CGU_NAME,
+                    &[(OutputType::Metadata.extension(), path)],
+                );
+                work_products.insert(id, product);
+            };
+
+            (compiled_modules, work_products)
         }
     });
 
@@ -1354,11 +1382,9 @@ pub(crate) fn run_codegen<'tcx>(
         tcx.sess.code_stats.print_type_sizes();
     }
 
-    let crate_info = CrateInfo::new(tcx, codegen_backend.target_cpu(tcx.sess));
-
     tcx.sess.timings.end_section(tcx.sess.dcx(), TimingSection::Codegen);
 
-    (codegen, crate_info)
+    (compiled_modules, work_products, crate_info)
 }
 
 /// Compute and validate the crate name.
