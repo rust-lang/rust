@@ -86,6 +86,7 @@ impl CommandLineStep for CrateBootstrap {
         // By default, it will test all of them, but requesting specific tools on the command-line
         // (e.g. `./x test src/tools/coverage-dump`) will test only the specified tools.
         run.path("src/tools/jsondoclint")
+            .path("src/tools/opt-dist")
             .path("src/tools/replace-version-placeholder")
             .path("src/tools/coverage-dump")
             // We want `./x test tidy` to _run_ the tidy tool, not its tests.

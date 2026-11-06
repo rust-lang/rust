@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::process::{Command, Stdio};
 
+use anyhow::Context;
 use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::environment::Environment;
@@ -163,14 +164,28 @@ impl Bootstrap {
         self
     }
 
-    pub fn llvm_pgo_optimize(mut self, profile: Option<&LlvmPGOProfile>) -> Self {
+    pub fn llvm_pgo_optimize(mut self, profile: Option<&LlvmPGOProfile>) -> anyhow::Result<Self> {
         if let Some(prof) = profile {
             self.cmd = self
                 .cmd
                 .arg("--set")
                 .arg(format!(r#"pgo.llvm.use="{}""#, normalize_path(&prof.0).as_str()));
+            // Allow passthrough of the profdata content to the cache extra files to mitigate sccache issue with msvc profile flags
+            // This can be removed when sccache https://github.com/mozilla/sccache/issues/2964 is resolved and in use by Rust build.
+            if cfg!(windows) {
+                let mut paths = std::env::var_os("SCCACHE_EXTRAFILES")
+                    .map(|value| std::env::split_paths(&value).collect::<Vec<_>>())
+                    .unwrap_or_default();
+                paths.push(prof.0.clone().into_std_path_buf());
+                let extra_files = std::env::join_paths(paths)
+                    .context("SCCACHE_EXTRAFILES")?
+                    .into_string()
+                    .map_err(std::env::VarError::NotUnicode)
+                    .context("SCCACHE_EXTRAFILES")?;
+                self.cmd = self.cmd.env("SCCACHE_EXTRAFILES", &extra_files);
+            }
         }
-        self
+        Ok(self)
     }
 
     pub fn without_llvm_lto(mut self) -> Self {
@@ -316,3 +331,6 @@ fn add_shared_x_flags(env: &Environment, cmd: CmdBuilder) -> CmdBuilder {
         cmd
     }
 }
+
+#[cfg(all(test, windows))]
+mod tests;

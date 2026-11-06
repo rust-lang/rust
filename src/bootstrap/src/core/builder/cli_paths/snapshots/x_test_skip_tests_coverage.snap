@@ -157,6 +157,7 @@ expression: test --skip=tests/coverage
     targets: [x86_64-unknown-linux-gnu]
     - Set({src/tools/coverage-dump})
     - Set({src/tools/jsondoclint})
+    - Set({src/tools/opt-dist})
     - Set({src/tools/replace-version-placeholder})
     - Set({tidyselftest})
 [Test] test::RemoteTestClientTests
