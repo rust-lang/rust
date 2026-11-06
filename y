@@ -3,6 +3,8 @@
 while true
 do
   df
-  top -l 1 -s 0 | grep PhysMem
+  memory_pressure
+  vm_stat
+  sysctl vm.swapusage
   sleep 5
 done
