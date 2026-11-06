@@ -228,12 +228,13 @@ fn execute_pipeline(
 ) -> anyhow::Result<()> {
     reset_directory(&env.artifact_dir())?;
 
-    with_log_group("Building rustc-perf", || {
-        let rustc_perf_checkout_dir = match env.prebuilt_rustc_perf() {
-            Some(dir) => dir,
-            None => env.checkout_path().join("src").join("tools").join("rustc-perf"),
-        };
-        copy_rustc_perf(env, &rustc_perf_checkout_dir)
+    with_log_group("Building rustc-perf", || match env.prebuilt_rustc_perf() {
+        Some(_) => Ok(()),
+        None => {
+            let rustc_perf_checkout_dir =
+                env.checkout_path().join("src").join("tools").join("rustc-perf");
+            copy_and_build_rustc_perf(env, &rustc_perf_checkout_dir)
+        }
     })?;
 
     let optimize_clippy = !is_fast_try_build();
@@ -564,7 +565,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 // Copy rustc-perf from the given path into the environment and build it.
-fn copy_rustc_perf(env: &Environment, dir: &Utf8Path) -> anyhow::Result<()> {
+fn copy_and_build_rustc_perf(env: &Environment, dir: &Utf8Path) -> anyhow::Result<()> {
     copy_directory(dir, &env.rustc_perf_dir())?;
     build_rustc_perf(env)
 }
