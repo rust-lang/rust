@@ -1,6 +1,7 @@
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Arch;
 
 use crate::shims::unix::env::EvalContextExt as _;
 use crate::shims::unix::fs::EvalContextExt as _;
@@ -26,7 +27,14 @@ pub fn syscall<'tcx>(
     // have the right type.
 
     let sys_getrandom = ecx.eval_libc("SYS_getrandom").to_target_usize(ecx)?;
-    let sys_futex = ecx.eval_libc("SYS_futex").to_target_usize(ecx)?;
+    // riscv32 only has `SYS_futex_time64`. `libc::timespec` already uses 64-bit time there, so it
+    // behaves exactly like `SYS_futex` on other targets.
+    let sys_futex = if ecx.tcx.sess.target.arch == Arch::RiscV32 {
+        ecx.eval_libc("SYS_futex_time64")
+    } else {
+        ecx.eval_libc("SYS_futex")
+    }
+    .to_target_usize(ecx)?;
     let sys_eventfd2 = ecx.eval_libc("SYS_eventfd2").to_target_usize(ecx)?;
     let sys_gettid = ecx.eval_libc("SYS_gettid").to_target_usize(ecx)?;
     let sys_accept4 = ecx.eval_libc("SYS_accept4").to_target_usize(ecx)?;
