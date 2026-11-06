@@ -9,9 +9,8 @@ Language
 - [Lint against repeated `#[repr(..)]` attributes](https://github.com/rust-lang/rust/pull/157036)
 - [Stabilize `extern "custom"`](https://github.com/rust-lang/rust/pull/158504)
 - [Extend `dropping_references`, `dropping_copy_types` and `undropped_manually_drops` lints to `drop_in_place`](https://github.com/rust-lang/rust/pull/160229)
-- [`unfulfilled_lint_expectations` no longer fires on `#[expect(dead_code)]` inside code that is covered by a dead parents' diagnostic](https://github.com/rust-lang/rust/pull/161005)
-- [riscv: stabilize 'd' and 'f' target features](https://github.com/rust-lang/rust/pull/161385)
-- [Turn the error for `repr(align)` fields in a `repr(packed)` type into a (deny-by-default) lint, `aligned_fields_in_packed`.](https://github.com/rust-lang/rust/pull/162160)
+- [`unfulfilled_lint_expectations` no longer fires on `#[expect(dead_code)]` inside code that is covered by a dead parent's diagnostic](https://github.com/rust-lang/rust/pull/161005)
+- [Turn the error for `repr(align)` fields in a `repr(packed)` type into a deny-by-default lint `aligned_fields_in_packed`](https://github.com/rust-lang/rust/pull/162160)
 - [volatile: allow accesses to non-AM memory to trap](https://github.com/rust-lang/rust/pull/160564/)
 
 
@@ -43,7 +42,7 @@ Libraries
 ---------
 - [Stabilize custom allocators](https://github.com/rust-lang/rust/pull/156882)
 - [Map `ENOTSUP` to `ErrorKind::Unsupported`](https://github.com/rust-lang/rust/pull/158580)
-- [Fix soundness issues in std::sys::pal::sgx::waitqueue::unsafe_list](https://github.com/rust-lang/rust/pull/161334)
+- [Fix soundness issues in `std::sys::pal::sgx::waitqueue::unsafe_list`](https://github.com/rust-lang/rust/pull/161334)
 
 
 <a id="1.100.0-Stabilized-APIs"></a>
@@ -103,19 +102,20 @@ Stabilized APIs
 
 Cargo
 -----
-- Introduced Cargo's own linting system that some Cargo warnings are now emitted as lints that users can control in the `[lints.cargo]` table. This includes a built-in unused dependency check via the `cargo::unused_dependencies` lint. [docs](https://doc.rust-lang.org/nightly/cargo/reference/lints.html) [#17298](https://github.com/rust-lang/cargo/pull/17298)
-- Introduced minimum publish age configurations, also known as dependency cooldowns. When the relevant config is set, the resolver ignores versions published more recently than that, unless they are already in Cargo.lock.([RFC 3923](https://rust-lang.github.io/rfcs/3923-cargo-min-publish-age.html)) [docs](https://doc.rust-lang.org/nightly/cargo/reference/resolver.html#publish-age) [#17335](https://github.com/rust-lang/cargo/pull/17335)
+- Introduced Cargo's own linting system: some Cargo warnings are now emitted as lints that users can control in the `[lints.cargo]` table. This includes a new built-in unused dependency check via the `cargo::unused_dependencies` lint. [docs](https://doc.rust-lang.org/nightly/cargo/reference/lints.html) [#17298](https://github.com/rust-lang/cargo/pull/17298)
+- Introduced minimum publish age configurations, also known as dependency cooldowns. When the relevant config is set, the resolver ignores versions published more recently than that, unless they are already in `Cargo.lock`. ([RFC 3923](https://rust-lang.github.io/rfcs/3923-cargo-min-publish-age.html)) [docs](https://doc.rust-lang.org/nightly/cargo/reference/resolver.html#publish-age) [#17335](https://github.com/rust-lang/cargo/pull/17335)
 - cargo-install: now uses the existing lockfile in the `.crate` tarball by default. `--locked` in cargo install becomes a no-op. [#17388](https://github.com/rust-lang/cargo/pull/17388)
 - Cargo now uses a new directory layout for intermediate build artifacts. Tools that inspect the build directory may need to use [Cargo’s JSON messages](https://doc.rust-lang.org/nightly/cargo/reference/external-tools.html#json-messages) to locate build artifacts instead of relying on the build directory layout. The layout is not a stable interface and is subject to change. ([build cache doc](https://doc.rust-lang.org/nightly/cargo/reference/build-cache.html)) [#17354](https://github.com/rust-lang/cargo/pull/17354)
 
 Rustdoc
 -----
 - [Add new `invalid_markdown_table` rustdoc lint](https://github.com/rust-lang/rust/pull/159583)
+
 <a id="1.100.0-Compatibility-Notes"></a>
 
 Compatibility Notes
 -------------------
-- [More precise captures for closure with uses of variables in `if let`s may cause new errors](https://github.com/rust-lang/rust/pull/154210)
+- [Closures now more precisely capture variables used in `if let`. This may cause new errors](https://github.com/rust-lang/rust/pull/154210)
 - [Check dyn-compatibility of trait objects in more places](https://github.com/rust-lang/rust/pull/154992)
 - [`Infallible` is now a type alias to `!`](https://github.com/rust-lang/rust/pull/155499)
 - [The never type fallback was changed to `!` on all editions](https://github.com/rust-lang/rust/pull/155499)
@@ -129,9 +129,9 @@ Compatibility Notes
 - [windows-gnullvm: always link libunwind statically](https://github.com/rust-lang/rust/pull/160712)
 - [From version 1.94 up to 1.100 a number of ARMv7-A hardfloat targets required the `VFPv3-D32` FPU as a minimum, as they erroneously had the `d32` feature in their baseline list of features. Breakage introduced as a result of correcting this can be fixed by passing `-Ctarget-feature=+d32` to Rust.](https://github.com/rust-lang/rust/pull/160911)
 - [Change "Rust" ABI on x86 to use SSE registers if they are always-available for the current target](https://github.com/rust-lang/rust/pull/161583)
-- [Make `ambiguous_glob_imported_traits` fire in slightly more cases](https://github.com/rust-lang/rust/pull/161805)
+- [Make the `ambiguous_glob_imported_traits` lint fire in slightly more cases](https://github.com/rust-lang/rust/pull/161805)
 - [Make `+fix-cortex-a53-835769` a default feature for `aarch64-unknown-fuchsia`](https://github.com/rust-lang/rust/pull/161886)
-- [Some impls on `Box` have been generalised to arbitrary allocators which may cause some new type inference errors](https://github.com/rust-lang/rust/pull/161946)
+- [Some impls on `Box` have been generalised to arbitrary allocators, which may cause new type inference errors](https://github.com/rust-lang/rust/pull/161946)
 - [The standard library now uses Unicode version 18.0.0](https://doc.rust-lang.org/stable/std/primitive.char.html#associatedconstant.UNICODE_VERSION)
 - [WASI SDK version was bumped from 33 to 34](https://github.com/rust-lang/rust/pull/163809)
 - [On ARM targets, `-Ctarget-feature`/`-Ctarget-cpu` values that would alter the ABI are rejected as hard errors now.](https://github.com/rust-lang/rust/pull/161280)
