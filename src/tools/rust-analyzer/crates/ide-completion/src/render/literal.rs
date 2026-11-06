@@ -22,17 +22,10 @@ use crate::{
 pub(crate) fn render_variant_lit(
     ctx: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
-    local_name: Option<hir::Name>,
     variant: hir::EnumVariant,
-    path: Option<hir::ModPath>,
+    path: hir::ModPath,
 ) -> Option<Builder> {
     let _p = tracing::info_span!("render_variant_lit").entered();
-
-    let path = match (path, local_name) {
-        (Some(path), _) => path,
-        (None, Some(name)) => name.into(),
-        _ => return None,
-    };
 
     render(ctx, path_ctx, Variant::EnumVariant(variant), path)
 }

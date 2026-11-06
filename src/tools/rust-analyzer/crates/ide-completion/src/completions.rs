@@ -435,8 +435,7 @@ impl Completions {
         if !ctx.check_stability_and_hidden(variant) {
             return;
         }
-        if let Some(builder) =
-            render_variant_lit(RenderContext::new(ctx), path_ctx, None, variant, Some(path))
+        if let Some(builder) = render_variant_lit(RenderContext::new(ctx), path_ctx, variant, path)
         {
             self.add(builder.build(ctx.db));
         }
@@ -451,15 +450,15 @@ impl Completions {
         if !ctx.check_stability_and_hidden(variant) {
             return;
         }
-        let local_name = Some(variant.name(ctx.db));
+        let local_name = variant.name(ctx.db);
         if let PathCompletionCtx { kind: PathKind::Pat { pat_ctx }, .. } = path_ctx {
             cov_mark::hit!(enum_variant_pattern_path);
             self.add_variant_pat(ctx, pat_ctx, Some(path_ctx), variant, local_name);
             return;
         }
 
-        if let Some(builder) =
-            render_variant_lit(RenderContext::new(ctx), path_ctx, local_name, variant, None)
+        let path = local_name.into();
+        if let Some(builder) = render_variant_lit(RenderContext::new(ctx), path_ctx, variant, path)
         {
             self.add(builder.build(ctx.db));
         }
@@ -571,18 +570,18 @@ impl Completions {
         pattern_ctx: &PatternContext,
         path_ctx: Option<&PathCompletionCtx<'_>>,
         variant: hir::EnumVariant,
-        local_name: Option<hir::Name>,
+        local_name: hir::Name,
     ) {
         if !ctx.check_stability_and_hidden(variant) {
             return;
         }
+        let path = local_name.into();
         self.add_opt(render_variant_pat(
             RenderContext::new(ctx),
             pattern_ctx,
             path_ctx,
             variant,
-            local_name,
-            None,
+            &path,
         ));
     }
 
@@ -596,14 +595,12 @@ impl Completions {
         if !ctx.check_stability_and_hidden(variant) {
             return;
         }
-        let path = Some(&path);
         self.add_opt(render_variant_pat(
             RenderContext::new(ctx),
             pattern_ctx,
             None,
             variant,
-            None,
-            path,
+            &path,
         ));
     }
 

@@ -428,9 +428,8 @@ fn render_resolution_path<'db>(
         }
         ScopeDef::ModuleDef(EnumVariant(var)) => {
             let ctx = ctx.clone().import_to_add(import_to_add.clone());
-            if let Some(item) =
-                render_variant_lit(ctx, path_ctx, Some(local_name.clone()), var, None)
-            {
+            let path = local_name.clone().into();
+            if let Some(item) = render_variant_lit(ctx, path_ctx, var, path) {
                 return item;
             }
         }
