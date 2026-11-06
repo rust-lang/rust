@@ -1,16 +1,30 @@
+error[E0277]: the trait bound `bool: CoerceUnsized<str>` is not satisfied
+  --> $DIR/unsize-coercion.rs:17:28
+   |
+LL |     require_coerce_unsized(false);
+   |     ---------------------- ^^^^^ the nightly-only, unstable trait `CoerceUnsized<str>` is not implemented for `bool`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `require_coerce_unsized`
+  --> $DIR/unsize-coercion.rs:12:30
+   |
+LL | fn require_coerce_unsized<T: CoerceUnsized<str>>(_: T) {}
+   |                              ^^^^^^^^^^^^^^^^^^ required by this bound in `require_coerce_unsized`
+
 error[E0277]: the trait bound `i32: Trait` is not satisfied
-  --> $DIR/unsize-coercion.rs:7:13
+  --> $DIR/unsize-coercion.rs:15:13
    |
 LL |     let _ = &1_i32 as &dyn Trait;
    |             ^^^^^^ the trait `Trait` is not implemented for `i32`
    |
 help: this trait has no implementations, consider adding one
-  --> $DIR/unsize-coercion.rs:5:1
+  --> $DIR/unsize-coercion.rs:11:1
    |
 LL | trait Trait {}
    | ^^^^^^^^^^^
    = note: required for the cast from `&i32` to `&dyn Trait`
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
