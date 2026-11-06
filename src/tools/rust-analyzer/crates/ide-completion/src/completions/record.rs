@@ -376,7 +376,7 @@ impl submod::Foo {
     #[test]
     fn literal_struct_completion_from_sub_modules() {
         check_edit(
-            "submod::Struct{}",
+            "Struct{}",
             r#"
 mod submod {
     pub struct Struct {

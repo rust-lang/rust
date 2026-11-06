@@ -63,9 +63,13 @@ fn render(
     );
 
     let fields = thing.fields(completion)?;
+    let short_len = match thing {
+        Variant::Struct(_) => 1,
+        Variant::EnumVariant(_) => 2,
+    };
     let short_qualified_name = hir::ModPath::from_segments(
         hir::PathKind::Plain,
-        path.segments().iter().skip(path.segments().len().saturating_sub(2)).cloned(),
+        path.segments().iter().skip(path.segments().len().saturating_sub(short_len)).cloned(),
     );
     let qualified = path.len() > 1;
     let (qualified_name, escaped_qualified_name) = (
