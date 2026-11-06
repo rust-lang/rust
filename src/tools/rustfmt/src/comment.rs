@@ -26,7 +26,7 @@ fn is_custom_comment(comment: &str) -> bool {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum CommentStyle<'a> {
     DoubleSlash,
     TripleSlash,
@@ -249,7 +249,7 @@ pub(crate) fn rewrite_comment(
     shape: Shape,
     config: &Config,
 ) -> RewriteResult {
-    identify_comment(orig, block_style, shape, config, false)
+    identify_comment(orig.trim_start(), block_style, shape, config, false)
 }
 
 fn identify_comment(
