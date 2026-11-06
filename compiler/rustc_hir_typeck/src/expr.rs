@@ -286,7 +286,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ExprKind::If(..)
             | ExprKind::Let(..)
             | ExprKind::Loop(..)
-            | ExprKind::Match(..) => {}
+            | ExprKind::Match(..)
+            | ExprKind::Become(..) => {}
             // Do not warn on `as` casts from never to any,
             // they are sometimes required to appeal typeck.
             ExprKind::Cast(_, _) => {}
