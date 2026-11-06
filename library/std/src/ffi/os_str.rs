@@ -1096,7 +1096,8 @@ impl OsStr {
     ///
     /// Any caller must ensure `mid` is within bounds and lies on
     /// a valid `OsStr` boundary for the platform.
-    unsafe fn split_at_unchecked(&self, mid: usize) -> (&OsStr, &OsStr) {
+    #[unstable(feature = "str_split_at_unchecked", issue = "165545")]
+    pub unsafe fn split_at_unchecked(&self, mid: usize) -> (&OsStr, &OsStr) {
         // SAFETY: it's up to the caller to ensure this is safe.
         unsafe {
             let (first, second) = self.as_encoded_bytes().split_at_unchecked(mid);
