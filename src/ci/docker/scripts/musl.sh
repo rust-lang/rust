@@ -72,7 +72,7 @@ EOF
  			break;
 EOF
 
-  # Apply patches for CVE-2026-6042 and CVE-2026-40200.
+  # Apply patches for CVE-2026-6042, CVE-2026-40200 and CVE-2026-107891.
   #
   # At the time of adding these patches no release containing them has been published by the musl
   # project, so we just apply them directly on top of the version we were distributing already. The
@@ -86,6 +86,9 @@ EOF
   # Advisory: https://www.openwall.com/lists/musl/2026/04/10/3
   # Patches:  https://www.openwall.com/lists/musl/2026/04/10/3/1
   patch -p1 -d $MUSL <"$MUSL_PATCH_DIR/musl-cve-2026-40200.diff"
+  # Advisory: https://www.openwall.com/lists/musl/2026/10/21/1
+  # Patch:    https://www.openwall.com/lists/musl/2026/10/21/1/1
+  patch -p1 -d $MUSL <"$MUSL_PATCH_DIR/musl-cve-2026-107891.diff"
 fi
 
 cd $MUSL
