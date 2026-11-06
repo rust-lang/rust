@@ -669,6 +669,13 @@ fn test_multiple_revisions_in_directive() {
 }
 
 #[test]
+#[should_panic]
+fn test_whitespace_before_at_sign_in_directive() {
+    let line = "// @ check-pass";
+    let _ = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+}
+
+#[test]
 fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
     let revisions = ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
     let modes = [

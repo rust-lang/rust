@@ -3,29 +3,38 @@ use std::fmt;
 use camino::Utf8Path;
 
 use crate::directives::LineNumber;
-
-const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
+use crate::{error, fatal, help};
 
 /// If the given line begins with the appropriate comment prefix for a directive,
 /// returns a struct containing various parts of the directive.
 pub(crate) fn line_directive<'a>(
     file_path: &'a Utf8Path,
     line_number: LineNumber,
-    original_line: &'a str,
+    line: &'a str,
 ) -> Option<DirectiveLine<'a>> {
-    // Ignore lines that don't start with the comment prefix.
-    let after_comment =
-        original_line.trim_start().strip_prefix(COMPILETEST_DIRECTIVE_PREFIX)?.trim_start();
+    let comment = line.trim_start().strip_prefix("//")?;
+    let trimmed_comment = comment.trim_start();
+    let mut raw_directive = trimmed_comment.strip_prefix("@")?.trim_start();
 
-    let revision;
-    let raw_directive;
+    if trimmed_comment.len() != comment.len() {
+        error!(
+            "malformed directive: \
+            found whitespace between `//` and `@` at {file_path}:{line_number}"
+        );
+        help!("if you meant to write a directive remove the whitespace to form `//@`");
+        help!(
+            "if you meant to literally write `@` in a code comment \
+            add `\\` before `@` or rewrap the contents of the comment so `@` doesn't come first"
+        );
+        panic!("fatal error"); // FIXME: Poison the context and keep going.
+    }
 
-    if let Some(after_open_bracket) = after_comment.strip_prefix('[') {
+    let mut revision = None;
+
+    if let Some(after_open_bracket) = raw_directive.strip_prefix('[') {
         // A comment like `//@[foo]` only applies to revision `foo`.
         let Some((line_revision, after_close_bracket)) = after_open_bracket.split_once(']') else {
-            panic!(
-                "malformed condition directive: expected `{COMPILETEST_DIRECTIVE_PREFIX}[foo]`, found `{original_line}`"
-            )
+            fatal!("malformed condition directive: expected `//@[foo]`, found `{line}`")
         };
 
         revision = Some(line_revision);
@@ -34,20 +43,15 @@ pub(crate) fn line_directive<'a>(
         if line_revision.contains(",") {
             let suggestion: Vec<_> = line_revision
                 .split(",")
-                .map(|revision| {
-                    format!("{COMPILETEST_DIRECTIVE_PREFIX} [{revision}]: {raw_directive}")
-                })
+                .map(|revision| format!("//@[{revision}]: {raw_directive}"))
                 .collect();
             panic!(
                 "malformed condition directive: multiple revisions aren't supported yet in `{}`, split them like\n{}",
-                original_line,
+                line,
                 suggestion.join("\n"),
             );
         }
-    } else {
-        revision = None;
-        raw_directive = after_comment;
-    };
+    }
 
     // The directive name ends at the first occurrence of colon, space, or end-of-string.
     let name = raw_directive.split([':', ' ']).next().expect("split is never empty");

@@ -2,8 +2,6 @@
 // support for tail calls to work correctly. Since there doesn't seem to be a usecase for tail
 // calling extern "rust-call" functions (extern "rust-call" only shows up in closures, which we
 // disallow tail-calling anyway), we just disallow that.
-//
-// @ ignore-backends: gcc
 #![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 #![feature(unboxed_closures)]
